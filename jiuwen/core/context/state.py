@@ -24,11 +24,11 @@ Transformer = Callable[[ReadableStateLike], Any]
 
 class StateLike(ReadableStateLike):
     @abstractmethod
-    def get_by_transformer(self, transformer: Transformer) -> Optional[Any]:
+    def update(self, data: dict) -> None:
         pass
 
     @abstractmethod
-    def update(self, node_id: str, data: dict) -> None:
+    def get_by_transformer(self, transformer: Transformer) -> Optional[Any]:
         pass
 
     @abstractmethod
@@ -41,6 +41,10 @@ class StateLike(ReadableStateLike):
 
 
 class CommitState(StateLike):
+    @abstractmethod
+    def update_by_id(self, node_id: str, data: dict) -> None:
+        pass
+
     @abstractmethod
     def commit(self) -> None:
         pass
@@ -93,12 +97,12 @@ class State(ABC):
     def update(self, data: dict) -> None:
         if self._global_state is None:
             return
-        self._global_state.update(self._node_id, data)
+        self._global_state.update_by_id(self._node_id, data)
 
     def update_io(self, data: dict) -> None:
         if self._io_state is None:
             return
-        self._io_state.update(self._node_id, data)
+        self._io_state.update_by_id(self._node_id, data)
 
     def get_io(self, key: Union[str, list, dict]) -> Optional[Any]:
         if self._io_state is None:
@@ -111,7 +115,7 @@ class State(ABC):
     def update_comp(self, data: dict) -> None:
         if self._comp_state is None:
             return
-        self._comp_state.update(self._node_id, {self._node_id: data})
+        self._comp_state.update_by_id(self._node_id, {self._node_id: data})
 
     def get_comp(self, key: Union[str, list, dict]) -> Optional[Any]:
         if self._comp_state is None:
@@ -121,8 +125,8 @@ class State(ABC):
     def set_user_inputs(self, inputs: Any) -> None:
         if self._io_state is None or inputs is None:
             return
-        self._io_state.update(self._node_id, inputs)
-        self._global_state.update(self._node_id, inputs)
+        self._io_state.update_by_id(self._node_id, inputs)
+        self._global_state.update_by_id(self._node_id, inputs)
         self.commit()
 
     def get_inputs_by_transformer(self, transformer: Callable) -> dict:
@@ -138,7 +142,7 @@ class State(ABC):
     def set_outputs(self, node_id: str, outputs: dict) -> None:
         if self._io_state is None or outputs is None:
             return
-        return self._io_state.update(node_id, {node_id: outputs})
+        return self._io_state.update_by_id(node_id, {node_id: outputs})
 
     def create_node_state(self, node_id: str) -> Self:
         return State(io_state=self._io_state, global_state=self._global_state, comp_state=self._comp_state,
@@ -192,9 +196,7 @@ class InMemoryStateLike(StateLike):
     def get_by_transformer(self, transformer: Callable) -> Optional[Any]:
         return transformer(self._state)
 
-    def update(self, node_id: str, data: dict) -> None:
-        if node_id is None:
-            raise JiuWenBaseException(1, "can not update state by none node_id")
+    def update(self, data: dict) -> None:
         update_dict(data, self._state)
 
     def get_state(self) -> dict:
@@ -210,7 +212,10 @@ class InMemoryCommitState(CommitState):
         self._state = state if state else InMemoryStateLike()
         self._updates: dict[str, list[dict]] = dict()
 
-    def update(self, node_id: str, data: dict) -> None:
+    def update(self, data: dict) -> None:
+        raise JiuWenBaseException(-1, "commit state update must support node_id")
+
+    def update_by_id(self, node_id: str, data: dict) -> None:
         if node_id is None:
             raise JiuWenBaseException(1, "can not update state by none node_id")
         if node_id not in self._updates:
@@ -220,7 +225,7 @@ class InMemoryCommitState(CommitState):
     def commit(self) -> None:
         for key, updates in self._updates.items():
             for update in updates:
-                self._state.update(key, update)
+                self._state.update(update)
         self._updates.clear()
 
     def rollback(self, node_id: str) -> None:

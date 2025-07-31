@@ -142,7 +142,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """创建 LLM 组件，仅用于抽取结构化字段（location/date）。"""
         model_config = WorkflowAgentTest._create_model_config()
         current_date = build_current_date()
-        user_prompt = "\n原始query为：{{query}}\n\n帮我改写原始query，要求：\n1. 只把地名改为英文，其他信息保留中文；\n2. 默认日期为今天；\n3. 时间为YYYY-MM-DD格式。"
+        user_prompt = ("\n原始query为：{{query}}\n\n帮我改写原始query，要求：\n"
+                       "1. 只把地名改为英文，其他信息保留中文；\n"
+                       "2. 改写后的query必须包含当前的日期，默认日期为今天；\n"
+                       "3. 日期为YYYY-MM-DD格式。")
         config = LLMCompConfig(
             model=model_config,
             template_content=[{"role": "user", "content": SYSTEM_PROMPT_TEMPLATE.format(current_date) + user_prompt}],

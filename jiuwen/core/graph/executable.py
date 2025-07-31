@@ -11,7 +11,6 @@ from jiuwen.core.context.context import Context
 Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", contravariant=True)
 
-
 class Executable(Generic[Input, Output]):
     memory: "ConversationMemory" = None
     memory_auto_save: bool = True

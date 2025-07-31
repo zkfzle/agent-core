@@ -13,12 +13,12 @@ from jiuwen.core.component.loop_callback.loop_id import LOOP_ID
 from jiuwen.core.component.exec_workflow_base import ExecWorkflowBase
 from jiuwen.core.context.context import Context, NodeContext
 from jiuwen.core.context.utils import get_by_schema, NESTED_PATH_SPLIT
+from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 
-
-class Vertex:
+class Vertex(AsyncAtomicNode):
     def __init__(self, node_id: str, executable: Executable = None):
         self._node_id = node_id
         self._executable = executable
@@ -56,14 +56,20 @@ class Vertex:
             logger.error(f"error ComponentAbility: {ability.name}")
 
     async def __call__(self, state: GraphState, config: Any = None) -> Output:
-        await self.call(state, config)
+        if self._executable.post_commit():
+            await self.atomic_invoke(config=config, context=self._context)
+        else:
+            await self.call(config)
         return {"source_node_id": [self._node_id]}
+
+    async def _atomic_invoke(self, **kwargs) -> Any:
+        return await self.call(kwargs.get("config", None))
 
     async def _pre_invoke(self) -> Optional[dict]:
         inputs_transformer = self._context.config().get_input_transformer(self._node_id)
         if inputs_transformer is None:
             inputs_schema = self._context.config().get_inputs_schema(self._node_id)
-            inputs = self._context.state().get_io(inputs_schema)
+            inputs = self._context.state().get_inputs(inputs_schema)
         else:
             inputs = self._context.state().get_inputs_by_transformer(inputs_transformer)
         if self._context.tracer() is not None:
@@ -77,13 +83,11 @@ class Vertex:
             results = get_by_schema(output_schema, results) if output_schema else results
         else:
             results = output_transformer(results)
-        self._context.state().set_outputs(self._node_id, results)
+        self._context.state().set_outputs(results)
         if self._context.tracer() is not None:
             await self.__trace_outputs__(results)
 
         self.__clear_interactive__()
-        if self._executable.post_commit():
-            self._context.state().commit()
         return results
 
     async def _pre_stream(self, ability: ComponentAbility) -> AsyncIterator[dict]:
@@ -132,8 +136,8 @@ class Vertex:
 
 
     def __clear_interactive__(self) -> None:
-        if self._context.state().get_comp(INTERACTIVE_INPUT):
-            self._context.state().update_comp({INTERACTIVE_INPUT: None})
+        if self._context.state().get(INTERACTIVE_INPUT):
+            self._context.state().update({INTERACTIVE_INPUT: None})
 
     async def __trace_inputs__(self, inputs: Optional[dict]) -> None:
         if self._executable.skip_trace():
@@ -149,7 +153,7 @@ class Vertex:
         if isinstance(self._executable, ExecWorkflowBase):
             self._context.tracer().register_workflow_span_manager(self._context.executable_id())
 
-    async def call(self, state: GraphState, config: Any = None):
+    async def call(self, config: Any = None):
         if self._context is None or self._executable is None:
             raise JiuWenBaseException(1, "vertex is not initialized, node is is " + self._node_id)
 
@@ -203,9 +207,9 @@ class Vertex:
 
     def _get_component_metadata(self) -> dict:
         component_metadata = {"component_type": self._context.executable_id()}
-        loop_id = self._context.state().get(LOOP_ID)
+        loop_id = self._context.state().get_global(LOOP_ID)
         if loop_id:
-            index = self._context.state().get(loop_id + NESTED_PATH_SPLIT + INDEX)
+            index = self._context.state().get_global(loop_id + NESTED_PATH_SPLIT + INDEX)
             component_metadata.update({
                 "loop_node_id": loop_id,
                 "loop_index": index + 1

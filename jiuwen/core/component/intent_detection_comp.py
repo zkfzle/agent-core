@@ -117,7 +117,7 @@ class IntentDetectionExecutable(Executable):
         """从上下文中获取对话历史"""
         chat_history = []
         if self._context:
-            chat_history: list = self._context.state().get(WORKFLOW_CHAT_HISTORY)
+            chat_history: list = self._context.state().get_global(WORKFLOW_CHAT_HISTORY)
         return chat_history
 
     def _get_category_info(self):

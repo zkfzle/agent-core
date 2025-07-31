@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Self
+from typing import Any
 
 from jiuwen.core.context.config import Config
 from jiuwen.core.context.mq_manager import MessageQueueManager
@@ -126,7 +126,7 @@ class NodeContext(Context):
         self.__node_id = node_id
         self.__parent_id = context.executable_id() if isinstance(context, NodeContext) else ''
         self.__executable_id = self.__parent_id + "." + node_id if len(self.__parent_id) != 0 else node_id
-        self.__state = context.state().create_node_state(self.__executable_id)
+        self.__state = context.state().create_node_state(self.__executable_id, self.__parent_id)
         self.__context = context
 
     def node_id(self):
@@ -167,10 +167,3 @@ class NodeContext(Context):
 
     def parent_context(self):
         return self.__context
-
-class ContextSetter(ABC):
-    def __init__(self, context: Context = None):
-        self._context = context
-
-    def set_context(self, context: Context):
-        self._context = context

@@ -21,9 +21,9 @@ class Interaction(object):
     def __init__(self, ctx: Context):
         self.ctx = ctx
         self.idx = 0
-        self.node_id = self.ctx.state()._node_id
+        self.node_id = self.ctx.executable_id()
         self.interactive_inputs = None
-        interactive_inputs = self.ctx.state().get_comp(INTERACTIVE_INPUT)
+        interactive_inputs = self.ctx.state().get(INTERACTIVE_INPUT)
         if isinstance(interactive_inputs, list):
             self.interactive_inputs = interactive_inputs
         self.latest_interactive_inputs = None

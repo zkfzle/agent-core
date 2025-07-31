@@ -152,7 +152,7 @@ class LLMExecutable(Executable):
             if stream_writer:
                 await stream_writer.write(CustomSchema(**dict(streamOutput=response)))
 
-            self._context.state().update({"response": response})
+            self._context.state().update_global({"response": response})
             logger.info("[%s] model outputs %s", self._context.executable_id(), response)
             return self._create_output(response)
         except JiuWenBaseException:
@@ -220,7 +220,7 @@ class LLMExecutable(Executable):
         if inputs:
             processed_inputs = inputs.copy()
             if self._context:
-                chat_history: list = self._context.state().get(WORKFLOW_CHAT_HISTORY)
+                chat_history: list = self._context.state().get_global(WORKFLOW_CHAT_HISTORY)
                 chat_history = chat_history[:-1] if chat_history else []
                 full_input = ""
                 for history in chat_history[-CHAT_HISTORY_MAX_TURN:]:
@@ -251,7 +251,7 @@ class LLMExecutable(Executable):
     def _get_history(self, user_prompt: str):
         original_histoty = []
         if self._context:
-            chat_history: list = self._context.state().get(WORKFLOW_CHAT_HISTORY)
+            chat_history: list = self._context.state().get_global(WORKFLOW_CHAT_HISTORY)
             if chat_history and self._config.enable_history:
                 original_histoty = chat_history
         original_histoty.append({"role": "user", "content": user_prompt})

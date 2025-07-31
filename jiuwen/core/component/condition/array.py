@@ -5,7 +5,7 @@ from typing import Union, Any
 
 from jiuwen.core.component.condition.condition import Condition, INDEX
 from jiuwen.core.context.context import Context
-from jiuwen.core.context.utils import extract_origin_key, NESTED_PATH_SPLIT
+from jiuwen.core.graph.executable import Input, Output
 
 DEFAULT_MAX_LOOP_NUMBER = 1000
 DEFAULT_PATH_ARRAY_LOOP_VAR = "arrLoopVar"
@@ -13,35 +13,19 @@ DEFAULT_PATH_ARRAY_LOOP_VAR = "arrLoopVar"
 
 class ArrayCondition(Condition):
     def __init__(self, node_id: str, arrays: dict[str, Union[str, list[Any]]]):
-        super().__init__()
+        super().__init__(arrays)
+        self._node_id = node_id
         self._arrays = arrays
-        self._index_path = node_id + NESTED_PATH_SPLIT + INDEX
-        self._arrays_root = node_id + NESTED_PATH_SPLIT + DEFAULT_PATH_ARRAY_LOOP_VAR
 
-    def init(self):
-        self._context.state().update_io({self._arrays_root: {}})
-
-    def __call__(self) -> bool:
-        current_idx = self._context.state().get_io(self._index_path) + 1
+    def invoke(self, inputs: Input, context: Context) -> Output:
+        current_idx = context.state().get(INDEX) + 1
         min_length = DEFAULT_MAX_LOOP_NUMBER
         updates: dict[str, Any] = {}
         for key, array_info in self._arrays.items():
-            key_path = self._arrays_root + NESTED_PATH_SPLIT + key
-            arr: list[Any] = []
-            if isinstance(array_info, list):
-                arr = array_info
-            elif isinstance(array_info, str):
-                ref_str = extract_origin_key(array_info)
-                if ref_str != "":
-                    arr = self._context.state().get(ref_str)
-                else:
-                    raise RuntimeError("error value: " + array_info + " is not a array path")
-            else:
-                raise RuntimeError("error value: " + array_info + " is not a array or a array path")
+            arr = inputs.get(key, [])
             min_length = min(len(arr), min_length)
             if current_idx >= min_length:
                 return False
-            updates[key_path] = arr[current_idx]
-
-        self._context.state().update_io(updates)
-        return True
+            updates[key] = arr[current_idx]
+        context.state().update({self._node_id: updates})
+        return True, {self._node_id: updates}

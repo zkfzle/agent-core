@@ -1,23 +1,35 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-from abc import ABC, abstractmethod
-from typing import Callable
+from abc import abstractmethod
+from typing import Callable, Any
 
-from jiuwen.core.context.context import ContextSetter
+from jiuwen.core.context.context import Context
+from jiuwen.core.graph.atomic_node import AtomicNode
+from jiuwen.core.graph.executable import Input, Output
 
 INDEX = "index"
 
 
-class Condition(ContextSetter, ABC):
+class Condition(AtomicNode):
+    def __init__(self, input_schema: Any = None):
+        self._input_schema = input_schema
+
+    def __call__(self, context: Context) -> bool:
+        return self.atomic_invoke(context=context)
+
+    def _atomic_invoke(self, **kwargs) -> Any:
+        context: Context = kwargs["context"]
+        inputs = context.state().get_inputs(self._input_schema) if self._input_schema is not None else {}
+        result = self.invoke(inputs=inputs, context=context)
+        if isinstance(result, tuple):
+            context.state().set_outputs(result[1])
+            result = result[0]
+        return result
 
     @abstractmethod
-    def init(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def __call__(self) -> bool:
-        raise NotImplementedError
+    def invoke(self, inputs: Input, context: Context) -> Output:
+        pass
 
 
 class FuncCondition(Condition):
@@ -25,17 +37,10 @@ class FuncCondition(Condition):
         super().__init__()
         self._func = func
 
-    def init(self):
-        pass
-
-    def __call__(self) -> bool:
+    def invoke(self, inputs: Input, context: Context) -> Output:
         return self._func()
 
 
 class AlwaysTrue(Condition):
-
-    def init(self):
-        pass
-
-    def __call__(self) -> bool:
+    def invoke(self, inputs: Input, context: Context) -> Output:
         return True

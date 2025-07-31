@@ -177,24 +177,23 @@ class CheckpointTest(unittest.TestCase):
 
         # create  loop: (1->2->3)
         loop_group = LoopGroup(WorkflowConfig(), PregelGraph())
-        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${l.arrLoopVar.item}"})
+        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${arrLoopVar.item}"})
         loop_group.add_workflow_comp("2", AddTenNode4Cp("2"),
-                                     inputs_schema={"source": "${l.intermediateLoopVar.user_var}"})
+                                     inputs_schema={"source": "${intermediateLoopVar.user_var}"})
         loop_group.add_workflow_comp("3", SetVariableComponent(
-                                                      {"${l.intermediateLoopVar.user_var}": "${2.result}"}))
+                                                      {"${intermediateLoopVar.user_var}": "${2.result}"}))
         loop_group.start_comp("1")
         loop_group.end_comp("3")
         loop_group.add_connection("1", "2")
         loop_group.add_connection("2", "3")
-        output_callback = OutputCallback("l",
-                                         {"results": "${1.result}", "user_var": "${l.intermediateLoopVar.user_var}"})
-        intermediate_callback = IntermediateLoopVarCallback("l",
-                                                            {"user_var": "${input_number}"})
+        output_callback = OutputCallback(
+                                         {"results": "${1.result}", "user_var": "${intermediateLoopVar.user_var}"})
+        intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition("l", {"item": "${a.array}"}),
+        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition("arrLoopVar", {"item": "${a.array}"}),
                              callbacks=[output_callback, intermediate_callback])
 
-        flow.add_workflow_comp("l", loop)
+        flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
 
         # s->a->(1->2->3)->b->e
         flow.add_connection("s", "a")
@@ -265,24 +264,22 @@ class CheckpointTest(unittest.TestCase):
 
         # create  loop: (1->2->3)
         loop_group = LoopGroup(WorkflowConfig(), PregelGraph())
-        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${l.arrLoopVar.item}"})
+        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${arrLoopVar.item}"})
         loop_group.add_workflow_comp("2", InteractiveNode4Cp("2"),
-                                     inputs_schema={"source": "${l.intermediateLoopVar.user_var}"})
+                                     inputs_schema={"source": "${intermediateLoopVar.user_var}"})
         loop_group.add_workflow_comp("3", SetVariableComponent(
-                                                      {"${l.intermediateLoopVar.user_var}": "${2.result}"}))
+                                                      {"${intermediateLoopVar.user_var}": "${2.result}"}))
         loop_group.start_comp("1")
         loop_group.end_comp("3")
         loop_group.add_connection("1", "2")
         loop_group.add_connection("2", "3")
-        output_callback = OutputCallback("l",
-                                         {"results": "${1.result}", "user_var": "${l.intermediateLoopVar.user_var}"})
-        intermediate_callback = IntermediateLoopVarCallback("l",
-                                                            {"user_var": "${input_number}"})
+        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${intermediateLoopVar.user_var}"})
+        intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition("l", {"item": "${a.array}"}),
+        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition("arrLoopVar", {"item": "${a.array}"}),
                              callbacks=[output_callback, intermediate_callback])
 
-        flow.add_workflow_comp("l", loop)
+        flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
 
         # s->a->(1->2->3)->b->e
         flow.add_connection("s", "a")
@@ -295,32 +292,32 @@ class CheckpointTest(unittest.TestCase):
         # 每次节点2有两个等待用户输入，索引为：0、1，循环三次，共6个输入
         res = self.invoke_workflow({"input_array": [1, 2, 3], "input_number": 1}, create_context(session_id=session_id),
                                    flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
@@ -330,22 +327,22 @@ class CheckpointTest(unittest.TestCase):
         # 重复执行
         res = self.invoke_workflow({"input_array": [4, 5], "input_number": 2}, create_context(session_id=session_id),
                                    flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 0, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 
         res = self.invoke_workflow(user_input, create_context(session_id=session_id), flow)
-        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('2', 'Please enter any key')}])
+        self.assertEqual(res, [{'type': '__interaction__', 'index': 1, 'payload': ('l.2', 'Please enter any key')}])
         user_input = InteractiveInput()
         user_input.update(res[0].get("payload")[0], {"aa": "any key"})
 

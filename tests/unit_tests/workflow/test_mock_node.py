@@ -41,7 +41,6 @@ class MockStartNode(Start):
         super().__init__(node_id, {})
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
-        context.state().set_outputs(self.node_id, inputs)
         return inputs
 
 
@@ -120,11 +119,11 @@ class MockStartNode4Cp(Start):
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
         self.runtime += 1
-        value = context.state().get("a")
+        value = context.state().get_global("a")
         if value is not None:
             assert Exception("value is not None")
         print("start: output = " + str(inputs))
-        context.state().update({"a": 10})
+        context.state().update_global({"a": 10})
         return inputs
 
 
@@ -135,7 +134,7 @@ class Node4Cp(MockNodeBase):
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
         self.runtime += 1
-        value = context.state().get("a")
+        value = context.state().get_global("a")
         if value < 20:
             raise Exception("value < 20")
         return inputs

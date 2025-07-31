@@ -5,10 +5,10 @@ from typing import Callable, Union
 
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
-from jiuwen.core.context.context import Context, ContextSetter
+from jiuwen.core.context.context import Context
 
 
-class Branch(ContextSetter):
+class Branch:
     def __init__(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
                  branch_id: str = None):
         super().__init__()
@@ -21,32 +21,25 @@ class Branch(ContextSetter):
             self._condition = condition
         self.target = target
 
-    def init(self):
-        self._condition.init()
-
-    def set_context(self, context: Context):
-        self._condition.set_context(context)
-
-    def evaluate(self) -> bool:
-        return self._condition()
+    def evaluate(self, context: Context) -> bool:
+        return self._condition(context)
 
 
-class BranchRouter(ContextSetter):
+class BranchRouter:
     def __init__(self):
         super().__init__()
         self._branches: list[Branch] = []
+        self._context: Context = None
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
                    branch_id: str = None):
         self._branches.append(Branch(condition, target, branch_id))
 
     def set_context(self, context: Context):
-        for branch in self._branches:
-            branch.set_context(context)
+        self._context = context
 
     def __call__(self, *args, **kwargs) -> list[str]:
         for branch in self._branches:
-            branch.init()
-            if branch.evaluate():
+            if branch.evaluate(self._context):
                 return branch.target
         return []

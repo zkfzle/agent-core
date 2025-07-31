@@ -14,7 +14,7 @@ class StreamNodeWithTracer(MockNodeBase):
         self._datas: list[dict] = datas
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
-        context.state().set_outputs(self.node_id, inputs)
+        context.state().set_outputs(inputs)
         try:
             await context.tracer().trigger("tracer_workflow", "on_invoke", invoke_id=context.executable_id(),
                                          parent_node_id=context.parent_id(),

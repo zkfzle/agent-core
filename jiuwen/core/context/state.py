@@ -40,7 +40,7 @@ class StateLike(ReadableStateLike):
         pass
 
 
-class CommitState(StateLike):
+class CommitStateLike(StateLike):
     @abstractmethod
     def update_by_id(self, node_id: str, data: dict) -> None:
         pass
@@ -74,79 +74,89 @@ DEFAULT_NODE_ID = "default"
 class State(ABC):
     def __init__(
             self,
-            io_state: CommitState,
-            global_state: CommitState,
-            comp_state: CommitState,
+            io_state: CommitStateLike,
+            global_state: CommitStateLike,
+            comp_state: CommitStateLike,
             trace_state: dict = {},
+            parent_id: str = '',
             node_id: str = DEFAULT_NODE_ID
     ):
         self._io_state = io_state
         self._global_state = global_state
         self._trace_state = trace_state
         self._comp_state = comp_state
+        self._parent_id = parent_id
         self._node_id = node_id
 
-    def get(self, key: Union[str, list, dict]) -> Optional[Any]:
-        if self._global_state is None:
+    def get_global(self, key: Union[str, list, dict]) -> Optional[Any]:
+        if self._global_state is None or key is None:
             return None
-        value = self._global_state.get(key)
-        if value is None:
-            return self._io_state.get(key)
-        return value
+        result = self._global_state.get(key)
+        if result is None:
+            return self._io_state.get_by_prefix(key, self._parent_id)
+        return result
 
-    def update(self, data: dict) -> None:
-        if self._global_state is None:
+    def update_global(self, data: dict) -> None:
+        if self._global_state is None or data is None:
             return
         self._global_state.update_by_id(self._node_id, data)
-
-    def update_io(self, data: dict) -> None:
-        if self._io_state is None:
-            return
-        self._io_state.update_by_id(self._node_id, data)
-
-    def get_io(self, key: Union[str, list, dict]) -> Optional[Any]:
-        if self._io_state is None:
-            return
-        return self._io_state.get(key)
 
     def update_trace(self, span):
         self._trace_state.update({self._node_id: span})
 
-    def update_comp(self, data: dict) -> None:
+    def update(self, data: dict) -> None:
         if self._comp_state is None:
             return
         self._comp_state.update_by_id(self._node_id, {self._node_id: data})
 
-    def get_comp(self, key: Union[str, list, dict]) -> Optional[Any]:
+    def get(self, key: Union[str, list, dict] = None) -> Optional[Any]:
         if self._comp_state is None:
             return
-        return self._comp_state.get_by_prefix(key, self._node_id)
+        if key is None:
+            return self._comp_state.get(self._node_id)
+        result = self._comp_state.get_by_prefix(key, self._node_id)
+        return result
 
-    def set_user_inputs(self, inputs: Any) -> None:
-        if self._io_state is None or inputs is None:
+
+class CommitState(State):
+    def __init__(self, io_state: CommitStateLike,
+                 global_state: CommitStateLike,
+                 comp_state: CommitStateLike,
+                 trace_state: dict = {},
+                 parent_id: str = '',
+                 node_id: str = DEFAULT_NODE_ID):
+        super().__init__(io_state=io_state, global_state=global_state, comp_state=comp_state, trace_state=trace_state,
+                         parent_id=parent_id, node_id=node_id)
+
+    def set_outputs(self, data: dict) -> None:
+        if self._io_state is None or data is None:
             return
-        self._io_state.update_by_id(self._node_id, inputs)
-        self._global_state.update_by_id(self._node_id, inputs)
-        self.commit()
+        self._io_state.update_by_id(self._node_id, {self._node_id: data})
+
+    def get_inputs(self, schema: Union[str, list, dict] = None) -> Optional[Any]:
+        if self._io_state is None:
+            return
+        if schema is None:
+            return self._io_state.get(self._node_id)
+        result = self._io_state.get_by_prefix(schema, self._parent_id)
+        return result
+
+    def get_outputs(self, node_id) -> Optional[Any]:
+        if self._io_state is None:
+            return
+        return self._io_state.get_by_prefix(node_id, self._parent_id)
 
     def get_inputs_by_transformer(self, transformer: Callable) -> dict:
         if self._io_state is None:
             return {}
         return self._io_state.get_by_transformer(transformer)
 
-    def get_outputs(self, node_id: str) -> Any:
-        if self._io_state is None:
-            return {}
-        return self._io_state.get(node_id)
-
-    def set_outputs(self, node_id: str, outputs: dict) -> None:
-        if self._io_state is None or outputs is None:
+    def commit_user_inputs(self, inputs: Any) -> None:
+        if self._io_state is None or inputs is None:
             return
-        return self._io_state.update_by_id(node_id, {node_id: outputs})
-
-    def create_node_state(self, node_id: str) -> Self:
-        return State(io_state=self._io_state, global_state=self._global_state, comp_state=self._comp_state,
-                     trace_state=self._trace_state, node_id=node_id)
+        self._io_state.update_by_id(self._node_id, {self._node_id: inputs} if self._node_id != DEFAULT_NODE_ID else inputs)
+        self._global_state.update_by_id(self._node_id, inputs)
+        self.commit()
 
     def commit(self) -> None:
         self._io_state.commit()
@@ -182,6 +192,11 @@ class State(ABC):
         self._global_state.set_updates(updates.get(GLOBAL_STATE_UPDATES_KEY))
         self._comp_state.set_updates(updates.get(COMP_STATE_UPDATES_KEY))
 
+    def create_node_state(self, node_id: str, parent_id: str) -> Self:
+        return CommitState(io_state=self._io_state, global_state=self._global_state,
+                           comp_state=self._comp_state,
+                           trace_state=self._trace_state, node_id=node_id, parent_id=parent_id)
+
 
 class InMemoryStateLike(StateLike):
     def __init__(self):
@@ -207,7 +222,7 @@ class InMemoryStateLike(StateLike):
             self._state = state
 
 
-class InMemoryCommitState(CommitState):
+class InMemoryCommitState(CommitStateLike):
     def __init__(self, state: StateLike = None):
         self._state = state if state else InMemoryStateLike()
         self._updates: dict[str, list[dict]] = dict()
@@ -254,8 +269,8 @@ class InMemoryCommitState(CommitState):
         self._state.set_state(state)
 
 
-class InMemoryState(State):
-    def __init__(self, global_state: CommitState = InMemoryCommitState()):
+class InMemoryState(CommitState):
+    def __init__(self, global_state: CommitStateLike = InMemoryCommitState()):
         super().__init__(io_state=InMemoryCommitState(),
                          global_state=global_state,
                          trace_state=dict(),

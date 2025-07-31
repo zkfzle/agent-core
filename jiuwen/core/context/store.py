@@ -4,6 +4,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional
 
+from jiuwen.core.context.utils import get_by_schema, update_dict
+
 
 class Store(ABC):
     """
@@ -28,8 +30,11 @@ class FileStore(Store):
 
 
 class MemoryStore(Store):
+    def __init__(self):
+        self._data: dict = {}
+
     def read(self, key: Union[str, dict]) -> Optional[Any]:
-        pass
+        return get_by_schema(key, self._data)
 
     def write(self, value: dict) -> None:
-        pass
+        update_dict(value, self._data)

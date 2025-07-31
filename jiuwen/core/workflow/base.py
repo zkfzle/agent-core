@@ -179,7 +179,7 @@ class Workflow(BaseWorkFlow):
         context.config().set_workflow_config(self._workflow_config)
         compiled_graph = self._graph.compile(context)
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, context)
-        results = context.state().get_outputs(self._end_comp_id)
+        results = context.state().get_inputs(self._end_comp_id)
         logger.info("end to sub_invoke, results=%s", results)
         return results
 

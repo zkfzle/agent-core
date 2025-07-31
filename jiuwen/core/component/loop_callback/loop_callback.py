@@ -1,26 +1,50 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import Any
 
-from jiuwen.core.context.context import ContextSetter
+from jiuwen.core.context.context import Context
+from jiuwen.core.graph.atomic_node import AtomicNode
+from jiuwen.core.graph.executable import Output
 
-INTERMEDIATE_LOOP_VAR = "intermediateLoopVar"
+FIRST_LOOP = "first_in_loop"
+START_ROUND = "start_round"
+END_ROUND = "end_round"
+OUT_LOOP = "out_loop"
 
-class LoopCallback(ContextSetter, ABC):
+
+class LoopCallback(AtomicNode):
+    def __call__(self, input: str, context: Context) -> None:
+        self.atomic_invoke(input=input, context=context)
+
+    def _atomic_invoke(self, **kwargs) -> Any:
+        input = kwargs.get("input")
+        context = kwargs.get("context")
+        if input == FIRST_LOOP:
+            output = self.first_in_loop(context)
+        elif input == START_ROUND:
+            output = self.start_round(context)
+        elif input == END_ROUND:
+            output = self.end_round(context)
+        else:
+            output = self.out_loop(context)
+        if output is not None:
+            context.state().set_outputs(output)
+        return None
 
     @abstractmethod
-    def first_in_loop(self):
+    def first_in_loop(self, context: Context) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def out_loop(self):
+    def out_loop(self, context: Context) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def start_round(self):
+    def start_round(self, context: Context) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def end_round(self):
+    def end_round(self, context: Context) -> Output:
         raise NotImplementedError

@@ -388,7 +388,7 @@ class QuestionerExecutable(Executable):
 
     @staticmethod
     def _load_state_from_context(context) -> QuestionerState:
-        state_dict = context.state().get(QUESTIONER_STATE_KEY)
+        state_dict = context.state().get_global(QUESTIONER_STATE_KEY)
         if state_dict:
             return QuestionerState.deserialize(state_dict)
         return QuestionerState()
@@ -396,7 +396,7 @@ class QuestionerExecutable(Executable):
     @staticmethod
     def _store_state_to_context(state: QuestionerState, context):
         state_dict = state.serialize()
-        context.state().update({QUESTIONER_STATE_KEY: state_dict})
+        context.state().update_global({QUESTIONER_STATE_KEY: state_dict})
 
     def state(self, state: QuestionerState):
         self._state = state

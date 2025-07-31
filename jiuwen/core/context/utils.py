@@ -25,7 +25,7 @@ def update_dict(update: dict, source: dict) -> None:
         update_by_key(current_key, value, current)
 
 def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None) -> Any:
-    if nested_path is not None:
+    if nested_path is not None and len(nested_path) > 0:
         data = get_value_by_nested_path(nested_path, data)
     if schema is None or data is None:
         return None

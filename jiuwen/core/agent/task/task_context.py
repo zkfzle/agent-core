@@ -5,7 +5,7 @@ from typing import Any
 
 from jiuwen.core.context.config import Config
 from jiuwen.core.context.context import WorkflowContext
-from jiuwen.core.context.state import InMemoryState, State, CommitState, StateLike, InMemoryCommitState, \
+from jiuwen.core.context.state import InMemoryState, StateLike, InMemoryCommitState, \
     InMemoryStateLike
 from jiuwen.core.context.store import Store
 from jiuwen.core.runtime.callback_manager import CallbackManager

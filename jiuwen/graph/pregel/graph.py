@@ -9,8 +9,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel.loop import PregelLoop
 
-from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
-from jiuwen.core.context.context import Context, NodeContext
+from jiuwen.core.context.context import Context
 from jiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.graph.graph_state import GraphState
@@ -117,18 +116,14 @@ class CompiledGraph(ExecutableGraph):
         if config is None:
             is_main = True
             config = {"configurable": {"thread_id": context.session_id()}}
-
             if isinstance(inputs, InteractiveInput) and self._checkpoint_saver:
                 self._checkpoint_saver.register_context(context)
                 self._checkpoint_saver.register_input(inputs)
-
                 self._checkpoint_saver.recover(config)
             else:
-                context.state().set_user_inputs(inputs)
-                context.state().commit()
+                context.state().commit_user_inputs(inputs)
         else:
-            context.state().set_user_inputs(inputs)
-            context.state().commit()
+            context.state().commit_user_inputs(inputs)
         graph_inputs = None if isinstance(inputs, InteractiveInput) else {"source_node_id": []}
 
         try:

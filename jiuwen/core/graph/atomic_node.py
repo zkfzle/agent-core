@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+
+from abc import ABC, abstractmethod
+from typing import Any
+
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.context.context import Context
+from jiuwen.core.context.state import CommitState
+
+
+class AtomicNode(ABC):
+    def atomic_invoke(self, **kwargs) -> Any:
+        context = kwargs.get("context", None)
+        if context is None or not isinstance(context, Context):
+            raise JiuWenBaseException(-1, "failed to get context")
+        if not isinstance(context.state(), CommitState):
+            raise JiuWenBaseException(-1, "state type error, not commit state")
+        result = self._atomic_invoke(**kwargs)
+        context.state().commit()
+        return result
+
+    @abstractmethod
+    def _atomic_invoke(self, **kwargs) -> Any:
+        pass
+
+
+class AsyncAtomicNode(ABC):
+    async def atomic_invoke(self, **kwargs) -> Any:
+        context = kwargs.get("context", None)
+        if context is None or not isinstance(context, Context):
+            raise JiuWenBaseException(-1, "failed to get context")
+        if not isinstance(context.state(), CommitState):
+            raise JiuWenBaseException(-1, "state type error, not commit state")
+        result = await self._atomic_invoke(**kwargs)
+        context.state().commit()
+        return result
+
+    @abstractmethod
+    async def _atomic_invoke(self, **kwargs) -> Any:
+        pass

@@ -4,6 +4,8 @@
 import re
 
 from jiuwen.core.component.condition.condition import Condition
+from jiuwen.core.context.context import Context
+from jiuwen.core.graph.executable import Input, Output
 
 
 class ExpressionCondition(Condition):
@@ -11,18 +13,15 @@ class ExpressionCondition(Condition):
         super().__init__()
         self._expression = expression
 
-    def init(self):
-        pass
-
-    def __call__(self) -> bool:
+    def invoke(self, inputs: Input, context: Context) -> Output:
         pattern = r'\$\{[^}]*\}'
         matches = re.findall(pattern, self._expression)
         inputs = {}
         for match in matches:
-            inputs[match] = self._context.state().get(match[2:-1])
-        return self._evalueate_expression(self._expression, inputs)
+            inputs[match] = context.state().get_global(match[2:-1])
+        return self._evaluate_expression(self._expression, inputs)
 
-    def _evalueate_expression(self, expression, inputs) -> bool:
+    def _evaluate_expression(self, expression, inputs) -> bool:
         expression = expression.replace("&&", " and ") \
             .replace("||", " or ") \
             .replace("not_in", " not in ") \

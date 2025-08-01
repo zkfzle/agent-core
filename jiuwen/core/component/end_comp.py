@@ -2,6 +2,8 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import AsyncIterator
+
+
 from jiuwen.core.common.logging.base import logger
 
 
@@ -45,7 +47,17 @@ class End(Executable,WorkflowComponent):
               for res in response_list:
                  if res.startswith("{{") and res.endswith("}}"):
                     param_name = res[2:-2]
-                    param_value = inputs.get(USER_FIELDS).get(param_name)
+                    if inputs.get(USER_FIELDS):
+                        # 参数从当前input获取
+                        param_value = inputs.get(USER_FIELDS).get(param_name)
+                    else:
+                        # 参数transform存入的context中获取
+                        stream_cache_key = self.node_id + STREAM_CACHE_KEY
+                        content = context.state().get(stream_cache_key)
+                        if content:
+                           param_value = content.get(param_name)
+                        else:
+                           param_value = None
                     if param_value is None:
                        continue
                     yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=param_value))
@@ -77,9 +89,11 @@ class End(Executable,WorkflowComponent):
         stream_cache_value = {}
         async for input_item in inputs:
             # 将当前输入项存入context
-            stream_cache_value.update(input_item)
-            index += 1
+            if isinstance(input_item, dict):
+                for key, value in input_item.items():
+                    stream_cache_value[key] = stream_cache_value.get(key,"")+ str(value)
             yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=input_item))
+            index += 1
         context.state().update({stream_cache_key: stream_cache_value})
 
     async def interrupt(self, message: dict):

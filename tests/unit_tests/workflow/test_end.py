@@ -10,7 +10,7 @@ from jiuwen.core.component.start_comp import Start
 
 from jiuwen.core.context.config import Config
 from jiuwen.core.context.context import Context, WorkflowContext
-from jiuwen.core.context.state import InMemoryState
+from jiuwen.core.context.state import InMemoryState, ReadableStateLike
 from jiuwen.core.graph.base import Graph
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow
 from jiuwen.core.workflow.workflow_config import ComponentAbility
@@ -95,7 +95,7 @@ class EndNodeTest(unittest.TestCase):
         flow.add_connection("a", "end")
         self.assert_workflow_invoke({"a": 1, "b": "haha"}, create_context(), flow, expect_results={'output': {'end_input': 'haha'}, 'responseContent': ''})
 
-    def test_end_from_invoke_stream_workflow(self):
+    def test_end_stream_workflow(self):
         async def stream_workflow():
             flow = create_flow()
             flow.set_start_comp("start", Start("start", {"userFields": {"inputs": [], "outputs": []}, "systemFields": {
@@ -123,7 +123,10 @@ class EndNodeTest(unittest.TestCase):
 
         self.loop.run_until_complete(stream_workflow())
 
-    def test_end_transform_workflow(self):
+
+
+    def test_end_batch_stream_workflow(self):
+
         async def stream_workflow():
             flow = create_flow()
             flow.set_start_comp("start", Start("start", {"userFields": {"inputs": [], "outputs": []}, "systemFields": {
@@ -137,9 +140,8 @@ class EndNodeTest(unittest.TestCase):
             flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
                                    comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
 
-            flow.set_end_comp("end", End("end", "end", {"responseTemplate": "hello:{{end_input}}"}),
-                              inputs_schema={
-                                  "userFields": {"end_input": "${start.userFields.d}"}},response_mode="streaming")
+            flow.set_end_comp("end", End("end", "end", {"responseTemplate": "hello:{{value}}"}),
+                              stream_inputs_schema={"value": "${a.value}"},inputs_schema={"value": "${a.value}"},response_mode="streaming")
             flow.add_connection("start", "a")
             flow.add_stream_connection("a", "end")
 

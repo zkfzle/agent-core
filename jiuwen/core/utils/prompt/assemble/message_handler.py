@@ -4,6 +4,7 @@ from typing import List
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.utils.llm.messages import BaseMessage
 
 MESSAGE_VALIDATION_SCHEMA = {
     "system": {
@@ -38,6 +39,9 @@ def messages_to_template(messages: List[dict]) -> str:
     """messages to template"""
     template = ""
     for message in messages:
+        if isinstance(message, BaseMessage):
+            message = message.__dict__
+            message.pop("name", None)
         if not isinstance(message, dict):
             raise JiuWenBaseException(
                 error_code=StatusCode.PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR.code,

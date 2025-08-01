@@ -1,5 +1,5 @@
 import re
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -20,7 +20,7 @@ class Template(BaseModel):
     """
     name: str = Field(default='')
     content: Union[List[Dict], List[BaseMessage], str]
-    filters: dict = Field(default=None)
+    filters: Optional[dict] = Field(default=None)
 
     def to_messages(self) -> List[BaseMessage]:
         """Return Template as a list of Messages."""

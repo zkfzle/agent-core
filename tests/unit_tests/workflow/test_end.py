@@ -15,7 +15,7 @@ from jiuwen.core.graph.base import Graph
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
-from tests.unit_tests.tracer.test_workflow import create_context_with_tracer
+from tests.unit_tests.tracer.test_workflow_tracer import create_context_with_tracer
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode, Node1, StreamNode, StreamCompNode
 
 

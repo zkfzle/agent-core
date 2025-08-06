@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start

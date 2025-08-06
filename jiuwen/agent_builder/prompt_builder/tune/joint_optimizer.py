@@ -12,7 +12,7 @@ from os.path import dirname, join
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.agent_builder.prompt_builder.tune.common.exception import JiuWenBaseException, StatusCode
 from jiuwen.agent_builder.prompt_builder.tune.base.exception import OnStopException
 from jiuwen.agent_builder.prompt_builder.tune.base.constant import TuneConstant, TaskStatus

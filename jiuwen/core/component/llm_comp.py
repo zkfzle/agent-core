@@ -18,7 +18,7 @@ from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 CHAT_HISTORY_MAX_TURN = 3

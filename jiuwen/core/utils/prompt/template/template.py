@@ -4,7 +4,7 @@ from typing import Union, List, Dict
 from pydantic import BaseModel, Field
 
 
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.llm.messages import BaseMessage

@@ -1,4 +1,9 @@
-# jiuwen/extensions/common/log/logger_protocol.py
+"""
+日志协议定义
+
+定义所有日志实现必须遵循的接口
+"""
+
 from typing import Protocol, runtime_checkable, Dict, Any, Optional
 import logging
 
@@ -61,4 +66,4 @@ class LoggerProtocol(Protocol):
 
     def reconfigure(self, config: Dict[str, Any]) -> None:
         """重新配置日志记录器"""
-        ...
+        ... 

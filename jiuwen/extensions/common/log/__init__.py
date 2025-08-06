@@ -1,15 +1,18 @@
 # jiuwen/extensions/common/log/__init__.py
-"""logger for common and interface."""
-__all__ = ("common_logger", "interface_logger", "prompt_builder_interface_logger",
-           "performance_logger", "get_thread_session", "set_thread_session",
-           "LoggerProtocol", "LogManager")
+"""
+扩展日志模块
 
-from .log_manager import LogManager
-from .log_utils import set_thread_session, get_thread_session
-from .logger_protocol import LoggerProtocol
+提供自定义日志实现和配置管理
+"""
 
+from .default_impl import DefaultLogger, SafeRotatingFileHandler, ThreadContextFilter, CallerAwareFormatter
+from jiuwen.core.common.logging.utils import set_thread_session, get_thread_session
 
-common_logger = LogManager.get_logger('common') # 普通系统日志
-interface_logger = LogManager.get_logger('interface') # 接口调用系统日志
-prompt_builder_interface_logger = LogManager.get_logger('prompt_builder') # 特定模块日志
-performance_logger = LogManager.get_logger('performance') # 性能监控日志
+__all__ = (
+    "DefaultLogger", 
+    "SafeRotatingFileHandler", 
+    "ThreadContextFilter", 
+    "CallerAwareFormatter",
+    "set_thread_session", 
+    "get_thread_session"
+) 

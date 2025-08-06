@@ -2,7 +2,7 @@ from typing import Dict, Any, AsyncIterator
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.core.context.state import Transformer
 from jiuwen.core.context.utils import get_by_schema
 from jiuwen.core.stream.emitter import AsyncStreamQueue

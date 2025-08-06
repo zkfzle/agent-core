@@ -17,7 +17,7 @@ stages:
       - step: ut@python
         name: unit_test_python
         displayName: Python 单元测试
-        pythonVersion: '3.9'
+        pythonVersion: '3.11'
         commands:
           - '# Python单元测试默认命令'
           - '# Python单元测试默认命令'
@@ -57,7 +57,6 @@ stages:
           - langgraph-sdk==0.1.74 \
           - langsmith==0.4.4 \
           - markupsafe==3.0.2 \
-          - mcp==1.7.1 \
           - multidict==6.6.3 \
           - orjson==3.10.18 \
           - ormsgpack==1.10.0 \

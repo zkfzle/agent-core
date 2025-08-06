@@ -1,7 +1,7 @@
 import asyncio
 from typing import Any, Optional
 
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 
 
 class AsyncStreamQueue:

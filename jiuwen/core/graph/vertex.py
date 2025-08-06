@@ -6,7 +6,7 @@ from typing import Any, Optional, AsyncIterator
 
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.core.component.condition.condition import INDEX
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.loop_callback.loop_id import LOOP_ID

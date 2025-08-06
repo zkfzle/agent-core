@@ -1,13 +1,105 @@
-# jiuwen/extensions/common/log/logger_impl.py
+"""
+扩展日志默认实现
+
+提供默认的日志实现，包括DefaultLogger和相关的处理器
+"""
+
 import os
 import sys
-import ast
+import inspect
 import logging
 from typing import Dict, Any, Optional
+from logging.handlers import RotatingFileHandler
 
-from .log_handlers import SafeRotatingFileHandler, ThreadContextFilter
-from .log_utils import get_log_max_bytes, set_thread_session, get_thread_session
-from .logger_protocol import LoggerProtocol
+from jiuwen.core.common.logging.protocol import LoggerProtocol
+from jiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
+
+
+class SafeRotatingFileHandler(RotatingFileHandler):
+    def __init__(self, filename, *args, **kwargs):
+        pid = os.getpid()
+        filename = f"{filename}-{pid}"
+        super().__init__(filename, *args, **kwargs)
+        os.chmod(self.baseFilename, 0o640)
+
+    def doRollover(self):
+        super().doRollover()
+        for i in range(self.backupCount, 0, -1):
+            sfn = f"{self.baseFilename}.{i}"
+            if os.path.exists(sfn):
+                os.chmod(sfn, 0o440)
+        os.chmod(self.baseFilename, 0o640)
+
+
+class ThreadContextFilter(logging.Filter):
+    def __init__(self, log_type: str):
+        super().__init__()
+        self.log_type = log_type
+
+    def filter(self, record):
+        record.trace_id = get_thread_session()
+        record.log_type = "perf" if self.log_type == 'performance' else self.log_type
+        return True
+
+
+class CallerAwareFormatter(logging.Formatter):
+
+    def __init__(self, fmt=None, datefmt=None, style='%'):
+        super().__init__(fmt, datefmt, style)
+        self._skip_modules = {
+            'jiuwen.extensions.common.log.default_impl',
+            'jiuwen.core.common.logging.manager',
+            'jiuwen.core.common.logging',
+            'logging',
+            'threading',
+            'unittest'
+        }
+
+    def format(self, record):
+
+        caller_info = self._get_caller_info()
+        if caller_info:
+            record.filename = caller_info['filename']
+            record.lineno = caller_info['lineno']
+            record.funcName = caller_info['funcName']
+            record.pathname = caller_info['pathname']
+
+        return super().format(record)
+
+    def _get_caller_info(self):
+        try:
+            stack = inspect.stack()
+
+            for frame_info in stack:
+                frame = frame_info.frame
+                module_name = frame.f_globals.get('__name__', '')
+
+                if any(module_name.startswith(skip) for skip in self._skip_modules):
+                    continue
+
+                filename = frame_info.filename
+                lineno = frame_info.lineno
+                func_name = frame_info.function
+
+                if (filename and
+                    not filename.endswith('.pyc') and
+                    not filename.endswith('.pyo') and
+                    'log_handlers.py' not in filename and
+                    'logger_impl.py' not in filename and
+                    'log_manager.py' not in filename and
+                    'default_impl.py' not in filename and
+                    'test_' not in filename and
+                    'logging' not in filename):  # 跳过logging模块
+                    return {
+                        'filename': os.path.basename(filename),
+                        'lineno': lineno,
+                        'funcName': func_name,
+                        'pathname': filename
+                    }
+
+            return None
+        except Exception:
+            return None
 
 
 class DefaultLogger(LoggerProtocol):
@@ -19,7 +111,6 @@ class DefaultLogger(LoggerProtocol):
         self._setup_logger()
 
     def _setup_logger(self):
-        """配置日志记录器"""
         level_config = self.config.get('level', 'WARNING')
 
         if isinstance(level_config, str):
@@ -38,7 +129,7 @@ class DefaultLogger(LoggerProtocol):
             self._logger.removeHandler(handler)
 
         if 'console' in output:
-            stream_handler = logging.StreamHandler(stream=sys.stdout)  # 明确指定 sys.stdout
+            stream_handler = logging.StreamHandler(stream=sys.stdout)  
             stream_handler.addFilter(ThreadContextFilter(self.log_type))
             stream_handler.setFormatter(self._get_formatter())
             self._logger.addHandler(stream_handler)
@@ -62,10 +153,9 @@ class DefaultLogger(LoggerProtocol):
             self._logger.addHandler(file_handler)
 
     def _get_formatter(self) -> logging.Formatter:
-        """获取日志格式化器"""
         log_format = self.config.get(
             'format') or '%(asctime)s.%(msecs)03d | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s'
-        return logging.Formatter(log_format, datefmt='%Y-%m-%d %H:%M:%S')
+        return CallerAwareFormatter(log_format, datefmt='%Y-%m-%d %H:%M:%S')
 
     def debug(self, msg: str, *args, **kwargs) -> None:
         self._logger.debug(msg, *args, **kwargs)
@@ -110,4 +200,4 @@ class DefaultLogger(LoggerProtocol):
     def reconfigure(self, config: Dict[str, Any]) -> None:
         """重新配置日志记录器"""
         self.config = config
-        self._setup_logger()
+        self._setup_logger() 

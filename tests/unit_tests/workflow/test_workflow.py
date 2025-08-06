@@ -2,7 +2,8 @@ import asyncio
 import unittest
 from collections.abc import Callable
 
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
+
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.break_comp import BreakComponent
 from jiuwen.core.component.condition.array import ArrayCondition
@@ -24,9 +25,8 @@ from jiuwen.core.stream.base import BaseStreamMode
 from jiuwen.core.stream.writer import CustomSchema
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow
 from jiuwen.graph.pregel.graph import PregelGraph
-from test_mock_node import SlowNode, CountNode, StreamCompNode, CollectCompNode, TransformCompNode
-from test_node import AddTenNode, CommonNode
-from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode, Node1, StreamNode
+from tests.unit_tests.workflow.test_mock_node import SlowNode, CountNode, StreamCompNode, CollectCompNode, TransformCompNode, MockStartNode, MockEndNode, Node1, StreamNode
+from tests.unit_tests.workflow.test_node import AddTenNode, CommonNode
 
 
 def create_context() -> Context:

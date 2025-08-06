@@ -22,7 +22,7 @@ sys.modules["jiuwen.core.common.logging.base"] = fake_base
 sys.modules["jiuwen.core.common.exception.base"] = fake_exception_module
 
 from tests.unit_tests.tracer.test_mock_node_with_tracer import StreamNodeWithTracer
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 
 import asyncio
 import unittest

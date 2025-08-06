@@ -13,7 +13,7 @@ from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from jiuwen.agent_builder.prompt_builder.tune.base.exception import JiuWenBaseException
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.agent_builder.prompt_builder.tune.base.utils import OptimizeInfo, LLMModelProcess, LLMModelInfo
 from jiuwen.agent_builder.prompt_builder.tune.base.exception import OnStopException
 from jiuwen.agent_builder.prompt_builder.tune.base.constant import TuneConstant

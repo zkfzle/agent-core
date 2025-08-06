@@ -3,8 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import AsyncIterator
 
-
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 
 
 from jiuwen.core.common.constants.constant import USER_FIELDS

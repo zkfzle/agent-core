@@ -1,7 +1,7 @@
 import asyncio
 from typing import AsyncIterator
 
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start

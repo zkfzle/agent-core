@@ -1,6 +1,6 @@
 import re
 
-from jiuwen.core.common.logging.base import logger
+from jiuwen.core.common.logging import logger
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.prompt.assemble.variables.variable import Variable

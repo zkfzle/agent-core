@@ -90,7 +90,9 @@ stages:
           - urllib3==2.2.2 \
           - uvicorn==0.30.6 \
           - '-i https://mirrors.aliyun.com/pypi/simple/'
-          - pytest --html=report/index.html
+          - ''
+          - '  find /root/workspace/tangfei0306/test-agentcore -name "__pycache__" -exec rm -rf {} +'
+          - '  find /root/workspace/tangfei0306/test-agentcore -name "*.pyc" -delete'
           - pytest --html=report/index.html
         report:
           path: report

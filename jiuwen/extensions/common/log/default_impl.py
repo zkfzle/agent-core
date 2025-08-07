@@ -157,25 +157,38 @@ class DefaultLogger(LoggerProtocol):
             'format') or '%(asctime)s.%(msecs)03d | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s'
         return CallerAwareFormatter(log_format, datefmt='%Y-%m-%d %H:%M:%S')
 
+    def _sanitize_message(self, msg: str) -> str:
+        if not isinstance(msg, str):
+            return msg
+        # 替换 \r, \n, \r\n 为 空格，防止日志注入
+        return msg.replace('\r\n', ' ').replace('\r', ' ').replace('\n', ' ')
+
     def debug(self, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.debug(msg, *args, **kwargs)
 
     def info(self, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.info(msg, *args, **kwargs)
 
     def warning(self, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.warning(msg, *args, **kwargs)
 
     def error(self, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.error(msg, *args, **kwargs)
 
     def critical(self, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.critical(msg, *args, **kwargs)
 
     def exception(self, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.exception(msg, *args, **kwargs)
 
     def log(self, level: int, msg: str, *args, **kwargs) -> None:
+        msg = self._sanitize_message(msg)
         self._logger.log(level, msg, *args, **kwargs)
 
     def setLevel(self, level: int) -> None:

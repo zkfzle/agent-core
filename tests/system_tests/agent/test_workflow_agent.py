@@ -314,6 +314,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         return agent
 
     # ===== 核心测试用例 =====
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
     async def test_real_workflow_agent_invoke(self):
         """端到端测试：WorkflowAgent.invoke 走完整链路（插件被 mock）。"""

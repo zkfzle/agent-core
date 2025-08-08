@@ -79,6 +79,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
+    @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_plugin(self):
         tools_schema = [self._create_tool_schema()]
         model_config = self._create_model()

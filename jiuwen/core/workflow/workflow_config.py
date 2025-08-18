@@ -19,6 +19,7 @@ class WorkflowConfig(BaseModel):
     comp_stream_configs: Dict[str, Any] = Field(default_factory=dict)
     stream_edges: Dict[str, list[str]] = Field(default_factory=dict)
     comp_abilities: Dict[str, list[Any]] = Field(default_factory=dict)
+    stream_timeout: float = Field(default=0.2)
 
 class ComponentAbility(Enum):
     INVOKE = ("invoke", "batch in, batch out")

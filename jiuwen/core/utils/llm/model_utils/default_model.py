@@ -121,9 +121,9 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
     def _parse_response(self, response_data: Dict) -> AIMessage:
         choice = response_data.get("choices", [{}])[0]
         message = choice.get("message", {})
-
+        content = "" if message.get("content") is None else message.get("content")
         return AIMessage(
-            content=message.get("content", ""),
+            content=content,
             tool_calls=message.get("tool_calls", []),
             usage_metadata=UsageMetadata(
                 model_name=self.model_name,

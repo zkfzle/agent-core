@@ -9,6 +9,7 @@ from jiuwen.core.context.config import Config
 from jiuwen.core.context.mq_manager import MessageQueueManager
 from jiuwen.core.context.state import State
 from jiuwen.core.context.store import Store
+from jiuwen.core.context.model_context.base import ModelContext
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.tracer.tracer import Tracer
@@ -17,6 +18,10 @@ from jiuwen.core.tracer.tracer import Tracer
 class Context(ABC):
     @abstractmethod
     def config(self) -> Config:
+        pass
+
+    @abstractmethod
+    def context(self) -> ModelContext:
         pass
 
     @abstractmethod
@@ -68,6 +73,7 @@ class WorkflowContext(Context):
     def __init__(self, state: State, config: Config = Config(), store: Store = None, tracer: Tracer = None,
                  session_id: str = None, controller_context_manager: Any = None):
         self.__config = config
+        self.__model_context = ModelContext()
         self.__state = state
         self.__store = store
         self.__tracer = tracer
@@ -76,6 +82,9 @@ class WorkflowContext(Context):
         self.__controller_context_manager = controller_context_manager
         self.__session_id = session_id if session_id else uuid.uuid4().hex
         self.__queue_manager: MessageQueueManager = None
+
+    def context(self) -> ModelContext:
+        return self.__model_context
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
         if self.__stream_writer_manager is not None:
@@ -126,8 +135,12 @@ class NodeContext(Context):
         self.__node_id = node_id
         self.__parent_id = context.executable_id() if isinstance(context, NodeContext) else ''
         self.__executable_id = self.__parent_id + "." + node_id if len(self.__parent_id) != 0 else node_id
+        self.__model_context = context.context()
         self.__state = context.state().create_node_state(self.__executable_id, self.__parent_id)
         self.__context = context
+
+    def context(self) -> ModelContext:
+        return self.__model_context
 
     def node_id(self):
         return self.__node_id

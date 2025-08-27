@@ -9,7 +9,7 @@ from jiuwen.core.context.config import Config
 from jiuwen.core.context.mq_manager import MessageQueueManager
 from jiuwen.core.context.state import State
 from jiuwen.core.context.store import Store
-from jiuwen.core.context.model_context.base import ModelContext
+from jiuwen.core.context.model_context.model_context import ModelContext, WorkflowModelContext, NodeModelContext
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.tracer.tracer import Tracer
@@ -73,7 +73,7 @@ class WorkflowContext(Context):
     def __init__(self, state: State, config: Config = Config(), store: Store = None, tracer: Tracer = None,
                  session_id: str = None, controller_context_manager: Any = None):
         self.__config = config
-        self.__model_context = ModelContext()
+        self.__model_context = WorkflowModelContext(session_id)
         self.__state = state
         self.__store = store
         self.__tracer = tracer
@@ -135,9 +135,11 @@ class NodeContext(Context):
         self.__node_id = node_id
         self.__parent_id = context.executable_id() if isinstance(context, NodeContext) else ''
         self.__executable_id = self.__parent_id + "." + node_id if len(self.__parent_id) != 0 else node_id
-        self.__model_context = context.context()
         self.__state = context.state().create_node_state(self.__executable_id, self.__parent_id)
         self.__context = context
+        self.__model_context = NodeModelContext(self.__node_id, self.session_id(),
+                                                parent_context=context.context())
+
 
     def context(self) -> ModelContext:
         return self.__model_context

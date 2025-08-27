@@ -3,26 +3,74 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Any, Optional
 
-from jiuwen.core.utils.llm.messages import BaseMessage
+from jiuwen.core.common.enum.enum import MessageRole
+from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
+from jiuwen.core.context.model_context.base import Serializable
 
-
-class HistoricalMessage(BaseModel):
+class ConversationMessage(BaseModel):
     message: BaseMessage
+    session: str = Field(default="")
     owner: List[str] = Field(default=[])
     tags: Dict[str, str] = Field(default={})
 
+    @staticmethod
+    def create_message_by_role(role: str, content: str) -> BaseMessage:
+        if not role:
+            return BaseMessage(content=content, role="unknown")
+        if role == MessageRole.USER.value:
+            return HumanMessage(content=content)
+        elif role == MessageRole.ASSISTANT.value:
+            return AIMessage(content=content)
+        return BaseMessage(role="unknown",content=content)
 
-class ConversationHistory:
+
+class ConversationHistory(Serializable):
     def __init__(self):
         self.__history = []
 
-    def add_message(self, message: Union[BaseMessage, Dict],
+    def add_message(self, content: Union[str, BaseMessage],
+                    role: str = "",
                     owner: List[str] = None,
                     tags: Dict[str, str] = None):
-        pass
+        message = content if isinstance(content, BaseMessage) \
+            else ConversationMessage.create_message_by_role(role, content)
+        self.__history.append(ConversationMessage(
+            message=message,
+            owner=owner or [],
+            tags=tags or {}
+        ))
 
-    def get_history(self, owner: List[str] = None,
+    def get_all_history(self) -> List[BaseMessage]:
+        return [message.message for message in self.__history]
+
+    def get_history(self,
+                    owner: str = None,
                     tags: Dict[str, str] = None) -> List[BaseMessage]:
-        pass
+
+        filtered_history = []
+        for message in self.__history:
+            if owner and message.owner != owner:
+                continue
+            matched = True
+            if tags:
+                for key, value in tags.items():
+                    msg_tag = message.tags.get(key)
+                    if msg_tag != value:
+                        matched = False
+                        break
+            if not matched:
+                continue
+            filtered_history.append(message.message)
+        return filtered_history
+
+    def serialize(self) -> Dict:
+        return dict(history=[message.model_dump() for message in self.__history])
+
+    def deserialize(self, data: Dict[str, Any]):
+        if not data:
+            return
+        history = data.get("history", [])
+        for message in history:
+            self.__history.append(ConversationMessage(**message))

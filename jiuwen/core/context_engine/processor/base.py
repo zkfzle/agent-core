@@ -4,6 +4,14 @@
 
 from abc import abstractmethod, ABC
 
+from jiuwen.core.context_engine.base import EngineInput, EngineOutput
+from jiuwen.core.context_engine.config import BaseProcessorConfig
+
 
 class BaseProcessor(ABC):
-    pass
+    def __init__(self, config: BaseProcessorConfig):
+        self.__config = config
+
+    @abstractmethod
+    def run(self, input_data: EngineInput) -> EngineOutput:
+        pass

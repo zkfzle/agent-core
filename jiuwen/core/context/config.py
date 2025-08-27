@@ -4,6 +4,7 @@
 from abc import ABC
 from typing import TypedDict, Any, Optional
 
+from jiuwen.core.context.model_context.config import ModelContextConfig
 from jiuwen.core.context.state import Transformer
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
 
@@ -36,7 +37,11 @@ class Config(ABC):
         self._callback_metadata: dict[str, MetadataLike] = {}
         self._env: dict = {}
         self._workflow_config: WorkflowConfig = WorkflowConfig()
+        self._model_context_config: ModelContextConfig = ModelContextConfig()
         self.__load_envs__()
+
+    def set_model_context_config(self, model_context_config: ModelContextConfig):
+        self._model_context_config = model_context_config
 
     def set_workflow_config(self, workflow_config: WorkflowConfig) -> None:
         if self._workflow_config is None:

@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """Handler of Agent"""
-from typing import Dict, Callable, Any, Awaitable
+from typing import Dict, Callable, Any, Awaitable, Union
 
 from pydantic import BaseModel, Field
 
@@ -10,12 +10,13 @@ from jiuwen.agent.common.enum import SubTaskType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 
 
 class AgentHandlerInputs(BaseModel):
     query: str = Field(default="")
     name: str = Field(default="")
-    arguments: Dict = Field(default_factory=dict)
+    arguments: Union[dict, InteractiveInput] = Field(default_factory=dict)
     context: Any = Field(default=None)
 
 

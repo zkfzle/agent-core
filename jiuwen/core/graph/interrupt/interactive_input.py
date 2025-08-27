@@ -6,7 +6,10 @@ from __future__ import annotations
 
 from typing import Any
 
-class InteractiveInput(object):
+from pydantic import BaseModel
+
+# class InteractiveInput(BaseModel):
+class InteractiveInput(BaseModel):
     def __init__(self):
         """ user_input is a map of node_id to input, used together with interaction """
         self._user_input = {}

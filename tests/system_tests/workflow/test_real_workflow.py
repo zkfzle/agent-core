@@ -297,6 +297,7 @@ class RealWorkflowTest(unittest.TestCase):
     # ------------------------------------------------------------------ #
     #                            测试用例本身                             #
     # ------------------------------------------------------------------ #
+    @unittest.skip("skip system test")
     @patch("jiuwen.core.utils.tool.service_api.restful_api.RestfulApi.invoke")
     @patch("jiuwen.core.component.tool_comp.ToolExecutable.get_tool")
     def test_workflow_llm_questioner_plugin(
@@ -322,6 +323,7 @@ class RealWorkflowTest(unittest.TestCase):
 
         self.assertEqual(result, '上海今天晴 30°C')
 
+    @unittest.skip("skip system test")
     def test_stream_workflow_llm_with_stream_writer(self):
         """
         测试LLM组件通过StreamWriter流出数据

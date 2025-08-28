@@ -6,6 +6,8 @@ import pytest
 from unittest.mock import Mock
 
 from jiuwen.core.component.common.configs.model_config import ModelConfig
+from jiuwen.core.stream.emitter import StreamEmitter
+from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.utils.llm.messages import AIMessage
 
 fake_base = types.ModuleType("base")
@@ -25,17 +27,19 @@ from unittest.mock import patch, AsyncMock
 from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
-from jiuwen.core.context.context import Context
+from jiuwen.core.context.context import NodeContext
 from jiuwen.core.utils.llm.base import BaseModelInfo
 
 
 @pytest.fixture
-def fake_ctx():
+def fake_node_ctx():
     from unittest.mock import MagicMock
-    ctx = MagicMock(spec=Context)
+    ctx = MagicMock(spec=NodeContext)
     ctx.store = MagicMock()
     ctx.store.read.return_value = []
-    ctx.executable_id = "test"
+    ctx.executable_id.return_value = "test"
+    emitter = StreamEmitter()
+    ctx.stream_writer_manager.return_value = StreamWriterManager(emitter)
     return ctx
 
 
@@ -71,7 +75,7 @@ class TestLLMExecutableInvoke:
     async def test_invoke_success(
             self,
             mock_get_model,  # 这就是补丁
-            fake_ctx,
+            fake_node_ctx,
             fake_input,
             fake_model_config,
     ):
@@ -90,7 +94,7 @@ class TestLLMExecutableInvoke:
         fake_llm.ainvoke = AsyncMock(return_value=AIMessage(content="mocked response"))
         mock_get_model.return_value = fake_llm
 
-        output = await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_ctx)
+        output = await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx)
 
         assert output[USER_FIELDS] == {'result': 'mocked response'}
         fake_llm.ainvoke.assert_called_once()
@@ -99,7 +103,7 @@ class TestLLMExecutableInvoke:
     async def test_stream_success(
             self,
             mock_get_model,  # 这就是补丁
-            fake_ctx,
+            fake_node_ctx,
             fake_input,
             fake_model_config,
     ):
@@ -126,7 +130,7 @@ class TestLLMExecutableInvoke:
 
         # 调用 stream 方法，异步迭代所有 chunk
         chunks = []
-        async for chunk in exe.stream(fake_input(userFields=dict(query="pytest")), fake_ctx):
+        async for chunk in exe.stream(fake_input(userFields=dict(query="pytest")), fake_node_ctx):
             chunks.append(chunk)
 
         # 假设 LLMExecutable.stream 会把每个 AIMessage.content 直接 yield 出来
@@ -136,7 +140,7 @@ class TestLLMExecutableInvoke:
     async def test_invoke_llm_exception(
             self,
             mock_get_model,
-            fake_ctx,
+            fake_node_ctx,
             fake_input,
             fake_model_config,
     ):
@@ -148,7 +152,7 @@ class TestLLMExecutableInvoke:
         mock_get_model.return_value = fake_llm
 
         with pytest.raises(JiuWenBaseException) as exc_info:
-            await exe.invoke(fake_input(), fake_ctx)
+            await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx)
 
         assert "LLM down" in str(exc_info.value.message)
 
@@ -163,7 +167,8 @@ class TestLLMExecutableInvoke:
 
         # 1. 打桩 LLM
         fake_llm = AsyncMock()
-        fake_llm.ainvoke = AsyncMock(return_value="mocked response")
+        fake_llm.ainvoke = AsyncMock(return_value=AIMessage(
+            role="assistant", content="mocked response", tool_calls=[], usage_metadata=None))
         mock_get_model.return_value = fake_llm
 
         # 2. 构造工作流
@@ -187,11 +192,12 @@ class TestLLMExecutableInvoke:
         )
         llm_comp = LLMComponent(config)
         flow.add_workflow_comp("llm", llm_comp,
-                               inputs_schema={"a": "${start.a}"})
+                               inputs_schema={"a": "${start.a}",
+                                              "userFields": {"query": "${start.query}"}})
 
         flow.add_connection("start", "llm")
         flow.add_connection("llm", "end")
 
         # 3. 直接异步调用
-        result = await flow.invoke(inputs={"a": 2}, context=context)
+        result = await flow.invoke(inputs={"a": 2, "userFields": dict(query="pytest")}, context=context)
         assert result is not None

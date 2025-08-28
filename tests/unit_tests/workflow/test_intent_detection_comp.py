@@ -4,9 +4,10 @@ import types
 from unittest.mock import Mock, AsyncMock, patch
 
 from jiuwen.core.common.constants.constant import USER_FIELDS
+from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionConfig
-from jiuwen.core.context.context import Context
+from jiuwen.core.context.context import NodeContext
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -19,9 +20,9 @@ sys.modules["jiuwen.core.common.logging.base"] = fake_base
 
 @pytest.fixture
 def fake_ctx():
-    ctx = Mock(spec=Context)
-    ctx.executable_id = "test-id"
-    ctx.state = {}
+    ctx = Mock(spec=NodeContext)
+    ctx.executable_id.return_value = "test-id"
+    ctx.state.return_value.get_global.return_value = []
     return ctx
 
 
@@ -76,6 +77,7 @@ class TestIntentDetectionExecutableInvoke:
 
         # 2. 构造 Executable 并调用
         exe = IntentDetectionExecutable(fake_config)
+        exe.set_router(BranchRouter())
         output = await exe.invoke({USER_FIELDS: {"input": "你好"}}, fake_ctx)
         print(output)
         # 3. 断言

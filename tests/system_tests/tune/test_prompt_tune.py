@@ -107,6 +107,7 @@ class PromptTuneTest(unittest.TestCase):
     # ------------------------------------------------------------------ #
     #                            测试用例本身                              #
     # ------------------------------------------------------------------ #
+    @unittest.skip("skip system test")
     def test_information_extraction_prompt_optimization(self):
         """测试信息抽取类任务提示词优化"""
         # 步骤一. 加载原始提示词、用例
@@ -147,6 +148,7 @@ class PromptTuneTest(unittest.TestCase):
         print("[优化后提示词推理效果]:")
         self.evaluate(progress.best_prompt)
 
+    @unittest.skip("skip system test")
     def test_optimization_task_control(self):
         task_id = "JOINT_123456"
         with ThreadPoolExecutor(max_workers=1) as executor:

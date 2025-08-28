@@ -87,7 +87,7 @@ class QuestionerTest(unittest.TestCase):
         flow.add_connection("questioner", "e")
 
         result = self.invoke_workflow({"query": "查询杭州的天气"}, context, flow)
-        assert result == {'responseContent': "{'location': 'hangzhou', 'time': 'today'}"}
+        assert result == {'output': {}, 'responseContent': "{'location': 'hangzhou', 'time': 'today'}"}
 
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")

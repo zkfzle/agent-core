@@ -62,7 +62,7 @@ class InMemoryTemplateStore(TemplateStore, ABC):
                 error_code=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code,
                 message=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.errmsg.format(error_message=f"template name: {name}")
             )
-        return Template(name=result.get("name"), content=result.get("content"))
+        return Template(name=result.get("name"), content=result.get("content"), filters=filters)
 
     def __get_document(self, name: str, filters: dict):
         template_id = TemplateId(

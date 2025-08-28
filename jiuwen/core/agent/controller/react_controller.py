@@ -194,6 +194,8 @@ class ReActController(Controller):
         ReActControllerUtils.set_dialogue_history_to_context(chat_history, context)
 
     def _format_sub_tasks(self, tool_calls: List[ToolCall]) -> List[SubTask]:
+        if not tool_calls:
+            return []
         result = []
         for tool_call in tool_calls:
             tool_call_id = tool_call.id

@@ -5,7 +5,7 @@ from jiuwen.core.agent.task.task_context import TaskContext
 from jiuwen.core.common.logging import logger
 from jiuwen.core.stream.writer import CustomSchema
 from tests.unit_tests.tracer.test_mock_node_with_tracer import StreamNodeWithTracer
-from tests.unit_tests.tracer.test_workflow import record_tracer_info, create_flow
+from tests.unit_tests.tracer.test_workflow_tracer import record_tracer_info, create_flow
 from tests.unit_tests.workflow.test_mock_node import MockEndNode, MockStartNode
 
 

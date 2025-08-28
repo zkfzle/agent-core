@@ -223,7 +223,7 @@ class Workflow(BaseWorkFlow):
                 await context.stream_writer_manager().stream_emitter.close()
 
         task = asyncio.create_task(stream_process())
-        async for chunk in context.stream_writer_manager().stream_output():
+        async for chunk in context.stream_writer_manager().stream_output(self.timeout):
             yield chunk
 
         try:

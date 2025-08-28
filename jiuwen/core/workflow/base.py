@@ -2,6 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
+from asyncio import timeout
 from typing import Self, Dict, Any, Union, AsyncIterator
 
 from pydantic import BaseModel
@@ -223,7 +224,7 @@ class Workflow(BaseWorkFlow):
                 await context.stream_writer_manager().stream_emitter.close()
 
         task = asyncio.create_task(stream_process())
-        async for chunk in context.stream_writer_manager().stream_output(self.timeout):
+        async for chunk in context.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
             yield chunk
 
         try:

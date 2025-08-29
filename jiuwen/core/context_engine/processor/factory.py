@@ -7,7 +7,7 @@ from typing import Union, Dict, Optional
 from jiuwen.core.utils.llm.model_utils.singleton import Singleton
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context_engine.config import BaseProcessorConfig
-from jiuwen.core.context_engine.processor.base import BaseProcessor
+from jiuwen.core.context_engine.processor.base import ProcessStage
 
 
 class ProcessorFactory(metaclass=Singleton):
@@ -23,7 +23,7 @@ class ProcessorFactory(metaclass=Singleton):
             return proc_cls
         return register_processor_class
 
-    def create_processor(self, config: Union[Dict, BaseProcessorConfig]) -> Optional[BaseProcessor]:
+    def create_processor(self, config: Union[Dict, BaseProcessorConfig]) -> Optional[ProcessStage]:
         processor_type = config.get("processor_type", "") if isinstance(config, dict) else config.processor_type
         if processor_type not in self.__registered_processors:
             return None

@@ -71,9 +71,10 @@ class Context(ABC):
 
 class WorkflowContext(Context):
     def __init__(self, state: State, config: Config = Config(), store: Store = None, tracer: Tracer = None,
-                 session_id: str = None, controller_context_manager: Any = None):
+                 session_id: str = None, parent_model_context: ModelContext = None, controller_context_manager: Any = None):
         self.__config = config
         self.__model_context = WorkflowModelContext(session_id)
+        self.__model_context.derive_from(parent_model_context)
         self.__state = state
         self.__store = store
         self.__tracer = tracer
@@ -138,8 +139,8 @@ class NodeContext(Context):
         self.__state = context.state().create_node_state(self.__executable_id, self.__parent_id)
         self.__context = context
         self.__model_context = NodeModelContext(self.__node_id, self.session_id(),
+                                                config=context.context().get_config(),
                                                 parent_context=context.context())
-
 
     def context(self) -> ModelContext:
         return self.__model_context

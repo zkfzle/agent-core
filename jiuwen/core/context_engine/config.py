@@ -15,7 +15,9 @@ class AsyncExecuteConfig(BaseModel):
 
 
 class OnlineExecuteConfig(BaseModel):
-    processors: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
+    preprocess_stage: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
+    assemble_stage: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
+    postprocess_stage: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
 
 
 class ContextEngineConfig(BaseModel):

@@ -5,33 +5,36 @@
 from enum import Enum
 
 from pydantic import BaseModel, Field
-from typing import Union, Dict, Any, Optional
+from typing import Union, Dict, Any, Optional, List
 
+from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.utils.prompt.template.template import Template
 
 class ProcessorType(Enum):
     COMPRESSOR = "compressor"
     ASSEMBLER = "assembler"
 
+class ProcessStage(Enum):
+    PREPROCESSING = "preprocessing"
+    ASSEMBLING = "assembling"
+    POSTPROCESSING = "postprocessing"
+
 
 class EngineInput(BaseModel):
     user_input: Union[str, Dict] = Field(default="")
     system_prompt: Union[str, Template] = Field(default="")
-    variables: Dict[str, Dict] = Field(default={})
-    chat_history: Union[str, Dict] = Field(default="")
+    variables: Dict[str, str] = Field(default={})
+    user_variables: Dict[str, str] = Field(default={})
+    chat_history: Union[str, List[BaseMessage]] = Field(default="")
     memory: Optional[Any] = Field(default=None)
     tools: Union[str, Dict] = Field(default="")
 
 
-class EngineOutput(BaseModel):
-    output: Union[str, Dict] = Field(default="")
+class EngineOutput(EngineInput):
+    full_output: str = Field(default="")
 
-
-class ProcessorInput(BaseModel):
-    engine_input: EngineInput
-
-
-class ProcessorOutput(BaseModel):
-    last_processer_type: ProcessorType
-    compressed_context: Dict[str, Dict] = Field(default={})
-    variables: Dict[str, Dict] = Field(default={})
+    @classmethod
+    def from_input(cls, input: EngineInput) -> "EngineOutput":
+        if isinstance(input, EngineOutput):
+            return input
+        return cls(**input.model_dump())

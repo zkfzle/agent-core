@@ -52,6 +52,7 @@ class TaskContext:
             tracer=self.__tracer,
             config=Config(),
             session_id=self.__id,
+            parent_model_context=self.__context,
             controller_context_manager=self.__controller_context_manager)
 
     def stream_writer_manager(self) -> StreamWriterManager:

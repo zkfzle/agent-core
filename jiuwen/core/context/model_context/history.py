@@ -3,13 +3,17 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Union, Any, Optional
+from typing import List, Dict, Union, Any
 
 from jiuwen.core.common.enum.enum import MessageRole
-from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
+from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage, AIMessage
 from jiuwen.core.context.model_context.base import Serializable
 
+DEFAULT_HISTORY_LENGTH = 20
+
+
 class ConversationMessage(BaseModel):
+    order_id: int
     message: BaseMessage
     session: str = Field(default="")
     owner: List[str] = Field(default=[])
@@ -29,6 +33,11 @@ class ConversationMessage(BaseModel):
 class ConversationHistory(Serializable):
     def __init__(self):
         self.__history = []
+        self.__conversation_order_id = 0
+        self.__history_capacity: int = DEFAULT_HISTORY_LENGTH
+
+    def __len__(self):
+        return len(self.__history)
 
     def add_message(self, content: Union[str, BaseMessage],
                     role: str = "",
@@ -37,15 +46,18 @@ class ConversationHistory(Serializable):
         message = content if isinstance(content, BaseMessage) \
             else ConversationMessage.create_message_by_role(role, content)
         self.__history.append(ConversationMessage(
+            order_id=self.__conversation_order_id,
             message=message,
             owner=owner or [],
             tags=tags or {}
         ))
+        self.__conversation_order_id += 1
 
     def get_all_history(self) -> List[BaseMessage]:
         return [message.message for message in self.__history]
 
     def get_history(self,
+                    num: int,
                     owner: str = None,
                     tags: Dict[str, str] = None) -> List[BaseMessage]:
 
@@ -63,7 +75,7 @@ class ConversationHistory(Serializable):
             if not matched:
                 continue
             filtered_history.append(message.message)
-        return filtered_history
+        return filtered_history[-1 * num:]
 
     def serialize(self) -> Dict:
         return dict(history=[message.model_dump() for message in self.__history])

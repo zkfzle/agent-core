@@ -22,7 +22,7 @@ class ValidationUtils:
         """抛出参数无效错误"""
         raise JiuWenBaseException(
             StatusCode.PROMPT_JSON_SCHEMA_ERROR.code,
-            StatusCode.PROMPT_JSON_SCHEMA_ERROR.errmsg.format(error_msg),
+            StatusCode.PROMPT_JSON_SCHEMA_ERROR.errmsg.format(error_msg=error_msg),
         )
 
     @staticmethod

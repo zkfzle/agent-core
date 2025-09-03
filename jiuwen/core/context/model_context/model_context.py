@@ -8,7 +8,8 @@ from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.enum.enum import MessageRole
-from jiuwen.core.context.model_context.history import ConversationHistory
+from jiuwen.core.context.model_context.history.history import ConversationHistory
+from jiuwen.core.context.model_context.variable.variable import VariableManager
 from jiuwen.core.context.model_context.config import ModelContextConfig
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.context_engine.base import EngineInput, EngineOutput
@@ -21,12 +22,15 @@ class ModelContext(Serializable):
         self.__session_id = session_id
         self.__config: ModelContextConfig = config or ModelContextConfig()
         self.__history: ConversationHistory = ConversationHistory()
-        self.__variables: Dict[str, Any] = dict()
-        self.__engine: ContextEngine = ContextEngine(config.engine_config if config else None)
+        self.__variables: VariableManager = VariableManager()
+        self.__init_variables(config)
+        self.__engine: ContextEngine = ContextEngine(config.engine_config if config else None,
+                                                     self.__create_context_engine_input,
+                                                     self.__get_context_update_callbacks())
         self.__memory: MemoryAccessor = self.__init_memory(self.__config)
 
     def set_variable(self, key: str, value: Any):
-        self.__variables[key] = value
+        self.__variables.set(key, value)
 
     def get_variable(self, key: str) -> Optional[Any]:
         return self.__variables.get(key)
@@ -79,7 +83,7 @@ class ModelContext(Serializable):
         engine_input = EngineInput(
             user_input=query,
             system_prompt=system_prompt or "",
-            variables=self.__variables,
+            variables=self.__variables.serialize(),
             user_variables=variables or {},
             chat_history=self.__history.get_all_history(),
             tools=tools or "",
@@ -88,7 +92,9 @@ class ModelContext(Serializable):
 
     def set_config(self, config: ModelContextConfig):
         self.__config = config
-        self.__engine.build_from_config(config.engine_config)
+        self.__engine.build_from_config(config.engine_config,
+                                        self.__create_context_engine_input,
+                                        self.__get_context_update_callbacks())
         self.__memory = self.__init_memory(config)
 
     def get_config(self) -> ModelContextConfig:
@@ -116,6 +122,22 @@ class ModelContext(Serializable):
         if config and config.memory_config:
             return MemoryAccessor(config.memory_config)
         return None
+
+    def __init_variables(self, config: ModelContextConfig):
+        if config and config.variables:
+            for var in config.variables:
+                self.__variables.set(var.name, var)
+
+    def __create_context_engine_input(self) -> EngineInput:
+        return EngineInput(
+            variables=self.__variables.serialize(),
+            chat_history=self.__history.get_all_history(),
+        )
+
+    def __get_context_update_callbacks(self):
+        return dict(
+            update_variable=self.__variables.update_variable
+        )
 
 
 class AgentModelContext(ModelContext):
@@ -162,4 +184,5 @@ class NodeModelContext(ModelContext):
     def set_config(self, config: ModelContextConfig):
         self.__config = config
         engine_config = config.get_node_engine_config(self.__node_id)
-        self.__engine.build_from_config(engine_config)
+        self.__engine.build_from_config(engine_config, self.__create_context_engine_input,
+                                        self.__get_context_update_callbacks())

@@ -5,34 +5,18 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Union, Any
 
-from jiuwen.core.common.enum.enum import MessageRole
-from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage, AIMessage
+from jiuwen.core.utils.llm.messages import BaseMessage
+from jiuwen.core.context.model_context.base import ConversationMessage
 from jiuwen.core.context.model_context.base import Serializable
 
 DEFAULT_HISTORY_LENGTH = 20
 
 
-class ConversationMessage(BaseModel):
-    order_id: int
-    message: BaseMessage
-    session: str = Field(default="")
-    owner: List[str] = Field(default=[])
-    tags: Dict[str, str] = Field(default={})
-
-    @staticmethod
-    def create_message_by_role(role: str, content: str) -> BaseMessage:
-        if not role:
-            return BaseMessage(content=content, role="unknown")
-        if role == MessageRole.USER.value:
-            return HumanMessage(content=content)
-        elif role == MessageRole.ASSISTANT.value:
-            return AIMessage(content=content)
-        return BaseMessage(role="unknown",content=content)
-
-
 class ConversationHistory(Serializable):
     def __init__(self):
         self.__history = []
+        self.__expired_history = []
+        self.__compressed_history = []
         self.__conversation_order_id = 0
         self.__history_capacity: int = DEFAULT_HISTORY_LENGTH
 
@@ -86,3 +70,5 @@ class ConversationHistory(Serializable):
         history = data.get("history", [])
         for message in history:
             self.__history.append(ConversationMessage(**message))
+
+    """ async update processing"""

@@ -28,21 +28,27 @@ class OnlineProcessPipeline:
         for preprocessor_config in config.preprocess_stage:
             preprocessor = ProcessorFactory().create_processor(preprocessor_config)
             if not preprocessor or not isinstance(preprocessor, PreprocessStage):
-                logger.warning(f"preprocessor type error: {preprocessor_config.processor_type}")
+                logger.warning(
+                    f"preprocessor type error: {preprocessor_config.processor_type}, created: {preprocessor}"
+                )
                 continue
             self.__preprocess_pipeline.append(preprocessor)
 
         for assemble_config in config.assemble_stage:
             assembler = ProcessorFactory().create_processor(assemble_config)
             if not assembler or not isinstance(assembler, AssembleStage):
-                logger.warning(f"preprocessor type error: {assemble_config.processor_type}")
+                logger.warning(
+                    f"preprocessor type error: {assemble_config.processor_type}"
+                )
                 continue
             self.__assemble_pipeline.append(assembler)
 
-        for postprocess_config in config.assemble_stage:
+        for postprocess_config in config.postprocess_stage:
             postprocessor = ProcessorFactory().create_processor(postprocess_config)
             if not postprocessor or not isinstance(postprocessor, PostprocessStage):
-                logger.warning(f"preprocessor type error: {postprocess_config.processor_type}")
+                logger.warning(
+                    f"preprocessor type error: {postprocess_config.processor_type}"
+                )
                 continue
             self.__postprocess_pipeline.append(postprocessor)
 

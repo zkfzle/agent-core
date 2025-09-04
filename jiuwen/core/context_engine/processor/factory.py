@@ -21,17 +21,29 @@ class ProcessorFactory(metaclass=Singleton):
             cls().__registered_processors[processor_type] = proc_cls
             cls().__registered_processor_configs[processor_type] = config_type
             return proc_cls
+
         return register_processor_class
 
-    def create_processor(self, config: Union[Dict, BaseProcessorConfig]) -> Optional[ProcessStage]:
-        processor_type = config.get("processor_type", "") if isinstance(config, dict) else config.processor_type
+    def create_processor(
+        self, config: Union[Dict, BaseProcessorConfig]
+    ) -> Optional[ProcessStage]:
+        processor_type = (
+            config.get("processor_type", "")
+            if isinstance(config, dict)
+            else config.processor_type
+        )
         if processor_type not in self.__registered_processors:
             return None
         try:
-            config = self.__registered_processors[processor_type](**config) \
-                if isinstance(config, dict) else config
+            config = (
+                self.__registered_processor_configs[processor_type](**config)
+                if isinstance(config, dict)
+                else config
+            )
             processor = self.__registered_processors[processor_type](config)
         except Exception as e:
-            logger.error(f"cannot create processor type {processor_type}, reason: {str(e)}")
+            logger.error(
+                f"cannot create processor type {processor_type}, reason: {str(e)}"
+            )
             return None
         return processor

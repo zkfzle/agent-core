@@ -9,4 +9,7 @@ from jiuwen.core.context_engine.config import BaseProcessorConfig
 
 class ProcessStage(ABC):
     def __init__(self, config: BaseProcessorConfig):
-        self.__config = config
+        self._BaseProcessor__config = config
+
+    def run(self, input_data):
+        pass

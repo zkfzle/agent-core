@@ -35,11 +35,8 @@ class ProcessorFactory(metaclass=Singleton):
         if processor_type not in self.__registered_processors:
             return None
         try:
-            config = (
-                self.__registered_processor_configs[processor_type](**config)
-                if isinstance(config, dict)
-                else config
-            )
+            if isinstance(config, dict):
+                config = self.__registered_processor_configs[processor_type](**config)
             processor = self.__registered_processors[processor_type](config)
         except Exception as e:
             logger.error(

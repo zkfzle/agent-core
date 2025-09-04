@@ -19,5 +19,3 @@ class PreprocessStage(ProcessStage):
         pass
 
 
-class CompressorConfig(BaseProcessorConfig):
-    processor_type: str = "base_compressor"

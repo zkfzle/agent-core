@@ -2,14 +2,16 @@ from typing import Any, Dict
 
 from jiuwen.core.context_engine.engine import EngineInput, EngineOutput
 from jiuwen.core.context_engine.processor.factory import ProcessorFactory
-from jiuwen.core.context_engine.processor.preprocess.base import (
-    CompressorConfig,
-    PreprocessStage,
-)
+from jiuwen.core.context_engine.processor.preprocess.base import PreprocessStage
 from jiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.common.logging import logger
+from jiuwen.core.context_engine.config import BaseProcessorConfig
+
+
+class CompressorConfig(BaseProcessorConfig):
+    processor_type: str = "base_compressor"
 
 
 class LLMCompressorConfig(CompressorConfig):
@@ -30,7 +32,7 @@ class LLMCompressorConfig(CompressorConfig):
     }
 
 
-@ProcessorFactory.register("llm_compressor", CompressorConfig)
+@ProcessorFactory.register("llm_compressor", LLMCompressorConfig)
 class LLMCompressor(PreprocessStage):
     """Processor that uses LLM for content compression"""
 
@@ -45,10 +47,9 @@ class LLMCompressor(PreprocessStage):
 
     def _initialize_llm_client(self) -> BaseChatModel:
         model_factory = ModelFactory()
-        # Get config from parent class - it should be LLMCompressorConfig
-        config = self._BaseProcessor__config
-        model_type = config.model_type
-        model_config = config.model_config
+        # Get config from instance attributes
+        model_type = self.config.model_type
+        model_config = self.config.model_config
 
         # Convert model_config dict to BaseModelInfo
         model_info = BaseModelInfo(**model_config)

@@ -21,7 +21,7 @@ class LLMCompressorConfig(CompressorConfig):
     compression_prompt: str = (
         "Please compress the following content, retaining key information:"
     )
-    max_length: int = 200
+    max_length: int = 500
     content_format: str = "{label}: {content}"
     labels: Dict[str, str] = {
         "user_input": "User Input",
@@ -64,12 +64,14 @@ class LLMCompressor(PreprocessStage):
         content_to_compress = self._extract_content(input_data)
         if not self._should_compress(content_to_compress):
             return EngineOutput(full_output=content_to_compress)
-        # Run async compression synchronously - handle both cases
+        
+        # Run compression and handle any errors
         try:
             compressed_content = self._compress_with_llm(content_to_compress)
             return EngineOutput(full_output=compressed_content)
-        except TypeError:
-            return EngineOutput(full_output=compressed_content)
+        except Exception:
+            # If compression fails, return original content
+            return EngineOutput(full_output=content_to_compress)
 
     def _compress_with_llm(self, content: str) -> str:
         """Compress content using LLM"""
@@ -80,9 +82,9 @@ class LLMCompressor(PreprocessStage):
             ]
             response = self.llm_client.invoke(messages)
             return response.content
-        except Exception:
+        except Exception as e:
             logger.error(
-                "LLM compression failed with exception {Exception} truncating content."
+                f"LLM compression failed with exception {e}, truncating content."
             )
             # If the model compression fails, truncate the data
             return content[: self.max_length] + "..."

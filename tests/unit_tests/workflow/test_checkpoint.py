@@ -5,7 +5,7 @@ import uuid
 from unittest.mock import Mock
 
 from jiuwen.core.common.constants.constant import INTERACTION
-from jiuwen.core.component.workflow_comp import ExecWorkflowComponent
+from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.graph.executable import Input
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.core.stream.base import BaseStreamMode
@@ -140,7 +140,7 @@ class CheckpointTest(unittest.TestCase):
                                 "b": "${user.inputs.b}",
                                 "c": 1,
                                 "d": [1, 2, 3]})
-        flow.add_workflow_comp("a", ExecWorkflowComponent(subflow),
+        flow.add_workflow_comp("a", SubWorkflowComponent(subflow),
                                inputs_schema={
                                    "aa": "${start.a}",
                                    "ac": "${start.c}"})

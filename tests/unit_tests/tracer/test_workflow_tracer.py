@@ -9,7 +9,7 @@ from jiuwen.core.component.loop_callback.intermediate_loop_var import Intermedia
 from jiuwen.core.component.loop_callback.output import OutputCallback
 from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
-from jiuwen.core.component.workflow_comp import ExecWorkflowComponent
+from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from tests.unit_tests.workflow.test_node import CommonNode, AddTenNode
 
 fake_base = types.ModuleType("base")
@@ -247,7 +247,7 @@ class WorkflowTest(unittest.TestCase):
                                              "c": 1,
                                              "d": [1, 2, 3]})
 
-            main_workflow.add_workflow_comp("a", ExecWorkflowComponent(sub_workflow),
+            main_workflow.add_workflow_comp("a", SubWorkflowComponent(sub_workflow),
                                             inputs_schema={
                                                 "aa": "${start.a}",
                                                 "ac": "${start.c}"})
@@ -311,7 +311,7 @@ class WorkflowTest(unittest.TestCase):
                                              "c": 1,
                                              "d": [1, 2, 3]})
 
-            main_workflow.add_workflow_comp("a", ExecWorkflowComponent(sub_workflow),
+            main_workflow.add_workflow_comp("a", SubWorkflowComponent(sub_workflow),
                                             inputs_schema={
                                                 "aa": "${start.a}",
                                                 "ac": "${start.c}"})
@@ -427,7 +427,7 @@ class WorkflowTest(unittest.TestCase):
                                              "c": 1,
                                              "d": [1, 2, 3]})
 
-            main_workflow.add_workflow_comp("a", ExecWorkflowComponent(sub_workflow),
+            main_workflow.add_workflow_comp("a", SubWorkflowComponent(sub_workflow),
                                             inputs_schema={
                                                 "aa": "${start.a}",
                                                 "ac": "${start.c}"})
@@ -437,7 +437,7 @@ class WorkflowTest(unittest.TestCase):
                 {"node_id": "b", "id": 2, "data": "2"},
             ]
 
-            main_workflow.add_workflow_comp("b", ExecWorkflowComponent(sub_workflow_2),
+            main_workflow.add_workflow_comp("b", SubWorkflowComponent(sub_workflow_2),
                                             inputs_schema={
                                                 "aa": "${start.a}",
                                                 "ac": "${start.c}"})

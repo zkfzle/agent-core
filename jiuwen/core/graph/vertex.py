@@ -10,7 +10,7 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.component.condition.condition import INDEX
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.loop_callback.loop_id import LOOP_ID
-from jiuwen.core.component.exec_workflow_base import ExecWorkflowBase
+from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.context.context import Context, NodeContext
 from jiuwen.core.context.utils import get_by_schema, NESTED_PATH_SPLIT
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
@@ -150,7 +150,7 @@ class Vertex(AsyncAtomicNode):
         self._context.state().update_trace(self._context.tracer().get_workflow_span(self._context.executable_id(),
                                                                                 self._context.parent_id()))
 
-        if isinstance(self._executable, ExecWorkflowBase):
+        if isinstance(self._executable, SubWorkflowComponent):
             self._context.tracer().register_workflow_span_manager(self._context.executable_id())
 
     async def call(self, config: Any = None):

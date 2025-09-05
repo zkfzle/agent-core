@@ -12,7 +12,7 @@ from jiuwen.core.component.loop_callback.intermediate_loop_var import Intermedia
 from jiuwen.core.component.loop_callback.output import OutputCallback
 from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
-from jiuwen.core.component.workflow_comp import ExecWorkflowComponent
+from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.context.config import Config
 from jiuwen.core.context.context import Context, WorkflowContext
 from jiuwen.core.context.state import InMemoryState
@@ -487,7 +487,7 @@ class WorkflowTest(unittest.TestCase):
                                              "c": 1,
                                              "d": [1, 2, 3]})
 
-            main_workflow.add_workflow_comp("a", ExecWorkflowComponent(sub_workflow),
+            main_workflow.add_workflow_comp("a", SubWorkflowComponent(sub_workflow),
                                             inputs_schema={
                                                 "aa": "${start.a}",
                                                 "ac": "${start.c}"})
@@ -523,7 +523,7 @@ class WorkflowTest(unittest.TestCase):
 
         # flow2: start->a1|composite->end
         flow1.add_workflow_comp("a1", Node1("a1"), inputs_schema={"value": "${start.a1}"})
-        flow1.add_workflow_comp("composite", ExecWorkflowComponent(flow2),
+        flow1.add_workflow_comp("composite", SubWorkflowComponent(flow2),
                                 inputs_schema={"result": "${start.a2}"})
 
         flow1.set_end_comp("end", MockEndNode("end"), inputs_schema={"b1": "${a1.value}", "b2": "${composite.result}"})

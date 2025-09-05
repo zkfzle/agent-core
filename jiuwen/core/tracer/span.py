@@ -40,7 +40,7 @@ class TraceWorkflowSpan(Span):
     component_name: str = Field(default="", alias="componentName")  # 放到metadata
     component_type: str = Field(default="", alias="componentType")  # 即invoke_type
     agent_parent_invoke_id: str = Field(default="", alias="agentParentInvokeId")  # 给未来适配workflow节点中嵌套workflow预留
-    meta_data: Optional[dict] = Field(default=None, alias="metaData")  # 包括：模型的输入的function tools信息，模型的token使用信息
+    meta_data: Optional[str] = Field(default=None, alias="metaData")  # 包括：模型的输入的function tools信息，模型的token使用信息
     # for loop component
     loop_node_id: Optional[str] = Field(default=None, alias="loopNodeId")
     loop_index: Optional[int] = Field(default=None, alias="loopIndex")

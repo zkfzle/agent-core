@@ -251,7 +251,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
             "start_time": datetime.now(tz=tzlocal()).replace(tzinfo=None),
             "inputs": inputs,
             "invoke_type": component_metadata["component_type"],
-            "on_invoke_data": None,
+            "on_invoke_data": [],
             "meta_data": meta_data,
             **component_metadata
         }

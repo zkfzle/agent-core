@@ -206,7 +206,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
     @staticmethod
     def _create_end_component():
-        return End("end", "end", {"responseTemplate": "{{output}}"})
+        return End({"responseTemplate": "{{output}}"})
 
     def _build_workflow(self) -> tuple[Context, Workflow]:
         """

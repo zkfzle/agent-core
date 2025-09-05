@@ -95,7 +95,7 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
                 ]
             }
         )
-        end_component = End("e", "e", {"responseTemplate": "{{output}}"})
+        end_component = End({"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider="openai")
         questioner_config = QuestionerConfig(
@@ -110,7 +110,7 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
 
         flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component,
-                          inputs_schema={"userFields": {"output": "${questioner.userFields.key_fields}"}})
+                          inputs_schema={"output": "${questioner.userFields.key_fields}"})
         flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
 
         flow.add_connection("s", "questioner")

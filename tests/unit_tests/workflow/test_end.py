@@ -64,10 +64,10 @@ class EndNodeTest(unittest.TestCase):
                                inputs_schema={
                                    "aa": "${start.d}",
                                    "ac": "${start.d}"})
-        flow.set_end_comp("end", End("end", "end", {"responseTemplate": "hello:{{end_input}}"}),
+        flow.set_end_comp("end", End({"responseTemplate": "hello:{{end_input}}"}),
                           inputs_schema={
-                              "userFields": {"end_input": "${start.userFields.d}"},
-                              "response_mode": "${start.userFields.response_node}"})
+                              "end_input": "${start.d}",
+                              "response_mode": "${start.response_node}"})
         flow.add_connection("start", "a")
         flow.add_connection("a", "end")
         self.assert_workflow_invoke({"a": 1, "b": "haha"}, create_context(), flow, expect_results={'output': {}, 'responseContent': 'hello:haha'})
@@ -86,11 +86,11 @@ class EndNodeTest(unittest.TestCase):
                                inputs_schema={
                                    "aa": "${start.d}",
                                    "ac": "${start.d}"})
-        flow.set_end_comp("end", End("end", "end",{}),
+        flow.set_end_comp("end", End(),
                           inputs_schema={
-                              "userFields": {"end_input": "${start.userFields.d}"},
-                              "response_mode": "${start.userFields.response_node}"},
-                        )
+                              "end_input": "${start.d}",
+                              "response_mode": "${start.response_node}"},
+                          )
         flow.add_connection("start", "a")
         flow.add_connection("a", "end")
         self.assert_workflow_invoke({"a": 1, "b": "haha"}, create_context(), flow, expect_results={'output': {'end_input': 'haha'}, 'responseContent': ''})
@@ -108,10 +108,8 @@ class EndNodeTest(unittest.TestCase):
             flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
                                    comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
 
-
-            flow.set_end_comp("end", End("end", "end", {"responseTemplate": "hello:{{end_input}}"}),
-                              inputs_schema={
-                                  "userFields": {"end_input": "${start.userFields.d}"}},response_mode="streaming")
+            flow.set_end_comp("end", End({"responseTemplate": "hello:{{end_input}}"}),
+                              inputs_schema={"end_input": "${start.d}"}, response_mode="streaming")
             flow.add_connection("start", "a")
             flow.add_stream_connection("a", "end")
 
@@ -139,8 +137,9 @@ class EndNodeTest(unittest.TestCase):
             flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
                                    comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
 
-            flow.set_end_comp("end", End("end", "end", {"responseTemplate": "hello:{{value}}"}),
-                              stream_inputs_schema={"value": "${a.value}"},inputs_schema={"value": "${a.value}"},response_mode="streaming")
+            flow.set_end_comp("end", End({"responseTemplate": "hello:{{value}}"}),
+                              stream_inputs_schema={"value": "${a.value}"}, inputs_schema={"value": "${a.value}"},
+                              response_mode="streaming")
             flow.add_connection("start", "a")
             flow.add_stream_connection("a", "end")
 

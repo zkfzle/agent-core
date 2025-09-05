@@ -332,7 +332,7 @@ class RealWorkflowTest(unittest.TestCase):
         flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
 
         start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
-        end_component = End("e", "e", {"responseTemplate": "{{output}}"})
+        end_component = End({"responseTemplate": "{{output}}"})
 
         llm_config = LLMCompConfig(
             model=RealWorkflowTest._create_model_config(),
@@ -345,8 +345,7 @@ class RealWorkflowTest(unittest.TestCase):
         llm_component = LLMComponent(llm_config)
 
         flow.set_start_comp("s", start, inputs_schema={"query": "${query}"})
-        flow.set_end_comp("e", end_component,
-                          inputs_schema={"userFields": {"output": "${llm.userFields}"}})
+        flow.set_end_comp("e", end_component, inputs_schema={"output": "${llm.userFields}"})
         flow.add_workflow_comp("llm", llm_component, inputs_schema={"userFields": {"query": "${s.systemFields.query}"}})
 
         flow.add_connection("s", "llm")

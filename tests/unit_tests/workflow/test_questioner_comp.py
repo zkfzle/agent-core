@@ -57,15 +57,13 @@ class QuestionerTest(unittest.TestCase):
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start("s",
-                                {
-                                    "userFields": {"inputs": [], "outputs": []},
-                                    "systemFields": {"input": [
-                                        {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                                    ]
-                                    }
-                                }
-                                )
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
         end_component = End("e", "e", {"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider="openai")
@@ -78,7 +76,7 @@ class QuestionerTest(unittest.TestCase):
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
-        flow.set_start_comp("s", start_component, inputs_schema={"systemFields": {"query": "${query}"}})
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component,
                           inputs_schema={"userFields": {"output": "${questioner.userFields.key_fields}"}})
         flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
@@ -113,15 +111,13 @@ class QuestionerTest(unittest.TestCase):
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start("s",
-                                {
-                                    "userFields": {"inputs": [], "outputs": []},
-                                    "systemFields": {"input": [
-                                        {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                                    ]
-                                    }
-                                }
-                                )
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
         end_component = End("e", "e", {"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider="openai")
@@ -135,7 +131,7 @@ class QuestionerTest(unittest.TestCase):
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
-        flow.set_start_comp("s", start_component, inputs_schema={"systemFields": {"query": "${query}"}})
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component,
                           inputs_schema={"userFields": {"output": "${questioner.userFields.key_fields}"}})
         flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
@@ -191,15 +187,13 @@ class QuestionerTest(unittest.TestCase):
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start("s",
-                                {
-                                        "userFields":{"inputs":[],"outputs":[]},
-                                        "systemFields":{"input":[
-                                                {"id":"query", "type":"String", "required":"true", "sourceType":"ref"}
-                                            ]
-                                        }
-                                }
-                            )
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
         end_component = End("e", "e", {"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider="openai")
@@ -212,7 +206,7 @@ class QuestionerTest(unittest.TestCase):
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
-        flow.set_start_comp("s", start_component, inputs_schema={"systemFields": {"query": "${query}"}})
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component, inputs_schema={"userFields": {"output": "${questioner.userFields.key_fields}"}})
         flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
 

@@ -54,10 +54,10 @@ class EndNodeTest(unittest.TestCase):
     def test_simple_template_workflow(self):
         # flow1: start -> a -> end
         flow = create_flow()
-        flow.set_start_comp("start", Start("start",{"userFields":{"inputs":[],"outputs":[]},"systemFields":{"input":[{"id":"query","type":"String","required":"true","sourceType":"ref"}]}}),
+        flow.set_start_comp("start", Start(
+            {"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]}),
                             inputs_schema={
-                                "systemFields": {"query": "${a}"},
-                                "userFields": {},
+                                "query": "${a}",
                                 "response_node": "${response_mode}",
                                 "d": "${b}"})
         flow.add_workflow_comp("a", Node1("a"),
@@ -76,10 +76,10 @@ class EndNodeTest(unittest.TestCase):
     def test_simple_output_schema_workflow(self):
         # flow1: start -> a -> end
         flow = create_flow()
-        flow.set_start_comp("start", Start("start",{"userFields":{"inputs":[],"outputs":[]},"systemFields":{"input":[{"id":"query","type":"String","required":"true","sourceType":"ref"}]}}),
+        flow.set_start_comp("start", Start(
+            {"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]}),
                             inputs_schema={
-                                "systemFields": {"query": "${a}"},
-                                "userFields": {},
+                                "query": "${a}",
                                 "response_node": "${response_mode}",
                                 "d": "${b}"})
         flow.add_workflow_comp("a", Node1("a"),
@@ -98,11 +98,10 @@ class EndNodeTest(unittest.TestCase):
     def test_end_stream_workflow(self):
         async def stream_workflow():
             flow = create_flow()
-            flow.set_start_comp("start", Start("start", {"userFields": {"inputs": [], "outputs": []}, "systemFields": {
-                "input": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]}}),
+            start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
+            flow.set_start_comp("start", start,
                                 inputs_schema={
-                                    "systemFields": {"query": "${a}"},
-                                    "userFields": {"d": "${a}"},
+                                    "query": "${a}",
                                     "response_node": "${response_mode}",
                                     "d": "${a}"})
 
@@ -129,13 +128,13 @@ class EndNodeTest(unittest.TestCase):
 
         async def stream_workflow():
             flow = create_flow()
-            flow.set_start_comp("start", Start("start", {"userFields": {"inputs": [], "outputs": []}, "systemFields": {
-                "input": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]}}),
-                                inputs_schema={
-                                    "systemFields": {"query": "${a}"},
-                                    "userFields": {"d": "${a}"},
-                                    "response_node": "${response_mode}",
-                                    "d": "${a}"})
+            start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
+            input_schema = {
+                "query": "${a}",
+                "response_node": "${response_mode}",
+                "d": "${a}"
+            }
+            flow.set_start_comp("start", start, inputs_schema=input_schema)
 
             flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
                                    comp_ability=[ComponentAbility.STREAM], wait_for_all=True)

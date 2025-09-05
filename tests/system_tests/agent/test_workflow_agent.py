@@ -202,15 +202,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
     @staticmethod
     def _create_start_component():
-        return Start("start",
-                     {
-                         "userFields": {"inputs": [], "outputs": []},
-                         "systemFields": {"input": [
-                             {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                         ]
-                         }
-                     }
-                     )
+        return Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
 
     @staticmethod
     def _create_end_component():
@@ -251,7 +243,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.set_start_comp(
             "start",
             start,
-            inputs_schema={"systemFields": {"query": "${query}"}},
+            inputs_schema={"query": "${query}"},
         )
         flow.add_workflow_comp(
             "intent",

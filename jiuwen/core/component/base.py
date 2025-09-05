@@ -1,14 +1,13 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+
 from abc import ABC
 from dataclasses import dataclass, field
-from email.policy import default
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
-
+from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.graph.base import Graph
 from jiuwen.core.graph.executable import Executable
 
@@ -39,4 +38,6 @@ class WorkflowComponent(ABC):
         graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
 
     def to_executable(self) -> Executable:
-        pass
+        if isinstance(self, Executable):
+            return self
+        raise JiuWenBaseException(-1, "workflow component should implement Executable")

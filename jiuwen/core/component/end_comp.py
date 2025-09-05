@@ -16,7 +16,7 @@ class End(Executable, WorkflowComponent):
     def __init__(self, conf: dict = None):
         super().__init__()
         self.conf = conf
-        self.template = conf["responseTemplate"] if (
+        self.template = conf["responseTemplate"] if ( conf and
                 "responseTemplate" in conf and len(conf["responseTemplate"]) > 0) else None
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
@@ -25,7 +25,8 @@ class End(Executable, WorkflowComponent):
             output = {}
         else:
             answer = ""
-            output = inputs
+            # 只输出inputs中值不为None的键值对
+            output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
         return {
             "responseContent": answer,
             "output": output

@@ -46,4 +46,7 @@ class Executable(Generic[Input, Output]):
     def post_commit(self) -> bool:
         return False
 
+    def component_type(self) -> str:
+        return ""
+
 GeneralExecutor = Executable[dict[str, Any], dict[str, Any]]

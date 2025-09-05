@@ -38,7 +38,7 @@ class MockNodeBase(Executable, WorkflowComponent):
 
 class MockStartNode(Start):
     def __init__(self, node_id: str):
-        super().__init__(node_id, {})
+        super().__init__({})
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
         return inputs
@@ -46,7 +46,7 @@ class MockStartNode(Start):
 
 class MockEndNode(End):
     def __init__(self, node_id: str):
-        super().__init__(node_id, "end", {"responseTemplate": "hello:{{end_input}}"})
+        super().__init__({"responseTemplate": "hello:{{end_input}}"})
         self.node_id = node_id
 
     async def invoke(self, inputs: Input, context: Context) -> Output:
@@ -114,7 +114,7 @@ class StreamNodeWithSubWorkflow(MockNodeBase):
 
 class MockStartNode4Cp(Start):
     def __init__(self, node_id: str):
-        super().__init__(node_id, {})
+        super().__init__({})
         self.runtime = 0
 
     async def invoke(self, inputs: Input, context: Context) -> Output:

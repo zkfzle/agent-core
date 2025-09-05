@@ -63,7 +63,7 @@ class InMemoryCheckpointer(BaseCheckpointer[str]):
             self.ctx.state().set_state(state)
 
         if isinstance(self.input, InteractiveInput):
-            for node_id, input in self.input.user_input.items():
+            for node_id, input in self.input.user_inputs.items():
                 exe_ctx = NodeContext(self.ctx, node_id)
                 interactive_input = exe_ctx.state().get(INTERACTIVE_INPUT)
                 if isinstance(interactive_input, list):

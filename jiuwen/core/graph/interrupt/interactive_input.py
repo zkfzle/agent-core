@@ -4,19 +4,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Dict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
 
 # class InteractiveInput(BaseModel):
 class InteractiveInput(BaseModel):
-    def __init__(self):
-        """ user_input is a map of node_id to input, used together with interaction """
-        self._user_input = {}
+    user_inputs: Dict[str, Any] = Field(default_factory=dict)
 
-    @property
-    def user_input(self):
-        return self._user_input
-    
     def update(self, node_id: str, value: Any):
-        self._user_input[node_id] = value
+        self.user_inputs[node_id] = value

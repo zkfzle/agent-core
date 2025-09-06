@@ -4,7 +4,7 @@
 import asyncio
 from typing import Any, Optional, AsyncIterator
 
-from core.common.constants.component import SUB_WORKFLOW_COMPONENT
+from jiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger

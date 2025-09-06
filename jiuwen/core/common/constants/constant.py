@@ -2,6 +2,7 @@ import sys
 
 # IR userFields key
 USER_FIELDS = "userFields"
+QUERY = "query"
 # IR systemFields key
 SYSTEM_FIELDS = "systemFields"
 

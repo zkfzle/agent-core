@@ -6,9 +6,16 @@ import pytest
 from unittest.mock import Mock
 
 from jiuwen.core.component.common.configs.model_config import ModelConfig
+from jiuwen.core.component.end_comp import End
+from jiuwen.core.component.start_comp import Start
+from jiuwen.core.context.config import Config
+from jiuwen.core.context.state import InMemoryState
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.utils.llm.messages import AIMessage
+from jiuwen.core.workflow.base import Workflow
+from jiuwen.core.workflow.workflow_config import WorkflowConfig
+from jiuwen.graph.pregel.graph import PregelGraph
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -24,10 +31,9 @@ from tests.unit_tests.workflow.test_workflow import create_flow, create_context
 
 from unittest.mock import patch, AsyncMock
 
-from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
-from jiuwen.core.context.context import NodeContext
+from jiuwen.core.context.context import NodeContext, WorkflowContext
 from jiuwen.core.utils.llm.base import BaseModelInfo
 
 
@@ -201,3 +207,52 @@ class TestLLMExecutableInvoke:
         # 3. 直接异步调用
         result = await flow.invoke(inputs={"a": 2, "userFields": dict(query="pytest")}, context=context)
         assert result is not None
+
+class TestLLMExecutableInvokeNew:
+    @pytest.mark.asyncio  # 新增
+    async def test_start_llm_end_in_workflow(self,
+            fake_model_config):
+        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{output}}"})
+
+        # when run, use a real model config instead
+        fake_model_config = ModelConfig(
+            model_provider="openai",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com/v1",
+                model_name="gpt-3.5-turbo",
+                temperature=0.8,
+                top_p=0.9,
+                streaming=False,
+                timeout=30.0,
+            ),
+        )
+
+        config = LLMCompConfig(
+            model=fake_model_config,
+            template_content=[{"role": "user", "content": "Hello {name}"}],
+            response_format={"type": "text"},
+            output_config={"output": {"type": "string", "required": True}},
+        )
+        llm_comp = LLMComponent(config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"output": "${llm.output}"})
+        flow.add_workflow_comp("llm", llm_comp, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "llm")
+        flow.add_connection("llm", "e")
+
+        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        result = await flow.invoke(inputs={"query": "yzq test query"}, context=context)
+        print(f"This is invoke result:{result}")

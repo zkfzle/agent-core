@@ -5,7 +5,7 @@ import json
 from dataclasses import dataclass, field
 from typing import List, Any, Dict, Optional, AsyncIterator
 
-from jiuwen.core.common.constants.constant import USER_FIELDS
+from jiuwen.core.common.constants.constant import QUERY
 from jiuwen.core.common.enum.enum import WorkflowLLMResponseType, MessageRole
 from jiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -209,7 +209,7 @@ class LLMExecutable(Executable):
         return ModelFactory().get_model(self._config.model.model_provider, self._config.model.model_info)
 
     def _validate_inputs(self, inputs: Input) -> None:
-        if not inputs or not inputs.get(USER_FIELDS):
+        if not inputs or not inputs.get(QUERY):
             raise JiuWenBaseException(
                 error_code=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.code,
                 message=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.errmsg
@@ -315,7 +315,7 @@ class LLMExecutable(Executable):
         formatted_res = OutputFormatter.format_response(llm_output,
                                                         self._config.response_format,
                                                         self._config.output_config)
-        return {USER_FIELDS: formatted_res}
+        return formatted_res
 
     def _set_context(self, context):
         self._context = context
@@ -324,8 +324,7 @@ class LLMExecutable(Executable):
         self._initialize_if_needed()
         self._validate_inputs(inputs)
 
-        user_inputs = inputs.get(USER_FIELDS)
-        processed_inputs = self._process_inputs(user_inputs)
+        processed_inputs = self._process_inputs(inputs)
         return self._get_model_input(processed_inputs)
 
     async def _invoke_for_json_format(self, inputs: Input) -> AsyncIterator[Output]:
@@ -342,7 +341,7 @@ class LLMExecutable(Executable):
             formatted_res = OutputFormatter.format_response(content,
                                                             self._config.response_format,
                                                             self._config.output_config)
-            stream_out = {USER_FIELDS: formatted_res}
+            stream_out = formatted_res
             yield stream_out
 
     def _format_response_content(self, response_content: str) -> dict:

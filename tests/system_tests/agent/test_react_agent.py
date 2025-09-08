@@ -2,10 +2,14 @@ import os
 import unittest
 from datetime import datetime
 
+import pytest
+
 from jiuwen.agent.common.schema import PluginSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.core.agent.controller.react_controller import ReActControllerInput, ReActControllerOutput
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
+from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.tool.service_api.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 
@@ -103,3 +107,36 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
         result = await react_agent.invoke({"query": "查询杭州的天气"})
         print(f"ReActAgent 最终输出结果：{result}")
+
+    @unittest.skip("skip system test")
+    @pytest.mark.asyncio
+    async def test_react_controller_stream(self):
+        tools_schema = [self._create_tool_schema()]
+        model_config = self._create_model()
+        prompt_template = self._create_prompt_template()
+
+        react_agent_config = create_react_agent_config(
+            agent_id="react_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=tools_schema,
+            workflows=[],
+            model=model_config,
+            prompt_template=prompt_template
+        )
+
+        react_agent: ReActAgent = create_react_agent(
+            agent_config=react_agent_config,
+            workflows=[],
+            tools=[self._create_tool()]
+        )
+
+        controller = react_agent._controller
+        task = react_agent._task_manager.create_task("conversation_id")
+        context = task.context
+        inputs = dict(query="请调用工具WeatherReporter，帮我查询上海今天的天气")
+        async for chunk in controller.stream(ReActControllerInput(**inputs), context):
+            if isinstance(chunk, BaseMessageChunk):
+                print(f"stream output 中间帧 >>> {chunk}")
+            elif isinstance(chunk, ReActControllerOutput):
+                print(f"stream output 最后一帧是controller的批结果 >>> {chunk}")

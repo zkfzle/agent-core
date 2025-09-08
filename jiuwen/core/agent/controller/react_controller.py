@@ -4,7 +4,7 @@
 """Controller of ReActAgent"""
 import ast
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncIterator, Union
 
 from pydantic import Field
 
@@ -19,7 +19,8 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, Function, Parameters, HumanMessage, AIMessage, \
-    ToolCall
+    ToolCall, UsageMetadata
+from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.output_parser.base import BaseOutputParser
 from jiuwen.core.utils.output_parser.null_output_parser import NullOutputParser
@@ -98,16 +99,32 @@ class ReActController(Controller):
         self._model = self._init_model()
         self._output_parser = self._init_output_parser()
 
-    def invoke(self, inputs: ReActControllerInput, context: TaskContext) -> ReActControllerOutput:
-        query = inputs.query
-        user_fields = inputs.user_fields
-        chat_history = self._get_latest_chat_history(context)
+    async def invoke(self, inputs: ReActControllerInput, context: TaskContext) -> ReActControllerOutput:
         tools = self._format_tools_info()
-        system_prompt = self._format_system_prompt_template(user_fields, context)
-        llm_inputs = self._create_llm_inputs(query, system_prompt, chat_history)
-        result = self._invoke_llm_and_parse_output(llm_inputs, tools)
+        chat_history = self._get_latest_chat_history(context)
+        llm_inputs = self._format_llm_inputs(inputs, context, chat_history)
+
+        result = await self._invoke_llm_and_parse_output(llm_inputs, tools)
         self._update_llm_response_to_context(result.llm_output, chat_history, context)
         return result
+
+    async def stream(self,
+                     inputs: ReActControllerInput,
+                     context: TaskContext
+                     ) -> AsyncIterator[Union[BaseMessageChunk, ReActControllerOutput]]:
+        tools = self._format_tools_info()
+        chat_history = self._get_latest_chat_history(context)
+        llm_inputs = self._format_llm_inputs(inputs, context, chat_history)
+
+        response = AIMessage()
+        async for chunk in self._stream_llm(llm_inputs, tools):
+            yield chunk
+            if self._check_if_last_chunk(chunk):
+                self._transform_chunk_to_ai_message(chunk, response)
+
+        result = self._parse_llm_output(response)
+        self._update_llm_response_to_context(result.llm_output, chat_history, context)
+        yield result
 
     def set_agent_handler(self, agent_handler: AgentHandler):
         self._agent_handler = agent_handler
@@ -151,22 +168,32 @@ class ReActController(Controller):
             chat_history.append(HumanMessage(content=query))
         return chat_history
 
-    def _invoke_llm_and_parse_output(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> ReActControllerOutput:
+    async def _invoke_llm_and_parse_output(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> ReActControllerOutput:
         try:
-            response = self._model.invoke(llm_inputs, tools)
+            response = await self._model.ainvoke(llm_inputs, tools)
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.INVOKE_LLM_FAILED.code,
                 message=StatusCode.INVOKE_LLM_FAILED.errmsg
             ) from e
 
-        if isinstance(self._output_parser, NullOutputParser):
-            llm_output = response
-        else:
-            llm_output = self._output_parser.parse(response)
-        sub_tasks = self._format_sub_tasks(llm_output.tool_calls)
-        should_continue = isinstance(sub_tasks, list) and len(sub_tasks) > 0
-        return ReActControllerOutput(should_continue=should_continue, llm_output=llm_output, sub_tasks=sub_tasks)
+        return self._parse_llm_output(response)
+
+    async def _stream_llm(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> AsyncIterator[BaseMessageChunk]:
+        try:
+            async for chunk in self._model.astream(llm_inputs, tools):
+                if self._check_if_valid_chunk(chunk):
+                    yield chunk
+
+        except Exception as e:
+            import traceback
+            tmp = traceback.format_exc()
+
+            raise JiuWenBaseException(
+                error_code=StatusCode.INVOKE_LLM_FAILED.code,
+                message=StatusCode.INVOKE_LLM_FAILED.errmsg
+            ) from e
+
 
     def _format_system_prompt_template(self, user_fields, context):
         if not self._config.prompt_template and hasattr(context, "context_manager"):
@@ -231,3 +258,35 @@ class ReActController(Controller):
         else:
             result = BaseOutputParser.from_config("novel_tool")
         return result
+
+    def _format_llm_inputs(self, inputs: ReActControllerInput, context: TaskContext, chat_history: List[BaseMessage]):
+        query = inputs.query
+        user_fields = inputs.user_fields
+        system_prompt = self._format_system_prompt_template(user_fields, context)
+        return self._create_llm_inputs(query, system_prompt, chat_history)
+
+    def _parse_llm_output(self, response: BaseMessage):
+        if isinstance(self._output_parser, NullOutputParser):
+            llm_output = response
+        else:
+            llm_output = self._output_parser.parse(response)
+        sub_tasks = self._format_sub_tasks(llm_output.tool_calls)
+        should_continue = isinstance(sub_tasks, list) and len(sub_tasks) > 0
+        return ReActControllerOutput(should_continue=should_continue, llm_output=llm_output, sub_tasks=sub_tasks)
+
+    @staticmethod
+    def _check_if_last_chunk(chunk: BaseMessageChunk):
+        if isinstance(chunk.usage_metadata, UsageMetadata):
+            return chunk.usage_metadata.finish_reason in ["stop", "tool_calls"]
+        return False
+
+    @staticmethod
+    def _transform_chunk_to_ai_message(chunk: BaseMessageChunk, message: AIMessage):
+        message.content = chunk.content
+        message.tool_calls = chunk.tool_calls
+        message.usage_metadata = chunk.usage_metadata
+
+    @staticmethod
+    def _check_if_valid_chunk(chunk):
+        return (chunk.content or (hasattr(chunk, "reason_content") and chunk.reason_content) or
+                (hasattr(chunk, "tool_calls") and chunk.tool_calls))

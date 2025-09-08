@@ -44,8 +44,8 @@ class BaseMessage(BaseModel):
 
 
 class UsageMetadata(BaseModel):
-    code: int = -1
-    errmsg: str = "Model request exception, please try again"
+    code: int = 0
+    errmsg: str = ""
     prompt: str = ""
     task_id: str = ""
     model_name: str = ""

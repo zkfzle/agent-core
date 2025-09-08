@@ -23,7 +23,8 @@ class AfterProcessor:
         self._after_tick = after_tick
 
     def after_tick(self, loop: PregelLoop, context: Context) -> None:
-        context.state().commit()
+        if context:
+            context.state().commit()
         return self._after_tick(loop)
 
 
@@ -31,7 +32,7 @@ after_processor: AfterProcessor = AfterProcessor(PregelLoop.after_tick)
 
 
 def after_tick(self) -> None:
-    context = self.checkpointer.ctx
+    context = self.checkpointer.ctx if self.checkpointer and hasattr(self.checkpointer, "ctx") else None
     return after_processor.after_tick(self, context)
 
 

@@ -4,6 +4,7 @@
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback
 from jiuwen.core.context.context import Context
 from jiuwen.core.graph.executable import Output
+from jiuwen.core.component.condition.condition import INDEX
 
 LOOP_ID = "__sys_loop_id"
 
@@ -13,14 +14,16 @@ class LoopIdCallback(LoopCallback):
         self._node_id = node_id
 
     def first_in_loop(self, context: Context) -> Output:
-        context.state().update({LOOP_ID: self._node_id})
+        context.state().update_global({self._node_id + "." + INDEX: context.state().get(INDEX) + 1})
+        context.state().update_global({LOOP_ID: self._node_id})
         return None
 
     def out_loop(self, context: Context) -> Output:
-        context.state().update({LOOP_ID: None})
+        context.state().update_global({LOOP_ID: None})
         return None
 
     def start_round(self, context: Context) -> Output:
+        context.state().update_global({self._node_id + "." + INDEX: context.state().get(INDEX) + 1})
         return None
 
     def end_round(self, context: Context) -> Output:

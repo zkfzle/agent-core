@@ -62,7 +62,10 @@ class OptimizeProgress:
 
     def delete(self):
         task_id = self._context.get("id", None)
-        ContextManager().delete(task_id)
+        if task_id and self.status != TaskStatus.TASK_RUNNING:
+            ContextManager().delete(task_id)
+            return True
+        return False
 
     def get_history(self):
         history = self._context.get("history", [])

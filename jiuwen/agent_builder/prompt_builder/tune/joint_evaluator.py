@@ -13,6 +13,7 @@ from typing import Dict, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from jiuwen.agent_builder.prompt_builder.tune.base.exception import JiuWenBaseException
+from jiuwen.agent_builder.prompt_builder.tune.common.exception import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.agent_builder.prompt_builder.tune.base.utils import OptimizeInfo, LLMModelProcess, LLMModelInfo
 from jiuwen.agent_builder.prompt_builder.tune.base.exception import OnStopException
@@ -102,7 +103,15 @@ class JointEvaluatorWithRef:
         """chat llm with retry"""
         for i in range(self._num_retires):
             try:
-                return self.chat_completion(user_prompt, system_prompt, is_assistant)
+                response = self.chat_completion(user_prompt, system_prompt, is_assistant)
+                if not response or not response.get(TuneConstant.MESSAGE_CONTENT_KEY):
+                    raise JiuWenBaseException(
+                        StatusCode.LLM_FALSE_RESULT_ERROR.code,
+                        StatusCode.LLM_FALSE_RESULT_ERROR.errmsg.format(
+                            error_msg="call llm service get empty respone"
+                        )
+                    )
+                return response
             except JiuWenBaseException as e:
                 logger.info(f"Inference failed at round {i}/{self._num_retires}: {str(e)}")
                 if i == self._num_retires - 1:

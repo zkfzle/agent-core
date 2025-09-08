@@ -70,3 +70,4 @@ class TaskStatus:
     TASK_STOPPING = "stopping"
     TASK_DELETED = "deleted"
     TASK_QUEUED = "queued"
+    TASK_RESTART = "restart"

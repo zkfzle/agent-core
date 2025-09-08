@@ -147,6 +147,7 @@ class PromptTuneTest(unittest.TestCase):
         self.evaluate(INFORMATION_EXTRACTION_TEMPLATE)
         print("[优化后提示词推理效果]:")
         self.evaluate(progress.best_prompt)
+        ContextManager.delete(task_id)
 
     @unittest.skip("skip system test")
     def test_optimization_task_control(self):

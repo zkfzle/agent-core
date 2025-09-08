@@ -199,7 +199,7 @@ class JointOptimizer:
                     raise JiuWenBaseException(
                         StatusCode.LLM_FALSE_RESULT_ERROR.code,
                         StatusCode.LLM_FALSE_RESULT_ERROR.errmsg.format(
-                            error_msh="call llm service get empty response"
+                            error_msg="call llm service get empty response"
                         )
                     )
                 return response.get(TuneConstant.MESSAGE_CONTENT_KEY)
@@ -547,6 +547,16 @@ class JointOptimizer:
                        opt_model_info=opt_model_info, infer_model_info=infer_model_info,
                        error_msg="", stop_event=threading.Event(), status=TaskStatus.TASK_RUNNING,
                        history=[], cur_iteration=0, best_accuracy=0.0)
+        old_context = ContextManager().get(task_info.task_id)
+        if old_context:
+            if old_context.get(TaskStatus.TASK_STATUS) == TaskStatus.TASK_RESTART:
+                ContextManager().delete(task_info.task_id)
+            else:
+                raise  JiuWenBaseException(
+                    StatusCode.PROMPT_OPTIMIZE_REFINE_INSTRUCTION_ERROR.code,
+                    StatusCode.PROMPT_OPTIMIZE_REFINE_INSTRUCTION_ERROR.errmsg.format(
+                        error_msg="The task id is exists")
+                    )
         ContextManager().set(task_info.task_id, context)
         try:
             self._opt_model = LLMModelProcess(opt_model_info)
@@ -577,8 +587,9 @@ class JointOptimizer:
             context[TaskStatus.TASK_STATUS] = TaskStatus.TASK_FAILED
             context["run_time"] = calculate_runtime(context.get("create_time", ""))
             checkpoint = ContextManager().get_checkpoint(task_info.task_id) or context
-            error_reason = str(e) if isinstance(e, JiuWenBaseException) else "other reason"
+            error_reason = str(e)
             checkpoint["error_msg"] = f"Joint optimization task failed, reason: {error_reason}"
+            context["error_msg"] = f"Joint optimization task failed, reason: {error_reason}"
             checkpoint["run_time"] = calculate_runtime(context.get("create_time", ""))
             checkpoint[TaskStatus.TASK_STATUS] = TaskStatus.TASK_FAILED
             ContextManager().set_checkpoint(task_info.task_id, checkpoint)
@@ -586,6 +597,15 @@ class JointOptimizer:
     def continue_optimize(self, task_id: str):
         """continue optimization"""
         context = ContextManager().get_checkpoint(task_id)
+        if (ContextManager().get_task_progress(task_id).status == TaskStatus.TASK_RUNNING or
+            ContextManager().get_task_progress(task_id).status == TaskStatus.TASK_FINISHED):
+            raise   JiuWenBaseException(
+                    StatusCode.PROMPT_OPTIMIZE_REFINE_INSTRUCTION_ERROR.code,
+                    StatusCode.PROMPT_OPTIMIZE_REFINE_INSTRUCTION_ERROR.errmsg.format(
+                        error_msg="The task {} is exists, can not be continued.".format(
+                            ContextManager().get_task_progress(task_id).status
+                        )
+                    ))
         context["id"] = task_id
         ContextManager().set(task_id, context)
         run_time = calculate_runtime(context.get("create_time", ""))
@@ -630,8 +650,9 @@ class JointOptimizer:
             context[TaskStatus.TASK_STATUS] = TaskStatus.TASK_FAILED
             context["run_time"] = calculate_runtime(context.get("create_time", ""))
             checkpoint = ContextManager().get_checkpoint(task_id) or context
-            error_reason = str(e) if isinstance(e, JiuWenBaseException) else "other reason"
+            error_reason = str(e)
             checkpoint["error_msg"] = f"Joint optimization task failed, reason: {error_reason}"
+            context["error_msg"] = f"Joint optimization task failed, reason: {error_reason}"
             checkpoint["run_time"] = calculate_runtime(context.get("create_time", ""))
             checkpoint[TaskStatus.TASK_STATUS] = TaskStatus.TASK_FAILED
             ContextManager().set_checkpoint(task_id, checkpoint)

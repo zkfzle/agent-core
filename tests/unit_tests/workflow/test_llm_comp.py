@@ -1,5 +1,7 @@
+import os
 import sys
 import types
+import unittest
 from typing import Any
 
 import pytest
@@ -14,7 +16,7 @@ from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig
+from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
 
 fake_base = types.ModuleType("base")
@@ -35,6 +37,8 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
 from jiuwen.core.context.context import NodeContext, WorkflowContext
 from jiuwen.core.utils.llm.base import BaseModelInfo
+
+USER_FIELDS = "userFields"
 
 
 @pytest.fixture
@@ -256,3 +260,102 @@ class TestLLMExecutableInvokeNew:
         context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
         result = await flow.invoke(inputs={"query": "yzq test query"}, context=context)
         print(f"This is invoke result:{result}")
+
+    @unittest.skip("skip system test")
+    @pytest.mark.asyncio  # 新增
+    async def test_real_workflow_stream_start_llm_end(self):
+        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{output}}"})
+
+        API_BASE = os.getenv("API_BASE", "")
+        API_KEY = os.getenv("API_KEY", "")
+        MODEL_NAME = os.getenv("MODEL_NAME", "")
+        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+
+        config = LLMCompConfig(
+            model=model_config,
+            template_content=[{"role": "user", "content": "{{query}}"}],
+            response_format={"type": "text"},
+            output_config={"output": {"type": "string", "required": True}},
+        )
+        llm_comp = LLMComponent(config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          stream_inputs_schema={"output": "${llm.output}"},
+                          inputs_schema={"output": "${llm.output}"},
+                          response_mode="streaming")
+        flow.add_workflow_comp("llm", llm_comp, inputs_schema={"query": "${s.query}"},
+                               comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+
+        flow.add_connection("s", "llm")
+        flow.add_stream_connection("llm", "e")
+
+        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, context=context):
+            print(f"stream chunk >>> {chunk}")
+
+    @unittest.skip("skip system test")
+    @pytest.mark.asyncio  # 新增
+    async def test_real_workflow_stream_start_llm_end_with_stream_writer(self):
+        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{output}}"})
+
+        API_BASE = os.getenv("API_BASE", "")
+        API_KEY = os.getenv("API_KEY", "")
+        MODEL_NAME = os.getenv("MODEL_NAME", "")
+        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+
+        config = LLMCompConfig(
+            model=model_config,
+            template_content=[{"role": "user", "content": "{{query}}"}],
+            response_format={"type": "text"},
+            output_config={"output": {"type": "string", "required": True}},
+        )
+        llm_comp = LLMComponent(config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"output": "${llm.output}"})
+        flow.add_workflow_comp("llm", llm_comp, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "llm")
+        flow.add_connection("llm", "e")
+
+        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, context=context):
+            print(f"stream chunk >>> {chunk}")

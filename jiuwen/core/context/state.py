@@ -109,6 +109,11 @@ class State(ABC):
             return
         self._comp_state.update_by_id(self._node_id, {self._node_id: data})
 
+    def get_updates_of_node(self):
+        updates = self._global_state.get_updates()
+        data = updates.get(self._node_id)
+        return data
+
     def get(self, key: Union[str, list, dict] = None) -> Optional[Any]:
         if self._comp_state is None:
             return

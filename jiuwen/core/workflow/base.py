@@ -224,8 +224,16 @@ class Workflow(BaseWorkFlow):
                 await context.stream_writer_manager().stream_emitter.close()
 
         task = asyncio.create_task(stream_process())
+        is_stream_output = False
         async for chunk in context.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
+            if not is_stream_output and isinstance(chunk, OutputSchema) and chunk.index:
+                is_stream_output = True
             yield chunk
+
+        if not is_stream_output:
+            results = context.state().get_outputs(self._end_comp_id)
+            if results:
+                yield OutputSchema(type="workflow_final", index=0, payload=results)
 
         try:
             await task

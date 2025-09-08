@@ -388,7 +388,9 @@ class QuestionerExecutable(Executable):
 
     @staticmethod
     def _load_state_from_context(context) -> QuestionerState:
-        state_dict = context.state().get_global(QUESTIONER_STATE_KEY)
+        updates_in_state = context.state().get_updates_of_node()
+        questioner_state = updates_in_state[-1] if isinstance(updates_in_state, list) and updates_in_state else dict()
+        state_dict = questioner_state.get(QUESTIONER_STATE_KEY) if isinstance(questioner_state, dict) else None
         if state_dict:
             return QuestionerState.deserialize(state_dict)
         return QuestionerState()

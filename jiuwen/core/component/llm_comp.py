@@ -13,8 +13,9 @@ from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, Va
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.context.context import Context
 from jiuwen.core.graph.executable import Executable, Input, Output
-from jiuwen.core.stream.writer import CustomSchema
+from jiuwen.core.stream.writer import CustomSchema, OutputSchema
 from jiuwen.core.utils.llm.base import BaseChatModel
+from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
@@ -144,7 +145,8 @@ class LLMExecutable(Executable):
             self._set_context(context)
             model_inputs = self._prepare_model_inputs(inputs)
             logger.info("[%s] model inputs %s", self._context.executable_id(), model_inputs)
-            llm_response = await self._llm.ainvoke(model_inputs)
+            output_stream_writer = context.stream_writer_manager().get_output_writer()
+            llm_response = await self._stream_llm_with_stream_writer(model_inputs, output_stream_writer)
             response = llm_response.content
 
             # 临时调试：用于调用streamWriter实现流式输出
@@ -238,7 +240,6 @@ class LLMExecutable(Executable):
                 message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg="Failed to retrieve llm template content")
             )
         default_template = Template(name="default", content=str(user_prompt[0].get("content")))
-        test = default_template.format(inputs).content
         return default_template.format(inputs).content
 
     def _get_model_input(self, inputs: dict):
@@ -322,7 +323,6 @@ class LLMExecutable(Executable):
 
     def _prepare_model_inputs(self, inputs):
         self._initialize_if_needed()
-        self._validate_inputs(inputs)
 
         processed_inputs = self._process_inputs(inputs)
         return self._get_model_input(processed_inputs)
@@ -346,6 +346,24 @@ class LLMExecutable(Executable):
 
     def _format_response_content(self, response_content: str) -> dict:
         pass
+
+    async def _stream_llm_with_stream_writer(self, model_inputs, stream_writer) -> AIMessage:
+        final_response = AIMessage()
+        response_format_type = self._get_response_format().get(_TYPE)
+
+        if response_format_type == WorkflowLLMResponseType.JSON.value:
+            final_response = await self._llm.ainvoke(model_inputs)
+        else:
+            index = 0
+            result = ""
+            async for chunk in self._llm.astream(model_inputs):
+                if stream_writer and chunk.content:
+                    await stream_writer.write(OutputSchema(type="workflow", index=index, payload=chunk.content))
+                    result += chunk.content
+                index += 1
+            final_response.content = result
+
+        return final_response
 
 
 class LLMComponent(WorkflowComponent):

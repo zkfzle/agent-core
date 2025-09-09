@@ -90,6 +90,6 @@ class ContextEngineTest(unittest.TestCase):
         context.add_assistant_message("世界上最长的河是亚马逊河")
         system_prompt = "你是一个{{role}}小助手，请根据指定用户回答完成指定任务。"
         user_query = "世界上最深的湖是什么？"
-        result = context.process(user_query, system_prompt, variables={"role": "聊天"})
+        result = context.process(user_query, system_prompt)
         print("处理后输出：", result.full_output)
 

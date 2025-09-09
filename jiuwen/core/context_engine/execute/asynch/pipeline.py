@@ -24,7 +24,6 @@ class AsyncProcessPipeline:
         self.__async_task_pipeline = []
         self.__get_context_window_func = get_context_window_func
         self.__update_data_callbacks = update_data_callbacks
-        asyncio.create_task(self.__start())
 
     def build_from_config(self, config: AsyncExecuteConfig, llm: Optional[BaseChatModel] = None):
         if not config:
@@ -43,6 +42,8 @@ class AsyncProcessPipeline:
                 data_update_callback=self.__update_data_callbacks.get(async_processor.update_strategy(), None),
             ))
             self.__pending_processors.append(async_processor)
+        if self.__pending_processors:
+            asyncio.create_task(self.__start())
 
     async def __start(self):
         while True:

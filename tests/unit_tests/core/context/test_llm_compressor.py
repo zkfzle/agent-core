@@ -1,6 +1,5 @@
 import sys
 import types
-import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -51,7 +50,7 @@ def basic_config():
 @pytest.fixture
 def compressor_with_mock_llm(basic_config, mock_llm_client):
     """LLMCompressor with mocked LLM client"""
-    with patch("jiuwen.core.utils.llm.model_utils.model_factory") as mock_factory:
+    with patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory") as mock_factory:
         mock_factory_instance = Mock()
         mock_factory_instance.get_model.return_value = mock_llm_client
         mock_factory.return_value = mock_factory_instance
@@ -61,15 +60,6 @@ def compressor_with_mock_llm(basic_config, mock_llm_client):
         compressor.bind_llm(mock_llm_client)
         return compressor
 
-os.environ["API_BASE"] = "https://api.siliconflow.cn/v1/chat/completions"
-os.environ["API_KEY"] = "sk-hbxmtgozxrqlmtjvkksoqlfmdwofuzovulewueptdjfyxqfz"
-os.environ["MODEL_NAME"] = "Qwen/Qwen2.5-32B-Instruct"
-os.environ["MODEL_PROVIDER"] = "siliconflow"
-
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
 class TestLLMCompressorTest:
     """Integration tests with actual ModelFactory"""

@@ -46,7 +46,7 @@ class CommitStateLike(StateLike):
         pass
 
     @abstractmethod
-    def commit(self) -> None:
+    def commit(self, node_id: str = None) -> None:
         pass
 
     @abstractmethod
@@ -122,6 +122,9 @@ class State(ABC):
         result = self._comp_state.get_by_prefix(key, self._node_id)
         return result
 
+    def commit_cmp(self):
+        self._comp_state.commit(self._node_id)
+
 
 class CommitState(State):
     def __init__(self, io_state: CommitStateLike,
@@ -159,7 +162,8 @@ class CommitState(State):
     def commit_user_inputs(self, inputs: Any) -> None:
         if self._io_state is None or inputs is None:
             return
-        self._io_state.update_by_id(self._node_id, {self._node_id: inputs} if self._node_id != DEFAULT_NODE_ID else inputs)
+        self._io_state.update_by_id(self._node_id,
+                                    {self._node_id: inputs} if self._node_id != DEFAULT_NODE_ID else inputs)
         self._global_state.update_by_id(self._node_id, inputs)
         self.commit()
 
@@ -242,11 +246,19 @@ class InMemoryCommitState(CommitStateLike):
             self._updates[node_id] = []
         self._updates[node_id].append(data)
 
-    def commit(self) -> None:
-        for key, updates in self._updates.items():
-            for update in updates:
+    def commit(self, node_id: str = None) -> None:
+        if node_id is None:
+            for key, updates in self._updates.items():
+                for update in updates:
+                    self._state.update(update)
+            self._updates.clear()
+        else:
+            node_updates = self._updates.get(node_id)
+            if not node_updates:
+                return
+            for update in node_updates:
                 self._state.update(update)
-        self._updates.clear()
+            self._updates[node_id] = []
 
     def rollback(self, node_id: str) -> None:
         self._updates[node_id] = []

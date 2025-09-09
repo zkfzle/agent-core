@@ -3,6 +3,7 @@ import unittest
 from jiuwen.core.context.config import Config
 from jiuwen.core.context.context import WorkflowContext, NodeContext
 from jiuwen.core.context.state import InMemoryState, ReadableStateLike
+from jiuwen.core.context.utils import update_dict, get_by_schema, get_value_by_nested_path
 
 
 class ContextTest(unittest.TestCase):
@@ -61,3 +62,23 @@ class ContextTest(unittest.TestCase):
         sub_node1_context.state().commit()
         assert sub_node1_context.state().get_global('c') == 4
         assert sub_node1_context.state().get('url') == '0.0.0.2'
+
+    def test_context_state(self):
+        source = {}
+        # 增加a.b: nums属性
+        update_dict({"a.b.nums": [1, 2, 3]}, source)
+        assert source == {'a': {'b': {'nums': [1, 2, 3]}}}
+        # 增加a.b: name属性
+        update_dict({
+            "a.b.name": "shanghai"
+        }, source)
+        assert source == {'a': {'b': {'nums': [1, 2, 3], 'name': 'shanghai'}}}
+        # 增加a.b: class属性
+        update_dict({"a.b": {"class": "hha"}}, source)
+        assert source == {'a': {'b': {'nums': [1, 2, 3], 'name': 'shanghai', 'class': 'hha'}}}
+        # 覆盖a.b所有$ok
+        update_dict({"a.b": [1, 2, 3]}, source)
+        assert source == {'a': {'b': [1, 2, 3]}}
+        assert get_by_schema("a", data=source) == {'b': [1, 2, 3]}
+        assert get_by_schema({"a": "b"}, data=source) == {"a": "b"}
+        assert get_by_schema({"result": "${a.b}"}, data=source) == {'result': [1, 2, 3]}

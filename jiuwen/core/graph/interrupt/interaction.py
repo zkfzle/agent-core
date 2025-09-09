@@ -13,7 +13,6 @@ from langgraph.types import Interrupt
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from jiuwen.core.context.context import Context
-from jiuwen.core.context.utils import NESTED_PATH_SPLIT
 from jiuwen.core.stream.writer import OutputSchema
 
 
@@ -39,6 +38,7 @@ class Interaction(object):
     def user_input(self, value: Any) -> Any:
         if res := self.get_next_interactive_input():
             return res
+        self.ctx.state().commit_cmp()
         if self.ctx.stream_writer_manager():
             output_writer = self.ctx.stream_writer_manager().get_output_writer()
             loop = asyncio.get_event_loop()

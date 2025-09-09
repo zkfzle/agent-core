@@ -24,6 +24,7 @@ def update_dict(update: dict, source: dict) -> None:
         current_key, current = root_to_path(key, source, create_if_absent=True)
         update_by_key(current_key, value, current)
 
+
 def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None) -> Any:
     if nested_path is not None and len(nested_path) > 0:
         data = get_value_by_nested_path(nested_path, data)
@@ -35,7 +36,10 @@ def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str =
     elif isinstance(schema, dict):
         result = {}
         for target_key, target_schema in schema.items():
-            result[target_key] = get_by_schema(target_schema, data)
+            if isinstance(target_schema, list) or isinstance(target_schema, dict) or is_ref_path(target_schema):
+                result[target_key] = get_by_schema(target_schema, data)
+            else:
+                result[target_key] = target_schema
         return result
     elif isinstance(schema, list):
         result = []
@@ -81,8 +85,10 @@ def split_nested_path(nested_key: str) -> list:
                 final_list.append(match.group(1))
     return final_list
 
+
 def is_ref_path(path: str) -> bool:
-    return len(path) > 3 and path.startswith("${") and path.endswith("}")
+    return isinstance(path, str) and len(path) > 3 and path.startswith("${") and path.endswith("}")
+
 
 def extract_origin_key(key: str) -> str:
     """
@@ -91,6 +97,8 @@ def extract_origin_key(key: str) -> str:
     :param key: reference key
     :return: origin key
     """
+    if not isinstance(key, str):
+        return key
     if '$' not in key:
         return key
     pattern = re.compile(r"\${(.+?)\}")
@@ -98,6 +106,7 @@ def extract_origin_key(key: str) -> str:
     if match:
         return match.group(1)
     return key
+
 
 def update_by_key(key: Union[str, int], new_value: Any, source: dict) -> None:
     if key not in source:
@@ -177,21 +186,3 @@ def root_to_index(idxes: list[int], source: dict, create_if_absent: bool = False
         current += [None] * (idxes[-1] - len(source))
         current.append({})
     return idxes[-1], current
-
-
-if __name__ == '__main__':
-    source = {}
-    # 增加a.b: nums属性
-    update_dict({"a.b.nums": [1, 2, 3]}, source)
-    print(source)
-    # 增加a.b: name属性
-    update_dict({
-        "a.b.name": "shanghai"
-    }, source)
-    print(source)
-    # 增加a.b: class属性
-    update_dict({"a.b": {"class":"hha"}}, source)
-    print(source)
-    # 覆盖a.b所有
-    update_dict({"a.b": [1,2,3]}, source)
-    print(source)

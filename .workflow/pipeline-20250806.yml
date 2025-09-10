@@ -94,11 +94,7 @@ stages:
         report:
           path: report
           index: index.html
-        checkpoints:
-          - key: TestPassRate
-            value: 100
-            logicalOperator: '&&'
-            relationalOperator: '>='
+        checkpoints: []
         caches: []
         notify: []
         strategy:

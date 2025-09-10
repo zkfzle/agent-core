@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-import uuid
 from typing import Union, Self, AsyncIterator, Any, Callable
 
 from langgraph.constants import INTERRUPT
@@ -15,7 +14,7 @@ from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.graph.graph_state import GraphState
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.core.graph.vertex import Vertex
-from jiuwen.graph.checkpoint.memory import InMemoryCheckpointer
+from jiuwen.graph.checkpoint.memory import InMemoryCheckpointer, default_inmemory_checkpointer
 
 
 class AfterProcessor:
@@ -81,7 +80,7 @@ class PregelGraph(Graph):
             node.init(context)
         if self.compiledStateGraph is None:
             self._pre_compile()
-            self.checkpoint_saver = InMemoryCheckpointer()
+            self.checkpoint_saver = default_inmemory_checkpointer
             self.compiledStateGraph = self.pregel.compile(checkpointer=self.checkpoint_saver)
 
         self.checkpoint_saver.register_context(context)

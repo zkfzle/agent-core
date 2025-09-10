@@ -7,7 +7,7 @@ from typing import Any
 
 from jiuwen.core.context.config import Config
 from jiuwen.core.context.mq_manager import MessageQueueManager
-from jiuwen.core.context.state import State
+from jiuwen.core.context.state import State, InMemoryState
 from jiuwen.core.context.store import Store
 from jiuwen.core.context.model_context.model_context import ModelContext, WorkflowModelContext, NodeModelContext
 from jiuwen.core.runtime.callback_manager import CallbackManager
@@ -70,19 +70,20 @@ class Context(ABC):
 
 
 class WorkflowContext(Context):
-    def __init__(self, state: State, config: Config = Config(), store: Store = None, tracer: Tracer = None,
-                 session_id: str = None, parent_model_context: ModelContext = None, controller_context_manager: Any = None):
-        self.__config = config
+    def __init__(self, state: State = None, config: Config = None, store: Store = None, tracer: Tracer = None,
+                 session_id: str = None, parent_model_context: ModelContext = None,
+                 controller_context_manager: Any = None):
+        self.__config = config if config is not None else Config()
         self.__model_context = WorkflowModelContext(session_id)
         self.__model_context.derive_from(parent_model_context)
-        self.__state = state
+        self.__state = state if state is not None else InMemoryState()
         self.__store = store
         self.__tracer = tracer
         self.__callback_manager = CallbackManager()
-        self.__stream_writer_manager: StreamWriterManager = None
+        self.__stream_writer_manager = None  # type: StreamWriterManager
         self.__controller_context_manager = controller_context_manager
         self.__session_id = session_id if session_id else uuid.uuid4().hex
-        self.__queue_manager: MessageQueueManager = None
+        self.__queue_manager = None  # type: MessageQueueManager
 
     def context(self) -> ModelContext:
         return self.__model_context

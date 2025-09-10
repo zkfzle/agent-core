@@ -25,6 +25,7 @@ from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility
+from jiuwen.graph.pregel.graph import PregelGraph
 
 
 class WorkflowOutput(BaseModel):
@@ -127,8 +128,9 @@ class BaseWorkFlow:
 
 
 class Workflow(BaseWorkFlow):
-    def __init__(self, workflow_config: WorkflowConfig, graph: Graph):
-        super().__init__(workflow_config, graph)
+    def __init__(self, workflow_config: WorkflowConfig = None, graph: Graph = None):
+        super().__init__(workflow_config if workflow_config is not None else WorkflowConfig(),
+                         graph if graph is not None else PregelGraph())
         self._end_comp_id: str = ""
 
     def set_start_comp(

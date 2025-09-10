@@ -181,3 +181,4 @@ class InMemoryCheckpointer(BaseCheckpointer[str]):
     def get_next_version(self, current: str | None, channel: None) -> str:
         return self.in_mem_saver.get_next_version(current=current, channel=channel)
 
+default_inmemory_checkpointer = InMemoryCheckpointer()

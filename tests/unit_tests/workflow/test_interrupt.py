@@ -3,6 +3,8 @@ import unittest
 from datetime import datetime
 from unittest.mock import patch
 
+import pytest
+
 from jiuwen.agent.common.enum import SubTaskType
 from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
@@ -55,6 +57,7 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
+    @pytest.mark.asyncio
     @patch("jiuwen.core.agent.controller.react_controller.ReActController.invoke")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")

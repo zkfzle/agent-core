@@ -92,7 +92,7 @@ class ReActAgent(Agent):
 
     async def _handle_event_in_initialized(self, inputs: Dict, context: TaskContext):
         logger.info(f"Enter in state: {self._state.status} with event: {self.fsm_event}")
-        controller_output = self._controller.invoke(ReActControllerInput(**inputs), context)
+        controller_output = await self._controller.invoke(ReActControllerInput(**inputs), context)
         self.fsm_event = ReActEvent.USER_INVOKE
         self._state.status = ReActStatus.LLM_RESPONSE
         self._store_state_to_context(context)
@@ -114,7 +114,7 @@ class ReActAgent(Agent):
     async def _handle_event_in_tool_invoked(self, inputs: Dict, context: TaskContext, completed_sub_tasks: List[SubTask]):
         logger.info(f"Enter in state: {self._state.status} with event: {self.fsm_event}")
         self._state.handle_tool_invoked_event(completed_sub_tasks)
-        controller_output = self._controller.invoke(ReActControllerInput(**inputs), context)
+        controller_output = await self._controller.invoke(ReActControllerInput(**inputs), context)
         self.fsm_event = ReActEvent.INVOKE_TOOL_FINISHED
         self._state.status = ReActStatus.LLM_RESPONSE
         self._store_state_to_context(context)

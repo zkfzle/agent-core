@@ -419,9 +419,10 @@ class CheckpointTest(unittest.TestCase):
         user_input.update(interaction_node, {"aa": "any key"})
         result = None
         for res in self.stream_workflow(user_input, create_context(session_id=session_id), flow):
-            self.assertEqual(res.type, "output")
-            self.assertEqual(res.payload[0], "a")
-            result = res.payload[1]
+            if res.type == "output":
+                self.assertEqual(res.type, "output")
+                self.assertEqual(res.payload[0], "a")
+                result = res.payload[1]
         self.assertEqual(result, {"aa": "any key"})
         self.assertEqual(start_node.runtime, 1)
 

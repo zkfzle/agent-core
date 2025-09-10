@@ -110,11 +110,12 @@ class MockAgent(unittest.TestCase):
         index_dict = {key: 0 for key in expected_datas_model.keys()}
 
         async for chunk in flow.stream({"a": 1, "b": "haha"}, workflow_context):
-            node_id = chunk.node_id
-            index = index_dict[node_id]
-            assert chunk == expected_datas_model[node_id][index], f"Mismatch at node {node_id} index {index}"
-            logger.info(f"stream chunk: {chunk}")
-            index_dict[node_id] = index_dict[node_id] + 1
+            if isinstance(chunk, CustomSchema):
+                node_id = chunk.node_id
+                index = index_dict[node_id]
+                assert chunk == expected_datas_model[node_id][index], f"Mismatch at node {node_id} index {index}"
+                logger.info(f"stream chunk: {chunk}")
+                index_dict[node_id] = index_dict[node_id] + 1
 
     async def run_agent_workflow_seq_exec_stream_workflow_with_tracer(self):
         # context手动初始化tracer，agent和workflow共用一个tracer

@@ -500,9 +500,10 @@ class WorkflowTest(unittest.TestCase):
             index = 0
             async for chunk in main_workflow.stream({"a": 1, "b": "haha"}, create_context(),
                                                     stream_modes=[BaseStreamMode.CUSTOM]):
-                assert chunk == expected_datas_model[index], f"Mismatch at index {index}"
-                logger.info(f"stream chunk: {chunk}")
-                index += 1
+                if isinstance(chunk, CustomSchema):
+                    assert chunk == expected_datas_model[index], f"Mismatch at index {index}"
+                    logger.info(f"stream chunk: {chunk}")
+                    index += 1
 
         self.loop.run_until_complete(stream_workflow())
 

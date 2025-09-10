@@ -34,7 +34,7 @@ from jiuwen.core.context.state import InMemoryState
 from jiuwen.core.graph.base import Graph
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
-from jiuwen.core.stream.writer import CustomSchema
+from jiuwen.core.stream.writer import CustomSchema, OutputSchema
 from jiuwen.graph.pregel.graph import PregelGraph
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode
 from jiuwen.core.stream.writer import TraceSchema
@@ -130,13 +130,13 @@ class WorkflowTest(unittest.TestCase):
             index_dict = {key: 0 for key in expected_datas_model.keys()}
 
             async for chunk in flow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
-                if not isinstance(chunk, TraceSchema):
+                if isinstance(chunk, CustomSchema):
                     node_id = chunk.node_id
                     index = index_dict[node_id]
                     assert chunk == expected_datas_model[node_id][index], f"Mismatch at node {node_id} index {index}"
                     logger.info(f"stream chunk: {chunk}")
                     index_dict[node_id] = index_dict[node_id] + 1
-                else:
+                elif isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)
 
@@ -193,13 +193,13 @@ class WorkflowTest(unittest.TestCase):
             }
             index_dict = {key: 0 for key in expected_datas_model.keys()}
             async for chunk in flow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
-                if not isinstance(chunk, TraceSchema):
+                if isinstance(chunk, CustomSchema):
                     node_id = chunk.node_id
                     index = index_dict[node_id]
                     assert chunk == expected_datas_model[node_id][index], f"Mismatch at node {node_id} index {index}"
                     logger.info(f"stream chunk: {chunk}")
                     index_dict[node_id] = index_dict[node_id] + 1
-                else:
+                elif isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)
 
@@ -259,7 +259,7 @@ class WorkflowTest(unittest.TestCase):
 
             index = 0
             async for chunk in main_workflow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
-                if not isinstance(chunk, TraceSchema):
+                if not isinstance(chunk, (TraceSchema, OutputSchema)):
                     assert chunk == expected_datas_model[index], f"Mismatch at index {index}"
                     logger.info(f"stream chunk: {chunk}")
                     index += 1

@@ -17,7 +17,7 @@ from langgraph.checkpoint.base import (
 from langgraph.checkpoint.memory import InMemorySaver
 
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
-from jiuwen.core.context.context import NodeContext
+from jiuwen.core.runtime.runtime import NodeRuntime
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.graph.checkpoint.base import BaseCheckpointer
 
@@ -64,7 +64,7 @@ class InMemoryCheckpointer(BaseCheckpointer[str]):
 
         if isinstance(self.input, InteractiveInput):
             for node_id, input in self.input.user_inputs.items():
-                exe_ctx = NodeContext(self.ctx, node_id)
+                exe_ctx = NodeRuntime(self.ctx, node_id)
                 interactive_input = exe_ctx.state().get(INTERACTIVE_INPUT)
                 if isinstance(interactive_input, list):
                     interactive_input.append(input)

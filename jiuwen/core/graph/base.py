@@ -7,28 +7,28 @@ from typing import Self, Union, Any, AsyncIterator, Hashable, Callable, Awaitabl
 from langchain_core.runnables import Runnable
 
 from jiuwen.core.common.constants.constant import INPUTS_KEY, CONFIG_KEY
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Executable, Output, Input
 
 
 class ExecutableGraph(Executable[Input, Output]):
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         return await self._invoke(inputs.get(INPUTS_KEY), context, inputs.get(CONFIG_KEY))
 
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, context: BaseRuntime) -> AsyncIterator[Output]:
         pass
 
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
+    async def collect(self, inputs: AsyncIterator[Input], contex: BaseRuntime) -> Output:
         pass
 
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> AsyncIterator[Output]:
         pass
 
     async def interrupt(self, message: dict):
         pass
 
     @abstractmethod
-    async def _invoke(self, inputs: Input, context: Context, config: Any = None) -> Output:
+    async def _invoke(self, inputs: Input, context: BaseRuntime, config: Any = None) -> Output:
         pass
 
 
@@ -55,7 +55,7 @@ class Graph(ABC):
     def add_conditional_edges(self, source_node_id: str, router: Any) -> Self:
         pass
 
-    def compile(self, context: Context) -> ExecutableGraph:
+    def compile(self, context: BaseRuntime) -> ExecutableGraph:
         pass
 
     def get_nodes(self) -> dict:

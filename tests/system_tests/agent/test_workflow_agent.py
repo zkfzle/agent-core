@@ -15,8 +15,8 @@ from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from jiuwen.core.context.agent_context import AgentContext
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.agent_context import AgentContext
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.tool.service_api.param import Param
@@ -208,7 +208,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     def _create_end_component():
         return End({"responseTemplate": "{{output}}"})
 
-    def _build_workflow(self) -> tuple[Context, Workflow]:
+    def _build_workflow(self) -> tuple[BaseRuntime, Workflow]:
         """
         根据 mock 工具函数构建完整工作流拓扑。
 

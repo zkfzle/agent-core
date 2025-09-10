@@ -1,5 +1,5 @@
 from jiuwen.core.agent.task.task_context import TaskContext
-from jiuwen.core.context.store import Store
+from jiuwen.core.runtime.store import Store
 
 
 class AgentContext:

@@ -5,7 +5,7 @@ from abc import ABC
 from typing import TypedDict, Any, Optional
 
 from jiuwen.core.context.model_context.config import ModelContextConfig
-from jiuwen.core.context.state import Transformer
+from jiuwen.core.runtime.state import Transformer
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
 
 

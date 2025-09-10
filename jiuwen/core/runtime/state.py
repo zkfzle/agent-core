@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import Any, Union, Optional, Callable, Self
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.context.utils import update_dict, get_by_schema
+from jiuwen.core.runtime.utils import update_dict, get_by_schema
 
 
 class ReadableStateLike(ABC):
@@ -116,7 +116,7 @@ class State(ABC):
 
     def get(self, key: Union[str, list, dict] = None) -> Optional[Any]:
         if self._comp_state is None:
-            return
+            return None
         if key is None:
             return self._comp_state.get(self._node_id)
         result = self._comp_state.get_by_prefix(key, self._node_id)

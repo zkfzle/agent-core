@@ -5,20 +5,26 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from typing import Any, Union
 
 from langgraph.errors import GraphInterrupt
 from langgraph.types import Interrupt
 
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
-from jiuwen.core.context.context import Context
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.runtime.runtime import Runtime, BaseRuntime
 from jiuwen.core.stream.writer import OutputSchema
 
 
 class Interaction(object):
-    def __init__(self, ctx: Context):
-        self.ctx = ctx
+    def __init__(self, runtime: Union[Runtime, BaseRuntime]):
+        if isinstance(runtime, Runtime):
+            self.ctx = runtime.base()
+        elif isinstance(runtime, BaseRuntime):
+            self.ctx = runtime
+        else:
+            raise JiuWenBaseException(-1, "wrong type runtime")
         self.idx = 0
         self.node_id = self.ctx.executable_id()
         self.interactive_inputs = None

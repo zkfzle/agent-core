@@ -4,7 +4,7 @@
 import re
 
 from jiuwen.core.component.condition.condition import Condition
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input, Output
 
 
@@ -13,7 +13,7 @@ class ExpressionCondition(Condition):
         super().__init__()
         self._expression = expression
 
-    def invoke(self, inputs: Input, context: Context) -> Output:
+    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         pattern = r'\$\{[^}]*\}'
         matches = re.findall(pattern, self._expression)
         inputs = {}

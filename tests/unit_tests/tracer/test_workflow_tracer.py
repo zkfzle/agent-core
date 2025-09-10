@@ -1,4 +1,3 @@
-import copy
 import json
 import sys
 import types
@@ -28,28 +27,15 @@ import asyncio
 import unittest
 from collections.abc import Callable
 
-from jiuwen.core.context.config import Config
-from jiuwen.core.context.context import Context, WorkflowContext
-from jiuwen.core.context.state import InMemoryState
-from jiuwen.core.graph.base import Graph
+from jiuwen.core.runtime.config import Config
+from jiuwen.core.runtime.runtime import BaseRuntime, WorkflowRuntime
+from jiuwen.core.runtime.state import InMemoryState
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
 from jiuwen.core.stream.writer import CustomSchema, OutputSchema
 from jiuwen.graph.pregel.graph import PregelGraph
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode
 from jiuwen.core.stream.writer import TraceSchema
-
-
-def create_context_with_tracer() -> Context:
-    return WorkflowContext(config=Config(), state=InMemoryState(), store=None)
-
-
-def create_graph() -> Graph:
-    return PregelGraph()
-
-
-def create_flow() -> Workflow:
-    return Workflow(workflow_config=WorkflowConfig(), graph=create_graph())
 
 
 def record_tracer_info(tracer_chunks, file_path):
@@ -68,12 +54,12 @@ class WorkflowTest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-    def invoke_workflow(self, inputs: dict, context: Context, flow: Workflow):
+    def invoke_workflow(self, inputs: dict, context: BaseRuntime, flow: Workflow):
         feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context))
         self.loop.run_until_complete(feature)
         return feature.result()
 
-    def assert_workflow_invoke(self, inputs: dict, context: Context, flow: Workflow, expect_results: dict = None,
+    def assert_workflow_invoke(self, inputs: dict, context: BaseRuntime, flow: Workflow, expect_results: dict = None,
                                checker: Callable = None):
         if expect_results is not None:
             assert self.invoke_workflow(inputs, context, flow) == expect_results
@@ -87,7 +73,7 @@ class WorkflowTest(unittest.TestCase):
         tracer_chunks = []
 
         async def stream_workflow():
-            flow = create_flow()
+            flow = Workflow()
             flow.set_start_comp("start", MockStartNode("start"),
                                 inputs_schema={
                                     "a": "${a}",
@@ -129,7 +115,8 @@ class WorkflowTest(unittest.TestCase):
             }
             index_dict = {key: 0 for key in expected_datas_model.keys()}
 
-            async for chunk in flow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in flow.stream({"a": 1, "b": "haha"},
+                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 if isinstance(chunk, CustomSchema):
                     node_id = chunk.node_id
                     index = index_dict[node_id]
@@ -150,7 +137,7 @@ class WorkflowTest(unittest.TestCase):
         tracer_chunks = []
 
         async def stream_workflow():
-            flow = create_flow()
+            flow = Workflow()
             flow.set_start_comp("start", MockStartNode("start"),
                                 inputs_schema={
                                     "a": "${user.inputs.a}",
@@ -192,7 +179,8 @@ class WorkflowTest(unittest.TestCase):
                 "b": node_b_expected_datas_model
             }
             index_dict = {key: 0 for key in expected_datas_model.keys()}
-            async for chunk in flow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in flow.stream({"a": 1, "b": "haha"},
+                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 if isinstance(chunk, CustomSchema):
                     node_id = chunk.node_id
                     index = index_dict[node_id]
@@ -215,7 +203,7 @@ class WorkflowTest(unittest.TestCase):
 
         async def stream_workflow():
             # sub_workflow: start->a(stream out)->end
-            sub_workflow = create_flow()
+            sub_workflow = Workflow()
             sub_workflow.set_start_comp("sub_start", MockStartNode("start"),
                                         inputs_schema={
                                             "a": "${a}",
@@ -239,7 +227,7 @@ class WorkflowTest(unittest.TestCase):
             sub_workflow.add_connection("sub_a", "sub_end")
 
             # main_workflow: start->a(sub workflow)->end
-            main_workflow = create_flow()
+            main_workflow = Workflow()
             main_workflow.set_start_comp("start", MockStartNode("start"),
                                          inputs_schema={
                                              "a": "${a}",
@@ -258,7 +246,8 @@ class WorkflowTest(unittest.TestCase):
             main_workflow.add_connection("a", "end")
 
             index = 0
-            async for chunk in main_workflow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in main_workflow.stream({"a": 1, "b": "haha"},
+                                                    WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 if not isinstance(chunk, (TraceSchema, OutputSchema)):
                     assert chunk == expected_datas_model[index], f"Mismatch at index {index}"
                     logger.info(f"stream chunk: {chunk}")
@@ -279,7 +268,7 @@ class WorkflowTest(unittest.TestCase):
 
         async def stream_workflow():
             # sub_workflow: start->a(stream out)->end
-            sub_workflow = create_flow()
+            sub_workflow = Workflow()
             sub_workflow.set_start_comp("sub_start", MockStartNode("start"),
                                         inputs_schema={
                                             "a": "${a}",
@@ -303,7 +292,7 @@ class WorkflowTest(unittest.TestCase):
             sub_workflow.add_connection("sub_a", "sub_end")
 
             # main_workflow: start->a(sub workflow) | b ->end
-            main_workflow = create_flow()
+            main_workflow = Workflow()
             main_workflow.set_start_comp("start", MockStartNode("start"),
                                          inputs_schema={
                                              "a": "${a}",
@@ -334,7 +323,8 @@ class WorkflowTest(unittest.TestCase):
             main_workflow.add_connection("start", "b")
             main_workflow.add_connection("b", "end")
 
-            async for chunk in main_workflow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in main_workflow.stream({"a": 1, "b": "haha"},
+                                                    WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 if isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)
@@ -377,7 +367,7 @@ class WorkflowTest(unittest.TestCase):
 
         async def stream_workflow():
             # sub_workflow: start->a(stream out)->end
-            sub_workflow = create_flow()
+            sub_workflow = Workflow()
             sub_workflow.set_start_comp("sub_start", MockStartNode("start"),
                                         inputs_schema={
                                             "a": "${a}",
@@ -400,7 +390,7 @@ class WorkflowTest(unittest.TestCase):
             sub_workflow.add_connection("sub_start", "sub_a")
             sub_workflow.add_connection("sub_a", "sub_end")
 
-            sub_workflow_2 = create_flow()
+            sub_workflow_2 = Workflow()
             sub_workflow_2.set_start_comp("sub_start", MockStartNode("start"),
                                           inputs_schema={
                                               "a": "${a}",
@@ -419,7 +409,7 @@ class WorkflowTest(unittest.TestCase):
             sub_workflow_2.add_connection("sub_a", "sub_end")
 
             # main_workflow: start->a(sub workflow) | b(sub workflow) ->end
-            main_workflow = create_flow()
+            main_workflow = Workflow()
             main_workflow.set_start_comp("start", MockStartNode("start"),
                                          inputs_schema={
                                              "a": "${a}",
@@ -450,7 +440,8 @@ class WorkflowTest(unittest.TestCase):
             main_workflow.add_connection("start", "b")
             main_workflow.add_connection("b", "end")
 
-            async for chunk in main_workflow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in main_workflow.stream({"a": 1, "b": "haha"},
+                                                    WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 if isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)
@@ -465,7 +456,7 @@ class WorkflowTest(unittest.TestCase):
         tracer_chunks = []
 
         async def stream_workflow():
-            flow = create_flow()
+            flow = Workflow()
             flow.set_start_comp("s", MockStartNode("s"))
             flow.set_end_comp("e", MockEndNode("e"),
                               inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
@@ -500,7 +491,8 @@ class WorkflowTest(unittest.TestCase):
             flow.add_connection("l", "b")
             flow.add_connection("b", "e")
 
-            async for chunk in flow.stream({"input_array": [1, 2, 3], "input_number": 1}, create_context_with_tracer()):
+            async for chunk in flow.stream({"input_array": [1, 2, 3], "input_number": 1},
+                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 if isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)

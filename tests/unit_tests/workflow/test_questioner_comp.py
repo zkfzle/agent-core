@@ -10,13 +10,12 @@ from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from jiuwen.core.component.start_comp import Start
-from jiuwen.core.context.context import WorkflowContext
 from jiuwen.core.graph.executable import Input
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
+from jiuwen.core.runtime.runtime import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.workflow.base import Workflow
-from tests.unit_tests.workflow.test_workflow import create_flow
 
 
 class MockLLMModel:
@@ -35,7 +34,7 @@ class QuestionerTest(unittest.TestCase):
         return feature.result()
 
     @staticmethod
-    def invoke_workflow_with_workflow_context(inputs: Input, context: WorkflowContext, flow: Workflow):
+    def invoke_workflow_with_workflow_context(inputs: Input, context: WorkflowRuntime, flow: Workflow):
         loop = asyncio.get_event_loop()
         feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context))
         loop.run_until_complete(feature)
@@ -61,7 +60,7 @@ class QuestionerTest(unittest.TestCase):
         mock_extraction.return_value = dict(location="hangzhou")
 
         context = TaskContext(id = "test")
-        flow = create_flow()
+        flow = Workflow()
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -115,7 +114,7 @@ class QuestionerTest(unittest.TestCase):
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        flow = create_flow()
+        flow = Workflow()
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -193,7 +192,7 @@ class QuestionerTest(unittest.TestCase):
         mock_extraction.return_value = dict(location="hangzhou")
 
         context = TaskContext(id = "test")
-        flow = create_flow()
+        flow = Workflow()
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -257,7 +256,7 @@ class TestQuestionerStream:
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        flow = create_flow()
+        flow = Workflow()
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),

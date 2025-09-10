@@ -11,8 +11,8 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.component.condition.condition import INDEX
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.loop_callback.loop_id import LOOP_ID
-from jiuwen.core.context.context import Context, NodeContext
-from jiuwen.core.context.utils import get_by_schema, NESTED_PATH_SPLIT
+from jiuwen.core.runtime.runtime import BaseRuntime, NodeRuntime
+from jiuwen.core.runtime.utils import get_by_schema, NESTED_PATH_SPLIT
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
@@ -23,13 +23,13 @@ class Vertex(AsyncAtomicNode):
     def __init__(self, node_id: str, executable: Executable = None):
         self._node_id = node_id
         self._executable = executable
-        self._context: NodeContext = None
+        self._context: NodeRuntime = None
         # if stream_call is available, call should wait for it
         self._stream_done = asyncio.Event()
         self._stream_called = False
 
-    def init(self, context: Context) -> bool:
-        self._context = NodeContext(context, self._node_id)
+    def init(self, context: BaseRuntime) -> bool:
+        self._context = NodeRuntime(context, self._node_id)
         return True
 
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None):
@@ -37,21 +37,21 @@ class Vertex(AsyncAtomicNode):
             batch_inputs = await self._pre_invoke()
             if is_subgraph:
                 batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-            results = await self._executable.invoke(batch_inputs, context=self._context)
+            results = await self._executable.on_invoke(batch_inputs, context=self._context)
             await self._post_invoke(results)
         elif ability == ComponentAbility.STREAM:
             batch_inputs = await self._pre_invoke()
             if is_subgraph:
                 batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-            result_iter = self._executable.stream(batch_inputs, context=self._context)
+            result_iter = self._executable.on_stream(batch_inputs, context=self._context)
             await self._post_stream(result_iter)
         elif ability == ComponentAbility.COLLECT:
             collect_iter = self._pre_stream(ability)
-            batch_output = await self._executable.collect(collect_iter, self._context)
+            batch_output = await self._executable.on_collect(collect_iter, self._context)
             await self._post_invoke(batch_output)
         elif ability == ComponentAbility.TRANSFORM:
             transform_iter = self._pre_stream(ability)
-            output_iter = self._executable.transform(transform_iter, self._context)
+            output_iter = self._executable.on_transform(transform_iter, self._context)
             await self._post_stream(output_iter)
         else:
             logger.error(f"error ComponentAbility: {ability.name}")

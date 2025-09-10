@@ -135,7 +135,7 @@ class TestStreamOutput(unittest.IsolatedAsyncioTestCase):
             MOCK = ("mock", "mock stream data")
 
         self.manager.add_writer(MockStreamMode.MOCK,
-                                MockStreamWriter(self.manager.stream_emitter))
+                                MockStreamWriter(self.manager.stream_emitter()))
 
         async def mock_stream_output() -> AsyncIterator:
             mock_data = [

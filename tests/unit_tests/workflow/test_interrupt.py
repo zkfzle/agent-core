@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 
 from jiuwen.agent.common.enum import SubTaskType
-from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
+from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.agent.controller.react_controller import ReActControllerOutput
 from jiuwen.core.agent.task.sub_task import SubTask
@@ -16,12 +16,9 @@ from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, Q
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.messages import AIMessage
-from jiuwen.core.utils.tool.service_api.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from jiuwen.graph.pregel.graph import PregelGraph
-from tests.unit_tests.workflow.test_workflow import create_flow
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

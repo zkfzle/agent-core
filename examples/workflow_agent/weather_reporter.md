@@ -197,7 +197,7 @@ def _create_plugin_component() -> ToolComponent:
 ## 5. 使用JiuWen引擎构建天气查询Workflow
 
 ```python
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 
 
 def build_workflow():
@@ -273,7 +273,7 @@ def build_workflow():
 ```python
 from jiuwen.agent.workflow_agent import WorkflowAgent
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.core.context.agent_context import AgentContext
+from jiuwen.core.runtime.agent_context import AgentContext
 
 _, workflow = _build_workflow()
 agent_config = WorkflowAgentConfig(

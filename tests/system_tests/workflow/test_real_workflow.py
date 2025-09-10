@@ -35,7 +35,7 @@ from jiuwen.core.component.questioner_comp import (
 )
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.stream.writer import CustomSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
@@ -223,7 +223,7 @@ class RealWorkflowTest(unittest.TestCase):
             self,
             mock_plugin_get_tool,
             mock_plugin_invoke,
-    ) -> tuple[Context, Workflow]:
+    ) -> tuple[BaseRuntime, Workflow]:
         """
         根据 mock 工具函数构建完整工作流拓扑。
 

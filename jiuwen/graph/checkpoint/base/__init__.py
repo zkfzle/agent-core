@@ -10,17 +10,17 @@ from typing import Generic
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver, V
 
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input
 
 class BaseCheckpointer(BaseCheckpointSaver[V], Generic[V], ABC):
 
     def __init__(self):
         super().__init__()
-        self.ctx: Context = None
+        self.ctx: BaseRuntime = None
         self.input: Input = None
 
-    def register_context(self, ctx: Context):
+    def register_context(self, ctx: BaseRuntime):
         self.ctx = ctx
 
     def register_input(self, input: Input):

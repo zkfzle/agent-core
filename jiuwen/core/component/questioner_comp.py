@@ -14,7 +14,8 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.graph.interrupt.interaction import Interaction
 from jiuwen.core.utils.llm.base import BaseChatModel
@@ -200,7 +201,7 @@ class QuestionerDirectReplyHandler:
         self._prompt = prompt
         return self
 
-    def handle(self, inputs: Input, context: Context):
+    def handle(self, inputs: Input, context: Runtime):
         if self._state.status == ExecutionStatus.START:
             return self._handle_start_state(inputs, context)
         if self._state.status == ExecutionStatus.USER_INTERACT:
@@ -230,10 +231,10 @@ class QuestionerDirectReplyHandler:
             )
         return dict(userFields=output.model_dump(exclude_defaults=True))
 
-    def _handle_user_interact_state(self, inputs, context):
+    def _handle_user_interact_state(self, inputs, runtime):
         output = QuestionerOutput()
-        self._query = Interaction(ctx=context).user_input("")
-        chat_history = self._get_latest_chat_history(context)
+        self._query = Interaction(runtime).user_input("")
+        chat_history = self._get_latest_chat_history(runtime)
         user_response = chat_history[-1].get("content", "") if chat_history else ""
 
         if self._is_set_question_content() and not self._need_extract_fields():
@@ -281,10 +282,10 @@ class QuestionerDirectReplyHandler:
 
         return self._check_if_continue_ask(output)
 
-    def _get_latest_chat_history(self, context) -> List:
+    def _get_latest_chat_history(self, context: Runtime) -> List:
         result = list()
         if self._config.with_chat_history:
-            raw_chat_history = context.store().read(WORKFLOW_CHAT_HISTORY) or list()
+            raw_chat_history = context.store().read(WORKFLOW_CHAT_HISTORY) or list() # FIXME: remove to context engine
             if raw_chat_history:
                 result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history, self._config.chat_history_max_rounds)
         if not result or "user" == result[-1].get("role", ""):
@@ -378,7 +379,7 @@ class QuestionerDirectReplyHandler:
         self._update_state_of_key_fields(extracted_key_fields)
 
 
-class QuestionerExecutable(Executable):
+class QuestionerExecutable(ComponentExecutable):
     def __init__(self, config: QuestionerConfig):
         super().__init__()
         self._config = config
@@ -387,30 +388,26 @@ class QuestionerExecutable(Executable):
         self._state = None
 
     @staticmethod
-    def _load_state_from_context(context) -> QuestionerState:
-        questioner_state = context.state().get()
+    def _load_state_from_context(runtime: Runtime) -> QuestionerState:
+        questioner_state = runtime.get_state()
         state_dict = questioner_state.get(QUESTIONER_STATE_KEY) if isinstance(questioner_state, dict) else None
         if state_dict:
             return QuestionerState.deserialize(state_dict)
         return QuestionerState()
 
     @staticmethod
-    def _store_state_to_context(state: QuestionerState, context):
+    def _store_state_to_context(state: QuestionerState, runtime: Runtime):
         state_dict = state.serialize()
-        context.state().update({QUESTIONER_STATE_KEY: state_dict})
+        runtime.update_state({QUESTIONER_STATE_KEY: state_dict})
 
     def state(self, state: QuestionerState):
         self._state = state
         return self
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
-        tracer = context.tracer()
-        if tracer:
-            await tracer.trigger("tracer_workflow", "on_invoke",
-                                 invoke_id=context.executable_id(), parent_node_id=context.parent_id(),
-                                 on_invoke_data={"on_invoke_data": "extra trace data"})
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+        await runtime.trace({"on_invoke_data": "extra trace data"})
 
-        state_from_context = self._load_state_from_context(context)
+        state_from_context = self._load_state_from_context(runtime)
         if state_from_context.is_undergoing_interaction():
             self._state = state_from_context
 
@@ -423,33 +420,15 @@ class QuestionerExecutable(Executable):
 
         invoke_result = dict()
         if self._config.response_type == ResponseType.ReplyDirectly.value:
-            invoke_result = self._handle_questioner_direct_reply(inputs, context)
+            invoke_result = self._handle_questioner_direct_reply(inputs, runtime)
 
-        self._store_state_to_context(self._state, context)
+        self._store_state_to_context(self._state, runtime)
 
         # 向用户追问
         if self._state.is_undergoing_interaction():
-            Interaction(ctx=context).user_input(invoke_result.get("userFields", dict()).get("question", ""))
+            Interaction(runtime).user_input(invoke_result.get("userFields", dict()).get("question", ""))
 
         return invoke_result
-
-    async def ainvoke(self, inputs: Input, context: Context) -> Output:
-        pass
-
-    def stream(self, inputs: Input, context: Context) -> Iterator[Output]:
-        pass
-
-    async def astream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
-        pass
-
-    def interrupt(self, message: dict):
-        return super().interrupt(message)
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
 
     def _create_llm_instance(self) -> BaseChatModel:
         return ModelFactory().get_model(model_provider=self._config.model.model_provider,
@@ -462,10 +441,10 @@ class QuestionerExecutable(Executable):
         filters = dict(model_name=self._config.model.model_info.model_name)
         return TemplateManager().get(name=TEMPLATE_NAME, filters=filters)
 
-    def _handle_questioner_direct_reply(self, inputs: Input, context: Context):
+    def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime):
         handler = (QuestionerDirectReplyHandler()
                    .config(self._config).model(self._llm).state(self._state).prompt(self._prompt))
-        result = handler.handle(inputs, context)
+        result = handler.handle(inputs, runtime)
         self._state = handler.get_state()
         return result
 

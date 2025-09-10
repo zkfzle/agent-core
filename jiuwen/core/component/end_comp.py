@@ -6,20 +6,21 @@ from typing import AsyncIterator
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.utils.utils import TemplateUtils
 from jiuwen.core.component.base import WorkflowComponent
-from jiuwen.core.context.context import Context
-from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.graph.executable import Input, Output
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.stream.base import StreamCode
 
 STREAM_CACHE_KEY = "_stream_cache_key"
 
-class End(Executable, WorkflowComponent):
+class End(ComponentExecutable, WorkflowComponent):
     def __init__(self, conf: dict = None):
         super().__init__()
         self.conf = conf
         self.template = conf["responseTemplate"] if ( conf and
                 "responseTemplate" in conf and len(conf["responseTemplate"]) > 0) else None
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: Runtime) -> Output:
         if self.template:
             answer = TemplateUtils.render_template(self.template, inputs)
             output = {}
@@ -32,7 +33,7 @@ class End(Executable, WorkflowComponent):
             "output": output
         }
 
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, context: Runtime) -> AsyncIterator[Output]:
         try:
             if self.template:
                 response_list = TemplateUtils.render_template_to_list(self.template)
@@ -45,7 +46,7 @@ class End(Executable, WorkflowComponent):
                             param_value = inputs.get(param_name)
                         else:
                             # 参数transform存入的context中获取
-                            content = context.state().get(STREAM_CACHE_KEY)
+                            content = context.get_state(STREAM_CACHE_KEY)
                             if content:
                                 param_value = content.get(param_name)
                             else:
@@ -72,7 +73,7 @@ class End(Executable, WorkflowComponent):
         except Exception as e:
             logger.info("stream output error: {}".format(e))
 
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: AsyncIterator[Input], context: Runtime) -> AsyncIterator[Output]:
         # 异步遍历输入迭代器
         index = 0
         stream_cache_value = {}
@@ -83,4 +84,4 @@ class End(Executable, WorkflowComponent):
                     stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)
             yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=input_item))
             index += 1
-        context.state().update({STREAM_CACHE_KEY: stream_cache_value})
+        context.update_state({STREAM_CACHE_KEY: stream_cache_value})

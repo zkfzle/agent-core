@@ -6,14 +6,14 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.context.context import Context
-from jiuwen.core.context.state import CommitState
+from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.state import CommitState
 
 
 class AtomicNode(ABC):
     def atomic_invoke(self, **kwargs) -> Any:
         context = kwargs.get("context", None)
-        if context is None or not isinstance(context, Context):
+        if context is None or not isinstance(context, BaseRuntime):
             raise JiuWenBaseException(-1, "failed to get context")
         if not isinstance(context.state(), CommitState):
             raise JiuWenBaseException(-1, "state type error, not commit state")
@@ -29,7 +29,7 @@ class AtomicNode(ABC):
 class AsyncAtomicNode(ABC):
     async def atomic_invoke(self, **kwargs) -> Any:
         context = kwargs.get("context", None)
-        if context is None or not isinstance(context, Context):
+        if context is None or not isinstance(context, BaseRuntime):
             raise JiuWenBaseException(-1, "failed to get context")
         if not isinstance(context.state(), CommitState):
             raise JiuWenBaseException(-1, "state type error, not commit state")

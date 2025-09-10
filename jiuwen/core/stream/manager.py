@@ -25,7 +25,6 @@ class StreamWriterManager:
                        modes: Optional[List[StreamMode]] = None):
         return StreamWriterManager(stream_emitter=stream_emitter, modes=modes)
 
-    @property
     def stream_emitter(self) -> StreamEmitter:
         return self._stream_emitter
 

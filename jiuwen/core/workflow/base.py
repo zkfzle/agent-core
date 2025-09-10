@@ -2,7 +2,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
-from asyncio import timeout
 from typing import Self, Dict, Any, Union, AsyncIterator
 
 from pydantic import BaseModel
@@ -13,9 +12,9 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
-from jiuwen.core.context.config import CompIOConfig, Transformer
-from jiuwen.core.context.context import Context
-from jiuwen.core.context.mq_manager import MessageQueueManager
+from jiuwen.core.runtime.config import CompIOConfig, Transformer
+from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
@@ -122,7 +121,7 @@ class BaseWorkFlow:
         self._graph.add_conditional_edges(source_node_id=src_comp_id, router=router)
         return self
 
-    def compile(self, context: Context) -> ExecutableGraph:
+    def compile(self, context: BaseRuntime) -> ExecutableGraph:
         context.config().set_workflow_config(self._workflow_config)
         return self._graph.compile(context)
 
@@ -177,7 +176,7 @@ class Workflow(BaseWorkFlow):
         self._end_comp_id = end_comp_id
         return self
 
-    async def sub_invoke(self, inputs: Input, context: Context, config: Any = None) -> Output:
+    async def sub_invoke(self, inputs: Input, context: BaseRuntime, config: Any = None) -> Output:
         logger.info("begin to sub_invoke, input=%s", inputs)
         context.config().set_workflow_config(self._workflow_config)
         compiled_graph = self._graph.compile(context)
@@ -186,7 +185,7 @@ class Workflow(BaseWorkFlow):
         logger.info("end to sub_invoke, results=%s", results)
         return results
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         logger.info("begin to invoke, input=%s", inputs)
         chunks = []
         async for chunk in self.stream(inputs, context, stream_modes=[BaseStreamMode.OUTPUT]):
@@ -205,7 +204,7 @@ class Workflow(BaseWorkFlow):
     async def stream(
             self,
             inputs: Input,
-            context: Context,
+            context: BaseRuntime,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
         mq_manager = MessageQueueManager(self._workflow_config.stream_edges, self._workflow_config.comp_abilities,
@@ -223,7 +222,7 @@ class Workflow(BaseWorkFlow):
                 await self._stream_actor.run()
                 await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, context)
             finally:
-                await context.stream_writer_manager().stream_emitter.close()
+                await context.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(stream_process())
         async for chunk in context.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):

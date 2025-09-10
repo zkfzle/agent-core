@@ -3,9 +3,7 @@ from typing import Any, Iterator, Optional, Dict, List
 
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.task_manager import TaskManager
-from jiuwen.core.context.agent_context import AgentContext
-from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.workflow.base import Workflow

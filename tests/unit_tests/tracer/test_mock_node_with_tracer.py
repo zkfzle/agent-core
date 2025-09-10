@@ -1,9 +1,8 @@
 import asyncio
 import random
 
-from jiuwen.core.context.context import Context
 from jiuwen.core.graph.executable import Input, Output
-from jiuwen.core.workflow.base import Workflow
+from jiuwen.core.runtime.runtime import Runtime
 from tests.unit_tests.workflow.test_mock_node import MockNodeBase
 
 
@@ -13,29 +12,20 @@ class StreamNodeWithTracer(MockNodeBase):
         self._node_id = node_id
         self._datas: list[dict] = datas
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
-        context.state().set_outputs(inputs)
+    async def invoke(self, inputs: Input, context: Runtime) -> Output:
         try:
-            await context.tracer().trigger("tracer_workflow", "on_invoke", invoke_id=context.executable_id(),
-                                         parent_node_id=context.parent_id(),
-                                         on_invoke_data={"on_invoke_data": "mock with" + str(inputs)})
-            context.state().update_trace(context.tracer().get_workflow_span(context.executable_id(),
-                                                                                    context.parent_id()))
+            await context.trace({"on_invoke_data": "mock with" + str(inputs)})
 
             # 运行时操作
 
         except Exception as e:
-            await context.tracer().trigger("tracer_workflow", "on_invoke", invoke_id=context.executable_id(),
-                                         parent_node_id=context.parent_id(),
-                                         error=e)
-            context.state().update_trace(context.tracer().get_workflow_span(context.executable_id(),
-                                                                        context.parent_id()))
+            await context.trace_error(e)
             raise e
 
         await asyncio.sleep(random.randint(0, 5))
         for data in self._datas:
             await asyncio.sleep(1)
-            await context.stream_writer_manager().get_custom_writer().write(data)
+            await context.write_custom_stream(data)
         print("StreamNode: output = " + str(inputs))
         return inputs
 

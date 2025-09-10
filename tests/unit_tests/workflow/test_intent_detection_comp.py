@@ -7,7 +7,7 @@ from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionConfig
-from jiuwen.core.context.context import NodeContext
+from jiuwen.core.runtime.runtime import NodeRuntime, Runtime, WorkflowRuntime
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -20,10 +20,7 @@ sys.modules["jiuwen.core.common.logging.base"] = fake_base
 
 @pytest.fixture
 def fake_ctx():
-    ctx = Mock(spec=NodeContext)
-    ctx.executable_id.return_value = "test-id"
-    ctx.state.return_value.get_global.return_value = []
-    return ctx
+    return Runtime(NodeRuntime(WorkflowRuntime(), "test-id"))
 
 
 @pytest.fixture

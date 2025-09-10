@@ -4,7 +4,7 @@
 from abc import abstractmethod
 from typing import Callable, Any
 
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.atomic_node import AtomicNode
 from jiuwen.core.graph.executable import Input, Output
 
@@ -15,11 +15,11 @@ class Condition(AtomicNode):
     def __init__(self, input_schema: Any = None):
         self._input_schema = input_schema
 
-    def __call__(self, context: Context) -> bool:
+    def __call__(self, context: BaseRuntime) -> bool:
         return self.atomic_invoke(context=context)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        context: Context = kwargs["context"]
+        context: BaseRuntime = kwargs["context"]
         inputs = context.state().get_inputs(self._input_schema) if self._input_schema is not None else {}
         result = self.invoke(inputs=inputs, context=context)
         if isinstance(result, tuple):
@@ -28,7 +28,7 @@ class Condition(AtomicNode):
         return result
 
     @abstractmethod
-    def invoke(self, inputs: Input, context: Context) -> Output:
+    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         pass
 
 
@@ -37,10 +37,10 @@ class FuncCondition(Condition):
         super().__init__()
         self._func = func
 
-    def invoke(self, inputs: Input, context: Context) -> Output:
+    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         return self._func()
 
 
 class AlwaysTrue(Condition):
-    def invoke(self, inputs: Input, context: Context) -> Output:
+    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         return True

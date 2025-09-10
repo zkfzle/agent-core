@@ -2,22 +2,22 @@
 # coding=utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
-import re
 import ast
+import re
 from dataclasses import dataclass, field
+from typing import Optional, Union, Callable
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent, ComponentConfig
-from typing import Optional, AsyncIterator, Union, Callable
-
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.condition.condition import Condition
-from jiuwen.core.context.context import Context
 from jiuwen.core.graph.base import Graph
-from jiuwen.core.graph.executable import Executable, Output, Input
+from jiuwen.core.graph.executable import Output, Input
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
@@ -96,14 +96,14 @@ class IntentDetectionConfig(ComponentConfig):
 
 
 @dataclass()
-class IntentDetectionExecutable(Executable):
+class IntentDetectionExecutable(ComponentExecutable):
     def __init__(self, component_config: IntentDetectionConfig):
         super().__init__()
-        self._context = None
+        self._context: Runtime = None
         self._llm: BaseChatModel = None
         self._initialized: bool = False
         self._config = component_config
-        self._router = None
+        self._router: BranchRouter = None
 
     # 获取意图的id和name，用于下一节点调用
     def _get_intent_id_name(self, intent_config, intent_class):
@@ -117,7 +117,7 @@ class IntentDetectionExecutable(Executable):
         """从上下文中获取对话历史"""
         chat_history = []
         if self._context:
-            chat_history: list = self._context.state().get_global(WORKFLOW_CHAT_HISTORY)
+            chat_history: list = self._context.get_global_state(WORKFLOW_CHAT_HISTORY)
         return chat_history
 
     def _get_category_info(self):
@@ -130,7 +130,7 @@ class IntentDetectionExecutable(Executable):
                          zip(self._config.category_list,
                              self._config.category_name_list))
 
-    def _set_context(self, context: Context):
+    def _set_context(self, context: Runtime):
         """设置context属性"""
         self._context = context
 
@@ -236,7 +236,7 @@ class IntentDetectionExecutable(Executable):
     def post_commit(self) -> bool:
         return True
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: Runtime) -> Output:
         """invoke IntentDetection节点"""
         # 提取上下文数据
         self._set_context(context)
@@ -260,18 +260,6 @@ class IntentDetectionExecutable(Executable):
         # 后处理意图检测结果
         intent_res = self._handle_detection_result(llm_output)
         return intent_res
-
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
-        pass
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
-
-    async def interrupt(self, message: dict):
-        pass
 
     def refix_llm_output(self, input_str):
         """大模型输出后处理"""

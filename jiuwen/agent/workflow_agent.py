@@ -3,7 +3,7 @@ from typing import Dict, List
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.core.agent.task.task import Task
-from jiuwen.core.context.agent_context import AgentContext
+from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.agent.controller.workflow_controller import WorkflowController, WorkflowControllerOutput
 from jiuwen.core.agent.agent import Agent

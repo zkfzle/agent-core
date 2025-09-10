@@ -1,6 +1,6 @@
 import asyncio
 
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.vertex import Vertex
 
 
@@ -9,7 +9,7 @@ class StreamActor:
         self.loop = asyncio.get_event_loop()
         self._stream_nodes: dict[str, Vertex] = {}
 
-    def init(self, context: Context):
+    def init(self, context: BaseRuntime):
         for _, node in self._stream_nodes.items():
             node.init(context)
 

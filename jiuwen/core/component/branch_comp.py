@@ -8,10 +8,12 @@ from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.condition.condition import Condition
 from jiuwen.core.graph.base import Graph
-from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.graph.executable import Input, Output
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 
 
-class BranchComponent(WorkflowComponent, Executable):
+class BranchComponent(WorkflowComponent, ComponentExecutable):
 
     def __init__(self):
         super().__init__()
@@ -26,7 +28,7 @@ class BranchComponent(WorkflowComponent, Executable):
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:
         return self._router
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: Runtime) -> Output:
         self._router.set_context(context)
         return {}
 

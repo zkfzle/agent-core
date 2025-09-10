@@ -9,17 +9,18 @@ from jiuwen.core.common.constants.constant import QUERY
 from jiuwen.core.common.enum.enum import WorkflowLLMResponseType, MessageRole
 from jiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.logging import logger
 from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, ValidationUtils, SchemaGenerator
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
-from jiuwen.core.context.context import Context
-from jiuwen.core.graph.executable import Executable, Input, Output
-from jiuwen.core.stream.writer import CustomSchema, OutputSchema
+from jiuwen.core.graph.executable import Input, Output
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
-from jiuwen.core.common.logging import logger
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 CHAT_HISTORY_MAX_TURN = 3
@@ -132,29 +133,26 @@ class LLMCompConfig(ComponentConfig):
     output_config: Dict[str, Any] = field(default_factory=dict)
 
 
-class LLMExecutable(Executable):
+class LLMExecutable(ComponentExecutable):
     def __init__(self, component_config: LLMCompConfig):
         super().__init__()
         self._config = component_config
         self._llm: BaseChatModel = None
         self._initialized: bool = False
-        self._context = None
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: Runtime) -> Output:
         try:
             self._set_context(context)
             model_inputs = self._prepare_model_inputs(inputs)
             logger.info("[%s] model inputs %s", self._context.executable_id(), model_inputs)
-            output_stream_writer = context.stream_writer_manager().get_output_writer()
+            output_stream_writer = context.stream_writer()
             llm_response = await self._stream_llm_with_stream_writer(model_inputs, output_stream_writer)
             response = llm_response.content
 
             # 临时调试：用于调用streamWriter实现流式输出
-            stream_writer = context.stream_writer_manager().get_custom_writer()
-            if stream_writer:
-                await stream_writer.write(CustomSchema(**dict(streamOutput=response)))
+            await context.write_custom_stream({"streamOutput": response})
 
-            self._context.state().update_global({"response": response})
+            self._context.update_global_state({"response": response})
             logger.info("[%s] model outputs %s", self._context.executable_id(), response)
             return self._create_output(response)
         except JiuWenBaseException:
@@ -165,7 +163,7 @@ class LLMExecutable(Executable):
             raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
                                       message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg=str(e))) from e
 
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, context: Runtime) -> AsyncIterator[Output]:
         try:
             self._set_context(context)
             response_format_type = self._get_response_format().get(_TYPE)
@@ -183,12 +181,6 @@ class LLMExecutable(Executable):
                 error_code=StatusCode.WORKFLOW_LLM_STREAMING_OUTPUT_ERROR.code,
                 message=StatusCode.WORKFLOW_LLM_STREAMING_OUTPUT_ERROR.errmsg.format(msg=str(e))
             ) from e
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
 
     async def interrupt(self, message: dict):
         raise InterruptException(
@@ -222,7 +214,7 @@ class LLMExecutable(Executable):
         if inputs:
             processed_inputs = inputs.copy()
             if self._context:
-                chat_history: list = self._context.state().get_global(WORKFLOW_CHAT_HISTORY)
+                chat_history: list = self._context.get_global_state(WORKFLOW_CHAT_HISTORY)
                 chat_history = chat_history[:-1] if chat_history else []
                 full_input = ""
                 for history in chat_history[-CHAT_HISTORY_MAX_TURN:]:
@@ -252,7 +244,7 @@ class LLMExecutable(Executable):
     def _get_history(self, user_prompt: str):
         original_histoty = []
         if self._context:
-            chat_history: list = self._context.state().get_global(WORKFLOW_CHAT_HISTORY)
+            chat_history: list = self._context.get_global_state(WORKFLOW_CHAT_HISTORY)
             if chat_history and self._config.enable_history:
                 original_histoty = chat_history
         original_histoty.append({"role": "user", "content": user_prompt})
@@ -318,7 +310,7 @@ class LLMExecutable(Executable):
                                                         self._config.output_config)
         return formatted_res
 
-    def _set_context(self, context):
+    def _set_context(self, context: Runtime):
         self._context = context
 
     def _prepare_model_inputs(self, inputs):
@@ -357,8 +349,9 @@ class LLMExecutable(Executable):
             index = 0
             result = ""
             async for chunk in self._llm.astream(model_inputs):
-                if stream_writer and chunk.content:
-                    await stream_writer.write(OutputSchema(type="workflow", index=index, payload=chunk.content))
+                if chunk.content:
+                    if stream_writer:
+                        await stream_writer.write(OutputSchema(type="workflow", index=index, payload=chunk.content))
                     result += chunk.content
                 index += 1
             final_response.content = result

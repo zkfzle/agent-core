@@ -1,9 +1,9 @@
-from typing import List, Optional, Any, Dict
+from typing import Optional, Dict
 from enum import Enum
 
 from jiuwen.core.agent.task.task import Task
 from jiuwen.core.agent.task.task_context import TaskContext
-from jiuwen.core.context.agent_context import AgentContext
+from jiuwen.core.runtime.agent_context import AgentContext
 
 
 class TaskStatus(Enum):

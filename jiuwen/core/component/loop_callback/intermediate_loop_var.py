@@ -4,7 +4,7 @@
 from typing import Union, Any
 
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Output
 
 
@@ -14,17 +14,17 @@ class IntermediateLoopVarCallback(LoopCallback):
         self.intermediate_loop_var = intermediate_loop_var
         self.intermediate_loop_var_root = intermediate_loop_var_root
 
-    def first_in_loop(self, context: Context) -> Output:
+    def first_in_loop(self, context: BaseRuntime) -> Output:
         vars = context.state().get(self.intermediate_loop_var)
         context.state().update({self.intermediate_loop_var_root: vars})
         return {self.intermediate_loop_var_root: vars}
 
-    def out_loop(self, context: Context) -> Output:
+    def out_loop(self, context: BaseRuntime) -> Output:
         context.state().update({self.intermediate_loop_var_root: None})
         return {self.intermediate_loop_var_root: None}
 
-    def start_round(self, context: Context) -> Output:
+    def start_round(self, context: BaseRuntime) -> Output:
         return None
 
-    def end_round(self, context: Context) -> Output:
+    def end_round(self, context: BaseRuntime) -> Output:
         return None

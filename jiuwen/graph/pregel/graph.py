@@ -8,7 +8,7 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel.loop import PregelLoop
 
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.graph.graph_state import GraphState
@@ -21,7 +21,7 @@ class AfterProcessor:
     def __init__(self, after_tick: Callable[..., Any]):
         self._after_tick = after_tick
 
-    def after_tick(self, loop: PregelLoop, context: Context) -> None:
+    def after_tick(self, loop: PregelLoop, context: BaseRuntime) -> None:
         if context:
             context.state().commit()
         return self._after_tick(loop)
@@ -75,7 +75,7 @@ class PregelGraph(Graph):
         self.pregel.add_conditional_edges(source_node_id, router)
         return self
 
-    def compile(self, context: Context) -> ExecutableGraph:
+    def compile(self, context: BaseRuntime) -> ExecutableGraph:
         for node_id, node in self.nodes.items():
             node.init(context)
         if self.compiledStateGraph is None:
@@ -111,7 +111,7 @@ class CompiledGraph(ExecutableGraph):
         self._compiled_state_graph = compiled_state_graph
         self._checkpoint_saver = checkpoint_saver
 
-    async def _invoke(self, inputs: Input, context: Context, config: Any = None) -> Output:
+    async def _invoke(self, inputs: Input, context: BaseRuntime, config: Any = None) -> Output:
         is_main = False
         if config is None:
             is_main = True
@@ -141,7 +141,7 @@ class CompiledGraph(ExecutableGraph):
             else:
                 self._checkpoint_saver.save(config)
 
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, context: BaseRuntime) -> AsyncIterator[Output]:
         async for chunk in self._compiled_state_graph.astream({"source_node_id": []}):
             yield chunk
 

@@ -4,8 +4,9 @@ import unittest
 from jiuwen.core.agent.task.task_context import TaskContext
 from jiuwen.core.common.logging import logger
 from jiuwen.core.stream.writer import CustomSchema
+from jiuwen.core.workflow.base import Workflow
 from tests.unit_tests.tracer.test_mock_node_with_tracer import StreamNodeWithTracer
-from tests.unit_tests.tracer.test_workflow_tracer import record_tracer_info, create_flow
+from tests.unit_tests.tracer.test_workflow_tracer import record_tracer_info
 from tests.unit_tests.workflow.test_mock_node import MockEndNode, MockStartNode
 
 
@@ -67,7 +68,7 @@ class MockAgent(unittest.TestCase):
         workflow_context = context.create_workflow_context()
         assert (workflow_context.tracer() is self.tracer)
 
-        flow = create_flow()
+        flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "a": "${a}",
@@ -145,7 +146,7 @@ class MockAgent(unittest.TestCase):
                                       )
             raise e
         finally:
-            await context.stream_writer_manager().stream_emitter.close()
+            await context.stream_writer_manager().stream_emitter().close()
 
     async def get_stream_output(self):
         async for item in self.tracer._stream_writer_manager.stream_output(need_close=True):

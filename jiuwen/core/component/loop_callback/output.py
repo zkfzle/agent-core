@@ -4,8 +4,8 @@
 from typing import Any
 
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback
-from jiuwen.core.context.context import Context
-from jiuwen.core.context.utils import is_ref_path, extract_origin_key, NESTED_PATH_SPLIT, get_by_schema
+from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.utils import is_ref_path, extract_origin_key, NESTED_PATH_SPLIT
 from jiuwen.core.graph.executable import Output
 
 
@@ -25,13 +25,13 @@ class OutputCallback(LoopCallback):
             elif isinstance(value, dict):
                 self._generate_results(results)
 
-    def first_in_loop(self, context: Context) -> Output:
+    def first_in_loop(self, context: BaseRuntime) -> Output:
         _results: list[(str, Any)] = []
         self._generate_results(_results)
         context.state().update({self._round_result_root: _results})
         return None
 
-    def out_loop(self, context: Context) -> Output:
+    def out_loop(self, context: BaseRuntime) -> Output:
         results: list[(str, Any)] = context.state().get(self._round_result_root)
         output = {}
         for result in results:
@@ -39,10 +39,10 @@ class OutputCallback(LoopCallback):
         context.state().update(output)
         return output
 
-    def start_round(self, context: Context) -> Output:
+    def start_round(self, context: BaseRuntime) -> Output:
         return None
 
-    def end_round(self, context: Context) -> Output:
+    def end_round(self, context: BaseRuntime) -> Output:
         results: list[(str, Any)] = context.state().get(self._round_result_root)
         if not isinstance(results, list):
             raise RuntimeError("error results in round process")

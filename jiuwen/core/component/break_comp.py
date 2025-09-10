@@ -1,14 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-import asyncio
 from abc import abstractmethod, ABC
-from functools import partial
-from typing import Iterator, AsyncIterator
 
 from jiuwen.core.component.base import WorkflowComponent
-from jiuwen.core.context.context import Context
-from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.graph.executable import Input, Output, Executable
+from jiuwen.core.runtime.runtime import BaseRuntime
 
 
 class LoopController(ABC):
@@ -22,31 +19,15 @@ class LoopController(ABC):
 
 
 class BreakComponent(WorkflowComponent, Executable):
-
     def __init__(self):
         super().__init__()
         self._loop_controller = None
 
-    def interrupt(self, message: dict):
-        pass
-
     def set_controller(self, loop_controller: LoopController):
         self._loop_controller = loop_controller
 
-    def to_executable(self) -> Executable:
-        return self
-
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         if self._loop_controller is None:
             raise RuntimeError('Loop controller not initialized')
         self._loop_controller.break_loop()
         return {}
-
-    async def stream(self, inputs: Input, context: Context) -> Iterator[Output]:
-        yield self.invoke(inputs, context)
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass

@@ -5,33 +5,12 @@ from collections.abc import Callable
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
-
-
-
-from jiuwen.core.context.config import Config
-from jiuwen.core.context.context import Context, WorkflowContext
-from jiuwen.core.context.state import InMemoryState, ReadableStateLike
-from jiuwen.core.graph.base import Graph
-from jiuwen.core.workflow.base import WorkflowConfig, Workflow
+from jiuwen.core.runtime.config import Config
+from jiuwen.core.runtime.runtime import BaseRuntime, WorkflowRuntime
+from jiuwen.core.runtime.state import InMemoryState
+from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import ComponentAbility
-from jiuwen.graph.pregel.graph import PregelGraph
-from tests.unit_tests.tracer.test_workflow_tracer import create_context_with_tracer
-from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode, Node1, StreamNode, StreamCompNode
-
-
-def create_context() -> Context:
-    return WorkflowContext(config=Config(), state=InMemoryState(), store=None)
-
-
-def create_graph() -> Graph:
-    return PregelGraph()
-
-
-def create_flow() -> Workflow:
-    return Workflow(workflow_config=DEFAULT_WORKFLOW_CONFIG, graph=create_graph())
-
-
-DEFAULT_WORKFLOW_CONFIG = WorkflowConfig(metadata={})
+from tests.unit_tests.workflow.test_mock_node import Node1, StreamCompNode
 
 
 class EndNodeTest(unittest.TestCase):
@@ -39,12 +18,12 @@ class EndNodeTest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-    def invoke_workflow(self, inputs: dict, context: Context, flow: Workflow):
+    def invoke_workflow(self, inputs: dict, context: BaseRuntime, flow: Workflow):
         feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context))
         self.loop.run_until_complete(feature)
         return feature.result()
 
-    def assert_workflow_invoke(self, inputs: dict, context: Context, flow: Workflow, expect_results: dict = None,
+    def assert_workflow_invoke(self, inputs: dict, context: BaseRuntime, flow: Workflow, expect_results: dict = None,
                                checker: Callable = None):
         if expect_results is not None:
             assert self.invoke_workflow(inputs, context, flow) == expect_results
@@ -53,7 +32,7 @@ class EndNodeTest(unittest.TestCase):
 
     def test_simple_template_workflow(self):
         # flow1: start -> a -> end
-        flow = create_flow()
+        flow = Workflow()
         flow.set_start_comp("start", Start(
             {"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]}),
                             inputs_schema={
@@ -70,12 +49,12 @@ class EndNodeTest(unittest.TestCase):
                               "response_mode": "${start.response_node}"})
         flow.add_connection("start", "a")
         flow.add_connection("a", "end")
-        self.assert_workflow_invoke({"a": 1, "b": "haha"}, create_context(), flow, expect_results={'output': {}, 'responseContent': 'hello:haha'})
+        self.assert_workflow_invoke({"a": 1, "b": "haha"}, WorkflowRuntime(), flow, expect_results={'output': {}, 'responseContent': 'hello:haha'})
 
 
     def test_simple_output_schema_workflow(self):
         # flow1: start -> a -> end
-        flow = create_flow()
+        flow = Workflow()
         flow.set_start_comp("start", Start(
             {"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]}),
                             inputs_schema={
@@ -93,11 +72,11 @@ class EndNodeTest(unittest.TestCase):
                           )
         flow.add_connection("start", "a")
         flow.add_connection("a", "end")
-        self.assert_workflow_invoke({"a": 1, "b": "haha"}, create_context(), flow, expect_results={'output': {'end_input': 'haha'}, 'responseContent': ''})
+        self.assert_workflow_invoke({"a": 1, "b": "haha"}, WorkflowRuntime(), flow, expect_results={'output': {'end_input': 'haha'}, 'responseContent': ''})
 
     def test_end_stream_workflow(self):
         async def stream_workflow():
-            flow = create_flow()
+            flow = Workflow()
             start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
             flow.set_start_comp("start", start,
                                 inputs_schema={
@@ -114,7 +93,8 @@ class EndNodeTest(unittest.TestCase):
             flow.add_stream_connection("a", "end")
 
             index = 0
-            async for chunk in flow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in flow.stream({"a": 1, "b": "haha"},
+                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 logger.info("stream chunk: {%s}", chunk)
                 index += 1
 
@@ -125,7 +105,7 @@ class EndNodeTest(unittest.TestCase):
     def test_end_batch_stream_workflow(self):
 
         async def stream_workflow():
-            flow = create_flow()
+            flow = Workflow()
             start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
             input_schema = {
                 "query": "${a}",
@@ -144,7 +124,8 @@ class EndNodeTest(unittest.TestCase):
             flow.add_stream_connection("a", "end")
 
             index = 0
-            async for chunk in flow.stream({"a": 1, "b": "haha"}, create_context_with_tracer()):
+            async for chunk in flow.stream({"a": 1, "b": "haha"},
+                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
                 logger.info("stream chunk: {%s}", chunk)
                 index += 1
 

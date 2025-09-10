@@ -3,12 +3,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import Any
 
-from jiuwen.core.context.config import Config
-from jiuwen.core.context.context import WorkflowContext
+from jiuwen.core.runtime.config import Config
+from jiuwen.core.runtime.runtime import WorkflowRuntime
 from jiuwen.core.context.model_context.model_context import ModelContext, AgentModelContext
-from jiuwen.core.context.state import InMemoryState, StateLike, InMemoryCommitState, \
+from jiuwen.core.runtime.state import InMemoryState, StateLike, InMemoryCommitState, \
     InMemoryStateLike
-from jiuwen.core.context.store import Store
+from jiuwen.core.runtime.store import Store
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.stream.base import BaseStreamMode
 from jiuwen.core.stream.emitter import StreamEmitter
@@ -45,8 +45,8 @@ class TaskContext:
     def tracer(self) -> Tracer:
         return self.__tracer
 
-    def create_workflow_context(self) -> WorkflowContext:
-        return WorkflowContext(
+    def create_workflow_context(self) -> WorkflowRuntime:
+        return WorkflowRuntime(
             state=InMemoryState(InMemoryCommitState(self.__global_state)),
             store=self.__store,
             tracer=self.__tracer,

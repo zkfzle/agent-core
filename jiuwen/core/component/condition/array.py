@@ -4,7 +4,7 @@
 from typing import Union, Any
 
 from jiuwen.core.component.condition.condition import Condition, INDEX
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input, Output
 
 DEFAULT_MAX_LOOP_NUMBER = 1000
@@ -17,7 +17,7 @@ class ArrayCondition(Condition):
         self._node_id = node_id
         self._arrays = arrays
 
-    def invoke(self, inputs: Input, context: Context) -> Output:
+    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         current_idx = context.state().get(INDEX) + 1
         min_length = DEFAULT_MAX_LOOP_NUMBER
         updates: dict[str, Any] = {}

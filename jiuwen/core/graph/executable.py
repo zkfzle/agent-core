@@ -6,7 +6,7 @@ from typing import TypeVar, Generic, AsyncIterator, Any
 
 from jiuwen.core.common.exception.exception import InterruptException, JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 
 Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", contravariant=True)
@@ -19,16 +19,19 @@ class Executable(Generic[Input, Output]):
     is_global: bool = False
     global_var_name: str = ""
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    def __init__(self):
+        super().__init__()
+
+    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         raise JiuWenBaseException(-1, "Invoke is not supported")
 
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
+    async def on_stream(self, inputs: Input, context: BaseRuntime) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Stream is not supported")
 
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
+    async def on_collect(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> Output:
         raise JiuWenBaseException(-1, "Collect is not supported")
 
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
+    async def on_transform(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Transform is not supported")
 
     async def interrupt(self, message: dict):

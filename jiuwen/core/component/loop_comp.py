@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-from typing import Iterator, AsyncIterator, Self, Union, Callable, Any
+from typing import AsyncIterator, Self, Union, Callable, Any
 
 from langgraph.constants import END, START
 
@@ -12,29 +12,17 @@ from jiuwen.core.component.condition.condition import Condition, AlwaysTrue, Fun
 from jiuwen.core.component.condition.expression import ExpressionCondition
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, FIRST_LOOP
 from jiuwen.core.component.loop_callback.loop_id import LoopIdCallback
-from jiuwen.core.context.config import WorkflowConfig
-from jiuwen.core.context.context import Context
 from jiuwen.core.graph.atomic_node import AtomicNode
 from jiuwen.core.graph.base import Graph, INPUTS_KEY
 from jiuwen.core.graph.executable import Output, Input, Executable
+from jiuwen.core.runtime.config import WorkflowConfig
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.workflow.base import BaseWorkFlow
 
 
 class EmptyExecutable(Executable):
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
+    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
-
-    async def invoke(self, inputs: Input, context: Context) -> Output:
-        pass
-
-    async def stream(self, inputs: Input, context: Context) -> Iterator[Output]:
-        yield self.invoke(inputs, context)
-
-    def interrupt(self, message: dict):
-        return
 
     def skip_trace(self) -> bool:
         return True
@@ -57,23 +45,11 @@ class LoopGroup(BaseWorkFlow, Executable):
             self.end_comp(node)
         return self
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         if self.compiled is None:
             raise JiuWenBaseException(-1, "loop graph is not compiled")
         await self.compiled.invoke(inputs, context)
         return None
-
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
-        yield await self.invoke(inputs, context)
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
-
-    async def interrupt(self, message: dict):
-        pass
 
     def skip_trace(self) -> bool:
         return True
@@ -144,11 +120,11 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
 
     def _atomic_invoke(self, **kwargs) -> Any:
         inputs = self._context.state().get_inputs(self._node_id)
-        outputs = self.condition_invoke(inputs=inputs, context=self._context)
+        outputs = self._condition_invoke(inputs=inputs, context=self._context)
         self._context.state().set_outputs({self._node_id: outputs[1]})
         return outputs[0]
 
-    def condition_invoke(self, inputs: Input, context: Context) -> Output:
+    def _condition_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         index = self._context.state().get(INDEX)
         context.state().update(inputs)
         if index is None:
@@ -178,7 +154,7 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
     def break_loop(self):
         self._context.state().update({BROKEN: True})
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
         self._context = context
         # set loop graph inputs
         self._context.state().update(inputs.get(INPUTS_KEY) if INPUTS_KEY in inputs else inputs)
@@ -192,18 +168,6 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
             self._body.compiled = self._body.compile(self._context)
             return await compiled.invoke(inputs, self._context)
         return None
-
-    async def stream(self, inputs: Input, context: Context) -> AsyncIterator[Output]:
-        yield await self.invoke(inputs, context)
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
-
-    async def interrupt(self, message: dict):
-        pass
 
     def graph_invoker(self) -> bool:
         return True

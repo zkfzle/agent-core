@@ -1,26 +1,26 @@
 import unittest
 
-from jiuwen.core.context.config import Config
-from jiuwen.core.context.context import WorkflowContext, NodeContext
-from jiuwen.core.context.state import InMemoryState, ReadableStateLike
-from jiuwen.core.context.utils import update_dict, get_by_schema, get_value_by_nested_path
+from jiuwen.core.runtime.config import Config
+from jiuwen.core.runtime.runtime import WorkflowRuntime, NodeRuntime
+from jiuwen.core.runtime.state import InMemoryState, ReadableStateLike
+from jiuwen.core.runtime.utils import update_dict, get_by_schema
 
 
 class ContextTest(unittest.TestCase):
-    def assert_context(self, context: NodeContext, node_id: str, executable_id: str, parent_id: str):
+    def assert_context(self, context: NodeRuntime, node_id: str, executable_id: str, parent_id: str):
         assert context.node_id() == node_id
         assert context.executable_id() == executable_id
         assert context.parent_id() == parent_id
 
     def test_basic(self):
         # Workflow context/
-        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
         context.state().commit_user_inputs({'a': 1, 'b': 2})
         assert context.state().get_global('a') == 1
         assert context.state().get_global('b') == 2
 
         # node1节点
-        node1_context = NodeContext(context, "node1")
+        node1_context = NodeRuntime(context, "node1")
         assert node1_context.node_id() == "node1"
         assert node1_context.executable_id() == "node1"
         assert node1_context.parent_id() == ""
@@ -43,16 +43,16 @@ class ContextTest(unittest.TestCase):
         assert node1_context.state().get_global('c') == 3
         assert node1_context.state().get('url') == '0.0.0.1'
 
-        node2_context = NodeContext(context, "node2")
+        node2_context = NodeRuntime(context, "node2")
         assert node2_context.state().get_global('c') == 3
         assert node2_context.state().get('url') == None
 
         # 嵌套workflow
-        sub_workflow_context = NodeContext(context, "sub_workflow1")
+        sub_workflow_context = NodeRuntime(context, "sub_workflow1")
         sub_workflow_context.state().commit_user_inputs({'a': 11, 'b': 12})
         sub_workflow_context.state().commit()
 
-        sub_node1_context = NodeContext(sub_workflow_context, "node1")
+        sub_node1_context = NodeRuntime(sub_workflow_context, "node1")
         assert sub_node1_context.node_id() == "node1"
         assert sub_node1_context.parent_id() == "sub_workflow1"
         assert sub_node1_context.executable_id() == "sub_workflow1.node1"

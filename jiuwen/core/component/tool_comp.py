@@ -3,13 +3,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from dataclasses import dataclass, field
-from typing import Dict, Any, AsyncIterator, Iterator, List
+from typing import Dict, Any, List
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
-from jiuwen.core.context.context import Context
 from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.utils.tool.base import Tool
 
 
@@ -35,14 +36,14 @@ class ToolComponentConfig(ComponentConfig):
     apiId: str = ''
 
 
-class ToolExecutable(Executable):
+class ToolExecutable(ComponentExecutable):
 
     def __init__(self, config: ToolComponentConfig):
         super().__init__()
         self._config = config
         self._tool: Tool = None
 
-    async def invoke(self, inputs: Input, context: Context) -> Output:
+    async def invoke(self, inputs: Input, context: Runtime) -> Output:
         if self._tool is None:
             self._tool = self.get_tool(context)
         validated = inputs.get('validate', False)
@@ -59,22 +60,10 @@ class ToolExecutable(Executable):
                 message='tool component execution error'
             ) from e
 
-    async def stream(self, inputs: Input, context: Context) -> Iterator[Output]:
-        pass
-
-    async def collect(self, inputs: AsyncIterator[Input], contex: Context) -> Output:
-        pass
-
-    async def transform(self, inputs: AsyncIterator[Input], context: Context) -> AsyncIterator[Output]:
-        pass
-
-    async def interrupt(self, message: dict):
-        pass
-
     def _create_output(self, response):
         return response
 
-    def get_tool(self, context: Context) -> Tool:
+    def get_tool(self, context: Runtime) -> Tool:
         pass
 
     def set_tool(self, tool: Tool):

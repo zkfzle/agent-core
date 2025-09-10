@@ -4,7 +4,7 @@
 from abc import abstractmethod
 from typing import Any
 
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.atomic_node import AtomicNode
 from jiuwen.core.graph.executable import Output
 
@@ -15,7 +15,7 @@ OUT_LOOP = "out_loop"
 
 
 class LoopCallback(AtomicNode):
-    def __call__(self, input: str, context: Context) -> None:
+    def __call__(self, input: str, context: BaseRuntime) -> None:
         self.atomic_invoke(input=input, context=context)
 
     def _atomic_invoke(self, **kwargs) -> Any:
@@ -34,17 +34,17 @@ class LoopCallback(AtomicNode):
         return None
 
     @abstractmethod
-    def first_in_loop(self, context: Context) -> Output:
+    def first_in_loop(self, context: BaseRuntime) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def out_loop(self, context: Context) -> Output:
+    def out_loop(self, context: BaseRuntime) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def start_round(self, context: Context) -> Output:
+    def start_round(self, context: BaseRuntime) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def end_round(self, context: Context) -> Output:
+    def end_round(self, context: BaseRuntime) -> Output:
         raise NotImplementedError

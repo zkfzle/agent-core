@@ -10,10 +10,8 @@ from unittest.mock import Mock
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
-from jiuwen.core.context.config import Config
-from jiuwen.core.context.state import InMemoryState
-from jiuwen.core.stream.emitter import StreamEmitter
-from jiuwen.core.stream.manager import StreamWriterManager
+from jiuwen.core.runtime.config import Config
+from jiuwen.core.runtime.state import InMemoryState
 from jiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolInfo
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow
@@ -30,13 +28,12 @@ sys.modules["jiuwen.core.common.logging.base"] = fake_base
 sys.modules["jiuwen.core.common.exception.base"] = fake_exception_module
 
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode
-from tests.unit_tests.workflow.test_workflow import create_flow, create_context
 
 from unittest.mock import patch, AsyncMock
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
-from jiuwen.core.context.context import NodeContext, WorkflowContext
+from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime, Runtime
 from jiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
 
 USER_FIELDS = "userFields"
@@ -44,14 +41,7 @@ USER_FIELDS = "userFields"
 
 @pytest.fixture
 def fake_node_ctx():
-    from unittest.mock import MagicMock
-    ctx = MagicMock(spec=NodeContext)
-    ctx.store = MagicMock()
-    ctx.store.read.return_value = []
-    ctx.executable_id.return_value = "test"
-    emitter = StreamEmitter()
-    ctx.stream_writer_manager.return_value = StreamWriterManager(emitter)
-    return ctx
+    return Runtime(NodeRuntime(WorkflowRuntime(), "test"))
 
 
 @pytest.fixture
@@ -160,7 +150,7 @@ class TestLLMExecutableInvoke:
             fake_input,
             fake_model_config,
     ):
-        config = LLMCompConfig(model=fake_model_config, template_content=[{"role": "user", "content": "Hello {name}"}])
+        config = LLMCompConfig(model=fake_model_config, template_content=[{"role": "user", "content": "Hello {name}"}], response_format={"type": "text"},)
         exe = LLMExecutable(config)
 
         fake_llm = FakeModel()
@@ -178,14 +168,14 @@ class TestLLMExecutableInvoke:
             fake_model_config,
     ):
         """LLM 节点在完整工作流中的异步测试"""
-        context = create_context()
+        context = WorkflowRuntime()
 
         # 1. 打桩 LLM
         fake_llm = FakeModel()
         mock_get_model.return_value = fake_llm
 
         # 2. 构造工作流
-        flow = create_flow()
+        flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "a": "${user.inputs.a}",
@@ -221,7 +211,7 @@ class TestLLMExecutableInvoke:
         fake_llm = FakeModel()
         mock_get_model.return_value = fake_llm
 
-        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+        flow = Workflow()
 
         start_component = Start(
             {
@@ -262,7 +252,7 @@ class TestLLMExecutableInvoke:
         flow.add_connection("s", "llm")
         flow.add_connection("llm", "e")
 
-        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime()
         result = await flow.invoke(inputs={"query": "yzq test query"}, context=context)
         print(f"This is invoke result:{result}")
 
@@ -314,7 +304,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("s", "llm")
         flow.add_stream_connection("llm", "e")
 
-        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
         async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, context=context):
             print(f"stream chunk >>> {chunk}")
 
@@ -362,6 +352,6 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("s", "llm")
         flow.add_connection("llm", "e")
 
-        context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
         async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, context=context):
             print(f"stream chunk >>> {chunk}")

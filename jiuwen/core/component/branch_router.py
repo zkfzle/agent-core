@@ -5,7 +5,7 @@ from typing import Callable, Union
 
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
-from jiuwen.core.context.context import Context
+from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 
 
 class Branch:
@@ -21,7 +21,7 @@ class Branch:
             self._condition = condition
         self.target = target
 
-    def evaluate(self, context: Context) -> bool:
+    def evaluate(self, context: BaseRuntime) -> bool:
         return self._condition(context)
 
 
@@ -29,17 +29,17 @@ class BranchRouter:
     def __init__(self):
         super().__init__()
         self._branches: list[Branch] = []
-        self._context: Context = None
+        self._context: Runtime = None
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
                    branch_id: str = None):
         self._branches.append(Branch(condition, target, branch_id))
 
-    def set_context(self, context: Context):
+    def set_context(self, context: Runtime):
         self._context = context
 
     def __call__(self, *args, **kwargs) -> list[str]:
         for branch in self._branches:
-            if branch.evaluate(self._context):
+            if branch.evaluate(self._context.base()):
                 return branch.target
         return []

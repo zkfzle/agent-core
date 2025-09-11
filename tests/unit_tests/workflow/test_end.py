@@ -18,8 +18,8 @@ class EndNodeTest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-    def invoke_workflow(self, inputs: dict, context: BaseRuntime, flow: Workflow):
-        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context))
+    def invoke_workflow(self, inputs: dict, runtime: BaseRuntime, flow: Workflow):
+        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, runtime=runtime))
         self.loop.run_until_complete(feature)
         return feature.result()
 

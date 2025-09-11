@@ -13,18 +13,18 @@ class LoopIdCallback(LoopCallback):
     def __init__(self, node_id: str):
         self._node_id = node_id
 
-    def first_in_loop(self, context: BaseRuntime) -> Output:
-        context.state().update_global({self._node_id + "." + INDEX: context.state().get(INDEX) + 1})
-        context.state().update_global({LOOP_ID: self._node_id})
+    def first_in_loop(self, runtime: BaseRuntime) -> Output:
+        runtime.state().update_global({self._node_id + "." + INDEX: runtime.state().get(INDEX) + 1})
+        runtime.state().update_global({LOOP_ID: self._node_id})
         return None
 
-    def out_loop(self, context: BaseRuntime) -> Output:
-        context.state().update_global({LOOP_ID: None})
+    def out_loop(self, runtime: BaseRuntime) -> Output:
+        runtime.state().update_global({LOOP_ID: None})
         return None
 
-    def start_round(self, context: BaseRuntime) -> Output:
-        context.state().update_global({self._node_id + "." + INDEX: context.state().get(INDEX) + 1})
+    def start_round(self, runtime: BaseRuntime) -> Output:
+        runtime.state().update_global({self._node_id + "." + INDEX: runtime.state().get(INDEX) + 1})
         return None
 
-    def end_round(self, context: BaseRuntime) -> Output:
+    def end_round(self, runtime: BaseRuntime) -> Output:
         return None

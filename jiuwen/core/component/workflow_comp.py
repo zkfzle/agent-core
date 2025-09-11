@@ -15,8 +15,8 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
         super().__init__()
         self._sub_workflow = sub_workflow
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
-        return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), context.base(), inputs.get(CONFIG_KEY))
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+        return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY))
 
     def graph_invoker(self) -> bool:
         return True

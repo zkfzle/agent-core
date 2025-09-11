@@ -135,15 +135,15 @@ class WorkflowRuntime(BaseRuntime):
 
 
 class NodeRuntime(BaseRuntime):
-    def __init__(self, context: BaseRuntime, node_id: str):
+    def __init__(self, runtime: BaseRuntime, node_id: str):
         self._node_id = node_id
-        self._parent_id = context.executable_id() if isinstance(context, NodeRuntime) else ''
+        self._parent_id = runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
         self._executable_id = self._parent_id + "." + node_id if len(self._parent_id) != 0 else node_id
-        self._state = context.state().create_node_state(self._executable_id, self._parent_id)
-        self._context = context
+        self._state = runtime.state().create_node_state(self._executable_id, self._parent_id)
+        self._runtime = runtime
         self._model_context = NodeModelContext(self._node_id, self.session_id(),
-                                               config=context.context().get_config(),
-                                               parent_context=context.context())
+                                               config=runtime.context().get_config(),
+                                               parent_context=runtime.context())
 
     def context(self) -> ModelContext:
         return self._model_context
@@ -158,34 +158,34 @@ class NodeRuntime(BaseRuntime):
         return self._parent_id
 
     def tracer(self) -> Tracer:
-        return self._context.tracer()
+        return self._runtime.tracer()
 
     def state(self) -> State:
         return self._state
 
     def config(self) -> Config:
-        return self._context.config()
+        return self._runtime.config()
 
     def store(self) -> Store:
-        return self._context.store()
+        return self._runtime.store()
 
     def stream_writer_manager(self) -> StreamWriterManager:
-        return self._context.stream_writer_manager()
+        return self._runtime.stream_writer_manager()
 
     def callback_manager(self) -> CallbackManager:
-        return self._context.callback_manager()
+        return self._runtime.callback_manager()
 
     def controller_context_manager(self):
-        return self._context.controller_context_manager()
+        return self._runtime.controller_context_manager()
 
     def queue_manager(self) -> MessageQueueManager:
-        return self._context.queue_manager()
+        return self._runtime.queue_manager()
 
     def session_id(self) -> str:
-        return self._context.session_id()
+        return self._runtime.session_id()
 
     def parent(self):
-        return self._context
+        return self._runtime
 
 
 class Runtime:

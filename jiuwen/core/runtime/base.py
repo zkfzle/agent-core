@@ -10,26 +10,26 @@ Output = TypeVar("Output", contravariant=True)
 
 class ComponentExecutable(Executable):
 
-    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
-        if not isinstance(context, NodeRuntime):
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        return await self.invoke(inputs, Runtime(context))
+        return await self.invoke(inputs, Runtime(runtime))
 
-    async def on_stream(self, inputs: Input, context: BaseRuntime) -> AsyncIterator[Output]:
-        if not isinstance(context, NodeRuntime):
+    async def on_stream(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
+        if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        async for value in self.stream(inputs, Runtime(context)):
+        async for value in self.stream(inputs, Runtime(runtime)):
             yield value
 
-    async def on_collect(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> Output:
-        if not isinstance(context, NodeRuntime):
+    async def on_collect(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> Output:
+        if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        return await self.collect(inputs, Runtime(context))
+        return await self.collect(inputs, Runtime(runtime))
 
-    async def on_transform(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> AsyncIterator[Output]:
-        if not isinstance(context, NodeRuntime):
+    async def on_transform(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> AsyncIterator[Output]:
+        if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        async for value in self.transform(inputs, Runtime(context)):
+        async for value in self.transform(inputs, Runtime(runtime)):
             yield value
 
     async def invoke(self, inputs: Input, runtime: Runtime) -> Output:

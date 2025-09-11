@@ -17,7 +17,7 @@ class Start(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.conf = conf
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         self._validate_inputs(inputs)
         return self._fill_default_values(deepcopy(inputs))
 

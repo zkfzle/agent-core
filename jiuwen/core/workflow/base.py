@@ -121,9 +121,9 @@ class BaseWorkFlow:
         self._graph.add_conditional_edges(source_node_id=src_comp_id, router=router)
         return self
 
-    def compile(self, context: BaseRuntime) -> ExecutableGraph:
-        context.config().set_workflow_config(self._workflow_config)
-        return self._graph.compile(context)
+    def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
+        runtime.config().set_workflow_config(self._workflow_config)
+        return self._graph.compile(runtime)
 
 
 class Workflow(BaseWorkFlow):
@@ -176,19 +176,19 @@ class Workflow(BaseWorkFlow):
         self._end_comp_id = end_comp_id
         return self
 
-    async def sub_invoke(self, inputs: Input, context: BaseRuntime, config: Any = None) -> Output:
+    async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         logger.info("begin to sub_invoke, input=%s", inputs)
-        context.config().set_workflow_config(self._workflow_config)
-        compiled_graph = self._graph.compile(context)
-        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, context)
-        results = context.state().get_inputs(self._end_comp_id)
+        runtime.config().set_workflow_config(self._workflow_config)
+        compiled_graph = self._graph.compile(runtime)
+        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+        results = runtime.state().get_inputs(self._end_comp_id)
         logger.info("end to sub_invoke, results=%s", results)
         return results
 
-    async def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    async def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         logger.info("begin to invoke, input=%s", inputs)
         chunks = []
-        async for chunk in self.stream(inputs, context, stream_modes=[BaseStreamMode.OUTPUT]):
+        async for chunk in self.stream(inputs, runtime, stream_modes=[BaseStreamMode.OUTPUT]):
             chunks.append(chunk)
 
         is_interaction = False
@@ -196,7 +196,7 @@ class Workflow(BaseWorkFlow):
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 is_interaction = True
                 break
-        results = [chunk.model_dump() for chunk in chunks] if is_interaction else context.state().get_outputs(
+        results = [chunk.model_dump() for chunk in chunks] if is_interaction else runtime.state().get_outputs(
             self._end_comp_id)
         logger.info("end to invoke, results=%s", results)
         return results
@@ -204,31 +204,31 @@ class Workflow(BaseWorkFlow):
     async def stream(
             self,
             inputs: Input,
-            context: BaseRuntime,
+            runtime: BaseRuntime,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
         mq_manager = MessageQueueManager(self._workflow_config.stream_edges, self._workflow_config.comp_abilities,
                                          False)
-        context.set_queue_manager(mq_manager)
-        context.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
-        if context.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
+        runtime.set_queue_manager(mq_manager)
+        runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
+        if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
             tracer = Tracer()
-            tracer.init(context.stream_writer_manager(), context.callback_manager())
-            context.set_tracer(tracer)
-        compiled_graph = self.compile(context)
-        self._stream_actor.init(context)
+            tracer.init(runtime.stream_writer_manager(), runtime.callback_manager())
+            runtime.set_tracer(tracer)
+        compiled_graph = self.compile(runtime)
+        self._stream_actor.init(runtime)
         async def stream_process():
             try:
                 await self._stream_actor.run()
-                await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, context)
+                await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, runtime)
             finally:
-                await context.stream_writer_manager().stream_emitter().close()
+                await runtime.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(stream_process())
-        async for chunk in context.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
+        async for chunk in runtime.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
             yield chunk
 
-        results = context.state().get_outputs(self._end_comp_id)
+        results = runtime.state().get_outputs(self._end_comp_id)
         if results:
             yield OutputSchema(type="workflow_final", index=0, payload=results)
 

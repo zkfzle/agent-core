@@ -32,7 +32,7 @@ class MockEndNode(End):
         super().__init__({"responseTemplate": "hello:{{end_input}}"})
         self.node_id = node_id
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         return inputs
 
 

@@ -23,13 +23,13 @@ class Vertex(AsyncAtomicNode):
     def __init__(self, node_id: str, executable: Executable = None):
         self._node_id = node_id
         self._executable = executable
-        self._context: NodeRuntime = None
+        self._runtime: NodeRuntime = None
         # if stream_call is available, call should wait for it
         self._stream_done = asyncio.Event()
         self._stream_called = False
 
-    def init(self, context: BaseRuntime) -> bool:
-        self._context = NodeRuntime(context, self._node_id)
+    def init(self, runtime: BaseRuntime) -> bool:
+        self._runtime = NodeRuntime(runtime, self._node_id)
         return True
 
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None):
@@ -37,28 +37,28 @@ class Vertex(AsyncAtomicNode):
             batch_inputs = await self._pre_invoke()
             if is_subgraph:
                 batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-            results = await self._executable.on_invoke(batch_inputs, context=self._context)
+            results = await self._executable.on_invoke(batch_inputs, runtime=self._runtime)
             await self._post_invoke(results)
         elif ability == ComponentAbility.STREAM:
             batch_inputs = await self._pre_invoke()
             if is_subgraph:
                 batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-            result_iter = self._executable.on_stream(batch_inputs, context=self._context)
+            result_iter = self._executable.on_stream(batch_inputs, runtime=self._runtime)
             await self._post_stream(result_iter)
         elif ability == ComponentAbility.COLLECT:
             collect_iter = self._pre_stream(ability)
-            batch_output = await self._executable.on_collect(collect_iter, self._context)
+            batch_output = await self._executable.on_collect(collect_iter, self._runtime)
             await self._post_invoke(batch_output)
         elif ability == ComponentAbility.TRANSFORM:
             transform_iter = self._pre_stream(ability)
-            output_iter = self._executable.on_transform(transform_iter, self._context)
+            output_iter = self._executable.on_transform(transform_iter, self._runtime)
             await self._post_stream(output_iter)
         else:
             logger.error(f"error ComponentAbility: {ability.name}")
 
     async def __call__(self, state: GraphState, config: Any = None) -> Output:
         if self._executable.post_commit():
-            await self.atomic_invoke(config=config, context=self._context)
+            await self.atomic_invoke(config=config, runtime=self._runtime)
         else:
             await self.call(config)
         return {"source_node_id": [self._node_id]}
@@ -67,33 +67,33 @@ class Vertex(AsyncAtomicNode):
         return await self.call(kwargs.get("config", None))
 
     async def _pre_invoke(self) -> Optional[dict]:
-        inputs_transformer = self._context.config().get_input_transformer(self._node_id)
+        inputs_transformer = self._runtime.config().get_input_transformer(self._node_id)
         if inputs_transformer is None:
-            inputs_schema = self._context.config().get_inputs_schema(self._node_id)
-            inputs = self._context.state().get_inputs(inputs_schema)
+            inputs_schema = self._runtime.config().get_inputs_schema(self._node_id)
+            inputs = self._runtime.state().get_inputs(inputs_schema)
         else:
-            inputs = self._context.state().get_inputs_by_transformer(inputs_transformer)
-        if self._context.tracer() is not None:
+            inputs = self._runtime.state().get_inputs_by_transformer(inputs_transformer)
+        if self._runtime.tracer() is not None:
             await self.__trace_inputs__(inputs)
         return inputs
 
     async def _post_invoke(self, results: Optional[dict]) -> Any:
-        output_transformer = self._context.config().get_output_transformer(self._node_id)
+        output_transformer = self._runtime.config().get_output_transformer(self._node_id)
         if output_transformer is None:
-            output_schema = self._context.config().get_outputs_schema(self._node_id)
+            output_schema = self._runtime.config().get_outputs_schema(self._node_id)
             results = get_by_schema(output_schema, results) if output_schema else results
         else:
             results = output_transformer(results)
-        self._context.state().set_outputs(results)
-        if self._context.tracer() is not None:
+        self._runtime.state().set_outputs(results)
+        if self._runtime.tracer() is not None:
             await self.__trace_outputs__(results)
 
         self.__clear_interactive__()
         return results
 
     async def _pre_stream(self, ability: ComponentAbility) -> AsyncIterator[dict]:
-        queue_manager = self._context.queue_manager()
-        workflow_config = self._context.config().get_workflow_config()
+        queue_manager = self._runtime.queue_manager()
+        workflow_config = self._runtime.config().get_workflow_config()
         inputs_transformer = workflow_config.comp_stream_configs[self._node_id].inputs_transformer
         inputs_schema = workflow_config.comp_stream_configs[self._node_id].inputs_schema
         async for message in queue_manager.consume(self._node_id, ability):
@@ -106,8 +106,8 @@ class Vertex(AsyncAtomicNode):
             yield inputs
 
     async def _post_stream(self, results_iter: AsyncIterator) -> None:
-        queue_manager = self._context.queue_manager()
-        workflow_config = self._context.config().get_workflow_config()
+        queue_manager = self._runtime.queue_manager()
+        workflow_config = self._runtime.config().get_workflow_config()
         output_transformer = workflow_config.comp_stream_configs[self._node_id].outputs_transformer
         output_schema = workflow_config.comp_stream_configs[self._node_id].outputs_schema
         end_stream_index = 0
@@ -122,46 +122,46 @@ class Vertex(AsyncAtomicNode):
 
     async def _process_chunk(self, end_stream_index: int, message: Any) -> None:
         end_node = isinstance(self._executable, End)
-        sub_graph = self._context.parent_id() is not ''
+        sub_graph = self._runtime.parent_id() is not ''
         if end_node and not sub_graph:
             message_stream_data = {
                 "type": END_NODE_STREAM,
                 "index": ++end_stream_index,
                 "payload": message
             }
-            await self._context.stream_writer_manager().get_output_writer().write(message_stream_data)
+            await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)
         elif end_node and sub_graph:
-            await self._context.queue_manager().sub_workflow_stream.send(message)
+            await self._runtime.queue_manager().sub_workflow_stream.send(message)
         else:
-            await self._context.queue_manager().produce(self._node_id, message)
+            await self._runtime.queue_manager().produce(self._node_id, message)
 
 
     def __clear_interactive__(self) -> None:
-        if self._context.state().get(INTERACTIVE_INPUT):
-            self._context.state().update({INTERACTIVE_INPUT: None})
+        if self._runtime.state().get(INTERACTIVE_INPUT):
+            self._runtime.state().update({INTERACTIVE_INPUT: None})
 
     async def __trace_inputs__(self, inputs: Optional[dict]) -> None:
         if self._executable.skip_trace():
             return
         # TODO 组件信息
-        await self._context.tracer().trigger("tracer_workflow", "on_pre_invoke", invoke_id=self._context.executable_id(),
-                                           parent_node_id=self._context.parent_id(),
+        await self._runtime.tracer().trigger("tracer_workflow", "on_pre_invoke", invoke_id=self._runtime.executable_id(),
+                                           parent_node_id=self._runtime.parent_id(),
                                            inputs=inputs,
                                            component_metadata=self._get_component_metadata())
-        self._context.state().update_trace(self._context.tracer().get_workflow_span(self._context.executable_id(),
-                                                                                self._context.parent_id()))
+        self._runtime.state().update_trace(self._runtime.tracer().get_workflow_span(self._runtime.executable_id(),
+                                                                                self._runtime.parent_id()))
 
         if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
-            self._context.tracer().register_workflow_span_manager(self._context.executable_id())
+            self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
 
     async def call(self, config: Any = None):
-        if self._context is None or self._executable is None:
+        if self._runtime is None or self._executable is None:
             raise JiuWenBaseException(1, "vertex is not initialized, node is is " + self._node_id)
 
         is_subgraph = self._executable.graph_invoker()
 
         try:
-            workflow_config = self._context.config().get_workflow_config()
+            workflow_config = self._runtime.config().get_workflow_config()
             component_ability = workflow_config.comp_abilities.get(self._node_id)
             component_ability = component_ability if component_ability else [ComponentAbility.INVOKE]
             call_ability = [ability for ability in component_ability if
@@ -181,11 +181,11 @@ class Vertex(AsyncAtomicNode):
         self._stream_called = True  # 标记 stream_call 已被调用
         self._stream_done.clear()  # 清除之前的完成状态
 
-        if self._context is None or self._context.queue_manager() is None:
+        if self._runtime is None or self._runtime.queue_manager() is None:
             raise JiuWenBaseException(1, "queue manager is not initialized")
 
         try:
-            workflow_config = self._context.config().get_workflow_config()
+            workflow_config = self._runtime.config().get_workflow_config()
             component_ability = workflow_config.comp_abilities.get(self._node_id)
             call_ability = [ability for ability in component_ability if
                             ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
@@ -200,20 +200,20 @@ class Vertex(AsyncAtomicNode):
     async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:
         if self._executable.skip_trace():
             return
-        await self._context.tracer().trigger("tracer_workflow", "on_post_invoke", invoke_id=self._context.executable_id(),
-                                           parent_node_id=self._context.parent_id(),
+        await self._runtime.tracer().trigger("tracer_workflow", "on_post_invoke", invoke_id=self._runtime.executable_id(),
+                                           parent_node_id=self._runtime.parent_id(),
                                            outputs=outputs)
-        self._context.state().update_trace(self._context.tracer().get_workflow_span(self._context.executable_id(),
-                                                                                self._context.parent_id()))
+        self._runtime.state().update_trace(self._runtime.tracer().get_workflow_span(self._runtime.executable_id(),
+                                                                                self._runtime.parent_id()))
 
     def _get_component_metadata(self) -> dict:
-        component_metadata = {"component_type": self._context.executable_id()}
-        loop_id = self._context.state().get_global(LOOP_ID)
+        component_metadata = {"component_type": self._runtime.executable_id()}
+        loop_id = self._runtime.state().get_global(LOOP_ID)
         if loop_id:
-            index = self._context.state().get_global(loop_id + NESTED_PATH_SPLIT + INDEX)
+            index = self._runtime.state().get_global(loop_id + NESTED_PATH_SPLIT + INDEX)
             component_metadata.update({
                 "loop_node_id": loop_id,
                 "loop_index": index + 1
             })
-            self._context.tracer().pop_workflow_span(self._context.executable_id(), self._context.parent_id())
+            self._runtime.tracer().pop_workflow_span(self._runtime.executable_id(), self._runtime.parent_id())
         return component_metadata

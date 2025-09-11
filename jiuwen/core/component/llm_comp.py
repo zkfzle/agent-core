@@ -140,20 +140,20 @@ class LLMExecutable(ComponentExecutable):
         self._llm: BaseChatModel = None
         self._initialized: bool = False
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         try:
-            self._set_context(context)
+            self._set_runtime(runtime)
             model_inputs = self._prepare_model_inputs(inputs)
-            logger.info("[%s] model inputs %s", self._context.executable_id(), model_inputs)
-            output_stream_writer = context.stream_writer()
+            logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
+            output_stream_writer = runtime.stream_writer()
             llm_response = await self._stream_llm_with_stream_writer(model_inputs, output_stream_writer)
             response = llm_response.content
 
             # 临时调试：用于调用streamWriter实现流式输出
-            await context.write_custom_stream({"streamOutput": response})
+            await runtime.write_custom_stream({"streamOutput": response})
 
-            self._context.update_global_state({"response": response})
-            logger.info("[%s] model outputs %s", self._context.executable_id(), response)
+            self._runtime.update_global_state({"response": response})
+            logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
             return self._create_output(response)
         except JiuWenBaseException:
             raise
@@ -163,9 +163,9 @@ class LLMExecutable(ComponentExecutable):
             raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
                                       message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg=str(e))) from e
 
-    async def stream(self, inputs: Input, context: Runtime) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, runtime: Runtime) -> AsyncIterator[Output]:
         try:
-            self._set_context(context)
+            self._set_runtime(runtime)
             response_format_type = self._get_response_format().get(_TYPE)
 
             if response_format_type == WorkflowLLMResponseType.JSON.value:
@@ -213,8 +213,8 @@ class LLMExecutable(ComponentExecutable):
         processed_inputs = {}
         if inputs:
             processed_inputs = inputs.copy()
-            if self._context:
-                chat_history: list = self._context.get_global_state(WORKFLOW_CHAT_HISTORY)
+            if self._runtime:
+                chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
                 chat_history = chat_history[:-1] if chat_history else []
                 full_input = ""
                 for history in chat_history[-CHAT_HISTORY_MAX_TURN:]:
@@ -243,8 +243,8 @@ class LLMExecutable(ComponentExecutable):
 
     def _get_history(self, user_prompt: str):
         original_histoty = []
-        if self._context:
-            chat_history: list = self._context.get_global_state(WORKFLOW_CHAT_HISTORY)
+        if self._runtime:
+            chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
             if chat_history and self._config.enable_history:
                 original_histoty = chat_history
         original_histoty.append({"role": "user", "content": user_prompt})
@@ -310,8 +310,8 @@ class LLMExecutable(ComponentExecutable):
                                                         self._config.output_config)
         return formatted_res
 
-    def _set_context(self, context: Runtime):
-        self._context = context
+    def _set_runtime(self, runtime: Runtime):
+        self._runtime = runtime
 
     def _prepare_model_inputs(self, inputs):
         self._initialize_if_needed()
@@ -321,7 +321,7 @@ class LLMExecutable(ComponentExecutable):
 
     async def _invoke_for_json_format(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
-        logger.info("[%s] model inputs %s", self._context.executable_id(), model_inputs)
+        logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
         llm_output = await self._llm.ainvoke(model_inputs)  # 如果 invoke 是异步接口，要加 await
         yield self._create_output(llm_output)
 

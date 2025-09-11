@@ -20,8 +20,8 @@ class BaseCheckpointer(BaseCheckpointSaver[V], Generic[V], ABC):
         self.ctx: BaseRuntime = None
         self.input: Input = None
 
-    def register_context(self, ctx: BaseRuntime):
-        self.ctx = ctx
+    def register_runtime(self, runtime: BaseRuntime):
+        self.ctx = runtime
 
     def register_input(self, input: Input):
         self.input = input

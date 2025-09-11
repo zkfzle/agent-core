@@ -14,7 +14,7 @@ class NumberCondition(Condition):
         self._index_path = index_path if index_path else INDEX
         self._limit = limit
 
-    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
-        current_idx = context.state().get(self._index_path) + 1
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        current_idx = runtime.state().get(self._index_path) + 1
         limit_num = inputs
         return current_idx < limit_num

@@ -12,13 +12,13 @@ from jiuwen.core.runtime.state import CommitState
 
 class AtomicNode(ABC):
     def atomic_invoke(self, **kwargs) -> Any:
-        context = kwargs.get("context", None)
-        if context is None or not isinstance(context, BaseRuntime):
-            raise JiuWenBaseException(-1, "failed to get context")
-        if not isinstance(context.state(), CommitState):
+        runtime = kwargs.get("runtime", None)
+        if runtime is None or not isinstance(runtime, BaseRuntime):
+            raise JiuWenBaseException(-1, "failed to get runtime")
+        if not isinstance(runtime.state(), CommitState):
             raise JiuWenBaseException(-1, "state type error, not commit state")
         result = self._atomic_invoke(**kwargs)
-        context.state().commit()
+        runtime.state().commit()
         return result
 
     @abstractmethod
@@ -28,13 +28,13 @@ class AtomicNode(ABC):
 
 class AsyncAtomicNode(ABC):
     async def atomic_invoke(self, **kwargs) -> Any:
-        context = kwargs.get("context", None)
-        if context is None or not isinstance(context, BaseRuntime):
-            raise JiuWenBaseException(-1, "failed to get context")
-        if not isinstance(context.state(), CommitState):
+        runtime = kwargs.get("runtime", None)
+        if runtime is None or not isinstance(runtime, BaseRuntime):
+            raise JiuWenBaseException(-1, "failed to get runtime")
+        if not isinstance(runtime.state(), CommitState):
             raise JiuWenBaseException(-1, "state type error, not commit state")
         result = await self._atomic_invoke(**kwargs)
-        context.state().commit()
+        runtime.state().commit()
         return result
 
     @abstractmethod

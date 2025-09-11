@@ -15,20 +15,20 @@ class Condition(AtomicNode):
     def __init__(self, input_schema: Any = None):
         self._input_schema = input_schema
 
-    def __call__(self, context: BaseRuntime) -> bool:
-        return self.atomic_invoke(context=context)
+    def __call__(self, runtime: BaseRuntime) -> bool:
+        return self.atomic_invoke(runtime=runtime)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        context: BaseRuntime = kwargs["context"]
-        inputs = context.state().get_inputs(self._input_schema) if self._input_schema is not None else {}
-        result = self.invoke(inputs=inputs, context=context)
+        runtime: BaseRuntime = kwargs["runtime"]
+        inputs = runtime.state().get_inputs(self._input_schema) if self._input_schema is not None else {}
+        result = self.invoke(inputs=inputs, runtime=runtime)
         if isinstance(result, tuple):
-            context.state().set_outputs(result[1])
+            runtime.state().set_outputs(result[1])
             result = result[0]
         return result
 
     @abstractmethod
-    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         pass
 
 
@@ -37,10 +37,10 @@ class FuncCondition(Condition):
         super().__init__()
         self._func = func
 
-    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         return self._func()
 
 
 class AlwaysTrue(Condition):
-    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         return True

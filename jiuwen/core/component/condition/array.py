@@ -17,8 +17,8 @@ class ArrayCondition(Condition):
         self._node_id = node_id
         self._arrays = arrays
 
-    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
-        current_idx = context.state().get(INDEX) + 1
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        current_idx = runtime.state().get(INDEX) + 1
         min_length = DEFAULT_MAX_LOOP_NUMBER
         updates: dict[str, Any] = {}
         for key, array_info in self._arrays.items():
@@ -27,5 +27,5 @@ class ArrayCondition(Condition):
             if current_idx >= min_length:
                 return False
             updates[key] = arr[current_idx]
-        context.state().update({self._node_id: updates})
+        runtime.state().update({self._node_id: updates})
         return True, {self._node_id: updates}

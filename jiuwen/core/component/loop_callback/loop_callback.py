@@ -15,36 +15,36 @@ OUT_LOOP = "out_loop"
 
 
 class LoopCallback(AtomicNode):
-    def __call__(self, input: str, context: BaseRuntime) -> None:
-        self.atomic_invoke(input=input, context=context)
+    def __call__(self, input: str, runtime: BaseRuntime) -> None:
+        self.atomic_invoke(input=input, runtime=runtime)
 
     def _atomic_invoke(self, **kwargs) -> Any:
         input = kwargs.get("input")
-        context = kwargs.get("context")
+        runtime = kwargs.get("runtime")
         if input == FIRST_LOOP:
-            output = self.first_in_loop(context)
+            output = self.first_in_loop(runtime)
         elif input == START_ROUND:
-            output = self.start_round(context)
+            output = self.start_round(runtime)
         elif input == END_ROUND:
-            output = self.end_round(context)
+            output = self.end_round(runtime)
         else:
-            output = self.out_loop(context)
+            output = self.out_loop(runtime)
         if output is not None:
-            context.state().set_outputs(output)
+            runtime.state().set_outputs(output)
         return None
 
     @abstractmethod
-    def first_in_loop(self, context: BaseRuntime) -> Output:
+    def first_in_loop(self, runtime: BaseRuntime) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def out_loop(self, context: BaseRuntime) -> Output:
+    def out_loop(self, runtime: BaseRuntime) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def start_round(self, context: BaseRuntime) -> Output:
+    def start_round(self, runtime: BaseRuntime) -> Output:
         raise NotImplementedError
 
     @abstractmethod
-    def end_round(self, context: BaseRuntime) -> Output:
+    def end_round(self, runtime: BaseRuntime) -> Output:
         raise NotImplementedError

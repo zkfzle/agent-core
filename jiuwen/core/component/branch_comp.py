@@ -28,8 +28,8 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:
         return self._router
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
-        self._router.set_context(context)
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+        self._router.set_runtime(runtime)
         return {}
 
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False):

@@ -21,7 +21,7 @@ from jiuwen.core.workflow.base import BaseWorkFlow
 
 
 class EmptyExecutable(Executable):
-    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         pass
 
     def skip_trace(self) -> bool:
@@ -45,10 +45,10 @@ class LoopGroup(BaseWorkFlow, Executable):
             self.end_comp(node)
         return self
 
-    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if self.compiled is None:
             raise JiuWenBaseException(-1, "loop graph is not compiled")
-        await self.compiled.invoke(inputs, context)
+        await self.compiled.invoke(inputs, runtime)
         return None
 
     def skip_trace(self) -> bool:
@@ -83,7 +83,6 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
             self._condition = FuncCondition(condition)
         elif isinstance(condition, str):
             self._condition = ExpressionCondition(condition)
-        self._context_root = node_id
 
         if break_nodes:
             for break_node in break_nodes:
@@ -107,7 +106,7 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
 
         self._in_loop = [BODY_NODE_ID]
         self._out_loop = [END]
-        self._context = None
+        self._runtime = None
 
     def to_executable(self) -> Executable:
         return self
@@ -116,57 +115,57 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
         self._callbacks.append(callback)
 
     def __call__(self, *args, **kwargs) -> list[str]:
-        return self.atomic_invoke(context=self._context)
+        return self.atomic_invoke(runtime=self._runtime)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        inputs = self._context.state().get_inputs(self._node_id)
-        outputs = self._condition_invoke(inputs=inputs, context=self._context)
-        self._context.state().set_outputs({self._node_id: outputs[1]})
+        inputs = self._runtime.state().get_inputs(self._node_id)
+        outputs = self._condition_invoke(inputs=inputs, runtime=self._runtime)
+        self._runtime.state().set_outputs({self._node_id: outputs[1]})
         return outputs[0]
 
-    def _condition_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
-        index = self._context.state().get(INDEX)
-        context.state().update(inputs)
+    def _condition_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        index = self._runtime.state().get(INDEX)
+        runtime.state().update(inputs)
         if index is None:
             raise JiuWenBaseException(-1,  'inner error, loop index is not set')
-        continue_loop = False if self.is_broken() else self._condition(context=context)
+        continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
         for callback in self._callbacks:
             if index < 0:
-                callback(FIRST_LOOP, context)
+                callback(FIRST_LOOP, runtime)
             else:
-                callback(END_ROUND, context)
+                callback(END_ROUND, runtime)
             if continue_loop:
-                callback(START_ROUND, context)
+                callback(START_ROUND, runtime)
             else:
-                callback(OUT_LOOP, context)
+                callback(OUT_LOOP, runtime)
         index = index + 1 if continue_loop else -1
-        context.state().update({INDEX: index})
+        runtime.state().update({INDEX: index})
         if not continue_loop:
-            context.state().update({INDEX: -1, BROKEN: False})
+            runtime.state().update({INDEX: -1, BROKEN: False})
         return self._in_loop if continue_loop else self._out_loop, {INDEX: index}
 
     def is_broken(self) -> bool:
-        _is_broken = self._context.state().get(BROKEN)
+        _is_broken = self._runtime.state().get(BROKEN)
         if isinstance(_is_broken, bool):
             return _is_broken
         return False
 
     def break_loop(self):
-        self._context.state().update({BROKEN: True})
+        self._runtime.state().update({BROKEN: True})
 
-    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
-        self._context = context
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        self._runtime = runtime
         # set loop graph inputs
-        self._context.state().update(inputs.get(INPUTS_KEY) if INPUTS_KEY in inputs else inputs)
-        index = self._context.state().get(INDEX)
+        self._runtime.state().update(inputs.get(INPUTS_KEY) if INPUTS_KEY in inputs else inputs)
+        index = self._runtime.state().get(INDEX)
         if index is None:
-            self._context.state().update({BROKEN: False, INDEX: -1})
-        if self._context.tracer() is not None:
-            self._context.tracer().register_workflow_span_manager(self._context.executable_id())
-        compiled = self._graph.compile(self._context)
+            self._runtime.state().update({BROKEN: False, INDEX: -1})
+        if self._runtime.tracer() is not None:
+            self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
+        compiled = self._graph.compile(self._runtime)
         if isinstance(self._body, LoopGroup):
-            self._body.compiled = self._body.compile(self._context)
-            return await compiled.invoke(inputs, self._context)
+            self._body.compiled = self._body.compile(self._runtime)
+            return await compiled.invoke(inputs, self._runtime)
         return None
 
     def graph_invoker(self) -> bool:

@@ -18,7 +18,7 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
 
     async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         result = {}
-        parent_context = runtime.base().parent()
+        parent_runtime = runtime.base().parent()
         for left, right in self._variable_mapping.items():
             left_ref_str = extract_origin_key(left)
             if left_ref_str == "":
@@ -28,6 +28,6 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
                 result[left_ref_str] = runtime.get_global_state(ref_str)
                 continue
             result[left_ref_str] = right
-        parent_context.state().update(result)
-        parent_context.state().set_outputs(result)
+        parent_runtime.state().update(result)
+        parent_runtime.state().set_outputs(result)
         return None

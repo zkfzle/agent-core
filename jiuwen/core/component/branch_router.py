@@ -21,25 +21,25 @@ class Branch:
             self._condition = condition
         self.target = target
 
-    def evaluate(self, context: BaseRuntime) -> bool:
-        return self._condition(context)
+    def evaluate(self, runtime: BaseRuntime) -> bool:
+        return self._condition(runtime)
 
 
 class BranchRouter:
     def __init__(self):
         super().__init__()
         self._branches: list[Branch] = []
-        self._context: Runtime = None
+        self._runtime: Runtime = None
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
                    branch_id: str = None):
         self._branches.append(Branch(condition, target, branch_id))
 
-    def set_context(self, context: Runtime):
-        self._context = context
+    def set_runtime(self, runtime: Runtime):
+        self._runtime = runtime
 
     def __call__(self, *args, **kwargs) -> list[str]:
         for branch in self._branches:
-            if branch.evaluate(self._context.base()):
+            if branch.evaluate(self._runtime.base()):
                 return branch.target
         return []

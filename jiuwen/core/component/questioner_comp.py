@@ -201,19 +201,19 @@ class QuestionerDirectReplyHandler:
         self._prompt = prompt
         return self
 
-    def handle(self, inputs: Input, context: Runtime):
+    def handle(self, inputs: Input, runtime: Runtime):
         if self._state.status == ExecutionStatus.START:
-            return self._handle_start_state(inputs, context)
+            return self._handle_start_state(inputs, runtime)
         if self._state.status == ExecutionStatus.USER_INTERACT:
-            return self._handle_user_interact_state(inputs, context)
+            return self._handle_user_interact_state(inputs, runtime)
         if self._state.status == ExecutionStatus.END:
-            return self._handle_end_state(inputs, context)
+            return self._handle_end_state(inputs, runtime)
         return dict()
 
-    def _handle_start_state(self, inputs, context):
+    def _handle_start_state(self, inputs, runtime):
         output = QuestionerOutput()
         self._query = inputs.get("query", "")
-        chat_history = self._get_latest_chat_history(context)
+        chat_history = self._get_latest_chat_history(runtime)
         if self._is_set_question_content():
             user_fields = inputs.get(USER_FIELDS_KEY, dict())
             output.question = QuestionerUtils.format_template(self._config.question_content, user_fields)
@@ -253,7 +253,7 @@ class QuestionerDirectReplyHandler:
             )
         return dict(userFields=output.model_dump(exclude_defaults=True))
 
-    def _handle_end_state(self, inputs, context):
+    def _handle_end_state(self, inputs, runtime):
         return dict(
             userFields=QuestionerOutput(user_response=self._state.user_response,
                                         key_fields=self._state.extracted_key_fields).model_dump(exclude_defaults=True)
@@ -282,10 +282,10 @@ class QuestionerDirectReplyHandler:
 
         return self._check_if_continue_ask(output)
 
-    def _get_latest_chat_history(self, context: Runtime) -> List:
+    def _get_latest_chat_history(self, runtime: Runtime) -> List:
         result = list()
         if self._config.with_chat_history:
-            raw_chat_history = context.store().read(WORKFLOW_CHAT_HISTORY) or list() # FIXME: remove to context engine
+            raw_chat_history = runtime.store().read(WORKFLOW_CHAT_HISTORY) or list() # FIXME: remove to context engine
             if raw_chat_history:
                 result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history, self._config.chat_history_max_rounds)
         if not result or "user" == result[-1].get("role", ""):
@@ -388,7 +388,7 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = None
 
     @staticmethod
-    def _load_state_from_context(runtime: Runtime) -> QuestionerState:
+    def _load_state_from_runtime(runtime: Runtime) -> QuestionerState:
         questioner_state = runtime.get_state()
         state_dict = questioner_state.get(QUESTIONER_STATE_KEY) if isinstance(questioner_state, dict) else None
         if state_dict:
@@ -396,7 +396,7 @@ class QuestionerExecutable(ComponentExecutable):
         return QuestionerState()
 
     @staticmethod
-    def _store_state_to_context(state: QuestionerState, runtime: Runtime):
+    def _store_state_to_runtime(state: QuestionerState, runtime: Runtime):
         state_dict = state.serialize()
         runtime.update_state({QUESTIONER_STATE_KEY: state_dict})
 
@@ -407,9 +407,9 @@ class QuestionerExecutable(ComponentExecutable):
     async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         await runtime.trace({"on_invoke_data": "extra trace data"})
 
-        state_from_context = self._load_state_from_context(runtime)
-        if state_from_context.is_undergoing_interaction():
-            self._state = state_from_context
+        state_from_runtime = self._load_state_from_runtime(runtime)
+        if state_from_runtime.is_undergoing_interaction():
+            self._state = state_from_runtime
 
         if self._state is None:
             raise JiuWenBaseException(
@@ -422,7 +422,7 @@ class QuestionerExecutable(ComponentExecutable):
         if self._config.response_type == ResponseType.ReplyDirectly.value:
             invoke_result = self._handle_questioner_direct_reply(inputs, runtime)
 
-        self._store_state_to_context(self._state, runtime)
+        self._store_state_to_runtime(self._state, runtime)
 
         # 向用户追问
         if self._state.is_undergoing_interaction():

@@ -20,7 +20,7 @@ class End(ComponentExecutable, WorkflowComponent):
         self.template = conf["responseTemplate"] if ( conf and
                 "responseTemplate" in conf and len(conf["responseTemplate"]) > 0) else None
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         if self.template:
             answer = TemplateUtils.render_template(self.template, inputs)
             output = {}
@@ -33,7 +33,7 @@ class End(ComponentExecutable, WorkflowComponent):
             "output": output
         }
 
-    async def stream(self, inputs: Input, context: Runtime) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, runtime: Runtime) -> AsyncIterator[Output]:
         try:
             if self.template:
                 response_list = TemplateUtils.render_template_to_list(self.template)
@@ -45,8 +45,8 @@ class End(ComponentExecutable, WorkflowComponent):
                             # 参数从当前input获取
                             param_value = inputs.get(param_name)
                         else:
-                            # 参数transform存入的context中获取
-                            content = context.get_state(STREAM_CACHE_KEY)
+                            # 参数transform存入的runtime中获取
+                            content = runtime.get_state(STREAM_CACHE_KEY)
                             if content:
                                 param_value = content.get(param_name)
                             else:
@@ -73,15 +73,15 @@ class End(ComponentExecutable, WorkflowComponent):
         except Exception as e:
             logger.info("stream output error: {}".format(e))
 
-    async def transform(self, inputs: AsyncIterator[Input], context: Runtime) -> AsyncIterator[Output]:
+    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime) -> AsyncIterator[Output]:
         # 异步遍历输入迭代器
         index = 0
         stream_cache_value = {}
         async for input_item in inputs:
-            # 将当前输入项存入context
+            # 将当前输入项存入runtime
             if isinstance(input_item, dict):
                 for key, value in input_item.items():
                     stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)
             yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=input_item))
             index += 1
-        context.update_state({STREAM_CACHE_KEY: stream_cache_value})
+        runtime.update_state({STREAM_CACHE_KEY: stream_cache_value})

@@ -65,8 +65,8 @@ class MockAgent(unittest.TestCase):
         """
 
         # workflow与agent共用一个tracer
-        workflow_context = context.create_workflow_context()
-        assert (workflow_context.tracer() is self.tracer)
+        workflow_runtime= context.create_workflow_context()
+        assert (workflow_runtime.tracer() is self.tracer)
 
         flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"),
@@ -110,7 +110,7 @@ class MockAgent(unittest.TestCase):
         }
         index_dict = {key: 0 for key in expected_datas_model.keys()}
 
-        async for chunk in flow.stream({"a": 1, "b": "haha"}, workflow_context):
+        async for chunk in flow.stream({"a": 1, "b": "haha"}, workflow_runtime):
             if isinstance(chunk, CustomSchema):
                 node_id = chunk.node_id
                 index = index_dict[node_id]

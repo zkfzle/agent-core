@@ -26,7 +26,7 @@ class BreakComponent(WorkflowComponent, Executable):
     def set_controller(self, loop_controller: LoopController):
         self._loop_controller = loop_controller
 
-    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if self._loop_controller is None:
             raise RuntimeError('Loop controller not initialized')
         self._loop_controller.break_loop()

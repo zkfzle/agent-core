@@ -31,17 +31,17 @@ class WorkflowTest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
-    def invoke_workflow(self, inputs: Input, context: BaseRuntime, flow: Workflow):
-        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context))
+    def invoke_workflow(self, inputs: Input, runtime: BaseRuntime, flow: Workflow):
+        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, runtime=runtime))
         self.loop.run_until_complete(feature)
         return feature.result()
 
-    def assert_workflow_invoke(self, inputs: dict, context: BaseRuntime, flow: Workflow, expect_results: dict = None,
+    def assert_workflow_invoke(self, inputs: dict, runtime: BaseRuntime, flow: Workflow, expect_results: dict = None,
                                checker: Callable = None):
         if expect_results is not None:
-            assert self.invoke_workflow(inputs, context, flow) == expect_results
+            assert self.invoke_workflow(inputs, runtime, flow) == expect_results
         elif checker is not None:
-            checker(self.invoke_workflow(inputs, context, flow))
+            checker(self.invoke_workflow(inputs, runtime, flow))
 
     def test_simple_workflow(self):
         # flow1: start -> a -> end

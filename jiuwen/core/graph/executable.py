@@ -22,16 +22,16 @@ class Executable(Generic[Input, Output]):
     def __init__(self):
         super().__init__()
 
-    async def on_invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         raise JiuWenBaseException(-1, "Invoke is not supported")
 
-    async def on_stream(self, inputs: Input, context: BaseRuntime) -> AsyncIterator[Output]:
+    async def on_stream(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Stream is not supported")
 
-    async def on_collect(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> Output:
+    async def on_collect(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> Output:
         raise JiuWenBaseException(-1, "Collect is not supported")
 
-    async def on_transform(self, inputs: AsyncIterator[Input], context: BaseRuntime) -> AsyncIterator[Output]:
+    async def on_transform(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Transform is not supported")
 
     async def interrupt(self, message: dict):

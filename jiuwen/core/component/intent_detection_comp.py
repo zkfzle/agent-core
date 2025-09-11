@@ -99,7 +99,7 @@ class IntentDetectionConfig(ComponentConfig):
 class IntentDetectionExecutable(ComponentExecutable):
     def __init__(self, component_config: IntentDetectionConfig):
         super().__init__()
-        self._context: Runtime = None
+        self._runtime: Runtime = None
         self._llm: BaseChatModel = None
         self._initialized: bool = False
         self._config = component_config
@@ -113,11 +113,11 @@ class IntentDetectionExecutable(ComponentExecutable):
             intent_res = {CLASSIFICATION_ID: idx, CLASSIFICATION_NAME: intent_config.category_name_list[idx]}
         return intent_res
 
-    def _get_chat_history_from_context(self):
+    def _get_chat_history_from_runtime(self):
         """从上下文中获取对话历史"""
         chat_history = []
-        if self._context:
-            chat_history: list = self._context.get_global_state(WORKFLOW_CHAT_HISTORY)
+        if self._runtime:
+            chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
         return chat_history
 
     def _get_category_info(self):
@@ -130,9 +130,9 @@ class IntentDetectionExecutable(ComponentExecutable):
                          zip(self._config.category_list,
                              self._config.category_name_list))
 
-    def _set_context(self, context: Runtime):
-        """设置context属性"""
-        self._context = context
+    def _set_runtime(self, runtime: Runtime):
+        """设置runtime属性"""
+        self._runtime = runtime
 
     def _create_llm_instance(self):
         return ModelFactory().get_model(self._config.model.model_provider, self._config.model.model_info)
@@ -216,7 +216,7 @@ class IntentDetectionExecutable(ComponentExecutable):
     def get_llm_result(self, current_inputs):
         """获取llm"""
         llm_inputs = self._pre_process(current_inputs)
-        logger.info(f"[%s] intent detection llm_inputs: %s", self._context.executable_id(), llm_inputs)
+        logger.info(f"[%s] intent detection llm_inputs: %s", self._runtime.executable_id(), llm_inputs)
         current_inputs.update({LLM_INPUTS: llm_inputs})
         try:
             llm_output = self._llm.invoke(llm_inputs).content
@@ -236,13 +236,13 @@ class IntentDetectionExecutable(ComponentExecutable):
     def post_commit(self) -> bool:
         return True
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         """invoke IntentDetection节点"""
         # 提取上下文数据
-        self._set_context(context)
-        self._router.set_context(context)
+        self._set_runtime(runtime)
+        self._router.set_runtime(runtime)
         self._initialize_if_needed()
-        chat_history = self._get_chat_history_from_context()
+        chat_history = self._get_chat_history_from_runtime()
         # 处理意图检测输入：
         try:
             current_inputs = self._prepare_detection_inputs(inputs, chat_history)
@@ -256,7 +256,7 @@ class IntentDetectionExecutable(ComponentExecutable):
 
         # 获取大模型结果
         llm_output = self.get_llm_result(current_inputs)
-        logger.info(f"[%s] intent detection output_inputs: %s", self._context.executable_id(), llm_output)
+        logger.info(f"[%s] intent detection output_inputs: %s", self._runtime.executable_id(), llm_output)
         # 后处理意图检测结果
         intent_res = self._handle_detection_result(llm_output)
         return intent_res

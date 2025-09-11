@@ -29,14 +29,14 @@ class QuestionerTest(unittest.TestCase):
     @staticmethod
     def invoke_workflow(inputs: Input, context: TaskContext, flow: Workflow):
         loop = asyncio.get_event_loop()
-        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context.create_workflow_context()))
+        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, runtime=context.create_workflow_context()))
         loop.run_until_complete(feature)
         return feature.result()
 
     @staticmethod
-    def invoke_workflow_with_workflow_context(inputs: Input, context: WorkflowRuntime, flow: Workflow):
+    def invoke_workflow_with_workflow_context(inputs: Input, runtime: WorkflowRuntime, flow: Workflow):
         loop = asyncio.get_event_loop()
-        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, context=context))
+        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, runtime=runtime))
         loop.run_until_complete(feature)
         return feature.result()
 
@@ -225,8 +225,8 @@ class QuestionerTest(unittest.TestCase):
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
 
-        async def _async_stream_workflow_for_tracer(_flow, _inputs, _context, _tracer_chunks):
-            async for chunk in flow.stream(_inputs, _context):
+        async def _async_stream_workflow_for_tracer(_flow, _inputs, _runtime, _tracer_chunks):
+            async for chunk in flow.stream(_inputs, _runtime):
                 if isinstance(chunk, TraceSchema):
                     _tracer_chunks.append(chunk)
 

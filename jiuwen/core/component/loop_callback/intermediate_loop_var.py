@@ -14,17 +14,17 @@ class IntermediateLoopVarCallback(LoopCallback):
         self.intermediate_loop_var = intermediate_loop_var
         self.intermediate_loop_var_root = intermediate_loop_var_root
 
-    def first_in_loop(self, context: BaseRuntime) -> Output:
-        vars = context.state().get(self.intermediate_loop_var)
-        context.state().update({self.intermediate_loop_var_root: vars})
+    def first_in_loop(self, runtime: BaseRuntime) -> Output:
+        vars = runtime.state().get(self.intermediate_loop_var)
+        runtime.state().update({self.intermediate_loop_var_root: vars})
         return {self.intermediate_loop_var_root: vars}
 
-    def out_loop(self, context: BaseRuntime) -> Output:
-        context.state().update({self.intermediate_loop_var_root: None})
+    def out_loop(self, runtime: BaseRuntime) -> Output:
+        runtime.state().update({self.intermediate_loop_var_root: None})
         return {self.intermediate_loop_var_root: None}
 
-    def start_round(self, context: BaseRuntime) -> Output:
+    def start_round(self, runtime: BaseRuntime) -> Output:
         return None
 
-    def end_round(self, context: BaseRuntime) -> Output:
+    def end_round(self, runtime: BaseRuntime) -> Output:
         return None

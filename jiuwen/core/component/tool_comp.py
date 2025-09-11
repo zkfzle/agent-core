@@ -43,9 +43,9 @@ class ToolExecutable(ComponentExecutable):
         self._config = config
         self._tool: Tool = None
 
-    async def invoke(self, inputs: Input, context: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
         if self._tool is None:
-            self._tool = self.get_tool(context)
+            self._tool = self.get_tool(runtime)
         validated = inputs.get('validate', False)
         user_field = inputs.get('userFields', None)
         if self._config.needValidate and not validated:
@@ -63,7 +63,7 @@ class ToolExecutable(ComponentExecutable):
     def _create_output(self, response):
         return response
 
-    def get_tool(self, context: Runtime) -> Tool:
+    def get_tool(self, runtime: Runtime) -> Tool:
         pass
 
     def set_tool(self, tool: Tool):

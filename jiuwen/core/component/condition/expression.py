@@ -13,12 +13,12 @@ class ExpressionCondition(Condition):
         super().__init__()
         self._expression = expression
 
-    def invoke(self, inputs: Input, context: BaseRuntime) -> Output:
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         pattern = r'\$\{[^}]*\}'
         matches = re.findall(pattern, self._expression)
         inputs = {}
         for match in matches:
-            inputs[match] = context.state().get_global(match[2:-1])
+            inputs[match] = runtime.state().get_global(match[2:-1])
         return self._evaluate_expression(self._expression, inputs)
 
     def _evaluate_expression(self, expression, inputs) -> bool:
@@ -33,11 +33,11 @@ class ExpressionCondition(Condition):
 
         expression = re.sub(r'\$\{(.*?)\}', lambda match: f'inputs["{match.group(0)}"]', expression)
 
-        context = {
+        runtime = {
             "inputs": inputs
         }
         try:
-            return eval(expression, context)
+            return eval(expression, runtime)
         except SyntaxError as e:
             raise e
         except Exception as e:

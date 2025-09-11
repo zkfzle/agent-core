@@ -168,7 +168,7 @@ class TestLLMExecutableInvoke:
             fake_model_config,
     ):
         """LLM 节点在完整工作流中的异步测试"""
-        context = WorkflowRuntime()
+        runtime = WorkflowRuntime()
 
         # 1. 打桩 LLM
         fake_llm = FakeModel()
@@ -202,7 +202,7 @@ class TestLLMExecutableInvoke:
         flow.add_connection("llm", "end")
 
         # 3. 直接异步调用
-        result = await flow.invoke(inputs={"a": 2, "userFields": dict(query="pytest")}, context=context)
+        result = await flow.invoke(inputs={"a": 2, "userFields": dict(query="pytest")}, runtime=runtime)
         assert result is not None
 
     @pytest.mark.asyncio  # 新增
@@ -253,7 +253,7 @@ class TestLLMExecutableInvoke:
         flow.add_connection("llm", "e")
 
         context = WorkflowRuntime()
-        result = await flow.invoke(inputs={"query": "yzq test query"}, context=context)
+        result = await flow.invoke(inputs={"query": "yzq test query"}, runtime=context)
         print(f"This is invoke result:{result}")
 
 class TestLLMExecutableInvokeNew:
@@ -305,7 +305,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_stream_connection("llm", "e")
 
         context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
-        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, context=context):
+        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, runtime=context):
             print(f"stream chunk >>> {chunk}")
 
     @unittest.skip("skip system test")
@@ -353,5 +353,5 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
-        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, context=context):
+        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, runtime=context):
             print(f"stream chunk >>> {chunk}")

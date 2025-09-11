@@ -388,8 +388,7 @@ class QuestionerExecutable(Executable):
 
     @staticmethod
     def _load_state_from_context(context) -> QuestionerState:
-        updates_in_state = context.state().get_updates_of_node()
-        questioner_state = updates_in_state[-1] if isinstance(updates_in_state, list) and updates_in_state else dict()
+        questioner_state = context.state().get()
         state_dict = questioner_state.get(QUESTIONER_STATE_KEY) if isinstance(questioner_state, dict) else None
         if state_dict:
             return QuestionerState.deserialize(state_dict)
@@ -398,7 +397,7 @@ class QuestionerExecutable(Executable):
     @staticmethod
     def _store_state_to_context(state: QuestionerState, context):
         state_dict = state.serialize()
-        context.state().update_global({QUESTIONER_STATE_KEY: state_dict})
+        context.state().update({QUESTIONER_STATE_KEY: state_dict})
 
     def state(self, state: QuestionerState):
         self._state = state

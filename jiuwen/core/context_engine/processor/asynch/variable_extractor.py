@@ -2,22 +2,21 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-from abc import abstractmethod
-from typing import Optional, Callable, Dict, Any, List
-from enum import Enum
+from typing import Optional, Dict, List
 import json
 import re
 
 from jiuwen.core.common.logging import logger
 from jiuwen.core.utils.llm.messages import BaseMessage
-from jiuwen.core.context_engine.base import EngineInput, EngineOutput
+from jiuwen.core.context_engine.base import ContextWindow, ContextVariable
 from jiuwen.core.context_engine.config import BaseAsyncProcessorConfig
-from jiuwen.core.context_engine.processor.asynch.base import AsyncProcessStage
+from jiuwen.core.context_engine.processor.asynch.base import AsyncContextProcess
 from jiuwen.core.context_engine.processor.factory import ProcessorFactory
 
 
 class VariableExtractorConfig(BaseAsyncProcessorConfig):
     pass
+
 
 DEFAULT_EXTRACTOR_TEMPLATE = \
 """
@@ -43,7 +42,7 @@ Ensure that the output format strictly adheres to JSON format and always include
 
 
 @ProcessorFactory.register("variable_extractor", VariableExtractorConfig)
-class VariableExtractor(AsyncProcessStage):
+class VariableExtractor(AsyncContextProcess):
     def __init__(self, config: VariableExtractorConfig):
         super().__init__(config)
 
@@ -51,10 +50,9 @@ class VariableExtractor(AsyncProcessStage):
     def need_llm() -> bool:
         return True
 
-    async def arun(self, input_data: EngineInput) -> EngineOutput:
+    async def arun(self, input_data: ContextWindow) -> ContextWindow:
         variables = input_data.variables
-        output_data = EngineOutput.from_input(input_data)
-        output_data.variables = {}
+        output_data = input_data
         if not variables or not input_data.chat_history:
             return output_data
 
@@ -67,19 +65,19 @@ class VariableExtractor(AsyncProcessStage):
         extracted_variables = self.__parse_extract_result(response.content)
         if not extracted_variables:
             return output_data
-        output_data.variables = extracted_variables
+        self.__convert_result_to_variables(output_data, extracted_variables)
         return output_data
 
-    def is_ready(self, input_data: EngineInput) -> bool:
+    def is_ready(self, input_data: ContextWindow) -> bool:
         return True
 
     def update_strategy(self) -> str:
-        return "update_variable"
+        return "update_variables"
 
-    def __generate_variable_string(self, variables: Dict[str, Dict]) -> str:
+    def __generate_variable_string(self, variables: Dict[str, ContextVariable]) -> str:
         variable_string = ""
-        for var, info in variables.items():
-            variable_string += f"name: {info.get('name', '')}, description: {info.get('description', '')}\n"
+        for name, variable in variables.items():
+            variable_string += f"name: {variable.name}, description: {variable.description}\n"
         return variable_string
 
     def __generate_history_string(self, history: List[BaseMessage]) -> str:
@@ -106,3 +104,8 @@ class VariableExtractor(AsyncProcessStage):
 
         logger.warning("No valid json string found")
         return None
+
+    def __convert_result_to_variables(self, context_window: ContextWindow, variables_dict: Dict[str, str]):
+        for name, content in variables_dict.items():
+            if name in context_window.variables:
+                context_window.variables[name].value = content

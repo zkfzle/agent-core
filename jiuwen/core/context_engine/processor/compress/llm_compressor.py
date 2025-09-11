@@ -3,9 +3,9 @@ import json
 from typing import Optional, Dict, List
 from pydantic import Field
 
-from jiuwen.core.context_engine.base import EngineInput, EngineOutput, ContextType
+from jiuwen.core.context_engine.base import ContextWindow, ContextType
 from jiuwen.core.context_engine.processor.factory import ProcessorFactory
-from jiuwen.core.context_engine.processor.preprocess.base import PreprocessStage
+from jiuwen.core.context_engine.processor.base import BaseContextProcessor
 from jiuwen.core.utils.llm.messages import HumanMessage
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context_engine.config import BaseProcessorConfig
@@ -51,7 +51,7 @@ class LLMCompressorConfig(BaseProcessorConfig):
 
 
 @ProcessorFactory.register("llm_compressor", LLMCompressorConfig)
-class LLMCompressor(PreprocessStage):
+class LLMCompressor(BaseContextProcessor):
     """Processor that uses LLM for content compression"""
 
     def __init__(self, config: LLMCompressorConfig):
@@ -61,7 +61,7 @@ class LLMCompressor(PreprocessStage):
         self.max_length = config.max_length
         self.compress_targets = config.compress_targets
 
-    def run(self, input_data: EngineInput) -> EngineOutput:
+    def run(self, input_data: ContextWindow) -> ContextWindow:
         """Synchronous version of process for pipeline execution"""
         input_format = self._generate_input_content(input_data)
         output_format = self._generate_output_format()
@@ -90,7 +90,7 @@ class LLMCompressor(PreprocessStage):
             return dict()
 
     def _generate_input_content(self,
-                                input_data: EngineInput) -> Optional[str]:
+                                input_data: ContextWindow) -> Optional[str]:
         input_data_dict = input_data.model_dump()
         format_data = ""
         for context_type in self.compress_targets:
@@ -108,12 +108,12 @@ class LLMCompressor(PreprocessStage):
 
     def _fill_compressed_result(self,
                                 compressed_content: Dict[str, str],
-                                input_data: EngineInput) -> EngineOutput:
+                                input_data: ContextWindow) -> ContextWindow:
         output_data = input_data.model_dump()
         for context_type in self.compress_targets:
             if context_type.value in compressed_content:
                 output_data[context_type.value] = compressed_content[context_type.value]
-        return EngineOutput(**output_data)
+        return ContextWindow(**output_data)
 
     def _parse_compressed_result(self, json_str: str) -> Optional[Dict[str, str]]:
         """Parse json string"""

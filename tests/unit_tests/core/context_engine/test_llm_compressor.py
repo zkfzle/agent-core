@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from jiuwen.core.context_engine.base import EngineInput, ContextType
-from jiuwen.core.context_engine.processor.preprocess.llm_compressor import (
+from jiuwen.core.context_engine.base import ContextWindow, ContextType
+from jiuwen.core.context_engine.processor.compress.llm_compressor import (
     LLMCompressorConfig,
     LLMCompressor,
 )
@@ -65,12 +65,12 @@ class TestLLMCompressorTest:
     """Integration tests with actual ModelFactory"""
     def test_compression_with_user_input_and_chat_history(self, compressor_with_mock_llm):
         compressor = compressor_with_mock_llm
-        input = EngineInput(user_input="你是一个航班查询助手，请按用户的问题查询航班信息，注意信息的准确以及不要返回用户隐私数据",
-                            chat_history=[AIMessage(content="你好，请问有什么可以帮助你？"),
-                                          HumanMessage(content="请帮我查询一下飞往天津的航班"),
-                                          AIMessage(content="好的，查询到行帮为CA9876"),
-                                          HumanMessage(content="这班飞机啥时候起飞"),
-                                          AIMessage(content="明天上午9:40起飞，请提前半小时登机"),])
+        input = ContextWindow(user_input="你是一个航班查询助手，请按用户的问题查询航班信息，注意信息的准确以及不要返回用户隐私数据",
+                              chat_history=[AIMessage(content="你好，请问有什么可以帮助你？"),
+                                            HumanMessage(content="请帮我查询一下飞往天津的航班"),
+                                            AIMessage(content="好的，查询到行帮为CA9876"),
+                                            HumanMessage(content="这班飞机啥时候起飞"),
+                                            AIMessage(content="明天上午9:40起飞，请提前半小时登机"),])
         output = compressor.run(input)
         assert output.user_input == "你是一个航班查询助手"
         assert output.chat_history == "用户请求查询飞往天津的航班，航班号为CA9876，明天上午9:40起飞，请提前半小时登机"

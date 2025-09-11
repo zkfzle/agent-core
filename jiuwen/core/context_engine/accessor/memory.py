@@ -7,7 +7,6 @@ from typing import Dict, Any, Optional, Union, List, Tuple
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.enum.enum import MessageRole
 from jiuwen.core.utils.llm.messages import BaseMessage
-from jiuwen.core.context.model_context.accessor.base import BaseContextAccessor
 
 try:
     import jiuwen.core.utils.memory.memory_engine_factory as memory_engine_factory
@@ -22,14 +21,9 @@ DEFAULT_SESSION_ID: str = "<default_session_id>"
 DEFAULT_AGENT_ID: str = "<default_agent_id>"
 
 
-class MemoryAccessor(BaseContextAccessor):
-    def __init__(self, config: Dict[str, Any]):
-        self.__memory_core = None
-        self.__config: Dict[str, Any] = config
-        try:
-            self.__memory_core = memory_engine_factory.open(config)
-        except Exception:
-            logger.warning("please install jiuwen.core.utils.memory.memory_engine")
+class MemoryAccessor:
+    def __init__(self, memory_core: Any):
+        self.__memory_core = memory_core
 
     @staticmethod
     def __align_memory_role(role: str) -> str:
@@ -89,7 +83,7 @@ class MemoryAccessor(BaseContextAccessor):
             session_id=filters.get("session_id") or DEFAULT_SESSION_ID,
             role=self.__align_memory_role(message.role),
             mem=message.content,
-            config=self.__config,
+            config=dict(),
             mem_async=False
         )
         print("add_memory", message.content)

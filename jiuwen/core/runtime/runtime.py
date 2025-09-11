@@ -5,7 +5,6 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional
 
-from jiuwen.core.context.model_context.model_context import ModelContext, WorkflowModelContext, NodeModelContext
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
@@ -20,10 +19,6 @@ from jiuwen.core.tracer.tracer import Tracer
 class BaseRuntime(ABC):
     @abstractmethod
     def config(self) -> Config:
-        pass
-
-    @abstractmethod
-    def context(self) -> ModelContext:
         pass
 
     @abstractmethod
@@ -73,11 +68,8 @@ class BaseRuntime(ABC):
 
 class WorkflowRuntime(BaseRuntime):
     def __init__(self, state: State = None, config: Config = None, store: Store = None, tracer: Tracer = None,
-                 session_id: str = None, parent_model_context: ModelContext = None,
-                 controller_context_manager: Any = None):
+                 session_id: str = None, controller_context_manager: Any = None):
         self._config = config if config is not None else Config()
-        self._model_context = WorkflowModelContext(session_id)
-        self._model_context.derive_from(parent_model_context)
         self._state = state if state is not None else InMemoryState()
         self._store = store
         self._tracer = tracer
@@ -86,9 +78,6 @@ class WorkflowRuntime(BaseRuntime):
         self._controller_context_manager = controller_context_manager
         self._session_id = session_id if session_id else uuid.uuid4().hex
         self._queue_manager = None  # type: MessageQueueManager
-
-    def context(self) -> ModelContext:
-        return self._model_context
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
         if self._stream_writer_manager is not None:
@@ -141,12 +130,6 @@ class NodeRuntime(BaseRuntime):
         self._executable_id = self._parent_id + "." + node_id if len(self._parent_id) != 0 else node_id
         self._state = runtime.state().create_node_state(self._executable_id, self._parent_id)
         self._runtime = runtime
-        self._model_context = NodeModelContext(self._node_id, self.session_id(),
-                                               config=runtime.context().get_config(),
-                                               parent_context=runtime.context())
-
-    def context(self) -> ModelContext:
-        return self._model_context
 
     def node_id(self):
         return self._node_id

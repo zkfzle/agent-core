@@ -3,32 +3,32 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from pydantic import BaseModel, Field
-from typing import Dict, Union, Optional, List
+from typing import Dict, Union, List
+from enum import Enum
 
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.context_engine.base import AsyncUpdateType
+from jiuwen.core.context_engine.base import ContextVariable
+
+
+class AsyncRunStrategy(Enum):
+    ONCE = "once"
+    LOOP = "loop"
+
 
 class BaseProcessorConfig(BaseModel):
     processor_type: str = Field(default="")
 
 
 class BaseAsyncProcessorConfig(BaseProcessorConfig):
-    output_type: str = Field(default=AsyncUpdateType.UPDATE_NOTHING.value)
-
-
-class AsyncExecuteConfig(BaseModel):
-    processors: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
-
-
-class OnlineExecuteConfig(BaseModel):
-    preprocess_stage: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
-    assemble_stage: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
-    postprocess_stage: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
+    run_strategy: str = Field(default=AsyncRunStrategy.LOOP.value)
+    run_interval: float = Field(default=0.5, gt=0.1)
 
 
 class ContextEngineConfig(BaseModel):
-    node_id: str
-    model_provider: Optional[str] = Field(default=None)
-    model_info: Optional[BaseModelInfo] = Field(default=None)
-    online_process: OnlineExecuteConfig = Field(default=OnlineExecuteConfig())
-    async_process: AsyncExecuteConfig = Field(default=AsyncExecuteConfig())
+    conversation_history_length: int = Field(default=20, ge=0)
+    """variable config"""
+    variables: List[ContextVariable] = Field(default=[])
+    """online processing config"""
+    processors: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])
+    """async processing config"""
+    schedule_interval: str = Field(default=0.5, gt=0.1)
+    async_processors: List[Union[BaseProcessorConfig, Dict]] = Field(default=[])

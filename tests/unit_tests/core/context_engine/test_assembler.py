@@ -3,10 +3,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 import pytest
-from unittest.mock import Mock, patch
-from typing import Dict, Any
+from unittest.mock import patch
 
-from jiuwen.core.context_engine.base import EngineInput
+from jiuwen.core.context_engine.base import ContextWindow
 from jiuwen.core.context_engine.processor.assemble.assembler import (
     AssemblerConfig,
     AssemblerProcessor,
@@ -55,7 +54,7 @@ class TestAssemblerProcessor:
     @pytest.fixture
     def engine_input(self):
         """Sample EngineInput for testing"""
-        return EngineInput(
+        return ContextWindow(
             user_input="Hello, how are you?",
             system_prompt="You are a helpful assistant",
             chat_history="Previous conversation",
@@ -85,7 +84,7 @@ class TestAssemblerProcessor:
         )
 
         processor = AssemblerProcessor(config)
-        engine_input = EngineInput(
+        engine_input = ContextWindow(
             user_input="Test message", system_prompt="Test system"
         )
 
@@ -103,7 +102,7 @@ class TestAssemblerProcessor:
         )
 
         processor = AssemblerProcessor(config)
-        engine_input = EngineInput(user_input="Hello")
+        engine_input = ContextWindow(user_input="Hello")
 
         variables = processor._extract_template_variables(engine_input)
         assert variables["user_input"] == "Hello"
@@ -114,10 +113,10 @@ class TestAssemblerProcessor:
         processor = AssemblerProcessor(basic_config)
         result = processor.run(engine_input)
 
-        assert result.full_output is not None
+        assert result.full_prompt is not None
         # Should contain both user input and system prompt
-        assert "Hello, how are you?" in result.full_output
-        assert "You are a helpful assistant" in result.full_output
+        assert "Hello, how are you?" in result.full_prompt
+        assert "You are a helpful assistant" in result.full_prompt
 
     def test_run_message_format(self):
         """Test assembly with message return format"""
@@ -126,31 +125,11 @@ class TestAssemblerProcessor:
         )
 
         processor = AssemblerProcessor(config)
-        engine_input = EngineInput(user_input="Test message")
+        engine_input = ContextWindow(user_input="Test message")
 
         result = processor.run(engine_input)
-        assert result.full_output is not None
-        assert isinstance(result.full_output, str)
-
-    @patch("jiuwen.core.context_engine.processor.assemble.assembler.logger")
-    def test_run_with_assembly_error(self, mock_logger, basic_config, engine_input):
-        """Test error handling during assembly"""
-        processor = AssemblerProcessor(basic_config)
-
-        # Mock assembler to raise exception
-        with patch.object(
-            processor.assembler, "assemble", side_effect=Exception("Assembly failed")
-        ):
-            result = processor.run(engine_input)
-
-            # Should use fallback assembly and produce content, not empty
-            assert result.full_output is not None
-            assert result.full_output != ""
-            # Should contain fallback-assembled content
-            assert "Hello, how are you?" in result.full_output
-            assert "You are a helpful assistant" in result.full_output
-            # Should log the warning about assembler failure
-            mock_logger.warning.assert_called_once()
+        assert result.full_prompt is not None
+        assert isinstance(result.full_prompt, str)
 
     def test_run_with_missing_required_variables(self):
         """Test behavior when required template variables are missing"""
@@ -160,7 +139,7 @@ class TestAssemblerProcessor:
         )
 
         processor = AssemblerProcessor(config)
-        engine_input = EngineInput(user_input="test")  # Missing required_var
+        engine_input = ContextWindow(user_input="test")  # Missing required_var
 
         # This should not raise an exception due to error handling
         result = processor.run(engine_input)
@@ -192,10 +171,10 @@ class TestAssemblerProcessorEdgeCases:
         config = AssemblerConfig(template_content="", return_format="text")
         processor = AssemblerProcessor(config)
 
-        engine_input = EngineInput(user_input="test")
+        engine_input = ContextWindow(user_input="test")
         result = processor.run(engine_input)
 
-        assert result.full_output == ""  # Empty template should produce empty output
+        assert result.full_prompt == ""  # Empty template should produce empty output
 
     def test_none_values_in_input(self):
         """Test handling of None values in EngineInput"""
@@ -205,11 +184,11 @@ class TestAssemblerProcessorEdgeCases:
         )
 
         processor = AssemblerProcessor(config)
-        engine_input = EngineInput(user_input="", system_prompt="test system")
+        engine_input = ContextWindow(user_input="", system_prompt="test system")
 
         result = processor.run(engine_input)
         # Should handle empty values gracefully
-        assert "test system" in result.full_output
+        assert "test system" in result.full_prompt
 
     def test_complex_variable_mappings(self):
         """Test complex variable mapping scenarios"""
@@ -221,7 +200,7 @@ class TestAssemblerProcessorEdgeCases:
         )
 
         processor = AssemblerProcessor(config)
-        engine_input = EngineInput(
+        engine_input = ContextWindow(
             user_input="user message",
             chat_history="conversation history",
             # system_prompt is empty, should use default

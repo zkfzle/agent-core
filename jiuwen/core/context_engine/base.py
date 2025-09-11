@@ -3,54 +3,110 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from enum import Enum
-
+from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 from typing import Union, Dict, Any, Optional, List
 
 from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.utils.prompt.template.template import Template
 
-class ProcessorType(Enum):
-    COMPRESSOR = "compressor"
-    ASSEMBLER = "assembler"
+
+class ContextVariable(BaseModel):
+    name: str = Field(default=...)
+    description: str = Field(default="")
+    value: Optional[str] = Field(default=None)
+    default_value: Optional[str] = Field(default=None)
+
+    def get_value(self):
+        return self.value if self.value else self.default_value
 
 
-class ProcessStage(Enum):
-    PREPROCESSING = "preprocessing"
-    ASSEMBLING = "assembling"
-    POSTPROCESSING = "postprocessing"
-    ASYNC_PROCESSING = "async_processing"
+class ContextOwner(BaseModel):
+    agent_id: str = Field(default="")
+    workflow_id: str = Field(default="")
+    session_id: str = Field(default="")
+    app_id: str = Field(default="")
+    user_id: str = Field(default="")
+
+    def __hash__(self) -> int:
+        return hash((self.agent_id, self.workflow_id, self.session_id, self.app_id, self.user_id))
+
+    def __eq__(self, other: "ContextOwner") -> bool:
+        if isinstance(other, ContextOwner):
+            return self.agent_id == other.agent_id and self.workflow_id == other.workflow_id \
+                and self.session_id == other.session_id and self.app_id == other.app_id
+        return False
+
+    def __contains__(self, other: "ContextOwner"):
+        if isinstance(other, ContextOwner):
+            return (not self.session_id or self.session_id == other.session_id) \
+                    and (not self.agent_id or self.agent_id == self.agent_id) \
+                    and (not self.workflow_id or self.workflow_id == self.workflow_id)
+        return False
 
 
-class AsyncUpdateType(Enum):
-    UPDATE_NOTHING = "update_nothing"
+class Context(ABC):
+    @abstractmethod
+    def add_message(self,
+                    message: BaseMessage,
+                    tags: Optional[Dict[str, str]] = None):
+        pass
+
+    @abstractmethod
+    def get_messages(self,
+                    num: int = -1,
+                    tags: Optional[Dict[str, str]] = None) -> List[BaseMessage]:
+        pass
+
+    @abstractmethod
+    def get_variable(self,
+                     name: str) -> Optional[ContextVariable]:
+        pass
+
+    @abstractmethod
+    def set_variable(self,
+                     name: str,
+                     value: ContextVariable):
+        pass
+
+    @abstractmethod
+    def assemble(self,
+                 user_input: str,
+                 system_prompt: Union[str, Template],
+                 variables: Optional[Dict[str, ContextVariable]] = None,
+                 **kwargs) -> Union[List[BaseMessage], str]:
+        pass
+
+    @abstractmethod
+    def assemble_by_pipeline(self,
+                             user_input: str,
+                             system_prompt: Union[str, Template],
+                             variables: Optional[Dict[str, ContextVariable]] = None,
+                             **kwargs) -> Union[List[BaseMessage], str]:
+        pass
+
+    @abstractmethod
+    def get_compressed_history(self,
+                               config: Optional[Dict[str, Any]] = None,
+                               owner: Optional[ContextOwner] = None) -> List[BaseMessage]:
+        pass
 
 
 class ContextType(Enum):
     USER_INPUT = "user_input"
     SYSTEM_PROMPT = "system_prompt"
     VARIABLES = "variables"
-    USER_VARIABLES = "user_variables"
     CHAT_HISTORY = "chat_history"
     MEMORY = "memory"
     TOOLS = "tools"
+    FULL_PROMPT = "full_prompt"
 
 
-class EngineInput(BaseModel):
+class ContextWindow(BaseModel):
     user_input: Union[str, Dict] = Field(default="")
     system_prompt: Union[str, Template] = Field(default="")
-    variables: Dict[str, Any] = Field(default={})
-    user_variables: Dict[str, Dict] = Field(default={})
+    variables: Dict[str, ContextVariable] = Field(default={})
     chat_history: Union[str, List[BaseMessage]] = Field(default="")
     memory: Optional[Any] = Field(default=None)
     tools: Union[str, Dict] = Field(default="")
-
-
-class EngineOutput(EngineInput):
-    full_output: str = Field(default="")
-
-    @classmethod
-    def from_input(cls, input: EngineInput) -> "EngineOutput":
-        if isinstance(input, EngineOutput):
-            return input
-        return cls(**input.model_dump())
+    full_prompt: Union[str, List] = Field(default="")

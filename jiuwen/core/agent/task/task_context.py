@@ -5,7 +5,6 @@ from typing import Any
 
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import WorkflowRuntime
-from jiuwen.core.context.model_context.model_context import ModelContext, AgentModelContext
 from jiuwen.core.runtime.state import InMemoryState, StateLike, InMemoryCommitState, \
     InMemoryStateLike
 from jiuwen.core.runtime.store import Store
@@ -26,15 +25,9 @@ class TaskContext:
         self.__callback_manager = CallbackManager()
         self.__tracer = Tracer()
         self.__tracer.init(self.__stream_writer_manager, self.__callback_manager)
-        self.__context: ModelContext = AgentModelContext(id)
-        if self.__store:
-            self.__context.deserialize(self.__store.read("MODEL_CONTEXT"))
 
     def state(self) -> StateLike:
         return self.__global_state
-
-    def context(self) -> ModelContext:
-        return self.__context
 
     def set_controller_context_manager(self, controller_context_manager: Any):
         self.__controller_context_manager = controller_context_manager
@@ -52,7 +45,6 @@ class TaskContext:
             tracer=self.__tracer,
             config=Config(),
             session_id=self.__id,
-            parent_model_context=self.__context,
             controller_context_manager=self.__controller_context_manager)
 
     def stream_writer_manager(self) -> StreamWriterManager:

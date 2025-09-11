@@ -5,8 +5,9 @@
 from typing import Any, Dict, List, Union
 from pydantic import Field
 
-from jiuwen.core.context_engine.base import EngineInput, EngineOutput
-from jiuwen.core.context_engine.processor.assemble.base import AssembleStage
+from jiuwen.core.context_engine.utils import ContextUtils
+from jiuwen.core.context_engine.base import ContextWindow, ContextType
+from jiuwen.core.context_engine.processor.base import BaseContextProcessor
 from jiuwen.core.context_engine.config import BaseProcessorConfig
 from jiuwen.core.context_engine.processor.factory import ProcessorFactory
 from jiuwen.core.utils.prompt.assemble.assembler import Assembler
@@ -36,7 +37,7 @@ class AssemblerConfig(BaseProcessorConfig):
 
 
 @ProcessorFactory.register("assembler", AssemblerConfig)
-class AssemblerProcessor(AssembleStage):
+class AssemblerProcessor(BaseContextProcessor):
     """Processor that uses the existing Assembler class for context assembly"""
 
     def __init__(self, config: AssemblerConfig):
@@ -45,67 +46,17 @@ class AssemblerProcessor(AssembleStage):
         self.variable_mappings = config.variable_mappings
         self.default_values = config.default_values
 
-    def _initialize_assembler(self) -> Assembler:
-        """Initialize the Assembler instance with template configuration"""
-        try:
-            return Assembler(
-                template_content=self.config.template_content,
-                return_format=self.config.return_format,
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize Assembler: {str(e)}")
-            raise
-
-    def _extract_template_variables(self, engine_input: EngineInput) -> Dict[str, Any]:
-        """Extract variables from EngineInput based on mappings"""
-        variables = {}
-        variables.update(self.default_values)
-        input_dict = (
-            engine_input.model_dump() if hasattr(engine_input, "model_dump") else {}
-        )
-
-        for context_field, template_var in self.variable_mappings.items():
-            if context_field in input_dict and input_dict[context_field] is not None:
-                variables[template_var] = input_dict[context_field]
-
-        if (
-            engine_input.user_input
-            and "user_input" not in self.variable_mappings.values()
-            and "user_input" not in self.variable_mappings.keys()
-        ):
-            variables.setdefault("user_input", engine_input.user_input)
-
-        if (
-            engine_input.chat_history
-            and "chat_history" not in self.variable_mappings.values()
-            and "chat_history" not in self.variable_mappings.keys()
-        ):
-            variables.setdefault("chat_history", engine_input.chat_history)
-
-        if (
-            engine_input.system_prompt
-            and "system_prompt" not in self.variable_mappings.values()
-            and "system_prompt" not in self.variable_mappings.keys()
-        ):
-            variables.setdefault("system_prompt", engine_input.system_prompt)
-
-        return variables
-
-    def _assemble_fallback(self, template_variables: Dict[str, Any]) -> str:
-        """Fallback assembly method when main assembler fails"""
-        if isinstance(self.config.template_content, str):
-            template = self.config.template_content
-            for key, value in template_variables.items():
-                if value is not None:
-                    template = template.replace(f"{{{key}}}", str(value))
-            return template
-        return ""
-
-    def run(self, input_data: EngineInput) -> EngineOutput:
+    def run(self, context_window: ContextWindow) -> ContextWindow:
         """Assemble context using the configured template and variables"""
         try:
             # Extract variables from input data
-            template_variables = self._extract_template_variables(input_data)
+            if context_window.system_prompt:
+                self.assembler = Assembler(
+                    template_content=context_window.system_prompt,
+                    return_format=self.config.return_format,
+            )
+
+            template_variables = self._extract_template_variables(context_window)
 
             # Assemble the prompt using the existing Assembler with validation
             try:
@@ -118,11 +69,11 @@ class AssemblerProcessor(AssembleStage):
                 assembled_content = self._assemble_fallback(template_variables)
 
             # Include all context information
-            if isinstance(input_data.chat_history, str) and input_data.chat_history:
-                history_str = input_data.chat_history
-            elif isinstance(input_data.chat_history, list) and input_data.chat_history:
+            if isinstance(context_window.chat_history, str) and context_window.chat_history:
+                history_str = context_window.chat_history
+            elif isinstance(context_window.chat_history, list) and context_window.chat_history:
                 history_str = "\n".join(
-                    [f"[{msg.role}]:{msg.content}" for msg in input_data.chat_history]
+                    [f"[{msg.role}]:{msg.content}" for msg in context_window.chat_history]
                 )
             else:
                 history_str = ""
@@ -140,14 +91,78 @@ class AssemblerProcessor(AssembleStage):
             if assembled_content:
                 if history_str:
                     assembled_content += f"\nhistory:\n{history_str}\n"
-                if input_data.user_input:
-                    assembled_content += f"query: {input_data.user_input}\n"
+                if context_window.user_input:
+                    assembled_content += f"query: {context_window.user_input}\n"
 
-            output = EngineOutput.from_input(input_data)
-            output.full_output = assembled_content
+            output = context_window
+            output.full_prompt = assembled_content.strip()
             return output
 
         except Exception as e:
             logger.error(f"AssemblerProcessor failed: {str(e)}")
             # Return original input on failure
-            return EngineOutput.from_input(input_data)
+            return context_window
+
+    def _initialize_assembler(self) -> Assembler:
+        """Initialize the Assembler instance with template configuration"""
+        try:
+            return Assembler(
+                template_content=self.config.template_content,
+                return_format=self.config.return_format,
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize Assembler: {str(e)}")
+            raise
+
+    def _extract_template_variables(self, context_window: ContextWindow) -> Dict[str, Any]:
+        """Extract variables from EngineInput based on mappings"""
+        variables = {}
+        variables.update(self.default_values)
+        input_dict = (
+            context_window.model_dump() if hasattr(context_window, "model_dump") else {}
+        )
+
+        for context_field, template_var in self.variable_mappings.items():
+            if context_field in input_dict and input_dict[context_field] is not None:
+                variables[template_var] = input_dict[context_field]
+
+        if (
+            context_window.user_input
+            and ContextType.USER_INPUT.value not in self.variable_mappings.values()
+            and ContextType.USER_INPUT.value not in self.variable_mappings.keys()
+        ):
+            variables.setdefault(ContextType.USER_INPUT.value, context_window.user_input)
+
+        if (
+            context_window.chat_history
+            and ContextType.CHAT_HISTORY.value not in self.variable_mappings.values()
+            and ContextType.CHAT_HISTORY.value not in self.variable_mappings.keys()
+        ):
+            variables.setdefault(ContextType.CHAT_HISTORY.value,
+                                 ContextUtils.convert_messages_to_string(context_window.chat_history))
+
+        if (
+            context_window.system_prompt
+            and ContextType.SYSTEM_PROMPT.value not in self.variable_mappings.values()
+            and ContextType.SYSTEM_PROMPT.value not in self.variable_mappings.keys()
+        ):
+            variables.setdefault(ContextType.SYSTEM_PROMPT.value, context_window.system_prompt)
+
+        if (
+            context_window.variables
+            and ContextType.VARIABLES.value not in self.variable_mappings.values()
+            and ContextType.VARIABLES.value not in self.variable_mappings.keys()
+        ):
+            variables.update(ContextUtils.convert_variables_to_dict(context_window.variables))
+
+        return variables
+
+    def _assemble_fallback(self, template_variables: Dict[str, Any]) -> str:
+        """Fallback assembly method when main assembler fails"""
+        if isinstance(self.config.template_content, str):
+            template = self.config.template_content
+            for key, value in template_variables.items():
+                if value is not None:
+                    template = template.replace(f"{{{key}}}", str(value))
+            return template
+        return ""

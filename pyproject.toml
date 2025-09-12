@@ -27,6 +27,7 @@ dev = [
     "coverage==7.7.1",
     "pytest==8.3.5",
     "pytest-asyncio>=1.0.0",
+    "pytest-html>=4.1.1",
     "pytest-mock==3.14.0",
     "ruff==0.11.2",
 ]
@@ -36,3 +37,6 @@ omit = ["tests/*"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["jiuwen"]
+addopts = ["-v", "--html=report/index.html", "--self-contained-html"]

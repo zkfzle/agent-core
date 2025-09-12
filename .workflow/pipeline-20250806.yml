@@ -20,7 +20,7 @@ stages:
         pythonVersion: '3.11'
         commands:
           - '# Python单元测试默认命令'
-          - pip install uv -i https://mirrors.aliyun.com/pypi/simple/'
+          - pip install uv -i https://mirrors.aliyun.com/pypi/simple/
           - uv sync --group dev
           - pytest --html=report/index.html
         report:

@@ -22,7 +22,7 @@ stages:
           - '# Python单元测试默认命令'
           - pip install uv -i https://mirrors.aliyun.com/pypi/simple/
           - uv sync --group dev
-          - pytest --html=report/index.html
+          - uv run pytest --html=report/index.html
         report:
           path: report
           index: index.html

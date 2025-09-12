@@ -104,7 +104,7 @@ class MockStartNode4Cp(Start):
         self.runtime += 1
         value = context.get_global_state("a")
         if value is not None:
-            assert Exception("value is not None")
+            raise Exception("value is not None")
         print("start: output = " + str(inputs))
         context.update_global_state({"a": 10})
         return inputs

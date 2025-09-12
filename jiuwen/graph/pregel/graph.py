@@ -3,10 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 from typing import Union, Self, AsyncIterator, Any, Callable
 
-from langgraph.constants import INTERRUPT
+from langgraph._internal._constants import INTERRUPT
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.pregel.loop import PregelLoop
+from langgraph.pregel._loop import PregelLoop
 
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.base import Graph, Router, ExecutableGraph
@@ -129,7 +129,7 @@ class CompiledGraph(ExecutableGraph):
         try:
             result = await self._compiled_state_graph.ainvoke(graph_inputs,
                                                               config=config,
-                                                              checkpoint_during=False)
+                                                              durability="exit")
         except:
             if is_main and self._checkpoint_saver:
                 self._checkpoint_saver.save(config)

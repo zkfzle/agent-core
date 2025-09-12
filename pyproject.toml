@@ -5,12 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "aiohttp>=3.11.10",
-    "langgraph==0.5.3",
-    "mcp>=1.7.1",
-    "pydantic>=2.10.6",
-    "python-dateutil>=2.9.0.post0",
-    "sqlalchemy>=2.0.41",
+    "aiohttp==3.11.10",
+    "langgraph==0.6.3",
+    "mcp==1.7.1",
+    "pydantic==2.10.6",
+    "python-dateutil==2.9.0.post0",
+    "sqlalchemy==2.0.41",
     "cacheout==0.16.0"
 ]
 

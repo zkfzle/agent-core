@@ -282,8 +282,8 @@ class InMemoryCommitState(CommitStateLike):
 
 
 class InMemoryState(CommitState):
-    def __init__(self, global_state: CommitStateLike = InMemoryCommitState()):
+    def __init__(self, global_state: CommitStateLike = None):
         super().__init__(io_state=InMemoryCommitState(),
-                         global_state=global_state,
+                         global_state=global_state if global_state is not None else InMemoryCommitState(),
                          trace_state=dict(),
                          comp_state=InMemoryCommitState())

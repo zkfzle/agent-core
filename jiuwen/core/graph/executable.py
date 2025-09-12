@@ -12,16 +12,6 @@ Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", contravariant=True)
 
 class Executable(Generic[Input, Output]):
-    memory: "ConversationMemory" = None
-    memory_auto_save: bool = True
-    local_params: dict = dict()
-    global_params: dict = {"memory": None, "input": None}
-    is_global: bool = False
-    global_var_name: str = ""
-
-    def __init__(self):
-        super().__init__()
-
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         raise JiuWenBaseException(-1, "Invoke is not supported")
 

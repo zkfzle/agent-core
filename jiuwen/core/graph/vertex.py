@@ -11,11 +11,11 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.component.condition.condition import INDEX
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.loop_callback.loop_id import LOOP_ID
-from jiuwen.core.runtime.runtime import BaseRuntime, NodeRuntime
-from jiuwen.core.runtime.utils import get_by_schema, NESTED_PATH_SPLIT
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
+from jiuwen.core.runtime.runtime import BaseRuntime, NodeRuntime
+from jiuwen.core.runtime.utils import get_by_schema, NESTED_PATH_SPLIT
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 
 
@@ -56,7 +56,7 @@ class Vertex(AsyncAtomicNode):
         else:
             logger.error(f"error ComponentAbility: {ability.name}")
 
-    async def __call__(self, state: GraphState, config: Any = None) -> Output:
+    async def __call__(self, state: GraphState, config) -> Output:
         if self._executable.post_commit():
             await self.atomic_invoke(config=config, runtime=self._runtime)
         else:

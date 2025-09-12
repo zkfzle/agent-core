@@ -41,7 +41,7 @@ async def test_simple_workflow():
     flow, mock_node, mock_start = create_simple_workflow()
     session_id = uuid.uuid4().hex
     try:
-        await flow.invoke({"a": 1, "b": "haha"}, WorkflowRuntime(session_id=session_id))
+        await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
     except Exception as e:
         assert str(e) == 'value < 20'
     assert mock_start.runtime == 1
@@ -61,8 +61,8 @@ def create_simple_workflow():
     flow = Workflow()
     flow.set_start_comp("start", mock_start,
                         inputs_schema={
-                            "a": "${user.inputs.a}",
-                            "b": "${user.inputs.b}",
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
                             "c": 1,
                             "d": [1, 2, 3]})
     flow.add_workflow_comp("a", mock_node,
@@ -86,8 +86,8 @@ async def test_workflow_comp():
     subflow = Workflow()
     subflow.set_start_comp("a1", mock_start,
                            inputs_schema={
-                               "a": "${user.inputs.a}",
-                               "b": "${user.inputs.b}",
+                               "a": "${a}",
+                               "b": "${b}",
                                "c": 1,
                                "d": [1, 2, 3]})
     subflow.add_workflow_comp("a2", mock_node,
@@ -103,8 +103,8 @@ async def test_workflow_comp():
     flow = Workflow()
     flow.set_start_comp("start", MockStartNode("start"),
                         inputs_schema={
-                            "a": "${user.inputs.a}",
-                            "b": "${user.inputs.b}",
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
                             "c": 1,
                             "d": [1, 2, 3]})
     flow.add_workflow_comp("a", SubWorkflowComponent(subflow),
@@ -118,7 +118,7 @@ async def test_workflow_comp():
     flow.add_connection("a", "end")
     session_id = uuid.uuid4().hex
     try:
-        await flow.invoke({"a": 1, "b": "haha"}, WorkflowRuntime(session_id=session_id))
+        await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
     except Exception as e:
         assert str(e) == 'value < 20'
     assert mock_start.runtime == 1
@@ -324,8 +324,8 @@ async def test_simple_interactive_workflow():
     flow = Workflow()
     flow.set_start_comp("start", start_node,
                         inputs_schema={
-                            "a": "${user.inputs.a}",
-                            "b": "${user.inputs.b}",
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
                             "c": 1,
                             "d": [1, 2, 3]})
     flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
@@ -340,7 +340,7 @@ async def test_simple_interactive_workflow():
 
     session_id = uuid.uuid4().hex
 
-    res = await flow.invoke({"a": 1, "b": "haha"}, WorkflowRuntime(session_id=session_id))
+    res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
     assert res == [{'type': '__interaction__', 'index': 0, 'payload': ('a', 'Please enter any key')}]
     user_input = InteractiveInput()
     user_input.update(res[0].get("payload")[0], {"aa": "any key"})
@@ -359,8 +359,8 @@ async def test_simple_stream_interactive_workflow():
     flow = Workflow()
     flow.set_start_comp("start", start_node,
                         inputs_schema={
-                            "a": "${user.inputs.a}",
-                            "b": "${user.inputs.b}",
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
                             "c": 1,
                             "d": [1, 2, 3]})
     flow.add_workflow_comp("a", InteractiveNode4StreamCp("a"),
@@ -377,7 +377,7 @@ async def test_simple_stream_interactive_workflow():
 
     session_id = uuid.uuid4().hex
 
-    async for res in flow.stream({"a": 1, "b": "haha"}, WorkflowRuntime(session_id=session_id)):
+    async for res in flow.stream({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id)):
         if res.type == INTERACTION:
             interaction_node = res.payload[0]
             interaction_msg = res.payload[1]
@@ -404,8 +404,8 @@ async def test_simple_concurrent_interactive_workflow():
     flow = Workflow()
     flow.set_start_comp("start", start_node,
                         inputs_schema={
-                            "a": "${user.inputs.a}",
-                            "b": "${user.inputs.b}",
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
                             "c": 1,
                             "d": [1, 2, 3]})
     flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
@@ -426,7 +426,7 @@ async def test_simple_concurrent_interactive_workflow():
 
     session_id = uuid.uuid4().hex
 
-    res = await flow.invoke({"a": 1, "b": "haha"}, WorkflowRuntime(session_id=session_id))
+    res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
     assert sorted(res, key=lambda x: x['payload'][0]) == sorted([
         {'type': '__interaction__', 'index': 0, 'payload': ('a', 'Please enter any key')},
         {'type': '__interaction__', 'index': 0, 'payload': ('b', 'Please enter any key')}

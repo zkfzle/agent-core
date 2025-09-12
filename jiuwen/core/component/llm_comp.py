@@ -145,8 +145,7 @@ class LLMExecutable(ComponentExecutable):
             self._set_runtime(runtime)
             model_inputs = self._prepare_model_inputs(inputs)
             logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
-            output_stream_writer = runtime.stream_writer()
-            llm_response = await self._stream_llm_with_stream_writer(model_inputs, output_stream_writer)
+            llm_response = await self._llm.ainvoke(model_inputs)
             response = llm_response.content
 
             # 临时调试：用于调用streamWriter实现流式输出
@@ -235,20 +234,21 @@ class LLMExecutable(ComponentExecutable):
         return default_template.format(inputs).content
 
     def _get_model_input(self, inputs: dict):
+        system_prompt = self._build_system_prompt(inputs)
         user_prompt = self._build_prompt_message(inputs)
-        history = self._get_history(user_prompt)
+        history = self._get_history(system_prompt, user_prompt)
         return LLMPromptFormatter.format_prompt(history=history,
                                                 response_format=self._config.response_format,
                                                 output_config=self._config.output_config)
 
-    def _get_history(self, user_prompt: str):
-        original_histoty = []
+    def _get_history(self, system_prompt: list, user_prompt: str):
+        original_history = system_prompt if isinstance(system_prompt, list) else []
         if self._runtime:
             chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
             if chat_history and self._config.enable_history:
-                original_histoty = chat_history
-        original_histoty.append({"role": "user", "content": user_prompt})
-        return original_histoty
+                original_history = chat_history
+        original_history.append({"role": "user", "content": user_prompt})
+        return original_history
 
     def _get_response_format(self):
         try:
@@ -357,6 +357,16 @@ class LLMExecutable(ComponentExecutable):
             final_response.content = result
 
         return final_response
+
+    def _build_system_prompt(self, inputs: dict):
+        system_prompt = []
+        for element in self._config.template_content:
+            if element.get(_ROLE, "") == "system":
+                system_prompt.append(element)
+            else:
+                break
+        system_prompt_template = Template(name="default_system_prompt", content=system_prompt)
+        return system_prompt_template.format(inputs).content
 
 
 class LLMComponent(WorkflowComponent):

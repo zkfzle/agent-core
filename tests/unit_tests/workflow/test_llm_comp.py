@@ -71,6 +71,10 @@ class FakeModel(BaseChatModel):
         BaseMessageChunk]:
         yield BaseMessageChunk(role="assistant", content="mocked response")
 
+    async def ainvoke(self, messages: Union[List[BaseMessage], List[Dict], str],
+                      tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
+        return BaseMessageChunk(role="assistant", content="mocked response")
+
 
 @patch(
     "jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
@@ -338,7 +342,7 @@ class TestLLMExecutableInvokeNew:
 
         config = LLMCompConfig(
             model=model_config,
-            template_content=[{"role": "user", "content": "{{query}}"}],
+            template_content=[{"role": "system", "content": "我的系统提示词"}, {"role": "user", "content": "Hello {{query}}"}],
             response_format={"type": "text"},
             output_config={"output": {"type": "string", "required": True}},
         )

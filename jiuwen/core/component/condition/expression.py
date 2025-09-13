@@ -14,6 +14,8 @@ class ExpressionCondition(Condition):
         self._expression = expression
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        if len(self._expression) == 0:
+            return True
         pattern = r'\$\{[^}]*\}'
         matches = re.findall(pattern, self._expression)
         inputs = {}

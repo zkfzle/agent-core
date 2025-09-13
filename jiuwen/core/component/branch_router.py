@@ -6,6 +6,7 @@ from typing import Callable, Union
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
 from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
+from jiuwen.core.common.exception.exception import JiuWenBaseException
 
 
 class Branch:
@@ -13,12 +14,14 @@ class Branch:
                  branch_id: str = None):
         super().__init__()
         self.branch_id = branch_id
-        if isinstance(condition, str):
+        if isinstance(condition, Condition):
+            self._condition = condition
+        elif isinstance(condition, str):
             self._condition = ExpressionCondition(condition)
         elif isinstance(condition, Callable):
             self._condition = FuncCondition(condition)
         else:
-            self._condition = condition
+            raise JiuWenBaseException(-1, "condition must be either a string or a callable")
         self.target = target
 
     def evaluate(self, runtime: BaseRuntime) -> bool:

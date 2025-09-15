@@ -4,9 +4,7 @@
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Output
-from jiuwen.core.component.condition.condition import INDEX
-
-LOOP_ID = "__sys_loop_id"
+from jiuwen.core.common.constants.constant import INDEX, LOOP_ID
 
 
 class LoopIdCallback(LoopCallback):

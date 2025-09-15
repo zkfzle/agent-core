@@ -5,10 +5,11 @@ from typing import AsyncIterator, Self, Union, Callable, Any
 
 from langgraph.constants import END, START
 
+from jiuwen.core.common.constants.constant import INDEX
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.break_comp import BreakComponent, LoopController
-from jiuwen.core.component.condition.condition import Condition, AlwaysTrue, FuncCondition, INDEX
+from jiuwen.core.component.condition.condition import Condition, AlwaysTrue, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, FIRST_LOOP
 from jiuwen.core.component.loop_callback.loop_id import LoopIdCallback
@@ -127,7 +128,7 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
         index = self._runtime.state().get(INDEX)
         runtime.state().update(inputs)
         if index is None:
-            raise JiuWenBaseException(-1,  'inner error, loop index is not set')
+            raise JiuWenBaseException(-1, 'inner error, loop index is not set')
         continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
         for callback in self._callbacks:
             if index < 0:

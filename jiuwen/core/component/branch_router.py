@@ -5,7 +5,7 @@ from typing import Callable, Union
 
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
-from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
+from jiuwen.core.runtime.runtime import BaseRuntime, Runtime, NodeRuntime
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 
 
@@ -27,12 +27,16 @@ class Branch:
     def evaluate(self, runtime: BaseRuntime) -> bool:
         return self._condition(runtime)
 
+    def trace_info(self) -> str:
+        return self._condition.trace_info()
+
 
 class BranchRouter:
-    def __init__(self):
+    def __init__(self, report_trace: bool = False):
         super().__init__()
         self._branches: list[Branch] = []
         self._runtime: Runtime = None
+        self.report_trace = report_trace
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
                    branch_id: str = None):
@@ -41,8 +45,23 @@ class BranchRouter:
     def set_runtime(self, runtime: Runtime):
         self._runtime = runtime
 
-    def __call__(self, *args, **kwargs) -> list[str]:
+    async def __call__(self, *args, **kwargs) -> list[str]:
+        runtime = self._runtime
+        if self.report_trace:
+            branches = []
+            for branch in self._branches:
+                branches.append({
+                    "branch_id": branch.branch_id,
+                    "condition": branch.trace_info()
+                })
+            await runtime.base().trace_inputs({
+                "branches": branches
+            })
         for branch in self._branches:
             if branch.evaluate(self._runtime.base()):
+                if self.report_trace:
+                    await runtime.base().trace_outputs({
+                        "branch_id": branch.branch_id
+                    })
                 return branch.target
         return []

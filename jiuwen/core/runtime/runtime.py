@@ -14,6 +14,8 @@ from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
 from jiuwen.core.tracer.handler import TracerHandlerName
 from jiuwen.core.tracer.tracer import Tracer
+from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
+from jiuwen.core.common.constants.constant import INDEX, LOOP_ID
 
 
 class BaseRuntime(ABC):
@@ -169,6 +171,39 @@ class NodeRuntime(BaseRuntime):
 
     def parent(self):
         return self._runtime
+
+    def _get_component_metadata(self) -> dict:
+        component_metadata = {"component_type": self.executable_id()}
+        loop_id = self.state().get_global(LOOP_ID)
+        if loop_id:
+            index = self.state().get_global(loop_id + NESTED_PATH_SPLIT + INDEX)
+            component_metadata.update({
+                "loop_node_id": loop_id,
+                "loop_index": index + 1
+            })
+            self.tracer().pop_workflow_span(self.executable_id(), self.parent_id())
+        return component_metadata
+
+    async def trace_inputs(self, inputs: Optional[dict]) -> None:
+        if self.tracer() is None:
+            return
+        await self.tracer().trigger("tracer_workflow", "on_pre_invoke",
+                                    invoke_id=self.executable_id(),
+                                    parent_node_id=self.parent_id(),
+                                    inputs=inputs,
+                                    component_metadata=self._get_component_metadata())
+        self.state().update_trace(self.tracer().get_workflow_span(self.executable_id(),
+                                                                  self.parent_id()))
+
+    async def trace_outputs(self, outputs: Optional[dict] = None) -> None:
+        if self.tracer() is None:
+            return
+        await self.tracer().trigger("tracer_workflow", "on_post_invoke",
+                                    invoke_id=self.executable_id(),
+                                    parent_node_id=self.parent_id(),
+                                    outputs=outputs)
+        self.state().update_trace(self.tracer().get_workflow_span(self.executable_id(),
+                                                                  self.parent_id()))
 
 
 class Runtime:

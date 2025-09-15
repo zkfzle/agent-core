@@ -3,9 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 from typing import Union
 
-from jiuwen.core.component.condition.condition import Condition, INDEX
+from jiuwen.core.component.condition.condition import Condition
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input, Output
+from jiuwen.core.common.constants.constant import INDEX
 
 
 class NumberCondition(Condition):

@@ -17,7 +17,7 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
 
     def __init__(self):
         super().__init__()
-        self._router = BranchRouter()
+        self._router = BranchRouter(True)
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
                    branch_id: str = None):
@@ -35,3 +35,6 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False):
         graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
         graph.add_conditional_edges(node_id, self.router())
+
+    def skip_trace(self) -> bool:
+        return True

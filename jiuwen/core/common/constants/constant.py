@@ -17,3 +17,7 @@ CONFIG_KEY = "config"
 END_FRAME = "all streaming outputs finish"
 
 END_NODE_STREAM = "end node stream"
+
+LOOP_ID = "__sys_loop_id"
+
+INDEX = "index"

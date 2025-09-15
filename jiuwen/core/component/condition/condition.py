@@ -8,8 +8,6 @@ from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.atomic_node import AtomicNode
 from jiuwen.core.graph.executable import Input, Output
 
-INDEX = "index"
-
 
 class Condition(AtomicNode):
     def __init__(self, input_schema: Any = None):
@@ -31,6 +29,9 @@ class Condition(AtomicNode):
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         pass
 
+    def trace_info(self, runtime: BaseRuntime = None):
+        return ""
+
 
 class FuncCondition(Condition):
     def __init__(self, func: Callable[[], bool]):
@@ -40,7 +41,13 @@ class FuncCondition(Condition):
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         return self._func()
 
+    def trace_info(self, runtime: BaseRuntime = None):
+        return self._func.__name__
+
 
 class AlwaysTrue(Condition):
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         return True
+
+    def trace_info(self, runtime: BaseRuntime = None):
+        return "True"

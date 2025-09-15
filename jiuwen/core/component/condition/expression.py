@@ -13,6 +13,22 @@ class ExpressionCondition(Condition):
         super().__init__()
         self._expression = expression
 
+    def trace_info(self, runtime: BaseRuntime = None):
+        return {
+            "bool_expression": self._expression,
+            "inputs": self._get_inputs(runtime)
+        }
+
+    def _get_inputs(self, runtime: BaseRuntime) -> dict:
+        if len(self._expression) == 0 or runtime is None:
+            return {}
+        pattern = r'\$\{[^}]*\}'
+        matches = re.findall(pattern, self._expression)
+        inputs = {}
+        for match in matches:
+            inputs[match] = runtime.state().get_global(match[2:-1])
+        return inputs
+
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if len(self._expression) == 0:
             return True

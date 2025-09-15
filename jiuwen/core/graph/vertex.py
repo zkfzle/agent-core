@@ -8,14 +8,12 @@ from jiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
-from jiuwen.core.component.condition.condition import INDEX
 from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.loop_callback.loop_id import LOOP_ID
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
 from jiuwen.core.runtime.runtime import BaseRuntime, NodeRuntime
-from jiuwen.core.runtime.utils import get_by_schema, NESTED_PATH_SPLIT
+from jiuwen.core.runtime.utils import get_by_schema
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 
 
@@ -99,7 +97,7 @@ class Vertex(AsyncAtomicNode):
         async for message in queue_manager.consume(self._node_id, ability):
             # message 是{id: content}
             if inputs_transformer is None:
-                inputs = queue_manager.stream_transform.get_by_default_transformer(message, inputs_schema)\
+                inputs = queue_manager.stream_transform.get_by_default_transformer(message, inputs_schema) \
                     if inputs_schema else message
             else:
                 inputs = queue_manager.stream_transform.get_by_defined_transformer(message, inputs_transformer)
@@ -135,7 +133,6 @@ class Vertex(AsyncAtomicNode):
         else:
             await self._runtime.queue_manager().produce(self._node_id, message)
 
-
     def __clear_interactive__(self) -> None:
         if self._runtime.state().get(INTERACTIVE_INPUT):
             self._runtime.state().update({INTERACTIVE_INPUT: None})
@@ -144,12 +141,7 @@ class Vertex(AsyncAtomicNode):
         if self._executable.skip_trace():
             return
         # TODO 组件信息
-        await self._runtime.tracer().trigger("tracer_workflow", "on_pre_invoke", invoke_id=self._runtime.executable_id(),
-                                           parent_node_id=self._runtime.parent_id(),
-                                           inputs=inputs,
-                                           component_metadata=self._get_component_metadata())
-        self._runtime.state().update_trace(self._runtime.tracer().get_workflow_span(self._runtime.executable_id(),
-                                                                                self._runtime.parent_id()))
+        await self._runtime.trace_inputs(inputs)
 
         if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
             self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
@@ -200,20 +192,4 @@ class Vertex(AsyncAtomicNode):
     async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:
         if self._executable.skip_trace():
             return
-        await self._runtime.tracer().trigger("tracer_workflow", "on_post_invoke", invoke_id=self._runtime.executable_id(),
-                                           parent_node_id=self._runtime.parent_id(),
-                                           outputs=outputs)
-        self._runtime.state().update_trace(self._runtime.tracer().get_workflow_span(self._runtime.executable_id(),
-                                                                                self._runtime.parent_id()))
-
-    def _get_component_metadata(self) -> dict:
-        component_metadata = {"component_type": self._runtime.executable_id()}
-        loop_id = self._runtime.state().get_global(LOOP_ID)
-        if loop_id:
-            index = self._runtime.state().get_global(loop_id + NESTED_PATH_SPLIT + INDEX)
-            component_metadata.update({
-                "loop_node_id": loop_id,
-                "loop_index": index + 1
-            })
-            self._runtime.tracer().pop_workflow_span(self._runtime.executable_id(), self._runtime.parent_id())
-        return component_metadata
+        await self._runtime.trace_outputs(outputs)

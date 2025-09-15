@@ -1,7 +1,9 @@
 import unittest
 
+from jiuwen.core.utils.llm.messages import SystemMessage
 from jiuwen.core.context_engine.base import ContextWindow, ContextVariable
 from jiuwen.core.context_engine.engine import ContextEngine
+from jiuwen.core.context_engine.processor.assemble.assembler import AssemblerConfig
 from jiuwen.core.context_engine.processor.base import BaseContextProcessor
 from jiuwen.core.context_engine.processor.factory import ProcessorFactory
 from jiuwen.core.context_engine.config import BaseProcessorConfig, ContextEngineConfig
@@ -38,12 +40,11 @@ class TestAssembler(BaseContextProcessor):
 
     def run(self, input_data: ContextWindow) -> ContextWindow:
         from jiuwen.core.utils.prompt.assemble.assembler import Assembler
-        assembler = Assembler(input_data.system_prompt, return_format="text")
+        assembler = Assembler(input_data.prompt.content, return_format="text")
         variables = dict([(name, var.value) for name, var in input_data.variables.items()])
         result = assembler.assemble(**variables)
         history_str = '\n'.join([f"[{msg.role}]:{msg.content}" for msg in input_data.chat_history])
         result += f"\nhistory:\n{history_str}\n"
-        result += f"query: {input_data.user_input}\n"
         output = input_data
         output.full_prompt = result
         return output
@@ -90,28 +91,47 @@ class ContextEngineTest(unittest.TestCase):
         context.add_message(AIMessage(content="世界上最高的山是珠穆朗玛峰"))
         context.add_message(HumanMessage(content="世界上最长的河是什么"))
         context.add_message(AIMessage(content="世界上最长的河是尼罗河"))
-        system_prompt = "你是一个{{role}}小助手，请根据指定用户回答完成指定任务。"
+        system_prompt = "你是一个{{role}}小助手，请根据指定用户回答完成指定任务。{{user_input}}"
         user_query = "世界上最深的湖是什么？"
-        result = context.assemble_by_pipeline(user_query, system_prompt,
+        result = context.assemble_by_pipeline(system_prompt,
                                               variables={
-                                                  "role": ContextVariable(name="role", value="问答")
+                                                  "role": "问答",
+                                                  "user_input": user_query
                                               })
-        expected_result = "你是一个问答小助手，请根据指定用户回答完成指定任务。\n" \
+        expected_result = "你是一个问答小助手，请根据指定用户回答完成指定任务。世界上最深的湖是什么？\n" \
                           "history:\n" \
                           "[user]:世界上最长的河是什么\n" \
                           "[assistant]:世界上最长的河是尼罗河\n" \
-                          "query: 世界上最深的湖是什么？\n" \
                           "这是后缀信息"
         self.assertEqual(result, expected_result)
-        result = context.assemble(user_query, system_prompt,
+        result = context.assemble(system_prompt,
                                   variables={
-                                      "role": ContextVariable(name="role", value="问答"),
+                                      "role": "问答",
+                                      "user_input": user_query
                                   })
-        expected_result = "你是一个问答小助手，请根据指定用户回答完成指定任务。\n" \
-                          "history:\n" \
-                          "[user]:世界上最高的山是什么\n" \
-                          "[assistant]:世界上最高的山是珠穆朗玛峰\n" \
-                          "[user]:世界上最长的河是什么\n" \
-                          "[assistant]:世界上最长的河是尼罗河\n" \
-                          "query: 世界上最深的湖是什么？"
+        expected_result = "你是一个问答小助手，请根据指定用户回答完成指定任务。世界上最深的湖是什么？"
         self.assertEqual(result, expected_result)
+
+        system_prompt = SystemMessage(content="你是一个{{role}}小助手，请根据指定用户回答完成指定任务。{{user_input}}")
+        result = context.assemble(system_prompt,
+                                  variables={
+                                      "role": "问答",
+                                      "user_input": user_query
+                                  })
+        expected_result = SystemMessage(content="你是一个问答小助手，请根据指定用户回答完成指定任务。世界上最深的湖是什么？")
+        self.assertEqual(result, expected_result)
+
+        system_prompt = [
+            SystemMessage(content="你是一个{{role}}小助手，请根据指定用户回答完成指定任务。{{user_input}}"),
+            HumanMessage(content="请用{{style}}的风格回答用户")
+        ]
+        result = context.assemble(system_prompt,
+                                  variables={
+                                      "role": "问答",
+                                      "user_input": user_query,
+                                      "style": "简洁、礼貌"
+                                  })
+        expected_result_1 = SystemMessage(content="你是一个问答小助手，请根据指定用户回答完成指定任务。世界上最深的湖是什么？")
+        expected_result_2 = HumanMessage(content="请用简洁、礼貌的风格回答用户")
+        self.assertEqual(result[0], expected_result_1)
+        self.assertEqual(result[1], expected_result_2)

@@ -71,18 +71,16 @@ class Context(ABC):
 
     @abstractmethod
     def assemble(self,
-                 user_input: str,
-                 system_prompt: Union[str, Template],
-                 variables: Optional[Dict[str, ContextVariable]] = None,
-                 **kwargs) -> Union[List[BaseMessage], str]:
+                 message: Union[str, BaseMessage, List[BaseMessage]],
+                 variables: Optional[Dict[str, str]] = None,
+                 **kwargs) -> Union[str, BaseMessage, List[BaseMessage]]:
         pass
 
     @abstractmethod
     def assemble_by_pipeline(self,
-                             user_input: str,
-                             system_prompt: Union[str, Template],
-                             variables: Optional[Dict[str, ContextVariable]] = None,
-                             **kwargs) -> Union[List[BaseMessage], str]:
+                             message: Union[str, BaseMessage, List[BaseMessage]],
+                             variables: Optional[Dict[str, str]] = None,
+                             **kwargs) -> Union[str, BaseMessage, List[BaseMessage]]:
         pass
 
     @abstractmethod
@@ -104,9 +102,9 @@ class ContextType(Enum):
 
 class ContextWindow(BaseModel):
     user_input: Union[str, Dict] = Field(default="")
-    system_prompt: Union[str, Template] = Field(default="")
+    prompt: Template = Field(default=Template(content=""))
     variables: Dict[str, ContextVariable] = Field(default={})
     chat_history: Union[str, List[BaseMessage]] = Field(default="")
     memory: Optional[Any] = Field(default=None)
     tools: Union[str, Dict] = Field(default="")
-    full_prompt: Union[str, List] = Field(default="")
+    full_prompt: Union[str, BaseMessage, List[BaseMessage]] = Field(default="")

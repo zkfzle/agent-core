@@ -65,6 +65,9 @@ class StatusCode(Enum):
     # message queue manager 101,711-101,719
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (101711, "Message queue manager error: {error_msg}")
 
+    # context engine 102000 - 102500
+    CONTEXT_ENGINE_MESSAGE_PROCESS_ERROR = (102000, "Message process error: {error_msg}")
+
     @property
     def code(self):
         return self.value[0]

@@ -13,6 +13,7 @@ from jiuwen.core.context_engine.processor.factory import ProcessorFactory
 from jiuwen.core.utils.prompt.assemble.assembler import Assembler
 from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.common.logging import logger
+from jiuwen.core.utils.prompt.template.template import Template
 
 
 class AssemblerConfig(BaseProcessorConfig):
@@ -50,9 +51,11 @@ class AssemblerProcessor(BaseContextProcessor):
         """Assemble context using the configured template and variables"""
         try:
             # Extract variables from input data
-            if context_window.system_prompt:
+            prompt_content = context_window.prompt.content if isinstance(context_window.prompt, Template) \
+                else context_window.prompt
+            if context_window.prompt:
                 self.assembler = Assembler(
-                    template_content=context_window.system_prompt,
+                    template_content=prompt_content,
                     return_format=self.config.return_format,
             )
 
@@ -68,34 +71,8 @@ class AssemblerProcessor(BaseContextProcessor):
                 # Fallback to basic template assembly
                 assembled_content = self._assemble_fallback(template_variables)
 
-            # Include all context information
-            if isinstance(context_window.chat_history, str) and context_window.chat_history:
-                history_str = context_window.chat_history
-            elif isinstance(context_window.chat_history, list) and context_window.chat_history:
-                history_str = "\n".join(
-                    [f"[{msg.role}]:{msg.content}" for msg in context_window.chat_history]
-                )
-            else:
-                history_str = ""
-            # Handle different return formats consistently
-            if isinstance(assembled_content, list):
-                # Convert message list to string format
-                assembled_content = "\n".join(
-                    [
-                        f"[{msg.get('role', 'unknown')}]: {msg.get('content', '')}"
-                        for msg in assembled_content
-                    ]
-                )
-
-            # Append history and user input to assembled content
-            if assembled_content:
-                if history_str:
-                    assembled_content += f"\nhistory:\n{history_str}\n"
-                if context_window.user_input:
-                    assembled_content += f"query: {context_window.user_input}\n"
-
             output = context_window
-            output.full_prompt = assembled_content.strip()
+            output.full_prompt = self._process_assemble_output(assembled_content)
             return output
 
         except Exception as e:
@@ -118,35 +95,6 @@ class AssemblerProcessor(BaseContextProcessor):
         """Extract variables from EngineInput based on mappings"""
         variables = {}
         variables.update(self.default_values)
-        input_dict = (
-            context_window.model_dump() if hasattr(context_window, "model_dump") else {}
-        )
-
-        for context_field, template_var in self.variable_mappings.items():
-            if context_field in input_dict and input_dict[context_field] is not None:
-                variables[template_var] = input_dict[context_field]
-
-        if (
-            context_window.user_input
-            and ContextType.USER_INPUT.value not in self.variable_mappings.values()
-            and ContextType.USER_INPUT.value not in self.variable_mappings.keys()
-        ):
-            variables.setdefault(ContextType.USER_INPUT.value, context_window.user_input)
-
-        if (
-            context_window.chat_history
-            and ContextType.CHAT_HISTORY.value not in self.variable_mappings.values()
-            and ContextType.CHAT_HISTORY.value not in self.variable_mappings.keys()
-        ):
-            variables.setdefault(ContextType.CHAT_HISTORY.value,
-                                 ContextUtils.convert_messages_to_string(context_window.chat_history))
-
-        if (
-            context_window.system_prompt
-            and ContextType.SYSTEM_PROMPT.value not in self.variable_mappings.values()
-            and ContextType.SYSTEM_PROMPT.value not in self.variable_mappings.keys()
-        ):
-            variables.setdefault(ContextType.SYSTEM_PROMPT.value, context_window.system_prompt)
 
         if (
             context_window.variables
@@ -166,3 +114,8 @@ class AssemblerProcessor(BaseContextProcessor):
                     template = template.replace(f"{{{key}}}", str(value))
             return template
         return ""
+
+    def _process_assemble_output(self, output: Any) -> Union[str, BaseMessage, List[BaseMessage]]:
+        if isinstance(output, str):
+            return output
+        return [ContextUtils.convert_dict_to_message(message) for message in output]

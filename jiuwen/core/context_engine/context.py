@@ -7,6 +7,7 @@ from typing import Optional, Any, Dict, Union, List
 from jiuwen.core.context_engine.base import Context, ContextVariable, ContextOwner
 from jiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from jiuwen.core.context_engine.execute.executor import ContextExecutor
+from jiuwen.core.context_engine.utils import ContextUtils
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.llm.messages import BaseMessage
 
@@ -45,27 +46,24 @@ class ContextImpl(Context):
         return variables.set(name, value)
 
     def assemble(self,
-                 user_input: str,
-                 system_prompt: Union[str, Template],
-                 variables: Optional[Dict[str, ContextVariable]] = None,
-                 **kwargs) -> Union[List[BaseMessage], str]:
+                 message: Union[str, BaseMessage, List[BaseMessage]],
+                 variables: Optional[Dict[str, str]] = None,
+                 **kwargs) -> Union[str, BaseMessage, List[BaseMessage]]:
         context_window = self._accessor.create_context_window(self._owner)
-        context_window.user_input = user_input
-        context_window.system_prompt = system_prompt
-        context_window.variables.update(variables or {})
-        return self._executor.assemble(context_window, kwargs.get("config"))
+        context_window.prompt = Template(content=[message] if isinstance(message, BaseMessage) else message)
+        context_window.variables.update(ContextUtils.convert_dict_to_variables(variables) or {})
+        output = self._executor.assemble(context_window, kwargs.get("config"))
+        return output[0] if isinstance(message, BaseMessage) else output
 
     def assemble_by_pipeline(self,
-                             user_input: str,
-                             system_prompt: Union[str, Template],
-                             variables: Optional[Dict[str, ContextVariable]] = None,
-                             **kwargs) -> Union[List[BaseMessage], str]:
+                             message: Union[str, BaseMessage, List[BaseMessage]],
+                             variables: Optional[Dict[str, str]] = None,
+                             **kwargs) -> Union[str, BaseMessage, List[BaseMessage]]:
         context_window = self._accessor.create_context_window(self._owner)
-        context_window.user_input = user_input
-        context_window.system_prompt = system_prompt
-        context_window.variables.update(variables or {})
+        context_window.prompt = Template(content=[message] if isinstance(message, BaseMessage) else message)
+        context_window.variables.update(ContextUtils.convert_dict_to_variables(variables) or {})
         output = self._executor.run_process_pipeline(context_window)
-        return output.full_prompt
+        return output.full_prompt[0] if isinstance(output.full_prompt, BaseMessage) else output.full_prompt
 
     def get_compressed_history(self,
                                config: Optional[Dict[str, Any]] = None,

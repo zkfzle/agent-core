@@ -109,6 +109,32 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         print(f"ReActAgent 最终输出结果：{result}")
 
     @unittest.skip("skip system test")
+    async def test_react_agent_stream_with_real_plugin(self):
+        tools_schema = [self._create_tool_schema()]
+        model_config = self._create_model()
+        prompt_template = self._create_prompt_template()
+
+        react_agent_config = create_react_agent_config(
+            agent_id="react_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=tools_schema,
+            workflows=[],
+            model=model_config,
+            prompt_template=prompt_template
+        )
+
+        react_agent: ReActAgent = create_react_agent(
+            agent_config=react_agent_config,
+            workflows=[],
+            tools=[self._create_tool()]
+        )
+
+        res = react_agent.stream({"query": "查询杭州的天气"})
+        async for i in res:
+            print(i)
+
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
     async def test_react_controller_stream(self):
         tools_schema = [self._create_tool_schema()]

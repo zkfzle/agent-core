@@ -22,27 +22,27 @@ class BaseChatModel:
                                 tools=self._cover_tool_format(tools), **kwargs)
         except NotImplementedError:
             return asyncio.run(self.ainvoke(messages=self._cover_messages_format(messages),
-                                            tools=self._cover_tool_format(tools), **kwargs))
+                                            tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs))
 
     async def ainvoke(self, messages: Union[List[BaseMessage], List[Dict], str],
                 tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
         try:
             return await self._ainvoke(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs)
+                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs)
         except NotImplementedError:
             return self._invoke(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs)
+                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs)
 
     def stream(self, messages: Union[List[BaseMessage], List[Dict], str],
                tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
         try:
             for chunk in self._stream(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs):
+                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
                 yield chunk
         except NotImplementedError:
             async def async_gen_wrapper():
                 async for chunk in self._astream(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs):
+                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
                     yield chunk
 
             loop = asyncio.new_event_loop()
@@ -62,11 +62,11 @@ class BaseChatModel:
                 tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
         try:
             async for chunk in self._astream(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs):
+                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
                 yield chunk
         except NotImplementedError:
             for chunk in self._stream(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs):
+                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
                 yield chunk
 
     def _invoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> BaseMessage:
@@ -94,6 +94,25 @@ class BaseChatModel:
             return tools
         else:
             return [json.loads(tool.model_dump_json()) for tool in tools]
+
+    def clean_tools(self, tools):
+        """
+        去除工具列表中每个 dict 的非标准字段（如 results），只保留 OpenAI 格式。
+        """
+        cleaned = []
+        for tool in tools:
+            if not isinstance(tool, dict):
+                continue
+            cleaned_tool = {
+                "type": tool.get("type", "function"),
+                "function": {
+                    "name": tool["function"]["name"],
+                    "description": tool["function"]["description"],
+                    "parameters": tool["function"]["parameters"]
+                }
+            }
+            cleaned.append(cleaned_tool)
+        return cleaned
 
     def _cover_messages_format(self, messages: Union[List[BaseMessage], List[Dict], str]):
         if not messages:

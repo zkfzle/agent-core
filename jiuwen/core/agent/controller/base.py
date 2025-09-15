@@ -2,6 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """Controller of Agent"""
+from typing import AsyncIterator
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +25,12 @@ class Controller:
         self._context_mgr = context_mgr
 
     def invoke(self, inputs: ControllerInput, context: TaskContext) -> ControllerOutput:
+        pass
+
+    async def stream(self,
+                     inputs: ControllerInput,
+                     context: TaskContext
+                     ) -> AsyncIterator[ControllerOutput]:
         pass
 
     def should_continue(self, output) -> bool:

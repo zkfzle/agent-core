@@ -11,7 +11,7 @@ from pydantic import ConfigDict
 from requests import Session
 
 from jiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
-from jiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, ToolInfo, FunctionInfo, ToolCall
+from jiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
 from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 
 
@@ -44,6 +44,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
         return "generic_http_api"
 
     def _invoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AIMessage:
+        messages = self.sanitize_tool_calls(messages)
         params = self._request_params(messages, tools, **kwargs)
 
         response = self.sync_client.post(
@@ -57,11 +58,14 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
             timeout=self.model_info.timeout
         )
         response.raise_for_status()
+        self.close_session()
         return self._parse_response(response.json())
 
     async def _ainvoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AIMessage:
         await self.ensure_session()
+        messages = self.sanitize_tool_calls(messages)
         params = self._request_params(messages, tools, **kwargs)
+
         async with self.aiohttp_session.post(
                 url=self.model_info.api_base,
                 headers={
@@ -73,12 +77,14 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
         ) as response:
             response.raise_for_status()
             data = await response.json()
+            await self.close_session()
             return self._parse_response(data)
 
     def _stream(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
         # 重置流状态
         self._reset_stream_state()
 
+        messages = self.sanitize_tool_calls(messages)
         params = self._request_params(messages, tools, **kwargs)
         params["stream"] = True
 
@@ -99,6 +105,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                     chunk = self._parse_stream_line(line)
                     if chunk:
                         yield chunk
+        self.close_session()
 
     async def _astream(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
@@ -106,6 +113,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
         self._reset_stream_state()
 
         await self.ensure_session()
+        messages = self.sanitize_tool_calls(messages)
         params = self._request_params(messages, tools, **kwargs)
         params["stream"] = True
 
@@ -125,6 +133,38 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                     if chunk:
                         yield chunk
         await self.close_session()
+
+
+    def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        清洗 messages 中的 tool_calls，保留 OpenAI 标准字段：
+        id, type, function.name, function.arguments
+        并把 type 强制设为 "function"
+        """
+        for msg in messages:
+            if msg.get("role") != "assistant":
+                continue
+            tool_calls = msg.get("tool_calls")
+            if not isinstance(tool_calls, list):
+                continue
+
+            cleaned = []
+            for tc in tool_calls:
+                if not isinstance(tc, dict):
+                    continue
+                # 只提取合法字段
+                func = tc.get("function", {})
+                cleaned.append({
+                    "id": tc.get("id", ""),
+                    "type": "function",  # 强制修正
+                    "function": {
+                        "name": func.get("name", ""),
+                        "arguments": func.get("arguments", "")
+                    }
+                })
+            msg["tool_calls"] = cleaned
+        return messages
+
 
     def _request_params(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> Dict:
         params = {
@@ -227,6 +267,9 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                         args_delta = function_delta.get("arguments", "")
                         if args_delta:
                             self._stream_state['current_tool_args'] += args_delta
+
+            if not content and not reasoning_content and not tool_calls:
+                return None
 
             return AIMessageChunk(
                 content=content,

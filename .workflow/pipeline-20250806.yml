@@ -35,5 +35,4 @@ stages:
         notify: []
         strategy:
           retry: '0'
-          retry: '0'
-          retry: '0'
+

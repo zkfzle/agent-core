@@ -32,12 +32,7 @@ class ExpressionCondition(Condition):
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if len(self._expression) == 0:
             return True
-        pattern = r'\$\{[^}]*\}'
-        matches = re.findall(pattern, self._expression)
-        inputs = {}
-        for match in matches:
-            inputs[match] = runtime.state().get_global(match[2:-1])
-        return self._evaluate_expression(self._expression, inputs)
+        return self._evaluate_expression(self._expression, self._get_inputs(runtime))
 
     def _evaluate_expression(self, expression, inputs) -> bool:
         expression = expression.replace("&&", " and ") \

@@ -120,7 +120,7 @@ class Vertex(AsyncAtomicNode):
 
     async def _process_chunk(self, end_stream_index: int, message: Any) -> None:
         end_node = isinstance(self._executable, End)
-        sub_graph = self._runtime.parent_id() is not ''
+        sub_graph = self._runtime.parent_id() != ''
         if end_node and not sub_graph:
             message_stream_data = {
                 "type": END_NODE_STREAM,

@@ -27,8 +27,8 @@ class Branch:
     def evaluate(self, runtime: BaseRuntime) -> bool:
         return self._condition(runtime)
 
-    def trace_info(self) -> str:
-        return self._condition.trace_info()
+    def trace_info(self, runtime: BaseRuntime = None) -> str:
+        return self._condition.trace_info(runtime)
 
 
 class BranchRouter:
@@ -52,7 +52,7 @@ class BranchRouter:
             for branch in self._branches:
                 branches.append({
                     "branch_id": branch.branch_id,
-                    "condition": branch.trace_info()
+                    "condition": branch.trace_info(runtime.base())
                 })
             await runtime.base().trace_inputs({
                 "branches": branches
@@ -64,4 +64,4 @@ class BranchRouter:
                         "branch_id": branch.branch_id
                     })
                 return branch.target
-        return []
+        raise JiuWenBaseException(-1, f"branch not found: {runtime.base().node_id()}")

@@ -20,8 +20,6 @@ from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, HumanMessage, 
     ToolCall, UsageMetadata
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from jiuwen.core.utils.output_parser.base import BaseOutputParser
-from jiuwen.core.utils.output_parser.null_output_parser import NullOutputParser
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.core.common.logging import logger
@@ -45,7 +43,6 @@ class ReActController(Controller):
         self._runtime = runtime
         self._state_machine = ReActStateMachine(runtime)
         self._model = self._init_model()
-        self._output_parser = self._init_output_parser()
         self._agent_handler = None
         self._setup_state_handlers()
 
@@ -634,24 +631,13 @@ class ReActController(Controller):
             raise JiuWenBaseException()
         return result
 
-    def _init_output_parser(self) -> BaseOutputParser:
-        model_provider = self._model.model_provider()
-        if model_provider in ["siliconflow"]:
-            result = BaseOutputParser.from_config(model_provider)
-        else:
-            result = BaseOutputParser.from_config("novel_tool")
-        return result
-
     def _format_llm_inputs(self, inputs: ReActControllerInput, chat_history: List[BaseMessage]):
         user_fields = inputs.user_fields
         system_prompt = self._format_system_prompt_template(user_fields)
         return FormatUtils.create_llm_inputs(system_prompt, chat_history)
 
     def _parse_llm_output(self, response: BaseMessage):
-        if isinstance(self._output_parser, NullOutputParser):
-            llm_output = response
-        else:
-            llm_output = self._output_parser.parse(response)
+        llm_output = response
         sub_tasks = self._format_sub_tasks(llm_output.tool_calls)
         should_continue = isinstance(sub_tasks, list) and len(sub_tasks) > 0
         return ReActControllerOutput(should_continue=should_continue, llm_output=llm_output, sub_tasks=sub_tasks)

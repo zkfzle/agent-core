@@ -58,7 +58,6 @@ class TestRestFulApi(unittest.TestCase):
                     properties={'test': {'description': 'test', 'type': 'string'}, 'required': ['test']},
                     required=['test']
                 )
-            ),
-            results={'description': 'test', 'type': 'string'}
+            )
         )
         self.assertEqual(res, too_info)

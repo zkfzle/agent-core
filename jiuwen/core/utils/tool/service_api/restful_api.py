@@ -82,11 +82,8 @@ class RestfulApi(Tool):
 
     def get_tool_info(self) -> ToolInfo:
         tool_info_dict = Param.format_functions(self)
-        result = tool_info_dict.pop("results") if "results" in tool_info_dict else None
         func = Function(**tool_info_dict)
         tool_info = ToolInfo(function=func)
-        if result:
-            tool_info.results = result
         return tool_info
 
 

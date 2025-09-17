@@ -21,7 +21,6 @@ class Function(BaseModel):
 class ToolInfo(BaseModel):
     type: str = "function"
     function: Function
-    results: Any = {}
 
 
 class FunctionInfo(BaseModel):

@@ -14,6 +14,7 @@ from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
 from jiuwen.core.runtime.runtime import BaseRuntime, NodeRuntime
 from jiuwen.core.runtime.utils import get_by_schema
+from jiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 
 
@@ -141,7 +142,7 @@ class Vertex(AsyncAtomicNode):
         if self._executable.skip_trace():
             return
         # TODO 组件信息
-        await self._runtime.trace_inputs(inputs)
+        await trace_inputs(self._runtime, inputs)
 
         if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
             self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
@@ -192,4 +193,4 @@ class Vertex(AsyncAtomicNode):
     async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:
         if self._executable.skip_trace():
             return
-        await self._runtime.trace_outputs(outputs)
+        await trace_outputs(self._runtime, outputs)

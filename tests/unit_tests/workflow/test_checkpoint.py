@@ -7,16 +7,17 @@ from unittest.mock import Mock
 import pytest
 
 from jiuwen.core.common.constants.constant import INTERACTION
-from jiuwen.core.common.logging import logger
+from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.condition.array import ArrayCondition
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.output import OutputCallback
 from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
-from jiuwen.core.runtime.runtime import WorkflowRuntime
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
+from jiuwen.core.runtime.runtime import WorkflowRuntime
 from jiuwen.core.stream.base import BaseStreamMode
+from jiuwen.core.stream.writer import TraceSchema, OutputSchema
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow
 from jiuwen.graph.pregel.graph import PregelGraph
 from test_node import AddTenNode, CommonNode
@@ -445,3 +446,38 @@ async def test_simple_concurrent_interactive_workflow():
     user_input.update("b", {"aa": "any key b"})
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == {"result": ["any key a", "any key b"]}
+
+
+async def test_workflow_with_branch():
+    flow = Workflow()
+    flow.set_start_comp("start", MockStartNode("start"))
+    flow.set_end_comp("end", MockEndNode("end"),
+                      inputs_schema={"a": "${a.result}", "b": "${b.result}"})
+
+    sw = BranchComponent()
+    sw.add_branch("${a} <= 10", ["b"], "1")
+    sw.add_branch("${a} > 10", ["a"], "2")
+
+    flow.add_workflow_comp("sw", sw)
+
+    flow.add_workflow_comp("a", CommonNode("a"),
+                           inputs_schema={"result": "${a}"})
+
+    flow.add_workflow_comp("b", AddTenNode("b"),
+                           inputs_schema={"source": "${a}"})
+
+    flow.add_connection("start", "sw")
+    flow.add_connection("a", "end")
+    flow.add_connection("b", "end")
+
+    async for chuck in flow.stream({"a": 2}, WorkflowRuntime()):
+        if isinstance(chuck, TraceSchema):
+            print(chuck.model_dump_json(indent=4))
+        elif isinstance(chuck, OutputSchema):
+            assert chuck.payload.get("b") == 12
+
+    async for chuck in flow.stream({"a": 15}, WorkflowRuntime()):
+        if isinstance(chuck, TraceSchema):
+            print(chuck.model_dump_json(indent=4))
+        elif isinstance(chuck, OutputSchema):
+            assert chuck.payload.get("a") == 15

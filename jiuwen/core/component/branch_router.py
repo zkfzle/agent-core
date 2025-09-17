@@ -3,10 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 from typing import Callable, Union
 
+from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
-from jiuwen.core.runtime.runtime import BaseRuntime, Runtime, NodeRuntime
-from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.runtime.runtime import Runtime, BaseRuntime
+from jiuwen.core.tracer.workflow_tracer import trace_outputs, trace_inputs
 
 
 class Branch:
@@ -54,14 +55,10 @@ class BranchRouter:
                     "branch_id": branch.branch_id,
                     "condition": branch.trace_info(runtime.base())
                 })
-            await runtime.base().trace_inputs({
-                "branches": branches
-            })
+            await trace_inputs(runtime.base(), {"branches": branches})
         for branch in self._branches:
-            if branch.evaluate(self._runtime.base()):
+            if branch.evaluate(runtime.base()):
                 if self.report_trace:
-                    await runtime.base().trace_outputs({
-                        "branch_id": branch.branch_id
-                    })
+                    await trace_outputs(runtime.base(), {"branch_id": branch.branch_id})
                 return branch.target
         raise JiuWenBaseException(-1, f"branch not found: {runtime.base().node_id()}")

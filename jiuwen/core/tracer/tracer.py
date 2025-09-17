@@ -49,4 +49,3 @@ class Tracer:
         if parent_node_id not in self.tracer_workflow_span_manager_dict:
             return
         self.tracer_workflow_span_manager_dict.get(parent_node_id).pop_span(invoke_id)
-

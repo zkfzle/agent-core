@@ -53,8 +53,8 @@ class Template(BaseModel):
         for key in input_keys:
             if keywords and keywords.get(key):
                 format_dict[key] = keywords.get(key)
-        self.content = assembler.assemble(**format_dict)
-        return self
+        content = assembler.assemble(**format_dict)
+        return Template(name=self.name, content=content, filters=self.filters)
 
     def _validate_template_content_assembled(self):
         if isinstance(self.content, str):

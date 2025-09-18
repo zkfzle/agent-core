@@ -25,26 +25,28 @@ def update_dict(update: dict, source: dict) -> None:
         update_by_key(current_key, value, current)
 
 
-def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None) -> Any:
+def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None, is_root: bool = True) -> Any:
     if nested_path is not None and len(nested_path) > 0:
         data = get_value_by_nested_path(nested_path, data)
     if schema is None or data is None:
         return None
     if isinstance(schema, str):
         origin_key = extract_origin_key(schema)
+        if origin_key == schema and not is_root:
+            return schema
         return get_value_by_nested_path(origin_key, data)
     elif isinstance(schema, dict):
         result = {}
         for target_key, target_schema in schema.items():
             if isinstance(target_schema, list) or isinstance(target_schema, dict) or is_ref_path(target_schema):
-                result[target_key] = get_by_schema(target_schema, data)
+                result[target_key] = get_by_schema(target_schema, data, is_root=False)
             else:
                 result[target_key] = target_schema
         return result
     elif isinstance(schema, list):
         result = []
         for item in schema:
-            result.append(get_by_schema(item, data))
+            result.append(get_by_schema(item, data, is_root=False))
         return result
     else:
         return schema

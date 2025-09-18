@@ -82,3 +82,11 @@ class ContextTest(unittest.TestCase):
         assert get_by_schema("a", data=source) == {'b': [1, 2, 3]}
         assert get_by_schema({"a": "b"}, data=source) == {"a": "b"}
         assert get_by_schema({"result": "${a.b}"}, data=source) == {'result': [1, 2, 3]}
+        assert get_by_schema({"result": ["abc", "${a}"]}, data=source) == {"result": ["abc", {'b': [1, 2, 3]}]}
+        assert get_by_schema({"result": ["abc", "cde"]}, data=source) == {"result": ["abc", "cde"]}
+        assert get_by_schema({"result": {"abc": "cde", "result": "${1}"}}, data=source) == {
+            "result": {"abc": "cde", "result": None}}
+
+        assert get_by_schema({"result": ["${abc}", "cde"]}, data=source) == {"result": [None, "cde"]}
+        assert get_by_schema({"result": {"abc": "cde", "result": "${a}"}}, data=source) == {
+            "result": {"abc": "cde", "result": {'b': [1, 2, 3]}}}

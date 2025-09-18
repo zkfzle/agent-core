@@ -2,6 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
+from enum import Enum
 from typing import Self, Dict, Any, Union, AsyncIterator
 
 from pydantic import BaseModel
@@ -28,8 +29,14 @@ from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbilit
 from jiuwen.graph.pregel.graph import PregelGraph
 
 
+class WorkflowExecutionState(Enum):
+    COMPLETED = "COMPLETED"
+    INPUT_REQUIRED = "INPUT_REQUIRED"
+
+
 class WorkflowOutput(BaseModel):
-    result: str
+    result: Any
+    state: WorkflowExecutionState
 
 
 class WorkflowChunk(BaseModel):
@@ -205,10 +212,14 @@ class Workflow(BaseWorkFlow):
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 is_interaction = True
                 break
-        results = [chunk.model_dump() for chunk in chunks] if is_interaction else runtime.state().get_outputs(
-            self._end_comp_id)
-        logger.info("end to invoke, results=%s", results)
-        return results
+        if is_interaction:
+            output = WorkflowOutput(result=[chunk.model_dump() for chunk in chunks],
+                                    state=WorkflowExecutionState.INPUT_REQUIRED)
+        else:
+            output = WorkflowOutput(result=runtime.state().get_outputs(self._end_comp_id),
+                                    state=WorkflowExecutionState.COMPLETED)
+        logger.info("end to invoke, results=%s", output)
+        return output
 
     async def stream(
             self,

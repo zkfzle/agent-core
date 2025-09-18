@@ -15,7 +15,7 @@ from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.workflow.base import Workflow
+from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 
 
 class MockLLMModel:
@@ -95,7 +95,9 @@ class QuestionerTest(unittest.TestCase):
         flow.add_connection("questioner", "e")
 
         result = self.invoke_workflow({"query": "查询杭州的天气"}, context, flow)
-        assert result == {'output': {}, 'responseContent': "{'location': 'hangzhou', 'time': 'today'}"}
+        assert result == WorkflowOutput(
+            result={'output': {}, 'responseContent': "{'location': 'hangzhou', 'time': 'today'}"},
+            state=WorkflowExecutionState.COMPLETED)
 
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
@@ -152,10 +154,10 @@ class QuestionerTest(unittest.TestCase):
         session_id = "test_questioner"
         workflow_context = TaskContext(id=session_id).create_workflow_context()
         first_question = self.invoke_workflow_with_workflow_context({"query": "你好"}, workflow_context, flow)
-        first_question = first_question[0] if first_question else dict()
+        first_question = first_question.result[0] if first_question else dict()
         payload = first_question.get("payload")
-        if isinstance(payload, tuple) and len(payload) > 0:
-            component_id = payload[0]
+        if isinstance(payload, dict) and payload.get("id") is not None:
+            component_id = payload.get("id")
         else:
             assert False
         user_input = InteractiveInput()
@@ -163,7 +165,7 @@ class QuestionerTest(unittest.TestCase):
 
         workflow_context = TaskContext(id=session_id).create_workflow_context()
         final_result = self.invoke_workflow_with_workflow_context(user_input, workflow_context, flow)    # workflow实例、session id保持一致
-        assert final_result.get("responseContent") == "{'location': 'hangzhou', 'time': 'today'}"
+        assert final_result.result.get("responseContent") == "{'location': 'hangzhou', 'time': 'today'}"
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")

@@ -63,15 +63,18 @@ class InMemoryCheckpointer(BaseCheckpointer[str]):
             self.ctx.state().set_state(state)
 
         if isinstance(self.input, InteractiveInput):
-            for node_id, input in self.input.user_inputs.items():
-                exe_ctx = NodeRuntime(self.ctx, node_id)
-                interactive_input = exe_ctx.state().get(INTERACTIVE_INPUT)
-                if isinstance(interactive_input, list):
-                    interactive_input.append(input)
-                    exe_ctx.state().update({INTERACTIVE_INPUT: interactive_input})
-                    continue
-                exe_ctx.state().update({INTERACTIVE_INPUT: [input]})
-            self.ctx.state().commit()
+            if self.input.raw_inputs is not None:
+                self.ctx.state().update_and_commit_workflow_state({INTERACTIVE_INPUT: self.input.raw_inputs})
+            else:
+                for node_id, user_input in self.input.user_inputs.items():
+                    exe_ctx = NodeRuntime(self.ctx, node_id)
+                    interactive_input = exe_ctx.state().get(INTERACTIVE_INPUT)
+                    if isinstance(interactive_input, list):
+                        interactive_input.append(user_input)
+                        exe_ctx.state().update({INTERACTIVE_INPUT: interactive_input})
+                        continue
+                    exe_ctx.state().update({INTERACTIVE_INPUT: [user_input]})
+                self.ctx.state().commit()
 
         if state_updates_blob := self.state_updates_blobs.get(
                 (thread_id, checkpoint_ns, checkpoint_id, STATE_UPDATES_KEY)):

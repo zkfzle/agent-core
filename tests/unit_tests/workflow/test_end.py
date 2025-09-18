@@ -8,7 +8,7 @@ from jiuwen.core.component.start_comp import Start
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import BaseRuntime, WorkflowRuntime
 from jiuwen.core.runtime.state import InMemoryState
-from jiuwen.core.workflow.base import Workflow
+from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from tests.unit_tests.workflow.test_mock_node import Node1, StreamCompNode
 
@@ -26,7 +26,8 @@ class EndNodeTest(unittest.TestCase):
     def assert_workflow_invoke(self, inputs: dict, context: BaseRuntime, flow: Workflow, expect_results: dict = None,
                                checker: Callable = None):
         if expect_results is not None:
-            assert self.invoke_workflow(inputs, context, flow) == expect_results
+            assert (self.invoke_workflow(inputs, context, flow) ==
+                    WorkflowOutput(result=expect_results, state=WorkflowExecutionState.COMPLETED))
         elif checker is not None:
             checker(self.invoke_workflow(inputs, context, flow))
 

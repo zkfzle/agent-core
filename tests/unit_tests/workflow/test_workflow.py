@@ -19,7 +19,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime, WorkflowRuntime
 from jiuwen.core.runtime.state import ReadableStateLike
 from jiuwen.core.stream.base import BaseStreamMode
 from jiuwen.core.stream.writer import CustomSchema
-from jiuwen.core.workflow.base import WorkflowConfig, Workflow
+from jiuwen.core.workflow.base import WorkflowConfig, Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
 from tests.unit_tests.workflow.test_mock_node import SlowNode, CountNode, StreamCompNode, CollectCompNode, \
@@ -40,7 +40,8 @@ class WorkflowTest(unittest.TestCase):
     def assert_workflow_invoke(self, inputs: dict, runtime: BaseRuntime, flow: Workflow, expect_results: dict = None,
                                checker: Callable = None):
         if expect_results is not None:
-            assert self.invoke_workflow(inputs, runtime, flow) == expect_results
+            assert (self.invoke_workflow(inputs, runtime, flow) ==
+                    WorkflowOutput(result=expect_results, state=WorkflowExecutionState.COMPLETED))
         elif checker is not None:
             checker(self.invoke_workflow(inputs, runtime, flow))
 
@@ -195,10 +196,10 @@ class WorkflowTest(unittest.TestCase):
         flow.add_connection("b", "end")
 
         result = self.invoke_workflow({"a": 2}, WorkflowRuntime(), flow)
-        assert result["b"] == 12
+        assert result.result["b"] == 12
 
         result = self.invoke_workflow({"a": 15}, WorkflowRuntime(), flow)
-        assert result["a"] == 15
+        assert result.result["a"] == 15
 
     def test_workflow_with_loop(self):
         flow = Workflow()
@@ -235,10 +236,12 @@ class WorkflowTest(unittest.TestCase):
         flow.add_connection("b", "e")
 
         result = self.invoke_workflow({"input_array": [1, 2, 3], "input_number": 1}, WorkflowRuntime(), flow)
-        assert result == {"array_result": [11, 12, 13], "user_var": 31}
+        assert result == WorkflowOutput(result={"array_result": [11, 12, 13], "user_var": 31},
+                                        state=WorkflowExecutionState.COMPLETED)
 
         result = self.invoke_workflow({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(), flow)
-        assert result == {"array_result": [14, 15], "user_var": 22}
+        assert result == WorkflowOutput(result={"array_result": [14, 15], "user_var": 22},
+                                        state=WorkflowExecutionState.COMPLETED)
 
     def test_workflow_with_loop_break(self):
         flow = Workflow()
@@ -278,10 +281,12 @@ class WorkflowTest(unittest.TestCase):
         flow.add_connection("b", "e")
 
         result = self.invoke_workflow({"input_array": [1, 2, 3], "input_number": 1}, WorkflowRuntime(), flow)
-        assert result == {"array_result": [11], "user_var": 11}
+        assert result == WorkflowOutput(result={"array_result": [11], "user_var": 11},
+                                       state=WorkflowExecutionState.COMPLETED)
 
         result = self.invoke_workflow({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(), flow)
-        assert result == {"array_result": [14], "user_var": 12}
+        assert result == WorkflowOutput(result={"array_result": [14], "user_var": 12},
+                                        state=WorkflowExecutionState.COMPLETED)
 
     def test_workflow_with_loop_number_condition(self):
         flow = Workflow()
@@ -318,10 +323,12 @@ class WorkflowTest(unittest.TestCase):
         flow.add_connection("b", "e")
 
         result = self.invoke_workflow({"input_number": 1, "loop_number": 3}, WorkflowRuntime(), flow)
-        assert result == {"array_result": [10, 11, 12], "user_var": 31}
+        assert result == WorkflowOutput(result={"array_result": [10, 11, 12], "user_var": 31},
+                                        state=WorkflowExecutionState.COMPLETED)
 
         result = self.invoke_workflow({"input_number": 2, "loop_number": 2}, WorkflowRuntime(), flow)
-        assert result == {"array_result": [10, 11], "user_var": 22}
+        assert result == WorkflowOutput(result={"array_result": [10, 11], "user_var": 22},
+                                        state=WorkflowExecutionState.COMPLETED)
 
     def test_simple_stream_workflow(self):
         async def stream_workflow():

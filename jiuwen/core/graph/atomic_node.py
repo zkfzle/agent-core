@@ -18,7 +18,7 @@ class AtomicNode(ABC):
         if not isinstance(runtime.state(), CommitState):
             raise JiuWenBaseException(-1, "state type error, not commit state")
         result = self._atomic_invoke(**kwargs)
-        runtime.state().commit()
+        runtime.state().commit_cmp()
         return result
 
     @abstractmethod
@@ -34,7 +34,7 @@ class AsyncAtomicNode(ABC):
         if not isinstance(runtime.state(), CommitState):
             raise JiuWenBaseException(-1, "state type error, not commit state")
         result = await self._atomic_invoke(**kwargs)
-        runtime.state().commit()
+        runtime.state().commit_cmp()
         return result
 
     @abstractmethod

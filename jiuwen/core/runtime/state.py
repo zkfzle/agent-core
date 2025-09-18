@@ -124,7 +124,7 @@ class State(ABC):
 
     def commit_cmp(self):
         self._comp_state.commit(self._node_id)
-
+        self._io_state.commit(self._node_id)
 
 class CommitState(State):
     def __init__(self, io_state: CommitStateLike,

@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.branch_comp import BranchComponent
+from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.break_comp import BreakComponent
 from jiuwen.core.component.condition.array import ArrayCondition
 from jiuwen.core.component.condition.number import NumberCondition
@@ -90,10 +91,15 @@ class WorkflowTest(unittest.TestCase):
                                            "b": "${b}",
                                            "c": 1,
                                            "d": [1, 2, 3]})
-        choose = "a"
 
-        def router(state: GraphState):
-            return choose
+        def router(runtime: BaseRuntime):
+            val = runtime.state().get_global("start.a")
+            if val is not None:
+                return "a"
+            val = runtime.state().get_global("start.b")
+            if val is not None:
+                return "b"
+            return "a"
 
         flow.add_conditional_connection("start", router=router)
         flow.add_workflow_comp("a", Node1("a"), inputs_schema={"a": "${start.a}", "b": "${start.c}"})
@@ -101,12 +107,36 @@ class WorkflowTest(unittest.TestCase):
         flow.set_end_comp("end", MockEndNode("end"), {"result1": "${a.a}", "result2": "${b.b}"})
         flow.add_connection("a", "end")
         flow.add_connection("b", "end")
-        self.assert_workflow_invoke({"a": 1, "b": "haha"}, WorkflowRuntime(), flow,
+        self.assert_workflow_invoke({"a": 1}, WorkflowRuntime(), flow,
                                     expect_results={"result1": 1, "result2": None})
-        choose = "b"
-        self.assert_workflow_invoke({"a": 1, "b": "haha"}, WorkflowRuntime(), flow,
+        self.assert_workflow_invoke({"b": "haha"}, WorkflowRuntime(), flow,
                                     expect_results={"result1": None, "result2": "haha"})
 
+    def test_simple_workflow_with_branch_condition(self):
+        """
+        start -> condition[a,b] -> end
+        """
+        flow = Workflow()
+        flow.set_start_comp("start", MockStartNode("start"),
+                            inputs_schema={"a": "${a}",
+                                           "b": "${b}",
+                                           "c": 1,
+                                           "d": [1, 2, 3]})
+
+        router = BranchRouter()
+        router.add_branch("${start.a} is not None", "a")
+        router.add_branch("${start.b} is not None", "b")
+
+        flow.add_conditional_connection("start", router=router)
+        flow.add_workflow_comp("a", Node1("a"), inputs_schema={"a": "${start.a}", "b": "${start.c}"})
+        flow.add_workflow_comp("b", Node1("b"), inputs_schema={"b": "${start.b}"})
+        flow.set_end_comp("end", MockEndNode("end"), {"result1": "${a.a}", "result2": "${b.b}"})
+        flow.add_connection("a", "end")
+        flow.add_connection("b", "end")
+        self.assert_workflow_invoke({"a": 1}, WorkflowRuntime(), flow,
+                                    expect_results={"result1": 1, "result2": None})
+        self.assert_workflow_invoke({"b": "haha"}, WorkflowRuntime(), flow,
+                                    expect_results={"result1": None, "result2": "haha"})
     def test_workflow_with_wait_for_all(self):
         # flow: start -> (a->a1)|b|c|d -> collect -> end
         for waitForAll in [True, False]:

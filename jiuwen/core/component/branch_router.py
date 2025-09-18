@@ -36,14 +36,19 @@ class BranchRouter:
     def __init__(self, report_trace: bool = False):
         super().__init__()
         self._branches: list[Branch] = []
-        self._runtime: Runtime = None
+        self._runtime: BaseRuntime = None
         self.report_trace = report_trace
 
-    def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
+    def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
                    branch_id: str = None):
+        if isinstance(target, str):
+            target = [target]
         self._branches.append(Branch(condition, target, branch_id))
 
-    def set_runtime(self, runtime: Runtime):
+    def set_runtime(self, runtime: Union[Runtime, BaseRuntime]):
+        if isinstance(runtime, Runtime):
+            self._runtime = runtime.base()
+            return
         self._runtime = runtime
 
     async def __call__(self, *args, **kwargs) -> list[str]:
@@ -53,12 +58,12 @@ class BranchRouter:
             for branch in self._branches:
                 branches.append({
                     "branch_id": branch.branch_id,
-                    "condition": branch.trace_info(runtime.base())
+                    "condition": branch.trace_info(runtime)
                 })
-            await trace_inputs(runtime.base(), {"branches": branches})
+            await trace_inputs(runtime, {"branches": branches})
         for branch in self._branches:
-            if branch.evaluate(runtime.base()):
+            if branch.evaluate(runtime):
                 if self.report_trace:
-                    await trace_outputs(runtime.base(), {"branch_id": branch.branch_id})
+                    await trace_outputs(runtime, {"branch_id": branch.branch_id})
                 return branch.target
-        raise JiuWenBaseException(-1, f"branch not found: {runtime.base().node_id()}")
+        raise JiuWenBaseException(-1, "branch not found")

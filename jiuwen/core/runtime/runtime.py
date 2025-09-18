@@ -25,10 +25,6 @@ class BaseRuntime(ABC):
         pass
 
     @abstractmethod
-    def store(self) -> Store:
-        pass
-
-    @abstractmethod
     def tracer(self) -> Any:
         pass
 
@@ -95,9 +91,6 @@ class WorkflowRuntime(BaseRuntime):
     def state(self) -> State:
         return self._state
 
-    def store(self) -> Store:
-        return self._store
-
     def tracer(self) -> Any:
         return self._tracer
 
@@ -147,9 +140,6 @@ class NodeRuntime(BaseRuntime):
 
     def config(self) -> Config:
         return self._runtime.config()
-
-    def store(self) -> Store:
-        return self._runtime.store()
 
     def stream_writer_manager(self) -> StreamWriterManager:
         return self._runtime.stream_writer_manager()
@@ -226,3 +216,34 @@ class Runtime(ABC):
     @abstractmethod
     def base(self) -> BaseRuntime:
         pass
+
+class ProxyRuntime(BaseRuntime):
+    def __init__(self, stub: BaseRuntime = None):
+        self._stub = stub
+
+    def set_runtime(self, stub: BaseRuntime):
+        self._stub = stub
+
+    def config(self) -> Config:
+        return self._stub.config()
+
+    def state(self) -> State:
+        return self._stub.state()
+
+    def tracer(self) -> Any:
+        return self._stub.tracer()
+
+    def stream_writer_manager(self) -> StreamWriterManager:
+        return self._stub.stream_writer_manager()
+
+    def callback_manager(self) -> CallbackManager:
+        return self._stub.callback_manager()
+
+    def controller_context_manager(self):
+        return self._stub.controller_context_manager()
+
+    def queue_manager(self) -> MessageQueueManager:
+        return self._stub.queue_manager()
+
+    def session_id(self) -> str:
+        return self._stub.session_id()

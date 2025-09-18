@@ -10,13 +10,14 @@ from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
+from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
-from jiuwen.core.runtime.config import CompIOConfig, Transformer
-from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.runtime.config import CompIOConfig, Transformer
+from jiuwen.core.runtime.mq_manager import MessageQueueManager
+from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
@@ -43,6 +44,7 @@ class BaseWorkFlow:
         self._graph = new_graph
         self._workflow_config = workflow_config
         self._stream_actor = StreamActor()
+        self._runtime = ProxyRuntime()
 
     def config(self):
         return self._workflow_config
@@ -118,10 +120,17 @@ class BaseWorkFlow:
         return self
 
     def add_conditional_connection(self, src_comp_id: str, router: Router) -> Self:
-        self._graph.add_conditional_edges(source_node_id=src_comp_id, router=router)
+        if isinstance(router, BranchRouter):
+            router.set_runtime(self._runtime)
+            self._graph.add_conditional_edges(source_node_id=src_comp_id, router=router)
+        else:
+            def new_router(state):
+                return router(self._runtime)
+            self._graph.add_conditional_edges(source_node_id=src_comp_id, router=new_router)
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
+        self._runtime.set_runtime(runtime)
         runtime.config().set_workflow_config(self._workflow_config)
         return self._graph.compile(runtime)
 

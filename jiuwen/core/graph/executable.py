@@ -37,7 +37,7 @@ class Executable(Generic[Input, Output]):
         return False
 
     def post_commit(self) -> bool:
-        return False
+        return True
 
     def component_type(self) -> str:
         return ""

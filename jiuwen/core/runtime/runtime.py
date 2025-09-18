@@ -13,7 +13,6 @@ from jiuwen.core.runtime.store import Store
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
 from jiuwen.core.tracer.tracer import Tracer
-from jiuwen.core.tracer.workflow_tracer import trace, trace_error
 
 
 class BaseRuntime(ABC):
@@ -171,55 +170,59 @@ class NodeRuntime(BaseRuntime):
         return self._runtime
 
 
-class Runtime:
-    def __init__(self, runtime: NodeRuntime):
-        self._inner = runtime
-
+class Runtime(ABC):
+    @abstractmethod
     def executable_id(self) -> str:
-        return self._inner.executable_id()
+        pass
 
+    @abstractmethod
     def trace_id(self) -> str:
-        return self._inner.session_id()
+        pass
 
+    @abstractmethod
     def update_state(self, data: dict):
-        return self._inner.state().update(data)
+        pass
 
+    @abstractmethod
     def get_state(self, key: Union[str, list, dict] = None) -> Any:
-        return self._inner.state().get(key)
+        pass
 
+    @abstractmethod
     def update_global_state(self, data: dict):
-        return self._inner.state().update_global(data)
+        pass
 
+    @abstractmethod
     def get_global_state(self, key: Union[str, list, dict] = None) -> Any:
-        return self._inner.state().get_global(key)
+        pass
 
+    @abstractmethod
     def stream_writer(self) -> Optional[StreamWriter]:
-        manager = self._inner.stream_writer_manager()
-        if manager:
-            return manager.get_output_writer()
-        return None
+        pass
 
+    @abstractmethod
     def custom_writer(self) -> Optional[StreamWriter]:
-        manager = self._inner.stream_writer_manager()
-        if manager:
-            return manager.get_custom_writer()
-        return None
+        pass
 
+    @abstractmethod
     async def write_stream(self, data: Union[dict, OutputSchema]):
-        writer = self.stream_writer()
-        if writer:
-            await writer.write(data)
+        pass
 
+    @abstractmethod
     async def write_custom_stream(self, data: dict):
-        writer = self.custom_writer()
-        if writer:
-            await writer.write(data)
+        pass
 
+    @abstractmethod
     async def trace(self, data: dict):
-        await trace(self._inner, data)
+        pass
 
+    @abstractmethod
     async def trace_error(self, error: Exception):
-        await trace_error(self._inner, error)
+        pass
 
-    def base(self) -> NodeRuntime:
-        return self._inner
+    @abstractmethod
+    async def interaction(self, value):
+        pass
+
+    @abstractmethod
+    def base(self) -> BaseRuntime:
+        pass

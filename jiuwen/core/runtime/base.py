@@ -3,6 +3,7 @@ from typing import AsyncIterator, TypeVar
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.graph.executable import Executable
 from jiuwen.core.runtime.runtime import Runtime, BaseRuntime, NodeRuntime
+from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 
 Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", contravariant=True)
@@ -13,23 +14,23 @@ class ComponentExecutable(Executable):
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        return await self.invoke(inputs, Runtime(runtime))
+        return await self.invoke(inputs, WrappedNodeRuntime(runtime))
 
     async def on_stream(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
         if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        async for value in self.stream(inputs, Runtime(runtime)):
+        async for value in self.stream(inputs, WrappedNodeRuntime(runtime)):
             yield value
 
     async def on_collect(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> Output:
         if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        return await self.collect(inputs, Runtime(runtime))
+        return await self.collect(inputs, WrappedNodeRuntime(runtime))
 
     async def on_transform(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> AsyncIterator[Output]:
         if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
-        async for value in self.transform(inputs, Runtime(runtime)):
+        async for value in self.transform(inputs, WrappedNodeRuntime(runtime)):
             yield value
 
     async def invoke(self, inputs: Input, runtime: Runtime) -> Output:

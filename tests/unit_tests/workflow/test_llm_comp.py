@@ -34,6 +34,7 @@ from unittest.mock import patch, AsyncMock
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
 from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime, Runtime
+from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
 
 USER_FIELDS = "userFields"
@@ -41,7 +42,7 @@ USER_FIELDS = "userFields"
 
 @pytest.fixture
 def fake_node_ctx():
-    return Runtime(NodeRuntime(WorkflowRuntime(), "test"))
+    return WrappedNodeRuntime(NodeRuntime(WorkflowRuntime(), "test"))
 
 
 @pytest.fixture

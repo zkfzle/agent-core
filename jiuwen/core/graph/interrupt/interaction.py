@@ -35,14 +35,14 @@ class Interaction(object):
         if self.interactive_inputs:
             self.latest_interactive_inputs = self.interactive_inputs[-1]
 
-    def get_next_interactive_input(self) -> Any | None:
+    def _get_next_interactive_input(self) -> Any | None:
         if self.interactive_inputs and self.idx < len(self.interactive_inputs):
             res = self.interactive_inputs[self.idx]
             self.idx += 1
             return res
 
     def user_input(self, value: Any) -> Any:
-        if res := self.get_next_interactive_input():
+        if res := self._get_next_interactive_input():
             return res
         self.ctx.state().commit_cmp()
         if self.ctx.stream_writer_manager():
@@ -54,6 +54,18 @@ class Interaction(object):
             else:
                 loop.run_until_complete(
                     output_writer.write(OutputSchema(type=INTERACTION, index=self.idx, payload=(self.node_id, value))))
+
+        raise GraphInterrupt((Interrupt(
+            value=OutputSchema(type=INTERACTION, index=self.idx, payload=(self.node_id, value)), resumable=True,
+            ns=self.node_id),))
+
+    async def wait_user_inputs(self, value: Any) -> Any:
+        if res := self._get_next_interactive_input():
+            return res
+        self.ctx.state().commit_cmp()
+        if self.ctx.stream_writer_manager():
+            output_writer = self.ctx.stream_writer_manager().get_output_writer()
+            await output_writer.write(OutputSchema(type=INTERACTION, index=self.idx, payload=(self.node_id, value)))
 
         raise GraphInterrupt((Interrupt(
             value=OutputSchema(type=INTERACTION, index=self.idx, payload=(self.node_id, value)), resumable=True,

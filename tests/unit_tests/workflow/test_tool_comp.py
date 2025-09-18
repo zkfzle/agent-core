@@ -5,6 +5,7 @@ import pytest
 from jiuwen.core.agent.task.task_context import TaskContext
 from jiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
 from jiuwen.core.runtime.runtime import Runtime, NodeRuntime, WorkflowRuntime
+from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 from jiuwen.core.utils.tool.service_api.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
@@ -13,7 +14,7 @@ from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode
 
 @pytest.fixture
 def fake_ctx():
-    return Runtime(NodeRuntime(WorkflowRuntime(), "test"))
+    return WrappedNodeRuntime(NodeRuntime(WorkflowRuntime(), "test"))
 
 
 @pytest.fixture()

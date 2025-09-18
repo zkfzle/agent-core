@@ -201,11 +201,11 @@ class QuestionerDirectReplyHandler:
         self._prompt = prompt
         return self
 
-    def handle(self, inputs: Input, runtime: Runtime):
+    async def handle(self, inputs: Input, runtime: Runtime):
         if self._state.status == ExecutionStatus.START:
             return self._handle_start_state(inputs, runtime)
         if self._state.status == ExecutionStatus.USER_INTERACT:
-            return self._handle_user_interact_state(inputs, runtime)
+            return await self._handle_user_interact_state(inputs, runtime)
         if self._state.status == ExecutionStatus.END:
             return self._handle_end_state(inputs, runtime)
         return dict()
@@ -231,9 +231,9 @@ class QuestionerDirectReplyHandler:
             )
         return dict(userFields=output.model_dump(exclude_defaults=True))
 
-    def _handle_user_interact_state(self, inputs, runtime):
+    async def _handle_user_interact_state(self, inputs, runtime: Runtime):
         output = QuestionerOutput()
-        self._query = Interaction(runtime).user_input("")
+        self._query = await runtime.interaction("")
         chat_history = self._get_latest_chat_history(runtime)
         user_response = chat_history[-1].get("content", "") if chat_history else ""
 
@@ -420,13 +420,13 @@ class QuestionerExecutable(ComponentExecutable):
 
         invoke_result = dict()
         if self._config.response_type == ResponseType.ReplyDirectly.value:
-            invoke_result = self._handle_questioner_direct_reply(inputs, runtime)
+            invoke_result = await self._handle_questioner_direct_reply(inputs, runtime)
 
         self._store_state_to_runtime(self._state, runtime)
 
         # 向用户追问
         if self._state.is_undergoing_interaction():
-            Interaction(runtime).user_input(invoke_result.get("userFields", dict()).get("question", ""))
+            await runtime.interaction(invoke_result.get("userFields", dict()).get("question", ""))
 
         return invoke_result
 
@@ -441,10 +441,10 @@ class QuestionerExecutable(ComponentExecutable):
         filters = dict(model_name=self._config.model.model_info.model_name)
         return TemplateManager().get(name=TEMPLATE_NAME, filters=filters)
 
-    def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime):
+    async def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime):
         handler = (QuestionerDirectReplyHandler()
                    .config(self._config).model(self._llm).state(self._state).prompt(self._prompt))
-        result = handler.handle(inputs, runtime)
+        result = await handler.handle(inputs, runtime)
         self._state = handler.get_state()
         return result
 

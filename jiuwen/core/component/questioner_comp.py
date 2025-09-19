@@ -233,7 +233,7 @@ class QuestionerDirectReplyHandler:
 
     async def _handle_user_interact_state(self, inputs, runtime: Runtime):
         output = QuestionerOutput()
-        self._query = await runtime.interaction("")
+        self._query = await runtime.interact("")
         chat_history = self._get_latest_chat_history(runtime)
         user_response = chat_history[-1].get("content", "") if chat_history else ""
 
@@ -426,7 +426,7 @@ class QuestionerExecutable(ComponentExecutable):
 
         # 向用户追问
         if self._state.is_undergoing_interaction():
-            await runtime.interaction(invoke_result.get("userFields", dict()).get("question", ""))
+            await runtime.interact(invoke_result.get("userFields", dict()).get("question", ""))
 
         return invoke_result
 

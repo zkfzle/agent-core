@@ -142,9 +142,9 @@ class InteractiveNode4Cp(MockNodeBase):
         super().__init__(node_id)
 
     async def invoke(self, inputs: Input, context: Runtime) -> Output:
-        result1 = await context.interaction("Please enter any key")
+        result1 = await context.interact("Please enter any key")
         print(result1)
-        result = await context.interaction("Please enter any key")
+        result = await context.interact("Please enter any key")
         return result
 
 
@@ -153,7 +153,7 @@ class InteractiveNode4StreamCp(MockNodeBase):
         super().__init__(node_id)
 
     async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
-        result = await runtime.interaction("Please enter any key")
+        result = await runtime.interact("Please enter any key")
         await runtime.write_stream(OutputSchema(type="output", index=0, payload=(self.node_id, result)))
         return result
 

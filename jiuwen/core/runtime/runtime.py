@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, Union, Optional
+from typing import Any, Union, Optional, List, TypeVar, Tuple
 
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
@@ -13,6 +13,10 @@ from jiuwen.core.runtime.store import Store
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
 from jiuwen.core.tracer.tracer import Tracer
+from jiuwen.core.utils.llm.base import BaseChatModel
+from jiuwen.core.utils.llm.messages import FunctionInfo
+from jiuwen.core.utils.prompt.template.template import Template
+from jiuwen.core.utils.tool.base import Tool
 
 
 class BaseRuntime(ABC):
@@ -159,6 +163,7 @@ class NodeRuntime(BaseRuntime):
     def parent(self):
         return self._runtime
 
+Workflow = TypeVar("Workflow", contravariant=True)
 
 class Runtime(ABC):
     @abstractmethod
@@ -210,12 +215,81 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    async def interaction(self, value):
+    async def interact(self, value):
+        pass
+
+    @abstractmethod
+    def add_prompt(self, template_id: str, template: Template):
+        pass
+
+    @abstractmethod
+    def add_prompts(self, templates: List[Tuple[str, Template]]):
+        pass
+
+    @abstractmethod
+    def remove_prompt(self, template_id: str):
+        pass
+
+    @abstractmethod
+    def get_prompt(self, template_id: str) -> Template:
+        pass
+
+    @abstractmethod
+    def add_model(self, model_id: str, model: BaseChatModel):
+        pass
+
+    @abstractmethod
+    def add_models(self, models: List[Tuple[str, BaseChatModel]]):
+        pass
+
+    @abstractmethod
+    def remove_model(self, model_id: str):
+        pass
+
+    @abstractmethod
+    def get_model(self, model_id: str) -> BaseChatModel:
+        pass
+
+    @abstractmethod
+    def add_workflow(self, workflow_id: str, workflow: Workflow):
+        pass
+
+    @abstractmethod
+    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+        pass
+
+    @abstractmethod
+    def remove_workflow(self, workflow_id: str):
+        pass
+
+    @abstractmethod
+    def get_workflow(self, workflow_id: str) -> Workflow:
+        pass
+
+    @abstractmethod
+    def add_tool(self, tool_id: str, tool: Tool):
+        pass
+
+    @abstractmethod
+    def add_tools(self, tools: List[Tuple[str, Tool]]):
+        pass
+
+    @abstractmethod
+    def remove_tool(self, tool_id: str):
+        pass
+
+    @abstractmethod
+    def get_tool(self, tool_id: str) -> Tool:
+        pass
+
+    @abstractmethod
+    def get_function_info(self, tool_id: List[str], workflow_id: List[str]) -> List[FunctionInfo]:
         pass
 
     @abstractmethod
     def base(self) -> BaseRuntime:
         pass
+
 
 class ProxyRuntime(BaseRuntime):
     def __init__(self, stub: BaseRuntime = None):

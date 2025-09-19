@@ -1,7 +1,7 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-from typing import AsyncIterator
+from typing import AsyncIterator, TypedDict, Union
 
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.utils.utils import TemplateUtils
@@ -13,8 +13,11 @@ from jiuwen.core.stream.base import StreamCode
 
 STREAM_CACHE_KEY = "_stream_cache_key"
 
+class EndConfig(TypedDict):
+    responseTemplate: str
+
 class End(ComponentExecutable, WorkflowComponent):
-    def __init__(self, conf: dict = None):
+    def __init__(self, conf: Union[EndConfig, dict] = None):
         super().__init__()
         self.conf = conf
         self.template = conf["responseTemplate"] if ( conf and

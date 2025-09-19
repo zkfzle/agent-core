@@ -341,8 +341,8 @@ class ReActController(Controller):
         if isinstance(exec_result, list) and exec_result[0].get('type') == '__interaction__':
             # 处理交互请求
             interrupt_data = {
-                "interrupt_component_id": exec_result[0].get('payload')[0],
-                "question": exec_result[0].get('payload')[1]
+                "interrupt_component_id": exec_result[0].get('payload').get('id'),
+                "question": exec_result[0].get('payload').get('value')
             }
             self._state_machine.update_state_data({"interrupt_state": interrupt_data})
             self._state_machine.set_current_status(ReActStatus.INTERRUPTED)

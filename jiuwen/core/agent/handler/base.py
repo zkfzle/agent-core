@@ -65,7 +65,7 @@ class AgentHandlerImpl(AgentHandler):
         workflow_metadata = self._search_workflow_metadata_by_workflow_name(workflow_name)
         workflow = workflow_manager.find_workflow_by_id_and_version(workflow_metadata.id, workflow_metadata.version)
         workflow_result = await workflow.invoke(inputs.arguments, context.create_workflow_context())
-        return workflow_result
+        return workflow_result.result
 
     async def invoke_plugin(self, inputs: AgentHandlerInputs):
         context = inputs.context

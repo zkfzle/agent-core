@@ -7,10 +7,17 @@ from pydantic import BaseModel, Field
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.utils.llm.messages import BaseMessage
+from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 from jiuwen.core.utils.prompt.assemble.assembler import Assembler
-from jiuwen.core.utils.prompt.assemble.message_handler import template_to_messages
 from jiuwen.core.utils.prompt.assemble.variables.textable import TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN
+
+
+message_map = {
+    "user": HumanMessage,
+    "assistant": AIMessage,
+    "system": SystemMessage,
+    "tool": ToolMessage
+}
 
 
 class Template(BaseModel):
@@ -22,20 +29,24 @@ class Template(BaseModel):
     content: Union[List[Dict], List[BaseMessage], str]
     filters: Optional[dict] = Field(default=None)
 
-    def to_messages(self) -> List[BaseMessage]:
+    def to_messages(self) -> Union[List[BaseMessage], str]:
         """Return Template as a list of Messages."""
         messages = []
         if self.content is None or len(self.content) == 0:
             self.content = []
             return messages
+
         if isinstance(self.content, str):
-            self.content = template_to_messages(self.content)
+            messages.append(HumanMessage(content=self.content))
+            return messages
 
         for msg in self.content:
             if isinstance(msg, BaseMessage):
                 messages.append(msg)
             elif isinstance(msg, dict):
-                messages.append(BaseMessage(**msg))
+                message_cls = message_map.get(msg.get("role", ""))
+                if message_cls:
+                    messages.append(message_cls(**msg))
             else:
                 raise JiuWenBaseException(
                     error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,

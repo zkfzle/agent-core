@@ -6,7 +6,6 @@ from jiuwen.core.common.logging import logger
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.utils.prompt.assemble.message_handler import messages_to_template, template_to_messages
 from jiuwen.core.utils.prompt.common.singleton import Singleton
 from jiuwen.core.utils.prompt.index.template_store.in_memory_template_store import InMemoryTemplateStore
 from jiuwen.core.utils.prompt.index.template_store.template_store import TemplateStore, Template
@@ -35,10 +34,14 @@ class TemplateManager(metaclass=Singleton):
             templates.append(Template(name=name, content=content))
         return templates
 
-    def format(self, keywords, template_name, filters: dict = None) -> Template:
-        template = self.get(template_name, filters=filters) if template_name else None
-        template.format(keywords)
-        return template
+    def format(self, keywords, template_name: str, filters: dict = None) -> Template:
+        template = self.get(template_name, filters=filters)
+        if not template:
+            raise JiuWenBaseException(
+                error_code=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code,
+                message=f"Template {template_name} not found error."
+            )
+        return template.format(keywords)
 
     def init_prompt_templates(self):
         self.__init_customer_templates()
@@ -70,6 +73,7 @@ class TemplateManager(metaclass=Singleton):
                 template.filters = dict(model_name=file_name)
                 if not self.register(template=template, force=True):
                     return ValueError("Invalid template to register")
+        return None
 
     def register(self, template: Template, force: bool = False):
         """register template"""
@@ -79,8 +83,6 @@ class TemplateManager(metaclass=Singleton):
                 message="Template data is missing `name` field when registering."
             )
         template_copy = copy.deepcopy(template)
-        if isinstance(template_copy.content, list):
-            template_copy.content = messages_to_template(template_copy.content)
         if force:
             return self.template_store.update_template(template_copy)
         return self.template_store.register_template(template_copy)
@@ -89,10 +91,6 @@ class TemplateManager(metaclass=Singleton):
         """query prompt template by template name"""
         all_filters = self.__filter_func(filters)
         result_template = self.template_store.search_template(name, filters=all_filters)
-        if result_template:
-            messages = template_to_messages(result_template.content)
-            if messages:
-                result_template.content = messages
         return result_template
 
     def delete(self, name: str, filters: dict = None):

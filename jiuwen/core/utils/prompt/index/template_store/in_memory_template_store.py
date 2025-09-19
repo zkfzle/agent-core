@@ -1,6 +1,4 @@
 """In memory template store"""
-from abc import ABC
-
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.prompt.common.document import Document
@@ -8,7 +6,7 @@ from jiuwen.core.utils.prompt.index.template_store.in_memory import InMemory, Te
 from jiuwen.core.utils.prompt.index.template_store.template_store import TemplateStore, Template
 
 
-class InMemoryTemplateStore(TemplateStore, ABC):
+class InMemoryTemplateStore(TemplateStore):
     """In memory template store"""
     def __init__(self):
         self.index = InMemory()
@@ -27,7 +25,7 @@ class InMemoryTemplateStore(TemplateStore, ABC):
                 message=f"Template: {template.name} is duplicated to register"
             )
         return self.index.add_document(
-            record=Document(page_content='', metadata=self._convert_to_dict(template)),
+            record=Document(page_content='', metadata=template.model_dump()),
             template_id=template_id
         )
 
@@ -49,7 +47,7 @@ class InMemoryTemplateStore(TemplateStore, ABC):
         )
         return self.index.update_document(
             template_id,
-            data=Document(page_content='', metadata=self._convert_to_dict(template))
+            data=Document(page_content='', metadata=template.model_dump())
         )
 
     def search_template(self, name: str, filters: dict) -> Template:
@@ -62,7 +60,7 @@ class InMemoryTemplateStore(TemplateStore, ABC):
                 error_code=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code,
                 message=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.errmsg.format(error_message=f"template name: {name}")
             )
-        return Template(name=result.get("name"), content=result.get("content"), filters=filters)
+        return Template(**result)
 
     def __get_document(self, name: str, filters: dict):
         template_id = TemplateId(

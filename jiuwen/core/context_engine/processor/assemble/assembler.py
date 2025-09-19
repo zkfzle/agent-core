@@ -24,10 +24,6 @@ class AssemblerConfig(BaseProcessorConfig):
         default="",
         description="Template content for prompt assembler. Can be string, message list, or dict list",
     )
-    return_format: str = Field(
-        default="message",
-        description="Output format: 'message' for message list, 'text' for string",
-    )
     variable_mappings: Dict[str, str] = Field(
         default_factory=dict,
         description="Mapping from context field names to template variable names",
@@ -55,9 +51,8 @@ class AssemblerProcessor(BaseContextProcessor):
                 else context_window.prompt
             if context_window.prompt:
                 self.assembler = Assembler(
-                    template_content=prompt_content,
-                    return_format=self.config.return_format,
-            )
+                    template_content=prompt_content
+                )
 
             template_variables = self._extract_template_variables(context_window)
 
@@ -84,8 +79,7 @@ class AssemblerProcessor(BaseContextProcessor):
         """Initialize the Assembler instance with template configuration"""
         try:
             return Assembler(
-                template_content=self.config.template_content,
-                return_format=self.config.return_format,
+                template_content=self.config.template_content
             )
         except Exception as e:
             logger.error(f"Failed to initialize Assembler: {str(e)}")
@@ -118,4 +112,10 @@ class AssemblerProcessor(BaseContextProcessor):
     def _process_assemble_output(self, output: Any) -> Union[str, BaseMessage, List[BaseMessage]]:
         if isinstance(output, str):
             return output
-        return [ContextUtils.convert_dict_to_message(message) for message in output]
+        assemble_output = []
+        for message in output:
+            if isinstance(message, BaseMessage):
+                assemble_output.append(message)
+            else:
+                assemble_output.append(ContextUtils.convert_dict_to_message(message))
+        return assemble_output

@@ -3,7 +3,7 @@ import unittest
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.utils.llm.messages import BaseMessage
+from jiuwen.core.utils.llm.messages import HumanMessage
 from jiuwen.core.utils.prompt.index.template_store.template_store import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
 
@@ -23,13 +23,15 @@ class TestTemplateManager(unittest.TestCase):
         )
 
     def test_template_consistency(self):
-        template = Template(name="test_template_consistent", content=[{"role":"system", "content": "here is a test"}])
+        template = Template(name="test_template_consistent", content=[{"role": "system", "content": "here is a test"}])
         TemplateManager().register(template=template, force=True)
         self.assertEqual(isinstance(template.content, list), True)
+        content = TemplateManager().get(name="test_template_consistent").content
+        self.assertEqual(len(content), 1)
         self.assertEqual(
-            TemplateManager().get(name="test_template_consistent").content,
-            [{"role": "system", "content": "here is a test"}]
+            content[0].get("role"), "system"
         )
+        self.assertEqual(content[0].get("content"), "here is a test")
 
         template = Template(name="test_template_consistent", content="here is a test")
         TemplateManager().register(template=template, force=True)
@@ -54,22 +56,7 @@ class TestTemplateManager(unittest.TestCase):
         template = TemplateManager().format(keyword, "test_template_manager_format")
         self.assertEqual(
             template.to_messages(),
-            [
-                BaseMessage(**{"role": "system", "content": "你是一个精通数学领域的问答助手"}),
-                BaseMessage(**{"role": "user", "content": "[{'role': 'user', 'content': '你是谁'}]"})
-            ]
+            [HumanMessage(
+                content="`#system#`你是一个精通数学领域的问答助手`#user#`[{'role': 'user', 'content': '你是谁'}]"
+            )]
         )
-
-    def test_template_to_messages(self):
-        template = Template(
-            name="test_template_manager_format",
-            content="`#system#`你是一个精通{{domain}}领域的问答助手`#user#`{{memory}}")
-
-        golden_messages = [
-            BaseMessage(role='system', content='你是一个精通{{domain}}领域的问答助手'),
-            BaseMessage(role='user', content='{{memory}}')]
-
-        self.assertEqual(template.to_messages(), golden_messages)
-
-        template2 = Template(content=golden_messages)
-        self.assertEqual(template2.to_messages(), golden_messages)

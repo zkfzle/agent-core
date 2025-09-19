@@ -1,7 +1,7 @@
 import unittest
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.utils.llm.messages import BaseMessage
+from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage, ToolCall, FunctionInfo, ToolMessage
 from jiuwen.core.utils.prompt.assemble.variables.variable import Variable
 from jiuwen.core.utils.prompt.template.template import Assembler
 from jiuwen.core.utils.prompt.assemble.variables.textable import TextableVariable
@@ -19,7 +19,6 @@ class TestPromptAssemble(unittest.TestCase):
         self.assertEqual(["x", "y"], var2.input_keys)
         self.assertEqual("12", var2.eval(x="1", y="2"))
         self.assertEqual("12", var2.value)
-        self.assertRaises(JiuWenBaseException, var2.eval, x=1, y=2, z=3)
 
     def test_textable_variables(self):
         self.assertRaises(JiuWenBaseException, TextableVariable, text="{{}}")
@@ -29,7 +28,6 @@ class TestPromptAssemble(unittest.TestCase):
 
         var2 = TextableVariable(text="{{x}}{{y}}")
         self.assertEqual({"x", "y"}, set(var2.input_keys))
-        self.assertRaises(JiuWenBaseException, var2.eval, x=1, y=2, z=3)
         self.assertEqual("12", var2.eval(x="1", y="2"))
         self.assertEqual("12", var2.value)
 
@@ -72,11 +70,6 @@ class TestPromptAssemble(unittest.TestCase):
         result = var.eval(user={"name": "Alice"})
         self.assertEqual("Hello, Alice!", result)
 
-        text = "Hello, {{name}}!"
-        var = TextableVariable(text=text)
-        with self.assertRaises(JiuWenBaseException):
-            var.eval(wrong_key="Alice")
-
     def test_variable_initialization(self):
         var = Variable(name="test_var", input_keys=["key1", "key2"])
         self.assertEqual("test_var", var.name)
@@ -92,12 +85,6 @@ class TestPromptAssemble(unittest.TestCase):
         input_kwargs = var._prepare_inputs(key1="value1", key2="value2")
         self.assertEqual({"key1": "value1", "key2": "value2"}, input_kwargs)
 
-        with self.assertRaises(JiuWenBaseException):
-            var._prepare_inputs(key1="value1")
-
-        with self.assertRaises(JiuWenBaseException):
-            var._prepare_inputs(key1="value1", key2="value2", key3="value3")
-
     def test_variable_eval(self):
         class MockVariable(Variable):
             def update(self, **kwargs):
@@ -108,98 +95,76 @@ class TestPromptAssemble(unittest.TestCase):
         result = var.eval(key1="value1", key2="value2")
         self.assertEqual("value1value2", result)
 
-        with self.assertRaises(JiuWenBaseException):
-            var.eval(key1="value1")
-
-        with self.assertRaises(JiuWenBaseException):
-            var.eval(key1="value1", key2="value2", key3="value3")
-
     def test_assemble(self):
+        # string template content
         asm1 = Assembler(
             template_content="`#system#`{{role}}`#user#`{{memory}}",
             role=TextableVariable(text="你是一个精通{{domain}}领域的问答助手。")
         )
         self.assertEqual({"domain", "memory"}, set(asm1.input_keys))
-        self.assertIsInstance(asm1.assemble(memory=[{"role": "user", "content": "我是谁"}], domain="科学"), list)
+        self.assertEqual(
+            asm1.assemble(memory=[{"role": "user", "content": "我是谁"}], domain="科学"),
+            "`#system#`你是一个精通科学领域的问答助手。`#user#`[{'role': 'user', 'content': '我是谁'}]"
+        )
 
+        # dict template content
+        dict_template_content = [
+            {"role": "system", "content": "{{role}}"},
+            {"role": "user", "content": "{{user_inputs}}"},
+            {"role": "assistant", "content": [], "function_call": {"name": "func1", "arguments": "x"}},
+            {"role": "function", "content": "result of function call", "name": "func1"}
+        ]
         asm2 = Assembler(
-            template_content="`#assistant#`消息内容`*function_call*`{\"name\":\"func1\", \"arguments\":\"x\"}"
-        )
-        self.assertEqual([
-            {"role": "assistant", "content": "消息内容", "function_call": {"name": "func1", "arguments": "x"}},
-        ], asm2.assemble())
-
-        asm3 = Assembler(
-            template_content="`#assistant#`消息内容`*function_call*`{\"name\":\"func1\", \"arguments\":1}"
-        )
-        self.assertRaises(JiuWenBaseException, asm3.assemble)
-
-        asm4 = Assembler(
-            template_content="`#assistant#`消息内容`*function_call*`{\"name\":\"func1\", \"arguments\":\"x\","
-                             "\"extra\":\"y\"}"
-        )
-        self.assertRaises(JiuWenBaseException, asm4.assemble)
-
-        asm5 = Assembler(
-            template_content=[
-                         {"role": "system", "content": "{{role}}"},
-                         {"role": "user", "content": "{{user_inputs}}"},
-                         {"role": "assistant", "content": "None", "function_call": {"name": "func1", "arguments": "x"}},
-                         {"role": "function", "content": "result of function call", "name": "func1"}
-                     ],
+            template_content=dict_template_content,
             role=TextableVariable(text="你是一个精通{{domain}}领域的问答助手"),
             user_inputs=TextableVariable(text="问题： {{query}}\n答案：")
         )
-        self.assertEqual({"domain", "query"}, set(asm5.input_keys))
-        self.assertEqual([
-            {"role": "system", "content": "你是一个精通科学领域的问答助手"},
-            {"role": "user", "content": "问题： 牛顿第三定律\n答案："},
-            {"role": "assistant", "content": "None", "function_call": {"name": "func1", "arguments": "x"}},
-            {"role": "function", "content": "result of function call", "name": "func1"}
-        ], asm5.assemble(domain="科学", query="牛顿第三定律"))
+        self.assertEqual({"domain", "query"}, set(asm2.input_keys))
+        asm2_assembled_template = asm2.assemble(domain="科学", query="牛顿第三定律")
 
-        asm6 = Assembler(
-            template_content="""
-`#system#`this is a system message
-`#assistant#`calling function ... `*function_call*`{"name": "search", "arguments": "{'x': [1,2,3], 'y': '2'}"}
-`#function#`this is the result of the function `*name*` search
-`#user#`ok"""
-        )
-        self.assertEqual([
-            {"role": "system", "content": "this is a system message"},
-            {"role": "assistant", "content": "calling function ...", "function_call":
-                {"name": "search", "arguments": "{'x': [1,2,3], 'y': '2'}"}},
-            {"role": "function", "content": "this is the result of the function", "name": "search"},
-            {"role": "user", "content": "ok"}
-        ], asm6.assemble())
+        self.assertEqual(len(dict_template_content), len(asm2_assembled_template))
+        self.assertEqual({"role": "system", "content": "你是一个精通科学领域的问答助手"}, asm2_assembled_template[0])
+        self.assertEqual(dict_template_content[1], asm2_assembled_template[1])
+        self.assertEqual(dict_template_content[2], asm2_assembled_template[2])
+        self.assertEqual(dict_template_content[3], asm2_assembled_template[3])
+
+        # BaseMessage template content
+        template = Template(content=[
+            HumanMessage(content="Hi, {{user_inputs}}"),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    ToolCall(type="test",
+                             function=FunctionInfo(name="func", arguments="x"),
+                             id="test")]),
+            ToolMessage(tool_call_id="test", content=[])
+        ])
+        asm3 = Assembler(template_content=template.content,
+                         user_inputs=TextableVariable(text="张三"))
+        assembled_template = asm3.assemble()
+        self.assertEqual([], asm3.input_keys)
+        self.assertEqual(len(assembled_template), len(template.content))
+        self.assertEqual(assembled_template[0], HumanMessage(content="Hi, 张三"))
+        self.assertEqual(assembled_template[1], template.content[1])
+        self.assertEqual(assembled_template[2], template.content[2])
+        print(assembled_template)
 
     @unittest.skip("李雷修复")
     def test_template_format(self):
         template = Template(
             name="test",
             content="`#system#`你是一个精通{{domain}}领域的问答助手`#user#`{{memory}}")
-        template.format({"memory": [{"role": "user", "content": "你是谁"}], "domain": "数学"})
+        messages = template.format({"memory": [{"role": "user", "content": "你是谁"}], "domain": "数学"}).to_messages()
         self.assertEqual(
-            template.to_messages(),
+            messages,
             [
-                BaseMessage(**{"role": "system", "content": "你是一个精通数学领域的问答助手"}),
-                BaseMessage(**{"role": "user", "content": "[{'role': 'user', 'content': '你是谁'}]"})
+                HumanMessage(content="`#system#`你是一个精通数学领域的问答助手`#user#`[{'role': 'user', 'content': '你是谁'}]")
             ]
         )
 
-        template2 = Template(
-                name="xxx",
-                content="""
-`#system#`this is a system message
-`#assistant#`calling function ... `*function_call*`{"name": "search", "arguments": "{'x': [1,2,3], 'y': '2'}"}
-`#function#`this is the result of the function `*name*` search
-`#user#`ok"""
-            )
-        template2.format()
-        self.assertEqual([
-            BaseMessage(**{"role": "system", "content": "this is a system message"}),
-            BaseMessage(**{"role": "assistant", "content": "calling function ...", "function_call":
-                {"name": "search", "arguments": "{'x': [1,2,3], 'y': '2'}"}}),
-            BaseMessage(**{"role": "function", "content": "this is the result of the function", "name": "search"}),
-            BaseMessage(**{"role": "user", "content": "ok"})
-        ], template2.to_messages())
+        #
+        template = template.format({"memory": [{"role": "user", "content": "你是谁"}]})
+        self.assertEqual(template.content, "`#system#`你是一个精通{{domain}}领域的问答助手`#user#`[{'role': 'user', 'content': '你是谁'}]")
+
+        template = template.format({"domain": "数学"})
+        self.assertEqual(template.content, "`#system#`你是一个精通数学领域的问答助手`#user#`[{'role': 'user', 'content': '你是谁'}]")

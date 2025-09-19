@@ -1,8 +1,6 @@
 """
 Interface for template index
 """
-import copy
-import json
 from abc import ABC, abstractmethod
 
 from jiuwen.core.utils.prompt.template.template import Template
@@ -10,18 +8,6 @@ from jiuwen.core.utils.prompt.template.template import Template
 
 class TemplateStore(ABC):
     """Template operation"""
-    @staticmethod
-    def _convert_to_dict(input_template: Template) -> dict[str, any]:
-        """convert template value to str"""
-        template = copy.deepcopy(input_template)
-        for attr, value in input_template.__dict__.items():
-            if value is None:
-                setattr(template, attr, '')
-            elif isinstance(value, dict):
-                setattr(template, attr, json.dumps(value))
-            else:
-                setattr(template, attr, str(value))
-        return template.model_dump()
 
     @abstractmethod
     def delete_template(self, name: str, filters: dict) -> bool:

@@ -40,7 +40,7 @@ class TestAssembler(BaseContextProcessor):
 
     def run(self, input_data: ContextWindow) -> ContextWindow:
         from jiuwen.core.utils.prompt.assemble.assembler import Assembler
-        assembler = Assembler(input_data.prompt.content, return_format="text")
+        assembler = Assembler(input_data.prompt.content)
         variables = dict([(name, var.value) for name, var in input_data.variables.items()])
         result = assembler.assemble(**variables)
         history_str = '\n'.join([f"[{msg.role}]:{msg.content}" for msg in input_data.chat_history])

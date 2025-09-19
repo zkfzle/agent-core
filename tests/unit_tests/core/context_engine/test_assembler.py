@@ -19,7 +19,6 @@ class TestAssemblerConfig:
         config = AssemblerConfig()
         assert config.processor_type == "assembler"
         assert config.template_content == ""
-        assert config.return_format == "message"
         assert config.variable_mappings == {}
         assert config.default_values == {}
 
@@ -28,13 +27,11 @@ class TestAssemblerConfig:
         template = "Hello {{name}}, your message: {{message}}"
         config = AssemblerConfig(
             template_content=template,
-            return_format="text",
             variable_mappings={"user_input": "message"},
             default_values={"name": "User"},
         )
 
         assert config.template_content == template
-        assert config.return_format == "text"
         assert config.variable_mappings == {"user_input": "message"}
         assert config.default_values == {"name": "User"}
 
@@ -46,8 +43,7 @@ class TestAssemblerProcessor:
     def basic_config(self):
         """Basic configuration for testing"""
         return AssemblerConfig(
-            template_content="User: {{user_input}}\nSystem: {{system_prompt}}",
-            return_format="text",
+            template_content="User: {{user_input}}\nSystem: {{system_prompt}}"
         )
 
     @pytest.fixture
@@ -68,8 +64,7 @@ class TestAssemblerProcessor:
     def test_run_with_missing_required_variables(self):
         """Test behavior when required template variables are missing"""
         config = AssemblerConfig(
-            template_content="Required: {{required_var}}\nOptional: {{optional_var}}",
-            return_format="text",
+            template_content="Required: {{required_var}}\nOptional: {{optional_var}}"
         )
 
         processor = AssemblerProcessor(config)
@@ -85,8 +80,7 @@ class TestAssemblerProcessor:
 
         config_dict = {
             "processor_type": "assembler",
-            "template_content": "Test template",
-            "return_format": "text",
+            "template_content": "Test template"
         }
 
         factory = ProcessorFactory()
@@ -102,7 +96,7 @@ class TestAssemblerProcessorEdgeCases:
 
     def test_empty_template(self):
         """Test with empty template"""
-        config = AssemblerConfig(template_content="", return_format="text")
+        config = AssemblerConfig(template_content="")
         processor = AssemblerProcessor(config)
 
         engine_input = ContextWindow(user_input="test")
@@ -113,8 +107,7 @@ class TestAssemblerProcessorEdgeCases:
     def test_none_values_in_input(self):
         """Test handling of None values in EngineInput"""
         config = AssemblerConfig(
-            template_content="User: {{user_input}}\nSystem: {{system_prompt}}",
-            return_format="text",
+            template_content="User: {{user_input}}\nSystem: {{system_prompt}}"
         )
 
         processor = AssemblerProcessor(config)

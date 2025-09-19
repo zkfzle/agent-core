@@ -2,7 +2,7 @@ from typing import Optional, Dict
 from enum import Enum
 
 from jiuwen.core.agent.task.task import Task
-from jiuwen.core.agent.task.task_context import TaskContext
+from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.runtime.agent_context import AgentContext
 
 
@@ -30,7 +30,7 @@ class TaskManager:
         if task_id in self._tasks:
             return self._tasks[task_id]
         # 新建context
-        context = TaskContext(id=task_id, store=self.agent_context.store)
+        context = AgentRuntime(trace_id=task_id)
         task = Task(task_id, context)
 
         self._tasks[task_id] = task

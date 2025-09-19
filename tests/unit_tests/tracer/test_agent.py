@@ -1,7 +1,7 @@
 import asyncio
 import unittest
 
-from jiuwen.core.agent.task.task_context import TaskContext
+from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.logging import logger
 from jiuwen.core.stream.writer import CustomSchema
 from jiuwen.core.workflow.base import Workflow
@@ -59,13 +59,13 @@ class MockAgent(unittest.TestCase):
     def tearDown(self):
         record_tracer_info(self.tracer_chunks, "test_agent_workflow_seq_exec_stream_workflow_with_tracer.json")
 
-    async def run_workflow_seq_exec_stream_workflow_with_tracer(self, context: TaskContext):
+    async def run_workflow_seq_exec_stream_workflow_with_tracer(self, context: AgentRuntime):
         """
         start -> a -> b -> end
         """
 
         # workflow与agent共用一个tracer
-        workflow_runtime= context.create_workflow_context()
+        workflow_runtime= context.create_workflow_runtime()
         assert (workflow_runtime.tracer() is self.tracer)
 
         flow = Workflow()
@@ -120,7 +120,7 @@ class MockAgent(unittest.TestCase):
 
     async def run_agent_workflow_seq_exec_stream_workflow_with_tracer(self):
         # context手动初始化tracer，agent和workflow共用一个tracer
-        context = TaskContext(id="test")
+        context = AgentRuntime(trace_id="test")
         self.tracer = context.tracer()
 
         agent_span = self.tracer.tracer_agent_span_manager.create_agent_span()
@@ -146,7 +146,7 @@ class MockAgent(unittest.TestCase):
                                       )
             raise e
         finally:
-            await context.stream_writer_manager().stream_emitter().close()
+            await context.close()
 
     async def get_stream_output(self):
         async for item in self.tracer._stream_writer_manager.stream_output(need_close=True):

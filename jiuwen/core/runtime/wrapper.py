@@ -119,3 +119,6 @@ class WrappedNodeRuntime(Runtime):
 
     def base(self) -> NodeRuntime:
         return self._inner
+
+    async def close(self):
+        pass

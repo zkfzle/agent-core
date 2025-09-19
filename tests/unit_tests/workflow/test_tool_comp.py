@@ -2,9 +2,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from jiuwen.core.agent.task.task_context import TaskContext
 from jiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
-from jiuwen.core.runtime.runtime import Runtime, NodeRuntime, WorkflowRuntime
+from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 from jiuwen.core.utils.tool.service_api.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
@@ -73,7 +72,6 @@ async def test_tool_comp_invoke(mock_get_tool, mock_request, mock_tool, mock_too
 async def test_tool_comp_in_workflow(mock_get_tool, mock_invoke, mock_tool, mock_tool_config, fake_ctx):
     mock_get_tool.return_value = mock_tool
     mock_invoke.return_value = 'res'
-    context = TaskContext(id="test")
     flow = Workflow()
 
     start_component = MockStartNode("s")
@@ -87,4 +85,4 @@ async def test_tool_comp_in_workflow(mock_get_tool, mock_invoke, mock_tool, mock
     flow.add_connection("s", "tool")
     flow.add_connection("tool", "e")
 
-    await flow.invoke({}, context.create_workflow_context())
+    await flow.invoke({}, WorkflowRuntime(session_id="test"))

@@ -7,7 +7,7 @@ from typing import AsyncIterator
 from pydantic import BaseModel, Field
 
 from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.task.task_context import TaskContext
+from jiuwen.core.agent.task.task_context import AgentRuntime
 
 
 class ControllerOutput(BaseModel):
@@ -24,12 +24,12 @@ class Controller:
         self._agent_handler = None
         self._context_mgr = context_mgr
 
-    def invoke(self, inputs: ControllerInput, context: TaskContext) -> ControllerOutput:
+    def invoke(self, inputs: ControllerInput, context: AgentRuntime) -> ControllerOutput:
         pass
 
     async def stream(self,
                      inputs: ControllerInput,
-                     context: TaskContext
+                     context: AgentRuntime
                      ) -> AsyncIterator[ControllerOutput]:
         pass
 

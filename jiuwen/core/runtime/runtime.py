@@ -8,8 +8,10 @@ from typing import Any, Union, Optional, List, TypeVar, Tuple
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
-from jiuwen.core.runtime.state import State, InMemoryState
+from jiuwen.core.runtime.state import State, InMemoryState, InMemoryStateLike, InMemoryCommitState
 from jiuwen.core.runtime.store import Store
+from jiuwen.core.stream.base import BaseStreamMode
+from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
 from jiuwen.core.tracer.tracer import Tracer
@@ -163,6 +165,46 @@ class NodeRuntime(BaseRuntime):
     def parent(self):
         return self._runtime
 
+class AgentRuntime(BaseRuntime):
+    def __init__(self, trace_id: str):
+        self._trace_id = trace_id
+        self._global_state = InMemoryStateLike()
+        self._stream_writer_manager = StreamWriterManager(StreamEmitter(),[BaseStreamMode.TRACE])
+        self._callback_manager = CallbackManager()
+        tracer = Tracer()
+        tracer.init(self._stream_writer_manager, self._callback_manager)
+        self._tracer = tracer
+
+    def config(self) -> Config:
+        pass
+
+    def state(self) -> State:
+        pass
+
+    def tracer(self) -> Any:
+        return self._tracer
+
+    def stream_writer_manager(self) -> StreamWriterManager:
+        return self._stream_writer_manager
+
+    def callback_manager(self) -> CallbackManager:
+        return self._callback_manager
+
+    def controller_context_manager(self):
+        pass
+
+    def queue_manager(self) -> MessageQueueManager:
+        pass
+
+    def session_id(self) -> str:
+        return self._trace_id
+
+    def create_workflow_runtime(self) -> WorkflowRuntime:
+        return WorkflowRuntime(
+            state=InMemoryState(InMemoryCommitState(self._global_state)),
+            tracer=self._tracer,
+            session_id=self._trace_id)
+
 Workflow = TypeVar("Workflow", contravariant=True)
 
 class Runtime(ABC):
@@ -290,6 +332,9 @@ class Runtime(ABC):
     def base(self) -> BaseRuntime:
         pass
 
+    @abstractmethod
+    async def close(self):
+        pass
 
 class ProxyRuntime(BaseRuntime):
     def __init__(self, stub: BaseRuntime = None):

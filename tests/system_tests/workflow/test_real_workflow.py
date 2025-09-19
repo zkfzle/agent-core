@@ -19,7 +19,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from jiuwen.core.agent.task.task_context import TaskContext
+from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
@@ -238,7 +238,7 @@ class RealWorkflowTest(unittest.TestCase):
             workflow_config=WorkflowConfig(),
             graph=PregelGraph(),
         )
-        context = TaskContext(id="test")
+        context = AgentRuntime(trace_id="test")
 
         # 3. 实例化各组件
         start = MockStartNode("start")
@@ -292,7 +292,7 @@ class RealWorkflowTest(unittest.TestCase):
         flow.add_connection("questioner", "plugin")
         flow.add_connection("plugin", "end")
 
-        return context.create_workflow_context(), flow
+        return context.create_workflow_runtime(), flow
 
     # ------------------------------------------------------------------ #
     #                            测试用例本身                             #
@@ -328,7 +328,7 @@ class RealWorkflowTest(unittest.TestCase):
         """
         测试LLM组件通过StreamWriter流出数据
         """
-        context = TaskContext(id="test")
+        context = AgentRuntime(trace_id="test")
         flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
 
         start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
@@ -353,5 +353,5 @@ class RealWorkflowTest(unittest.TestCase):
 
         inputs = {"query": "写一个笑话。注意：不要超过20个字！"}
         writer_chunks = []
-        self.loop.run_until_complete(self._async_stream_workflow_for_stream_writer(flow, inputs, context.create_workflow_context(), writer_chunks))
+        self.loop.run_until_complete(self._async_stream_workflow_for_stream_writer(flow, inputs, context.create_workflow_runtime(), writer_chunks))
         print(writer_chunks)

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from jiuwen.core.agent.task.task_context import TaskContext
+from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
@@ -27,9 +27,9 @@ class QuestionerTest(unittest.TestCase):
         asyncio.set_event_loop(self.loop)
 
     @staticmethod
-    def invoke_workflow(inputs: Input, context: TaskContext, flow: Workflow):
+    def invoke_workflow(inputs: Input, context: AgentRuntime, flow: Workflow):
         loop = asyncio.get_event_loop()
-        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, runtime=context.create_workflow_context()))
+        feature = asyncio.ensure_future(flow.invoke(inputs=inputs, runtime=context.create_workflow_runtime()))
         loop.run_until_complete(feature)
         return feature.result()
 
@@ -42,7 +42,7 @@ class QuestionerTest(unittest.TestCase):
 
     @staticmethod
     def _create_context(session_id):
-        return TaskContext(id=session_id)
+        return AgentRuntime(trace_id=session_id)
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
@@ -59,7 +59,7 @@ class QuestionerTest(unittest.TestCase):
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        context = TaskContext(id = "test")
+        context = AgentRuntime(trace_id="test")
         flow = Workflow()
 
         key_fields = [
@@ -152,7 +152,7 @@ class QuestionerTest(unittest.TestCase):
         flow.add_connection("questioner", "e")
 
         session_id = "test_questioner"
-        workflow_context = TaskContext(id=session_id).create_workflow_context()
+        workflow_context = AgentRuntime(trace_id=session_id).create_workflow_runtime()
         first_question = self.invoke_workflow_with_workflow_context({"query": "你好"}, workflow_context, flow)
         first_question = first_question.result[0] if first_question else dict()
         payload = first_question.get("payload")
@@ -163,7 +163,7 @@ class QuestionerTest(unittest.TestCase):
         user_input = InteractiveInput()
         user_input.update(component_id, "地点是杭州")  # 第一个入参是组件id
 
-        workflow_context = TaskContext(id=session_id).create_workflow_context()
+        workflow_context = AgentRuntime(trace_id=session_id).create_workflow_runtime()
         final_result = self.invoke_workflow_with_workflow_context(user_input, workflow_context, flow)    # workflow实例、session id保持一致
         assert final_result.result.get("responseContent") == "{'location': 'hangzhou', 'time': 'today'}"
 
@@ -193,7 +193,7 @@ class QuestionerTest(unittest.TestCase):
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        context = TaskContext(id = "test")
+        context = AgentRuntime(trace_id="test")
         flow = Workflow()
 
         key_fields = [
@@ -234,7 +234,7 @@ class QuestionerTest(unittest.TestCase):
 
         tracer_chunks = []
         self.loop.run_until_complete(_async_stream_workflow_for_tracer(flow, {"query": "查询杭州的天气"},
-                                                                       context.create_workflow_context(),
+                                                                       context.create_workflow_runtime(),
                                                                        tracer_chunks))
         print(tracer_chunks)
 
@@ -296,7 +296,7 @@ class TestQuestionerStream:
         session_id = "test_questioner"
         is_interaction = False
         component_id = ""
-        workflow_context = TaskContext(id=session_id).create_workflow_context()
+        workflow_context = AgentRuntime(trace_id=session_id).create_workflow_runtime()
         async for chunk in flow.stream({"query": "你好"}, workflow_context):
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 is_interaction = True | is_interaction
@@ -308,6 +308,6 @@ class TestQuestionerStream:
 
         user_input = InteractiveInput()
         user_input.update(component_id, "地点是杭州")  # 第一个入参是组件id
-        workflow_context = TaskContext(id=session_id).create_workflow_context()
+        workflow_context = AgentRuntime(trace_id=session_id).create_workflow_runtime()
         async for chunk in flow.stream(user_input, workflow_context):
             print(f"stream output >>> {chunk}")

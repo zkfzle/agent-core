@@ -76,7 +76,7 @@ class TestIntentDetectionExecutableInvoke:
         # 2. 构造 Executable 并调用
         exe = IntentDetectionExecutable(fake_config)
         exe.set_router(BranchRouter())
-        output = await exe.invoke({USER_FIELDS: {"input": "你好"}}, fake_ctx, context=Mock())
+        output = await exe.invoke({"query": "你好"}, fake_ctx, context=Mock())
         print(output)
         # 3. 断言
         assert output["result"] == "分类2"

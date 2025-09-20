@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional, Union, Callable
 
+from pydantic import BaseModel, ConfigDict, Field
+
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
@@ -96,6 +98,18 @@ class IntentDetectionConfig(ComponentConfig):
     model: 'ModelConfig' = None
 
 
+class IntentDetectionInput(BaseModel):
+    model_config = ConfigDict(extra='allow')   # 允许任意额外字段
+    query: Union[str, None] = Field(default="")
+
+
+class IntentDetectionOutput(BaseModel):
+    classification_id: int = Field(default=-1)
+    reason: str = Field(default="")
+    result: str = Field(default="")
+    name: str = Field(default="")
+
+
 @dataclass()
 class IntentDetectionExecutable(ComponentExecutable):
     def __init__(self, component_config: IntentDetectionConfig):
@@ -178,7 +192,8 @@ class IntentDetectionExecutable(ComponentExecutable):
 
         # 处理当前输入
         if self._config.enable_input:
-            current_inputs.update({INPUT: inputs.get(INPUT)})
+            intent_detection_input = IntentDetectionInput.model_validate(inputs)
+            current_inputs.update({INPUT: intent_detection_input.query or ""})
 
         # 保存全局意图映射用于后续处理
         current_inputs['global_intent_map'] = global_intent_map
@@ -213,8 +228,9 @@ class IntentDetectionExecutable(ComponentExecutable):
                 )
             )
         intent_id_name = self._get_intent_id_name(self._config, intent_class)
-        return dict(result=intent_class, reason=reason, classificationId=intent_id_name.get(CLASSIFICATION_ID, ""),
-                    name=intent_id_name.get(CLASSIFICATION_NAME, ""))
+        return IntentDetectionOutput(classification_id=intent_id_name.get(CLASSIFICATION_ID, -1),
+                                     reason=reason,
+                                     result=intent_class).model_dump(exclude_defaults=True)
 
     def get_llm_result(self, current_inputs):
         """获取llm"""

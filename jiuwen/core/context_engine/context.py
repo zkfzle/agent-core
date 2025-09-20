@@ -4,6 +4,7 @@
 
 from typing import Optional, Any, Dict, Union, List
 
+from jiuwen.core.context_engine.accessor.history import ConversationMessage
 from jiuwen.core.context_engine.base import Context, ContextVariable, ContextOwner
 from jiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from jiuwen.core.context_engine.execute.executor import ContextExecutor
@@ -21,6 +22,12 @@ class ContextImpl(Context):
         self._executor: ContextExecutor = executor
         self._accessor: ContextAccessor = accessor
 
+    def batch_add_messages(self,
+                     messages:Union[List[Dict], List[ConversationMessage], List[BaseMessage]],
+                     tags: Optional[Dict[str, str]] = None):
+        history = self._accessor.history()
+        history.batch_add_messages(messages=messages, owner=[self._owner], tags=tags)
+
     def add_message(self,
                     message: BaseMessage,
                     tags: Optional[Dict[str, str]] = None):
@@ -33,6 +40,10 @@ class ContextImpl(Context):
         history = self._accessor.history()
         messages = history.get_messages(num, owner=self._owner, tags=tags)
         return messages
+
+    def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
+        history = self._accessor.history()
+        return history.get_latest_message(role=role)
 
     def get_variable(self,
                      name: str) -> Optional[ContextVariable]:

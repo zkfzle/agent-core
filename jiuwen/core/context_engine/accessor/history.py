@@ -3,9 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 from jiuwen.core.context_engine.base import ContextOwner
+from jiuwen.core.context_engine.utils import ContextUtils
 from jiuwen.core.utils.llm.messages import BaseMessage
 
 DEFAULT_HISTORY_LENGTH = 100
@@ -68,3 +69,43 @@ class ConversationHistory:
                 continue
             filtered_history.append(message.message)
         return filtered_history[-1 * num:]
+
+    def batch_add_messages(self,
+                           messages: Union[List[Dict], List[ConversationMessage], List[BaseMessage]],
+                           owner: Optional[List[ContextOwner]] = None,
+                           tags: Optional[Dict[str, str]] = None
+                           ):
+        """batch add conversation messages"""
+        for msg in messages:
+            if isinstance(msg, ConversationMessage):
+                self.__history.append(msg)
+            elif isinstance(msg, BaseMessage):
+                self.__history.append(ConversationMessage(
+                    order_id=self.__conversation_order_id,
+                    message=msg,
+                    owner=owner or [],
+                    tags=tags or {}
+                ))
+            elif isinstance(msg, dict):
+                self.__history.append(ConversationMessage(
+                    order_id=self.__conversation_order_id,
+                    message=ContextUtils.convert_dict_to_message(msg),
+                    owner=owner or [],
+                    tags=tags or {}
+                ))
+            else:
+                logger.error(
+                    "ConversationHistory input message type should be ConversationMessage, BaseMessage or dict")
+
+    def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
+        if len(self.__history) == 0:
+            return None
+
+        if role is None:
+            return self.__history[-1].message
+
+        for msg in reversed(self.__history):
+            if msg.message.role == role:
+                return msg.message
+
+        return None

@@ -470,18 +470,16 @@ class ReActController(Controller):
         agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
 
         # 检查对话历史中是否已经包含当前用户输入
-        chat_history = agent_context.get_messages()
+        last_message = agent_context.get_latest_message()
         should_add_user_message = True
 
-        if chat_history:
+        if last_message:
             # 如果最后一条消息是工具消息，说明这是工具调用后的请求，不需要再添加用户消息
-            last_message = chat_history[-1]
-            if hasattr(last_message, 'role') and last_message.role == 'tool':
+            if last_message.role == 'tool':
                 should_add_user_message = False
                 logger.info("Skipping user message addition - this is a post-tool-call request")
             # 如果最后一条消息已经是相同的用户输入，也不需要重复添加
-            elif (hasattr(last_message, 'role') and last_message.role == 'user' and
-                  hasattr(last_message, 'content') and last_message.content == inputs.query):
+            elif last_message.role == 'user' and last_message.content == inputs.query:
                 should_add_user_message = False
                 logger.info("Skipping user message addition - same message already exists")
 
@@ -507,18 +505,16 @@ class ReActController(Controller):
         agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
 
         # 检查对话历史中是否已经包含当前用户输入
-        chat_history = agent_context.get_messages()
+        last_message = agent_context.get_latest_message()
         should_add_user_message = True
 
-        if chat_history:
+        if last_message:
             # 如果最后一条消息是工具消息，说明这是工具调用后的请求，不需要再添加用户消息
-            last_message = chat_history[-1]
-            if hasattr(last_message, 'role') and last_message.role == 'tool':
+            if last_message.role == 'tool':
                 should_add_user_message = False
                 logger.info("Skipping user message addition - this is a post-tool-call request")
             # 如果最后一条消息已经是相同的用户输入，也不需要重复添加
-            elif (hasattr(last_message, 'role') and last_message.role == 'user' and
-                  hasattr(last_message, 'content') and last_message.content == inputs.query):
+            elif last_message.role == 'user' and last_message.content == inputs.query:
                 should_add_user_message = False
                 logger.info("Skipping user message addition - same message already exists")
 

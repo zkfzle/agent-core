@@ -135,3 +135,60 @@ class ContextEngineTest(unittest.TestCase):
         expected_result_2 = HumanMessage(content="请用简洁、礼貌的风格回答用户")
         self.assertEqual(result[0], expected_result_1)
         self.assertEqual(result[1], expected_result_2)
+
+    def test_context_message_process(self):
+        config = ContextEngineConfig(
+            variables=[
+                ContextVariable(name="最高的山", default_value=""),
+                ContextVariable(name="最长的河", default_value=""),
+                ContextVariable(name="最深的湖", default_value=""),
+            ],
+            processors=[
+                TestMemoryCompressorConfig(),
+                TestAssemblerConfig(),
+                TestSuffixAdderConfig()
+            ],
+            async_processors=[
+                VariableExtractorConfig(processor_type="variable_extractor"),
+            ]
+        )
+
+        ce_engine = ContextEngine("123", config)
+        context = ce_engine.get_agent_context(session_id="456")
+
+        src_messages = [
+            HumanMessage(content="世界上最高的山是什么"),
+            AIMessage(content="世界上最高的山是珠穆朗玛峰"),
+            HumanMessage(content="世界上最长的河是什么"),
+            AIMessage(content="世界上最长的河是尼罗河")
+        ]
+
+        # get message before add
+        self.assertEqual(context.get_messages(), [])
+        self.assertEqual(context.get_latest_message(), None)
+
+        # add message & get message
+        context.add_message(src_messages[0])
+        context.add_message(src_messages[1], tags={"label": "ai"})
+        msgs1 = context.get_messages()
+        self.assertEqual(len(msgs1), 2)
+        self.assertEqual(msgs1, src_messages[:2])
+
+        msgs2 = context.get_messages(tags={"label": "ai"})
+        self.assertEqual(len(msgs2), 1)
+        self.assertEqual(msgs2, [src_messages[1]])
+
+        msgs3 = context.get_messages(tags={"label": "None"})
+        self.assertEqual(msgs3, [])
+
+        # batch add messages
+        context.batch_add_messages(src_messages)
+        msgs4 = context.get_messages()
+        self.assertEqual(len(msgs4), 6)
+
+        # get latest message
+        latest_msg1 = context.get_latest_message()
+        self.assertEqual(latest_msg1, src_messages[-1])
+
+        latest_msg2 = context.get_latest_message(role="user")
+        self.assertEqual(latest_msg2, src_messages[-2])

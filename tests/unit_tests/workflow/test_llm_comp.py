@@ -67,6 +67,9 @@ def fake_model_config() -> ModelConfig:
     )
 
 class FakeModel(BaseChatModel):
+    def __init__(self, api_key, api_base):
+        super().__init__(api_key=api_key, api_base=api_base)
+
     async def astream(self, messages: Union[List[BaseMessage], List[Dict], str],
                       tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any) -> AsyncIterator[
         BaseMessageChunk]:
@@ -102,7 +105,7 @@ class TestLLMExecutableInvoke:
         )
         exe = LLMExecutable(config)
 
-        fake_llm = FakeModel()
+        fake_llm = FakeModel(api_base="1111", api_key="ssss")
 
         mock_get_model.return_value = fake_llm
 
@@ -129,10 +132,18 @@ class TestLLMExecutableInvoke:
         )
         exe = LLMExecutable(config)
 
+        #
+        # fake_llm = FakeModel(api_base="1111", api_key="ssss")
+        #
+        # # 模拟异步生成器，返回多个 AIMessage chunk
+        # async def mock_stream_response(model_name, messa: Any):
+        #     for chunk in ["mocked ", "response"]:
+        #         yield AIMessage(content=chunk)
+
         fake_llm = AsyncMock()
 
-        # 模拟异步生成器，返回多个 AIMessage chunk
-        async def mock_stream_response(input: Any):
+        async def mock_stream_response(*, model_name: str, messages: list, **kwargs):
+            # yield whatever chunks you want
             for chunk in ["mocked ", "response"]:
                 yield AIMessage(content=chunk)
 
@@ -158,7 +169,7 @@ class TestLLMExecutableInvoke:
         config = LLMCompConfig(model=fake_model_config, template_content=[{"role": "user", "content": "Hello {name}"}], response_format={"type": "text"},)
         exe = LLMExecutable(config)
 
-        fake_llm = FakeModel()
+        fake_llm = FakeModel(api_base="111", api_key="ssss")
         mock_get_model.return_value = fake_llm
 
         with pytest.raises(JiuWenBaseException) as exc_info:
@@ -176,7 +187,7 @@ class TestLLMExecutableInvoke:
         runtime = WorkflowRuntime()
 
         # 1. 打桩 LLM
-        fake_llm = FakeModel()
+        fake_llm = FakeModel(api_key="111", api_base="ssss")
         mock_get_model.return_value = fake_llm
 
         # 2. 构造工作流
@@ -213,7 +224,7 @@ class TestLLMExecutableInvoke:
     @pytest.mark.asyncio  # 新增
     async def test_start_llm_end_in_workflow(self, mock_get_model,
                                              fake_model_config):
-        fake_llm = FakeModel()
+        fake_llm = FakeModel(api_key="1111", api_base="ssss")
         mock_get_model.return_value = fake_llm
 
         flow = Workflow()

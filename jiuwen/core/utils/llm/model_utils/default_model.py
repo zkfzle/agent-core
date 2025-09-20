@@ -9,20 +9,22 @@ from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 from aiohttp import ClientSession
 from pydantic import ConfigDict
 from requests import Session
+import openai
 
-from jiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
+from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
 from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 
 
-class RequestChatModel(BaseChatModel, BaseModelInfo):
-    model_info: BaseModelInfo
+class RequestChatModel(BaseChatModel):
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
     sync_client: Session = Session()
     aiohttp_session: Optional[ClientSession] = None
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self,
+                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
+        super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
         self._stream_state = {
             'current_tool_call_id': '',
             'current_tool_name': '',
@@ -43,61 +45,67 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
     def model_provider(self) -> str:
         return "generic_http_api"
 
-    def _invoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AIMessage:
+    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(messages, tools, **kwargs)
+        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                      messages=messages, tools=tools, **kwargs)
 
         response = self.sync_client.post(
             verify=False,
-            url=self.model_info.api_base,
+            url=self.api_base,
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.model_info.api_key}"
+                "Authorization": f"Bearer {self.api_key}"
             },
             json=params,
-            timeout=self.model_info.timeout
+            timeout=self.timeout
         )
         response.raise_for_status()
         self.close_session()
-        return self._parse_response(response.json())
+        return self._parse_response(model_name, response.json())
 
-    async def _ainvoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(messages, tools, **kwargs)
+        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                      messages=messages, tools=tools, **kwargs)
 
         async with self.aiohttp_session.post(
-                url=self.model_info.api_base,
+                url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.model_info.api_key}"
+                    "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
-                timeout=self.model_info.timeout
+                timeout=self.timeout
         ) as response:
             response.raise_for_status()
             data = await response.json()
             await self.close_session()
-            return self._parse_response(data)
+            return self._parse_response(model_name, data)
 
-    def _stream(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
-        # 重置流状态
+    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+
         self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(messages, tools, **kwargs)
+        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                      messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
         with self.sync_client.post(
                 verify=False,
-                url=self.model_info.api_base,
+                url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.model_info.api_key}"
+                    "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
                 stream=True,
-                timeout=self.model_info.timeout
+                timeout=self.timeout
         ) as response:
             response.raise_for_status()
             for line in response.iter_lines():
@@ -107,24 +115,27 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                         yield chunk
         self.close_session()
 
-    async def _astream(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AsyncIterator[
+
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
+
         # 重置流状态
         self._reset_stream_state()
 
         await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(messages, tools, **kwargs)
+        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
         async with self.aiohttp_session.post(
-                url=self.model_info.api_base,
+                url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.model_info.api_key}"
+                    "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
-                timeout=aiohttp.ClientTimeout(total=self.model_info.timeout)
+                timeout=aiohttp.ClientTimeout(total=self.timeout)
         ) as response:
             response.raise_for_status()
             async for line in response.content:
@@ -133,7 +144,6 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                     if chunk:
                         yield chunk
         await self.close_session()
-
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -156,7 +166,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                 func = tc.get("function", {})
                 cleaned.append({
                     "id": tc.get("id", ""),
-                    "type": "function",  # 强制修正
+                    "type": "function",
                     "function": {
                         "name": func.get("name", ""),
                         "arguments": func.get("arguments", "")
@@ -165,13 +175,13 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
             msg["tool_calls"] = cleaned
         return messages
 
-
-    def _request_params(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> Dict:
+    def _request_params(self, model_name: str, temperature: float, top_p: float, messages: List[Dict],
+                        tools: List[Dict] = None, **kwargs: Any) -> Dict:
         params = {
-            "model": self.model_info.model_name,
+            "model": model_name,
             "messages": messages,
-            "temperature": self.model_info.temperature,
-            "top_p": self.model_info.top_p,
+            "temperature": temperature,
+            "top_p": top_p,
             **kwargs
         }
 
@@ -180,7 +190,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
 
         return params
 
-    def _parse_response(self, response_data: Dict) -> AIMessage:
+    def _parse_response(self, model_name: str, response_data: Dict) -> AIMessage:
         choice = response_data.get("choices", [{}])[0]
         message = choice.get("message", {})
         content = "" if message.get("content") is None else message.get("content")
@@ -188,7 +198,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
             content=content,
             tool_calls=message.get("tool_calls", []),
             usage_metadata=UsageMetadata(
-                model_name=self.model_name,
+                model_name=model_name,
                 finish_reason=choice.get("finish_reason", ""),
                 total_latency=response_data.get('usage', {}).get('total_tokens', 0)
             )
@@ -217,7 +227,8 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                     arguments=self._stream_state['current_tool_args']
                 )
                 tool_call = ToolCall(
-                    args={"name": self._stream_state['current_tool_name'], "arguments": self._stream_state['current_tool_args']},
+                    args={"name": self._stream_state['current_tool_name'],
+                          "arguments": self._stream_state['current_tool_args']},
                     id=self._stream_state['current_tool_call_id'],
                     function=function,
                     type="function_call"
@@ -256,7 +267,7 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
                     tool_call_id = tool_call_delta.get("id", "")
                     function_delta = tool_call_delta.get("function", {})
 
-                    if index == 0:  # 假设我们只处理第一个工具调用
+                    if index == 0:
                         if tool_call_id:
                             self._stream_state['current_tool_call_id'] = tool_call_id
 
@@ -283,3 +294,173 @@ class RequestChatModel(BaseChatModel, BaseModelInfo):
     async def close(self):
         if self.aiohttp_session:
             await self.aiohttp_session.close()
+
+
+class OpenAIChatModel(BaseChatModel):
+    """OpenAI 专用聊天模型实现，使用官方 openai 库"""
+
+    def __init__(self,
+                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
+        super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
+        self._init_clients()
+
+    def _init_clients(self):
+        """init OpenAI client"""
+
+        self._sync_client = openai.OpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base
+        )
+
+        self._async_client = openai.AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base
+        )
+
+
+    def model_provider(self) -> str:
+        return "openai"
+
+    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+        try:
+            params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                                messages=messages, tools=tools, **kwargs)
+            response = self._sync_client.chat.completions.create(**params)
+            self._sync_client.close()
+            return self._parse_openai_response(model_name, response)
+        except Exception as e:
+            raise Exception(f"OpenAI API 调用失败: {str(e)}")
+
+    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+        """异步调用 OpenAI API"""
+        try:
+            params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                                messages=messages, tools=tools, **kwargs)
+            response = await self._async_client.chat.completions.create(**params)
+            await self._async_client.close()
+            return self._parse_openai_response(model_name, response)
+        except Exception as e:
+            raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
+
+    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+        try:
+            params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                                messages=messages, tools=tools, stream=True, **kwargs)
+            stream = self._sync_client.chat.completions.create(**params)
+            self._sync_client.close()
+            for chunk in stream:
+                parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
+                if parsed_chunk:
+                    yield parsed_chunk
+        except Exception as e:
+            raise Exception(f"OpenAI API 流式调用失败: {str(e)}")
+
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
+        AIMessageChunk]:
+        """异步流式调用 OpenAI API"""
+        try:
+            params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
+                                                messages=messages, tools=tools, stream=True, **kwargs)
+            stream = await self._async_client.chat.completions.create(**params)
+            self._async_client.close()
+            async for chunk in stream:
+                parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
+                if parsed_chunk:
+                    yield parsed_chunk
+        except Exception as e:
+            raise Exception(f"OpenAI API 异步流式调用失败: {str(e)}")
+
+
+    def _build_request_params(self, model_name:str, temperature: float, top_p:float, messages: List[Dict],
+                              tools: List[Dict] = None, stream: bool = False,
+                              **kwargs) -> Dict:
+        """构建 OpenAI API 请求参数"""
+        params = {
+            "model": model_name,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": top_p,
+            "stream": stream,
+            "timeout": self.timeout,
+            **kwargs
+        }
+
+        if tools:
+            params["tools"] = tools
+            params["tool_choice"] = "auto"
+
+        return params
+
+
+    def _parse_openai_response(self, model_name, response) -> AIMessage:
+        """解析 OpenAI API 响应"""
+        choice = response.choices[0]
+        message = choice.message
+
+        # 解析工具调用
+        tool_calls = []
+        if hasattr(message, 'tool_calls') and message.tool_calls:
+            for tc in message.tool_calls:
+                tool_call = ToolCall(
+                    id=tc.id,
+                    type="function",
+                    function=FunctionInfo(
+                        name=tc.function.name,
+                        arguments=tc.function.arguments
+                    )
+                )
+                tool_calls.append(tool_call)
+
+        return AIMessage(
+            content=message.content or "",
+            tool_calls=tool_calls,
+            usage_metadata=UsageMetadata(
+                model_name=model_name,
+                finish_reason=choice.finish_reason or "",
+                total_latency=response.usage.total_tokens if response.usage else 0
+            )
+        )
+
+
+    def _parse_openai_stream_chunk(self, model_name, chunk) -> Optional[AIMessageChunk]:
+        """解析 OpenAI 流式响应块"""
+        if not chunk.choices:
+            return None
+
+        choice = chunk.choices[0]
+        delta = choice.delta
+
+        content = getattr(delta, 'content', None) or ""
+        tool_calls = []
+
+        # 处理工具调用增量
+        if hasattr(delta, 'tool_calls') and delta.tool_calls:
+            for tc_delta in delta.tool_calls:
+                if hasattr(tc_delta, 'function') and tc_delta.function:
+                    tool_call = ToolCall(
+                        id=getattr(tc_delta, 'id', ''),
+                        type="function",
+                        function=FunctionInfo(
+                            name=getattr(tc_delta.function, 'name', ''),
+                            arguments=getattr(tc_delta.function, 'arguments', '')
+                        )
+                    )
+                    tool_calls.append(tool_call)
+
+        usage_metadata = None
+        if hasattr(chunk, 'usage') and chunk.usage:
+            usage_metadata = UsageMetadata(
+                model_name=model_name,
+                finish_reason=choice.finish_reason or "",
+                total_latency=chunk.usage.total_tokens if chunk.usage else 0
+            )
+
+        return AIMessageChunk(
+            content=content,
+            tool_calls=tool_calls,
+            usage_metadata=usage_metadata
+        )

@@ -7,7 +7,7 @@ import logging
 import os
 from typing import Dict, Type
 
-from jiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
+from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.model_utils.singleton import Singleton
 
 
@@ -52,22 +52,23 @@ class ModelFactory(metaclass=Singleton):
 
                     for name, obj in module.__dict__.items():
                         if (isinstance(obj, type) and issubclass(obj, BaseChatModel) and obj != BaseChatModel):
-                            model_dict[module_name] = obj  # 使用model_provider作为key
+                            model_dict[module_name] = obj
                             logging.info(f"Loaded model: {module_name} -> {obj.__name__}")
                 except Exception as e:
                     logging.error(f"Error loading module {py_file}: {str(e)}")
                     continue
         except Exception as e:
-            raise Exception("module load error")
+            raise Exception(f"module load error: {str(e)}")
         return model_dict
 
     def _load_model_dir(self, model_dir: str):
         model_dict = self._load_models(model_dir)
         self.model_map.update(model_dict)
 
-    def get_model(self, model_provider: str, model_info: BaseModelInfo) -> BaseChatModel:
+    def get_model(self, model_provider: str, api_key: str, api_base: str,
+                  max_retrie: int=3, timeout: int=60) -> BaseChatModel:
         model_cls = self.model_map.get(model_provider.lower())
         if not model_cls:
             available_models = ", ".join(self.model_map.keys())
             raise ValueError(f"Unavailable model provider: {model_provider}. Available models: {available_models}")
-        return model_cls(model_info)
+        return model_cls(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)

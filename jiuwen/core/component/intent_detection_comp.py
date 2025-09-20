@@ -136,7 +136,9 @@ class IntentDetectionExecutable(ComponentExecutable):
         self._runtime = runtime
 
     def _create_llm_instance(self):
-        return ModelFactory().get_model(self._config.model.model_provider, self._config.model.model_info)
+        return ModelFactory().get_model(model_provider=self._config.model.model_provider,
+                                        api_base=self._config.model.model_info.api_base,
+                                        api_key=self._config.model.model_info.api_key)
 
     def _initialize_if_needed(self):
         if not self._initialized:
@@ -220,7 +222,8 @@ class IntentDetectionExecutable(ComponentExecutable):
         logger.info(f"[%s] intent detection llm_inputs: %s", self._runtime.executable_id(), llm_inputs)
         current_inputs.update({LLM_INPUTS: llm_inputs})
         try:
-            llm_output = self._llm.invoke(llm_inputs).content
+            llm_output = self._llm.invoke(
+                model_name=self._config.model.model_info.model_name, messages=llm_inputs).content
         except Exception as e:
             raise JiuWenBaseException(
                 message=StatusCode.WORKFLOW_INTENT_DETECTION_LLM_INVOKE_ERROR.errmsg.format(

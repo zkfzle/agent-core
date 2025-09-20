@@ -8,41 +8,57 @@ from abc import abstractmethod
 from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator
 
-from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo
-from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
+from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, AIMessage
+from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 
 class BaseChatModel:
-    output_parser_list = None
+    def __init__(self, api_key:str, api_base:str, max_retrie: int=3, timeout: int=60, **kwargs):
+        """
+        初始化模型，子类应该在这里设置自己的配置参数
+        """
+        self.api_key = api_key
+        self.api_base = api_base
+        self.max_retrie = max_retrie
+        self.timeout = timeout
 
-    def invoke(self, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
+    def invoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
+               top_p:float = 0.1, **kwargs: Any):
         try:
-            return self._invoke(messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools), **kwargs)
+            return self._invoke(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs)
         except NotImplementedError:
-            return asyncio.run(self.ainvoke(messages=self._cover_messages_format(messages),
-                                            tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs))
+            return asyncio.run(self.ainvoke(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs))
 
-    async def ainvoke(self, messages: Union[List[BaseMessage], List[Dict], str],
-                tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
+    async def ainvoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
+               top_p:float=0.1, **kwargs: Any):
         try:
-            return await self._ainvoke(messages=self._cover_messages_format(messages),
-                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs)
+            return await self._ainvoke(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs)
         except NotImplementedError:
-            return self._invoke(messages=self._cover_messages_format(messages),
-                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs)
+            return self._invoke(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs)
 
-    def stream(self, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
+    def stream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any):
         try:
-            for chunk in self._stream(messages=self._cover_messages_format(messages),
-                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
+            for chunk in self._stream(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
         except NotImplementedError:
             async def async_gen_wrapper():
-                async for chunk in self._astream(messages=self._cover_messages_format(messages),
-                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
+                async for chunk in self._astream(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs):
                     yield chunk
 
             loop = asyncio.new_event_loop()
@@ -58,28 +74,39 @@ class BaseChatModel:
                 loop.close()
 
 
-    async def astream(self, messages: Union[List[BaseMessage], List[Dict], str],
-                tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
+    async def astream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
         try:
-            async for chunk in self._astream(messages=self._cover_messages_format(messages),
-                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
+            async for chunk in self._astream(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
         except NotImplementedError:
-            for chunk in self._stream(messages=self._cover_messages_format(messages),
-                                tools=self.clean_tools(self._cover_tool_format(tools)), **kwargs):
+            for chunk in self._stream(model_name=model_name, messages=self._cover_messages_format(messages),
+                                tools=self._cover_tool_format(tools),
+                                temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
 
-    def _invoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> BaseMessage:
+    @abstractmethod
+    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,  temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         raise NotImplementedError("BaseChatModel _invoke not implemented")
 
-    async def _ainvoke(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> BaseMessage:
+    @abstractmethod
+    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         raise NotImplementedError("BaseChatModel _ainvoke not implemented")
 
-    def _stream(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> Iterator[BaseMessageChunk]:
+    @abstractmethod
+    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
         raise NotImplementedError("BaseChatModel _stream not implemented")
 
-    async def _astream(self, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> AsyncIterator[
-        BaseMessageChunk]:
+    @abstractmethod
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
+        AIMessageChunk]:
         raise NotImplementedError("BaseChatModel _astream not implemented")
 
     @abstractmethod
@@ -124,10 +151,6 @@ class BaseChatModel:
             if all(isinstance(item, Dict) for item in messages):
                 return messages
             return [item.model_dump(exclude_none=True) for item in messages]
-
-    def bind_out_parser(self, output_parser_list: List):
-        self.output_parser_list = output_parser_list
-        pass
 
     def post_process(self, model_output):
         pass

@@ -146,7 +146,8 @@ class LLMExecutable(ComponentExecutable):
             self._set_runtime(runtime)
             model_inputs = self._prepare_model_inputs(inputs)
             logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
-            llm_response = await self._llm.ainvoke(model_inputs)
+            llm_response = await self._llm.ainvoke(
+                model_name=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
 
             # 临时调试：用于调用streamWriter实现流式输出
@@ -200,7 +201,9 @@ class LLMExecutable(ComponentExecutable):
                 ) from e
 
     def _create_llm_instance(self):
-        return ModelFactory().get_model(self._config.model.model_provider, self._config.model.model_info)
+        return ModelFactory().get_model(model_provider=self._config.model.model_provider,
+                                        api_base=self._config.model.model_info.api_base,
+                                        api_key=self._config.model.model_info.api_key)
 
     def _validate_inputs(self, inputs: Input) -> None:
         if not inputs or not inputs.get(QUERY):
@@ -323,13 +326,13 @@ class LLMExecutable(ComponentExecutable):
     async def _invoke_for_json_format(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
         logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
-        llm_output = await self._llm.ainvoke(model_inputs)  # 如果 invoke 是异步接口，要加 await
+        llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name, messages=model_inputs)  # 如果 invoke 是异步接口，要加 await
         yield self._create_output(llm_output)
 
     async def _stream_with_chunks(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
         # 假设 self._llm.stream 本身就是异步生成器
-        async for chunk in self._llm.astream(model_inputs):
+        async for chunk in self._llm.astream(model_name=self._config.model.model_info.model_name, messages=model_inputs):
             content = WorkflowLLMUtils.extract_content(chunk)
             formatted_res = OutputFormatter.format_response(content,
                                                             self._config.response_format,
@@ -345,11 +348,13 @@ class LLMExecutable(ComponentExecutable):
         response_format_type = self._get_response_format().get(_TYPE)
 
         if response_format_type == WorkflowLLMResponseType.JSON.value:
-            final_response = await self._llm.ainvoke(model_inputs)
+            final_response = await self._llm.ainvoke(
+                model_name=self._config.model.model_info.model_name, messages=model_inputs)
         else:
             index = 0
             result = ""
-            async for chunk in self._llm.astream(model_inputs):
+            async for chunk in self._llm.astream(model_name=self._config.model.model_info.model_name,
+                                                 messages=model_inputs):
                 if chunk.content:
                     if stream_writer:
                         await stream_writer.write(OutputSchema(type="workflow", index=index, payload=chunk.content))

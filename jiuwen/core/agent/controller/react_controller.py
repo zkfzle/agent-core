@@ -555,7 +555,7 @@ class ReActController(Controller):
 
     async def _invoke_llm_and_parse_output(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> ReActControllerOutput:
         try:
-            response = await self._model.ainvoke(llm_inputs, tools)
+            response = await self._model.ainvoke(self._config.model.model_info.model_name, llm_inputs, tools)
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.INVOKE_LLM_FAILED.code,
@@ -566,7 +566,7 @@ class ReActController(Controller):
 
     async def _stream_llm(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> AsyncIterator[BaseMessageChunk]:
         try:
-            async for chunk in self._model.astream(llm_inputs, tools):
+            async for chunk in self._model.astream(self._config.model.model_info.model_name, llm_inputs, tools):
                 if self._check_if_valid_chunk(chunk):
                     yield chunk
 
@@ -586,8 +586,8 @@ class ReActController(Controller):
                 .to_messages())
 
     def _init_model(self):
-        return ModelFactory().get_model(model_provider=self._config.model.model_provider,
-                                        model_info=self._config.model.model_info)
+        return ModelFactory().get_model(model_provider=self._config.model.model_provider, api_base=self._config.model.model_info.api_base,
+                                        api_key=self._config.model.model_info.api_key)
 
     def _update_llm_response_to_context(self, llm_output: AIMessage):
         """更新LLM响应到上下文"""

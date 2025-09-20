@@ -10,7 +10,6 @@ from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, FieldValidationInfo
 import yaml
 
-from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.agent_builder.prompt_builder.tune.common.exception import JiuWenBaseException, StatusCode
 from jiuwen.agent_builder.prompt_builder.tune.base.case import Case
@@ -99,18 +98,14 @@ class LLMModelProcess:
                     error_msg="prompt optimization llm config is missing"
                 )
             )
-        model_info = BaseModelInfo(
-            api_key=llm_model_info.api_key,
-            api_base=llm_model_info.url,
-            model=llm_model_info.model,
-            temperature=0.0,
-            top_p=0.0
-        )
-        self.chat_llm = ModelFactory().get_model(llm_model_info.model_source, model_info)
+        self.llm_model_info = llm_model_info
+        self.chat_llm = ModelFactory().get_model(model_provider=self.llm_model_info.model_source,
+                                                 api_key=self.llm_model_info.api_key, api_base=self.llm_model_info.url)
 
     def chat(self, messages: List[Any]) -> Dict:
         """chat"""
-        reply_message = self.chat_llm.invoke(messages)
+        reply_message = self.chat_llm.invoke(model_name=self.llm_model_info.model, messages=messages,
+                                             temperature=0.0, top_p=0.0)
         return dict(content=reply_message.content)
 
 

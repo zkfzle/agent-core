@@ -356,7 +356,8 @@ class QuestionerDirectReplyHandler:
 
     def _invoke_llm_for_extraction(self, llm_inputs: List[BaseMessage]):
         try:
-            response = self._model.invoke(llm_inputs).content
+            response = self._model.invoke(
+                model_name=self._config.model.model_info.model_name, messages=llm_inputs).content
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.INVOKE_LLM_FAILED.code,
@@ -482,7 +483,8 @@ class QuestionerExecutable(ComponentExecutable):
 
     def _create_llm_instance(self) -> BaseChatModel:
         return ModelFactory().get_model(model_provider=self._config.model.model_provider,
-                                        model_info=self._config.model.model_info)
+                                        api_base=self._config.model.model_info.api_base,
+                                        api_key=self._config.model.model_info.api_key)
 
     def _init_prompt(self) -> Template:
         if self._config.prompt_template:

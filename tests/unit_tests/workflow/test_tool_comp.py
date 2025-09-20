@@ -1,4 +1,4 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
@@ -61,7 +61,7 @@ async def test_tool_comp_invoke(mock_get_tool, mock_request, mock_tool, mock_too
     mock_response.text = "{}"
     mock_response.content = b"{}"
     mock_request.return_value = mock_response
-    res = await tool_executable.invoke(mock_tool_input, fake_ctx)
+    res = await tool_executable.invoke(mock_tool_input, fake_ctx, context=Mock())
 
     assert res.get('errCode') == 0
 

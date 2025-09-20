@@ -7,7 +7,7 @@ from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionConfig
-from jiuwen.core.runtime.runtime import NodeRuntime, Runtime, WorkflowRuntime
+from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 
 fake_base = types.ModuleType("base")
@@ -76,7 +76,7 @@ class TestIntentDetectionExecutableInvoke:
         # 2. 构造 Executable 并调用
         exe = IntentDetectionExecutable(fake_config)
         exe.set_router(BranchRouter())
-        output = await exe.invoke({USER_FIELDS: {"input": "你好"}}, fake_ctx)
+        output = await exe.invoke({USER_FIELDS: {"input": "你好"}}, fake_ctx, context=Mock())
         print(output)
         # 3. 断言
         assert output["result"] == "分类2"

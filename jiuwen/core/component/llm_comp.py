@@ -12,6 +12,7 @@ from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, ValidationUtils, SchemaGenerator
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
@@ -140,7 +141,7 @@ class LLMExecutable(ComponentExecutable):
         self._llm: BaseChatModel = None
         self._initialized: bool = False
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         try:
             self._set_runtime(runtime)
             model_inputs = self._prepare_model_inputs(inputs)
@@ -162,7 +163,7 @@ class LLMExecutable(ComponentExecutable):
             raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
                                       message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg=str(e))) from e
 
-    async def stream(self, inputs: Input, runtime: Runtime) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         try:
             self._set_runtime(runtime)
             response_format_type = self._get_response_format().get(_TYPE)

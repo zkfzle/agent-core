@@ -4,6 +4,7 @@
 from typing import Any
 
 from jiuwen.core.component.base import WorkflowComponent
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
@@ -16,7 +17,7 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
         super().__init__()
         self._variable_mapping = variable_mapping
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         result = {}
         parent_runtime = runtime.base().parent()
         for left, right in self._variable_mapping.items():

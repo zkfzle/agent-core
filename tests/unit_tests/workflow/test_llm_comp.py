@@ -106,7 +106,7 @@ class TestLLMExecutableInvoke:
 
         mock_get_model.return_value = fake_llm
 
-        output = await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx)
+        output = await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx, context=Mock())
 
         assert output == {'result': 'mocked response'}
 
@@ -141,7 +141,7 @@ class TestLLMExecutableInvoke:
 
         # 调用 stream 方法，异步迭代所有 chunk
         chunks = []
-        async for chunk in exe.stream(fake_input(userFields=dict(query="pytest")), fake_node_ctx):
+        async for chunk in exe.stream(fake_input(userFields=dict(query="pytest")), fake_node_ctx, context=Mock()):
             chunks.append(chunk)
 
         # 假设 LLMExecutable.stream 会把每个 AIMessage.content 直接 yield 出来
@@ -162,7 +162,7 @@ class TestLLMExecutableInvoke:
         mock_get_model.return_value = fake_llm
 
         with pytest.raises(JiuWenBaseException) as exc_info:
-            await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx)
+            await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx, context=Mock())
 
         assert "outputs config must not be empty" in str(exc_info.value.message)
 

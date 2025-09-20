@@ -6,6 +6,7 @@ from typing import AsyncIterator, TypedDict, Union
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.utils.utils import TemplateUtils
 from jiuwen.core.component.base import WorkflowComponent
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
@@ -23,7 +24,7 @@ class End(ComponentExecutable, WorkflowComponent):
         self.template = conf["responseTemplate"] if ( conf and
                 "responseTemplate" in conf and len(conf["responseTemplate"]) > 0) else None
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self.template:
             answer = TemplateUtils.render_template(self.template, inputs)
             output = {}
@@ -36,7 +37,7 @@ class End(ComponentExecutable, WorkflowComponent):
             "output": output
         }
 
-    async def stream(self, inputs: Input, runtime: Runtime) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         try:
             if self.template:
                 response_list = TemplateUtils.render_template_to_list(self.template)
@@ -76,7 +77,7 @@ class End(ComponentExecutable, WorkflowComponent):
         except Exception as e:
             logger.info("stream output error: {}".format(e))
 
-    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime) -> AsyncIterator[Output]:
+    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         # 异步遍历输入迭代器
         index = 0
         stream_cache_value = {}

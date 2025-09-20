@@ -5,6 +5,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
 
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
@@ -66,10 +67,13 @@ class BaseRuntime(ABC):
     def set_queue_manager(self, queue_manager: MessageQueueManager):
         return
 
+    def context(self) -> Context:
+        pass
+
 
 class WorkflowRuntime(BaseRuntime):
     def __init__(self, state: State = None, config: Config = None, store: Store = None, tracer: Tracer = None,
-                 session_id: str = None, controller_context_manager: Any = None):
+                 session_id: str = None, controller_context_manager: Any = None, context: Context = None):
         self._config = config if config is not None else Config()
         self._state = state if state is not None else InMemoryState()
         self._store = store
@@ -79,6 +83,7 @@ class WorkflowRuntime(BaseRuntime):
         self._controller_context_manager = controller_context_manager
         self._session_id = session_id if session_id else uuid.uuid4().hex
         self._queue_manager = None  # type: MessageQueueManager
+        self._context = context
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
         if self._stream_writer_manager is not None:
@@ -119,6 +124,9 @@ class WorkflowRuntime(BaseRuntime):
 
     def session_id(self) -> str:
         return self._session_id
+
+    def context(self) -> Context:
+        return self._context
 
 
 class NodeRuntime(BaseRuntime):
@@ -165,11 +173,12 @@ class NodeRuntime(BaseRuntime):
     def parent(self):
         return self._runtime
 
+
 class AgentRuntime(BaseRuntime):
     def __init__(self, trace_id: str):
         self._trace_id = trace_id
         self._global_state = InMemoryStateLike()
-        self._stream_writer_manager = StreamWriterManager(StreamEmitter(),[BaseStreamMode.TRACE])
+        self._stream_writer_manager = StreamWriterManager(StreamEmitter(), [BaseStreamMode.TRACE])
         self._callback_manager = CallbackManager()
         tracer = Tracer()
         tracer.init(self._stream_writer_manager, self._callback_manager)
@@ -205,7 +214,9 @@ class AgentRuntime(BaseRuntime):
             tracer=self._tracer,
             session_id=self._trace_id)
 
+
 Workflow = TypeVar("Workflow", contravariant=True)
+
 
 class Runtime(ABC):
     @abstractmethod
@@ -335,6 +346,7 @@ class Runtime(ABC):
     @abstractmethod
     async def close(self):
         pass
+
 
 class ProxyRuntime(BaseRuntime):
     def __init__(self, stub: BaseRuntime = None):

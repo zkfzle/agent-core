@@ -4,6 +4,7 @@
 from copy import deepcopy
 from typing import TypedDict
 
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.exception.exception import JiuWenBaseException
@@ -17,7 +18,7 @@ class Start(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.conf = conf
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         self._validate_inputs(inputs)
         return self._fill_default_values(deepcopy(inputs))
 

@@ -14,6 +14,7 @@ from jiuwen.core.component.base import WorkflowComponent, ComponentConfig
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.condition.condition import Condition
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph
 from jiuwen.core.graph.executable import Output, Input
 from jiuwen.core.runtime.base import ComponentExecutable
@@ -236,7 +237,7 @@ class IntentDetectionExecutable(ComponentExecutable):
     def post_commit(self) -> bool:
         return True
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         """invoke IntentDetection节点"""
         # 提取上下文数据
         self._set_runtime(runtime)

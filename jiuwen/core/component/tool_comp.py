@@ -8,6 +8,7 @@ from typing import Dict, Any, List
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
@@ -43,7 +44,7 @@ class ToolExecutable(ComponentExecutable):
         self._config = config
         self._tool: Tool = None
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self._tool is None:
             self._tool = self.get_tool(runtime)
         validated = inputs.get('validate', False)

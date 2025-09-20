@@ -14,6 +14,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.graph.executable import Executable, Input, Output
@@ -404,7 +405,7 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = state
         return self
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         await runtime.trace({"on_invoke_data": "extra trace data"})
 
         state_from_runtime = self._load_state_from_runtime(runtime)

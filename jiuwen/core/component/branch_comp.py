@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-from contextvars import Context
 from typing import Callable, Union, Hashable
 
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.condition.condition import Condition
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
@@ -28,7 +28,7 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:
         return self._router
 
-    async def invoke(self, inputs: Input, runtime: Runtime) -> Output:
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         self._router.set_runtime(runtime)
         return {}
 

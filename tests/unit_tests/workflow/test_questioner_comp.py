@@ -14,6 +14,7 @@ from jiuwen.core.graph.executable import Input
 from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
+from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 
@@ -74,7 +75,7 @@ class QuestionerTest(unittest.TestCase):
                 ]
             }
         )
-        end_component = End({"responseTemplate": "{{output}}"})
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
         model_config = ModelConfig(model_provider="openai")
         questioner_config = QuestionerConfig(
@@ -88,15 +89,15 @@ class QuestionerTest(unittest.TestCase):
 
         flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component,
-                          inputs_schema={"output": "${questioner.userFields.key_fields}"})
-        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
 
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
 
         result = self.invoke_workflow({"query": "查询杭州的天气"}, context, flow)
         assert result == WorkflowOutput(
-            result={'output': {}, 'responseContent': "{'location': 'hangzhou', 'time': 'today'}"},
+            result={'output': {}, 'responseContent': "hangzhou | today"},
             state=WorkflowExecutionState.COMPLETED)
 
 
@@ -130,7 +131,7 @@ class QuestionerTest(unittest.TestCase):
                 ]
             }
         )
-        end_component = End({"responseTemplate": "{{output}}"})
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
         model_config = ModelConfig(model_provider="openai")
         questioner_config = QuestionerConfig(
@@ -145,8 +146,8 @@ class QuestionerTest(unittest.TestCase):
 
         flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component,
-                          inputs_schema={"output": "${questioner.userFields.key_fields}"})
-        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
 
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
@@ -165,7 +166,7 @@ class QuestionerTest(unittest.TestCase):
 
         workflow_context = AgentRuntime(trace_id=session_id).create_workflow_runtime()
         final_result = self.invoke_workflow_with_workflow_context(user_input, workflow_context, flow)    # workflow实例、session id保持一致
-        assert final_result.result.get("responseContent") == "{'location': 'hangzhou', 'time': 'today'}"
+        assert final_result.result.get("responseContent") == "hangzhou | today"
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
@@ -208,7 +209,7 @@ class QuestionerTest(unittest.TestCase):
                 ]
             }
         )
-        end_component = End({"responseTemplate": "{{output}}"})
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
         model_config = ModelConfig(model_provider="openai")
         questioner_config = QuestionerConfig(
@@ -221,8 +222,9 @@ class QuestionerTest(unittest.TestCase):
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
         flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
-        flow.set_end_comp("e", end_component, inputs_schema={"output": "${questioner.userFields.key_fields}"})
-        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
 
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
@@ -272,7 +274,7 @@ class TestQuestionerStream:
                 ]
             }
         )
-        end_component = End({"responseTemplate": "{{output}}"})
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
         model_config = ModelConfig(model_provider="openai")
         questioner_config = QuestionerConfig(

@@ -6,9 +6,9 @@ import json
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional, List, Dict, Iterator, AsyncIterator
+from typing import Any, Optional, List, Dict, Iterator, AsyncIterator, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -28,13 +28,44 @@ from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
 START_STR = "start"
 END_STR = "end"
 USER_INTERACT_STR = "user_interact"
-USER_FIELDS_KEY = "userFields"
 
 SUB_PLACEHOLDER_PATTERN = r'\{\{([^}]*)\}\}'
 CONTINUE_ASK_STATEMENT = "请您提供{non_extracted_key_fields_names}相关的信息"
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 TEMPLATE_NAME = "questioner"
 QUESTIONER_STATE_KEY = "questioner_state"
+
+QUESTIONER_SYSTEM_TEMPLATE = """\
+你是一个信息收集助手，你需要根据指定的参数收集用户的信息，然后提交到系统。
+请注意：不要使用任何工具、不用理会问题的具体含义，并保证你的输出仅有 JSON 格式的结果数据。
+请严格遵循如下规则：
+  1. 让我们一步一步思考。
+  2. 用户输入中没有提及的参数提取为 None，并直接向询问用户没有明确提供的参数。
+  3. 通过用户提供的对话历史以及当前输入中提取 {{required_name}}，不要追问任何其他信息。
+  4. 参数收集完成后，将收集到的信息通过 JSON 的方式展示给用户。
+
+## 指定参数
+{{required_params_list}}
+
+## 约束
+{{extra_info}}
+
+## 示例
+{{example}}
+"""
+
+QUESTIONER_USER_TEMPLATE = """\
+对话历史
+{{dialogue_history}}
+
+请充分考虑以上对话历史及用户输入，正确提取最符合约束要求的 JSON 格式参数。
+"""
+
+def questioner_default_template():
+    return [
+        {"role": "system", "content": QUESTIONER_SYSTEM_TEMPLATE},
+        {"role": "user", "content": QUESTIONER_USER_TEMPLATE},
+    ]
 
 class ExecutionStatus(Enum):
     START = START_STR
@@ -66,15 +97,26 @@ class QuestionerConfig(ComponentConfig):
     max_response: int = field(default=3)
     with_chat_history: bool = field(default=True)
     chat_history_max_rounds: int = field(default=5)
-    prompt_template: List[dict] = field(default_factory=list)
+    prompt_template: List[Dict] = field(default_factory=questioner_default_template)
     extra_prompt_for_fields_extraction: str = field(default="")
     example_content: str = field(default="")
+
+
+class QuestionerInput(BaseModel):
+    model_config = ConfigDict(extra='allow')   # 允许任意额外字段
+    query: Union[str, None] = Field(default="")
+
+
+class OutputCache(BaseModel):
+    user_response: str = Field(default="")
+    question: str = Field(default="")
+    key_fields: dict = Field(default_factory=dict)
 
 
 class QuestionerOutput(BaseModel):
     user_response: str = Field(default="")
     question: str = Field(default="")
-    key_fields: dict = Field(default_factory=dict)
+    model_config = ConfigDict(extra='allow')  # 允许任意额外字段
 
 
 class QuestionerState(BaseModel):
@@ -212,14 +254,15 @@ class QuestionerDirectReplyHandler:
         return dict()
 
     def _handle_start_state(self, inputs, runtime):
-        output = QuestionerOutput()
-        self._query = inputs.get("query", "")
+        questioner_input = QuestionerInput.model_validate(inputs)
+        output = OutputCache()
+        self._query = questioner_input.query or ""
         chat_history = self._get_latest_chat_history(runtime)
         if self._is_set_question_content():
-            user_fields = inputs.get(USER_FIELDS_KEY, dict())
+            user_fields = questioner_input.model_dump(exclude={'query'})
             output.question = QuestionerUtils.format_template(self._config.question_content, user_fields)
             self._state = self._state.handle_event(QuestionerEvent.USER_INTERACT_EVENT)
-            return dict(userFields=output.model_dump(exclude_defaults=True))
+            return self._format_questioner_output(output)
 
         if self._need_extract_fields():
             is_continue_ask = self._initial_extract_from_chat_history(chat_history, output)
@@ -230,10 +273,10 @@ class QuestionerDirectReplyHandler:
                 error_code=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.code,
                 message=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.errmsg
             )
-        return dict(userFields=output.model_dump(exclude_defaults=True))
+        return self._format_questioner_output(output)
 
     async def _handle_user_interact_state(self, inputs, runtime: Runtime):
-        output = QuestionerOutput()
+        output = OutputCache()
         self._query = await runtime.interact("")
         chat_history = self._get_latest_chat_history(runtime)
         user_response = chat_history[-1].get("content", "") if chat_history else ""
@@ -241,7 +284,7 @@ class QuestionerDirectReplyHandler:
         if self._is_set_question_content() and not self._need_extract_fields():
             output.user_response = user_response
             self._state = self._state.handle_event(QuestionerEvent.END_EVENT)
-            return dict(userFields=output.model_dump(exclude_defaults=True))
+            return self._format_questioner_output(output)
 
         if self._need_extract_fields():
             is_continue_ask = self._repeat_extract_from_chat_history(chat_history, output)
@@ -252,13 +295,12 @@ class QuestionerDirectReplyHandler:
                 error_code=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.code,
                 message=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.errmsg
             )
-        return dict(userFields=output.model_dump(exclude_defaults=True))
+        return self._format_questioner_output(output)
 
     def _handle_end_state(self, inputs, runtime):
-        return dict(
-            userFields=QuestionerOutput(user_response=self._state.user_response,
-                                        key_fields=self._state.extracted_key_fields).model_dump(exclude_defaults=True)
-        )
+        output = QuestionerOutput(**self._state.extracted_key_fields)
+        output.user_response = self._state.user_response
+        return output.model_dump(exclude_defaults=True)
 
     def _is_set_question_content(self):
         return isinstance(self._config.question_content, str) and len(self._config.question_content) > 0
@@ -267,7 +309,7 @@ class QuestionerDirectReplyHandler:
         return (self._config.extract_fields_from_response and
                 len(self._config.field_names) > len(self._state.extracted_key_fields))
 
-    def _initial_extract_from_chat_history(self, chat_history, output: QuestionerOutput) -> bool:
+    def _initial_extract_from_chat_history(self, chat_history, output: OutputCache) -> bool:
         self._invoke_llm_and_parse_result(chat_history, output)
 
         self._update_param_default_value(output)
@@ -275,7 +317,7 @@ class QuestionerDirectReplyHandler:
 
         return self._check_if_continue_ask(output)
 
-    def _repeat_extract_from_chat_history(self, chat_history, output: QuestionerOutput) -> bool:
+    def _repeat_extract_from_chat_history(self, chat_history, output: OutputCache) -> bool:
         self._invoke_llm_and_parse_result(chat_history, output)
 
         self._update_param_default_value(output)
@@ -338,7 +380,7 @@ class QuestionerDirectReplyHandler:
     def _update_state_of_key_fields(self, key_fields):
         self._state.extracted_key_fields.update(key_fields)
 
-    def _update_param_default_value(self, output: QuestionerOutput):
+    def _update_param_default_value(self, output: OutputCache):
         result = dict()
         extracted_key_fields = self._state.extracted_key_fields
         for param in self._config.field_names:
@@ -354,7 +396,7 @@ class QuestionerDirectReplyHandler:
     def _exceed_max_response(self):
         return self._state.response_num > self._config.max_response
 
-    def _check_if_continue_ask(self, output: QuestionerOutput):
+    def _check_if_continue_ask(self, output: OutputCache):
         is_continue_ask = False
         non_extracted_key_fields: List[FieldInfo] = self._filter_non_extracted_key_fields()
         if non_extracted_key_fields:
@@ -378,6 +420,13 @@ class QuestionerDirectReplyHandler:
         output.key_fields.update(extracted_key_fields)
         self._increment_state_of_response_num()
         self._update_state_of_key_fields(extracted_key_fields)
+
+    @staticmethod
+    def _format_questioner_output(output_cache: OutputCache) -> Dict:
+        output = QuestionerOutput(**output_cache.key_fields)
+        output.user_response = output_cache.user_response
+        output.question = output_cache.question
+        return output.model_dump(exclude_defaults=True)
 
 
 class QuestionerExecutable(ComponentExecutable):
@@ -427,7 +476,7 @@ class QuestionerExecutable(ComponentExecutable):
 
         # 向用户追问
         if self._state.is_undergoing_interaction():
-            await runtime.interact(invoke_result.get("userFields", dict()).get("question", ""))
+            await runtime.interact(invoke_result.get("question", ""))
 
         return invoke_result
 

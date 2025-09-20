@@ -1,4 +1,5 @@
 import re
+import copy
 from typing import Union, List, Dict, Optional
 
 from pydantic import BaseModel, Field
@@ -58,7 +59,7 @@ class Template(BaseModel):
 
     def format(self, keywords: dict = None):
         """format prompt"""
-        assembler = Assembler(self.content)
+        assembler = Assembler(copy.deepcopy(self.content))
         input_keys = assembler.input_keys
         format_dict = {}
         for key in input_keys:

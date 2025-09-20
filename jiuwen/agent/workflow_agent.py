@@ -68,7 +68,6 @@ class WorkflowAgent(Agent):
         """创建WorkflowController实例"""
         controller = WorkflowController(
             self._config,
-            self._controller_context_manager,
             context_engine,
             runtime
         )

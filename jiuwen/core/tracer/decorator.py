@@ -114,7 +114,7 @@ def async_trace_stream(func, tracer, agent_span, invoke_type: InvokeType, class_
             else:
                 results.append(result)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
-                                 outputs={"outputs": result})
+                                 outputs={"outputs": results})
         except Exception as error:
             await tracer.trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
             raise error

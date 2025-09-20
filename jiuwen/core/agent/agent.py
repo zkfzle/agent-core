@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterator, Optional, Dict, List
+from typing import Any, Iterator, Dict, List
 
 from jiuwen.agent.config.base import AgentConfig
+from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.agent.task.task_manager import TaskManager
 from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.agent_context import AgentContext
-from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.utils.tool.base import Tool
+from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 
 
@@ -20,8 +21,7 @@ class Agent(ABC):
 
     def __init__(self, agent_config: "AgentConfig", agent_context: "AgentContext" = None) -> None:
         self._config = agent_config
-        self._controller_context_manager: Optional["ControllerContextMgr"] = \
-            self._init_controller_context_manager()
+        self._runtime = AgentRuntime()
         self._controller: "Controller | None" = self._init_controller()
         self._agent_handler: "AgentHandler | None" = self._init_agent_handler()
         self._task_manager: "TaskManager | None" = self._init_task_manager(agent_context)
@@ -46,13 +46,6 @@ class Agent(ABC):
             agent_context = AgentContext()
         return TaskManager(agent_context)
 
-    def _init_controller_context_manager(self) -> Optional["ControllerContextMgr"]:
-        """
-        子类返回具体的 ControllerContextMgr 实例即可。
-        默认返回 None，表示无需上下文管理。
-        """
-        return None
-
     @abstractmethod
     async def invoke(self, inputs: Dict) -> Dict:
         """
@@ -68,10 +61,10 @@ class Agent(ABC):
         pass
 
     def bind_workflows(self, workflows: List[Workflow]):
-        self._controller_context_manager.workflow_mgr.add_workflows(
+        self._runtime.add_workflows(
             [(generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow) for
              workflow in
              workflows])
 
     def bind_tools(self, tools: List[Tool]):
-        self._controller_context_manager.tool_mgr.add_tools([(tool.name, tool) for tool in tools])
+        self._runtime.add_tools([(tool.name, tool) for tool in tools if isinstance(tool, RestfulApi)])

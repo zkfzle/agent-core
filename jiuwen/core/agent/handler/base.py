@@ -11,7 +11,9 @@ from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
+from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from jiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
 
 
 class AgentHandlerInputs(BaseModel):
@@ -64,11 +66,13 @@ class AgentHandlerImpl(AgentHandler):
     async def invoke_workflow(self, inputs: AgentHandlerInputs):
         context = inputs.context
         workflow_name = inputs.name
-        context_manager = context.controller_context_manager()
-        workflow_manager = context_manager.workflow_mgr
         workflow_metadata = self.search_workflow_metadata_by_workflow_name(workflow_name)
-        workflow = workflow_manager.find_workflow_by_id_and_version(generate_workflow_key(workflow_metadata.id, workflow_metadata.version))
+        workflow = context.get_workflow(workflow_metadata.id+"_"+workflow_metadata.version)
+
         workflow_result = await workflow.invoke(inputs.arguments, context.create_workflow_runtime())
+        if isinstance(workflow_result, WorkflowOutput):
+            if workflow_result.state == WorkflowExecutionState.INPUT_REQUIRED:
+                raise AgentInterrupt(workflow_result.result[0].get("payload"))
         return workflow_result.result
 
     async def invoke_plugin(self, inputs: AgentHandlerInputs):

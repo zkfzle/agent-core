@@ -228,7 +228,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> Output:
         logger.info("begin to invoke, input=%s", inputs)
         chunks = []
-        async for chunk in self.stream(inputs, runtime, context, stream_modes=[BaseStreamMode.OUTPUT]):
+        async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
             chunks.append(chunk)
 
         is_interaction = False

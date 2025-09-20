@@ -19,10 +19,9 @@ class ControllerInput(BaseModel):
 
 
 class Controller:
-    def __init__(self, config: AgentConfig, context_mgr):
+    def __init__(self, config: AgentConfig):
         self._config = config
         self._agent_handler = None
-        self._context_mgr = context_mgr
 
     def invoke(self, inputs: ControllerInput, context: Runtime) -> ControllerOutput:
         pass

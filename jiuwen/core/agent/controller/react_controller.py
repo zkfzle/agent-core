@@ -2,22 +2,23 @@
 from typing import List, Dict, Any, Optional, AsyncIterator, Union
 
 from pydantic import Field
+import json
 
 from jiuwen.agent.common.enum import SubTaskType, ReActStatus, ReActEvent
 from jiuwen.core.agent.controller.base import ControllerOutput, ControllerInput, Controller
-from jiuwen.core.agent.handler.base import AgentHandler
+from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.sub_task import SubTask
+from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.agent.state_machine.react_state_machine import ReActStateMachine
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.workflow import WorkflowRuntime
+from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.format.format_utils import FormatUtils
 from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, HumanMessage, AIMessage, \
-    ToolCall, UsageMetadata
+    ToolCall, UsageMetadata, ToolMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
@@ -36,12 +37,12 @@ class ReActControllerInput(ControllerInput):
 
 
 class ReActController(Controller):
-    def __init__(self, config: AgentConfig, context_mgr: ControllerContextMgr,
-                 context_engine: ContextEngine, runtime: WorkflowRuntime):
-        super().__init__(config, context_mgr)
+    def __init__(self, config: AgentConfig,
+                 context_engine: ContextEngine, runtime: Runtime):
+        super().__init__(config)
         self._context_engine = context_engine
         self._runtime = runtime
-        self._state_machine = ReActStateMachine(runtime)
+        self._state_machine = ReActStateMachine(self._runtime)
         self._model = self._init_model()
         self._agent_handler = None
         self._setup_state_handlers()
@@ -62,12 +63,24 @@ class ReActController(Controller):
         self._state_machine.register_state_handler(ReActStatus.COMPLETED, self._stream_handle_completed_state, is_stream=True)
         self._state_machine.register_state_handler(ReActStatus.INTERRUPTED, self._stream_handle_interrupted_state, is_stream=True)
 
-    async def  execute(self, inputs: Dict) -> Dict:
+    async def execute(self, inputs: Dict) -> Dict:
         """执行完整的ReAct迭代流程"""
         logger.info(f"Starting ReAct execution with inputs: {inputs}")
         self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
 
-        while not self._state_machine.is_completed() and not self._state_machine.is_interrupted():
+        if self._state_machine.is_interrupted():
+            current_status = self._state_machine.get_current_status()
+            logger.info(f"Current status: {current_status}")
+
+            result = await self._state_machine.handle_state(current_status, inputs)
+            logger.info(f"State handler result: {result}")
+
+            # 如果返回了最终结果，直接返回
+            if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
+                logger.info(f"Returning final result: {result}")
+                return result
+
+        while not self._state_machine.is_completed():
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
 
@@ -136,14 +149,8 @@ class ReActController(Controller):
                 "sub_tasks": controller_output.sub_tasks  # 直接存储对象列表
             })
 
-            # 创建一个临时的TaskContext，因为新架构中不再依赖TaskContext
-            # 但为了保持与AgentHandler的兼容性，我们需要传递一个context对象
-            from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-            temp_context.set_controller_context_manager(self._context_mgr)
-
             # 直接传递 controller_output.sub_tasks 而不是从状态机获取
-            completed_sub_tasks, exec_result = await self._execute_sub_tasks(temp_context, controller_output.sub_tasks)
+            completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, controller_output.sub_tasks)
             self._state_machine.set_current_event(ReActEvent.INVOKE_TOOL)
             return await self._handle_sub_task_result(exec_result, inputs, completed_sub_tasks)
         else:
@@ -217,13 +224,8 @@ class ReActController(Controller):
         else:
             logger.error("No sub_tasks found in interrupted state!")
 
-        # 创建一个临时的TaskContext
-        from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-        temp_context.set_controller_context_manager(self._context_mgr)
-
         # 直接传递 sub_tasks 而不是让 _execute_sub_tasks 从状态机获取
-        completed_sub_tasks, exec_result = await self._execute_sub_tasks(temp_context, sub_tasks)
+        completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, sub_tasks)
         return await self._handle_sub_task_result(exec_result, inputs, completed_sub_tasks)
 
     # 流式状态处理方法
@@ -260,13 +262,8 @@ class ReActController(Controller):
                 "sub_tasks": controller_output.sub_tasks
             })
 
-            # 创建一个临时的TaskContext
-            from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-            temp_context.set_controller_context_manager(self._context_mgr)
-
             # 直接传递 controller_output.sub_tasks
-            completed_sub_tasks, exec_result = await self._execute_sub_tasks(temp_context, controller_output.sub_tasks)
+            completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, controller_output.sub_tasks)
             self._state_machine.set_current_event(ReActEvent.INVOKE_TOOL)
             async for result in self._stream_handle_sub_task_result(exec_result, inputs, completed_sub_tasks):
                 yield result
@@ -323,13 +320,8 @@ class ReActController(Controller):
             sub_tasks[0].func_args = user_input
             self._state_machine.update_state_data({"sub_tasks": sub_tasks})
 
-        # 创建一个临时的TaskContext
-        from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-        temp_context.set_controller_context_manager(self._context_mgr)
-
         # 直接传递 sub_tasks
-        completed_sub_tasks, exec_result = await self._execute_sub_tasks(temp_context, sub_tasks)
+        completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, sub_tasks)
         async for result in self._stream_handle_sub_task_result(exec_result, inputs, completed_sub_tasks):
             yield result
 
@@ -338,14 +330,16 @@ class ReActController(Controller):
         logger.info(f"Handling sub task result: {exec_result}")
         logger.info(f"Completed sub tasks: {[task.func_name for task in completed_sub_tasks]}")
 
-        if isinstance(exec_result, list) and exec_result[0].get('type') == '__interaction__':
+        if isinstance(exec_result, dict) and exec_result.get("error"):
             # 处理交互请求
             interrupt_data = {
-                "interrupt_component_id": exec_result[0].get('payload').get('id'),
-                "question": exec_result[0].get('payload').get('value')
+                "interrupt_component_id": exec_result.get('id'),
+                "question": exec_result.get('value')
             }
             self._state_machine.update_state_data({"interrupt_state": interrupt_data})
             self._state_machine.set_current_status(ReActStatus.INTERRUPTED)
+            await self._runtime.write_stream(OutputSchema(type="__interaction__", index=0, payload=interrupt_data.get("question", "")))
+
             return {"output": interrupt_data["question"], "result_type": "question"}
         else:
             # 处理正常结果
@@ -401,22 +395,21 @@ class ReActController(Controller):
 
             try:
                 # 执行SubTask
-                from jiuwen.core.agent.handler.base import AgentHandlerInputs
                 inputs = AgentHandlerInputs(context=context, name=sub_task.func_name, arguments=sub_task.func_args)
                 exec_result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
                 logger.info(f"Sub task {sub_task.func_name} result: {exec_result}")
 
                 # 更新结果
-                import json
                 sub_task.result = json.dumps(exec_result, ensure_ascii=False)
-            except Exception as e:
+            except AgentInterrupt as e:
                 # 插件执行失败时，添加失败信息
                 error_msg = f"Tool execution failed: {str(e)}"
                 logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
 
-                import json
                 error_result = {
                     "error": True,
+                    "id": e.args[0].get("id"),
+                    "value": e.args[0].get("value"),
                     "message": error_msg,
                     "tool_name": sub_task.func_name
                 }
@@ -432,8 +425,6 @@ class ReActController(Controller):
         if not completed_sub_tasks:
             logger.warning("No completed sub tasks to add to chat history")
             return
-
-        from jiuwen.core.utils.llm.messages import ToolMessage
 
         agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
         logger.info(f"Adding {len(completed_sub_tasks)} tool results to chat history")
@@ -571,9 +562,6 @@ class ReActController(Controller):
                     yield chunk
 
         except Exception as e:
-            import traceback
-            tmp = traceback.format_exc()
-
             raise JiuWenBaseException(
                 error_code=StatusCode.INVOKE_LLM_FAILED.code,
                 message=StatusCode.INVOKE_LLM_FAILED.errmsg

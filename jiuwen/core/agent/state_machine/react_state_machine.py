@@ -2,14 +2,14 @@
 from typing import Dict, Callable, Any
 
 from jiuwen.agent.common.enum import ReActStatus, ReActEvent
-from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.common.logging import logger
+from jiuwen.core.runtime.runtime import Runtime
 
 
 class ReActStateMachine:
     """ReAct状态机，管理状态转换和事件处理"""
 
-    def __init__(self, runtime: WorkflowRuntime):
+    def __init__(self, runtime: Runtime):
         self._runtime = runtime
         self._current_status = ReActStatus.INITIALIZED
         self._current_event = ReActEvent.NO_EVENT
@@ -27,7 +27,7 @@ class ReActStateMachine:
 
     def get_current_status(self) -> ReActStatus:
         """获取当前状态"""
-        state_data = self._runtime.state().get("react_state")
+        state_data = self._runtime.get_state("react_state")
         if state_data and "status" in state_data:
             self._current_status = ReActStatus(state_data["status"])
         return self._current_status
@@ -81,7 +81,7 @@ class ReActStateMachine:
 
     def get_state_data(self) -> Dict[str, Any]:
         """获取状态数据"""
-        return self._runtime.state().get("react_state") or {}
+        return self._runtime.get_state("react_state") or {}
 
     def update_state_data(self, data: Dict[str, Any]):
         """更新状态数据"""
@@ -96,5 +96,4 @@ class ReActStateMachine:
 
     def _update_state_to_runtime(self, data: Dict[str, Any]):
         """更新状态到Runtime"""
-        self._runtime.state().update({"react_state": data})
-        self._runtime.state().commit_cmp()
+        self._runtime.update_state({"react_state": data})

@@ -365,7 +365,9 @@ class QuestionerDirectReplyHandler:
 
         result = dict()
         try:
-            result = json.loads(response, strict=False)
+            cleaned = re.sub(r'^\s*```json\s*|\s*```\s*$', '', response.strip(), flags=re.IGNORECASE)
+            cleaned = re.sub(r"^\s*'''json\s*|\s*'''\s*$", '', cleaned, flags=re.IGNORECASE)
+            result = json.loads(cleaned, strict=False)
             result = {k: v for k, v in result.items() if v is not None and str(v)}
         except json.JSONDecodeError as e:
             try:
@@ -417,7 +419,10 @@ class QuestionerDirectReplyHandler:
     def _invoke_llm_and_parse_result(self, chat_history, output):
         llm_inputs = self._build_llm_inputs(chat_history=chat_history)
         extracted_key_fields = self._invoke_llm_for_extraction(llm_inputs)
-        output.key_fields.update(extracted_key_fields)
+        for k, v in extracted_key_fields.items():
+            if v:
+                output.key_fields.update({k: v})
+
         self._increment_state_of_response_num()
         self._update_state_of_key_fields(extracted_key_fields)
 

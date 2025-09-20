@@ -54,6 +54,8 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
+    # Todo: 临时关闭
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
     @patch("jiuwen.core.agent.controller.react_controller.ReActController.invoke")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")

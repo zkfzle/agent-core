@@ -67,7 +67,7 @@ class ReActController(Controller):
         logger.info(f"Starting ReAct execution with inputs: {inputs}")
         self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
 
-        while not self._state_machine.is_completed():
+        while not self._state_machine.is_completed() and not self._state_machine.is_interrupted():
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
 

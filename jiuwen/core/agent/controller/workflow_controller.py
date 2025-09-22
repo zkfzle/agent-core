@@ -12,7 +12,9 @@ from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context_engine.engine import ContextEngine
+from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import WorkflowRuntime
+from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow
 
@@ -72,11 +74,20 @@ class WorkflowController(Controller):
                                                 arguments=sub_task.func_args)
                     result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
                     results[sub_task.func_name] = result
+                    if isinstance(result, list) and result[0].get('type') == '__interaction__':
+                        # 是中断状态
+                        interrupt_data = {
+                            "interrupt_component_id": result[0].get('payload').get('id'),
+                            "question": result[0].get('payload').get('value')
+                        }
+                        self._state_machine.update_state_data({"interrupt_state": interrupt_data})
+                        self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
+                        return {"output": interrupt_data["question"], "result_type": "question"}
             if not self.should_continue(controller_output):
                 output = self.handle_workflow_results(results)
                 self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
                 self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-                result = await self._state_machine.handle_state(self._state_machine._current_status, output)
+                result = await self._state_machine.handle_state(self._state_machine.get_current_status(), output)
                 logger.info(f"State handler result: {result}")
 
                 self._state_machine.update_state_data({
@@ -89,10 +100,61 @@ class WorkflowController(Controller):
     async def _handle_completed_state(self, output):
         self._state_machine.update_state_data({"final_result": output})
         logger.info(f"update final result {output}")
+        if output.get("responseContent") != None:
+            message = AIMessage(content=output.get("responseContent"))
+            self._add_msg_to_chat_histroy(message)
+            logger.info(f"Added ai message to chat history: {output.get('responseContent')}")
         return output
 
-    async def _handle_interrupted_state(self):
-        pass
+    async def _handle_interrupted_state(self, inputs):
+        """处理中断状态"""
+        user_input = InteractiveInput()
+        state_data = self._state_machine.get_state_data()
+        interrupt_state = state_data.get("interrupt_state", {})
+        user_input.update(interrupt_state.get("interrupt_component_id", ""), inputs.get("query"))
+
+        # 更新SubTask参数
+        sub_tasks = state_data.get("sub_tasks", [])
+        logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
+        if sub_tasks:
+            # 直接修改 SubTask 对象的 func_args
+            sub_tasks[0].func_args = user_input
+            self._state_machine.update_state_data({"sub_tasks": sub_tasks})
+        else:
+            logger.error("No sub_tasks found in interrupted state!")
+
+        # 创建一个临时的TaskContext
+        from jiuwen.core.agent.task.task_context import AgentRuntime
+        temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+        temp_context.set_controller_context_manager(self._context_mgr)
+
+        inputs = AgentHandlerInputs(context=temp_context, name=sub_tasks[0].func_name,
+                                    arguments=sub_tasks[0].func_args)
+        result = await self._agent_handler.invoke(sub_tasks[0].sub_task_type, inputs)
+        results = {}
+        results[sub_tasks[0].func_name] = result
+
+        if isinstance(result, list) and result[0].get('type') == '__interaction__':
+            # 是中断状态
+            interrupt_data = {
+                "interrupt_component_id": result[0].get('payload').get('id'),
+                "question": result[0].get('payload').get('value')
+            }
+            self._state_machine.update_state_data({"interrupt_state": interrupt_data})
+            self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
+            return {"output": interrupt_data["question"], "result_type": "question"}
+        else:
+            output = self.handle_workflow_results(results)
+            self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
+            self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
+            result = await self._state_machine.handle_state(self._state_machine.get_current_status(), output)
+            logger.info(f"State handler result: {result}")
+
+            self._state_machine.update_state_data({
+                "sub_tasks": sub_tasks[0],
+                "final_result": result
+            })
+            return result
 
     async def _stream_handle_initialized_state(self, inputs:Dict):
         current_inputs = inputs
@@ -129,10 +191,61 @@ class WorkflowController(Controller):
 
     async def _stream_handle_completed_state(self, output):
         self._state_machine.update_state_data({"final_result": output})
+        if output.type == 'workflow_final':
+            message = AIMessage(content=output.payload.get("responseContent"))
+            self._add_msg_to_chat_histroy(message)
+            logger.info(f"Added ai message to chat history: {output.payload.get('responseContent')}")
         yield output
 
-    async def _stream_handle_interrupted_state(self):
-        pass
+    async def _stream_handle_interrupted_state(self, inputs):
+        """处理中断状态"""
+        user_input = InteractiveInput()
+        state_data = self._state_machine.get_state_data()
+        interrupt_state = state_data.get("interrupt_state", {})
+        user_input.update(interrupt_state.get("interrupt_component_id", ""), inputs.get("query"))
+
+        # 更新SubTask参数
+        sub_tasks = state_data.get("sub_tasks", [])
+        logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
+        if sub_tasks:
+            # 直接修改 SubTask 对象的 func_args
+            sub_tasks[0].func_args = user_input
+            self._state_machine.update_state_data({"sub_tasks": sub_tasks})
+        else:
+            logger.error("No sub_tasks found in interrupted state!")
+
+        # 创建一个临时的TaskContext
+        from jiuwen.core.agent.task.task_context import AgentRuntime
+        temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+        temp_context.set_controller_context_manager(self._context_mgr)
+
+        inputs = AgentHandlerInputs(context=temp_context, name=sub_tasks[0].func_name,
+                                    arguments=sub_tasks[0].func_args)
+        workflow = self._find_workflow(inputs)
+        async for result in workflow.stream(inputs.arguments, inputs.context.create_workflow_runtime()):
+            if hasattr(result, 'type') and result.type == 'workflow_final':
+                final_result = result
+            yield result
+        results = {}
+        results[sub_tasks[0].func_name] = final_result
+
+        if isinstance(final_result, list) and final_result[0].get('type') == '__interaction__':
+            # 是中断状态
+            interrupt_data = {
+                "interrupt_component_id": final_result[0].get('payload').get('id'),
+                "question": final_result[0].get('payload').get('value')
+            }
+            self._state_machine.update_state_data({"interrupt_state": interrupt_data})
+            self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
+            yield {"output": interrupt_data["question"], "result_type": "question"}
+        else:
+            output = self.handle_workflow_results(results)
+            self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
+            self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
+
+            async for result in self._state_machine.handle_stream_state(self._state_machine.get_current_status(),
+                                                                        output):
+                yield result
 
     @staticmethod
     def _filter_inputs(schema: dict, user_data: dict) -> dict:
@@ -170,6 +283,11 @@ class WorkflowController(Controller):
                                                                     workflow_metadata.version)
         return workflow
 
+    def _add_msg_to_chat_histroy(self, message : Union[HumanMessage, AIMessage]):
+        workflow_context = self._context_engine.get_workflow_context(workflow_id=self._config.workflows[0].id,
+                                                                  session_id=self._runtime.session_id())
+        workflow_context.add_message(message)
+
     def invoke(
             self, inputs: Dict, context
     ) -> WorkflowControllerOutput:
@@ -191,6 +309,10 @@ class WorkflowController(Controller):
                 func_args=filtered_inputs,
             )
         ]
+
+        user_message = HumanMessage(content=inputs.get("query"))
+        self._add_msg_to_chat_histroy(user_message)
+        logger.info(f"Added user message to chat history: {inputs.get('query')}")
 
         return WorkflowControllerOutput(is_task=True, sub_tasks=sub_tasks)
 

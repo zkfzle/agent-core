@@ -52,6 +52,9 @@ class ReActStateMachine:
         """检查是否已完成"""
         return self.get_current_status() == ReActStatus.COMPLETED
 
+    def is_interrupted(self) -> bool:
+        return self.get_current_status() == ReActStatus.INTERRUPTED
+
     def can_handle_status(self, status: ReActStatus, is_stream: bool = False) -> bool:
         """检查是否可以处理指定状态"""
         handlers = self._stream_state_handlers if is_stream else self._state_handlers
@@ -94,3 +97,4 @@ class ReActStateMachine:
     def _update_state_to_runtime(self, data: Dict[str, Any]):
         """更新状态到Runtime"""
         self._runtime.state().update({"react_state": data})
+        self._runtime.state().commit_cmp()

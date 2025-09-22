@@ -1,7 +1,10 @@
 import pytest
+
+from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.agent.workflow_agent import WorkflowAgent
+from jiuwen.core.agent.controller.workflow_controller import WorkflowController
 from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.workflow.base import Workflow
@@ -53,7 +56,8 @@ class TestWorkflowAgent:
             }},
         )
         workflow_config = WorkflowAgentConfig(
-            workflows=[test_workflow_schema]
+            workflows=[test_workflow_schema],
+            controller_type =ControllerType.WorkflowController
         )
         agent = WorkflowAgent(workflow_config, agent_context)
         agent.bind_workflows([workflow1])
@@ -64,4 +68,4 @@ class TestWorkflowAgent:
     async def test_invoke_single(self, agent):
         inputs = {"query": "hi"}
         result = await agent.invoke(inputs)  # ✅ 使用 await
-        assert result == {'result': 'hi'}
+        assert result == {'output': {'result': 'hi'}, 'result_type': 'answer'}

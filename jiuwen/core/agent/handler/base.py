@@ -10,6 +10,7 @@ from jiuwen.agent.common.enum import SubTaskType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 
 
@@ -66,7 +67,7 @@ class AgentHandlerImpl(AgentHandler):
         context_manager = context.controller_context_manager()
         workflow_manager = context_manager.workflow_mgr
         workflow_metadata = self.search_workflow_metadata_by_workflow_name(workflow_name)
-        workflow = workflow_manager.find_workflow_by_id_and_version(workflow_metadata.id, workflow_metadata.version)
+        workflow = workflow_manager.find_workflow_by_id_and_version(generate_workflow_key(workflow_metadata.id, workflow_metadata.version))
         workflow_result = await workflow.invoke(inputs.arguments, context.create_workflow_runtime())
         return workflow_result.result
 

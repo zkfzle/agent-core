@@ -3,6 +3,7 @@ from typing import Any, Iterator, Optional, Dict, List
 
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.task_manager import TaskManager
+from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.utils.tool.base import Tool
@@ -67,7 +68,10 @@ class Agent(ABC):
         pass
 
     def bind_workflows(self, workflows: List[Workflow]):
-        self._controller_context_manager.workflow_mgr.add_workflows(workflows)
+        self._controller_context_manager.workflow_mgr.add_workflows(
+            [(generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow) for
+             workflow in
+             workflows])
 
     def bind_tools(self, tools: List[Tool]):
-        self._controller_context_manager.tool_mgr.add_tools(tools)
+        self._controller_context_manager.tool_mgr.add_tools([(tool.name, tool) for tool in tools])

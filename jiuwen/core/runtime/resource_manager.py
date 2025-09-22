@@ -1,6 +1,5 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TypeVar
 from jiuwen.core.utils.tool.base import Tool
-from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.llm.base import BaseChatModel
 
@@ -9,6 +8,7 @@ from jiuwen.core.context.controller_context.workflow_manager import WorkflowMgr
 from jiuwen.core.context.controller_context.prompt_manager import PromptMgr
 from jiuwen.core.context.controller_context.model_manager import ModelMgr
 
+Workflow = TypeVar("Workflow", contravariant=True)
 
 class ResourceMgr:
     """线程安全单机资源管理器，封装多个管理器"""
@@ -18,11 +18,10 @@ class ResourceMgr:
         self._prompt_mgr = PromptMgr()
         self._model_mgr = ModelMgr()
 
-    # --------- Tool 相关 ---------
-    def add_tool(self, tool: Tool) -> None:
-        self._tool_mgr.add_tool(tool)
+    def add_tool(self, tool_id: str, tool: Tool) -> None:
+        self._tool_mgr.add_tool(tool_id, tool)
 
-    def add_tools(self, tools: List[Tool]) -> None:
+    def add_tools(self, tools: List[Tuple[str, Tool]]) -> None:
         self._tool_mgr.add_tools(tools)
 
     def get_tool(self, tool_id: str) -> Optional[Tool]:
@@ -31,20 +30,18 @@ class ResourceMgr:
     def remove_tool(self, tool_id: str):
         self._tool_mgr.remove_tool(tool_id)
 
-    # --------- Workflow 相关 ---------
-    def add_workflow(self, workflow: Workflow) -> None:
-        self._workflow_mgr.add_workflow(workflow)
+    def add_workflow(self, workflow_id: str, workflow: Workflow) -> None:
+        self._workflow_mgr.add_workflow(workflow_id, workflow)
 
-    def add_workflows(self, workflows: List[Workflow]) -> None:
+    def add_workflows(self, workflows: List[Tuple[str, Workflow]]) -> None:
         self._workflow_mgr.add_workflows(workflows)
 
-    def remove_workflow(self, workflow: Workflow) -> None:
-        self._workflow_mgr.remove_workflow(workflow)
+    def remove_workflow(self, workflow_id: str) -> None:
+        self._workflow_mgr.remove_workflow(workflow_id)
 
-    def get_workflow(self, workflow_key: str) -> Optional[Workflow]:
-        return self._workflow_mgr.get_workflow(workflow_key)
+    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+        return self._workflow_mgr.get_workflow(workflow_id)
 
-    # --------- Prompt 相关 ---------
     def add_prompt(self, template_id: str, template: Template) -> None:
         self._prompt_mgr.add_prompt(template_id, template)
 
@@ -57,7 +54,6 @@ class ResourceMgr:
     def get_prompt(self, template_id: str) -> Optional[Template]:
         return self._prompt_mgr.get_prompt(template_id)
 
-    # --------- Model 相关 ---------
     def add_model(self, model_id: str, model: BaseChatModel) -> None:
         self._model_mgr.add_model(model_id, model)
 

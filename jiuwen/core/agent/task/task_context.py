@@ -24,6 +24,7 @@ class AgentRuntime(Runtime):
     async def initialize(self):
         await self._inner.checkpointer().pre_agent_execute(self._inner)
 
+
     def get_tool(self, tool_id: str) -> Tool:
         pass
 
@@ -79,49 +80,49 @@ class AgentRuntime(Runtime):
         return await self._interaction.wait_user_inputs(value)
 
     def add_prompt(self, template_id: str, template: Template):
-        pass
+        self._inner.resource_manager().add_prompt(template_id, template)
 
     def add_prompts(self, templates: List[Tuple[str, Template]]):
-        pass
+        self._inner.resource_manager().add_prompts(templates)
 
     def remove_prompt(self, template_id: str):
-        pass
+        self._inner.resource_manager().remove_prompt(template_id)
 
     def get_prompt(self, template_id: str) -> Template:
-        pass
+        return self._inner.resource_manager().get_prompt(template_id)
 
     def add_model(self, model_id: str, model: BaseChatModel):
-        pass
+        self._inner.resource_manager().add_model(model_id, model)
 
     def add_models(self, models: List[Tuple[str, BaseChatModel]]):
-        pass
+        self._inner.resource_manager().add_models(models)
 
     def remove_model(self, model_id: str):
-        pass
+        self._inner.resource_manager().remove_model(model_id)
 
     def get_model(self, model_id: str) -> BaseChatModel:
-        pass
+        return self._inner.resource_manager().get_model(model_id)
 
     def add_workflow(self, workflow_id: str, workflow: Workflow):
-        pass
+        self._inner.resource_manager().add_workflow(workflow_id, workflow)
 
     def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
-        pass
+        self._inner.resource_manager().add_workflows(workflows)
 
     def remove_workflow(self, workflow_id: str):
-        pass
+        self._inner.resource_manager().remove_workflow(workflow_id)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
-        pass
+        return self._inner.resource_manager().get_workflow(workflow_id)
 
     def add_tool(self, tool_id: str, tool: Tool):
-        pass
+        self._inner.resource_manager().add_tool(tool_id, tool)
 
     def add_tools(self, tools: List[Tuple[str, Tool]]):
-        pass
+        self._inner.resource_manager().add_tools(tools)
 
     def remove_tool(self, tool_id: str):
-        pass
+        self._inner.resource_manager().remove_tool(tool_id)
 
     def get_function_info(self, tool_id: List[str], workflow_id: List[str]) -> List[FunctionInfo]:
         pass

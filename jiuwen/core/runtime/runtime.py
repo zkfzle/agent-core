@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
-
+from jiuwen.core.runtime.resource_manager import ResourceMgr
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
@@ -230,7 +230,7 @@ class ProxyRuntime(BaseRuntime):
         return self._stub.controller_context_manager()
 
     def resource_manager(self):
-        pass
+        return self._stub.resource_manager()
 
     def context(self) -> Context:
         pass

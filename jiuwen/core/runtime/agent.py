@@ -6,6 +6,7 @@ from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.interaction.base import Checkpointer
 from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
+from jiuwen.core.runtime.resource_manager import ResourceMgr
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.state import State, InMemoryCommitState
 from jiuwen.core.runtime.workflow import WorkflowRuntime
@@ -26,6 +27,7 @@ class AgentRuntime(BaseRuntime):
         self._tracer = tracer
         self._context = context
         self._checkpointer = default_inmemory_checkpointer
+        self._resource_manager = ResourceMgr()
 
     def config(self) -> Config:
         pass
@@ -52,7 +54,7 @@ class AgentRuntime(BaseRuntime):
         return self._context
 
     def resource_manager(self):
-        pass
+        return self._resource_manager
 
     def checkpointer(self) -> Checkpointer:
         return self._checkpointer

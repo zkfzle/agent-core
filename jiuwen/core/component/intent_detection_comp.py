@@ -75,26 +75,49 @@ KG_FILTER_KEY = "filter_string"
 KG_FILTER_PREFIX = "category:"
 KG_SCOPE = "scope"
 
+DEFAULT_SYSTEM_PROMPT = "你是一个识别用户输入意图的AI助手。"
+
+DEFAULT_USER_PROMPT = """
+{{user_prompt}}
+
+当前可供选择的功能分类如下：
+{{category_info}}
+
+用户与助手的对话历史：
+{{chat_history}}
+
+当前输入：
+{{input}}
+
+请根据当前输入和对话历史分析并输出最适合的功能分类。输出格式为 JSON，包含以下两个字段：
+class: 代表分类结果
+reason: 说明为何选择该分类
+例如: {"class": "分类xx", "reason": "当前输入xxx"}
+请参考以下示例：
+{{example_content}}
+如果没有合适的分类，请输出 {{default_class}}。
+"""
+
+def get_default_template():
+    return Template(
+                content=[
+                    {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+                    {"role": "user", "content": DEFAULT_USER_PROMPT}
+                ]
+            )
+
 
 @dataclass
 class IntentDetectionConfig(ComponentConfig):
     user_prompt: str = ""
-    category_info: str = ""
     category_list: list[str] = field(default_factory=list)
-    intent_detection_template: Template = None
     category_name_list: list[str] = field(default_factory=list)
-    default_class: str = '分类1'
+    intent_detection_template: Template = field(default_factory=get_default_template)
+    default_class: str = '分类0'
     enable_history: bool = False
     enable_input: bool = True
     chat_history_max_turn: int = 3
     example_content: list[str] = field(default_factory=list)
-    overrideable: bool = False
-    enableKnowledges: bool = False
-    enable_q2fewshot: bool = True
-    enable_validation: bool = True
-    recallThreshold: float = 0.9
-    levenshtein_ration: float = 0.8
-    q2label_few_shot_score: float = 0.5
     model: 'ModelConfig' = None
 
 
@@ -106,8 +129,8 @@ class IntentDetectionInput(BaseModel):
 class IntentDetectionOutput(BaseModel):
     classification_id: int = Field(default=-1)
     reason: str = Field(default="")
-    result: str = Field(default="")
-    name: str = Field(default="")
+    category: str = Field(default="")
+    category_name: str = Field(default="")
 
 
 @dataclass()
@@ -118,6 +141,7 @@ class IntentDetectionExecutable(ComponentExecutable):
         self._llm: BaseChatModel = None
         self._initialized: bool = False
         self._config = component_config
+        self._append_default_category()
         self._router: BranchRouter = None
 
     # 获取意图的id和name，用于下一节点调用
@@ -230,7 +254,9 @@ class IntentDetectionExecutable(ComponentExecutable):
         intent_id_name = self._get_intent_id_name(self._config, intent_class)
         return IntentDetectionOutput(classification_id=intent_id_name.get(CLASSIFICATION_ID, -1),
                                      reason=reason,
-                                     result=intent_class).model_dump(exclude_defaults=True)
+                                     category=intent_class,
+                                     category_name=intent_id_name.get(CLASSIFICATION_NAME, "")
+                                     ).model_dump(exclude_defaults=True)
 
     def get_llm_result(self, current_inputs):
         """获取llm"""
@@ -334,6 +360,10 @@ class IntentDetectionExecutable(ComponentExecutable):
             False: Validation failed
         """
         return result in self._config.category_list
+
+    def _append_default_category(self):
+        self._config.category_list = [self._config.default_class] + self._config.category_list
+        self._config.category_name_list = ["默认意图"] + self._config.category_name_list
 
 
 class IntentDetectionComponent(WorkflowComponent):

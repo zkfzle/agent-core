@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-from typing import Union
+from typing import Union, Any
 
 from jiuwen.core.component.condition.condition import Condition
 from jiuwen.core.runtime.runtime import BaseRuntime
@@ -18,4 +18,6 @@ class NumberCondition(Condition):
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         current_idx = runtime.state().get(self._index_path) + 1
         limit_num = inputs
-        return current_idx < limit_num
+        updates: dict[str, Any] = {}
+        updates[INDEX] = current_idx
+        return (current_idx < limit_num, updates)

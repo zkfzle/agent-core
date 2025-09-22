@@ -30,6 +30,7 @@ from tests.unit_tests.workflow.test_node import AddTenNode, CommonNode
 
 pytestmark = pytest.mark.asyncio
 
+
 async def test_workflow_with_loop_number_condition():
     flow = await create_workflow()
 
@@ -66,15 +67,15 @@ async def create_workflow():
     loop_group = LoopGroup(WorkflowConfig(), PregelGraph())
     loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${l.index}"})
     loop_group.add_workflow_comp("2", AddTenNode("2"),
-                                 inputs_schema={"source": "${intermediateLoopVar.user_var}"})
-    set_variable_component = SetVariableComponent({"${intermediateLoopVar.user_var}": "${2.result}"})
+                                 inputs_schema={"source": "${l.intermediate_loop_var.user_var}"})
+    set_variable_component = SetVariableComponent({"${l.intermediate_loop_var.user_var}": "${2.result}"})
     loop_group.add_workflow_comp("3", set_variable_component)
     loop_group.start_nodes(["1"])
     loop_group.end_nodes(["3"])
     loop_group.add_connection("1", "2")
     loop_group.add_connection("2", "3")
-    output_callback = OutputCallback({"results": "${1.result}", "user_var": "${intermediateLoopVar.user_var}"})
-    intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
+    output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.intermediate_loop_var.user_var}"})
+    intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"}, "intermediate_loop_var")
     loop = LoopComponent("l", loop_group, PregelGraph(), NumberCondition("${loop_number}"),
                          callbacks=[output_callback, intermediate_callback])
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
@@ -197,6 +198,7 @@ class WorkflowTest(unittest.TestCase):
                                     expect_results={"result1": 1, "result2": None})
         self.assert_workflow_invoke({"b": "haha"}, WorkflowRuntime(), flow,
                                     expect_results={"result1": None, "result2": "haha"})
+
     def test_workflow_with_wait_for_all(self):
         # flow: start -> (a->a1)|b|c|d -> collect -> end
         for waitForAll in [True, False]:
@@ -262,7 +264,7 @@ class WorkflowTest(unittest.TestCase):
 
     def test_workflow_with_loop(self):
         flow = Workflow()
-        flow.set_start_comp("s", MockStartNode("s"))
+        flow.set_start_comp("s", MockStartNode("s"), inputs_schema={"a": "${input_number}"})
         flow.set_end_comp("e", MockEndNode("e"),
                           inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
         flow.add_workflow_comp("a", CommonNode("a"),
@@ -272,18 +274,19 @@ class WorkflowTest(unittest.TestCase):
 
         # create  loop: (1->2->3)
         loop_group = LoopGroup(WorkflowConfig(), PregelGraph())
-        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${arrLoopVar.item}"})
-        loop_group.add_workflow_comp("2", AddTenNode("2"), inputs_schema={"source": "${intermediateLoopVar.user_var}"})
-        set_variable_component = SetVariableComponent({"${intermediateLoopVar.user_var}": "${2.result}"})
+        loop_group.add_workflow_comp("1", AddTenNode("1", {"check": "${s.a}"}),
+                                     inputs_schema={"source": "${l.item}", "check": "${s.a}"})
+        loop_group.add_workflow_comp("2", AddTenNode("2"), inputs_schema={"source": "${l.user_var}"})
+        set_variable_component = SetVariableComponent({"${l.user_var}": "${2.result}"})
         loop_group.add_workflow_comp("3", set_variable_component)
         loop_group.start_comp("1")
         loop_group.end_comp("3")
         loop_group.add_connection("1", "2")
         loop_group.add_connection("2", "3")
-        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${intermediateLoopVar.user_var}"})
-        intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
+        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
+        intermediate_callback = IntermediateLoopVarCallback({"user_var": "${s.a}"})
 
-        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition("arrLoopVar", {"item": "${a.array}"}),
+        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
                              callbacks=[output_callback, intermediate_callback])
 
         flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
@@ -314,9 +317,9 @@ class WorkflowTest(unittest.TestCase):
 
         # create  loop: (1->2->3)
         loop_group = LoopGroup(WorkflowConfig(), PregelGraph())
-        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${arrLoopVar.item}"})
-        loop_group.add_workflow_comp("2", AddTenNode("2"), inputs_schema={"source": "${intermediateLoopVar.user_var}"})
-        set_variable_component = SetVariableComponent({"${intermediateLoopVar.user_var}": "${2.result}"})
+        loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${l.item}"})
+        loop_group.add_workflow_comp("2", AddTenNode("2"), inputs_schema={"source": "${l.user_var}"})
+        set_variable_component = SetVariableComponent({"${l.user_var}": "${2.result}"})
         loop_group.add_workflow_comp("3", set_variable_component)
         break_node = BreakComponent()
         loop_group.add_workflow_comp("4", break_node)
@@ -325,10 +328,10 @@ class WorkflowTest(unittest.TestCase):
         loop_group.add_connection("1", "2")
         loop_group.add_connection("2", "3")
         loop_group.add_connection("3", "4")
-        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${intermediateLoopVar.user_var}"})
+        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
         intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition("arrLoopVar", {"item": "${a.array}"}),
+        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
                              callbacks=[output_callback, intermediate_callback], break_nodes=[break_node])
 
         flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
@@ -341,7 +344,7 @@ class WorkflowTest(unittest.TestCase):
 
         result = self.invoke_workflow({"input_array": [1, 2, 3], "input_number": 1}, WorkflowRuntime(), flow)
         assert result == WorkflowOutput(result={"array_result": [11], "user_var": 11},
-                                       state=WorkflowExecutionState.COMPLETED)
+                                        state=WorkflowExecutionState.COMPLETED)
 
         result = self.invoke_workflow({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(), flow)
         assert result == WorkflowOutput(result={"array_result": [14], "user_var": 12},
@@ -577,25 +580,34 @@ class WorkflowTest(unittest.TestCase):
         # start -> a ---> b -> end
         flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"), inputs_schema={"a": "${a}"})
-        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"}, comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
-        flow.add_workflow_comp("b", CollectCompNode("b"), inputs_schema={"value": "${a.value}"}, stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.COLLECT], wait_for_all=True)
+        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"},
+                               comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+        flow.add_workflow_comp("b", CollectCompNode("b"), inputs_schema={"value": "${a.value}"},
+                               stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.COLLECT],
+                               wait_for_all=True)
         flow.set_end_comp("end", MockEndNode("end"), inputs_schema={"result1": "${b.value}"})
         flow.add_connection("start", "a")
         flow.add_stream_connection("a", "b")
         flow.add_connection("b", "end")
         idx = 1
-        self.assert_workflow_invoke({"a": idx}, WorkflowRuntime(), flow, expect_results={"result1": idx * sum(range(1, 3))})
+        self.assert_workflow_invoke({"a": idx}, WorkflowRuntime(), flow,
+                                    expect_results={"result1": idx * sum(range(1, 3))})
 
     def test_transform_workflow(self):
         # start -> a ---> b ---> c -> end
         flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"), inputs_schema={"a": "${a}"})
         # a: throw 2 frames: {value: 1}, {value: 2}
-        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"}, comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"},
+                               comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
         # b: transform 2 frames to c
-        flow.add_workflow_comp("b", TransformCompNode("b"), inputs_schema={"value": "${a.value}"}, stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.TRANSFORM], wait_for_all=True)
+        flow.add_workflow_comp("b", TransformCompNode("b"), inputs_schema={"value": "${a.value}"},
+                               stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.TRANSFORM],
+                               wait_for_all=True)
         # c: value = sum(value of frames)
-        flow.add_workflow_comp("c", CollectCompNode("c"), inputs_schema={"value": "${b.value}"}, stream_inputs_schema={"value": "${b.value}"}, comp_ability=[ComponentAbility.COLLECT], wait_for_all=True)
+        flow.add_workflow_comp("c", CollectCompNode("c"), inputs_schema={"value": "${b.value}"},
+                               stream_inputs_schema={"value": "${b.value}"}, comp_ability=[ComponentAbility.COLLECT],
+                               wait_for_all=True)
         flow.set_end_comp("end", MockEndNode("end"), inputs_schema={"result": "${c.value}"})
         flow.add_connection("start", "a")
         flow.add_stream_connection("a", "b")
@@ -609,19 +621,32 @@ class WorkflowTest(unittest.TestCase):
         flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"), inputs_schema={"a": "${a}"})
         # a: throw 2 frames: {value: 1}, {value: 2}
-        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"}, comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"},
+                               comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
         # b: transform frame to c
-        flow.add_workflow_comp("b", TransformCompNode("b"), inputs_schema={"value": "${a.value}"}, stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.TRANSFORM], wait_for_all=True)
+        flow.add_workflow_comp("b", TransformCompNode("b"), inputs_schema={"value": "${a.value}"},
+                               stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.TRANSFORM],
+                               wait_for_all=True)
         # c: transform frame to d
-        flow.add_workflow_comp("c", TransformCompNode("c"), inputs_schema={"value": "${b.value}"}, stream_inputs_schema={"value": "${b.value}"}, comp_ability=[ComponentAbility.TRANSFORM], wait_for_all=True)
+        flow.add_workflow_comp("c", TransformCompNode("c"), inputs_schema={"value": "${b.value}"},
+                               stream_inputs_schema={"value": "${b.value}"}, comp_ability=[ComponentAbility.TRANSFORM],
+                               wait_for_all=True)
         # d: transform frame to e
-        flow.add_workflow_comp("d", TransformCompNode("d"), inputs_schema={"value": "${c.value}"}, stream_inputs_schema={"value": "${c.value}"}, comp_ability=[ComponentAbility.TRANSFORM], wait_for_all=True)
+        flow.add_workflow_comp("d", TransformCompNode("d"), inputs_schema={"value": "${c.value}"},
+                               stream_inputs_schema={"value": "${c.value}"}, comp_ability=[ComponentAbility.TRANSFORM],
+                               wait_for_all=True)
         # e: transform frame to f
-        flow.add_workflow_comp("e", TransformCompNode("e"), inputs_schema={"value": "${d.value}"}, stream_inputs_schema={"value": "${d.value}"}, comp_ability=[ComponentAbility.TRANSFORM], wait_for_all=True)
+        flow.add_workflow_comp("e", TransformCompNode("e"), inputs_schema={"value": "${d.value}"},
+                               stream_inputs_schema={"value": "${d.value}"}, comp_ability=[ComponentAbility.TRANSFORM],
+                               wait_for_all=True)
         # f: transform frame to g
-        flow.add_workflow_comp("f", TransformCompNode("f"), inputs_schema={"value": "${e.value}"}, stream_inputs_schema={"value": "${e.value}"}, comp_ability=[ComponentAbility.TRANSFORM], wait_for_all=True)
+        flow.add_workflow_comp("f", TransformCompNode("f"), inputs_schema={"value": "${e.value}"},
+                               stream_inputs_schema={"value": "${e.value}"}, comp_ability=[ComponentAbility.TRANSFORM],
+                               wait_for_all=True)
         # g: collect all frames
-        flow.add_workflow_comp("g", CollectCompNode("g"), inputs_schema={"value": "${f.value}"}, stream_inputs_schema={"value": "${f.value}"}, comp_ability=[ComponentAbility.COLLECT], wait_for_all=True)
+        flow.add_workflow_comp("g", CollectCompNode("g"), inputs_schema={"value": "${f.value}"},
+                               stream_inputs_schema={"value": "${f.value}"}, comp_ability=[ComponentAbility.COLLECT],
+                               wait_for_all=True)
         flow.set_end_comp("end", MockEndNode("end"), inputs_schema={"result": "${g.value}"})
         flow.add_connection("start", "a")
         flow.add_stream_connection("a", "b")

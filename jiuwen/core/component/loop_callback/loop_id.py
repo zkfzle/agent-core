@@ -5,6 +5,7 @@ from jiuwen.core.component.loop_callback.loop_callback import LoopCallback
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Output
 from jiuwen.core.common.constants.constant import INDEX, LOOP_ID
+from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 
 
 class LoopIdCallback(LoopCallback):
@@ -12,8 +13,8 @@ class LoopIdCallback(LoopCallback):
         self._node_id = node_id
 
     def first_in_loop(self, runtime: BaseRuntime) -> Output:
-        runtime.state().update_global({self._node_id + "." + INDEX: runtime.state().get(INDEX) + 1})
         runtime.state().update_global({LOOP_ID: self._node_id})
+        runtime.state().update_global({self._node_id + NESTED_PATH_SPLIT + INDEX: runtime.state().get(INDEX) + 1})
         return None
 
     def out_loop(self, runtime: BaseRuntime) -> Output:
@@ -21,7 +22,7 @@ class LoopIdCallback(LoopCallback):
         return None
 
     def start_round(self, runtime: BaseRuntime) -> Output:
-        runtime.state().update_global({self._node_id + "." + INDEX: runtime.state().get(INDEX) + 1})
+        runtime.state().update_global({self._node_id + NESTED_PATH_SPLIT + INDEX: runtime.state().get(INDEX) + 1})
         return None
 
     def end_round(self, runtime: BaseRuntime) -> Output:

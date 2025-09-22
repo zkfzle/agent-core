@@ -17,45 +17,47 @@ class OutputCallback(LoopCallback):
         self._round_result_root = round_result_root if round_result_root else "round"
         self._intermediate_loop_var_root = "intermediateLoopVar" + NESTED_PATH_SPLIT
 
-    def _generate_results(self, results: list[(str, Any)]):
-        for key, value in self._outputs_format.items():
-            if isinstance(value, str) and is_ref_path(value):
-                ref_str = extract_origin_key(value)
-                results.append((ref_str, None, key))
-            elif isinstance(value, dict):
-                self._generate_results(results)
-
     def first_in_loop(self, runtime: BaseRuntime) -> Output:
-        _results: list[(str, Any)] = []
-        self._generate_results(_results)
+        _results: list[Any] = []
         runtime.state().update({self._round_result_root: _results})
         return None
 
-    def out_loop(self, runtime: BaseRuntime) -> Output:
-        results: list[(str, Any)] = runtime.state().get(self._round_result_root)
-        output = {}
+    def _generate_output(self, runtime: BaseRuntime, results: list[Any], root: list[str], output_format: Any):
+        if isinstance(output_format, dict):
+            output = {}
+            for key, value in output_format.items():
+                path = root.copy()
+                path.append(key)
+                output[key] = self._generate_output(runtime, results, path, value)
+            return output
+        if isinstance(output_format, str) and is_ref_path(output_format):
+            ref_str = extract_origin_key(output_format)
+            path = ref_str.split(NESTED_PATH_SPLIT)
+            if path[0] == runtime.node_id():
+                data = results[-1]
+                for key in root:
+                    data = data.get(key)
+                return data
+
+        output = []
         for result in results:
-            output[result[-1]] = result[1]
-        runtime.state().update(output)
+            data = result
+            for key in root:
+                data = data.get(key)
+            output.append(data)
         return output
+
+    def out_loop(self, runtime: BaseRuntime) -> Output:
+        results: list[Any] = runtime.state().get(self._round_result_root)
+        return self._generate_output(runtime, results, [], self._outputs_format)
 
     def start_round(self, runtime: BaseRuntime) -> Output:
         return None
 
     def end_round(self, runtime: BaseRuntime) -> Output:
-        results: list[(str, Any)] = runtime.state().get(self._round_result_root)
+        results: list[Any] = runtime.state().get(self._round_result_root)
         if not isinstance(results, list):
             raise RuntimeError("error results in round process")
-        for value in results:
-            path = value[0]
-            if path.startswith(self._intermediate_loop_var_root):
-                value[1] = runtime.state().get(path)
-            elif isinstance(value, list):
-                if value[1] is None:
-                    value[1] = []
-                value[1].append(runtime.state().get(path))
-            else:
-                raise RuntimeError("error process in loop: " + path + ", " + str(value))
+        results.append(runtime.state().get_inputs(self._outputs_format))
         runtime.state().update({self._round_result_root: results})
         return None
-

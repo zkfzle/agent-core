@@ -119,14 +119,12 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
         return self.atomic_invoke(runtime=self._runtime)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        inputs = self._runtime.state().get_inputs(self._node_id)
-        outputs = self._condition_invoke(inputs=inputs, runtime=self._runtime)
+        outputs = self._condition_invoke(runtime=self._runtime)
         self._runtime.state().set_outputs({self._node_id: outputs[1]})
         return outputs[0]
 
-    def _condition_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+    def _condition_invoke(self, runtime: BaseRuntime) -> Output:
         index = self._runtime.state().get(INDEX)
-        runtime.state().update(inputs)
         if index is None:
             raise JiuWenBaseException(-1, 'inner error, loop index is not set')
         continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
@@ -165,8 +163,8 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
             self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
         compiled = self._graph.compile(self._runtime)
         if isinstance(self._body, LoopGroup):
-            self._body.compiled = self._body.compile(self._runtime)
-            return await compiled.invoke(inputs, self._runtime)
+            self._body.compiled = self._body.compile(self._runtime.parent())
+            return await compiled.invoke(inputs, self._runtime.parent())
         return None
 
     def graph_invoker(self) -> bool:

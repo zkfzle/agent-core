@@ -49,7 +49,7 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
 
     @staticmethod
     def _create_prompt_template():
-        system_prompt = "你是一个AI助手，在适当的时候调用合适的工作流，帮助我问一下查询什么城市的天气"
+        system_prompt = "你是一个AI助手，在适当的时候调用合适的工作流，帮助我查询一下天气"
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
@@ -167,5 +167,5 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             sub_tasks=[sub_task],
         )
         if result.get("result_type") == 'question':
-            result = await react_agent.invoke({"conversation_id": "12345", "query": "杭州"})
+            result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
             print(f"ReActAgent 第二次输出结果：{result}")

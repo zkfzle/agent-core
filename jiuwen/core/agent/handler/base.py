@@ -46,6 +46,9 @@ class AgentHandler:
     async def send_message(self, inputs: AgentHandlerInputs):
         return dict()
 
+    def search_workflow_metadata_by_workflow_name(self, workflow_name: str) -> WorkflowSchema:
+        pass
+
 
 class AgentHandlerImpl(AgentHandler):
     def __init__(self, agent_config: AgentConfig):
@@ -62,7 +65,7 @@ class AgentHandlerImpl(AgentHandler):
         workflow_name = inputs.name
         context_manager = context.controller_context_manager()
         workflow_manager = context_manager.workflow_mgr
-        workflow_metadata = self._search_workflow_metadata_by_workflow_name(workflow_name)
+        workflow_metadata = self.search_workflow_metadata_by_workflow_name(workflow_name)
         workflow = workflow_manager.find_workflow_by_id_and_version(workflow_metadata.id, workflow_metadata.version)
         workflow_result = await workflow.invoke(inputs.arguments, context.create_workflow_runtime())
         return workflow_result.result
@@ -78,7 +81,7 @@ class AgentHandlerImpl(AgentHandler):
         plugin_result = plugin.invoke(plugin_args)
         return plugin_result
 
-    def _search_workflow_metadata_by_workflow_name(self, workflow_name: str) -> WorkflowSchema:
+    def search_workflow_metadata_by_workflow_name(self, workflow_name: str) -> WorkflowSchema:
         workflows_config = self._config.workflows
         for item in workflows_config:
             if workflow_name == item.name:

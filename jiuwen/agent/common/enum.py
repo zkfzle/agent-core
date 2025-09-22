@@ -40,3 +40,12 @@ class TaskStatus(Enum):
     SUCCESS = auto()  # 成功结束
     FAILED = auto()  # 异常结束
     CANCELLED = auto()  # 被取消
+
+class WorkflowAgentStatus(Enum):
+    INITIALIZED = "initialized"
+    COMPLETED = "completed"
+    INTERRUPTED = "interrupted"
+
+class WorkflowAgentEvent(Enum):
+    NO_EVENT = "no_event"
+    USER_INVOKE = "user_invoke"

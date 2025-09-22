@@ -4,6 +4,7 @@ from pydantic import Field
 
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
+from jiuwen.agent.config.react_config import ConstrainConfig
 
 
 class WorkflowAgentConfig(AgentConfig):
@@ -17,6 +18,8 @@ class WorkflowAgentConfig(AgentConfig):
     global_variables: List[dict] = Field(default_factory=list)
     # 全局参数模板（可选）
     global_params: Dict[str, Any] = Field(default_factory=dict)
+
+    constrain: ConstrainConfig = Field(default=ConstrainConfig())
 
     @property
     def is_single_workflow(self) -> bool:

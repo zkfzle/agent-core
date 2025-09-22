@@ -197,7 +197,7 @@ class Workflow(BaseWorkFlow):
         runtime.config().set_workflow_config(self._workflow_config)
         compiled_graph = self._graph.compile(runtime)
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
-        results = runtime.state().get_inputs(self._end_comp_id)
+        results = runtime.state().get_outputs(self._end_comp_id)
         logger.info("end to sub_invoke, results=%s", results)
         return results
 

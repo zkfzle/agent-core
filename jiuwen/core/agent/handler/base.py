@@ -10,7 +10,7 @@ from jiuwen.agent.common.enum import SubTaskType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 
 
 class AgentHandlerInputs(BaseModel):

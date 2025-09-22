@@ -10,8 +10,7 @@ from jiuwen.core.context.controller_context.controller_context_manager import Co
 from jiuwen.core.agent.controller.workflow_controller import WorkflowController, WorkflowControllerOutput
 from jiuwen.core.agent.agent import Agent
 from jiuwen.core.agent.handler.base import AgentHandlerImpl, AgentHandlerInputs
-from jiuwen.core.runtime.runtime import WorkflowRuntime
-from jiuwen.core.runtime.state import InMemoryState
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.workflow.base import Workflow
 
 
@@ -63,10 +62,7 @@ class WorkflowAgent(Agent):
 
     def _create_runtime(self, session_id: str) -> WorkflowRuntime:
         """创建Runtime实例"""
-        return WorkflowRuntime(
-            state=InMemoryState(),
-            session_id=session_id
-        )
+        return WorkflowRuntime(session_id=session_id)
 
     def _create_controller(self, context_engine: ContextEngine, runtime: WorkflowRuntime) -> WorkflowController:
         """创建WorkflowController实例"""

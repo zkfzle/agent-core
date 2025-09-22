@@ -28,8 +28,9 @@ import unittest
 from collections.abc import Callable
 
 from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.runtime import BaseRuntime, WorkflowRuntime
-from jiuwen.core.runtime.state import InMemoryState
+from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime
+from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
 from jiuwen.core.stream.writer import CustomSchema, OutputSchema
@@ -116,7 +117,7 @@ class WorkflowTest(unittest.TestCase):
             index_dict = {key: 0 for key in expected_datas_model.keys()}
 
             async for chunk in flow.stream({"a": 1, "b": "haha"},
-                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                           WorkflowRuntime()):
                 if isinstance(chunk, CustomSchema):
                     node_id = chunk.node_id
                     index = index_dict[node_id]
@@ -180,7 +181,7 @@ class WorkflowTest(unittest.TestCase):
             }
             index_dict = {key: 0 for key in expected_datas_model.keys()}
             async for chunk in flow.stream({"a": 1, "b": "haha"},
-                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                           WorkflowRuntime()):
                 if isinstance(chunk, CustomSchema):
                     node_id = chunk.node_id
                     index = index_dict[node_id]
@@ -247,7 +248,7 @@ class WorkflowTest(unittest.TestCase):
 
             index = 0
             async for chunk in main_workflow.stream({"a": 1, "b": "haha"},
-                                                    WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                                    WorkflowRuntime()):
                 if not isinstance(chunk, (TraceSchema, OutputSchema)):
                     assert chunk == expected_datas_model[index], f"Mismatch at index {index}"
                     logger.info(f"stream chunk: {chunk}")
@@ -324,7 +325,7 @@ class WorkflowTest(unittest.TestCase):
             main_workflow.add_connection("b", "end")
 
             async for chunk in main_workflow.stream({"a": 1, "b": "haha"},
-                                                    WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                                    WorkflowRuntime()):
                 if isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)
@@ -441,7 +442,7 @@ class WorkflowTest(unittest.TestCase):
             main_workflow.add_connection("b", "end")
 
             async for chunk in main_workflow.stream({"a": 1, "b": "haha"},
-                                                    WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                                    WorkflowRuntime()):
                 if isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)
@@ -492,7 +493,7 @@ class WorkflowTest(unittest.TestCase):
             flow.add_connection("b", "e")
 
             async for chunk in flow.stream({"input_array": [1, 2, 3], "input_number": 1},
-                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                           WorkflowRuntime()):
                 if isinstance(chunk, TraceSchema):
                     print(f"stream chunk: {chunk}")
                     tracer_chunks.append(chunk)

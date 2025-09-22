@@ -10,8 +10,8 @@ from jiuwen.core.agent.handler.base import AgentHandlerImpl
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.runtime import WorkflowRuntime
-from jiuwen.core.runtime.state import InMemoryState
+from jiuwen.core.runtime.workflow import WorkflowRuntime
+from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.workflow.base import Workflow
 

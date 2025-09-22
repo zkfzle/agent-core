@@ -15,7 +15,7 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.context_engine.context import AgentContext
 from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.state import InMemoryState
+from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolInfo
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow
@@ -37,7 +37,8 @@ from unittest.mock import patch, AsyncMock
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
-from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime, Runtime
+from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
 
@@ -324,7 +325,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("s", "llm")
         flow.add_stream_connection("llm", "e")
 
-        context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime()
         async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, runtime=context):
             print(f"stream chunk >>> {chunk}")
 
@@ -372,7 +373,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("s", "llm")
         flow.add_connection("llm", "e")
 
-        context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime()
         async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, runtime=context):
             print(f"stream chunk >>> {chunk}")
 

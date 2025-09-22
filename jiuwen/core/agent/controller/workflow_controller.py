@@ -12,8 +12,8 @@ from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
-from jiuwen.core.runtime.runtime import WorkflowRuntime
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow

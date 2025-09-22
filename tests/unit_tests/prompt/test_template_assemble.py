@@ -149,7 +149,6 @@ class TestPromptAssemble(unittest.TestCase):
         self.assertEqual(assembled_template[2], template.content[2])
         print(assembled_template)
 
-    @unittest.skip("李雷修复")
     def test_template_format(self):
         template = Template(
             name="test",

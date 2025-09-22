@@ -6,8 +6,9 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.runtime import BaseRuntime, WorkflowRuntime
-from jiuwen.core.runtime.state import InMemoryState
+from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime
+from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from tests.unit_tests.workflow.test_mock_node import Node1, StreamCompNode
@@ -95,7 +96,7 @@ class EndNodeTest(unittest.TestCase):
 
             index = 0
             async for chunk in flow.stream({"a": 1, "b": "haha"},
-                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                           WorkflowRuntime()):
                 logger.info("stream chunk: {%s}", chunk)
                 index += 1
 
@@ -126,7 +127,7 @@ class EndNodeTest(unittest.TestCase):
 
             index = 0
             async for chunk in flow.stream({"a": 1, "b": "haha"},
-                                           WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)):
+                                           WorkflowRuntime()):
                 logger.info("stream chunk: {%s}", chunk)
                 index += 1
 

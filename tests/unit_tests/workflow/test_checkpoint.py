@@ -14,8 +14,8 @@ from jiuwen.core.component.loop_callback.output import OutputCallback
 from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
-from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
-from jiuwen.core.runtime.runtime import WorkflowRuntime
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.base import BaseStreamMode
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow, WorkflowExecutionState, WorkflowOutput

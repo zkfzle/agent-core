@@ -1,7 +1,6 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
 
@@ -9,10 +8,7 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
-from jiuwen.core.runtime.state import State, InMemoryState, InMemoryStateLike, InMemoryCommitState
-from jiuwen.core.runtime.store import Store
-from jiuwen.core.stream.base import BaseStreamMode
-from jiuwen.core.stream.emitter import StreamEmitter
+from jiuwen.core.runtime.state import State
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
 from jiuwen.core.tracer.tracer import Tracer
@@ -48,11 +44,15 @@ class BaseRuntime(ABC):
         pass
 
     @abstractmethod
-    def queue_manager(self) -> MessageQueueManager:
+    def session_id(self) -> str:
         pass
 
     @abstractmethod
-    def session_id(self) -> str:
+    def resource_manager(self):
+        pass
+
+    @abstractmethod
+    def context(self) -> Context:
         pass
 
     def set_controller_context_manager(self, controller_context_manager) -> None:
@@ -64,155 +64,11 @@ class BaseRuntime(ABC):
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
         return
 
+    def queue_manager(self) -> MessageQueueManager:
+        pass
+
     def set_queue_manager(self, queue_manager: MessageQueueManager):
         return
-
-    def context(self) -> Context:
-        pass
-
-
-class WorkflowRuntime(BaseRuntime):
-    def __init__(self, state: State = None, config: Config = None, store: Store = None, tracer: Tracer = None,
-                 session_id: str = None, controller_context_manager: Any = None, context: Context = None):
-        self._config = config if config is not None else Config()
-        self._state = state if state is not None else InMemoryState()
-        self._store = store
-        self._tracer = tracer
-        self._callback_manager = CallbackManager()
-        self._stream_writer_manager = None  # type: StreamWriterManager
-        self._controller_context_manager = controller_context_manager
-        self._session_id = session_id if session_id else uuid.uuid4().hex
-        self._queue_manager = None  # type: MessageQueueManager
-        self._context = context
-
-    def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
-        if self._stream_writer_manager is not None:
-            return
-        self._stream_writer_manager = stream_writer_manager
-
-    def set_tracer(self, tracer: Tracer) -> None:
-        self._tracer = tracer
-
-    def set_controller_context_manager(self, controller_context_manager) -> None:
-        self._controller_context_manager = controller_context_manager
-
-    def config(self) -> Config:
-        return self._config
-
-    def state(self) -> State:
-        return self._state
-
-    def tracer(self) -> Any:
-        return self._tracer
-
-    def stream_writer_manager(self) -> StreamWriterManager:
-        return self._stream_writer_manager
-
-    def callback_manager(self) -> CallbackManager:
-        return self._callback_manager
-
-    def controller_context_manager(self):
-        return self._controller_context_manager
-
-    def set_queue_manager(self, queue_manager: MessageQueueManager):
-        if self._queue_manager is not None:
-            return
-        self._queue_manager = queue_manager
-
-    def queue_manager(self) -> MessageQueueManager:
-        return self._queue_manager
-
-    def session_id(self) -> str:
-        return self._session_id
-
-    def context(self) -> Context:
-        return self._context
-
-
-class NodeRuntime(BaseRuntime):
-    def __init__(self, runtime: BaseRuntime, node_id: str):
-        self._node_id = node_id
-        self._parent_id = runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
-        self._executable_id = self._parent_id + "." + node_id if len(self._parent_id) != 0 else node_id
-        self._state = runtime.state().create_node_state(self._executable_id, self._parent_id)
-        self._runtime = runtime
-
-    def node_id(self):
-        return self._node_id
-
-    def executable_id(self):
-        return self._executable_id
-
-    def parent_id(self):
-        return self._parent_id
-
-    def tracer(self) -> Tracer:
-        return self._runtime.tracer()
-
-    def state(self) -> State:
-        return self._state
-
-    def config(self) -> Config:
-        return self._runtime.config()
-
-    def stream_writer_manager(self) -> StreamWriterManager:
-        return self._runtime.stream_writer_manager()
-
-    def callback_manager(self) -> CallbackManager:
-        return self._runtime.callback_manager()
-
-    def controller_context_manager(self):
-        return self._runtime.controller_context_manager()
-
-    def queue_manager(self) -> MessageQueueManager:
-        return self._runtime.queue_manager()
-
-    def session_id(self) -> str:
-        return self._runtime.session_id()
-
-    def parent(self):
-        return self._runtime
-
-
-class AgentRuntime(BaseRuntime):
-    def __init__(self, trace_id: str):
-        self._trace_id = trace_id
-        self._global_state = InMemoryStateLike()
-        self._stream_writer_manager = StreamWriterManager(StreamEmitter(), [BaseStreamMode.TRACE])
-        self._callback_manager = CallbackManager()
-        tracer = Tracer()
-        tracer.init(self._stream_writer_manager, self._callback_manager)
-        self._tracer = tracer
-
-    def config(self) -> Config:
-        pass
-
-    def state(self) -> State:
-        pass
-
-    def tracer(self) -> Any:
-        return self._tracer
-
-    def stream_writer_manager(self) -> StreamWriterManager:
-        return self._stream_writer_manager
-
-    def callback_manager(self) -> CallbackManager:
-        return self._callback_manager
-
-    def controller_context_manager(self):
-        pass
-
-    def queue_manager(self) -> MessageQueueManager:
-        pass
-
-    def session_id(self) -> str:
-        return self._trace_id
-
-    def create_workflow_runtime(self) -> WorkflowRuntime:
-        return WorkflowRuntime(
-            state=InMemoryState(InMemoryCommitState(self._global_state)),
-            tracer=self._tracer,
-            session_id=self._trace_id)
 
 
 Workflow = TypeVar("Workflow", contravariant=True)
@@ -373,8 +229,11 @@ class ProxyRuntime(BaseRuntime):
     def controller_context_manager(self):
         return self._stub.controller_context_manager()
 
-    def queue_manager(self) -> MessageQueueManager:
-        return self._stub.queue_manager()
+    def resource_manager(self):
+        pass
+
+    def context(self) -> Context:
+        pass
 
     def session_id(self) -> str:
         return self._stub.session_id()

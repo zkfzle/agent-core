@@ -7,7 +7,7 @@ from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionConfig
-from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 
 fake_base = types.ModuleType("base")

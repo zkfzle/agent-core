@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock, Mock
 import pytest
 
 from jiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
-from jiuwen.core.runtime.runtime import NodeRuntime, WorkflowRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 from jiuwen.core.utils.tool.service_api.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi

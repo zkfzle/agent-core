@@ -1,8 +1,9 @@
 import unittest
 
 from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.runtime import WorkflowRuntime, NodeRuntime
-from jiuwen.core.runtime.state import InMemoryState, ReadableStateLike
+from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
+from jiuwen.core.runtime.state import ReadableStateLike
+from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.runtime.utils import update_dict, get_by_schema
 
 
@@ -14,7 +15,7 @@ class ContextTest(unittest.TestCase):
 
     def test_basic(self):
         # Workflow context/
-        context = WorkflowRuntime(config=Config(), state=InMemoryState(), store=None)
+        context = WorkflowRuntime()
         context.state().commit_user_inputs({'a': 1, 'b': 2})
         assert context.state().get_global('a') == 1
         assert context.state().get_global('b') == 2

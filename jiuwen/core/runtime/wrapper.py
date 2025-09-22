@@ -1,7 +1,8 @@
 from typing import Union, Any, Optional, List, Tuple
 
-from jiuwen.core.graph.interrupt.interaction import Interaction
-from jiuwen.core.runtime.runtime import Runtime, NodeRuntime, Workflow
+from jiuwen.core.runtime.interaction.interaction import WorkflowInteraction
+from jiuwen.core.runtime.runtime import Runtime, Workflow
+from jiuwen.core.runtime.workflow import NodeRuntime
 from jiuwen.core.stream.writer import StreamWriter, OutputSchema
 from jiuwen.core.tracer.workflow_tracer import trace, trace_error
 from jiuwen.core.utils.llm.base import BaseChatModel
@@ -63,7 +64,7 @@ class WrappedNodeRuntime(Runtime):
 
     async def interact(self, value):
         if self._interaction is None:
-            self._interaction = Interaction(self._inner)
+            self._interaction = WorkflowInteraction(self._inner)
         return await self._interaction.wait_user_inputs(value)
 
     def add_prompt(self, template_id: str, template: Template):

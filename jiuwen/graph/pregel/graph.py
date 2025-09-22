@@ -8,13 +8,14 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel._loop import PregelLoop
 
+from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer, InMemoryCheckpointer
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.graph.graph_state import GraphState
-from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.graph.vertex import Vertex
-from jiuwen.graph.checkpoint.memory import InMemoryCheckpointer, default_inmemory_checkpointer
+from jiuwen.graph.checkpoint.checkpointer import GraphCheckpointer
 
 
 class AfterProcessor:
@@ -47,6 +48,7 @@ class PregelGraph(Graph):
         self.waits: set[str] = set()
         self.nodes: dict[str, Vertex] = {}
         self.checkpoint_saver = None
+        self._graph_checkpointer = None
 
     def start_node(self, node_id: str) -> Self:
         self.pregel.set_entry_point(node_id)
@@ -81,9 +83,11 @@ class PregelGraph(Graph):
         if self.compiledStateGraph is None:
             self._pre_compile()
             self.checkpoint_saver = default_inmemory_checkpointer
-            self.compiledStateGraph = self.pregel.compile(checkpointer=self.checkpoint_saver)
-
-        self.checkpoint_saver.register_runtime(runtime)
+            graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer())
+            self.compiledStateGraph = self.pregel.compile(checkpointer=graph_checkpointer)
+            self._graph_checkpointer = graph_checkpointer
+        else:
+            self._graph_checkpointer.reset(runtime)
         return CompiledGraph(self.compiledStateGraph, self.checkpoint_saver)
 
     def _pre_compile(self):
@@ -113,33 +117,32 @@ class CompiledGraph(ExecutableGraph):
 
     async def _invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         is_main = False
+        session_id = runtime.session_id()
+        graph_inputs = None if isinstance(inputs, InteractiveInput) else {"source_node_id": []}
+
         if config is None:
             is_main = True
-            config = {"configurable": {"thread_id": runtime.session_id()}}
-            if isinstance(inputs, InteractiveInput) and self._checkpoint_saver:
-                self._checkpoint_saver.register_runtime(runtime)
-                self._checkpoint_saver.register_input(inputs)
-                self._checkpoint_saver.recover(config)
-            else:
-                runtime.state().commit_user_inputs(inputs)
+            config = {"configurable": {"thread_id": session_id}}
+        if isinstance(inputs, InteractiveInput):
+            await self._checkpoint_saver.pre_workflow_execute(inputs, runtime)
         else:
             runtime.state().commit_user_inputs(inputs)
-        graph_inputs = None if isinstance(inputs, InteractiveInput) else {"source_node_id": []}
+
+
+        result = None
+        exception = None
 
         try:
             result = await self._compiled_state_graph.ainvoke(graph_inputs,
                                                               config=config,
                                                               durability="exit")
-        except:
-            if is_main and self._checkpoint_saver:
-                self._checkpoint_saver.save(config)
-            raise
+        except Exception as e:
+            exception = e
 
-        if is_main and self._checkpoint_saver:
-            if result.get(INTERRUPT) is None:
-                self._checkpoint_saver.delete_thread(runtime.session_id())
-            else:
-                self._checkpoint_saver.save(config)
+        if is_main:
+            await self._checkpoint_saver.post_workflow_execute(result, exception, runtime)
+        elif exception is not None:
+            raise exception
 
     async def stream(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
         async for chunk in self._compiled_state_graph.astream({"source_node_id": []}):

@@ -211,3 +211,7 @@ __marimo__/
 
 .idea/
 .vscode/
+
+*_tracer.json
+**/logs/
+tests/**/report/

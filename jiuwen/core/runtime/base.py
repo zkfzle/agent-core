@@ -3,7 +3,8 @@ from typing import AsyncIterator, TypeVar
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Executable
-from jiuwen.core.runtime.runtime import Runtime, BaseRuntime, NodeRuntime
+from jiuwen.core.runtime.runtime import Runtime, BaseRuntime
+from jiuwen.core.runtime.workflow import NodeRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
 
 Input = TypeVar("Input", contravariant=True)

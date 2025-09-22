@@ -46,7 +46,6 @@ class TestTemplateManager(unittest.TestCase):
         except JiuWenBaseException as e:
             self.assertEqual(e.error_code, StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code)
 
-    @unittest.skip("李雷修复")
     def test_template_manager_format(self):
         template = Template(
             name="test_template_manager_format",

@@ -12,7 +12,8 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
-from jiuwen.core.runtime.runtime import BaseRuntime, NodeRuntime
+from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.workflow import NodeRuntime
 from jiuwen.core.runtime.utils import get_by_schema
 from jiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs
 from jiuwen.core.workflow.workflow_config import ComponentAbility

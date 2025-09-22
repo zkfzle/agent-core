@@ -7,7 +7,7 @@ from typing import Any
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.runtime.state import CommitState
+from jiuwen.core.runtime.workflow_state import CommitState
 
 
 class AtomicNode(ABC):

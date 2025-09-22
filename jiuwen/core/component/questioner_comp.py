@@ -6,7 +6,7 @@ import json
 import re
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional, List, Dict, Iterator, AsyncIterator, Union
+from typing import Any, Optional, List, Dict, Union
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -18,7 +18,6 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.graph.executable import Executable, Input, Output
-from jiuwen.core.graph.interrupt.interaction import Interaction
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory

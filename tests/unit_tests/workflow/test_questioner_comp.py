@@ -11,10 +11,9 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.graph.executable import Input
-from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
-from jiuwen.core.runtime.runtime import WorkflowRuntime
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
-from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 

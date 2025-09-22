@@ -14,14 +14,14 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.runtime import WorkflowRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.utils.format.format_utils import FormatUtils
 from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, HumanMessage, AIMessage, \
     ToolCall, UsageMetadata
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.graph.interrupt.interactive_input import InteractiveInput
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.common.logging import logger
 
 
@@ -140,6 +140,7 @@ class ReActController(Controller):
             # 但为了保持与AgentHandler的兼容性，我们需要传递一个context对象
             from jiuwen.core.agent.task.task_context import AgentRuntime
             temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+            await temp_context.initialize()
             temp_context.set_controller_context_manager(self._context_mgr)
 
             # 直接传递 controller_output.sub_tasks 而不是从状态机获取
@@ -220,6 +221,7 @@ class ReActController(Controller):
         # 创建一个临时的TaskContext
         from jiuwen.core.agent.task.task_context import AgentRuntime
         temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+        await temp_context.initialize()
         temp_context.set_controller_context_manager(self._context_mgr)
 
         # 直接传递 sub_tasks 而不是让 _execute_sub_tasks 从状态机获取
@@ -263,6 +265,7 @@ class ReActController(Controller):
             # 创建一个临时的TaskContext
             from jiuwen.core.agent.task.task_context import AgentRuntime
             temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+            await temp_context.initialize()
             temp_context.set_controller_context_manager(self._context_mgr)
 
             # 直接传递 controller_output.sub_tasks
@@ -326,6 +329,7 @@ class ReActController(Controller):
         # 创建一个临时的TaskContext
         from jiuwen.core.agent.task.task_context import AgentRuntime
         temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+        await temp_context.initialize()
         temp_context.set_controller_context_manager(self._context_mgr)
 
         # 直接传递 sub_tasks

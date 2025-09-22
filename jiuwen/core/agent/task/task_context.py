@@ -3,9 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import Any, List, Tuple, Union, Optional
 
-from jiuwen.core.runtime.runtime import AgentRuntime as Inner
-from jiuwen.core.runtime.runtime import WorkflowRuntime, BaseRuntime, Workflow
+from jiuwen.core.runtime.agent import AgentRuntime as Inner
+from jiuwen.core.runtime.interaction.interaction import AgentInteraction
+from jiuwen.core.runtime.runtime import BaseRuntime, Workflow
 from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.base import BaseChatModel
@@ -17,39 +19,53 @@ from jiuwen.core.utils.tool.base import Tool
 class AgentRuntime(Runtime):
     def __init__(self, trace_id: str):
         self._inner = Inner(trace_id)
+        self._interaction = None
+
+    async def initialize(self):
+        await self._inner.checkpointer().pre_agent_execute(self._inner)
 
     def get_tool(self, tool_id: str) -> Tool:
         pass
 
     def executable_id(self) -> str:
-        pass
+        return ""
 
     def trace_id(self) -> str:
-        pass
+        return self._inner.session_id()
 
     def update_state(self, data: dict):
-        pass
+        self._inner.state().update(data)
 
     def get_state(self, key: Union[str, list, dict] = None) -> Any:
-        pass
+        return self._inner.state().get(key)
 
     def update_global_state(self, data: dict):
-        pass
+        self._inner.state().update_global(data)
 
     def get_global_state(self, key: Union[str, list, dict] = None) -> Any:
-        pass
+        return self._inner.state().get_global(key)
 
     def stream_writer(self) -> Optional[StreamWriter]:
-        pass
+        manager = self._inner.stream_writer_manager()
+        if manager:
+            return manager.get_custom_writer()
+        return None
 
     def custom_writer(self) -> Optional[StreamWriter]:
-        pass
+        manager = self._inner.stream_writer_manager()
+        if manager:
+            return manager.get_custom_writer()
+        return None
 
     async def write_stream(self, data: Union[dict, OutputSchema]):
-        pass
+        writer = self.stream_writer()
+        if writer:
+            await writer.write(data)
 
     async def write_custom_stream(self, data: dict):
-        pass
+        writer = self.custom_writer()
+        if writer:
+            await writer.write(data)
 
     async def trace(self, data: dict):
         pass
@@ -58,7 +74,9 @@ class AgentRuntime(Runtime):
         pass
 
     async def interact(self, value):
-        pass
+        if self._interaction is None:
+            self._interaction = AgentInteraction(self._inner)
+        return await self._interaction.wait_user_inputs(value)
 
     def add_prompt(self, template_id: str, template: Template):
         pass
@@ -109,9 +127,10 @@ class AgentRuntime(Runtime):
         pass
 
     def base(self) -> BaseRuntime:
-        pass
+        return self._inner
 
     async def close(self):
+        await self._inner.checkpointer().post_agent_execute(self.trace_id())
         await self._inner.stream_writer_manager().stream_emitter().close()
 
     def set_controller_context_manager(self, controller_context_manager: Any):

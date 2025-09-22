@@ -2,7 +2,7 @@
 from typing import Dict, Callable, Any
 
 from jiuwen.agent.common.enum import ReActStatus, ReActEvent
-from jiuwen.core.runtime.runtime import WorkflowRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.common.logging import logger
 
 

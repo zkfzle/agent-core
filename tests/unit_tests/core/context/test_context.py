@@ -91,3 +91,12 @@ class ContextTest(unittest.TestCase):
         assert get_by_schema({"result": ["${abc}", "cde"]}, data=source) == {"result": [None, "cde"]}
         assert get_by_schema({"result": {"abc": "cde", "result": "${a}"}}, data=source) == {
             "result": {"abc": "cde", "result": {'b': [1, 2, 3]}}}
+
+    def test_clean_non_value(self):
+        data = {"a": {"a1": 1, "a2":2},  "b": {"b1": {"b11": "1",  "b12": [1,2,None], "b13": "2"}}, "c":2}
+        update = {"c": None}
+        update_dict(update, data)
+        assert data == {"a": {"a1": 1, "a2":2},  "b": {"b1": {"b11": "1",  "b12": [1,2,None], "b13": "2"}}}
+        update = {"a.a1": None}
+        update_dict(update, data)
+        assert data == {"a": {"a2":2},  "b": {"b1": {"b11": "1",  "b12": [1,2,None], "b13": "2"}}}

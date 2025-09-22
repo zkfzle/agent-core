@@ -1,8 +1,6 @@
 import uuid
-
 from jiuwen.core.tracer.handler import TraceAgentHandler, TraceWorkflowHandler, TracerHandlerName
 from jiuwen.core.tracer.span import SpanManager
-
 
 class Tracer:
     def __init__(self):

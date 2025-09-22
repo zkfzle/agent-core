@@ -20,9 +20,16 @@ def update_dict(update: dict, source: dict) -> None:
     :param update: update dict, which key is nested
     :param source: source dict, which key must not be nested
     """
+    removed = []
     for key, value in update.items():
         current_key, current = root_to_path(key, source, create_if_absent=True)
-        update_by_key(current_key, value, current)
+        if value is None:
+            removed.append((current_key, current))
+        else:
+            update_by_key(current_key, value, current)
+
+    for key, value in removed:
+        delete_by_key(key, value)
 
 
 def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None, is_root: bool = True) -> Any:
@@ -109,6 +116,12 @@ def extract_origin_key(key: str) -> str:
         return match.group(1)
     return key
 
+def delete_by_key(key: Union[str, int], source: dict) -> None:
+    if key not in source:
+        return
+    if isinstance(key, int):
+        return
+    del source[key]
 
 def update_by_key(key: Union[str, int], new_value: Any, source: dict) -> None:
     if key not in source:

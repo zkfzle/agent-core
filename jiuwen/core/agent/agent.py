@@ -70,4 +70,4 @@ class Agent(ABC):
         self._controller_context_manager.workflow_mgr.add_workflows(workflows)
 
     def bind_tools(self, tools: List[Tool]):
-        self._controller_context_manager.workflow_mgr.add_tools(tools)
+        self._controller_context_manager.tool_mgr.add_tools(tools)

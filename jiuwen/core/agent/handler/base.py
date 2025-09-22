@@ -76,8 +76,8 @@ class AgentHandlerImpl(AgentHandler):
         plugin_args = inputs.arguments
 
         context_manager = context.controller_context_manager()
-        workflow_manager = context_manager.workflow_mgr
-        plugin = workflow_manager.find_tool_by_name(plugin_name)
+        tool_manager = context_manager.tool_mgr
+        plugin = tool_manager.find_tool_by_name(plugin_name)
         plugin_result = plugin.invoke(plugin_args)
         return plugin_result
 

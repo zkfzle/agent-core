@@ -21,7 +21,6 @@ class ArrayCondition(Condition):
         current_idx = runtime.state().get(INDEX) + 1
         min_length = DEFAULT_MAX_LOOP_NUMBER
         updates: dict[str, Any] = {}
-        updates[INDEX] = current_idx
         for key, array_info in self._arrays.items():
             arr = inputs.get(key, [])
             min_length = min(len(arr), min_length)
@@ -29,4 +28,6 @@ class ArrayCondition(Condition):
                 return False
             updates[key] = arr[current_idx]
         runtime.state().update(updates)
-        return True, updates
+        io_updates = updates.copy()
+        io_updates[INDEX] = current_idx
+        return True, io_updates

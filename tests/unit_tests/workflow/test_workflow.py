@@ -266,7 +266,8 @@ class WorkflowTest(unittest.TestCase):
         flow = Workflow()
         flow.set_start_comp("s", MockStartNode("s"), inputs_schema={"a": "${input_number}"})
         flow.set_end_comp("e", MockEndNode("e"),
-                          inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
+                          inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}",
+                                         "index": "${l.index}"})
         flow.add_workflow_comp("a", CommonNode("a"),
                                inputs_schema={"array": "${input_array}"})
         flow.add_workflow_comp("b", CommonNode("b"),
@@ -279,11 +280,13 @@ class WorkflowTest(unittest.TestCase):
         loop_group.add_workflow_comp("2", AddTenNode("2"), inputs_schema={"source": "${l.user_var}"})
         set_variable_component = SetVariableComponent({"${l.user_var}": "${2.result}"})
         loop_group.add_workflow_comp("3", set_variable_component)
+        loop_group.add_workflow_comp("4", CommonNode("4"), inputs_schema={"index": "${l.index}"})
         loop_group.start_comp("1")
-        loop_group.end_comp("3")
+        loop_group.end_comp("4")
         loop_group.add_connection("1", "2")
         loop_group.add_connection("2", "3")
-        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
+        loop_group.add_connection("3", "4")
+        output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}", "index": "${4.index}"})
         intermediate_callback = IntermediateLoopVarCallback({"user_var": "${s.a}"})
 
         loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
@@ -298,11 +301,11 @@ class WorkflowTest(unittest.TestCase):
         flow.add_connection("b", "e")
 
         result = self.invoke_workflow({"input_array": [1, 2, 3], "input_number": 1}, WorkflowRuntime(), flow)
-        assert result == WorkflowOutput(result={"array_result": [11, 12, 13], "user_var": 31},
+        assert result == WorkflowOutput(result={"array_result": [11, 12, 13], "user_var": 31, "index": [0, 1, 2]},
                                         state=WorkflowExecutionState.COMPLETED)
 
         result = self.invoke_workflow({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(), flow)
-        assert result == WorkflowOutput(result={"array_result": [14, 15], "user_var": 22},
+        assert result == WorkflowOutput(result={"array_result": [14, 15], "user_var": 22, "index": [0, 1]},
                                         state=WorkflowExecutionState.COMPLETED)
 
     def test_workflow_with_loop_break(self):

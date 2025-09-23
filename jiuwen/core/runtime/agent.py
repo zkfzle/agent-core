@@ -28,9 +28,10 @@ class AgentRuntime(BaseRuntime):
         self._context = context
         self._checkpointer = default_inmemory_checkpointer
         self._resource_manager = ResourceMgr()
+        self._config = Config()
 
     def config(self) -> Config:
-        pass
+        return self._config
 
     def state(self) -> State:
         return self._state
@@ -62,6 +63,7 @@ class AgentRuntime(BaseRuntime):
     def create_workflow_runtime(self) -> WorkflowRuntime:
         state = self._state.global_state
         return WorkflowRuntime(
+            config=self._config,
             state=InMemoryState(InMemoryCommitState(state)),
             tracer=self._tracer,
             context=self._context,

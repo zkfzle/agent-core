@@ -6,6 +6,7 @@ class InvokeType(Enum):
     PROMPT = "prompt"
     LLM = "llm"
     PLUGIN = "plugin"
+    WORKFLOW = "workflow"
     CHAIN = "chain"
     RETRIEVER = "retriever"
     EVALUATOR = "evalutor"

@@ -205,6 +205,22 @@ class TraceAgentHandler(TraceBaseHandler):
         self._update_error_trace_data(span=span, error=error, **kwargs)
         await self._send_data(span)
 
+    @trigger_event
+    async def on_workflow_start(self, span: TraceAgentSpan, inputs: Any, instance_info: dict, **kwargs):
+        self._update_start_trace_data(invoke_type=InvokeType.WORKFLOW.value, span=span, inputs=inputs,
+                                      instance_info=instance_info, **kwargs)
+        await self._send_data(span)
+
+    @trigger_event
+    async def on_workflow_end(self, span: TraceAgentSpan, outputs, **kwargs):
+        self._update_end_trace_data(span=span, outputs=outputs, **kwargs)
+        await self._send_data(span)
+
+    @trigger_event
+    async def on_workflow_error(self, span: TraceAgentSpan, error, **kwargs):
+        self._update_error_trace_data(span=span, error=error, **kwargs)
+        await self._send_data(span)
+
 
 class TraceWorkflowHandler(TraceBaseHandler):
     def __init__(self, owner, stream_writer_manager, spanManager):

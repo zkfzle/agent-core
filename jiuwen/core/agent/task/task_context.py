@@ -9,6 +9,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime, Workflow
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
+from jiuwen.core.tracer.decorator import decrate_model_with_trace, decrate_tool_with_trace, decrate_workflow_with_trace
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import FunctionInfo
@@ -20,13 +21,12 @@ class AgentRuntime(Runtime):
     def __init__(self, trace_id: str):
         self._inner = Inner(trace_id)
         self._interaction = None
+        self._agent_span = None
 
-    async def initialize(self, inputs = None):
-        await self._inner.checkpointer().pre_agent_execute(self._inner, inputs)
-
-
-    def get_tool(self, tool_id: str) -> Tool:
-        pass
+    async def initialize(self):
+        await self._inner.checkpointer().pre_agent_execute(self._inner)
+        if self._inner.tracer():
+            self._agent_span = self._inner.tracer().tracer_agent_span_manager.create_agent_span()
 
     def executable_id(self) -> str:
         return ""
@@ -101,7 +101,10 @@ class AgentRuntime(Runtime):
         self._inner.resource_manager().remove_model(model_id)
 
     def get_model(self, model_id: str) -> BaseChatModel:
-        return self._inner.resource_manager().get_model(model_id)
+        model = self._inner.resource_manager().get_model(model_id)
+        if model and self._inner.tracer() and self._agent_span:
+            decrate_model_with_trace(model, self._inner.tracer(), self._agent_span)
+        return model
 
     def add_workflow(self, workflow_id: str, workflow: Workflow):
         self._inner.resource_manager().add_workflow(workflow_id, workflow)
@@ -113,7 +116,10 @@ class AgentRuntime(Runtime):
         self._inner.resource_manager().remove_workflow(workflow_id)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
-        return self._inner.resource_manager().get_workflow(workflow_id)
+        workflow = self._inner.resource_manager().get_workflow(workflow_id)
+        if workflow and self._inner.tracer() and self._agent_span:
+            decrate_workflow_with_trace(workflow, self._inner.tracer(), self._agent_span)
+        return workflow
 
     def add_tool(self, tool_id: str, tool: Tool):
         self._inner.resource_manager().add_tool(tool_id, tool)
@@ -123,6 +129,12 @@ class AgentRuntime(Runtime):
 
     def remove_tool(self, tool_id: str):
         self._inner.resource_manager().remove_tool(tool_id)
+
+    def get_tool(self, tool_id: str) -> Tool:
+        tool = self._inner.resource_manager().get_tool(tool_id)
+        if tool and self._inner.tracer() and self._agent_span:
+            decrate_tool_with_trace(tool, self._inner.tracer(), self._agent_span)
+        return tool
 
     def get_function_info(self, tool_id: List[str], workflow_id: List[str]) -> List[FunctionInfo]:
         pass

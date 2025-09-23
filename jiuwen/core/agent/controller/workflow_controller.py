@@ -11,6 +11,7 @@ from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
+from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.workflow import WorkflowRuntime
@@ -279,8 +280,8 @@ class WorkflowController(Controller):
         context_manager = context.controller_context_manager()
         workflow_manager = context_manager.workflow_mgr
         workflow_metadata = self._agent_handler.search_workflow_metadata_by_workflow_name(workflow_name)
-        workflow = workflow_manager.find_workflow_by_id_and_version(workflow_metadata.id,
-                                                                    workflow_metadata.version)
+        workflow = workflow_manager.find_workflow_by_id_and_version(generate_workflow_key(workflow_metadata.id,
+                                                                    workflow_metadata.version))
         return workflow
 
     def _add_msg_to_chat_histroy(self, message : Union[HumanMessage, AIMessage]):

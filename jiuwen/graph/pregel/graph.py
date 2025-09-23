@@ -8,7 +8,8 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel._loop import PregelLoop
 
-from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer, InMemoryCheckpointer
+from jiuwen.core.runtime.interaction.base import Checkpointer
+from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
@@ -111,7 +112,7 @@ class PregelGraph(Graph):
 
 class CompiledGraph(ExecutableGraph):
     def __init__(self, compiled_state_graph: CompiledStateGraph,
-                 checkpoint_saver: InMemoryCheckpointer) -> None:
+                 checkpoint_saver: Checkpointer) -> None:
         self._compiled_state_graph = compiled_state_graph
         self._checkpoint_saver = checkpoint_saver
 
@@ -124,7 +125,7 @@ class CompiledGraph(ExecutableGraph):
             is_main = True
             config = {"configurable": {"thread_id": session_id}}
         if isinstance(inputs, InteractiveInput):
-            await self._checkpoint_saver.pre_workflow_execute(inputs, runtime)
+            await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
         else:
             runtime.state().commit_user_inputs(inputs)
 
@@ -140,7 +141,7 @@ class CompiledGraph(ExecutableGraph):
             exception = e
 
         if is_main:
-            await self._checkpoint_saver.post_workflow_execute(result, exception, runtime)
+            await self._checkpoint_saver.post_workflow_execute(runtime, result, exception)
         elif exception is not None:
             raise exception
 

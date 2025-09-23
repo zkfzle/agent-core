@@ -1,10 +1,10 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any, List, Tuple, Union, Optional, AsyncIterator
 
 from jiuwen.core.runtime.agent import AgentRuntime as Inner
-from jiuwen.core.runtime.interaction.interaction import AgentInteraction
+from jiuwen.core.runtime.interaction.interaction import SimpleAgentInteraction
 from jiuwen.core.runtime.runtime import BaseRuntime, Workflow
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
@@ -21,8 +21,8 @@ class AgentRuntime(Runtime):
         self._inner = Inner(trace_id)
         self._interaction = None
 
-    async def initialize(self):
-        await self._inner.checkpointer().pre_agent_execute(self._inner)
+    async def initialize(self, inputs = None):
+        await self._inner.checkpointer().pre_agent_execute(self._inner, inputs)
 
 
     def get_tool(self, tool_id: str) -> Tool:
@@ -76,8 +76,8 @@ class AgentRuntime(Runtime):
 
     async def interact(self, value):
         if self._interaction is None:
-            self._interaction = AgentInteraction(self._inner)
-        return await self._interaction.wait_user_inputs(value)
+            self._interaction = SimpleAgentInteraction(self._inner)
+        await self._interaction.wait_user_inputs(value)
 
     def add_prompt(self, template_id: str, template: Template):
         self._inner.resource_manager().add_prompt(template_id, template)
@@ -129,6 +129,9 @@ class AgentRuntime(Runtime):
 
     def base(self) -> BaseRuntime:
         return self._inner
+
+    def stream_iterator(self) -> AsyncIterator[Any]:
+        return self._inner.stream_writer_manager().stream_output()
 
     async def close(self):
         await self._inner.checkpointer().post_agent_execute(self.trace_id())

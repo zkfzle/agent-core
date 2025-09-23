@@ -23,12 +23,11 @@ class BaseInteraction(ABC, metaclass=ABCMeta):
         interactive_inputs = self._runtime.state().get(INTERACTIVE_INPUT)
         if isinstance(interactive_inputs, list):
             if self._interactive_inputs:
-                self._interactive_inputs += interactive_inputs
+                self._interactive_inputs = interactive_inputs + self._interactive_inputs
             else:
                 self._interactive_inputs = interactive_inputs
         if self._interactive_inputs:
             self._runtime.state().update({INTERACTIVE_INPUT: self._interactive_inputs})
-        if self._interactive_inputs:
             self._latest_interactive_inputs = self._interactive_inputs[-1]
 
     def _get_next_interactive_input(self) -> Any | None:
@@ -48,15 +47,15 @@ class BaseInteraction(ABC, metaclass=ABCMeta):
 
 class Checkpointer(ABC):
     @abstractmethod
-    async def pre_workflow_execute(self, inputs: InteractiveInput, runtime: BaseRuntime):
+    async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
         pass
 
     @abstractmethod
-    async def post_workflow_execute(self, result, exception, runtime: BaseRuntime):
+    async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
         pass
 
     @abstractmethod
-    async def pre_agent_execute(self, runtime: BaseRuntime):
+    async def pre_agent_execute(self, runtime: BaseRuntime, inputs: dict):
         pass
 
     @abstractmethod
@@ -68,4 +67,5 @@ class Checkpointer(ABC):
         pass
 
 class AgentInterrupt(Exception):
-    pass
+    def __init__(self, message):
+        self.message = message

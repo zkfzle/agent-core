@@ -1,5 +1,6 @@
 from langgraph._internal._constants import INTERRUPT
 
+from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from jiuwen.core.runtime.interaction.agent_storage import AgentStorage
 from jiuwen.core.runtime.interaction.base import Checkpointer
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -12,10 +13,10 @@ class InMemoryCheckpointer(Checkpointer):
         self._agent_store = AgentStorage()
         self._workflow_store = WorkflowStorage()
 
-    async def pre_workflow_execute(self, inputs: InteractiveInput, runtime: BaseRuntime):
+    async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
         self._workflow_store.recover(runtime, inputs)
 
-    async def post_workflow_execute(self, result, exception, runtime: BaseRuntime):
+    async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
         session_id = runtime.session_id()
         if exception is not None:
             self._workflow_store.save(runtime)
@@ -26,8 +27,10 @@ class InMemoryCheckpointer(Checkpointer):
         else:
             self._workflow_store.save(runtime)
 
-    async def pre_agent_execute(self, runtime: BaseRuntime):
+    async def pre_agent_execute(self, runtime: BaseRuntime, inputs):
         self._agent_store.recover(runtime)
+        if inputs is not None:
+            runtime.state().set_state({INTERACTIVE_INPUT: [inputs]})
 
     async def interrupt_agent_execute(self, runtime: BaseRuntime):
         self._agent_store.save(runtime)
@@ -39,4 +42,4 @@ class InMemoryCheckpointer(Checkpointer):
         return self._workflow_store.graph_checkpointer()
 
 
-default_inmemory_checkpointer = InMemoryCheckpointer()
+default_inmemory_checkpointer: Checkpointer = InMemoryCheckpointer()

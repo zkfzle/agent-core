@@ -76,7 +76,7 @@ async def create_workflow():
     loop_group.add_connection("2", "3")
     output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.intermediate_loop_var.user_var}"})
     intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"}, "intermediate_loop_var")
-    loop = LoopComponent("l", loop_group, PregelGraph(), NumberCondition("${loop_number}"),
+    loop = LoopComponent(loop_group, NumberCondition("${loop_number}"),
                          callbacks=[output_callback, intermediate_callback])
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
     # s->a->(1->2->3)->b->e
@@ -286,7 +286,7 @@ class WorkflowTest(unittest.TestCase):
         output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
         intermediate_callback = IntermediateLoopVarCallback({"user_var": "${s.a}"})
 
-        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
+        loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
                              callbacks=[output_callback, intermediate_callback])
 
         flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
@@ -331,7 +331,7 @@ class WorkflowTest(unittest.TestCase):
         output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
         intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-        loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
+        loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
                              callbacks=[output_callback, intermediate_callback], break_nodes=[break_node])
 
         flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})

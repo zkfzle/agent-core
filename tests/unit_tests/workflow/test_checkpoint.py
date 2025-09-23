@@ -159,7 +159,7 @@ async def test_workflow_with_loop():
         {"results": "${1.result}", "user_var": "${l.user_var}"})
     intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-    loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
+    loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
                          callbacks=[output_callback, intermediate_callback])
 
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
@@ -247,7 +247,7 @@ async def test_workflow_with_loop_interactive():
     output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
     intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-    loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
+    loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
                          callbacks=[output_callback, intermediate_callback])
 
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})

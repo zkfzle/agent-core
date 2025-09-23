@@ -18,7 +18,9 @@ from jiuwen.core.graph.base import Graph, INPUTS_KEY
 from jiuwen.core.graph.executable import Output, Input, Executable
 from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.workflow import NodeRuntime
 from jiuwen.core.workflow.base import BaseWorkFlow
+from jiuwen.graph.pregel.graph import PregelGraph
 
 
 class EmptyExecutable(Executable):
@@ -68,11 +70,11 @@ BODY_NODE_ID = "body"
 
 class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
 
-    def __init__(self, node_id: str, body: Executable, new_graph: Graph,
+    def __init__(self, body: Executable,
                  condition: Union[str, Callable[[], bool], Condition] = None, break_nodes: list[BreakComponent] = None,
-                 callbacks: list[LoopCallback] = None):
+                 callbacks: list[LoopCallback] = None, new_graph: Graph = None):
         super().__init__()
-        self._node_id = node_id
+        self._node_id = None
         self._body = body
 
         self._condition: Condition
@@ -89,16 +91,12 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
             for break_node in break_nodes:
                 break_node.set_controller(self)
 
-        loop_id_callback = LoopIdCallback(node_id)
-
         self._callbacks: list[LoopCallback] = []
-
-        self.register_callback(loop_id_callback)
         if callbacks:
             for callback in callbacks:
                 self.register_callback(callback)
 
-        self._graph = new_graph
+        self._graph = new_graph if new_graph is not None else PregelGraph()
         self._graph.add_node(BODY_NODE_ID, self._body)
         self._graph.add_node(CONDITION_NODE_ID, EmptyExecutable())
         self._graph.add_edge(START, CONDITION_NODE_ID)
@@ -154,6 +152,11 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         self._runtime = runtime
+        assert isinstance(runtime, NodeRuntime)
+        self._node_id = runtime.node_id()
+        loop_id_callback = LoopIdCallback(self._node_id)
+        self.register_callback(loop_id_callback)
+
         # set loop graph inputs
         self._runtime.state().update(inputs.get(INPUTS_KEY) if INPUTS_KEY in inputs else inputs)
         index = self._runtime.state().get(INDEX)

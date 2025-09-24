@@ -61,7 +61,7 @@ class TestWorkflowAgent:
             workflows=[test_workflow_schema],
             controller_type =ControllerType.WorkflowController
         )
-        agent = WorkflowAgent(workflow_config, agent_context)
+        agent = WorkflowAgent(workflow_config)
         agent.bind_workflows([workflow1])
         return agent
 

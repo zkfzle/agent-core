@@ -2,14 +2,14 @@
 from typing import Dict, Callable, Any
 
 from jiuwen.agent.common.enum import WorkflowAgentStatus, WorkflowAgentEvent
-from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.common.logging import logger
+from jiuwen.core.runtime.runtime import Runtime
 
 
 class WorkflowAgentStateMachine:
     """ReAct状态机，管理状态转换和事件处理"""
 
-    def __init__(self, runtime: WorkflowRuntime):
+    def __init__(self, runtime: Runtime):
         self._runtime = runtime
         self._current_status = WorkflowAgentStatus.INITIALIZED
         self._current_event = WorkflowAgentEvent.NO_EVENT
@@ -27,7 +27,7 @@ class WorkflowAgentStateMachine:
 
     def get_current_status(self) -> WorkflowAgentStatus:
         """获取当前状态"""
-        state_data = self._runtime.state().get("workflow_agent_state")
+        state_data = self._runtime.get_state("workflow_agent_state")
         if state_data and "status" in state_data:
             self._current_status = WorkflowAgentStatus(state_data["status"])
         return self._current_status
@@ -50,6 +50,10 @@ class WorkflowAgentStateMachine:
     def is_completed(self) -> bool:
         """检查是否已完成"""
         return self.get_current_status() == WorkflowAgentStatus.COMPLETED
+
+    def is_interrupted(self) -> bool:
+        """检查是否是中断状态"""
+        return self.get_current_status() == WorkflowAgentStatus.INTERRUPTED
 
     def can_handle_status(self, status: WorkflowAgentStatus, is_stream: bool = False) -> bool:
         """检查是否可以处理指定状态"""
@@ -77,7 +81,7 @@ class WorkflowAgentStateMachine:
 
     def get_state_data(self) -> Dict[str, Any]:
         """获取状态数据"""
-        return self._runtime.state().get("workflow_agent_state") or {}
+        return self._runtime.get_state("workflow_agent_state") or {}
 
     def update_state_data(self, data: Dict[str, Any]):
         """更新状态数据"""
@@ -92,5 +96,4 @@ class WorkflowAgentStateMachine:
 
     def _update_state_to_runtime(self, data: Dict[str, Any]):
         """更新状态到Runtime"""
-        self._runtime.state().update({"workflow_agent_state": data})
-        self._runtime.state().commit_cmp()
+        self._runtime.update_state({"workflow_agent_state": data})

@@ -5,15 +5,18 @@ from unittest.mock import patch
 
 import pytest
 
-from jiuwen.agent.common.enum import SubTaskType
+from jiuwen.agent.common.enum import SubTaskType, ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
+from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.workflow_agent import WorkflowAgent
 from jiuwen.core.agent.controller.react_controller import ReActControllerOutput
 from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from jiuwen.core.component.start_comp import Start
+from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.workflow.base import Workflow
@@ -279,3 +282,195 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
             print(f"ReActAgent 第二次输出结果：{result}")
+
+
+    @unittest.skip("skip system test")
+    async def test_real_workflow_agent_invoke_with_workflow_interrupt(self):
+        questioner_workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name="questioner",
+                id="questioner_workflow",
+                version="1.0",
+            )
+        )
+
+        flow = Workflow(workflow_config=questioner_workflow_config)
+
+        key_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
+        ]
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
+
+
+        API_BASE = os.getenv("API_BASE", "")
+        API_KEY = os.getenv("API_KEY", "")
+        MODEL_NAME = os.getenv("MODEL_NAME", "")
+        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=False
+        )
+
+        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "questioner")
+        flow.add_connection("questioner", "e")
+
+        workflow_schema = WorkflowSchema(
+            id=flow.config().metadata.id,
+            name=flow.config().metadata.name,
+            version=flow.config().metadata.version,
+            description="追问器工作流",
+            inputs={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "用户输入",
+                        "required": True
+                    }
+                }
+            }
+        )
+
+        config = WorkflowAgentConfig(
+            id="write_agent",
+            version="0.1.0",
+            description="interrupt workflow agent",
+            workflows=[workflow_schema],
+            controller_type=ControllerType.WorkflowController,
+        )
+
+        workflow_agent = WorkflowAgent(config)
+        workflow_agent.bind_workflows([flow])
+
+        result = await workflow_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
+        print(f"WorkflowAgent 第一次输出结果：{result}")
+
+        if result.get("result_type") == 'question':
+            result = await workflow_agent.invoke({"conversation_id": "12345", "query": "地点是杭州"})
+            print(f"WorkflowActAgent 第二次输出结果：{result}")
+
+    @unittest.skip("skip system test")
+    async def test_real_workflow_agent_stream_with_workflow_interrupt(self):
+        questioner_workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name="questioner",
+                id="questioner_workflow",
+                version="1.0",
+            )
+        )
+
+        flow = Workflow(workflow_config=questioner_workflow_config)
+
+        key_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
+        ]
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
+
+
+        API_BASE = os.getenv("API_BASE", "")
+        API_KEY = os.getenv("API_KEY", "")
+        MODEL_NAME = os.getenv("MODEL_NAME", "")
+        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=False
+        )
+
+        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "questioner")
+        flow.add_connection("questioner", "e")
+
+        workflow_schema = WorkflowSchema(
+            id=flow.config().metadata.id,
+            name=flow.config().metadata.name,
+            version=flow.config().metadata.version,
+            description="追问器工作流",
+            inputs={
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "用户输入",
+                        "required": True
+                    }
+                }
+            }
+        )
+
+        config = WorkflowAgentConfig(
+            id="write_agent",
+            version="0.1.0",
+            description="interrupt workflow agent",
+            workflows=[workflow_schema],
+            controller_type=ControllerType.WorkflowController,
+        )
+
+        workflow_agent = WorkflowAgent(config)
+        workflow_agent.bind_workflows([flow])
+
+        is_interaction = False
+        async for result in workflow_agent.stream({"conversation_id": "12345", "query": "查询今天天气"}):
+            print(f"WorkflowAgent stream 第一次输出结果：{result}")
+            if isinstance(result, OutputSchema) and result.type == "__interaction__":
+                is_interaction = True
+
+        if is_interaction:
+            async for result in workflow_agent.stream({"conversation_id": "12345", "query": "地点是杭州"}):
+                print(f"WorkflowActAgent 第二次输出结果：{result}")

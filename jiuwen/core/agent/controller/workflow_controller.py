@@ -1,5 +1,5 @@
-from typing import List, Union, Iterator, Any, Dict, AsyncIterator
-
+from typing import List, Union, Any, Dict, AsyncIterator
+import json
 from pydantic import Field
 
 from jiuwen.agent.common.enum import SubTaskType, WorkflowAgentStatus, WorkflowAgentEvent
@@ -9,12 +9,12 @@ from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.core.agent.state_machine.workflow_agent_state_machine import WorkflowAgentStateMachine
 from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.common.logging import logger
-from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.context_engine.engine import ContextEngine
+from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.runtime.workflow import WorkflowRuntime
+from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow
@@ -34,12 +34,11 @@ class WorkflowControllerInput(ControllerInput):
 
 
 class WorkflowController(Controller):
-    def __init__(self, config: AgentConfig, context_mgr: ControllerContextMgr,
-                 context_engine: ContextEngine, runtime: WorkflowRuntime):
-        super().__init__(config, context_mgr)
+    def __init__(self, config: AgentConfig, context_engine: ContextEngine, runtime: Runtime):
+        super().__init__(config)
         self._context_engine = context_engine
         self._runtime = runtime
-        self._state_machine = WorkflowAgentStateMachine(runtime)
+        self._state_machine = WorkflowAgentStateMachine(self._runtime)
         self._setup_state_handlers()
 
     def _setup_state_handlers(self):
@@ -62,28 +61,44 @@ class WorkflowController(Controller):
             controller_output: WorkflowControllerOutput = self.invoke(current_inputs, None)
             results = {}
 
-            from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-            temp_context.set_controller_context_manager(self._context_mgr)
-
             if controller_output.sub_tasks:
                 self._state_machine.update_state_data({
                     "sub_tasks": controller_output.sub_tasks
                 })
                 for sub_task in controller_output.sub_tasks:
-                    inputs = AgentHandlerInputs(context=temp_context, name=sub_task.func_name,
-                                                arguments=sub_task.func_args)
-                    result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
+                    try:
+                        inputs = AgentHandlerInputs(context=self._runtime, name=sub_task.func_name,
+                                                    arguments=sub_task.func_args)
+                        result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
+                        sub_task.result = json.dumps(result, ensure_ascii=False)
+                    except AgentInterrupt as e:
+                        # 插件执行失败时，添加失败信息
+                        error_msg = f"Tool execution failed: {str(e)}"
+                        logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
+
+                        error_result = {
+                            "error": True,
+                            "id": e.args[0].get("id"),
+                            "value": e.args[0].get("value"),
+                            "message": error_msg,
+                            "tool_name": sub_task.func_name
+                        }
+                        sub_task.result = json.dumps(error_result, ensure_ascii=False)
+                        result = error_result
                     results[sub_task.func_name] = result
-                    if isinstance(result, list) and result[0].get('type') == '__interaction__':
+                    if isinstance(result, dict) and result.get('error'):
                         # 是中断状态
                         interrupt_data = {
-                            "interrupt_component_id": result[0].get('payload').get('id'),
-                            "question": result[0].get('payload').get('value')
+                            "interrupt_component_id": result.get('id'),
+                            "question": result.get('value')
                         }
                         self._state_machine.update_state_data({"interrupt_state": interrupt_data})
                         self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-                        return {"output": interrupt_data["question"], "result_type": "question"}
+                        try:
+                            await self._runtime.interact({"output": interrupt_data["question"],
+                                                          "result_type": "question"})
+                        finally:
+                            return {"output": interrupt_data["question"], "result_type": "question"}
             if not self.should_continue(controller_output):
                 output = self.handle_workflow_results(results)
                 self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
@@ -124,14 +139,25 @@ class WorkflowController(Controller):
         else:
             logger.error("No sub_tasks found in interrupted state!")
 
-        # 创建一个临时的TaskContext
-        from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-        temp_context.set_controller_context_manager(self._context_mgr)
+        try:
+            inputs = AgentHandlerInputs(context=self._runtime, name=sub_tasks[0].func_name,
+                                        arguments=sub_tasks[0].func_args)
+            result = await self._agent_handler.invoke(sub_tasks[0].sub_task_type, inputs)
+            sub_tasks[0].result = json.dumps(result, ensure_ascii=False)
+        except AgentInterrupt as e:
+            # 插件执行失败时，添加失败信息
+            error_msg = f"Tool execution failed: {str(e)}"
+            logger.error(f"Sub task {sub_tasks[0].func_name} failed: {error_msg}")
 
-        inputs = AgentHandlerInputs(context=temp_context, name=sub_tasks[0].func_name,
-                                    arguments=sub_tasks[0].func_args)
-        result = await self._agent_handler.invoke(sub_tasks[0].sub_task_type, inputs)
+            error_result = {
+                "error": True,
+                "id": e.args[0].get("id"),
+                "value": e.args[0].get("value"),
+                "message": error_msg,
+                "tool_name": sub_tasks[0].func_name
+            }
+            sub_tasks[0].result = json.dumps(error_result, ensure_ascii=False)
+            result = error_result
         results = {}
         results[sub_tasks[0].func_name] = result
 
@@ -162,16 +188,13 @@ class WorkflowController(Controller):
         while True:
             controller_output: WorkflowControllerOutput = self.invoke(current_inputs, None)
             results = {}
-            from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-            temp_context.set_controller_context_manager(self._context_mgr)
 
             if controller_output.sub_tasks:
                 for sub_task in controller_output.sub_tasks:
                     if sub_task.sub_task_type != SubTaskType.WORKFLOW:
                         logger.error("Only support workflow sub task in workflow agent")
                         continue
-                    inputs = AgentHandlerInputs(context=temp_context, name=sub_task.func_name,
+                    inputs = AgentHandlerInputs(context=self._runtime, name=sub_task.func_name,
                                                 arguments=sub_task.func_args)
                     workflow = self._find_workflow(inputs)
                     async for result in workflow.stream(inputs.arguments, inputs.context.create_workflow_runtime()):
@@ -215,12 +238,7 @@ class WorkflowController(Controller):
         else:
             logger.error("No sub_tasks found in interrupted state!")
 
-        # 创建一个临时的TaskContext
-        from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
-        temp_context.set_controller_context_manager(self._context_mgr)
-
-        inputs = AgentHandlerInputs(context=temp_context, name=sub_tasks[0].func_name,
+        inputs = AgentHandlerInputs(context=self._runtime, name=sub_tasks[0].func_name,
                                     arguments=sub_tasks[0].func_args)
         workflow = self._find_workflow(inputs)
         async for result in workflow.stream(inputs.arguments, inputs.context.create_workflow_runtime()):
@@ -230,15 +248,18 @@ class WorkflowController(Controller):
         results = {}
         results[sub_tasks[0].func_name] = final_result
 
-        if isinstance(final_result, list) and final_result[0].get('type') == '__interaction__':
+        if isinstance(final_result, dict) and final_result.get('error'):
             # 是中断状态
             interrupt_data = {
-                "interrupt_component_id": final_result[0].get('payload').get('id'),
-                "question": final_result[0].get('payload').get('value')
+                "interrupt_component_id": final_result.get('id'),
+                "question": final_result.get('value')
             }
             self._state_machine.update_state_data({"interrupt_state": interrupt_data})
             self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-            yield {"output": interrupt_data["question"], "result_type": "question"}
+            try:
+                await self._runtime.interact({"output": interrupt_data["question"], "result_type": "question"})
+            finally:
+                yield {"output": interrupt_data["question"], "result_type": "question"}
         else:
             output = self.handle_workflow_results(results)
             self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
@@ -345,6 +366,18 @@ class WorkflowController(Controller):
         logger.info(f"Starting Workflow Controller execution with inputs: {inputs}")
         self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
 
+        if self._state_machine.is_interrupted():
+            current_status = self._state_machine.get_current_status()
+            logger.info(f"Current status: {current_status}")
+            result = await self._state_machine.handle_state(current_status, inputs)
+            logger.info(f"State handler result: {result}")
+
+            # 如果返回了最终结果，直接返回
+            if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
+                logger.info(f"Returning final result: {result}")
+                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=result.get("output")))
+                return result
+
         while not self._state_machine.is_completed():
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
@@ -363,6 +396,8 @@ class WorkflowController(Controller):
 
             # 返回最终结果
         final_result = self._state_machine.get_final_result()
+        if isinstance(final_result,OutputSchema):
+            await self._runtime.write_stream(final_result)
         logger.info(f"Final execution result: {final_result}")
         return {"output": final_result, "result_type": "answer"}
 

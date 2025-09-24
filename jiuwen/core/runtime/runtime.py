@@ -3,15 +3,14 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
-from jiuwen.core.runtime.resource_manager import ResourceMgr
+
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.mq_manager import MessageQueueManager
+from jiuwen.core.runtime.resource_manager import ResourceManager
 from jiuwen.core.runtime.state import State
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema, StreamWriter
-from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import FunctionInfo
 from jiuwen.core.utils.prompt.template.template import Template
@@ -48,27 +47,12 @@ class BaseRuntime(ABC):
         pass
 
     @abstractmethod
-    def resource_manager(self):
+    def resource_manager(self) -> ResourceManager:
         pass
 
     @abstractmethod
     def context(self) -> Context:
         pass
-
-    def set_controller_context_manager(self, controller_context_manager) -> None:
-        return
-
-    def set_tracer(self, tracer: Tracer) -> None:
-        return
-
-    def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
-        return
-
-    def queue_manager(self) -> MessageQueueManager:
-        pass
-
-    def set_queue_manager(self, queue_manager: MessageQueueManager):
-        return
 
 
 Workflow = TypeVar("Workflow", contravariant=True)
@@ -80,7 +64,7 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def trace_id(self) -> str:
+    def session_id(self) -> str:
         pass
 
     @abstractmethod
@@ -199,8 +183,10 @@ class Runtime(ABC):
     def base(self) -> BaseRuntime:
         pass
 
-    @abstractmethod
-    async def close(self):
+    async def post_run(self):
+        pass
+
+    async def pre_run(self, **kwargs):
         pass
 
 

@@ -2,13 +2,14 @@ import asyncio
 
 import pytest
 
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.runtime.wrapper import TaskRuntime
 
 pytestmark = pytest.mark.asyncio
 
+
 async def test_agent_stream():
     session_id = "test"
-    runtime = AgentRuntime(session_id)
+    runtime = TaskRuntime(session_id)
 
     async def consumer():
         i = runtime.stream_iterator()
@@ -18,8 +19,8 @@ async def test_agent_stream():
 
     async def producer():
         for i in range(10):
-           await runtime.write_stream({"name": "hi"})
-        await runtime.close()
+            await runtime.write_stream({"type": "event", "index": 0, "payload": {"name": "hi"}})
+        await runtime.post_run()
 
     task1 = asyncio.create_task(consumer())
     task2 = asyncio.create_task(producer())

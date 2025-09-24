@@ -1,7 +1,7 @@
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.store import Store
 
 
 class AgentContext:
-    context_map: dict[str, AgentRuntime] = {}
+    context_map: dict[str, Runtime] = {}
     store: Store = None

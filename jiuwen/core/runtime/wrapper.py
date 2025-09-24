@@ -1,9 +1,14 @@
-from typing import Union, Any, Optional, List, Tuple
+from abc import ABC
+from typing import Union, Any, Optional, List, Tuple, AsyncIterator
 
-from jiuwen.core.runtime.interaction.interaction import WorkflowInteraction
-from jiuwen.core.runtime.runtime import Runtime, Workflow
-from jiuwen.core.runtime.workflow import NodeRuntime
+from jiuwen.core.runtime.agent import AgentRuntime
+from jiuwen.core.runtime.config import Config
+from jiuwen.core.runtime.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
+from jiuwen.core.runtime.runtime import Runtime, Workflow, BaseRuntime
+from jiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
 from jiuwen.core.stream.writer import StreamWriter, OutputSchema
+from jiuwen.core.tracer.decorator import decrate_model_with_trace, decrate_workflow_with_trace, decrate_tool_with_trace
+from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.tracer.workflow_tracer import trace, trace_error
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import FunctionInfo
@@ -11,15 +16,111 @@ from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.tool.base import Tool
 
 
-class WrappedNodeRuntime(Runtime):
-    def __init__(self, runtime: NodeRuntime):
-        self._inner = runtime
-        self._interaction = None
+class StaticWrappedRuntime(Runtime, ABC):
+
+    def executable_id(self) -> str:
+        pass
+
+    def session_id(self) -> str:
+        pass
+
+    def update_state(self, data: dict):
+        pass
+
+    def get_state(self, key: Union[str, list, dict] = None) -> Any:
+        pass
+
+    def update_global_state(self, data: dict):
+        pass
+
+    def get_global_state(self, key: Union[str, list, dict] = None) -> Any:
+        pass
+
+    def stream_writer(self) -> Optional[StreamWriter]:
+        pass
+
+    def custom_writer(self) -> Optional[StreamWriter]:
+        pass
+
+    async def write_stream(self, data: Union[dict, OutputSchema]):
+        pass
+
+    async def write_custom_stream(self, data: dict):
+        pass
+
+    async def trace(self, data: dict):
+        pass
+
+    async def trace_error(self, error: Exception):
+        pass
+
+    async def interact(self, value):
+        pass
+
+class WrappedRuntime(Runtime, ABC):
+    def __init__(self, inner: BaseRuntime):
+        self._inner = inner
+
+    def add_prompt(self, template_id: str, template: Template):
+        self._inner.resource_manager().prompt().add_prompt(template_id, template)
+
+    def add_prompts(self, templates: List[Tuple[str, Template]]):
+        self._inner.resource_manager().prompt().add_prompts(templates)
+
+    def remove_prompt(self, template_id: str):
+        self._inner.resource_manager().prompt().remove_prompt(template_id)
+
+    def get_prompt(self, template_id: str) -> Template:
+        return self._inner.resource_manager().prompt().get_prompt(template_id)
+
+    def add_model(self, model_id: str, model: BaseChatModel):
+        self._inner.resource_manager().model().add_model(model_id, model)
+
+    def add_models(self, models: List[Tuple[str, BaseChatModel]]):
+        self._inner.resource_manager().model().add_models(models)
+
+    def remove_model(self, model_id: str):
+        self._inner.resource_manager().model().remove_model(model_id)
+
+    def get_model(self, model_id: str) -> BaseChatModel:
+        return self._inner.resource_manager().model().get_model(model_id)
+
+    def add_workflow(self, workflow_id: str, workflow: Workflow):
+        self._inner.resource_manager().workflow().add_workflow(workflow_id, workflow)
+
+    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+        self._inner.resource_manager().workflow().add_workflows(workflows)
+
+    def remove_workflow(self, workflow_id: str):
+        self._inner.resource_manager().workflow().remove_workflow(workflow_id)
+
+    def get_workflow(self, workflow_id: str) -> Workflow:
+        return self._inner.resource_manager().workflow().get_workflow(workflow_id)
+
+    def add_tool(self, tool_id: str, tool: Tool):
+        self._inner.resource_manager().tool().add_tool(tool_id, tool)
+
+    def add_tools(self, tools: List[Tuple[str, Tool]]):
+        self._inner.resource_manager().tool().add_tools(tools)
+
+    def remove_tool(self, tool_id: str):
+        self._inner.resource_manager().tool().remove_tool(tool_id)
+
+    def get_tool(self, tool_id: str) -> Tool:
+        return self._inner.resource_manager().tool().get_tool(tool_id)
+
+    def get_function_info(self, tool_id: List[str], workflow_id: List[str]) -> List[FunctionInfo]:
+        pass
+
+    def base(self) -> BaseRuntime:
+        return self._inner
+
+class StateRuntime(WrappedRuntime, ABC):
 
     def executable_id(self) -> str:
         return self._inner.executable_id()
 
-    def trace_id(self) -> str:
+    def session_id(self) -> str:
         return self._inner.session_id()
 
     def update_state(self, data: dict):
@@ -56,6 +157,12 @@ class WrappedNodeRuntime(Runtime):
         if writer:
             await writer.write(data)
 
+
+class WrappedNodeRuntime(StateRuntime):
+    def __init__(self, runtime: NodeRuntime):
+        super().__init__(runtime)
+        self._interaction = None
+
     async def trace(self, data: dict):
         await trace(self._inner, data)
 
@@ -67,59 +174,77 @@ class WrappedNodeRuntime(Runtime):
             self._interaction = WorkflowInteraction(self._inner)
         return await self._interaction.wait_user_inputs(value)
 
-    def add_prompt(self, template_id: str, template: Template):
-        pass
-
-    def add_prompts(self, templates: List[Tuple[str, Template]]):
-        pass
-
-    def remove_prompt(self, template_id: str):
-        pass
-
     def get_prompt(self, template_id: str) -> Template:
-        pass
-
-    def add_model(self, model_id: str, model: BaseChatModel):
-        pass
-
-    def add_models(self, models: List[Tuple[str, BaseChatModel]]):
-        pass
-
-    def remove_model(self, model_id: str):
-        pass
+        return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseChatModel:
-        pass
-
-    def add_workflow(self, workflow_id: str, workflow: Workflow):
-        pass
-
-    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
-        pass
-
-    def remove_workflow(self, workflow_id: str):
-        pass
+        return self._inner.resource_manager().model().get_model(model_id)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
-        pass
-
-    def add_tool(self, tool_id: str, tool: Tool):
-        pass
-
-    def add_tools(self, tools: List[Tuple[str, Tool]]):
-        pass
-
-    def remove_tool(self, tool_id: str):
-        pass
+        return self._inner.resource_manager().workflow().get_workflow(workflow_id)
 
     def get_tool(self, tool_id: str) -> Tool:
+        return self._inner.resource_manager().tool().get_tool(tool_id)
+
+
+class TaskRuntime(StateRuntime):
+    def __init__(self, trace_id: str = None, inner: BaseRuntime = None):
+        if inner is None:
+            super().__init__(AgentRuntime(trace_id, Config()))
+        else:
+            super().__init__(inner)
+            if inner.tracer() is not None:
+                self._agent_span = inner.tracer().tracer_agent_span_manager.create_agent_span()
+        self._interaction = None
+
+    async def trace(self, data: dict):
         pass
 
-    def get_function_info(self, tool_id: List[str], workflow_id: List[str]) -> List[FunctionInfo]:
+    async def trace_error(self, error: Exception):
         pass
 
-    def base(self) -> NodeRuntime:
-        return self._inner
+    async def interact(self, value):
+        if self._interaction is None:
+            self._interaction = SimpleAgentInteraction(self._inner)
+        await self._interaction.wait_user_inputs(value)
 
-    async def close(self):
-        pass
+    def get_prompt(self, template_id: str) -> Template:
+        return self._inner.resource_manager().get_prompt(template_id)
+
+
+    def get_model(self, model_id: str) -> BaseChatModel:
+        model = self._inner.resource_manager().get_model(model_id)
+        if model and self._inner.tracer() and self._agent_span:
+            decrate_model_with_trace(model, self._inner.tracer(), self._agent_span)
+        return model
+
+    def get_workflow(self, workflow_id: str) -> Workflow:
+        workflow = self._inner.resource_manager().get_workflow(workflow_id)
+        if workflow and self._inner.tracer() and self._agent_span:
+            decrate_workflow_with_trace(workflow, self._inner.tracer(), self._agent_span)
+        return workflow
+
+    def get_tool(self, tool_id: str) -> Tool:
+        tool = self._inner.resource_manager().get_tool(tool_id)
+        if tool and self._inner.tracer() and self._agent_span:
+            decrate_tool_with_trace(tool, self._inner.tracer(), self._agent_span)
+        return tool
+
+    def stream_iterator(self) -> AsyncIterator[Any]:
+        return self._inner.stream_writer_manager().stream_output()
+
+    async def post_run(self):
+        await self._inner.checkpointer().post_agent_execute(self.session_id())
+        await self._inner.stream_writer_manager().stream_emitter().close()
+
+    def set_controller_context_manager(self, controller_context_manager: Any):
+        self._controller_context_manager = controller_context_manager
+
+    def controller_context_manager(self) -> Any:
+        return self._controller_context_manager
+
+    def tracer(self) -> Tracer:
+        return self._inner.tracer()
+
+    def create_workflow_runtime(self) -> WorkflowRuntime:
+        return self._inner.create_workflow_runtime()

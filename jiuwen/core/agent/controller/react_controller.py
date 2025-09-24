@@ -8,7 +8,7 @@ from jiuwen.core.agent.controller.base import ControllerOutput, ControllerInput,
 from jiuwen.core.agent.handler.base import AgentHandler
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.sub_task import SubTask
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.agent.state_machine.react_state_machine import ReActStateMachine
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -139,8 +139,7 @@ class ReActController(Controller):
             # 创建一个临时的TaskContext，因为新架构中不再依赖TaskContext
             # 但为了保持与AgentHandler的兼容性，我们需要传递一个context对象
             from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = AgentRuntime(trace_id=self._runtime.session_id())
-            await temp_context.initialize()
+            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
             temp_context.set_controller_context_manager(self._context_mgr)
 
             # 直接传递 controller_output.sub_tasks 而不是从状态机获取
@@ -220,8 +219,7 @@ class ReActController(Controller):
 
         # 创建一个临时的TaskContext
         from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = AgentRuntime(trace_id=self._runtime.session_id())
-        await temp_context.initialize()
+        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
         temp_context.set_controller_context_manager(self._context_mgr)
 
         # 直接传递 sub_tasks 而不是让 _execute_sub_tasks 从状态机获取
@@ -264,8 +262,7 @@ class ReActController(Controller):
 
             # 创建一个临时的TaskContext
             from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = AgentRuntime(trace_id=self._runtime.session_id())
-            await temp_context.initialize()
+            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
             temp_context.set_controller_context_manager(self._context_mgr)
 
             # 直接传递 controller_output.sub_tasks
@@ -328,8 +325,7 @@ class ReActController(Controller):
 
         # 创建一个临时的TaskContext
         from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = AgentRuntime(trace_id=self._runtime.session_id())
-        await temp_context.initialize()
+        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
         temp_context.set_controller_context_manager(self._context_mgr)
 
         # 直接传递 sub_tasks
@@ -376,7 +372,7 @@ class ReActController(Controller):
             async for result in self._stream_handle_tool_invoked_state(inputs, completed_sub_tasks):
                 yield result
 
-    async def _execute_sub_tasks(self, context: 'AgentRuntime', sub_tasks: List[SubTask] = None):
+    async def _execute_sub_tasks(self, context: 'Runtime', sub_tasks: List[SubTask] = None):
         """执行SubTask列表"""
         if sub_tasks is None:
             # 如果没有直接传递，则从状态机获取
@@ -468,7 +464,7 @@ class ReActController(Controller):
             agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
             agent_context.add_message(llm_output)
 
-    async def invoke(self, inputs: ReActControllerInput, context: AgentRuntime) -> ReActControllerOutput:
+    async def invoke(self, inputs: ReActControllerInput, context: Runtime) -> ReActControllerOutput:
         # 只在初始请求时添加用户输入到对话历史
         # 在工具调用后的请求中，对话历史已经包含了用户消息和工具结果
         agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
@@ -502,7 +498,7 @@ class ReActController(Controller):
 
     async def stream(self,
                      inputs: ReActControllerInput,
-                     context: AgentRuntime
+                     context: Runtime
                      ) -> AsyncIterator[Union[BaseMessageChunk, ReActControllerOutput]]:
         # 只在初始请求时添加用户输入到对话历史
         # 在工具调用后的请求中，对话历史已经包含了用户消息和工具结果

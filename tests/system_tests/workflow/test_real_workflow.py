@@ -19,7 +19,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
@@ -238,7 +238,7 @@ class RealWorkflowTest(unittest.TestCase):
             workflow_config=WorkflowConfig(),
             graph=PregelGraph(),
         )
-        context = AgentRuntime(trace_id="test")
+        context = TaskRuntime(trace_id="test")
 
         # 3. 实例化各组件
         start = MockStartNode("start")
@@ -328,7 +328,7 @@ class RealWorkflowTest(unittest.TestCase):
         """
         测试LLM组件通过StreamWriter流出数据
         """
-        context = AgentRuntime(trace_id="test")
+        context = TaskRuntime(trace_id="test")
         flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
 
         start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})

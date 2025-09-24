@@ -7,7 +7,7 @@ import pytest
 
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionConfig
@@ -229,7 +229,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             workflow_config=workflow_config,
             graph=PregelGraph(),
         )
-        context = AgentRuntime(trace_id="test")
+        context = TaskRuntime(trace_id="test")
 
         # 2. 实例化各组件
         start = self._create_start_component()

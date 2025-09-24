@@ -55,7 +55,7 @@ class Checkpointer(ABC):
         pass
 
     @abstractmethod
-    async def pre_agent_execute(self, runtime: BaseRuntime, inputs: dict):
+    async def pre_agent_execute(self, runtime: BaseRuntime, inputs):
         pass
 
     @abstractmethod

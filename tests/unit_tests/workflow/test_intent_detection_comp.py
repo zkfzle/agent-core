@@ -6,7 +6,6 @@ import sys
 import types
 from unittest.mock import Mock, AsyncMock, patch
 
-from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
@@ -15,7 +14,7 @@ from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutabl
     IntentDetectionComponent
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
-from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
+from jiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
@@ -148,6 +147,6 @@ class TestIntentDetectionComponent:
 
         flow.add_connection("start", "intent")
 
-        workflow_context = AgentRuntime(trace_id="session id").create_workflow_runtime()
+        workflow_context = TaskRuntime(trace_id="session id").create_workflow_runtime()
         async for chunk in flow.stream({"query": "我的意图是查询景点"}, workflow_context):
             print(chunk)

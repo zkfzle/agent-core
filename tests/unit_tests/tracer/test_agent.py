@@ -1,7 +1,8 @@
 import asyncio
 import unittest
 
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.common.logging import logger
 from jiuwen.core.stream.writer import CustomSchema
 from jiuwen.core.workflow.base import Workflow
@@ -59,7 +60,7 @@ class MockAgent(unittest.TestCase):
     def tearDown(self):
         record_tracer_info(self.tracer_chunks, "test_agent_workflow_seq_exec_stream_workflow_with_tracer.json")
 
-    async def run_workflow_seq_exec_stream_workflow_with_tracer(self, context: AgentRuntime):
+    async def run_workflow_seq_exec_stream_workflow_with_tracer(self, context: Runtime):
         """
         start -> a -> b -> end
         """
@@ -120,7 +121,7 @@ class MockAgent(unittest.TestCase):
 
     async def run_agent_workflow_seq_exec_stream_workflow_with_tracer(self):
         # context手动初始化tracer，agent和workflow共用一个tracer
-        context = AgentRuntime(trace_id="test")
+        context = TaskRuntime(trace_id="test")
         self.tracer = context.tracer()
 
         agent_span = self.tracer.tracer_agent_span_manager.create_agent_span()
@@ -146,7 +147,7 @@ class MockAgent(unittest.TestCase):
                                       )
             raise e
         finally:
-            await context.close()
+            await context.post_run()
 
     async def get_stream_output(self):
         async for item in self.tracer._stream_writer_manager.stream_output(need_close=True):
@@ -154,7 +155,8 @@ class MockAgent(unittest.TestCase):
 
     def test_agent_workflow_seq_exec_stream_workflow_with_tracer(self):
         async def main():
-            await self.run_agent_workflow_seq_exec_stream_workflow_with_tracer()
-            await self.get_stream_output()
+            task1 = asyncio.create_task(self.run_agent_workflow_seq_exec_stream_workflow_with_tracer())
+            task2 = asyncio.create_task(self.get_stream_output())
+            await asyncio.gather(task1, task2)
 
         self.loop.run_until_complete(main())

@@ -5,27 +5,37 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
+from jiuwen.core.runtime.resource_manager import ResourceManager, ResourceMgr
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.state import State
-from jiuwen.core.runtime.store import Store
 from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.tracer.tracer import Tracer
 
 
 class WorkflowRuntime(BaseRuntime):
-    def __init__(self, state: State = None, config: Config = None, store: Store = None, tracer: Tracer = None,
-                 session_id: str = None, controller_context_manager: Any = None, context: Context = None):
-        self._config = config if config is not None else Config()
+    def __init__(self, parent: BaseRuntime = None, session_id: str = None, state: State = None,
+                 context: Context = None):
+        self._session_id = session_id
+        self._parent = parent
+        self._context = context
+        if parent is not None:
+            if self._session_id is None:
+                self._session_id = parent.session_id()
+            self._config = parent.config()
+            self._resource_manager = parent.resource_manager()
+            self._tracer = parent.tracer()
+        else:
+            if self._session_id is None:
+                self._session_id = uuid.uuid4().hex
+            self._config = Config()
+            self._resource_manager = ResourceMgr()
+            self._tracer = None
+
         self._state = state if state is not None else InMemoryState()
-        self._store = store
-        self._tracer = tracer
         self._callback_manager = CallbackManager()
         self._stream_writer_manager = None  # type: StreamWriterManager
-        self._controller_context_manager = controller_context_manager
-        self._session_id = session_id if session_id else uuid.uuid4().hex
-        self._queue_manager = None  # type: MessageQueueManager
-        self._context = context
+        self._queue_manager = None
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
         if self._stream_writer_manager is not None:
@@ -35,8 +45,13 @@ class WorkflowRuntime(BaseRuntime):
     def set_tracer(self, tracer: Tracer) -> None:
         self._tracer = tracer
 
-    def set_controller_context_manager(self, controller_context_manager) -> None:
-        self._controller_context_manager = controller_context_manager
+    def set_queue_manager(self, queue_manager: MessageQueueManager):
+        if self._queue_manager is not None:
+            return
+        self._queue_manager = queue_manager
+
+    def queue_manager(self) -> MessageQueueManager:
+        return self._queue_manager
 
     def config(self) -> Config:
         return self._config
@@ -56,22 +71,14 @@ class WorkflowRuntime(BaseRuntime):
     def controller_context_manager(self):
         return self._controller_context_manager
 
-    def set_queue_manager(self, queue_manager: MessageQueueManager):
-        if self._queue_manager is not None:
-            return
-        self._queue_manager = queue_manager
-
-    def queue_manager(self) -> MessageQueueManager:
-        return self._queue_manager
-
     def session_id(self) -> str:
         return self._session_id
 
+    def resource_manager(self) -> ResourceManager:
+        return self._resource_manager
+
     def context(self) -> Context:
         return self._context
-
-    def resource_manager(self):
-        pass
 
 
 class NodeRuntime(BaseRuntime):
@@ -91,6 +98,12 @@ class NodeRuntime(BaseRuntime):
     def parent_id(self):
         return self._parent_id
 
+    def queue_manager(self) -> MessageQueueManager:
+        return self._runtime.queue_manager()
+
+    def parent(self):
+        return self._runtime
+
     def tracer(self) -> Tracer:
         return self._runtime.tracer()
 
@@ -109,17 +122,11 @@ class NodeRuntime(BaseRuntime):
     def controller_context_manager(self):
         return self._runtime.controller_context_manager()
 
-    def queue_manager(self) -> MessageQueueManager:
-        return self._runtime.queue_manager()
-
     def session_id(self) -> str:
         return self._runtime.session_id()
 
     def resource_manager(self):
-        pass
+        return self._runtime.resource_manager()
 
     def context(self) -> Context:
         return self._runtime.context()
-
-    def parent(self):
-        return self._runtime

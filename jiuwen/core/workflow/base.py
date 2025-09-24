@@ -2,6 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
+from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Self, Dict, Any, Union, AsyncIterator
 
@@ -14,11 +15,13 @@ from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.runtime.config import CompIOConfig, Transformer
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
+from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
@@ -142,7 +145,27 @@ class BaseWorkFlow:
         return self._graph.compile(runtime)
 
 
-class Workflow(BaseWorkFlow):
+class WorkflowExecutable(ABC):
+    @abstractmethod
+    async def invoke(self, inputs, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
+        pass
+
+    @abstractmethod
+    async def sub_invoke(self, inputs, runtime: BaseRuntime, config: Any = None) -> WorkflowOutput:
+        pass
+
+    @abstractmethod
+    async def stream(
+            self,
+            inputs,
+            runtime: BaseRuntime,
+            context: Context = None,
+            stream_modes: list[StreamMode] = None
+    ) -> AsyncIterator[WorkflowChunk]:
+        pass
+
+
+class Workflow(BaseWorkFlow, WorkflowExecutable):
     def __init__(self, workflow_config: WorkflowConfig = None, graph: Graph = None):
         super().__init__(workflow_config if workflow_config is not None else WorkflowConfig(),
                          graph if graph is not None else PregelGraph())
@@ -201,10 +224,10 @@ class Workflow(BaseWorkFlow):
         logger.info("end to sub_invoke, results=%s", results)
         return results
 
-    async def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+    async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> Output:
         logger.info("begin to invoke, input=%s", inputs)
         chunks = []
-        async for chunk in self.stream(inputs, runtime, stream_modes=[BaseStreamMode.OUTPUT]):
+        async for chunk in self.stream(inputs, runtime, context, stream_modes=[BaseStreamMode.OUTPUT]):
             chunks.append(chunk)
 
         is_interaction = False
@@ -225,8 +248,11 @@ class Workflow(BaseWorkFlow):
             self,
             inputs: Input,
             runtime: BaseRuntime,
+            context: Context = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
+        if isinstance(runtime, WorkflowRuntime):
+            runtime._context = context
         mq_manager = MessageQueueManager(self._workflow_config.stream_edges, self._workflow_config.comp_abilities,
                                          False)
         runtime.set_queue_manager(mq_manager)

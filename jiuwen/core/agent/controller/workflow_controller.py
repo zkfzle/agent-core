@@ -8,12 +8,12 @@ from jiuwen.core.agent.controller.base import Controller, ControllerOutput, Cont
 from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.core.agent.state_machine.workflow_agent_state_machine import WorkflowAgentStateMachine
 from jiuwen.core.agent.task.sub_task import SubTask
-from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context.controller_context.controller_context_manager import ControllerContextMgr
 from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
@@ -63,7 +63,7 @@ class WorkflowController(Controller):
             results = {}
 
             from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
             temp_context.set_controller_context_manager(self._context_mgr)
 
             if controller_output.sub_tasks:
@@ -126,7 +126,7 @@ class WorkflowController(Controller):
 
         # 创建一个临时的TaskContext
         from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
         temp_context.set_controller_context_manager(self._context_mgr)
 
         inputs = AgentHandlerInputs(context=temp_context, name=sub_tasks[0].func_name,
@@ -163,7 +163,7 @@ class WorkflowController(Controller):
             controller_output: WorkflowControllerOutput = self.invoke(current_inputs, None)
             results = {}
             from jiuwen.core.agent.task.task_context import AgentRuntime
-            temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+            temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
             temp_context.set_controller_context_manager(self._context_mgr)
 
             if controller_output.sub_tasks:
@@ -217,7 +217,7 @@ class WorkflowController(Controller):
 
         # 创建一个临时的TaskContext
         from jiuwen.core.agent.task.task_context import AgentRuntime
-        temp_context = AgentRuntime(trace_id=self._runtime.session_id())
+        temp_context = await AgentRuntime().pre_run(session_id=self._runtime.session_id())
         temp_context.set_controller_context_manager(self._context_mgr)
 
         inputs = AgentHandlerInputs(context=temp_context, name=sub_tasks[0].func_name,
@@ -319,7 +319,7 @@ class WorkflowController(Controller):
 
     async def stream(self,
                      inputs: WorkflowControllerInput,
-                     context: AgentRuntime
+                     context: Runtime
                      ) -> AsyncIterator[Union[BaseMessageChunk, WorkflowControllerOutput]]:
         pass
 

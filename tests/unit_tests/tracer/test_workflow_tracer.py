@@ -27,10 +27,8 @@ import asyncio
 import unittest
 from collections.abc import Callable
 
-from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
 from jiuwen.core.stream.writer import CustomSchema, OutputSchema
@@ -38,8 +36,11 @@ from jiuwen.graph.pregel.graph import PregelGraph
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode
 from jiuwen.core.stream.writer import TraceSchema
 
+switcher = False
 
 def record_tracer_info(tracer_chunks, file_path):
+    if not switcher:
+        return
     try:
         with open(file_path, "w", encoding="utf-8") as f:
             for chunk in tracer_chunks:
@@ -481,7 +482,7 @@ class WorkflowTest(unittest.TestCase):
                                               "user_var": "${l.user_var}"})
             intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-            loop = LoopComponent("l", loop_group, PregelGraph(), ArrayCondition({"item": "${a.array}"}),
+            loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
                                  callbacks=[output_callback, intermediate_callback])
 
             flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})

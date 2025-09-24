@@ -40,7 +40,7 @@ def create_react_agent(agent_config: ReActAgentConfig,
                        tools: List[Tool] = None):
     agent = ReActAgent(agent_config)
     agent.bind_workflows(workflows)
-    agent.bind_tools(tools)
+    agent.bind_tools(tools or [])
     return agent
 
 

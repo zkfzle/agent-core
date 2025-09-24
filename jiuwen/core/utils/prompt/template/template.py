@@ -63,7 +63,7 @@ class Template(BaseModel):
         input_keys = assembler.input_keys
         format_dict = {}
         for key in input_keys:
-            if keywords and keywords.get(key):
+            if keywords and keywords.get(key) is not None:
                 format_dict[key] = keywords.get(key)
         content = assembler.assemble(**format_dict)
         return Template(name=self.name, content=content, filters=self.filters)

@@ -56,3 +56,6 @@ class Agent(ABC):
 
     def bind_tools(self, tools: List[Tool]):
         self._runtime.add_tools([(tool.name, tool) for tool in tools if (isinstance(tool, RestfulApi) or isinstance(tool, LocalFunction))])
+
+    def get_llm_calls(self) -> Dict:
+        raise NotImplementedError("")

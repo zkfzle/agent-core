@@ -1,0 +1,88 @@
+#!/usr/bin/python3.11
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+
+from typing import Dict, Any, Optional, List, Callable, AsyncIterator
+
+from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.utils.prompt.template.template import Template
+from jiuwen.core.utils.llm.base import BaseChatModel
+from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, SystemMessage
+
+
+DEFAULT_USER_PROMPT: str = "{{query}}"
+
+
+class LLMCall:
+    def __init__(self,
+                 model_name: str,
+                 llm: BaseChatModel,
+                 system_prompt: str | List[BaseMessage] | List[Dict],
+                 user_prompt: str | List[BaseMessage] | List[Dict],
+                 freeze_system_prompt: bool = False,
+                 freeze_user_prompt: bool = False,
+                 ) -> None:
+        self._llm = llm
+        self._model_name = model_name
+        self._system_prompt = Template(content=system_prompt)
+        self._user_prompt = Template(content=user_prompt or DEFAULT_USER_PROMPT)
+        self._freeze_system_prompt = freeze_system_prompt
+        self._freeze_user_prompt = freeze_user_prompt
+        self._optimizer_callback: Optional[Callable] = None
+
+    async def invoke(self,
+                     inputs: Dict[str, Any],
+                     runtime: Runtime,
+                     history: Optional[List[BaseMessage]] = None,
+                     tools: Optional[List[ToolInfo]] = None,
+                     ) -> BaseMessage:
+        messages = self._format_llm_input(inputs, history)
+        response = await self._llm.ainvoke(self._model_name, messages, tools=tools)
+        if self._optimizer_callback is not None:
+            await self._optimizer_callback(inputs, response, runtime)
+        return response
+
+    async def stream(self,
+                     inputs: Dict[str, Any],
+                     runtime: Runtime,
+                     history: Optional[List[BaseMessage]] = None,
+                     tools: Optional[List[ToolInfo]] = None,
+                     ) -> AsyncIterator:
+        messages = self._format_llm_input(inputs, history)
+        message_chunks = []
+        async for chunk in self._llm.astream(self._model_name, messages, tools=tools):
+            message_chunks.append(chunk.content if hasattr(chunk, "content") else str(chunk))
+            yield chunk
+        response = "".join(message_chunks)
+        if self._optimizer_callback is not None:
+            await self._optimizer_callback(inputs, response, runtime)
+
+    def set_optimizer_callback(self, callback: Callable) -> None:
+        self._optimizer_callback = callback
+
+    def set_system_prompt(self, system_prompt: str | List[BaseMessage] | List[Dict]) -> None:
+        if not self._freeze_system_prompt:
+            self._system_prompt = Template(content=system_prompt)
+
+    def set_user_prompt(self, user_prompt: str | List[BaseMessage] | List[Dict]) -> None:
+        if not self._freeze_user_prompt:
+            self._user_prompt = Template(content=user_prompt)
+
+    def freeze_system_prompt(self, switch: bool) -> None:
+        self._freeze_system_prompt = switch
+
+    def freeze_user_prompt(self, switch: bool) -> None:
+        self._freeze_user_prompt = switch
+
+    def _format_llm_input(self,
+                          inputs: Dict[str, Any],
+                          history: Optional[List[BaseMessage]] = None,
+                          ) -> List[BaseMessage]:
+        system_messages = [
+            SystemMessage(
+                content=msg.content,
+            ) for msg in self._system_prompt.format(inputs).to_messages()
+        ]
+        user_messages = self._user_prompt.format(inputs).to_messages()
+        history_messages = history if history is not None else []
+        return [*system_messages, *history_messages, *user_messages]

@@ -11,7 +11,7 @@ from jiuwen.core.tracer.decorator import decrate_model_with_trace, decrate_workf
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.tracer.workflow_tracer import trace, trace_error
 from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.utils.llm.messages import FunctionInfo
+from jiuwen.core.utils.llm.messages import ToolInfo
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.tool.base import Tool
 
@@ -109,8 +109,11 @@ class WrappedRuntime(Runtime, ABC):
     def get_tool(self, tool_id: str) -> Tool:
         return self._inner.resource_manager().tool().get_tool(tool_id)
 
-    def get_function_info(self, tool_id: List[str], workflow_id: List[str]) -> List[FunctionInfo]:
-        pass
+    def get_tool_info(self, tool_id: List[str], workflow_id: List[str]) -> List[ToolInfo]:
+        infos = []
+        infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
+        infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
+        return infos
 
     def base(self) -> BaseRuntime:
         return self._inner

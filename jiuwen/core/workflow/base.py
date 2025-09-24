@@ -28,6 +28,7 @@ from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
+from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
 
@@ -96,7 +97,7 @@ class BaseWorkFlow:
         if response_mode is not None:
             if "streaming" == response_mode:
                 self._workflow_config.comp_abilities[
-                    comp_id] =  [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
+                    comp_id] = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
             else:
                 self._workflow_config.comp_abilities[comp_id] = [ComponentAbility.INVOKE]
         return self
@@ -263,6 +264,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             runtime.set_tracer(tracer)
         compiled_graph = self.compile(runtime)
         self._stream_actor.init(runtime)
+
         async def stream_process():
             try:
                 await self._stream_actor.run()
@@ -285,3 +287,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     def _convert_to_component(self, executable: Executable) -> WorkflowComponent:
         pass
+
+    def get_tool_info(self) -> ToolInfo:
+        return ToolInfo(function=Function(name="workflow", description="", parameters=None))

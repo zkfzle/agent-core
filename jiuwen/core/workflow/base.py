@@ -28,7 +28,7 @@ from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
-from jiuwen.core.utils.llm.messages import ToolInfo, Function
+from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
 
@@ -289,4 +289,4 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         pass
 
     def get_tool_info(self) -> ToolInfo:
-        return ToolInfo(function=Function(name="workflow", description="", parameters=None))
+        return ToolInfo(function=Function(name="workflow", description="", parameters=Parameters(required=[])))

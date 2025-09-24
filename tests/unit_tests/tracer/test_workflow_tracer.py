@@ -6,7 +6,7 @@ from unittest.mock import Mock
 from jiuwen.core.component.condition.array import ArrayCondition
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.output import OutputCallback
-from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
+from jiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from tests.unit_tests.workflow.test_node import CommonNode, AddTenNode
@@ -482,8 +482,8 @@ class WorkflowTest(unittest.TestCase):
                                               "user_var": "${l.user_var}"})
             intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-            loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
-                                 callbacks=[output_callback, intermediate_callback])
+            loop = AdvancedLoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
+                                         callbacks=[output_callback, intermediate_callback])
 
             flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
 

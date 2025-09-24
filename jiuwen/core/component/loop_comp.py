@@ -1,23 +1,31 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
-from typing import AsyncIterator, Self, Union, Callable, Any
+from enum import Enum
+from pydantic import BaseModel, Field
+from typing import Self, Union, Callable, Any, Optional, Dict
 
 from langgraph.constants import END, START
 
-from jiuwen.core.common.constants.constant import INDEX
+from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.break_comp import BreakComponent, LoopController
+from jiuwen.core.component.condition.array import ArrayConditionInRuntime
 from jiuwen.core.component.condition.condition import Condition, AlwaysTrue, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
+from jiuwen.core.component.condition.number import NumberConditionInRuntime
+from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, FIRST_LOOP
 from jiuwen.core.component.loop_callback.loop_id import LoopIdCallback
+from jiuwen.core.component.loop_callback.output import OutputCallback
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.atomic_node import AtomicNode
 from jiuwen.core.graph.base import Graph, INPUTS_KEY
 from jiuwen.core.graph.executable import Output, Input, Executable
+from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.config import WorkflowConfig
-from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import NodeRuntime
 from jiuwen.core.workflow.base import BaseWorkFlow
 from jiuwen.graph.pregel.graph import PregelGraph
@@ -37,6 +45,34 @@ class LoopGroup(BaseWorkFlow, Executable):
         super().__init__(workflow_config, new_graph)
         self.compiled = None
         self.group_input_schema = {}
+        self._break_components = []
+
+    def add_workflow_comp(
+            self,
+            comp_id: str,
+            workflow_comp: Union[Executable, WorkflowComponent],
+            *,
+            wait_for_all: bool = False,
+            inputs_schema: dict = None,
+            outputs_schema: dict = None,
+            inputs_transformer=None,
+            outputs_transformer=None,
+            stream_inputs_schema: dict = None,
+            stream_outputs_schema: dict = None,
+            stream_inputs_transformer=None,
+            stream_outputs_transformer=None,
+            comp_ability=None,
+            response_mode: str = None
+    ) -> Self:
+        if isinstance(workflow_comp, BreakComponent):
+            self._break_components.append(workflow_comp)
+        super().add_workflow_comp(comp_id, workflow_comp, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
+                                  outputs_schema=outputs_schema, inputs_transformer=inputs_transformer,
+                                  outputs_transformer=outputs_transformer, stream_inputs_schema=stream_inputs_schema,
+                                  stream_outputs_schema=stream_outputs_schema,
+                                  stream_inputs_transformer=stream_inputs_transformer,
+                                  stream_outputs_transformer=stream_outputs_transformer, comp_ability=comp_ability,
+                                  response_mode=response_mode)
 
     def start_nodes(self, nodes: list[str]) -> Self:
         for node in nodes:
@@ -60,6 +96,10 @@ class LoopGroup(BaseWorkFlow, Executable):
     def graph_invoker(self) -> bool:
         return True
 
+    @property
+    def break_components(self):
+        return self._break_components
+
 
 BROKEN = "_broken"
 FIRST_IN_LOOP = "_first_in_loop"
@@ -68,7 +108,7 @@ CONDITION_NODE_ID = "condition"
 BODY_NODE_ID = "body"
 
 
-class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
+class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
 
     def __init__(self, body: Executable,
                  condition: Union[str, Callable[[], bool], Condition] = None, break_nodes: list[BreakComponent] = None,
@@ -118,7 +158,7 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
 
     def _atomic_invoke(self, **kwargs) -> Any:
         outputs = self._condition_invoke(runtime=self._runtime)
-        self._runtime.state().set_outputs({self._node_id: outputs[1]})
+        self._runtime.state().set_outputs(outputs[1])
         return outputs[0]
 
     def _condition_invoke(self, runtime: BaseRuntime) -> Output:
@@ -158,7 +198,6 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
         self.register_callback(loop_id_callback)
 
         # set loop graph inputs
-        self._runtime.state().update(inputs.get(INPUTS_KEY) if INPUTS_KEY in inputs else inputs)
         index = self._runtime.state().get(INDEX)
         if index is None:
             self._runtime.state().update({BROKEN: False, INDEX: -1})
@@ -169,6 +208,52 @@ class LoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
             self._body.compiled = self._body.compile(self._runtime.parent())
             return await compiled.invoke(inputs, self._runtime.parent())
         return None
+
+    def graph_invoker(self) -> bool:
+        return True
+
+
+class LoopType(str, Enum):
+    Array = "array"
+    Number = "number"
+    AlwaysTrue = "always_true"
+    Expression = "expression"
+
+
+class LoopInput(BaseModel):
+    loop_type: Optional[str] = Field("")
+    loop_number: Optional[int] = Field(0)
+    loop_array: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    bool_expression: Optional[str] = Field("")
+    intermediate_var: Dict[str, Union[str, Any]] = Field(default_factory=dict)
+
+
+class LoopComponent(WorkflowComponent, ComponentExecutable):
+    def __init__(self, loop_group: LoopGroup, output_schema: dict):
+        super().__init__()
+        self._loop_group = loop_group
+        self._output_schema = output_schema
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        loop_input = LoopInput.model_validate(inputs.get(INPUTS_KEY))
+        condition: Condition
+        if loop_input.loop_type == LoopType.Array.value:
+            condition = ArrayConditionInRuntime(loop_input.loop_array)
+        elif loop_input.loop_type == LoopType.Number.value:
+            condition = NumberConditionInRuntime(loop_input.loop_number)
+        elif loop_input.loop_type == LoopType.AlwaysTrue.value:
+            condition = AlwaysTrue()
+        elif loop_input.loop_type == LoopType.Expression.value:
+            condition = ExpressionCondition(loop_input.bool_expression)
+        else:
+            raise JiuWenBaseException(-1, "error loop type config of LoopComponent")
+        output_callback = OutputCallback(self._output_schema)
+        callbacks: list = [output_callback]
+        if loop_input.intermediate_var:
+            callbacks.append(IntermediateLoopVarCallback(loop_input.intermediate_var))
+        loop_component = AdvancedLoopComponent(self._loop_group, condition, self._loop_group.break_components,
+                                               callbacks)
+        return await loop_component.on_invoke({INPUTS_KEY: {}, CONFIG_KEY: inputs.get(CONFIG_KEY)}, runtime.base())
 
     def graph_invoker(self) -> bool:
         return True

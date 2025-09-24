@@ -11,7 +11,7 @@ from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.condition.array import ArrayCondition
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.output import OutputCallback
-from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
+from jiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -159,8 +159,8 @@ async def test_workflow_with_loop():
         {"results": "${1.result}", "user_var": "${l.user_var}"})
     intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-    loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
-                         callbacks=[output_callback, intermediate_callback])
+    loop = AdvancedLoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
+                                 callbacks=[output_callback, intermediate_callback])
 
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
 
@@ -247,8 +247,8 @@ async def test_workflow_with_loop_interactive():
     output_callback = OutputCallback({"results": "${1.result}", "user_var": "${l.user_var}"})
     intermediate_callback = IntermediateLoopVarCallback({"user_var": "${input_number}"})
 
-    loop = LoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
-                         callbacks=[output_callback, intermediate_callback])
+    loop = AdvancedLoopComponent(loop_group, ArrayCondition({"item": "${a.array}"}),
+                                 callbacks=[output_callback, intermediate_callback])
 
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
 

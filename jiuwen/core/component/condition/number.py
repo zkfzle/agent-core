@@ -10,14 +10,22 @@ from jiuwen.core.common.constants.constant import INDEX
 
 
 class NumberCondition(Condition):
-    def __init__(self, limit: Union[str, int], index_path: str = None):
+    def __init__(self, limit: Union[str, int]):
         super().__init__(limit)
-        self._index_path = index_path if index_path else INDEX
         self._limit = limit
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(self._index_path) + 1
+        current_idx = runtime.state().get(INDEX) + 1
         limit_num = inputs
-        updates: dict[str, Any] = {}
-        updates[INDEX] = current_idx
-        return (current_idx < limit_num, updates)
+        return current_idx < limit_num
+
+
+class NumberConditionInRuntime(Condition):
+    def __init__(self, limit: int):
+        super().__init__()
+        self._limit = limit
+
+    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        current_idx = runtime.state().get(INDEX) + 1
+        limit_num = self._limit
+        return current_idx < limit_num

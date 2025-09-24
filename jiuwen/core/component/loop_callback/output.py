@@ -15,7 +15,6 @@ class OutputCallback(LoopCallback):
         self._outputs_format = outputs_format
         self._result_root = result_root
         self._round_result_root = round_result_root if round_result_root else "round"
-        self._intermediate_loop_var_root = "intermediateLoopVar" + NESTED_PATH_SPLIT
 
     def first_in_loop(self, runtime: BaseRuntime) -> Output:
         _results: list[Any] = []
@@ -34,6 +33,8 @@ class OutputCallback(LoopCallback):
             ref_str = extract_origin_key(output_format)
             path = ref_str.split(NESTED_PATH_SPLIT)
             if path[0] == runtime.node_id():
+                if len(results) == 0:
+                    return None
                 data = results[-1]
                 for key in root:
                     data = data.get(key)

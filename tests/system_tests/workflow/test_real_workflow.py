@@ -39,7 +39,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.stream.writer import CustomSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.utils.tool.service_api.param import Param
+from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig

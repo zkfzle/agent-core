@@ -19,7 +19,7 @@ from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.utils.tool.service_api.param import Param
+from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
@@ -78,7 +78,6 @@ SYSTEM_PROMPT_TEMPLATE = "你是一个query改写的AI助手。今天的日期�
 def build_current_date():
     current_datetime = datetime.now()
     return current_datetime.strftime("%Y-%m-%d")
-
 
 
 class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):

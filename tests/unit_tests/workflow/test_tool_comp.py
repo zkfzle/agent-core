@@ -5,7 +5,7 @@ import pytest
 from jiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
 from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime
-from jiuwen.core.utils.tool.service_api.param import Param
+from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode

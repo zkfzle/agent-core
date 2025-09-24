@@ -7,7 +7,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
-from jiuwen.core.utils.tool.service_api.param import Param
+from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 
 

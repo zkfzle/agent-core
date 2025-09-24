@@ -6,7 +6,7 @@ from typing import Any, List
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.utils.tool.service_api.types import Type, ValueTypeEnum
+from jiuwen.core.utils.tool.types import Type, ValueTypeEnum
 
 
 class Param:

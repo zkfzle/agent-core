@@ -10,7 +10,7 @@ from jiuwen.core.agent.controller.react_controller import ReActControllerInput, 
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
-from jiuwen.core.utils.tool.service_api.param import Param
+from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 
 

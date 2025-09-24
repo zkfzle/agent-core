@@ -5,9 +5,10 @@
 import unittest
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.utils.tool.service_api.param import Param
+from jiuwen.core.utils.tool.param import Param
+from jiuwen.core.utils.tool.param_util import ParamUtil
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.utils.tool.service_api.types import ValueTypeEnum, Type
+from jiuwen.core.utils.tool.types import ValueTypeEnum, Type
 
 
 class TestPluginParam(unittest.TestCase):
@@ -136,45 +137,64 @@ class TestPluginParam(unittest.TestCase):
             "method": "Body"
         })
         self.param = [Param(param_type=item.get('type'), **item) for item in self.schema_example]
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"times": {"starttime": "12345", "endtime": "456123"}, "location": "上海"})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": {"starttime": "12345", "endtime": "456123"}, "location": "上海"},
+        )
 
         self.INPUTS = {"times": {"starttime": "2025-07-15"}, "location": "上海"}
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"times": {"starttime": "2025-07-15"}, "location": "上海"})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": {"starttime": "2025-07-15"}, "location": "上海"},
+        )
 
         self.schema_example[0]["default_value"] = None
         self.INPUTS = {"times": {"starttime": "2025-07-15"}, "location": "上海"}
         self.param = [Param(param_type=item.get("type"), **item) for item in self.schema_example]
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"times": {"starttime": "2025-07-15", "endtime": "2025-07-14"}, "location": "上海"})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": {"starttime": "2025-07-15", "endtime": "2025-07-14"}, "location": "上海"},
+        )
 
         self.INPUTS = {"location": "上海"}
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"times": {"starttime": "2025-07-14", "endtime": "2025-07-14"}, "location": "上海"})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": {"starttime": "2025-07-14", "endtime": "2025-07-14"}, "location": "上海"},
+        )
 
         self.INPUTS = {"location": "上海", "times": None}
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"times": {"starttime": "2025-07-14", "endtime": "2025-07-14"}, "location": "上海"})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": {"starttime": "2025-07-14", "endtime": "2025-07-14"}, "location": "上海"},
+        )
 
         self.INPUTS = {"location": "上海", "times": None}
         self.schema_example[0]['type'] = "array<object>"
         self.param = [Param(param_type=item.get("type"), **item) for item in self.schema_example]
-        self.assertDictEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                             {"times": [{"starttime": "2025-07-14", "endtime": "2025-07-14"}], "location": "上海"})
+        self.assertDictEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": [{"starttime": "2025-07-14", "endtime": "2025-07-14"}], "location": "上海"},
+        )
 
         self.INPUTS = {"times": [{"starttime": "2020-01-01"}, {"endtime": "2020-01-02"}], "location": "上海"}
-        self.assertDictEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                             {"times": [
-                                 {"starttime": "2020-01-01", "endtime": "2025-07-14"},
-                                 {"starttime": "2025-07-14", "endtime": "2020-01-02"}], "location": "上海"})
+        self.assertDictEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {
+                "times": [
+                    {"starttime": "2020-01-01", "endtime": "2025-07-14"},
+                    {"starttime": "2025-07-14", "endtime": "2020-01-02"},
+                ],
+                "location": "上海",
+            },
+        )
 
         self.schema_example[2]["default_value"] = 20
         self.INPUTS = {"times": [{"starttime": "2020-01-01"}], "location": "上海", "num": None}
         self.param = [Param(param_type=item.get("type"), **item) for item in self.schema_example]
-        self.assertDictEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                             {"times": [{"starttime": "2020-01-01", "endtime": "2025-07-14"}], "location": "上海",
-                              "num": 20})
+        self.assertDictEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"times": [{"starttime": "2020-01-01", "endtime": "2025-07-14"}], "location": "上海", "num": 20},
+        )
 
     def test_init_default_value_in_base_type_should_correct(self):
         self.schema_example = {
@@ -188,21 +208,28 @@ class TestPluginParam(unittest.TestCase):
         }
         self.INPUTS = {"judgement": False}
         self.param = [Param(param_type=self.schema_example.get("type"), **self.schema_example)]
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS), {"judgement": False})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS), {"judgement": False}
+        )
 
         self.INPUTS = {"judgement": None}
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS), {"judgement": True})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS), {"judgement": True}
+        )
 
         self.schema_example["type"] = "array<int>"
         self.schema_example["default_value"] = [2, 3, 4]
         self.INPUTS = {"judgement": None}
         self.param = [Param(param_type=self.schema_example.get("type"), **self.schema_example)]
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"judgement": [2, 3, 4]})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS), {"judgement": [2, 3, 4]}
+        )
 
         self.schema_example["type"] = "array<bool>"
         self.schema_example["default_value"] = [True, False, True]
         self.INPUTS = {"judgement": None}
         self.param = [Param(param_type=self.schema_example.get("type"), **self.schema_example)]
-        self.assertEqual(RestfulApi._assign_format_default_value(self.param, self.INPUTS),
-                         {"judgement": [True, False, True]})
+        self.assertEqual(
+            ParamUtil.format_input_with_default_when_required(self.param, self.INPUTS),
+            {"judgement": [True, False, True]},
+        )

@@ -4,8 +4,8 @@ from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from jiuwen.core.runtime.interaction.agent_storage import AgentStorage
 from jiuwen.core.runtime.interaction.base import Checkpointer
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.interaction.workflow_storage import WorkflowStorage
+from jiuwen.core.runtime.runtime import BaseRuntime
 
 
 class InMemoryCheckpointer(Checkpointer):
@@ -35,7 +35,11 @@ class InMemoryCheckpointer(Checkpointer):
     async def interrupt_agent_execute(self, runtime: BaseRuntime):
         self._agent_store.save(runtime)
 
-    async def post_agent_execute(self, session_id: str):
+    async def post_agent_execute(self, runtime: BaseRuntime):
+        self._agent_store.save(runtime)
+
+    async def release(self, session_id: str):
+        self._workflow_store.clear(session_id)
         self._agent_store.clear(session_id)
 
     def graph_checkpointer(self):

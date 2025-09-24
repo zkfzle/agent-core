@@ -237,8 +237,9 @@ class TaskRuntime(StateRuntime):
         return self._inner.stream_writer_manager().stream_output()
 
     async def post_run(self):
-        await self._inner.checkpointer().post_agent_execute(self.session_id())
-        await self._inner.stream_writer_manager().stream_emitter().close()
+        if isinstance(self._inner, AgentRuntime):
+            await self._inner.checkpointer().post_agent_execute(self._inner)
+            await self._inner.stream_writer_manager().stream_emitter().close()
 
     def set_controller_context_manager(self, controller_context_manager: Any):
         self._controller_context_manager = controller_context_manager

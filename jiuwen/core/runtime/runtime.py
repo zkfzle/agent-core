@@ -54,6 +54,10 @@ class BaseRuntime(ABC):
     def context(self) -> Context:
         pass
 
+    @abstractmethod
+    def checkpointer(self):
+        pass
+
 
 Workflow = TypeVar("Workflow", contravariant=True)
 
@@ -189,6 +193,9 @@ class Runtime(ABC):
     async def pre_run(self, **kwargs):
         pass
 
+    async def release(self, session_id: str):
+        pass
+
 
 class ProxyRuntime(BaseRuntime):
     def __init__(self, stub: BaseRuntime = None):
@@ -223,3 +230,6 @@ class ProxyRuntime(BaseRuntime):
 
     def session_id(self) -> str:
         return self._stub.session_id()
+
+    def checkpointer(self):
+        return self._stub.checkpointer()

@@ -26,3 +26,6 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
         inputs = kwargs.get("inputs")
         inner = await self._runtime.create_agent_runtime(session_id, inputs)
         return TaskRuntime(inner=inner)
+
+    async def release(self, session_id: str):
+        await self._runtime.checkpointer().release(session_id)

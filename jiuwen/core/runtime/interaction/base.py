@@ -9,7 +9,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime
 
 
 class BaseInteraction(ABC, metaclass=ABCMeta):
-    def __init__(self, runtime: BaseRuntime, default_input = None):
+    def __init__(self, runtime: BaseRuntime, default_input=None):
         if default_input is not None:
             self._interactive_inputs = [default_input]
         else:
@@ -63,8 +63,13 @@ class Checkpointer(ABC):
         pass
 
     @abstractmethod
-    async def post_agent_execute(self, session_id: str):
+    async def post_agent_execute(self, runtime: BaseRuntime):
         pass
+
+    @abstractmethod
+    async def release(self, session_id: str):
+        pass
+
 
 class AgentInterrupt(Exception):
     def __init__(self, message):

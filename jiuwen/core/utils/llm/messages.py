@@ -15,7 +15,7 @@ class Parameters(BaseModel):
 class Function(BaseModel):
     name: str
     description: str
-    parameters: Parameters
+    parameters: Optional[Parameters]
 
 
 class ToolInfo(BaseModel):

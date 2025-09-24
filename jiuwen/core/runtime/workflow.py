@@ -80,13 +80,27 @@ class WorkflowRuntime(BaseRuntime):
     def context(self) -> Context:
         return self._context
 
+    def checkpointer(self):
+        return self._parent.checkpointer()
+
+
+def create_parent_id(runtime: BaseRuntime):
+    return runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
+
+
+def create_executable_id(node_id: str, parent_id: str):
+    return parent_id + "." + node_id if len(parent_id) != 0 else node_id
+
 
 class NodeRuntime(BaseRuntime):
     def __init__(self, runtime: BaseRuntime, node_id: str):
         self._node_id = node_id
-        self._parent_id = runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
-        self._executable_id = self._parent_id + "." + node_id if len(self._parent_id) != 0 else node_id
-        self._state = runtime.state().create_node_state(self._executable_id, self._parent_id)
+        parent_id = create_parent_id(runtime)
+        executable_id = create_executable_id(node_id, parent_id)
+        state = runtime.state().create_node_state(executable_id, parent_id)
+        self._state = state
+        self._parent_id = parent_id
+        self._executable_id = executable_id
         self._runtime = runtime
 
     def node_id(self):
@@ -130,3 +144,8 @@ class NodeRuntime(BaseRuntime):
 
     def context(self) -> Context:
         return self._runtime.context()
+
+    def checkpointer(self):
+        pass
+
+

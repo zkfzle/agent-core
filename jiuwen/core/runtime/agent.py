@@ -17,16 +17,19 @@ from jiuwen.core.tracer.tracer import Tracer
 
 
 class StaticAgentRuntime(BaseRuntime):
-    def __init__(self, config: Config = None):
+    def __init__(self, config: Config = None, checkpointer: Checkpointer = None):
         self._config = config if config is not None else Config()
         self._resource_manager = ResourceMgr()
-        self._checkpointer = default_inmemory_checkpointer
+        self._checkpointer = checkpointer if checkpointer is not None else default_inmemory_checkpointer
 
     def config(self) -> Config:
         return self._config
 
     def resource_manager(self) -> ResourceManager:
         return self._resource_manager
+
+    def checkpointer(self) -> Checkpointer:
+        return self._checkpointer
 
     def state(self) -> State:
         pass

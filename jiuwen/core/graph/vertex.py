@@ -16,7 +16,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.workflow import NodeRuntime
 from jiuwen.core.runtime.utils import get_by_schema
 from jiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs
-from jiuwen.core.workflow.workflow_config import ComponentAbility
+from jiuwen.core.workflow.workflow_config import ComponentAbility, NodeSpec
 
 
 class Vertex(AsyncAtomicNode):
@@ -30,6 +30,7 @@ class Vertex(AsyncAtomicNode):
 
     def init(self, runtime: BaseRuntime) -> bool:
         self._runtime = NodeRuntime(runtime, self._node_id)
+        self._node_config = self._runtime.node_config()
         return True
 
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None):
@@ -67,9 +68,9 @@ class Vertex(AsyncAtomicNode):
         return await self.call(kwargs.get("config", None))
 
     async def _pre_invoke(self) -> Optional[dict]:
-        inputs_transformer = self._runtime.config().get_input_transformer(self._node_id)
+        inputs_transformer = self._node_config.io_config.inputs_transformer if self._node_config else None
         if inputs_transformer is None:
-            inputs_schema = self._runtime.config().get_inputs_schema(self._node_id)
+            inputs_schema = self._node_config.io_config.inputs_schema if self._node_config else None
             inputs = self._runtime.state().get_inputs(inputs_schema)
         else:
             inputs = self._runtime.state().get_inputs_by_transformer(inputs_transformer)
@@ -78,9 +79,9 @@ class Vertex(AsyncAtomicNode):
         return inputs
 
     async def _post_invoke(self, results: Optional[dict]) -> Any:
-        output_transformer = self._runtime.config().get_output_transformer(self._node_id)
+        output_transformer = self._node_config.io_config.outputs_transformer if self._node_config else None
         if output_transformer is None:
-            output_schema = self._runtime.config().get_outputs_schema(self._node_id)
+            output_schema = self._node_config.io_config.outputs_schema if self._node_config else None
             results = get_by_schema(output_schema, results) if output_schema else results
         else:
             results = output_transformer(results)
@@ -93,9 +94,8 @@ class Vertex(AsyncAtomicNode):
 
     async def _pre_stream(self, ability: ComponentAbility) -> AsyncIterator[dict]:
         queue_manager = self._runtime.queue_manager()
-        workflow_config = self._runtime.config().get_workflow_config()
-        inputs_transformer = workflow_config.comp_stream_configs[self._node_id].inputs_transformer
-        inputs_schema = workflow_config.comp_stream_configs[self._node_id].inputs_schema
+        inputs_transformer = self._node_config.stream_io_configs.inputs_transformer if self._node_config else None
+        inputs_schema = self._node_config.stream_io_configs.inputs_schema if self._node_config else None
         async for message in queue_manager.consume(self._node_id, ability):
             # message 是{id: content}
             if inputs_transformer is None:
@@ -107,9 +107,8 @@ class Vertex(AsyncAtomicNode):
 
     async def _post_stream(self, results_iter: AsyncIterator) -> None:
         queue_manager = self._runtime.queue_manager()
-        workflow_config = self._runtime.config().get_workflow_config()
-        output_transformer = workflow_config.comp_stream_configs[self._node_id].outputs_transformer
-        output_schema = workflow_config.comp_stream_configs[self._node_id].outputs_schema
+        output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
+        output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config else None
         end_stream_index = 0
         async for chunk in results_iter:
             if output_transformer is None:
@@ -155,8 +154,7 @@ class Vertex(AsyncAtomicNode):
         is_subgraph = self._executable.graph_invoker()
 
         try:
-            workflow_config = self._runtime.config().get_workflow_config()
-            component_ability = workflow_config.comp_abilities.get(self._node_id)
+            component_ability = self._node_config.abilites if self._node_config else None
             component_ability = component_ability if component_ability else [ComponentAbility.INVOKE]
             call_ability = [ability for ability in component_ability if
                             ability in [ComponentAbility.INVOKE, ComponentAbility.STREAM]]
@@ -179,8 +177,7 @@ class Vertex(AsyncAtomicNode):
             raise JiuWenBaseException(1, "queue manager is not initialized")
 
         try:
-            workflow_config = self._runtime.config().get_workflow_config()
-            component_ability = workflow_config.comp_abilities.get(self._node_id)
+            component_ability = self._node_config.abilites if self._node_config else None
             call_ability = [ability for ability in component_ability if
                             ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
             for ability in call_ability:

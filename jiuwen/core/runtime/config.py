@@ -4,7 +4,8 @@
 from abc import ABC
 from typing import TypedDict, Any, Optional
 
-from jiuwen.core.runtime.state import Transformer
+from jiuwen.agent.config.base import AgentConfig
+from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
 
 
@@ -13,15 +14,6 @@ class MetadataLike(TypedDict):
     event: str
 
 
-class CompIOConfig(ABC):
-    def __init__(self, inputs_schema: dict = None,
-                 outputs_schema: dict = None,
-                 inputs_transformer: Transformer = None,
-                 outputs_transformer: Transformer = None):
-        self.inputs_schema = inputs_schema
-        self.outputs_schema = outputs_schema
-        self.inputs_transformer = inputs_transformer
-        self.outputs_transformer = outputs_transformer
 
 
 class Config(ABC):
@@ -35,97 +27,8 @@ class Config(ABC):
         """
         self._callback_metadata: dict[str, MetadataLike] = {}
         self._env: dict = {}
-        self._workflow_config: WorkflowConfig = WorkflowConfig()
-        self.__load_envs__()
-
-    def set_workflow_config(self, workflow_config: WorkflowConfig) -> None:
-        if self._workflow_config is None:
-            self._workflow_config = workflow_config
-        else:
-            self._workflow_config.comp_configs.update(workflow_config.comp_configs)
-            self._workflow_config.comp_stream_configs.update(workflow_config.comp_stream_configs)
-            self._workflow_config.stream_edges.update(workflow_config.stream_edges)
-            self._workflow_config.comp_abilities.update(workflow_config.comp_abilities)
-
-    def get_workflow_config(self) -> WorkflowConfig:
-        return self._workflow_config
-
-    def set_comp_io_config(self, node_id: str, comp_io_config: CompIOConfig) -> None:
-        """
-        set io schema of single node
-        :param node_id: node id
-        :param comp_io_config: component io config
-        """
-        self._workflow_config.comp_configs[node_id] = comp_io_config
-
-    def get_inputs_schema(self, node_id: str) -> dict:
-        """
-        get inputs schemas by specific node id
-        :param node_id: node id
-        :return: inputs schema
-        """
-        if node_id not in self._workflow_config.comp_configs:
-            return {}
-        else:
-            return self._workflow_config.comp_configs[node_id].inputs_schema
-
-    def get_outputs_schema(self, node_id: str) -> dict:
-        """
-        get outputs schemas by specific node id
-        :param node_id: node id
-        :return: outputs schema
-        """
-        if node_id not in self._workflow_config.comp_configs:
-            return {}
-        else:
-            return self._workflow_config.comp_configs[node_id].outputs_schema
-
-    def get_input_transformer(self, node_id: str) -> Optional[Transformer]:
-        """
-        get inputs transformer by specific node id
-        :param node_id: node id
-        :return: transformer
-        """
-        if node_id not in self._workflow_config.comp_configs:
-            return None
-        else:
-            return self._workflow_config.comp_configs[node_id].inputs_transformer
-
-    def get_output_transformer(self, node_id: str) -> Optional[Transformer]:
-        """
-        get output transformer by specific node id
-        :param node_id: node id
-        :return: transformer
-        """
-        if node_id not in self._workflow_config.comp_configs:
-            return None
-        else:
-            return self._workflow_config.comp_configs[node_id].outputs_transformer
-
-    def set_stream_edge(self, source_node_id: str, target_node_id: str) -> None:
-        """
-        set a single stream edge
-        :param source_node_id: source node id
-        :param target_node_id: target node id
-        """
-        self._workflow_config.stream_edges[source_node_id].append(target_node_id)
-
-    def set_stream_edges(self, edges: dict[str, list[str]]) -> None:
-        """
-        set stream edges
-        :param edges: stream edges
-        """
-        self._workflow_config.stream_edges.update(edges)
-
-    def is_stream_edge(self, source_node_id: str, target_node_id: str) -> bool:
-        """
-        whether the given edge is a stream edge
-        :param source_node_id: source node id
-        :param target_node_id: target node id
-        :return: true if is stream edge
-        """
-        return (target_node_id in source_node_id) and (
-                    source_node_id in self._workflow_config.stream_edges[target_node_id])
+        self._workflow_configs: dict[str, WorkflowConfig] = {}
+        self._agent_config: AgentConfig = None
 
     def set_envs(self, envs: dict[str, str]) -> None:
         """
@@ -147,3 +50,48 @@ class Config(ABC):
 
     def __load_envs__(self) -> None:
         pass
+
+    def get_workflow_config(self, workflow_id):
+        return self._workflow_configs.get(workflow_id)
+
+    def get_agent_config(self):
+        return self._agent_config
+
+    def set_agent_config(self, agent_config):
+        self._agent_config = agent_config
+
+    def add_workflow_config(self, workflow_id, workflow_config):
+        self._workflow_configs[workflow_id] = workflow_config
+
+
+class WrappedWorkflowConfig(Config):
+    """
+    Config is the class defines the basic infos of workflow
+    """
+
+    def __init__(self, workflow_config: WorkflowConfig, base: Config):
+        """
+        initialize the config
+        """
+        super().__init__()
+        self._workflow_config = workflow_config
+        self._base = base
+        if self._workflow_config.metadata:
+            workflow_id = generate_workflow_key(self._workflow_config.metadata.id,
+                                                self._workflow_config.metadata.version)
+            self._base.add_workflow_config(workflow_id, self)
+
+    def get_env(self, key: str) -> Any:
+        return self._base.get_env(key)
+
+    def set_envs(self, envs: dict[str, str]) -> None:
+        self._base.set_envs(envs)
+
+    def get_agent_config(self):
+        return self._base.get_agent_config()
+
+    def get_workflow_config(self, workflow_id=None):
+        if not workflow_id:
+            return self._workflow_config
+        else:
+            return self._base.get_workflow_config(workflow_id)

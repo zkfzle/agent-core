@@ -25,7 +25,7 @@ class TestWorkflowAgent:
                 name=name,
             )
         )
-        flow = Workflow(workflow_config=workflow_config, graph=PregelGraph())
+        flow = Workflow(workflow_config=workflow_config)
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "query": "${query}"})

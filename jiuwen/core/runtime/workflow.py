@@ -14,7 +14,7 @@ from jiuwen.core.tracer.tracer import Tracer
 
 
 class WorkflowRuntime(BaseRuntime):
-    def __init__(self, parent: BaseRuntime = None, session_id: str = None, state: State = None,
+    def __init__(self, workflow_id: str = '', parent: BaseRuntime = None, session_id: str = None, state: State = None,
                  context: Context = None):
         self._session_id = session_id
         self._parent = parent
@@ -36,6 +36,7 @@ class WorkflowRuntime(BaseRuntime):
         self._callback_manager = CallbackManager()
         self._stream_writer_manager = None  # type: StreamWriterManager
         self._queue_manager = None
+        self._workflow_id = workflow_id
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
         if self._stream_writer_manager is not None:
@@ -83,6 +84,9 @@ class WorkflowRuntime(BaseRuntime):
     def checkpointer(self):
         return self._parent.checkpointer()
 
+    def workflow_id(self):
+        return self._workflow_id
+
 
 def create_parent_id(runtime: BaseRuntime):
     return runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
@@ -102,6 +106,7 @@ class NodeRuntime(BaseRuntime):
         self._parent_id = parent_id
         self._executable_id = executable_id
         self._runtime = runtime
+        self._workflow_id = runtime.workflow_id()
 
     def node_id(self):
         return self._node_id
@@ -111,6 +116,9 @@ class NodeRuntime(BaseRuntime):
 
     def parent_id(self):
         return self._parent_id
+
+    def workflow_id(self):
+        return self._workflow_id
 
     def queue_manager(self) -> MessageQueueManager:
         return self._runtime.queue_manager()
@@ -148,4 +156,17 @@ class NodeRuntime(BaseRuntime):
     def checkpointer(self):
         pass
 
+    def node_config(self):
+        workflow_config = self.config().get_workflow_config(self.workflow_id())
+        if workflow_config:
+            return workflow_config.spec.comp_configs.get(self._node_id)
+        else:
+            return None
 
+class SubWorkflowRuntime(NodeRuntime):
+    def __init__(self, runtime: NodeRuntime, workflow_id: str):
+        super().__init__(runtime=runtime.parent(), node_id=runtime.node_id())
+        self._workflow_id = workflow_id
+
+    def workflow_id(self):
+        return self._workflow_id

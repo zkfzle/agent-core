@@ -189,6 +189,18 @@ class WrappedNodeRuntime(StateRuntime):
     def get_tool(self, tool_id: str) -> Tool:
         return self._inner.resource_manager().tool().get_tool(tool_id)
 
+    def get_current_workflow_config(self):
+        return self._inner.config().get_workflow_config(self._inner.workflow_id())
+
+    def add_workflow_config(self, workflow_id, workflow_config):
+        return self._inner.config().add_workflow_config(workflow_id, workflow_config)
+
+    def get_workflow_config(self, workflow_id):
+        return self._inner.config().get_workflow_config(workflow_id)
+
+    def get_agent_config(self):
+        return self._inner.config().get_agent_config()
+
 
 class TaskRuntime(StateRuntime):
     def __init__(self, trace_id: str = None, inner: BaseRuntime = None):

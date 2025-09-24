@@ -235,8 +235,7 @@ class RealWorkflowTest(unittest.TestCase):
 
         # 2. 初始化工作流与上下文
         flow = Workflow(
-            workflow_config=WorkflowConfig(),
-            graph=PregelGraph(),
+            workflow_config=WorkflowConfig()
         )
         context = TaskRuntime(trace_id="test")
 
@@ -329,7 +328,7 @@ class RealWorkflowTest(unittest.TestCase):
         测试LLM组件通过StreamWriter流出数据
         """
         context = TaskRuntime(trace_id="test")
-        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig())
 
         start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
         end_component = End({"responseTemplate": "{{output}}"})

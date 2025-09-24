@@ -225,8 +225,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         flow = Workflow(
-            workflow_config=workflow_config,
-            graph=PregelGraph(),
+            workflow_config=workflow_config
         )
         context = TaskRuntime(trace_id="test")
 

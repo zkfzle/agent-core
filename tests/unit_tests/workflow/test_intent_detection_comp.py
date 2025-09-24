@@ -92,8 +92,7 @@ class TestIntentDetectionComponent:
         id = "intent_stream"
         version = "1.0"
         name = "intent"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version, )),
-                        graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version)))
 
         start_component = Start(
             {

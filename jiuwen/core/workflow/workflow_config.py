@@ -6,6 +6,15 @@ from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field
 
+from jiuwen.core.runtime.state import Transformer
+
+
+class CompIOConfig(BaseModel):
+    inputs_schema: Optional[Dict] = None
+    outputs_schema: Optional[Dict] = None
+    inputs_transformer: Optional[Transformer] = None
+    outputs_transformer: Optional[Transformer] = None
+
 
 class WorkflowMetadata(BaseModel):
     name: str = Field(default="")
@@ -13,13 +22,23 @@ class WorkflowMetadata(BaseModel):
     version: str = Field(default="")
 
 
+class NodeSpec(BaseModel):
+    io_config: CompIOConfig
+    stream_io_configs: CompIOConfig
+    abilites: List[Any] = Field(default_factory=list)
+
+
+class WorkflowSpec(BaseModel):
+    comp_configs: Dict[str, NodeSpec] = Field(default_factory=dict)
+    stream_edges: Dict[str, list[str]] = Field(default_factory=dict)
+
+
 class WorkflowConfig(BaseModel):
     metadata: Optional[WorkflowMetadata] = Field(default=None)
     comp_configs: Dict[str, Any] = Field(default_factory=dict)
-    comp_stream_configs: Dict[str, Any] = Field(default_factory=dict)
-    stream_edges: Dict[str, list[str]] = Field(default_factory=dict)
-    comp_abilities: Dict[str, list[Any]] = Field(default_factory=dict)
     stream_timeout: float = Field(default=0.2)
+    spec: Optional[WorkflowSpec] = Field(default=None)
+
 
 class ComponentAbility(Enum):
     INVOKE = ("invoke", "batch in, batch out")

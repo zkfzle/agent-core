@@ -6,7 +6,7 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.runtime.state import Transformer
 from jiuwen.core.runtime.utils import get_by_schema
 from jiuwen.core.stream.emitter import AsyncStreamQueue
-from jiuwen.core.workflow.workflow_config import ComponentAbility
+from jiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowSpec
 
 
 class StreamTransform:
@@ -18,14 +18,13 @@ class StreamTransform:
 
 
 class MessageQueueManager:
-    def __init__(self, stream_edges: dict[str, list[str]], comp_abilities: dict[str, list[ComponentAbility]],
-                 sub_graph: bool):
-        self._stream_edges = stream_edges
+    def __init__(self, workflow_spec: WorkflowSpec, sub_graph: bool):
+        self._stream_edges = workflow_spec.stream_edges
         self._streams: Dict[str, dict[ComponentAbility, AsyncStreamQueue]] = {}
         self._streams_transform = StreamTransform()
-        for producer_id, consumer_ids in stream_edges.items():
+        for producer_id, consumer_ids in self._stream_edges.items():
             for consumer_id in consumer_ids:
-                consumer_stream_ability = [ability for ability in comp_abilities[consumer_id] if
+                consumer_stream_ability = [ability for ability in workflow_spec.comp_configs[consumer_id].abilites if
                                            ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
                 self._streams[consumer_id] = {ability: AsyncStreamQueue(maxsize=10 * 1024)
                                               for ability in consumer_stream_ability}

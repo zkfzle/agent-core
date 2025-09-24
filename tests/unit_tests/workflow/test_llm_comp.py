@@ -281,7 +281,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_stream_start_llm_end(self):
-        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig())
 
         start_component = Start(
             {
@@ -332,7 +332,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_stream_start_llm_end_with_stream_writer(self):
-        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig())
 
         start_component = Start(
             {
@@ -383,8 +383,7 @@ class TestLLMExecutableInvokeNew:
         id = "write_poem_workflow"
         version = "1.0"
         name = "poem"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version, )),
-                        graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version, )))
 
         start_component = Start(
             {
@@ -455,7 +454,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_invoke_start_llm_end_with_stream_writer(self):
-        flow = Workflow(workflow_config=WorkflowConfig(), graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig())
 
         start_component = Start(
             {
@@ -506,8 +505,7 @@ class TestLLMExecutableInvokeNew:
         id = "write_poem_workflow"
         version = "1.0"
         name = "poem"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version,)),
-                        graph=PregelGraph())
+        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version,)))
 
         start_component = Start(
             {

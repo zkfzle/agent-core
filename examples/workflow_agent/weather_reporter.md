@@ -215,7 +215,7 @@ def build_workflow():
         description="天气查询工作流",
         inputs={"query": {"type": "string"}},
     )
-    flow = Workflow(workflow_config=workflow_config, graph=PregelGraph())
+    flow = Workflow(workflow_config=workflow_config)
     context = WorkflowContext(config=Config(), state=InMemoryState(), store=None)
 
     # 3. 实例化各组件

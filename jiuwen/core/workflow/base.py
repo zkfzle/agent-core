@@ -18,10 +18,10 @@ from jiuwen.core.component.start_comp import Start
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
-from jiuwen.core.runtime.config import CompIOConfig, Transformer
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
-from jiuwen.core.runtime.workflow import WorkflowRuntime
+from jiuwen.core.runtime.state import Transformer
+from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
@@ -29,7 +29,8 @@ from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility
+from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata, WorkflowSpec, \
+    NodeSpec, CompIOConfig
 from jiuwen.graph.pregel.graph import PregelGraph
 
 
@@ -54,6 +55,11 @@ class BaseWorkFlow:
     def __init__(self, workflow_config: WorkflowConfig, new_graph: Graph):
         self._graph = new_graph
         self._workflow_config = workflow_config
+        if not self._workflow_config.spec:
+            self._workflow_config.spec = WorkflowSpec()
+        if not self._workflow_config.metadata:
+            self._workflow_config.metadata = WorkflowMetadata()
+        self._workflow_spec = self._workflow_config.spec
         self._stream_actor = StreamActor()
         self._runtime = ProxyRuntime()
 
@@ -80,26 +86,24 @@ class BaseWorkFlow:
         if not isinstance(workflow_comp, WorkflowComponent):
             workflow_comp = self._convert_to_component(workflow_comp)
         workflow_comp.add_component(graph=self._graph, node_id=comp_id, wait_for_all=wait_for_all)
-        self._workflow_config.comp_configs[comp_id] = CompIOConfig(inputs_schema=inputs_schema,
-                                                                   outputs_schema=outputs_schema,
-                                                                   inputs_transformer=inputs_transformer,
-                                                                   outputs_transformer=outputs_transformer)
-        self._workflow_config.comp_stream_configs[comp_id] = CompIOConfig(inputs_schema=stream_inputs_schema,
-                                                                          outputs_schema=stream_outputs_schema,
-                                                                          inputs_transformer=stream_inputs_transformer,
-                                                                          outputs_transformer=stream_outputs_transformer)
-        self._workflow_config.comp_abilities[
-            comp_id] = comp_ability if comp_ability is not None else [ComponentAbility.INVOKE]
-        for ability in self._workflow_config.comp_abilities[comp_id]:
+        node_spec = NodeSpec(
+            io_config=CompIOConfig(inputs_schema=inputs_schema, outputs_schema=outputs_schema,
+                                   inputs_transformer=inputs_transformer, outputs_transformer=outputs_transformer),
+            stream_io_configs=CompIOConfig(inputs_schema=stream_inputs_schema, outputs_schema=stream_outputs_schema,
+                                           inputs_transformer=stream_inputs_transformer,
+                                           outputs_transformer=stream_outputs_transformer),
+            abilites= comp_ability if comp_ability is not None else [ComponentAbility.INVOKE])
+
+        for ability in node_spec.abilites:
             if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM, ComponentAbility.COLLECT]:
                 if not wait_for_all:
                     raise JiuWenBaseException(-1, "stream components need to wait for all")
         if response_mode is not None:
             if "streaming" == response_mode:
-                self._workflow_config.comp_abilities[
-                    comp_id] = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
+                node_spec.abilites = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
             else:
-                self._workflow_config.comp_abilities[comp_id] = [ComponentAbility.INVOKE]
+                node_spec.abilites = [ComponentAbility.INVOKE]
+        self._workflow_spec.comp_configs[comp_id] = node_spec
         return self
 
     def start_comp(
@@ -124,10 +128,10 @@ class BaseWorkFlow:
         self._graph.add_edge(src_comp_id, target_comp_id)
         stream_executables = self._graph.get_nodes()
         self._stream_actor.add_stream_consumer(stream_executables[target_comp_id], target_comp_id)
-        if target_comp_id not in self._workflow_config.stream_edges:
-            self._workflow_config.stream_edges[src_comp_id] = [target_comp_id]
+        if target_comp_id not in self._workflow_spec.stream_edges:
+            self._workflow_spec.stream_edges[src_comp_id] = [target_comp_id]
         else:
-            self._workflow_config.stream_edges[src_comp_id].append(target_comp_id)
+            self._workflow_spec.stream_edges[src_comp_id].append(target_comp_id)
         return self
 
     def add_conditional_connection(self, src_comp_id: str, router: Router) -> Self:
@@ -137,12 +141,13 @@ class BaseWorkFlow:
         else:
             def new_router(state):
                 return router(self._runtime)
+
             self._graph.add_conditional_edges(source_node_id=src_comp_id, router=new_router)
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
+        runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         self._runtime.set_runtime(runtime)
-        runtime.config().set_workflow_config(self._workflow_config)
         return self._graph.compile(runtime)
 
 
@@ -167,9 +172,8 @@ class WorkflowExecutable(ABC):
 
 
 class Workflow(BaseWorkFlow, WorkflowExecutable):
-    def __init__(self, workflow_config: WorkflowConfig = None, graph: Graph = None):
-        super().__init__(workflow_config if workflow_config is not None else WorkflowConfig(),
-                         graph if graph is not None else PregelGraph())
+    def __init__(self, workflow_config: WorkflowConfig = None):
+        super().__init__(workflow_config if workflow_config else WorkflowConfig(), PregelGraph())
         self._end_comp_id: str = ""
 
     def set_start_comp(
@@ -218,8 +222,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         logger.info("begin to sub_invoke, input=%s", inputs)
-        runtime.config().set_workflow_config(self._workflow_config)
-        compiled_graph = self._graph.compile(runtime)
+        runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
+        compiled_graph = self._graph.compile(SubWorkflowRuntime(runtime, workflow_id=self._workflow_config.metadata.id))
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
         results = runtime.state().get_outputs(self._end_comp_id)
         logger.info("end to sub_invoke, results=%s", results)
@@ -254,8 +258,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     ) -> AsyncIterator[WorkflowChunk]:
         if isinstance(runtime, WorkflowRuntime):
             runtime._context = context
-        mq_manager = MessageQueueManager(self._workflow_config.stream_edges, self._workflow_config.comp_abilities,
-                                         False)
+        mq_manager = MessageQueueManager(self._workflow_spec,False)
         runtime.set_queue_manager(mq_manager)
         runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
         if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):

@@ -83,7 +83,7 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             )
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config, graph=PregelGraph())
+        flow = Workflow(workflow_config=questioner_workflow_config)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -189,7 +189,7 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             )
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config, graph=PregelGraph())
+        flow = Workflow(workflow_config=questioner_workflow_config)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),

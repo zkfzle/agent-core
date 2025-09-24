@@ -18,19 +18,14 @@ def fake_ctx():
 
 @pytest.fixture()
 def mock_tool_config():
-    return ToolComponentConfig(
-        needValidate=False
-    )
+    return ToolComponentConfig()
 
 
 @pytest.fixture
 def mock_tool_input():
     return {
-        'userFields': {
-            'location': 'Beijing',
-            'date': 15
-        },
-        'validated': False
+        'location': 'Beijing',
+        'date': 15
     }
 
 
@@ -63,7 +58,7 @@ async def test_tool_comp_invoke(mock_get_tool, mock_request, mock_tool, mock_too
     mock_request.return_value = mock_response
     res = await tool_executable.invoke(mock_tool_input, fake_ctx, context=Mock())
 
-    assert res.get('errCode') == 0
+    assert res.get('error_code') == 0
 
 
 @patch('jiuwen.core.component.tool_comp.ToolExecutable.invoke')

@@ -197,7 +197,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             method="GET",
             response=[],
         )
-        return ToolComponent(tool_config).set_tool(weather_tool)
+        return ToolComponent(tool_config).bind_tool(weather_tool)
 
     @staticmethod
     def _create_start_component():

@@ -2,8 +2,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-from dataclasses import dataclass, field
-from typing import Dict, Any, List
+from dataclasses import dataclass
+
+from pydantic import BaseModel, ConfigDict, Field
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -12,29 +13,23 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.utils.tool import constant
 from jiuwen.core.utils.tool.base import Tool
 
 
 @dataclass
 class ToolComponentConfig(ComponentConfig):
-    header: Dict[str, Any] = field(default_factory=dict)
-    method: str = ''
-    auth: Dict[str, Any] = field(default_factory=dict)
-    pluginDependency: Dict[str, Any] = field(default_factory=dict)
-    systemFields: Dict[str, Any] = field(default_factory=dict)
-    exceptionEnable: bool = False
-    description: str = ''
-    url: str = ''
-    streaming: bool = False
-    userFields: Dict[str, Any] = field(default_factory=dict)
-    response: List[Any] = field(default_factory=list)
-    name: str = ''
-    arguments: List[Any] = field(default_factory=list)
-    id: str = ''
+    pass
 
-    needValidate: bool = True
-    needConfirm: bool = False
-    apiId: str = ''
+
+class ToolComponentInput(BaseModel):
+    model_config = ConfigDict(extra='allow')   # 允许任意额外字段
+
+
+class ToolComponentOutput(BaseModel):
+    error_code: int = Field(default=-1, alias=constant.ERR_CODE)
+    error_message: str = Field(default="", alias=constant.ERR_MESSAGE)
+    data: str = Field(default="", alias=constant.RESTFUL_DATA)
 
 
 class ToolExecutable(ComponentExecutable):
@@ -47,11 +42,8 @@ class ToolExecutable(ComponentExecutable):
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self._tool is None:
             self._tool = self.get_tool(runtime)
-        validated = inputs.get('validate', False)
-        user_field = inputs.get('userFields', None)
-        if self._config.needValidate and not validated:
-            self.validate_require_params(user_field)
-        formatted_inputs = prepare_inputs(user_field, self.get_tool_param())
+        tool_inputs = ToolComponentInput(**inputs).model_dump()
+        formatted_inputs = prepare_inputs(tool_inputs, self.get_tool_param())
         try:
             response = self._tool.invoke(formatted_inputs)
             return self._create_output(response)
@@ -62,7 +54,7 @@ class ToolExecutable(ComponentExecutable):
             ) from e
 
     def _create_output(self, response):
-        return response
+        return ToolComponentOutput(**response).model_dump()
 
     def get_tool(self, runtime: Runtime) -> Tool:
         pass
@@ -138,6 +130,6 @@ class ToolComponent(WorkflowComponent):
     def to_executable(self) -> Executable:
         return ToolExecutable(self._config).set_tool(self._tool)
 
-    def set_tool(self, tool: Tool):
+    def bind_tool(self, tool: Tool):
         self._tool = tool
         return self

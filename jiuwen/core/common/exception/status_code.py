@@ -86,6 +86,27 @@ class StatusCode(Enum):
     # Insight 108000 - 108999
 
     # Agent Builder 110000 - 119999
+    AGENT_BUILDER_PARAM_CHECK_FAILED_ERROR = (110000, "Error occur when input parameter varification failed")
+    AGENT_BUILDER_LLM_CONFIG_MISS_ERROR = (110001, "LLM service configuration is missing: {error_msg}")
+    AGENT_BUILDER_LLM_FALSE_RESULT_ERROR = (110002, "LLM service return false result due to {error_msg}")
+
+    AGENT_BUILDER_PROMPT_OPTIMIZE_REFINE_INSTRUCTION_ERROR = (
+        110003, "Prompt optimization failed to refine instruction, root cause: {error_msg}"
+    )
+
+    AGENT_BUILDER_PROMPT_OPTIMIZE_RESTART_TASK_ERROR = (110004, "Prompt optimization restart task error: {error_msg}")
+    AGENT_BUILDER_PROMPT_OPTIMIZE_EVALUATE_ERROR = (110005, "Prompt optimization evaluate failed, root cause: {error_msg}")
+    AGENT_BUILDER_PROMPT_OPTIMIZE_INVALID_PARAMS_ERROR = (
+        110006, "Prompt optimization parameters are invalid, root cause = {error_msg}")
+    AGENT_BUILDER_PROMPT_OPTIMIZE_CASE_VALIDATION_ERROR = (
+        110007, "Prompt optimization validate input case failed, root cause = {error_msg}"
+    )
+    AGENT_BUILDER_CREATE_OPTIMIZER_ERROR = (
+        110008, "Create optimizer failed, root cause = {error_msg}"
+    )
+    AGENT_BUILDER_PROMPT_OPTIMIZE_ERROR = (
+        110009, "Do optimize failed, root cause = {error_msg}"
+    )
 
     @property
     def code(self):

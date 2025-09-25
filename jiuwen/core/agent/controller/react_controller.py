@@ -99,6 +99,8 @@ class ReActController(Controller):
         # 返回最终结果
         final_result = self._state_machine.get_final_result()
         logger.info(f"Final execution result: {final_result}")
+        await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=final_result))
+
         return {"output": final_result, "result_type": "answer"}
 
     async def stream_execute(self, inputs: Dict):

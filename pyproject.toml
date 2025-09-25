@@ -11,6 +11,7 @@ dependencies = [
     "pydantic==2.11.5",
     "python-dateutil==2.9.0.post0",
     "sqlalchemy==2.0.41",
+    "openai==1.108.0",
     "cacheout==0.16.0"
 ]
 

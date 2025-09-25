@@ -2,7 +2,6 @@ import os
 import unittest
 from datetime import datetime
 
-from sqlalchemy.testing import skip_test
 
 from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
@@ -16,7 +15,6 @@ from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from jiuwen.graph.pregel.graph import PregelGraph
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -163,7 +161,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             )
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config, graph=PregelGraph())
+        flow = Workflow(workflow_config=questioner_workflow_config)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -254,7 +252,6 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     async def test_react_agent_invoke_with_workflow_interrupt_with_stream(self):
         react_agent_prompt_template = self._create_prompt_template()
 
-
         questioner_workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
                 name="questioner",
@@ -263,7 +260,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             )
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config, graph=PregelGraph())
+        flow = Workflow(workflow_config=questioner_workflow_config)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),

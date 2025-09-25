@@ -11,7 +11,6 @@ from jiuwen.core.agent.handler.base import AgentHandlerImpl
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.stream.writer import TraceSchema
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.context_engine.config import ContextEngineConfig
 from jiuwen.core.workflow.base import Workflow
@@ -112,8 +111,7 @@ class ReActAgent(Agent):
         task = asyncio.create_task(stream_process())
         # 3. 执行流式ReAct流程
         async for result in runtime.stream_iterator():
-            if not isinstance(result, TraceSchema):
-                yield result
+            yield result
 
         try:
             await task

@@ -13,8 +13,6 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.start_comp import Start
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
@@ -80,8 +78,7 @@ class BaseWorkFlow:
             stream_outputs_schema: dict = None,
             stream_inputs_transformer: Transformer = None,
             stream_outputs_transformer: Transformer = None,
-            comp_ability: list[ComponentAbility] = None,
-            response_mode: str = None
+            comp_ability: list[ComponentAbility] = None
     ) -> Self:
         if not isinstance(workflow_comp, WorkflowComponent):
             workflow_comp = self._convert_to_component(workflow_comp)
@@ -98,11 +95,6 @@ class BaseWorkFlow:
             if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM, ComponentAbility.COLLECT]:
                 if not wait_for_all:
                     raise JiuWenBaseException(-1, "stream components need to wait for all")
-        if response_mode is not None:
-            if "streaming" == response_mode:
-                node_spec.abilites = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
-            else:
-                node_spec.abilites = [ComponentAbility.INVOKE]
         self._workflow_spec.comp_configs[comp_id] = node_spec
         return self
 
@@ -174,14 +166,15 @@ class WorkflowExecutable(ABC):
 
 
 class Workflow(BaseWorkFlow, WorkflowExecutable):
-    def __init__(self, workflow_config: WorkflowConfig = None):
+    def __init__(self, workflow_config: WorkflowConfig = None, tool_info: ToolInfo = None):
         super().__init__(workflow_config if workflow_config else WorkflowConfig(), PregelGraph())
+        self.tool_info = tool_info
         self._end_comp_id: str = ""
 
     def set_start_comp(
             self,
             start_comp_id: str,
-            component: Start,
+            component: Union[Executable, WorkflowComponent],
             inputs_schema: dict = None,
             outputs_schema: dict = None,
             inputs_transformer: Transformer = None,
@@ -197,7 +190,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     def set_end_comp(
             self,
             end_comp_id: str,
-            component: End,
+            component: Union[Executable, WorkflowComponent],
             inputs_schema: dict = None,
             outputs_schema: dict = None,
             inputs_transformer: Transformer = None,
@@ -206,17 +199,25 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             stream_outputs_schema: dict = None,
             stream_inputs_transformer: Transformer = None,
             stream_outputs_transformer: Transformer = None,
-            response_mode: str = None,
+            response_mode: str = None
     ) -> Self:
-        self.add_workflow_comp(end_comp_id, component, wait_for_all=False, inputs_schema=inputs_schema,
+        comp_ability = None
+        wait_for_all = False
+        if response_mode is not None:
+            if "streaming" == response_mode:
+                comp_ability = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
+                wait_for_all=True
+            else:
+                comp_ability = [ComponentAbility.INVOKE]
+        self.add_workflow_comp(end_comp_id, component, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
+                               comp_ability=comp_ability,
                                outputs_schema=outputs_schema,
                                inputs_transformer=inputs_transformer,
                                outputs_transformer=outputs_transformer,
                                stream_inputs_schema=stream_inputs_schema,
                                stream_outputs_schema=stream_outputs_schema,
                                stream_inputs_transformer=stream_inputs_transformer,
-                               stream_outputs_transformer=stream_outputs_transformer,
-                               response_mode=response_mode
+                               stream_outputs_transformer=stream_outputs_transformer
                                )
         self.end_comp(end_comp_id)
         self._end_comp_id = end_comp_id
@@ -294,4 +295,4 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         pass
 
     def get_tool_info(self) -> ToolInfo:
-        return ToolInfo(function=Function(name="workflow", description="", parameters=Parameters(required=[])))
+        return self.tool_info

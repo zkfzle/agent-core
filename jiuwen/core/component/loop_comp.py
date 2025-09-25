@@ -61,8 +61,7 @@ class LoopGroup(BaseWorkFlow, Executable):
             stream_outputs_schema: dict = None,
             stream_inputs_transformer=None,
             stream_outputs_transformer=None,
-            comp_ability=None,
-            response_mode: str = None
+            comp_ability=None
     ) -> Self:
         if isinstance(workflow_comp, BreakComponent):
             self._break_components.append(workflow_comp)
@@ -72,7 +71,7 @@ class LoopGroup(BaseWorkFlow, Executable):
                                   stream_outputs_schema=stream_outputs_schema,
                                   stream_inputs_transformer=stream_inputs_transformer,
                                   stream_outputs_transformer=stream_outputs_transformer, comp_ability=comp_ability,
-                                  response_mode=response_mode)
+                                  )
 
     def start_nodes(self, nodes: list[str]) -> Self:
         for node in nodes:

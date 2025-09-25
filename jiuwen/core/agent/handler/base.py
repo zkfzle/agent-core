@@ -11,7 +11,6 @@ from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.stream.base import BaseStreamMode
@@ -79,7 +78,7 @@ class AgentHandlerImpl(AgentHandler):
             if isinstance(chunk, WorkflowOutput):
                 workflow_result = chunk
                 if workflow_result.state == WorkflowExecutionState.INPUT_REQUIRED:
-                    raise AgentInterrupt(workflow_result.result[0].get("payload"))
+                    raise AgentInterrupt(workflow_result.result)
         return workflow_result.result if workflow_result and hasattr(workflow_result, "result") else workflow_result
 
     async def invoke_plugin(self, inputs: AgentHandlerInputs):
@@ -112,7 +111,7 @@ class AgentHandlerImpl(AgentHandler):
                 is_interaction = True
                 break
         if is_interaction:
-            output = WorkflowOutput(result=[chunk.model_dump() for chunk in chunks],
+            output = WorkflowOutput(result=chunks,
                                     state=WorkflowExecutionState.INPUT_REQUIRED)
         else:
             output = WorkflowOutput(result=workflow_runtime.state().get_outputs(workflow._end_comp_id),

@@ -2,11 +2,12 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """Controller of Agent"""
-from typing import AsyncIterator
+from typing import AsyncIterator, Union
 
 from pydantic import BaseModel, Field
 
 from jiuwen.agent.config.base import AgentConfig
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import Runtime
 
 
@@ -15,7 +16,7 @@ class ControllerOutput(BaseModel):
 
 
 class ControllerInput(BaseModel):
-    query: str = Field(default="")
+    query: Union[str, InteractiveInput] = Field(default="")
 
 
 class Controller:

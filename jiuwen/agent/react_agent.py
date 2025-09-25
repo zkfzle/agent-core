@@ -82,7 +82,7 @@ class ReActAgent(Agent):
     async def invoke(self, inputs: Dict) -> Dict:
         """同步调用接口"""
         # 1. 初始化ContextEngine和Runtime
-        session_id = inputs.get("conversation_id", "default_session")
+        session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
 
         # 2. 创建Controller
@@ -96,7 +96,7 @@ class ReActAgent(Agent):
     async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
         """流式调用接口"""
         # 1. 初始化ContextEngine和Runtime
-        session_id = inputs.get("conversation_id", "default_session")
+        session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
 
         # 2. 创建Controller

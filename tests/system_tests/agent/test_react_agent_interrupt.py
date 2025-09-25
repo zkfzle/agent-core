@@ -1,13 +1,14 @@
 import os
 import unittest
 from datetime import datetime
-
+from typing import List
 
 from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.param import Param
@@ -242,8 +243,10 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         print(f"ReActAgent 第一次输出结果：{result}")
 
         # 第二次大模型返回的结果不让调用sub_task
-        if result.get("result_type") == 'question':
-            result = await react_agent.invoke({"conversation_id": "12345", "query": "杭州"})
+        if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
+            interactive_input = InteractiveInput()
+            interactive_input.update("questioner", "杭州")
+            result = await react_agent.invoke({"conversation_id": "12345", "query": interactive_input})
 
             print(f"ReActAgent 第二次输出结果：{result}")
 
@@ -338,12 +341,16 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         )
 
         # 第一次大模型返回的结果要让调用sub_task0
-        is_interaction = False
+        interaction_output_schema = []
         async for chunk in react_agent.stream({"conversation_id": "12345", "query": "查询今天天气"}):
             print(f"ReActAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
-                is_interaction = True
+                interaction_output_schema.append(chunk)
 
-        if is_interaction:
-            async for chunk in react_agent.stream({"conversation_id": "12345", "query": "地点是杭州"}):
+        if interaction_output_schema:
+            user_input = InteractiveInput()
+            for item in interaction_output_schema:
+                component_id = item.payload.id
+                user_input.update(component_id, "杭州")
+            async for chunk in react_agent.stream({"conversation_id": "12345", "query": user_input}):
                 print(f"ReActAgent 第二次输出结果 >>> {chunk}")

@@ -1,7 +1,8 @@
 """Controller of ReActAgent"""
-from typing import List, Dict, Any, Optional, AsyncIterator, Union
+import copy
+from typing import List, Dict, Optional, AsyncIterator, Union
 
-from pydantic import Field
+from pydantic import Field, ConfigDict
 import json
 
 from jiuwen.agent.common.enum import SubTaskType, ReActStatus, ReActEvent
@@ -33,7 +34,7 @@ class ReActControllerOutput(ControllerOutput):
 
 
 class ReActControllerInput(ControllerInput):
-    user_fields: Dict[str, Any] = Field(default_factory=dict, alias="userFields")
+    model_config = ConfigDict(extra='allow')
 
 
 class ReActController(Controller):
@@ -69,6 +70,9 @@ class ReActController(Controller):
         self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
 
         if self._state_machine.is_interrupted():
+            if not isinstance(inputs.get("query"), InteractiveInput):
+                raise JiuWenBaseException(5000, "Interrupt status data format error.")
+
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
 
@@ -78,9 +82,13 @@ class ReActController(Controller):
             # 如果返回了最终结果，直接返回
             if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
                 logger.info(f"Returning final result: {result}")
+                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=result))
                 return result
 
-        while not self._state_machine.is_completed():
+        if isinstance(inputs.get("query"), InteractiveInput):
+            raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
+
+        while not self._state_machine.is_completed() and not self._state_machine.is_interrupted():
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
 
@@ -92,8 +100,11 @@ class ReActController(Controller):
             logger.info(f"State handler result: {result}")
 
             # 如果返回了最终结果，直接返回
-            if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                logger.info(f"Returning final result: {result}")
+            if result and isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type in ["__interaction__"]:
+                logger.info(f"Returning __interaction__ result: {result}")
+                return result
+            elif isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
+                logger.info(f"Returning final result : {result}")
                 return result
 
         # 返回最终结果
@@ -210,18 +221,14 @@ class ReActController(Controller):
 
     async def _handle_interrupted_state(self, inputs: Dict) -> Dict:
         """处理中断状态"""
-        user_input = InteractiveInput()
         state_data = self._state_machine.get_state_data()
-        interrupt_state = state_data.get("interrupt_state", {})
-
-        user_input.update(interrupt_state.get("interrupt_component_id", ""), inputs.get("query"))
 
         # 更新SubTask参数
         sub_tasks = state_data.get("sub_tasks", [])
         logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
         if sub_tasks:
             # 直接修改 SubTask 对象的 func_args
-            sub_tasks[0].func_args = user_input
+            sub_tasks[0].func_args = inputs.get("query", "")
             self._state_machine.update_state_data({"sub_tasks": sub_tasks})
         else:
             logger.error("No sub_tasks found in interrupted state!")
@@ -327,22 +334,22 @@ class ReActController(Controller):
         async for result in self._stream_handle_sub_task_result(exec_result, inputs, completed_sub_tasks):
             yield result
 
-    async def _handle_sub_task_result(self, exec_result, inputs: Dict, completed_sub_tasks: List[SubTask]) -> Dict:
+    async def _handle_sub_task_result(self, exec_result, inputs: Dict, completed_sub_tasks: List[SubTask]) -> Union[List, Dict]:
         """处理SubTask执行结果"""
         logger.info(f"Handling sub task result: {exec_result}")
         logger.info(f"Completed sub tasks: {[task.func_name for task in completed_sub_tasks]}")
 
         if isinstance(exec_result, dict) and exec_result.get("error"):
             # 处理交互请求
-            interrupt_data = {
-                "interrupt_component_id": exec_result.get('id'),
-                "question": exec_result.get('value')
-            }
-            self._state_machine.update_state_data({"interrupt_state": interrupt_data})
-            self._state_machine.set_current_status(ReActStatus.INTERRUPTED)
-            await self._runtime.write_stream(OutputSchema(type="__interaction__", index=0, payload=interrupt_data.get("question", "")))
+            interrupt_data_list = []
+            for output_scheme in exec_result.get("value", []):
+                interrupt_data_list.append(output_scheme)
+                await self._runtime.write_stream(output_scheme)
 
-            return {"output": interrupt_data["question"], "result_type": "question"}
+            self._state_machine.update_state_data({"interrupt_state": interrupt_data_list})
+            self._state_machine.set_current_status(ReActStatus.INTERRUPTED)
+
+            return interrupt_data_list
         else:
             # 处理正常结果
             logger.info("Adding tool results to chat history before state transition")
@@ -410,12 +417,12 @@ class ReActController(Controller):
 
                 error_result = {
                     "error": True,
-                    "id": e.args[0].get("id"),
-                    "value": e.args[0].get("value"),
+                    "id": "0",
+                    "value": e.message,
                     "message": error_msg,
                     "tool_name": sub_task.func_name
                 }
-                sub_task.result = json.dumps(error_result, ensure_ascii=False)
+                sub_task.result = error_result
                 exec_result = error_result
 
             completed_sub_tasks.append(sub_task)
@@ -614,11 +621,15 @@ class ReActController(Controller):
                     result = SubTaskType.PLUGIN
                     break
         if result == SubTaskType.UNDEFINED:
-            raise JiuWenBaseException()
+            raise JiuWenBaseException(5000, f"未找到工具调用类型")
         return result
 
     def _format_llm_inputs(self, inputs: ReActControllerInput, chat_history: List[BaseMessage]):
-        user_fields = inputs.user_fields
+        if isinstance(inputs.query, InteractiveInput):
+            user_fields = copy.deepcopy(inputs.model_dump())
+            user_fields.pop("query")
+        else:
+            user_fields = inputs.model_dump()
         system_prompt = self._format_system_prompt_template(user_fields)
         return FormatUtils.create_llm_inputs(system_prompt, chat_history)
 

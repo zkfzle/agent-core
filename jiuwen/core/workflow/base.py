@@ -247,7 +247,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 is_interaction = True
                 break
         if is_interaction:
-            output = WorkflowOutput(result=[chunk.model_dump() for chunk in chunks],
+            output = WorkflowOutput(result=[chunk for chunk in chunks],
                                     state=WorkflowExecutionState.INPUT_REQUIRED)
         else:
             output = WorkflowOutput(result=runtime.state().get_outputs(self._end_comp_id),

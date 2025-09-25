@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.common.constants.constant import INTERACTION
@@ -156,9 +157,9 @@ class QuestionerTest(unittest.TestCase):
         workflow_context = TaskRuntime(trace_id=session_id).create_workflow_runtime()
         first_question = self.invoke_workflow_with_workflow_context({"query": "你好"}, workflow_context, flow)
         first_question = first_question.result[0] if first_question else dict()
-        payload = first_question.get("payload")
-        if isinstance(payload, dict) and payload.get("id") is not None:
-            component_id = payload.get("id")
+        payload = first_question.payload
+        if isinstance(payload, InteractionOutput) and payload.id is not None:
+            component_id = payload.id
         else:
             assert False
         user_input = InteractiveInput()

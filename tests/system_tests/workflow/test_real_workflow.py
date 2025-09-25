@@ -154,8 +154,6 @@ class RealWorkflowTest(unittest.TestCase):
         """
         config = IntentDetectionConfig(
             user_prompt="请判断用户意图",
-            category_info="",
-            category_list=["分类1", "分类2"],
             category_name_list=["旅游", "天气"],
             default_class="分类1",
             model=model_config,

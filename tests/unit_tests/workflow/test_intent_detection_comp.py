@@ -54,7 +54,6 @@ def fake_model_config() -> ModelConfig:
 def fake_config(fake_model_config) -> IntentDetectionConfig:
     return IntentDetectionConfig(
         user_prompt="请判断用户意图",
-        category_list=["分类1", "分类2", "分类3"],
         category_name_list=["name1", "name2", "name3"],
         model=fake_model_config
     )
@@ -121,7 +120,6 @@ class TestIntentDetectionComponent:
 
         config = IntentDetectionConfig(
             user_prompt="请判断用户意图",
-            category_list=["分类1", "分类2"],
             category_name_list=["查询某地的景点", "查询某地天气"],
             model=model_config,
             enable_input=True,

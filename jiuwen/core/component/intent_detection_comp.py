@@ -129,7 +129,6 @@ class IntentDetectionInput(BaseModel):
 class IntentDetectionOutput(BaseModel):
     classification_id: int = Field(default=-1)
     reason: str = Field(default="")
-    category: str = Field(default="")
     category_name: str = Field(default="")
 
 
@@ -293,6 +292,8 @@ class IntentDetectionExecutable(ComponentExecutable):
         try:
             current_inputs = self._prepare_detection_inputs(inputs, chat_history)
         except Exception as e:
+            import traceback
+            tmp = traceback.format_exc()
             raise JiuWenBaseException(
                 message=StatusCode.WORKFLOW_INTENT_DETECTION_USER_INPUT_ERROR.errmsg.format(
                     error_mage=f"Search is wrong "
@@ -362,6 +363,9 @@ class IntentDetectionExecutable(ComponentExecutable):
         return result in self._config.category_list
 
     def _append_default_category(self):
+        if not self._config.category_list:
+            for index, category in enumerate(self._config.category_name_list, start=1):
+                self._config.category_list.append(f"分类{index}")
         self._config.category_list = [self._config.default_class] + self._config.category_list
         self._config.category_name_list = ["默认意图"] + self._config.category_name_list
 

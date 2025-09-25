@@ -14,17 +14,14 @@ class StatusCode(Enum):
     # 组件 组件开发 100000 - 100999
     # 组件 预制组件 101000 - 101999
 
-
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
     # 工作流 异常处理 111000 - 111999
-
 
     # Agent编排 120000 - 129999
     # Agent编排 ReAct Agent编排和执行 120000 - 120999
     # Agent编排 Workflow Agent编排和执行 121000 - 121999
     # Agent编排 自定义Agent接口定义 122000 - 122999
-
 
     # Multi-Agent编排 130000 - 139999
     # Multi-Agent编排 多Agent通信机制 130000 - 130999
@@ -33,37 +30,38 @@ class StatusCode(Enum):
     # Multi-Agent编排 多Agent调测能力 133000 - 133999
     # Multi-Agent编排 分布式运行时 134000 - 134999
 
-
     # 图执行引擎 140000 - 149999
     # 图执行引擎 图的编排和执行 140000 - 140999
-
 
     # 上下文引擎 150000 - 159999
     # 上下文引擎 上下文结构化存取 150000 - 150999
     # 上下文引擎 上下文动态组装 151000 - 151999
     # 上下文引擎 上下文异步加工 152000 - 152999
 
-
     # 开发工具链 160000 - 169999
     # 开发工具链 提示词生成 160000 - 160999
     # 开发工具链 Agent DL convertor 161000 - 161999
     # 开发工具链 NL2Agent 162000 - 162999
-
 
     # 调优工具链 170000 - 179999
     # 调优工具链 提示词自优化 170000 - 170999
     # 调优工具链 全链路优化 171000 - 171999
     # 调优工具链 AgentRL 172000 - 172999
 
-
     # 公共能力 180000 - 189999
     # 公共能力 提示词填充 180000 - 180999
     # 公共能力 大模型接口 181000 - 181999
     # 公共能力 工具定义和执行 182000 - 182999
+    PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
+    PLUGIN_REQUEST_TIMEOUT_ERROR = (182001, "Plugin restful api request timed out")
+    PLUGIN_PROXY_CONNECT_ERROR = (182002, "Plugin restful api proxy connection error")
+    PLUGIN_RESPONSE_TOO_BIG_ERROR = (182003, "Plugin restful api  response too big")
+    PLUGIN_RESPONSE_HTTP_CODE_ERROR = (182004, "Plugin restful api http code error")
+    PLUGIN_PARAMS_CHECK_FAILED = (182005, "Plugin params check failed")
+
     # 公共能力 日志Logger 183000 - 183999
     # 公共能力 异常处理 184000 - 184999
     # 公共能力 支持mcp插件 185000 - 185999
-
 
     # Runtime 190000 - 199999
     # Runtime 资源管理 190000 - 190999
@@ -72,7 +70,6 @@ class StatusCode(Enum):
     # Runtime 流式输出StreamWriter 193000 - 193999
     # Runtime Config管理 194000 - 194999
     # Runtime callback 195000 - 195999
-
 
     WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (101501, "start component: global variable(s) defined with no value assigned:  {variable_name}")
 
@@ -115,13 +112,6 @@ class StatusCode(Enum):
     CONTROLLER_INTERRUPTED_ERROR = (10312, "controller interrupted error")
 
     AGENT_SUB_TASK_TYPE_ERROR = (103032, "SubTask type {msg} is not supported")
-
-    PLUGIN_UNEXPECTED_ERROR = (105001, "Plugin unexpected error")
-    PLUGIN_REQUEST_TIMEOUT_ERROR = (105002, "Plugin restful api request timed out")
-    PLUGIN_PROXY_CONNECT_ERROR = (105003, "Plugin restful api proxy connection error")
-    PLUGIN_RESPONSE_TOO_BIG_ERROR = (105004, "Plugin restful api  response too big")
-    PLUGIN_RESPONSE_HTTP_CODE_ERROR = (105005, "Plugin restful api http code error")
-    PLUGIN_PARAMS_CHECK_FAILED = (105006, "Plugin params check failed")
 
     CONTEXT_ENGINE_MESSAGE_PROCESS_ERROR = (106000, "Message process error: {error_msg}")
 

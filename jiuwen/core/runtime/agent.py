@@ -73,6 +73,7 @@ class AgentRuntime(BaseRuntime):
         tracer.init(self._stream_writer_manager, self._callback_manager)
         self._tracer = tracer
         self._checkpointer = checkpointer
+        self._agent_span = self._tracer.tracer_agent_span_manager.create_agent_span() if self._tracer else None
 
     def config(self) -> Config:
         return self._config
@@ -82,6 +83,9 @@ class AgentRuntime(BaseRuntime):
 
     def tracer(self) -> Any:
         return self._tracer
+
+    def span(self):
+        return self._agent_span
 
     def stream_writer_manager(self) -> StreamWriterManager:
         return self._stream_writer_manager

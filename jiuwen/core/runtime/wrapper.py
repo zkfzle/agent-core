@@ -7,7 +7,6 @@ from jiuwen.core.runtime.interaction.interaction import WorkflowInteraction, Sim
 from jiuwen.core.runtime.runtime import Runtime, Workflow, BaseRuntime
 from jiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
 from jiuwen.core.stream.writer import StreamWriter, OutputSchema
-from jiuwen.core.tracer.decorator import decrate_model_with_trace, decrate_workflow_with_trace, decrate_tool_with_trace
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.tracer.workflow_tracer import trace, trace_error
 from jiuwen.core.utils.llm.base import BaseChatModel
@@ -208,8 +207,6 @@ class TaskRuntime(StateRuntime):
             super().__init__(AgentRuntime(trace_id, Config()))
         else:
             super().__init__(inner)
-            if inner.tracer() is not None:
-                self._agent_span = inner.tracer().tracer_agent_span_manager.create_agent_span()
         self._interaction = None
 
     async def trace(self, data: dict):
@@ -228,22 +225,13 @@ class TaskRuntime(StateRuntime):
 
 
     def get_model(self, model_id: str) -> BaseChatModel:
-        model = self._inner.resource_manager().get_model(model_id)
-        if model and self._inner.tracer() and self._agent_span:
-            decrate_model_with_trace(model, self._inner.tracer(), self._agent_span)
-        return model
+        return self._inner.resource_manager().get_model(model_id)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
-        workflow = self._inner.resource_manager().get_workflow(workflow_id)
-        if workflow and self._inner.tracer() and self._agent_span:
-            decrate_workflow_with_trace(workflow, self._inner.tracer(), self._agent_span)
-        return workflow
+        return self._inner.resource_manager().get_workflow(workflow_id)
 
     def get_tool(self, tool_id: str) -> Tool:
-        tool = self._inner.resource_manager().get_tool(tool_id)
-        if tool and self._inner.tracer() and self._agent_span:
-            decrate_tool_with_trace(tool, self._inner.tracer(), self._agent_span)
-        return tool
+        return self._inner.resource_manager().get_tool(tool_id)
 
     def stream_iterator(self) -> AsyncIterator[Any]:
         return self._inner.stream_writer_manager().stream_output()

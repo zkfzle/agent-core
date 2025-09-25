@@ -4,13 +4,18 @@ from typing import Dict, List, Any, Union
 from unittest.mock import MagicMock
 
 from jiuwen.core.common.logging import logger
+from jiuwen.core.context.controller_context.model_manager import WrappedBaseChatModel
+from jiuwen.core.context.controller_context.tool_manager import WrappedTool
+from jiuwen.core.context.controller_context.workflow_manager import WrappedWorkflow
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.tracer.decorator import decrate_tool_with_trace, decrate_workflow_with_trace, decrate_model_with_trace
+from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import ToolInfo
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.utils.tool.constant import Input, Output
+from jiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 
 
 class MockTool(Tool):
@@ -40,27 +45,45 @@ class MockWorkflow:
         logger.info(f"begin to ainvoke , inputs={inputs}")
         yield inputs
 
+    def workflow_config(self):
+        return WorkflowConfig(metadata=WorkflowMetadata())
 
-class MockModel:
-    def invoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
-               top_p: float = 0.1, **kwargs: Any):
+
+class MockModel(BaseChatModel):
+    def __init__(self):
+        self.api_key = 'api_key'
+        self.api_base = 'api_base'
+        self.max_retrie = 'max_retrie'
+        self.timeout = 2
+        super().__init__("api_key", "")
+
+    def _invoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
+                tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
+                top_p: float = 0.1, **kwargs: Any):
         logger.info(f"begin to invoke, inputs={messages}")
         return messages
 
-    def stream(self, model_name: str, messages: Union[List[str], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
-               top_p: float = 0.1, **kwargs: Any):
+    def _stream(self, model_name: str, messages: Union[List[str], List[Dict], str],
+                tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
+                top_p: float = 0.1, **kwargs: Any):
         logger.info(messages)
         logger.info(f"begin to ainvoke , inputs={messages}")
         yield messages
 
-    async def ainvoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
-                      tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
-                      top_p: float = 0.1, **kwargs: Any):
+    async def _ainvoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
+                       tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
+                       top_p: float = 0.1, **kwargs: Any):
         logger.info(messages)
         logger.info(f"begin to ainvoke , inputs={messages}")
         return messages
+
+
+class MockTracer:
+    def __init__(self):
+        self.results = []
+
+    async def trigger(self, handler_class_name: str, event_name: str, **kwargs):
+        self.results.append([handler_class_name, event_name, kwargs])
 
 
 class TestDecator(unittest.TestCase):
@@ -80,14 +103,20 @@ class TestDecator(unittest.TestCase):
         mock_agent_span_manager.create_agent_span = {}
         mock_trigger.tracer_agent_span_manager = mock_agent_span_manager
 
-        decrate_tool_with_trace(tool, mock_tracer, None)
-        tool.invoke({"a": "a"}, context=3)
+        mock_agent_span = MagicMock()
+        mock_runtime = MagicMock()
+        mock_runtime.tracer.return_value = mock_tracer
+        mock_runtime.span.return_value = mock_agent_span
+
+        wrapped_tool = WrappedTool(tool)
+        decrate_tool_with_trace(wrapped_tool, mock_runtime)
+        wrapped_tool.invoke({"a": "a"}, context=3)
         for item in results:
             print(item)
         assert len(results) == 2
 
         results.clear()
-        asyncio.get_event_loop().run_until_complete(tool.ainvoke({"a": "a"}, context=3))
+        asyncio.get_event_loop().run_until_complete(wrapped_tool.ainvoke({"a": "a"}, context=3))
         for item in results:
             print(item)
         assert len(results) == 2
@@ -106,13 +135,19 @@ class TestDecator(unittest.TestCase):
         mock_agent_span_manager = MagicMock()
         mock_agent_span_manager.create_agent_span = {}
         mock_trigger.tracer_agent_span_manager = mock_agent_span_manager
-        decrate_workflow_with_trace(workflow, mock_tracer, None)
 
-        asyncio.get_event_loop().run_until_complete(workflow.invoke({"a": "a"}, MagicMock(), context=None))
+        mock_agent_span = MagicMock()
+        mock_runtime = MagicMock()
+        mock_runtime.tracer.return_value = mock_tracer
+        mock_runtime.span.return_value = mock_agent_span
+
+        wrapped_workflow = decrate_workflow_with_trace(WrappedWorkflow(workflow), mock_runtime)
+
+        asyncio.get_event_loop().run_until_complete(wrapped_workflow.invoke({"a": "a"}, MagicMock(), context=None))
 
         for item in results:
             print(item)
-        assert len(results) == 4
+        assert len(results) == 2
 
     def test_decrate_model(self):
         model = MockModel()
@@ -128,24 +163,30 @@ class TestDecator(unittest.TestCase):
         mock_agent_span_manager = MagicMock()
         mock_agent_span_manager.create_agent_span = {}
         mock_trigger.tracer_agent_span_manager = mock_agent_span_manager
-        decrate_model_with_trace(model, mock_tracer, None)
 
-        model.invoke("a", "messages")
+        mock_agent_span = MagicMock()
+        mock_runtime = MagicMock()
+        mock_runtime.tracer.return_value = mock_tracer
+        mock_runtime.span.return_value = mock_agent_span
 
-        for item in results:
-            print(item)
-        assert len(results) == 2
+        mocked_model = decrate_model_with_trace(WrappedBaseChatModel(model), mock_runtime)
 
-        results.clear()
-        for item in model.stream("a", "messages"):
-            print(item)
+        mocked_model.invoke("a", "messages")
 
         for item in results:
             print(item)
         assert len(results) == 2
 
         results.clear()
-        asyncio.get_event_loop().run_until_complete(model.ainvoke("a", "messages"))
+        for item in mocked_model.stream("a", "messages"):
+            print(item)
+
+        for item in results:
+            print(item)
+        assert len(results) == 2
+
+        results.clear()
+        asyncio.get_event_loop().run_until_complete(mocked_model.ainvoke("a", "messages"))
 
         for item in results:
             print(item)

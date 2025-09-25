@@ -1,5 +1,6 @@
 from typing import List, Tuple, TypeVar
 from jiuwen.core.context.controller_context.thread_safe_dict import ThreadSafeDict
+from jiuwen.core.tracer.decorator import decrate_workflow_with_trace
 from jiuwen.core.utils.llm.messages import ToolInfo
 
 Workflow = TypeVar("Workflow", contravariant=True)
@@ -25,8 +26,11 @@ class WorkflowMgr:
             self._workflows.update({key: workflow})
             self._workflow_tool_infos.update({key: workflow.get_tool_info()})
 
-    def get_workflow(self, workflow_id: str) -> Workflow:
-        return self._workflows.get(workflow_id)
+    def get_workflow(self, workflow_id: str, runtime=None) -> Workflow:
+        workflow = self._workflows.get(workflow_id)
+        if not workflow or not runtime or not runtime.tracer():
+            return workflow
+        return decrate_workflow_with_trace(WrappedWorkflow(workflow), runtime)
 
     def find_workflow_by_id_and_version(self, workflow_id: str):
         return self._workflows.get(workflow_id)
@@ -39,3 +43,25 @@ class WorkflowMgr:
         if not workflow_id:
             return []
         return [self._workflow_tool_infos.get(id) for id in workflow_id]
+
+
+class WrappedWorkflow:
+    def __init__(self, workflow):
+        self.inner = workflow
+
+    async def invoke(self, inputs, runtime, context = None):
+        return await self.inner.invoke(inputs, runtime, context)
+
+    async def stream(self, inputs, runtime, context=None, stream_modes=None):
+        result = self.inner.stream(inputs, runtime, context, stream_modes)
+        async for item in result:
+            yield item
+
+    def get_tool_info(self):
+        return self.inner.get_tool_info()
+
+    async def sub_invoke(self, inputs, runtime, config = None):
+        return await self.inner.sub_invoke(inputs, runtime, config)
+
+    def get_workflow_metadata(self):
+        return self.inner.workflow_config().metadata

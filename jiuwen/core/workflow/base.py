@@ -164,6 +164,9 @@ class WorkflowExecutable(ABC):
     ) -> AsyncIterator[WorkflowChunk]:
         pass
 
+    def get_tool_info(self) -> ToolInfo:
+        pass
+
 
 class Workflow(BaseWorkFlow, WorkflowExecutable):
     def __init__(self, workflow_config: WorkflowConfig = None, tool_info: ToolInfo = None):
@@ -261,7 +264,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     ) -> AsyncIterator[WorkflowChunk]:
         if isinstance(runtime, WorkflowRuntime):
             runtime._context = context
-        mq_manager = MessageQueueManager(self._workflow_spec,False)
+        mq_manager = MessageQueueManager(self._workflow_spec, False)
         runtime.set_queue_manager(mq_manager)
         runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
         if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):

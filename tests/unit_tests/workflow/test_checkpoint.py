@@ -264,7 +264,7 @@ async def test_workflow_with_loop_interactive():
     # 每次节点2有两个等待用户输入，索引为：0、1，循环三次，共6个输入
     res = await flow.invoke({"input_array": [1, 2, 3], "input_number": 1}, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -272,7 +272,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -280,7 +280,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -288,7 +288,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -296,7 +296,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -304,7 +304,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -317,7 +317,7 @@ async def test_workflow_with_loop_interactive():
     # 重复执行
     res = await flow.invoke({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -325,7 +325,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -333,7 +333,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -341,7 +341,7 @@ async def test_workflow_with_loop_interactive():
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
-        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': '2', 'value': 'Please enter any key'})})],
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1, 'payload': InteractionOutput.model_validate({'id': 'l.2', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id

@@ -7,7 +7,7 @@ from typing import Self, Union, Callable, Any, Optional, Dict
 
 from langgraph.constants import END, START
 
-from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY
+from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.break_comp import BreakComponent, LoopController
@@ -17,7 +17,6 @@ from jiuwen.core.component.condition.expression import ExpressionCondition
 from jiuwen.core.component.condition.number import NumberConditionInRuntime
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, FIRST_LOOP
-from jiuwen.core.component.loop_callback.loop_id import LoopIdCallback
 from jiuwen.core.component.loop_callback.output import OutputCallback
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.atomic_node import AtomicNode
@@ -43,7 +42,7 @@ class LoopGroup(BaseWorkFlow, Executable):
 
     def __init__(self, workflow_config: WorkflowConfig, new_graph: Graph):
         super().__init__(workflow_config, new_graph)
-        self.compiled = None
+        self.compiled_graph = None
         self.group_input_schema = {}
         self._break_components = []
 
@@ -84,9 +83,9 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        if self.compiled is None:
-            raise JiuWenBaseException(-1, "loop graph is not compiled")
-        await self.compiled.invoke(inputs, runtime)
+        loop_runtime = runtime.parent()
+        self.compiled_graph = self.compile(loop_runtime)
+        await self.compiled_graph.invoke(inputs, loop_runtime)
         return None
 
     def skip_trace(self) -> bool:
@@ -144,26 +143,26 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
 
         self._in_loop = [BODY_NODE_ID]
         self._out_loop = [END]
-        self._runtime = None
-
-    def to_executable(self) -> Executable:
-        return self
+        self._node_runtime = None
 
     def register_callback(self, callback: LoopCallback):
         self._callbacks.append(callback)
 
     def __call__(self, *args, **kwargs) -> list[str]:
-        return self.atomic_invoke(runtime=self._runtime)
+        return self.atomic_invoke(runtime=self._node_runtime)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        outputs = self._condition_invoke(runtime=self._runtime)
-        self._runtime.state().set_outputs(outputs[1])
+        outputs = self._condition_invoke(runtime=self._node_runtime)
+        self._node_runtime.state().set_outputs(outputs[1])
         return outputs[0]
 
     def _condition_invoke(self, runtime: BaseRuntime) -> Output:
-        index = self._runtime.state().get(INDEX)
+        index = runtime.state().get(INDEX)
         if index is None:
-            raise JiuWenBaseException(-1, 'inner error, loop index is not set')
+            runtime.state().update({BROKEN: False, INDEX: -1})
+            runtime.state().commit()
+            index = -1
+
         continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
         for callback in self._callbacks:
             if index < 0:
@@ -174,39 +173,44 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
                 callback(START_ROUND, runtime)
             else:
                 callback(OUT_LOOP, runtime)
+
         index = index + 1 if continue_loop else -1
-        runtime.state().update({INDEX: index})
         if not continue_loop:
             runtime.state().update({INDEX: -1, BROKEN: False})
+        else:
+            runtime.state().update({INDEX: index})
+
         return self._in_loop if continue_loop else self._out_loop, {INDEX: index}
 
     def is_broken(self) -> bool:
-        _is_broken = self._runtime.state().get(BROKEN)
+        _is_broken = self._node_runtime.state().get(BROKEN)
         if isinstance(_is_broken, bool):
             return _is_broken
         return False
 
     def break_loop(self):
-        self._runtime.state().update({BROKEN: True})
+        self._node_runtime.state().update({BROKEN: True})
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        self._runtime = runtime
-        assert isinstance(runtime, NodeRuntime)
-        self._node_id = runtime.node_id()
-        loop_id_callback = LoopIdCallback(self._node_id)
-        self.register_callback(loop_id_callback)
+        loop_runtime = runtime
+        assert isinstance(loop_runtime, NodeRuntime)
+        self._node_id = loop_runtime.node_id()
+        self._node_runtime = NodeRuntime(loop_runtime, self._node_id)
 
-        # set loop graph inputs
-        index = self._runtime.state().get(INDEX)
-        if index is None:
-            self._runtime.state().update({BROKEN: False, INDEX: -1})
-        if self._runtime.tracer() is not None:
-            self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
-        compiled = self._graph.compile(self._runtime)
-        if isinstance(self._body, LoopGroup):
-            self._body.compiled = self._body.compile(self._runtime.parent())
-            return await compiled.invoke(inputs, self._runtime.parent())
-        return None
+        loop_runtime.state().set_outputs({LOOP_ID: self._node_id})
+        state = loop_runtime.state()._io_state.get_state()
+        if self._node_id in state:
+            del state[self._node_id]
+        loop_runtime.state().set_outputs(state)
+        loop_runtime.state().commit()
+
+        if loop_runtime.tracer() is not None:
+            loop_runtime.tracer().register_workflow_span_manager(loop_runtime.executable_id())
+        compiled = self._graph.compile(loop_runtime)
+        await compiled.invoke(inputs, loop_runtime)
+        result = self._node_runtime.state().get_outputs(self._node_id)
+        loop_runtime.state()._io_state.update_by_id(self._node_id, {self._node_id: None})
+        return result
 
     def graph_invoker(self) -> bool:
         return True

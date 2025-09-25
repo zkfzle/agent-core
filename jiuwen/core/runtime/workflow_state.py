@@ -66,7 +66,7 @@ class CommitState(StateCollection):
                  trace_state: dict = {},
                  parent_id: str = '',
                  node_id: str = DEFAULT_NODE_ID,
-                 workflow_only = True):
+                 workflow_only=True):
         super().__init__(io_state=io_state, global_state=global_state, comp_state=comp_state, trace_state=trace_state,
                          workflow_state=workflow_state, parent_id=parent_id, node_id=node_id)
         self._workflow_only = workflow_only

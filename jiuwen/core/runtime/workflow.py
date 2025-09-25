@@ -51,6 +51,9 @@ class WorkflowRuntime(BaseRuntime):
             return
         self._queue_manager = queue_manager
 
+    def set_workflow_id(self, workflow_id):
+        self._workflow_id = workflow_id
+
     def queue_manager(self) -> MessageQueueManager:
         return self._queue_manager
 

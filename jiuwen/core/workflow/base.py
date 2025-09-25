@@ -146,6 +146,8 @@ class BaseWorkFlow:
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
+        if isinstance(runtime, WorkflowRuntime):
+            runtime.set_workflow_id(self._workflow_config.metadata.id)
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         self._runtime.set_runtime(runtime)
         return self._graph.compile(runtime)

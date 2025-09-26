@@ -92,6 +92,8 @@ def split_nested_path(nested_key: str) -> list:
                 final_list.append((match.group(1), idxes))
             else:
                 final_list.append(match.group(1))
+        else:
+            raise JiuWenBaseException(1, f"failed to process nested path {param} in {nested_key}")
     return final_list
 
 
@@ -116,12 +118,14 @@ def extract_origin_key(key: str) -> str:
         return match.group(1)
     return key
 
+
 def delete_by_key(key: Union[str, int], source: dict) -> None:
     if key not in source:
         return
     if isinstance(key, int):
         return
     del source[key]
+
 
 def update_by_key(key: Union[str, int], new_value: Any, source: dict) -> None:
     if key not in source:

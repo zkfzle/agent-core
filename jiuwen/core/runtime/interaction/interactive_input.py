@@ -17,8 +17,8 @@ class InteractiveInput(BaseModel):
     # input not bind to any id, used for the first interaction
     raw_inputs: Any = Field(default=None)
 
-    def __init__(self, raw_inputs: Any = None, /, **data: Any):
-        super().__init__(**data)
+    def __init__(self, raw_inputs: Any = None):
+        super().__init__(**{})
         self.raw_inputs = raw_inputs
 
     def update(self, node_id: str, value: Any):

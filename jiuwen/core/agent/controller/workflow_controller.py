@@ -1,6 +1,6 @@
 from typing import List, Union, Any, Dict, AsyncIterator
 import json
-from pydantic import Field
+from pydantic import Field, ConfigDict
 
 from jiuwen.agent.common.enum import SubTaskType, WorkflowAgentStatus, WorkflowAgentEvent
 from jiuwen.agent.config.base import AgentConfig
@@ -8,6 +8,7 @@ from jiuwen.core.agent.controller.base import Controller, ControllerOutput, Cont
 from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.core.agent.state_machine.workflow_agent_state_machine import WorkflowAgentStateMachine
 from jiuwen.core.agent.task.sub_task import SubTask
+from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.context_engine.engine import ContextEngine
@@ -30,8 +31,7 @@ class WorkflowControllerOutput(ControllerOutput):
 
 
 class WorkflowControllerInput(ControllerInput):
-    workflow_inputs: dict = Field(default_factory=dict)
-
+    model_config = ConfigDict(extra='allow')
 
 class WorkflowController(Controller):
     def __init__(self, config: AgentConfig, context_engine: ContextEngine, runtime: Runtime):
@@ -78,27 +78,23 @@ class WorkflowController(Controller):
 
                         error_result = {
                             "error": True,
-                            "id": e.args[0].get("id"),
-                            "value": e.args[0].get("value"),
+                            "id": "0",
+                            "value": e.message,
                             "message": error_msg,
                             "tool_name": sub_task.func_name
                         }
-                        sub_task.result = json.dumps(error_result, ensure_ascii=False)
+                        sub_task.result = error_result
                         result = error_result
                     results[sub_task.func_name] = result
                     if isinstance(result, dict) and result.get('error'):
                         # 是中断状态
-                        interrupt_data = {
-                            "interrupt_component_id": result.get('id'),
-                            "question": result.get('value')
-                        }
-                        self._state_machine.update_state_data({"interrupt_state": interrupt_data})
+                        interrupt_data_list = []
+                        for output_scheme in result.get("value", []):
+                            interrupt_data_list.append(output_scheme)
+
+                        self._state_machine.update_state_data({"interrupt_state": interrupt_data_list})
                         self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-                        try:
-                            await self._runtime.interact({"output": interrupt_data["question"],
-                                                          "result_type": "question"})
-                        finally:
-                            return {"output": interrupt_data["question"], "result_type": "question"}
+                        return interrupt_data_list
             if not self.should_continue(controller_output):
                 output = self.handle_workflow_results(results)
                 self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
@@ -120,21 +116,18 @@ class WorkflowController(Controller):
             message = AIMessage(content=output.get("responseContent"))
             self._add_msg_to_chat_histroy(message)
             logger.info(f"Added ai message to chat history: {output.get('responseContent')}")
-        return output
+        return {"output": output, "result_type": "answer"}
 
     async def _handle_interrupted_state(self, inputs):
         """处理中断状态"""
-        user_input = InteractiveInput()
         state_data = self._state_machine.get_state_data()
-        interrupt_state = state_data.get("interrupt_state", {})
-        user_input.update(interrupt_state.get("interrupt_component_id", ""), inputs.get("query"))
 
         # 更新SubTask参数
         sub_tasks = state_data.get("sub_tasks", [])
         logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
         if sub_tasks:
             # 直接修改 SubTask 对象的 func_args
-            sub_tasks[0].func_args = user_input
+            sub_tasks[0].func_args = inputs.get("query", "")
             self._state_machine.update_state_data({"sub_tasks": sub_tasks})
         else:
             logger.error("No sub_tasks found in interrupted state!")
@@ -151,25 +144,26 @@ class WorkflowController(Controller):
 
             error_result = {
                 "error": True,
-                "id": e.args[0].get("id"),
-                "value": e.args[0].get("value"),
+                "id": "0",
+                "value": e.message,
                 "message": error_msg,
                 "tool_name": sub_tasks[0].func_name
             }
-            sub_tasks[0].result = json.dumps(error_result, ensure_ascii=False)
+            sub_tasks[0].result = error_result
             result = error_result
         results = {}
         results[sub_tasks[0].func_name] = result
 
-        if isinstance(result, list) and result[0].get('type') == '__interaction__':
+        if isinstance(result, dict) and result.get('error'):
             # 是中断状态
-            interrupt_data = {
-                "interrupt_component_id": result[0].get('payload').get('id'),
-                "question": result[0].get('payload').get('value')
-            }
-            self._state_machine.update_state_data({"interrupt_state": interrupt_data})
+            interrupt_data_list = []
+            for output_scheme in result.get("value", []):
+                interrupt_data_list.append(output_scheme)
+                await self._runtime.write_stream(output_scheme)
+
+            self._state_machine.update_state_data({"interrupt_state": interrupt_data_list})
             self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-            return {"output": interrupt_data["question"], "result_type": "question"}
+            return interrupt_data_list
         else:
             output = self.handle_workflow_results(results)
             self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
@@ -367,6 +361,8 @@ class WorkflowController(Controller):
         self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
 
         if self._state_machine.is_interrupted():
+            if not isinstance(inputs.get("query"), InteractiveInput):
+                raise JiuWenBaseException(5000, "Interrupt status data format error.")
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
             result = await self._state_machine.handle_state(current_status, inputs)
@@ -375,10 +371,13 @@ class WorkflowController(Controller):
             # 如果返回了最终结果，直接返回
             if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
                 logger.info(f"Returning final result: {result}")
-                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=result.get("output")))
+                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=result))
                 return result
 
-        while not self._state_machine.is_completed():
+        if isinstance(inputs.get("query"), InteractiveInput):
+            raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
+
+        while not self._state_machine.is_completed() and not self._state_machine.is_interrupted():
             current_status = self._state_machine.get_current_status()
             logger.info(f"Current status: {current_status}")
 
@@ -390,8 +389,12 @@ class WorkflowController(Controller):
             logger.info(f"State handler result: {result}")
 
             # 如果返回了最终结果，直接返回
-            if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
+            if result and isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type in ["__interaction__"]:
                 logger.info(f"Returning final result: {result}")
+                logger.info(f"Returning __interaction__ result: {result}")
+                return result
+            elif isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
+                logger.info(f"Returning final result : {result}")
                 return result
 
             # 返回最终结果

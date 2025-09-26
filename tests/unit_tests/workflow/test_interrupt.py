@@ -1,6 +1,7 @@
 import os
 import unittest
 from datetime import datetime
+from typing import List
 from unittest.mock import patch
 
 import pytest
@@ -16,12 +17,12 @@ from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from jiuwen.core.component.start_comp import Start
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.graph.pregel.graph import PregelGraph
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -374,9 +375,11 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
         result = await workflow_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
         print(f"WorkflowAgent 第一次输出结果：{result}")
 
-        if result.get("result_type") == 'question':
-            result = await workflow_agent.invoke({"conversation_id": "12345", "query": "地点是杭州"})
-            print(f"WorkflowActAgent 第二次输出结果：{result}")
+        if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
+            interactive_input = InteractiveInput()
+            interactive_input.update("questioner", "杭州")
+            result = await workflow_agent.invoke({"conversation_id": "12345", "query": interactive_input})
+            print(f"WorkflowAgent 第二次输出结果：{result}")
 
     @unittest.skip("skip system test")
     async def test_real_workflow_agent_stream_with_workflow_interrupt(self):
@@ -465,12 +468,18 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
         workflow_agent = WorkflowAgent(config)
         workflow_agent.bind_workflows([flow])
 
-        is_interaction = False
+        interaction_output_schema = []
         async for result in workflow_agent.stream({"conversation_id": "12345", "query": "查询今天天气"}):
             print(f"WorkflowAgent stream 第一次输出结果：{result}")
             if isinstance(result, OutputSchema) and result.type == "__interaction__":
-                is_interaction = True
+                interaction_output_schema.append(result)
 
-        if is_interaction:
-            async for result in workflow_agent.stream({"conversation_id": "12345", "query": "地点是杭州"}):
-                print(f"WorkflowActAgent 第二次输出结果：{result}")
+
+        if interaction_output_schema:
+            user_input = InteractiveInput()
+            for item in interaction_output_schema:
+                component_id = item.payload.id
+                user_input.update(component_id, "杭州")
+            async for chunk in workflow_agent.stream({"conversation_id": "12345", "query": user_input}):
+                print(f"WorkflowAgent 第二次输出结果 >>> {chunk}")
+

@@ -13,13 +13,15 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
+from jiuwen.core.component.end_comp import End
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from jiuwen.core.runtime.state import Transformer
-from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime
+from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
+from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
@@ -50,13 +52,9 @@ class WorkflowChunk(BaseModel):
 
 
 class BaseWorkFlow:
-    def __init__(self, workflow_config: WorkflowConfig, new_graph: Graph):
-        self._graph = new_graph
-        self._workflow_config = workflow_config
-        if not self._workflow_config.spec:
-            self._workflow_config.spec = WorkflowSpec()
-        if not self._workflow_config.metadata:
-            self._workflow_config.metadata = WorkflowMetadata()
+    def __init__(self, workflow_config: WorkflowConfig = None, new_graph: Graph = None):
+        self._graph = new_graph if new_graph else PregelGraph()
+        self._workflow_config = workflow_config if workflow_config else WorkflowConfig()
         self._workflow_spec = self._workflow_config.spec
         self._stream_actor = StreamActor()
         self._runtime = ProxyRuntime()
@@ -89,7 +87,7 @@ class BaseWorkFlow:
             stream_io_configs=CompIOConfig(inputs_schema=stream_inputs_schema, outputs_schema=stream_outputs_schema,
                                            inputs_transformer=stream_inputs_transformer,
                                            outputs_transformer=stream_outputs_transformer),
-            abilites= comp_ability if comp_ability is not None else [ComponentAbility.INVOKE])
+            abilites=comp_ability if comp_ability is not None else [ComponentAbility.INVOKE])
 
         for ability in node_spec.abilites:
             if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM, ComponentAbility.COLLECT]:
@@ -170,9 +168,10 @@ class WorkflowExecutable(ABC):
 
 class Workflow(BaseWorkFlow, WorkflowExecutable):
     def __init__(self, workflow_config: WorkflowConfig = None, tool_info: ToolInfo = None):
-        super().__init__(workflow_config if workflow_config else WorkflowConfig(), PregelGraph())
+        super().__init__(workflow_config, PregelGraph())
         self.tool_info = tool_info
         self._end_comp_id: str = ""
+        self._end_comp = None
 
     def set_start_comp(
             self,
@@ -209,7 +208,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if response_mode is not None:
             if "streaming" == response_mode:
                 comp_ability = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
-                wait_for_all=True
+                wait_for_all = True
             else:
                 comp_ability = [ComponentAbility.INVOKE]
         self.add_workflow_comp(end_comp_id, component, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
@@ -224,6 +223,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                                )
         self.end_comp(end_comp_id)
         self._end_comp_id = end_comp_id
+        self._end_comp = component
         return self
 
     async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
@@ -231,7 +231,11 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         compiled_graph = self._graph.compile(SubWorkflowRuntime(runtime, workflow_id=self._workflow_config.metadata.id))
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
-        results = runtime.state().get_outputs(self._end_comp_id)
+        node_runtime = NodeRuntime(runtime, self._end_comp_id)
+        output_key = self._end_comp_id
+        if isinstance(self._end_comp, End):
+            output_key = self._end_comp_id + NESTED_PATH_SPLIT + "output"
+        results = node_runtime.state().get_outputs(output_key)
         logger.info("end to sub_invoke, results=%s", results)
         return results
 

@@ -1,6 +1,7 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+import uuid
 from enum import Enum
 from typing import Optional, Dict, Any, List
 
@@ -18,7 +19,7 @@ class CompIOConfig(BaseModel):
 
 class WorkflowMetadata(BaseModel):
     name: str = Field(default="")
-    id: str = Field(default="")
+    id: str = Field(default_factory=uuid.uuid4)
     version: str = Field(default="")
 
 
@@ -34,10 +35,10 @@ class WorkflowSpec(BaseModel):
 
 
 class WorkflowConfig(BaseModel):
-    metadata: Optional[WorkflowMetadata] = Field(default=None)
+    metadata: Optional[WorkflowMetadata] = Field(default_factory=WorkflowMetadata)
     comp_configs: Dict[str, Any] = Field(default_factory=dict)
     stream_timeout: float = Field(default=0.2)
-    spec: Optional[WorkflowSpec] = Field(default=None)
+    spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
 
 
 class ComponentAbility(Enum):

@@ -25,7 +25,7 @@ from jiuwen.core.graph.executable import Output, Input, Executable
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
-from jiuwen.core.runtime.workflow import NodeRuntime
+from jiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
 from jiuwen.core.workflow.base import BaseWorkFlow
 from jiuwen.graph.pregel.graph import PregelGraph
 
@@ -40,8 +40,8 @@ class EmptyExecutable(Executable):
 
 class LoopGroup(BaseWorkFlow, Executable):
 
-    def __init__(self, workflow_config: WorkflowConfig, new_graph: Graph):
-        super().__init__(workflow_config, new_graph)
+    def __init__(self):
+        super().__init__()
         self.compiled_graph = None
         self.group_input_schema = {}
         self._break_components = []
@@ -83,7 +83,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        loop_runtime = runtime.parent()
+        loop_runtime = SubWorkflowRuntime(runtime.parent(), workflow_id=self._workflow_config.metadata.id)
         self.compiled_graph = self.compile(loop_runtime)
         await self.compiled_graph.invoke(inputs, loop_runtime)
         return None

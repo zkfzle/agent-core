@@ -38,6 +38,7 @@ from jiuwen.core.stream.writer import TraceSchema
 
 switcher = False
 
+
 def record_tracer_info(tracer_chunks, file_path):
     if not switcher:
         return
@@ -468,7 +469,7 @@ class WorkflowTest(unittest.TestCase):
                                    inputs_schema={"array_result": "${l.results}", "user_var": "${l.user_var}"})
 
             # create  loop: (1->2->3)
-            loop_group = LoopGroup(WorkflowConfig(), PregelGraph())
+            loop_group = LoopGroup()
             loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${l.item}"})
             loop_group.add_workflow_comp("2", AddTenNode("2"),
                                          inputs_schema={"source": "${l.user_var}"})

@@ -12,5 +12,5 @@ class SubTask(BaseModel):
     func_id: str = Field(default="")
     func_name: str = Field(default="")
     func_args: Union[dict, InteractiveInput] = Field(default_factory=dict)
-    result: Optional[str] = Field(default=None)
+    result: Optional[Union[str, dict]] = Field(default=None)
     sub_task_context: Any = Field(default=None)

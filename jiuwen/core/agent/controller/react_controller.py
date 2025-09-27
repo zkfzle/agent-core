@@ -1,587 +1,89 @@
 """Controller of ReActAgent"""
-import copy
-from typing import List, Dict, Optional, AsyncIterator, Union
+from typing import List, Dict, Optional, Union, Any
 
-from pydantic import Field, ConfigDict
 import json
 
-from jiuwen.agent.common.enum import SubTaskType, ReActStatus, ReActEvent
-from jiuwen.core.agent.controller.base import ControllerOutput, ControllerInput, Controller
+from jiuwen.core.agent.controller.base import Controller
 from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.agent.state_machine.react_state_machine import ReActStateMachine
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.stream.writer import OutputSchema
-from jiuwen.core.utils.format.format_utils import FormatUtils
 from jiuwen.core.utils.llm.hash_util import generate_key
-from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, HumanMessage, AIMessage, \
-    ToolCall, UsageMetadata, ToolMessage
-from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.common.logging import logger
+from jiuwen.core.agent.controller.utils import ReActControllerUtils, ReActControllerOutput, ReActControllerInput
+from jiuwen.agent.common.enum import ReActControllerStatus
 
 
-class ReActControllerOutput(ControllerOutput):
-    should_continue: bool = Field(default=False)
-    llm_output: Optional[AIMessage] = Field(default=None)
-    sub_tasks: List[SubTask] = Field(default_factory=list)
+class ReActState:
+    """ReAct状态管理类"""
 
+    def __init__(self, runtime: Runtime):
+        self._runtime = runtime
 
-class ReActControllerInput(ControllerInput):
-    model_config = ConfigDict(extra='allow')
+    def is_interrupted(self) -> bool:
+        track_state = self._runtime.get_state("react_state")
+        return (track_state and
+                track_state.get("status") == ReActControllerStatus.INTERRUPTED.value and
+                track_state.get("sub_tasks") is not None)
+
+    def get_interrupted_sub_tasks(self) -> List[SubTask]:
+        state_data = self._runtime.get_state("react_state") or {}
+        return state_data.get("sub_tasks", [])
+
+    def save_interrupt_state(self, sub_tasks: List[SubTask]):
+        self._runtime.update_state({
+            "react_state": {
+                "status": ReActControllerStatus.INTERRUPTED.value,
+                "sub_tasks": sub_tasks
+            }
+        })
+
+    def get_current_status(self) -> ReActControllerStatus:
+        """获取当前状态"""
+        track_state = self._runtime.get_state("react_state")
+        if not track_state:
+            return ReActControllerStatus.NORMAL
+
+        status_value = track_state.get("status", ReActControllerStatus.NORMAL.value)
+        try:
+            return ReActControllerStatus(status_value)
+        except ValueError:
+            # 如果状态值不是有效的枚举值，返回默认状态
+            return ReActControllerStatus.NORMAL
+
+    def set_status(self, status: ReActControllerStatus, sub_tasks: List[SubTask] = None):
+        """设置状态"""
+        self._runtime.update_state({
+            "react_state": {
+                "status": status.value,
+                "sub_tasks": sub_tasks or []
+            }
+        })
 
 
 class ReActController(Controller):
-    def __init__(self, config: AgentConfig,
-                 context_engine: ContextEngine, runtime: Runtime):
+    """优化的ReAct控制器 - 清晰的Reason→Act→Observe→Decide循环"""
+
+    def __init__(self, config: AgentConfig, context_engine: ContextEngine, runtime: Runtime):
         super().__init__(config)
         self._context_engine = context_engine
         self._runtime = runtime
-        self._state_machine = ReActStateMachine(self._runtime)
-        self._model = self._init_model()
+        self._model = ModelFactory().get_model(
+            model_provider=config.model.model_provider,
+            api_base=config.model.model_info.api_base,
+            api_key=config.model.model_info.api_key
+        )
+
+        # 组件初始化
+        self._state = ReActState(runtime)
         self._agent_handler = None
-        self._setup_state_handlers()
-
-    def _setup_state_handlers(self):
-        """设置状态处理器"""
-        # 注册同步状态处理器
-        self._state_machine.register_state_handler(ReActStatus.INITIALIZED, self._handle_initialized_state)
-        self._state_machine.register_state_handler(ReActStatus.LLM_RESPONSE, self._handle_llm_response_state)
-        self._state_machine.register_state_handler(ReActStatus.TOOL_INVOKED, self._handle_tool_invoked_state)
-        self._state_machine.register_state_handler(ReActStatus.COMPLETED, self._handle_completed_state)
-        self._state_machine.register_state_handler(ReActStatus.INTERRUPTED, self._handle_interrupted_state)
-
-        # 注册流式状态处理器
-        self._state_machine.register_state_handler(ReActStatus.INITIALIZED, self._stream_handle_initialized_state, is_stream=True)
-        self._state_machine.register_state_handler(ReActStatus.LLM_RESPONSE, self._stream_handle_llm_response_state, is_stream=True)
-        self._state_machine.register_state_handler(ReActStatus.TOOL_INVOKED, self._stream_handle_tool_invoked_state, is_stream=True)
-        self._state_machine.register_state_handler(ReActStatus.COMPLETED, self._stream_handle_completed_state, is_stream=True)
-        self._state_machine.register_state_handler(ReActStatus.INTERRUPTED, self._stream_handle_interrupted_state, is_stream=True)
-
-    async def execute(self, inputs: Dict) -> Dict:
-        """执行完整的ReAct迭代流程"""
-        logger.info(f"Starting ReAct execution with inputs: {inputs}")
-        self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
-
-        if self._state_machine.is_interrupted():
-            if not isinstance(inputs.get("query"), InteractiveInput):
-                raise JiuWenBaseException(5000, "Interrupt status data format error.")
-
-            current_status = self._state_machine.get_current_status()
-            logger.info(f"Current status: {current_status}")
-
-            result = await self._state_machine.handle_state(current_status, inputs)
-            logger.info(f"State handler result: {result}")
-
-            # 如果返回了最终结果，直接返回
-            if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                logger.info(f"Returning final result: {result}")
-                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=result))
-                return result
-
-        if isinstance(inputs.get("query"), InteractiveInput):
-            raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
-
-        while not self._state_machine.is_completed() and not self._state_machine.is_interrupted():
-            current_status = self._state_machine.get_current_status()
-            logger.info(f"Current status: {current_status}")
-
-            if not self._state_machine.can_handle_status(current_status):
-                logger.error(f"Cannot handle status: {current_status}")
-                break
-
-            result = await self._state_machine.handle_state(current_status, inputs)
-            logger.info(f"State handler result: {result}")
-
-            # 如果返回了最终结果，直接返回
-            if result and isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type in ["__interaction__"]:
-                logger.info(f"Returning __interaction__ result: {result}")
-                return result
-            elif isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                logger.info(f"Returning final result : {result}")
-                return result
-
-        # 返回最终结果
-        final_result = self._state_machine.get_final_result()
-        logger.info(f"Final execution result: {final_result}")
-        await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=final_result))
-
-        return {"output": final_result, "result_type": "answer"}
-
-    async def stream_execute(self, inputs: Dict):
-        """流式执行ReAct迭代流程"""
-        self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
-
-        while not self._state_machine.is_completed():
-            current_status = self._state_machine.get_current_status()
-
-            if not self._state_machine.can_handle_status(current_status, is_stream=True):
-                logger.error(f"Cannot handle stream status: {current_status}")
-                break
-
-            async for result in self._state_machine.handle_stream_state(current_status, inputs):
-                yield result
-
-                # 如果是最终结果，结束流式处理
-                if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                    return
-
-    def set_agent_handler(self, agent_handler: AgentHandler):
-        """设置Agent处理器"""
-        self._agent_handler = agent_handler
-
-    # 状态处理方法
-    async def _handle_initialized_state(self, inputs: Dict) -> Dict:
-        """处理初始化状态"""
-        controller_output = await self.invoke(ReActControllerInput(**inputs), None)
-        self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
-        self._state_machine.set_current_status(ReActStatus.LLM_RESPONSE)
-        return await self._handle_llm_response_state(inputs, controller_output)
-
-    async def _handle_llm_response_state(self, inputs: Dict, controller_output: ReActControllerOutput = None) -> Dict:
-        """处理LLM响应状态"""
-        if controller_output is None:
-            controller_output = await self.invoke(ReActControllerInput(**inputs), None)
-
-        logger.info(f"LLM response contains {len(controller_output.sub_tasks)} sub_tasks")
-        logger.info(f"LLM response content: {controller_output.llm_output.content if controller_output.llm_output else 'None'}")
-        logger.info(f"Should continue: {controller_output.should_continue}")
-        for i, task in enumerate(controller_output.sub_tasks):
-            logger.info(f"SubTask {i}: {task.func_name} ({task.sub_task_type}) with args: {task.func_args}")
-
-        if controller_output.should_continue:
-            # 更新状态数据 - 在执行前先保存
-            self._state_machine.update_state_data({
-                "llm_output": controller_output.llm_output.model_dump() if controller_output.llm_output else None,
-                "sub_tasks": controller_output.sub_tasks  # 直接存储对象列表
-            })
-
-            # 直接传递 controller_output.sub_tasks 而不是从状态机获取
-            completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, controller_output.sub_tasks)
-            self._state_machine.set_current_event(ReActEvent.INVOKE_TOOL)
-            return await self._handle_sub_task_result(exec_result, inputs, completed_sub_tasks)
-        else:
-            # 更新状态数据
-            final_result = controller_output.llm_output.content if controller_output.llm_output else ""
-            logger.info(f"Setting final result: {final_result}")
-
-            # 先获取当前状态数据，然后更新
-            current_state_data = self._state_machine.get_state_data()
-            logger.info(f"Current state data before update: {current_state_data}")
-
-            self._state_machine.update_state_data({
-                "llm_output": controller_output.llm_output.model_dump() if controller_output.llm_output else None,
-                "sub_tasks": controller_output.sub_tasks,
-                "final_result": final_result
-            })
-
-            # 验证更新后的状态数据
-            updated_state_data = self._state_machine.get_state_data()
-            logger.info(f"State data after update: {updated_state_data}")
-
-            self._state_machine.set_current_event(ReActEvent.FINISH)
-            self._state_machine.set_current_status(ReActStatus.COMPLETED)
-            return await self._handle_completed_state(inputs, controller_output)
-
-    async def _handle_tool_invoked_state(self, inputs: Dict, completed_sub_tasks: List[SubTask] = None) -> Dict:
-        """处理工具调用状态"""
-        controller_output = await self.invoke(ReActControllerInput(**inputs), None)
-        self._state_machine.set_current_event(ReActEvent.INVOKE_TOOL_FINISHED)
-        self._state_machine.set_current_status(ReActStatus.LLM_RESPONSE)
-        return await self._handle_llm_response_state(inputs, controller_output)
-
-    async def _handle_completed_state(self, inputs: Dict, controller_output: ReActControllerOutput = None) -> Dict:
-        """处理完成状态"""
-        logger.info("Entering _handle_completed_state")
-
-        # 检查状态机中的数据
-        state_data = self._state_machine.get_state_data()
-        logger.info(f"State data in _handle_completed_state: {state_data}")
-
-        if controller_output and controller_output.llm_output:
-            final_result = controller_output.llm_output.content
-            logger.info(f"Setting final result from controller_output: {final_result}")
-            self._state_machine.update_state_data({"final_result": final_result})
-
-        final_result = self._state_machine.get_final_result()
-        logger.info(f"Retrieved final result from state machine: {final_result}")
-
-        # 如果状态机中的结果为空，但controller_output有内容，直接使用controller_output的内容
-        if not final_result and controller_output and controller_output.llm_output and controller_output.llm_output.content:
-            final_result = controller_output.llm_output.content
-            logger.info(f"Using controller_output content as fallback: {final_result}")
-
-        return {"output": final_result, "result_type": "answer"}
-
-    async def _handle_interrupted_state(self, inputs: Dict) -> Dict:
-        """处理中断状态"""
-        state_data = self._state_machine.get_state_data()
-
-        # 更新SubTask参数
-        sub_tasks = state_data.get("sub_tasks", [])
-        logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
-        if sub_tasks:
-            # 直接修改 SubTask 对象的 func_args
-            sub_tasks[0].func_args = inputs.get("query", "")
-            self._state_machine.update_state_data({"sub_tasks": sub_tasks})
-        else:
-            logger.error("No sub_tasks found in interrupted state!")
-
-        # 直接传递 sub_tasks 而不是让 _execute_sub_tasks 从状态机获取
-        completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, sub_tasks)
-        return await self._handle_sub_task_result(exec_result, inputs, completed_sub_tasks)
-
-    # 流式状态处理方法
-    async def _stream_handle_initialized_state(self, inputs: Dict):
-        """流式处理初始化状态"""
-        controller_stream = self.stream(ReActControllerInput(**inputs), None)
-        controller_output = None
-
-        async for item in controller_stream:
-            if isinstance(item, BaseMessageChunk):
-                if item.content:
-                    yield {"output": item.content, "result_type": "partial"}
-            elif isinstance(item, ReActControllerOutput):
-                controller_output = item
-                break
-
-        self._state_machine.set_current_event(ReActEvent.USER_INVOKE)
-        self._state_machine.set_current_status(ReActStatus.LLM_RESPONSE)
-        async for result in self._stream_handle_llm_response_state(inputs, controller_output):
-            yield result
-
-    async def _stream_handle_llm_response_state(self, inputs: Dict, controller_output: ReActControllerOutput = None):
-        """流式处理LLM响应状态"""
-        if controller_output is None:
-            # 这里应该是流式调用，但为了简化，先用同步调用
-            controller_output = await self.invoke(ReActControllerInput(**inputs), None)
-
-        logger.info(f"Stream LLM response contains {len(controller_output.sub_tasks)} sub_tasks")
-
-        if controller_output.should_continue:
-            # 更新状态数据
-            self._state_machine.update_state_data({
-                "llm_output": controller_output.llm_output.model_dump() if controller_output.llm_output else None,
-                "sub_tasks": controller_output.sub_tasks
-            })
-
-            # 直接传递 controller_output.sub_tasks
-            completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, controller_output.sub_tasks)
-            self._state_machine.set_current_event(ReActEvent.INVOKE_TOOL)
-            async for result in self._stream_handle_sub_task_result(exec_result, inputs, completed_sub_tasks):
-                yield result
-        else:
-            # 更新状态数据
-            self._state_machine.update_state_data({
-                "llm_output": controller_output.llm_output.model_dump() if controller_output.llm_output else None,
-                "sub_tasks": controller_output.sub_tasks
-            })
-            self._state_machine.set_current_event(ReActEvent.FINISH)
-            self._state_machine.set_current_status(ReActStatus.COMPLETED)
-            async for result in self._stream_handle_completed_state(inputs, controller_output):
-                yield result
-
-    async def _stream_handle_tool_invoked_state(self, inputs: Dict, completed_sub_tasks: List[SubTask] = None):
-        """流式处理工具调用状态"""
-        controller_stream = self.stream(ReActControllerInput(**inputs), None)
-        controller_output = None
-
-        async for item in controller_stream:
-            if isinstance(item, BaseMessageChunk):
-                if item.content:
-                    yield {"output": item.content, "result_type": "partial"}
-            elif isinstance(item, ReActControllerOutput):
-                controller_output = item
-                break
-
-        self._state_machine.set_current_event(ReActEvent.INVOKE_TOOL_FINISHED)
-        self._state_machine.set_current_status(ReActStatus.LLM_RESPONSE)
-        async for result in self._stream_handle_llm_response_state(inputs, controller_output):
-            yield result
-
-    async def _stream_handle_completed_state(self, inputs: Dict, controller_output: ReActControllerOutput = None):
-        """流式处理完成状态"""
-        if controller_output and controller_output.llm_output:
-            final_result = controller_output.llm_output.content
-            self._state_machine.update_state_data({"final_result": final_result})
-
-        final_result = self._state_machine.get_final_result()
-        yield {"output": final_result, "result_type": "answer"}
-
-    async def _stream_handle_interrupted_state(self, inputs: Dict):
-        """流式处理中断状态"""
-        user_input = InteractiveInput()
-        state_data = self._state_machine.get_state_data()
-        interrupt_state = state_data.get("interrupt_state", {})
-
-        user_input.update(interrupt_state.get("interrupt_component_id", ""), inputs.get("query"))
-
-        # 更新SubTask参数
-        sub_tasks = state_data.get("sub_tasks", [])
-        if sub_tasks:
-            # 直接修改 SubTask 对象的 func_args
-            sub_tasks[0].func_args = user_input
-            self._state_machine.update_state_data({"sub_tasks": sub_tasks})
-
-        # 直接传递 sub_tasks
-        completed_sub_tasks, exec_result = await self._execute_sub_tasks(self._runtime, sub_tasks)
-        async for result in self._stream_handle_sub_task_result(exec_result, inputs, completed_sub_tasks):
-            yield result
-
-    async def _handle_sub_task_result(self, exec_result, inputs: Dict, completed_sub_tasks: List[SubTask]) -> Union[List, Dict]:
-        """处理SubTask执行结果"""
-        logger.info(f"Handling sub task result: {exec_result}")
-        logger.info(f"Completed sub tasks: {[task.func_name for task in completed_sub_tasks]}")
-
-        if isinstance(exec_result, dict) and exec_result.get("error"):
-            # 处理交互请求
-            interrupt_data_list = []
-            for output_scheme in exec_result.get("value", []):
-                interrupt_data_list.append(output_scheme)
-                await self._runtime.write_stream(output_scheme)
-
-            self._state_machine.update_state_data({"interrupt_state": interrupt_data_list})
-            self._state_machine.set_current_status(ReActStatus.INTERRUPTED)
-
-            return interrupt_data_list
-        else:
-            # 处理正常结果
-            logger.info("Adding tool results to chat history before state transition")
-            await self._update_chat_history_with_tool_results(completed_sub_tasks)
-            self._state_machine.set_current_status(ReActStatus.TOOL_INVOKED)
-            return await self._handle_tool_invoked_state(inputs, completed_sub_tasks)
-
-    async def _stream_handle_sub_task_result(self, exec_result, inputs: Dict, completed_sub_tasks: List[SubTask]):
-        """流式处理SubTask执行结果"""
-        if isinstance(exec_result, list) and exec_result[0].get('type') == '__interaction__':
-            # 处理交互请求
-            interrupt_data = {
-                "interrupt_component_id": exec_result[0].get('payload')[0],
-                "question": exec_result[0].get('payload')[1]
-            }
-            self._state_machine.update_state_data({"interrupt_state": interrupt_data})
-            self._state_machine.set_current_status(ReActStatus.INTERRUPTED)
-            yield {"output": interrupt_data["question"], "result_type": "question"}
-        else:
-            # 处理正常结果
-            await self._update_chat_history_with_tool_results(completed_sub_tasks)
-            self._state_machine.set_current_status(ReActStatus.TOOL_INVOKED)
-            async for result in self._stream_handle_tool_invoked_state(inputs, completed_sub_tasks):
-                yield result
-
-    async def _execute_sub_tasks(self, context: 'Runtime', sub_tasks: List[SubTask] = None):
-        """执行SubTask列表"""
-        if sub_tasks is None:
-            # 如果没有直接传递，则从状态机获取
-            state_data = self._state_machine.get_state_data()
-            sub_tasks = state_data.get("sub_tasks", [])
-            logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from state_data")
-        else:
-            logger.info(f"Using directly passed {len(sub_tasks)} sub_tasks")
-
-        completed_sub_tasks = []
-        exec_result = None
-
-        logger.info(f"Executing {len(sub_tasks)} sub tasks")
-
-        if not sub_tasks:
-            logger.warning("No sub_tasks found in state_data!")
-            return completed_sub_tasks, None
-
-        for i, sub_task in enumerate(sub_tasks):
-            # sub_task 现在直接是 SubTask 对象，不需要重建
-            if not isinstance(sub_task, SubTask):
-                logger.error(f"SubTask {i} is not a SubTask instance: {type(sub_task)}")
-                continue
-
-            logger.info(f"Executing sub task: {sub_task.func_name} with args: {sub_task.func_args}")
-
-            try:
-                # 执行SubTask
-                inputs = AgentHandlerInputs(context=context, name=sub_task.func_name, arguments=sub_task.func_args)
-                exec_result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
-                logger.info(f"Sub task {sub_task.func_name} result: {exec_result}")
-
-                # 更新结果
-                sub_task.result = json.dumps(exec_result, ensure_ascii=False)
-            except AgentInterrupt as e:
-                # 插件执行失败时，添加失败信息
-                error_msg = f"Tool execution failed: {str(e)}"
-                logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
-
-                error_result = {
-                    "error": True,
-                    "id": "0",
-                    "value": e.message,
-                    "message": error_msg,
-                    "tool_name": sub_task.func_name
-                }
-                sub_task.result = error_result
-                exec_result = error_result
-
-            completed_sub_tasks.append(sub_task)
-
-        return completed_sub_tasks, exec_result
-
-    async def _update_chat_history_with_tool_results(self, completed_sub_tasks: List[SubTask]):
-        """更新对话历史，添加工具调用结果"""
-        if not completed_sub_tasks:
-            logger.warning("No completed sub tasks to add to chat history")
-            return
-
-        agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
-        logger.info(f"Adding {len(completed_sub_tasks)} tool results to chat history")
-
-        # 为每个完成的SubTask创建ToolMessage并添加到对话历史
-        for sub_task in completed_sub_tasks:
-            if sub_task.result:  # 确保有执行结果
-                tool_message = ToolMessage(content=sub_task.result, tool_call_id=sub_task.id)
-                agent_context.add_message(tool_message)
-                logger.info(f"Added tool result to chat history: {sub_task.func_name} -> {sub_task.result[:100]}...")
-            else:
-                logger.warning(f"Sub task {sub_task.func_name} has no result to add")
-
-        # 调试：打印当前对话历史
-        current_messages = agent_context.get_messages()
-        logger.info(f"Current chat history length: {len(current_messages)}")
-        for i, msg in enumerate(current_messages[-5:]):  # 只打印最后5条消息
-            content_preview = ""
-            if hasattr(msg, 'content') and msg.content:
-                content_preview = msg.content[:50]
-            elif hasattr(msg, 'tool_calls') and msg.tool_calls:
-                content_preview = f"tool_calls: {len(msg.tool_calls)}"
-            logger.info(f"Message {i}: {msg.role} - {content_preview}...")
-
-    def _update_llm_response_to_context(self, llm_output: AIMessage):
-        """更新LLM响应到上下文"""
-        if llm_output:
-            agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
-            agent_context.add_message(llm_output)
-
-    async def invoke(self, inputs: ReActControllerInput, context: Runtime) -> ReActControllerOutput:
-        # 只在初始请求时添加用户输入到对话历史
-        # 在工具调用后的请求中，对话历史已经包含了用户消息和工具结果
-        agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
-
-        # 检查对话历史中是否已经包含当前用户输入
-        last_message = agent_context.get_latest_message()
-        should_add_user_message = True
-
-        if last_message:
-            # 如果最后一条消息是工具消息，说明这是工具调用后的请求，不需要再添加用户消息
-            if last_message.role == 'tool':
-                should_add_user_message = False
-                logger.info("Skipping user message addition - this is a post-tool-call request")
-            # 如果最后一条消息已经是相同的用户输入，也不需要重复添加
-            elif last_message.role == 'user' and last_message.content == inputs.query:
-                should_add_user_message = False
-                logger.info("Skipping user message addition - same message already exists")
-
-        if should_add_user_message:
-            user_message = HumanMessage(content=inputs.query)
-            agent_context.add_message(user_message)
-            logger.info(f"Added user message to chat history: {inputs.query}")
-
-        tools = self._format_tools_info()
-        chat_history = self._get_latest_chat_history()
-        llm_inputs = self._format_llm_inputs(inputs, chat_history)
-
-        result = await self._invoke_llm_and_parse_output(llm_inputs, tools)
-        self._update_llm_response_to_context(result.llm_output)
-        return result
-
-    async def stream(self,
-                     inputs: ReActControllerInput,
-                     context: Runtime
-                     ) -> AsyncIterator[Union[BaseMessageChunk, ReActControllerOutput]]:
-        # 只在初始请求时添加用户输入到对话历史
-        # 在工具调用后的请求中，对话历史已经包含了用户消息和工具结果
-        agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
-
-        # 检查对话历史中是否已经包含当前用户输入
-        last_message = agent_context.get_latest_message()
-        should_add_user_message = True
-
-        if last_message:
-            # 如果最后一条消息是工具消息，说明这是工具调用后的请求，不需要再添加用户消息
-            if last_message.role == 'tool':
-                should_add_user_message = False
-                logger.info("Skipping user message addition - this is a post-tool-call request")
-            # 如果最后一条消息已经是相同的用户输入，也不需要重复添加
-            elif last_message.role == 'user' and last_message.content == inputs.query:
-                should_add_user_message = False
-                logger.info("Skipping user message addition - same message already exists")
-
-        if should_add_user_message:
-            user_message = HumanMessage(content=inputs.query)
-            agent_context.add_message(user_message)
-            logger.info(f"Added user message to chat history: {inputs.query}")
-
-        tools = self._format_tools_info()
-        chat_history = self._get_latest_chat_history()
-        llm_inputs = self._format_llm_inputs(inputs, chat_history)
-
-        response = AIMessage()
-        async for chunk in self._stream_llm(llm_inputs, tools):
-            yield chunk
-            if self._check_if_last_chunk(chunk):
-                self._transform_chunk_to_ai_message(chunk, response)
-
-        result = self._parse_llm_output(response)
-        self._update_llm_response_to_context(result.llm_output)
-        yield result
-
-    def _get_latest_chat_history(self) -> List[BaseMessage]:
-        """获取最新的对话历史"""
-        # 从context engine获取对话历史
-        agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
-        chat_history = agent_context.get_messages()
-        chat_history = chat_history[-2 * self._config.constrain.reserved_max_chat_rounds:]
-        return chat_history
-
-    def _format_tools_info(self) -> List[ToolInfo]:
-        tool_info_list: List[ToolInfo] = list()
-        workflows_metadata = self._config.workflows
-        plugins_metadata = self._config.plugins
-        tool_info_list.extend(FormatUtils.format_workflows_metadata(workflows_metadata))
-        tool_info_list.extend(FormatUtils.format_plugins_metadata(plugins_metadata))
-        return tool_info_list
-
-    async def _invoke_llm_and_parse_output(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> ReActControllerOutput:
-        try:
-            response = await self._model.ainvoke(self._config.model.model_info.model_name, llm_inputs, tools)
-        except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.INVOKE_LLM_FAILED.code,
-                message=StatusCode.INVOKE_LLM_FAILED.errmsg
-            ) from e
-
-        return self._parse_llm_output(response)
-
-    async def _stream_llm(self, llm_inputs: List[BaseMessage], tools: List[ToolInfo]) -> AsyncIterator[BaseMessageChunk]:
-        try:
-            async for chunk in self._model.astream(self._config.model.model_info.model_name, llm_inputs, tools):
-                if self._check_if_valid_chunk(chunk):
-                    yield chunk
-
-        except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.INVOKE_LLM_FAILED.code,
-                message=StatusCode.INVOKE_LLM_FAILED.errmsg
-            ) from e
-
-    def _format_system_prompt_template(self, user_fields):
-        """格式化系统提示模板"""
-        return (Template(name=self._config.prompt_template_name, content=self._config.prompt_template)
-                .format(user_fields)
-                .to_messages())
 
     def _init_model(self):
         model_id = generate_key(
@@ -602,73 +104,186 @@ class ReActController(Controller):
 
         return self._runtime.get_model(model_id=model_id)
 
+    @staticmethod
+    def _validate_inputs(inputs: Dict):
+        """验证输入"""
+        if isinstance(inputs.get("query"), InteractiveInput):
+            raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
 
-    def _update_llm_response_to_context(self, llm_output: AIMessage):
-        """更新LLM响应到上下文"""
-        if llm_output:
-            # 获取agent context并添加消息
-            agent_context = self._context_engine.get_agent_context(self._runtime.session_id())
-            agent_context.add_message(llm_output)
+    def set_agent_handler(self, agent_handler: AgentHandler):
+        """设置Agent处理器"""
+        self._agent_handler = agent_handler
 
-    def _format_sub_tasks(self, tool_calls: List[ToolCall]) -> List[SubTask]:
-        if not tool_calls:
-            return []
-        result = []
-        for tool_call in tool_calls:
-            tool_call_id = tool_call.id
-            tool_call_info = tool_call.function
-            tool_call_name = tool_call_info.name
-            tool_call_args = FormatUtils.json_loads(tool_call_info.arguments)
-            tool_call_type = self._check_sub_task_type(tool_call_name)
-            result.append(
-                SubTask(id=tool_call_id, func_name=tool_call_name, func_args=tool_call_args, sub_task_type=tool_call_type))
-        return result
+    async def execute(self, inputs: Dict) -> Dict:
+        """主执行流程 - 统一的ReAct循环"""
+        logger.info(f"Starting ReAct execution with inputs: {inputs}")
 
-    def _check_sub_task_type(self, tool_call_name: str) -> SubTaskType:
-        result = SubTaskType.UNDEFINED
-        workflows_metadata = self._config.workflows
-        for workflow in workflows_metadata:
-            if tool_call_name == workflow.name:
-                result = SubTaskType.WORKFLOW
+        # 输入验证（仅在非中断恢复时进行）
+        if not self._state.is_interrupted():
+            self._validate_inputs(inputs)
+
+        # 执行ReAct主循环
+        return await self._run_react_loop(inputs)
+
+    async def _run_react_loop(self, inputs: Dict) -> Dict:
+        """核心ReAct循环：Reason→Act→Observe→Decide，包含中断恢复处理"""
+
+        # 标准ReAct循环
+        for iteration in range(self._config.constrain.max_iteration):
+            logger.info(f"ReAct iteration {iteration + 1}")
+
+            # 首先检查是否需要处理中断恢复
+            if self._state.is_interrupted():
+                interrupt_data = await self._resume_task(inputs)
+                if interrupt_data is not None:
+                    return interrupt_data
+                # 中断恢复完成后，继续到下一次迭代进行reason总结
+                continue
+
+            # 1. Reason: LLM推理生成计划
+            plan_result = await self.reason(inputs)
+
+            # 2. Decide: 判断是否需要继续
+            if not plan_result.should_continue:
+                self._state.set_status(ReActControllerStatus.COMPLETED)  # 设置完成状态
+                final_result = {"output": plan_result.llm_output.content, "result_type": "answer"}
+                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=final_result))
+                return final_result
+
+            # 3. Act: 执行工具调用
+            completed_tasks, exec_result = await self.act(plan_result.sub_tasks)
+
+            # 4. Observe: 观察结果并更新历史
+            interrupt_data = await self.observe(completed_tasks, exec_result)
+            if interrupt_data is not None:
+                return interrupt_data
+
+        # 设置超时状态并返回超时结果
+        self._state.set_status(ReActControllerStatus.TIMEOUT)
+        timeout_result = {"output": "执行超过最大迭代次数", "result_type": "answer"}
+        await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=timeout_result))
+        return timeout_result
+
+    async def _resume_task(self, inputs: Dict) -> Optional[Dict]:
+        """恢复中断的任务
+
+        Args:
+            inputs: 输入数据，包含InteractiveInput
+
+        Returns:
+            如果任务完成并需要返回结果，返回结果字典；否则返回None继续循环
+        """
+        if not isinstance(inputs.get("query"), InteractiveInput):
+            raise JiuWenBaseException(5000, "Interrupt status data format error.")
+
+        logger.info(f"Processing interrupt recovery within ReAct loop: {inputs}")
+
+        # 添加用户输入
+        for _, query in inputs.get("query").user_inputs.items():
+            ReActControllerUtils.add_user_message(query, self._context_engine, self._runtime)
+
+        # 获取中断的任务
+        sub_tasks = self._state.get_interrupted_sub_tasks()
+        if not sub_tasks:
+            self._state.set_status(ReActControllerStatus.NORMAL)
+            return None
+
+        # 更新第一个任务的参数
+        sub_tasks[0].func_args = inputs.get("query", "")
+
+        # 执行恢复的任务
+        completed_tasks, exec_result = await self.act(sub_tasks)
+
+        # 观察结果并更新历史
+        interrupt_data = await self.observe(completed_tasks, exec_result)
+
+        # 如果观察阶段返回了交互结果，直接返回
+        if interrupt_data is not None:
+            return interrupt_data
+
+        # 恢复正常状态
+        self._state.set_status(ReActControllerStatus.NORMAL)
+        return None
+
+    async def act(self, sub_tasks: List[SubTask]) -> tuple[List[SubTask], Any]:
+        """Act: 执行工具 - 执行SubTask列表，返回(完成的任务, 执行结果)"""
+        if not sub_tasks:
+            return [], None
+
+        completed_tasks = []
+        exec_result = None
+
+        for sub_task in sub_tasks:
+            try:
+                inputs = AgentHandlerInputs(
+                    context=self._runtime,
+                    name=sub_task.func_name,
+                    arguments=sub_task.func_args
+                )
+                exec_result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
+                sub_task.result = json.dumps(exec_result, ensure_ascii=False)
+                completed_tasks.append(sub_task)
+
+            except AgentInterrupt as e:
+                interrupt_result = ReActControllerUtils.create_interrupt_result(e, sub_task.func_name)
+                sub_task.result = interrupt_result
+                exec_result = interrupt_result
+
+                # 保存中断状态
+                self._state.save_interrupt_state(sub_tasks)
                 break
-        if result == SubTaskType.UNDEFINED:
-            plugins_metadata = self._config.plugins
-            for plugin in plugins_metadata:
-                if tool_call_name == plugin.name:
-                    result = SubTaskType.PLUGIN
-                    break
-        if result == SubTaskType.UNDEFINED:
-            raise JiuWenBaseException(5000, f"未找到工具调用类型")
-        return result
 
-    def _format_llm_inputs(self, inputs: ReActControllerInput, chat_history: List[BaseMessage]):
-        if isinstance(inputs.query, InteractiveInput):
-            user_fields = copy.deepcopy(inputs.model_dump())
-            user_fields.pop("query")
+        return completed_tasks, exec_result
+
+    async def observe(self, completed_tasks: List[SubTask], exec_result: Any = None) -> dict[str, str | Any] | None:
+        """Observe: 观察结果并更新历史"""
+        # 检查是否为交互中断结果
+        if exec_result and ReActControllerUtils.is_interaction_result(exec_result):
+            # 处理交互请求 - 写入流式输出
+            interrupt_data = {}
+            for output_scheme in exec_result.get("value", []):
+                await self._runtime.write_stream(output_scheme)
+                interrupt_data = {"output": output_scheme.payload.value, "result_type": "answer"}
+            return interrupt_data
+
+        # 更新历史 - 这里会将中断恢复任务的结果也加入对话历史
+        ReActControllerUtils.add_tool_results(completed_tasks, self._context_engine, self._runtime)
+        return None
+
+    # === ReAct推理引擎 ===
+    async def reason(self, inputs: Union[Dict, ReActControllerInput],
+                     context: Optional[Runtime] = None) -> ReActControllerOutput:
+        """推理阶段：分析情况并生成行动计划"""
+        # 转换为ReActControllerInput
+        if isinstance(inputs, dict):
+            controller_input = ReActControllerInput(**inputs)
         else:
-            user_fields = inputs.model_dump()
-        system_prompt = self._format_system_prompt_template(user_fields)
-        return FormatUtils.create_llm_inputs(system_prompt, chat_history)
+            controller_input = inputs
 
-    def _parse_llm_output(self, response: BaseMessage):
-        llm_output = response
-        sub_tasks = self._format_sub_tasks(llm_output.tool_calls)
-        should_continue = isinstance(sub_tasks, list) and len(sub_tasks) > 0
-        return ReActControllerOutput(should_continue=should_continue, llm_output=llm_output, sub_tasks=sub_tasks)
+        # 统一处理用户消息 - 包括普通查询和InteractiveInput
+        if not isinstance(controller_input.query, InteractiveInput):
+            ReActControllerUtils.add_user_message(controller_input.query, self._context_engine, self._runtime)
 
-    @staticmethod
-    def _check_if_last_chunk(chunk: BaseMessageChunk):
-        if isinstance(chunk.usage_metadata, UsageMetadata):
-            return chunk.usage_metadata.finish_reason in ["stop", "tool_calls"]
-        return False
+        # 准备LLM输入
+        tools = ReActControllerUtils.get_tools_info(self._config)
+        chat_history = ReActControllerUtils.get_chat_history(self._context_engine, self._runtime, self._config)
+        llm_inputs = ReActControllerUtils.format_llm_inputs(controller_input, chat_history, self._config)
+        logger.info(f"React llm inputs: {llm_inputs}")
+        # 调用LLM
+        try:
+            response = await self._model.ainvoke(
+                self._config.model.model_info.model_name,
+                llm_inputs,
+                tools
+            )
+        except Exception as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.INVOKE_LLM_FAILED.code,
+                message=StatusCode.INVOKE_LLM_FAILED.errmsg
+            ) from e
 
-    @staticmethod
-    def _transform_chunk_to_ai_message(chunk: BaseMessageChunk, message: AIMessage):
-        message.content = chunk.content
-        message.tool_calls = chunk.tool_calls
-        message.usage_metadata = chunk.usage_metadata
-
-    @staticmethod
-    def _check_if_valid_chunk(chunk):
-        return (chunk.content or (hasattr(chunk, "reason_content") and chunk.reason_content) or
-                (hasattr(chunk, "tool_calls") and chunk.tool_calls))
+        # 解析结果
+        result = ReActControllerUtils.parse_llm_output(response, self._config)
+        ReActControllerUtils.add_ai_message(result.llm_output, self._context_engine, self._runtime)
+        logger.info(f"React llm output: {result.llm_output}")
+        return result

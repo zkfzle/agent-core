@@ -26,6 +26,7 @@ class ReActStatus(Enum):
     COMPLETED = "completed"
     INTERRUPTED = "interrupted"
 
+
 class ReActEvent(Enum):
     NO_EVENT = "no_event"
     USER_INVOKE = "user_invoke"
@@ -34,6 +35,7 @@ class ReActEvent(Enum):
     INTERRUPT = "interrupt"
     FINISH = "finish"
 
+
 class TaskStatus(Enum):
     PENDING = auto()  # 已创建，尚未开始
     RUNNING = auto()  # 正在执行
@@ -41,11 +43,21 @@ class TaskStatus(Enum):
     FAILED = auto()  # 异常结束
     CANCELLED = auto()  # 被取消
 
+
 class WorkflowAgentStatus(Enum):
     INITIALIZED = "initialized"
     COMPLETED = "completed"
     INTERRUPTED = "interrupted"
 
+
 class WorkflowAgentEvent(Enum):
     NO_EVENT = "no_event"
     USER_INVOKE = "user_invoke"
+
+
+class ReActControllerStatus(Enum):
+    """ReAct控制器状态枚举"""
+    NORMAL = "NORMAL"  # 正常运行状态
+    INTERRUPTED = "INTERRUPTED"  # 中断状态
+    COMPLETED = "COMPLETED"  # 完成状态
+    TIMEOUT = "TIMEOUT"  # 超时状态

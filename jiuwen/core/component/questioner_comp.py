@@ -19,7 +19,7 @@ from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.utils.llm.messages import BaseMessage
+from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
@@ -94,7 +94,7 @@ class QuestionerConfig(ComponentConfig):
     extract_fields_from_response: bool = field(default=True)
     field_names: List[FieldInfo] = field(default_factory=list)
     max_response: int = field(default=3)
-    with_chat_history: bool = field(default=True)
+    with_chat_history: bool = field(default=False)
     chat_history_max_rounds: int = field(default=5)
     prompt_template: List[Dict] = field(default_factory=questioner_default_template)
     extra_prompt_for_fields_extraction: str = field(default="")
@@ -204,8 +204,8 @@ class QuestionerUtils:
             return ""
 
     @staticmethod
-    def get_latest_k_rounds_chat(chat_history, rounds):
-        return chat_history[-rounds * 2 - 1:]
+    def get_latest_k_rounds_chat(chat_messages, rounds):
+        return chat_messages[-rounds * 2 - 1:]
 
     @staticmethod
     def format_continue_ask_question(non_extracted_key_fields: List[FieldInfo]):
@@ -243,20 +243,20 @@ class QuestionerDirectReplyHandler:
         self._prompt = prompt
         return self
 
-    async def handle(self, inputs: Input, runtime: Runtime):
+    async def handle(self, inputs: Input, runtime: Runtime, context):
         if self._state.status == ExecutionStatus.START:
-            return self._handle_start_state(inputs, runtime)
+            return self._handle_start_state(inputs, runtime, context)
         if self._state.status == ExecutionStatus.USER_INTERACT:
-            return await self._handle_user_interact_state(inputs, runtime)
+            return await self._handle_user_interact_state(inputs, runtime, context)
         if self._state.status == ExecutionStatus.END:
-            return self._handle_end_state(inputs, runtime)
+            return self._handle_end_state(inputs, runtime, context)
         return dict()
 
-    def _handle_start_state(self, inputs, runtime):
+    def _handle_start_state(self, inputs, runtime, context):
         questioner_input = QuestionerInput.model_validate(inputs)
         output = OutputCache()
         self._query = questioner_input.query or ""
-        chat_history = self._get_latest_chat_history(runtime)
+        chat_history = self._get_latest_chat_history(context)
         if self._is_set_question_content():
             user_fields = questioner_input.model_dump(exclude={'query'})
             output.question = QuestionerUtils.format_template(self._config.question_content, user_fields)
@@ -274,11 +274,11 @@ class QuestionerDirectReplyHandler:
             )
         return self._format_questioner_output(output)
 
-    async def _handle_user_interact_state(self, inputs, runtime: Runtime):
+    async def _handle_user_interact_state(self, inputs, runtime: Runtime, context):
         output = OutputCache()
         self._query = await runtime.interact("")
-        chat_history = self._get_latest_chat_history(runtime)
-        user_response = chat_history[-1].get("content", "") if chat_history else ""
+        chat_history = self._get_latest_chat_history(context)
+        user_response = chat_history[-1].content if chat_history else ""
 
         if self._is_set_question_content() and not self._need_extract_fields():
             output.user_response = user_response
@@ -296,7 +296,7 @@ class QuestionerDirectReplyHandler:
             )
         return self._format_questioner_output(output)
 
-    def _handle_end_state(self, inputs, runtime):
+    def _handle_end_state(self, inputs, runtime, context):
         output = QuestionerOutput(**self._state.extracted_key_fields)
         output.user_response = self._state.user_response
         return output.model_dump(exclude_defaults=True)
@@ -324,14 +324,14 @@ class QuestionerDirectReplyHandler:
 
         return self._check_if_continue_ask(output)
 
-    def _get_latest_chat_history(self, runtime: Runtime) -> List:
+    def _get_latest_chat_history(self, context) -> List:
         result = list()
         if self._config.with_chat_history:
-            raw_chat_history = runtime.store().read(WORKFLOW_CHAT_HISTORY) or list() # FIXME: remove to context engine
+            raw_chat_history = context.get_messages()
             if raw_chat_history:
                 result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history, self._config.chat_history_max_rounds)
-        if not result or "user" == result[-1].get("role", ""):
-            result.append(dict(role="user", content=self._query))
+        if not result or result[-1].role in ["assistant"]:
+            result.append(HumanMessage(role="user", content=self._query))
         return result
 
     def _build_llm_inputs(self, chat_history: list = None) -> List[BaseMessage]:
@@ -339,7 +339,7 @@ class QuestionerDirectReplyHandler:
         formatted_template: Template = self._prompt.format(prompt_template_input)
         return formatted_template.to_messages()
 
-    def _create_prompt_template_keywords(self, chat_history):
+    def _create_prompt_template_keywords(self, chat_history: List[BaseMessage]):
         params_list, required_name_list = list(), list()
         for param in self._config.field_names:
             params_list.append(f"{param.field_name}: {param.description}")
@@ -347,7 +347,7 @@ class QuestionerDirectReplyHandler:
                 required_name_list.append(param.cn_field_name or param.description)
         required_name_str = "、".join(required_name_list) + f"{len(required_name_list)}个必要信息"
         all_param_str = "\n".join(params_list)
-        dialogue_history_str = "\n".join([f"{_.get('role', '')}：{_.get('content', '')}" for _ in chat_history])
+        dialogue_history_str = "\n".join([f"{_.role}：{_.content}" for _ in chat_history])
 
         return dict(required_name=required_name_str, required_params_list=all_param_str,
                     extra_info=self._config.extra_prompt_for_fields_extraction, example=self._config.example_content,
@@ -475,7 +475,7 @@ class QuestionerExecutable(ComponentExecutable):
 
         invoke_result = dict()
         if self._config.response_type == ResponseType.ReplyDirectly.value:
-            invoke_result = await self._handle_questioner_direct_reply(inputs, runtime)
+            invoke_result = await self._handle_questioner_direct_reply(inputs, runtime, context)
 
         self._store_state_to_runtime(self._state, runtime)
 
@@ -497,10 +497,10 @@ class QuestionerExecutable(ComponentExecutable):
         filters = dict(model_name=self._config.model.model_info.model_name)
         return TemplateManager().get(name=TEMPLATE_NAME, filters=filters)
 
-    async def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime):
+    async def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime, context):
         handler = (QuestionerDirectReplyHandler()
                    .config(self._config).model(self._llm).state(self._state).prompt(self._prompt))
-        result = await handler.handle(inputs, runtime)
+        result = await handler.handle(inputs, runtime, context)
         self._state = handler.get_state()
         return result
 

@@ -5,7 +5,7 @@
 import ast
 import re
 from dataclasses import dataclass, field
-from typing import Optional, Union, Callable
+from typing import Optional, Union, Callable, List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -22,6 +22,7 @@ from jiuwen.core.graph.executable import Output, Input
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.utils.llm.base import BaseChatModel
+from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 
@@ -151,11 +152,13 @@ class IntentDetectionExecutable(ComponentExecutable):
             intent_res = {CLASSIFICATION_ID: idx, CLASSIFICATION_NAME: intent_config.category_name_list[idx]}
         return intent_res
 
-    def _get_chat_history_from_runtime(self):
-        """从上下文中获取对话历史"""
+    def _get_chat_history_from_context(self, context) -> List[BaseMessage]:
+        """从上下文中获取对话历史
+        :param context:
+        """
         chat_history = []
-        if self._runtime:
-            chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
+        if context:
+            chat_history = context.get_messages()
         return chat_history
 
     def _get_category_info(self):
@@ -228,8 +231,8 @@ class IntentDetectionExecutable(ComponentExecutable):
         chat_history_str = ""
         for history in chat_history[-self._config.chat_history_max_turn:]:
             chat_history_str += "{}: {}\n".format(
-                ROLE_MAP.get(history.get(ROLE, CONTENT), "用户"),
-                history.get(CONTENT)
+                ROLE_MAP.get(history.role, "用户"),
+                history.content
             )
         return chat_history_str
 
@@ -287,13 +290,11 @@ class IntentDetectionExecutable(ComponentExecutable):
         self._set_runtime(runtime)
         self._router.set_runtime(runtime)
         self._initialize_if_needed()
-        chat_history = self._get_chat_history_from_runtime()
-        # 处理意图检测输入：
+        chat_history = self._get_chat_history_from_context(None)
         try:
+            # 处理意图检测输入
             current_inputs = self._prepare_detection_inputs(inputs, chat_history)
         except Exception as e:
-            import traceback
-            tmp = traceback.format_exc()
             raise JiuWenBaseException(
                 message=StatusCode.WORKFLOW_INTENT_DETECTION_USER_INPUT_ERROR.errmsg.format(
                     error_mage=f"Search is wrong "

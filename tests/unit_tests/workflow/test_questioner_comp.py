@@ -4,6 +4,9 @@ from unittest.mock import patch
 
 import pytest
 
+from jiuwen.core.context_engine.config import ContextEngineConfig
+from jiuwen.core.context_engine.context import WorkflowContext
+from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.wrapper import TaskRuntime
@@ -18,10 +21,13 @@ from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
+from tests.unit_tests.core.context_engine.test_context_engine import TestMemoryCompressorConfig, TestAssemblerConfig, \
+    TestSuffixAdderConfig
 
 
 class MockLLMModel:
     pass
+
 
 class QuestionerTest(unittest.TestCase):
     def setUp(self):
@@ -50,7 +56,8 @@ class QuestionerTest(unittest.TestCase):
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
     @patch("jiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
     @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
-    def test_invoke_questioner_component_in_workflow_initial_ask(self, mock_get_model, mock_init_prompt, mock_llm_inputs,
+    def test_invoke_questioner_component_in_workflow_initial_ask(self, mock_get_model, mock_init_prompt,
+                                                                 mock_llm_inputs,
                                                                  mock_extraction):
         mock_get_model.return_value = MockLLMModel()
         mock_prompt_template = [
@@ -100,7 +107,6 @@ class QuestionerTest(unittest.TestCase):
         assert result == WorkflowOutput(
             result={'output': {}, 'responseContent': "hangzhou | today"},
             state=WorkflowExecutionState.COMPLETED)
-
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
@@ -166,7 +172,8 @@ class QuestionerTest(unittest.TestCase):
         user_input.update(component_id, "地点是杭州")  # 第一个入参是组件id
 
         workflow_context = TaskRuntime(trace_id=session_id).create_workflow_runtime()
-        final_result = self.invoke_workflow_with_workflow_context(user_input, workflow_context, flow)    # workflow实例、session id保持一致
+        final_result = self.invoke_workflow_with_workflow_context(user_input, workflow_context,
+                                                                  flow)  # workflow实例、session id保持一致
         assert final_result.result.get("responseContent") == "hangzhou | today"
 
     @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
@@ -174,7 +181,7 @@ class QuestionerTest(unittest.TestCase):
     @patch("jiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
     @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     def test_stream_questioner_component_in_workflow_initial_ask_with_tracer(self, mock_get_model, mock_init_prompt,
-                                                                            mock_llm_inputs, mock_extraction):
+                                                                             mock_llm_inputs, mock_extraction):
         '''
         tracer使用问题记录：
         1. 必须调用workflow、agent的 stream方法，才能获取到tracer的数据帧
@@ -280,18 +287,17 @@ class TestQuestionerStream:
         model_config = ModelConfig(model_provider="openai")
         questioner_config = QuestionerConfig(
             model=model_config,
-            question_content="查询什么城市的天气",
+            question_content="",
             extract_fields_from_response=True,
             field_names=key_fields,
-            with_chat_history=False,
-            prompt_template=mock_prompt_template
+            with_chat_history=False
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
         flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
         flow.set_end_comp("e", end_component,
-                          inputs_schema={"output": "${questioner.userFields.key_fields}"})
-        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${start.query}"})
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
 
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
@@ -305,7 +311,8 @@ class TestQuestionerStream:
                 is_interaction = True | is_interaction
                 interaction_chunk = chunk
         if is_interaction:
-            if interaction_chunk and isinstance(interaction_chunk.payload, tuple) and len(interaction_chunk.payload) == 2:
+            if interaction_chunk and isinstance(interaction_chunk.payload, tuple) and len(
+                    interaction_chunk.payload) == 2:
                 component_id, question = interaction_chunk.payload
                 assert question == "查询什么城市的天气"
 
@@ -314,3 +321,78 @@ class TestQuestionerStream:
         workflow_context = TaskRuntime(trace_id=session_id).create_workflow_runtime()
         async for chunk in flow.stream(user_input, workflow_context):
             print(f"stream output >>> {chunk}")
+
+    @pytest.mark.asyncio
+    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    async def test_invoke_questioner_component_in_workflow_repeat_ask_with_stream_writer_and_context_engine(
+            self,
+            mock_get_model,
+            mock_llm_inputs,
+            mock_extraction):
+        """
+        测试提问器中断恢复流程
+        """
+        mock_get_model.return_value = MockLLMModel()
+        mock_prompt_template = [
+            dict(role="system", content="系统提示词"),
+            dict(role="user", content="你是一个AI助手")
+        ]
+        mock_llm_inputs.return_value = mock_prompt_template
+        mock_extraction.return_value = dict(time="tomorrow")
+
+        flow = Workflow()
+
+        key_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
+        ]
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
+
+        model_config = ModelConfig(model_provider="openai")
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=True
+        )
+        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "questioner")
+        flow.add_connection("questioner", "e")
+
+        session_id = "test_questioner"
+        config = ContextEngineConfig()
+        ce_engine = ContextEngine("123", config)
+        workflow_context = ce_engine.get_workflow_context(workflow_id="questioner_workflow", session_id=session_id)
+        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        interaction_output_schema = []
+        async for chunk in flow.stream({"query": "你好"}, workflow_runtime, workflow_context):
+            if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
+                interaction_output_schema.append(chunk)
+
+        mock_extraction.return_value = dict(location="hangzhou")
+
+        if interaction_output_schema:
+            user_input = InteractiveInput()
+            for item in interaction_output_schema:
+                component_id = item.payload.id
+                user_input.update(component_id, "杭州")
+            workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+            async for chunk in flow.stream(user_input, workflow_runtime, workflow_context):
+                print(f"stream output >>> {chunk}")

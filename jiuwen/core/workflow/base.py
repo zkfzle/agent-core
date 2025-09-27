@@ -3,8 +3,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from enum import Enum
-from typing import Self, Dict, Any, Union, AsyncIterator
+from typing import Self, Dict, Any, Union, AsyncIterator, List
 
 from pydantic import BaseModel
 
@@ -17,6 +18,7 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from jiuwen.core.runtime.state import Transformer
@@ -266,7 +268,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             context: Context = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
-        if isinstance(runtime, WorkflowRuntime):
+        if isinstance(runtime, WorkflowRuntime) and context is not None:
             runtime._context = context
         mq_manager = MessageQueueManager(self._workflow_spec, False)
         runtime.set_queue_manager(mq_manager)
@@ -286,12 +288,20 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 await runtime.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(stream_process())
+        is_interaction = False
+        interaction_chuck_list = []
         async for chunk in runtime.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
             yield chunk
+            if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
+                is_interaction = True
+                interaction_chuck_list.append(chunk)
 
         results = runtime.state().get_outputs(self._end_comp_id)
         if results:
             yield OutputSchema(type="workflow_final", index=0, payload=results)
+            self._add_messages_to_context(inputs, results, context)
+        elif interaction_chuck_list:
+            self._add_messages_to_context(inputs, interaction_chuck_list, context)
 
         try:
             await task
@@ -303,3 +313,30 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     def get_tool_info(self) -> ToolInfo:
         return self.tool_info
+
+    @staticmethod
+    def _add_messages_to_context(inputs, results: Union[dict, List[OutputSchema]], context):
+        if context is None:
+            return
+
+        user_messages = []
+        if isinstance(inputs, dict):
+            user_messages.append({"role": "user", "content": inputs.get("query", "")})
+        elif isinstance(inputs, InteractiveInput):
+            sorted_user_feedback = OrderedDict(inputs.user_inputs)
+            user_feedback = "\n".join([feedback for _, feedback in sorted_user_feedback.items()])
+            user_messages.append({"role": "user", "content": user_feedback})
+
+        assistant_messages = []
+        if isinstance(results, dict):
+            workflow_result = results.get("responseContent") or results.get("output")
+            assistant_messages.append({"role": "assistant", "content": workflow_result})
+        elif isinstance(results, list):
+            sorted_user_feedback = OrderedDict()
+            for item in results:
+                if isinstance(item, OutputSchema):
+                    sorted_user_feedback.update({item.payload.id: item.payload.value})
+            questions = "\n".join([question for _, question in sorted_user_feedback.items()])
+            assistant_messages.append({"role": "assistant", "content": questions})
+
+        context.batch_add_messages(user_messages + assistant_messages)

@@ -129,7 +129,7 @@ class LLMCompConfig(ComponentConfig):
     deployMode: str = ""
     template_content: List[Any] = field(default_factory=list)
     response_format: Dict[str, Any] = field(default_factory=dict)
-    enable_history: bool = True
+    enable_history: bool = False
     user_fields: Dict[str, Any] = field(default_factory=dict)
     output_config: Dict[str, Any] = field(default_factory=dict)
 
@@ -140,10 +140,12 @@ class LLMExecutable(ComponentExecutable):
         self._config = component_config
         self._llm: BaseChatModel = None
         self._initialized: bool = False
+        self._context = None
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         try:
             self._set_runtime(runtime)
+            self._set_context(context)
             model_inputs = self._prepare_model_inputs(inputs)
             logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
             llm_response = await self._llm.ainvoke(
@@ -226,7 +228,7 @@ class LLMExecutable(ComponentExecutable):
                 inputs.update({"CHAT_HISTORY": full_input})
         return processed_inputs
 
-    def _build_prompt_message(self, inputs: dict) -> Template:
+    def _build_prompt_message(self, inputs: dict) -> str:
         template_content_list = self._config.template_content
         user_prompt = [element for element in template_content_list if element.get(_ROLE, "") == MessageRole.USER.value]
         if not user_prompt or not isinstance(user_prompt[0], dict):
@@ -247,10 +249,12 @@ class LLMExecutable(ComponentExecutable):
 
     def _get_history(self, system_prompt: list, user_prompt: str):
         original_history = system_prompt if isinstance(system_prompt, list) else []
-        if self._runtime:
-            chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
-            if chat_history and self._config.enable_history:
-                original_history = chat_history
+        if self._context:
+            chat_history = []
+            chat_history_messages: list = self._context.get_messages()
+            if chat_history_messages and self._config.enable_history:
+                chat_history = [dict(role=message.role, content=message.content) for message in chat_history_messages]
+            original_history.extend(chat_history)
         original_history.append({"role": "user", "content": user_prompt})
         return original_history
 
@@ -373,6 +377,9 @@ class LLMExecutable(ComponentExecutable):
                 break
         system_prompt_template = Template(name="default_system_prompt", content=system_prompt)
         return system_prompt_template.format(inputs).content
+
+    def _set_context(self, context):
+        self._context = context
 
 
 class LLMComponent(WorkflowComponent):

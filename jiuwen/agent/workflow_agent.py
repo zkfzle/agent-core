@@ -70,40 +70,37 @@ class WorkflowAgent(Agent):
         controller.set_agent_handler(self._agent_handler)
         return controller
 
+    async def _execute_with_controller(self, inputs: Dict, runtime: Runtime) -> Any:
+        """使用Controller执行工作流"""
+        controller = self._create_controller(self.context_engine, runtime)
+        return await controller.execute(inputs)
+
     async def invoke(self, inputs: Dict) -> Dict:
         """同步调用接口"""
-        # 1. 初始化ContextEngine和Runtime
         session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
-
-        # 2. 创建Controller
-        controller = self._create_controller(self.context_engine, runtime)
-
-        # 3. 执行WorkflowAgent流程
-        result = await controller.execute(inputs)
-        await runtime.post_run()
-        return result
+        
+        try:
+            result = await self._execute_with_controller(inputs, runtime)
+            return result
+        finally:
+            await runtime.post_run()
 
     async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
         """流式调用接口"""
-        # 1. 初始化ContextEngine和Runtime
         session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
 
-        # 2. 创建Controller
-        controller = self._create_controller(self.context_engine, runtime)
-
         async def stream_process():
             try:
-                await controller.execute(inputs)
+                await self._execute_with_controller(inputs, runtime)
             finally:
                 await runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        # 3. 执行流式WorkflowAgent流程
+        
         async for result in runtime.stream_iterator():
-            if not isinstance(result, TraceSchema):
-                yield result
+            yield result
 
         try:
             await task

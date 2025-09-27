@@ -18,6 +18,15 @@ from jiuwen.core.common.logging import logger
 from pydantic import Field, ConfigDict
 
 
+class WorkflowControllerOutput(ControllerOutput):
+    sub_tasks: List[SubTask] = Field(default_factory=list)
+    messages: Any = Field(default_factory=list)
+
+
+class WorkflowControllerInput(ControllerInput):
+    model_config = ConfigDict(extra='allow')
+
+
 class ReActControllerInput(ControllerInput):
     model_config = ConfigDict(extra='allow')
 

@@ -15,7 +15,6 @@ from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
@@ -23,12 +22,14 @@ from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.graph.pregel.graph import PregelGraph
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from jiuwen.core.stream.writer import OutputSchema
+from typing import List
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
-MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+API_BASE = os.getenv("API_BASE", "https://api.siliconflow.cn/v1/chat/completions")
+API_KEY = os.getenv("API_KEY", "sk-nmnhybbdjhfxupgadeapqseqqomzpahglmctzvfoigrfltwi")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3-32B")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "siliconflow")
 # Mock RESTful Api 元信息
 _MOCK_TOOL = RestfulApi(
     name="test",
@@ -94,7 +95,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 api_key=API_KEY,
                 temperature=0.7,
                 top_p=0.9,
-                timeout=30,
+                timeout=120,  # 增加超时时间到120秒，避免网络问题
             ),
         )
 
@@ -120,8 +121,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """
         config = IntentDetectionConfig(
             user_prompt="请判断用户意图",
-            category_name_list=["默认意图", "查询某地天气"],
-            default_class="分类1",
+            category_name_list=["查询某地天气"],
+            default_class="分类0",
             model=model_config,
             intent_detection_template=Template(
                 name="default",
@@ -130,8 +131,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             enable_input=True,
         )
         component = IntentDetectionComponent(config)
-        component.add_branch("${intent.classificationId} == 0", ["end"], "默认分支")
-        component.add_branch("${intent.classificationId} == 1", ["llm"], "查询天气分支")
+        component.add_branch("${intent.classification_id} == 0", ["end"], "默认分支")
+        component.add_branch("${intent.classification_id} == 1", ["llm"], "查询天气分支")
         return component
 
     @staticmethod
@@ -182,7 +183,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def _create_plugin_component() -> ToolComponent:
         """创建插件组件，真正调用外部 RESTful API。"""
-        tool_config = ToolComponentConfig(needValidate=False)
+        tool_config = ToolComponentConfig()
         weather_tool = RestfulApi(
             name="WeatherReporter",
             description="天气查询插件",
@@ -268,9 +269,63 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 4. 连接拓扑
         flow.add_connection("start", "intent")
+        flow.add_connection("intent", "llm")
         flow.add_connection("llm", "questioner")
         flow.add_connection("questioner", "plugin")
         flow.add_connection("plugin", "end")
+
+        return context.create_workflow_runtime(), flow
+
+    def _build_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
+        """
+        构建包含交互式组件的工作流，用于测试中断恢复功能。
+
+        返回 (context, workflow) 二元组，可直接用于 invoke。
+        """
+        # 1. 初始化工作流与上下文
+        id = "test_interrupt_workflow"
+        version = "1.0"
+        name = "interrupt_test"
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=name,
+                id=id,
+                version=version,
+            )
+        )
+        flow = Workflow(
+            workflow_config=workflow_config
+        )
+        context = TaskRuntime(trace_id="test")
+
+        # 2. 实例化各组件
+        start = self._create_start_component()
+        intent = self._create_intent_detection_component()
+        questioner = self._create_questioner_component()
+        end = self._create_end_component()
+
+        # 3. 注册组件到工作流
+        flow.set_start_comp(
+            "start",
+            start,
+            inputs_schema={"query": "${query}"},
+        )
+        flow.add_workflow_comp(
+            "intent",
+            intent,
+            inputs_schema={"input": "${start.systemFields.query}"},
+        )
+        flow.add_workflow_comp(
+            "questioner",
+            questioner,
+            inputs_schema={"query": "${start.systemFields.query}"}
+        )
+        flow.set_end_comp("end", end, inputs_schema={"output": "${questioner.location}"})
+
+        # 4. 连接拓扑
+        flow.add_connection("start", "intent")
+        flow.add_connection("intent", "questioner")  # 注意：这里直接从intent到questioner，跳过llm
+        flow.add_connection("questioner", "end")
 
         return context.create_workflow_runtime(), flow
 
@@ -297,7 +352,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             description="测试用天气 agent",
             workflows=[schema],
         )
-        agent = WorkflowAgent(config, agent_context=AgentContext())
+        agent = WorkflowAgent(config)
         agent.bind_workflows([workflow])
         return agent
 
@@ -315,3 +370,70 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 5. 断言
         print(f"Workflow Agent输出的最终结果：{result}")
+
+    def _test_interaction_detection(self, result, method_name):
+        """检测交互请求的通用方法"""
+        if (isinstance(result, dict) and 
+            'output' in result and 
+            isinstance(result['output'], list) and 
+            len(result['output']) > 0 and 
+            isinstance(result['output'][0], OutputSchema) and 
+            result['output'][0].type == '__interaction__'):
+            print(f"✅ {method_name} 检测到交互请求!")
+            return result['output']
+        return []
+
+    def _create_interactive_input(self, interaction_outputs):
+        """创建InteractiveInput的通用方法"""
+        interactive_input = InteractiveInput()
+        for item in interaction_outputs:
+            component_id = item.payload.id
+            interactive_input.update(component_id, "上海")
+        return interactive_input
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_invoke_with_interrupt_recovery(self):
+        """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
+        print("=== 测试 WorkflowAgent.invoke 方法 ===")
+        _, workflow = self._build_interrupt_workflow()
+        agent = self._create_agent(workflow)
+        
+        # 第一次调用 - 应该触发中断
+        result = await agent.invoke({"query": "查询天气", "conversation_id": "c123"})
+        print(f"Workflow Agent第一次输出结果 >>> {result}")
+        
+        interaction_outputs = self._test_interaction_detection(result, "invoke")
+        if interaction_outputs:
+            print("检测到交互请求，准备进行中断恢复...")
+            interactive_input = self._create_interactive_input(interaction_outputs)
+            
+            # 第二次调用 - 使用InteractiveInput进行恢复
+            async for chunk in agent.stream({"query": interactive_input, "conversation_id": "c123"}):
+                print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
+        else:
+            print("未检测到交互请求，测试可能未按预期执行")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_stream_with_interrupt_recovery(self):
+        """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
+        print("=== 测试 WorkflowAgent.stream 方法 ===")
+        _, workflow = self._build_interrupt_workflow()
+        agent = self._create_agent(workflow)
+        
+        # 第一次调用 - 应该触发中断
+        interaction_outputs = []
+        async for chunk in agent.stream({"query": "查询天气", "conversation_id": "c123"}):
+            print(f"Workflow Agent第一次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                print("✅ stream 检测到交互请求!")
+                interaction_outputs.append(chunk)
+        
+        if interaction_outputs:
+            print("检测到交互请求，准备进行中断恢复...")
+            interactive_input = self._create_interactive_input(interaction_outputs)
+            
+            # 第二次调用 - 使用InteractiveInput进行恢复
+            async for chunk in agent.stream({"query": interactive_input, "conversation_id": "c123"}):
+                print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
+        else:
+            print("未检测到交互请求，测试可能未按预期执行")

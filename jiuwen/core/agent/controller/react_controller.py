@@ -75,11 +75,7 @@ class ReActController(Controller):
         super().__init__(config)
         self._context_engine = context_engine
         self._runtime = runtime
-        self._model = ModelFactory().get_model(
-            model_provider=config.model.model_provider,
-            api_base=config.model.model_info.api_base,
-            api_key=config.model.model_info.api_key
-        )
+        self._model = self._init_model()
 
         # 组件初始化
         self._state = ReActState(runtime)

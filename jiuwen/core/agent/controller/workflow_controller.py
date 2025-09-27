@@ -1,12 +1,12 @@
-from typing import List, Union, Any, Dict, AsyncIterator
+from typing import List, Union, Any, Dict, AsyncIterator, Optional
 import json
 from pydantic import Field, ConfigDict
 
-from jiuwen.agent.common.enum import SubTaskType, WorkflowAgentStatus, WorkflowAgentEvent
+from jiuwen.agent.common.enum import SubTaskType
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.controller.base import Controller, ControllerOutput, ControllerInput
+from jiuwen.core.agent.controller.utils import WorkflowControllerOutput, WorkflowControllerInput
 from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
-from jiuwen.core.agent.state_machine.workflow_agent_state_machine import WorkflowAgentStateMachine
 from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
@@ -15,253 +15,63 @@ from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow
 
 
-class Message:
-    ...
+class WorkflowState:
+    """Workflow状态管理类"""
 
+    def __init__(self, runtime: Runtime):
+        self._runtime = runtime
 
-class WorkflowControllerOutput(ControllerOutput):
-    sub_tasks: List[SubTask] = Field(default_factory=list)
-    messages: Any = Field(default_factory=list)
+    def is_interrupted(self) -> bool:
+        track_state = self._runtime.get_state("workflow_state")
+        return (track_state and
+                track_state.get("status") == "interrupted" and
+                track_state.get("sub_tasks") is not None)
 
+    def get_interrupted_sub_tasks(self) -> List[SubTask]:
+        state_data = self._runtime.get_state("workflow_state") or {}
+        return state_data.get("sub_tasks", [])
 
-class WorkflowControllerInput(ControllerInput):
-    model_config = ConfigDict(extra='allow')
+    def save_interrupt_state(self, sub_tasks: List[SubTask]):
+        self._runtime.update_state({
+            "workflow_state": {
+                "status": "interrupted",
+                "sub_tasks": sub_tasks
+            }
+        })
+
+    def get_current_status(self) -> str:
+        """获取当前状态"""
+        track_state = self._runtime.get_state("workflow_state")
+        if not track_state:
+            return "normal"
+        return track_state.get("status", "normal")
+
+    def set_status(self, status: str, sub_tasks: List[SubTask] = None):
+        """设置状态"""
+        self._runtime.update_state({
+            "workflow_state": {
+                "status": status,
+                "sub_tasks": sub_tasks or []
+            }
+        })
+
 
 class WorkflowController(Controller):
     def __init__(self, config: AgentConfig, context_engine: ContextEngine, runtime: Runtime):
         super().__init__(config)
         self._context_engine = context_engine
         self._runtime = runtime
-        self._state_machine = WorkflowAgentStateMachine(self._runtime)
-        self._setup_state_handlers()
+        self._state = WorkflowState(runtime)
+        self._agent_handler = None
 
-    def _setup_state_handlers(self):
-        # 注册同步状态处理器
-        self._state_machine.register_state_handler(WorkflowAgentStatus.INITIALIZED, self._handle_initialized_state)
-        self._state_machine.register_state_handler(WorkflowAgentStatus.COMPLETED, self._handle_completed_state)
-        self._state_machine.register_state_handler(WorkflowAgentStatus.INTERRUPTED, self._handle_interrupted_state)
-
-        # 注册流式状态处理器
-        self._state_machine.register_state_handler(WorkflowAgentStatus.INITIALIZED, self._stream_handle_initialized_state,
-                                                   is_stream=True)
-        self._state_machine.register_state_handler(WorkflowAgentStatus.COMPLETED, self._stream_handle_completed_state,
-                                                   is_stream=True)
-        self._state_machine.register_state_handler(WorkflowAgentStatus.INTERRUPTED, self._stream_handle_interrupted_state,
-                                                   is_stream=True)
-
-    async def _handle_initialized_state(self, inputs:Dict):
-        current_inputs = inputs
-        while True:
-            controller_output: WorkflowControllerOutput = self.invoke(current_inputs, None)
-            results = {}
-
-            if controller_output.sub_tasks:
-                self._state_machine.update_state_data({
-                    "sub_tasks": controller_output.sub_tasks
-                })
-                for sub_task in controller_output.sub_tasks:
-                    try:
-                        inputs = AgentHandlerInputs(context=self._runtime, name=sub_task.func_name,
-                                                    arguments=sub_task.func_args)
-                        result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
-                        sub_task.result = json.dumps(result, ensure_ascii=False)
-                    except AgentInterrupt as e:
-                        # 插件执行失败时，添加失败信息
-                        error_msg = f"Tool execution failed: {str(e)}"
-                        logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
-
-                        error_result = {
-                            "error": True,
-                            "id": "0",
-                            "value": e.message,
-                            "message": error_msg,
-                            "tool_name": sub_task.func_name
-                        }
-                        sub_task.result = error_result
-                        result = error_result
-                    results[sub_task.func_name] = result
-                    if isinstance(result, dict) and result.get('error'):
-                        # 是中断状态
-                        interrupt_data_list = []
-                        for output_scheme in result.get("value", []):
-                            interrupt_data_list.append(output_scheme)
-
-                        self._state_machine.update_state_data({"interrupt_state": interrupt_data_list})
-                        self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-                        return interrupt_data_list
-            if not self.should_continue(controller_output):
-                output = self.handle_workflow_results(results)
-                self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
-                self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-                result = await self._state_machine.handle_state(self._state_machine.get_current_status(), output)
-                logger.info(f"State handler result: {result}")
-
-                self._state_machine.update_state_data({
-                    "sub_tasks": controller_output.sub_tasks,
-                    "final_result": result
-                })
-                return result
-            current_inputs = results
-
-    async def _handle_completed_state(self, output):
-        self._state_machine.update_state_data({"final_result": output})
-        logger.info(f"update final result {output}")
-        if output.get("responseContent") != None:
-            message = AIMessage(content=output.get("responseContent"))
-            self._add_msg_to_chat_histroy(message)
-            logger.info(f"Added ai message to chat history: {output.get('responseContent')}")
-        return {"output": output, "result_type": "answer"}
-
-    async def _handle_interrupted_state(self, inputs):
-        """处理中断状态"""
-        state_data = self._state_machine.get_state_data()
-
-        # 更新SubTask参数
-        sub_tasks = state_data.get("sub_tasks", [])
-        logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
-        if sub_tasks:
-            # 直接修改 SubTask 对象的 func_args
-            sub_tasks[0].func_args = inputs.get("query", "")
-            self._state_machine.update_state_data({"sub_tasks": sub_tasks})
-        else:
-            logger.error("No sub_tasks found in interrupted state!")
-
-        try:
-            inputs = AgentHandlerInputs(context=self._runtime, name=sub_tasks[0].func_name,
-                                        arguments=sub_tasks[0].func_args)
-            result = await self._agent_handler.invoke(sub_tasks[0].sub_task_type, inputs)
-            sub_tasks[0].result = json.dumps(result, ensure_ascii=False)
-        except AgentInterrupt as e:
-            # 插件执行失败时，添加失败信息
-            error_msg = f"Tool execution failed: {str(e)}"
-            logger.error(f"Sub task {sub_tasks[0].func_name} failed: {error_msg}")
-
-            error_result = {
-                "error": True,
-                "id": "0",
-                "value": e.message,
-                "message": error_msg,
-                "tool_name": sub_tasks[0].func_name
-            }
-            sub_tasks[0].result = error_result
-            result = error_result
-        results = {}
-        results[sub_tasks[0].func_name] = result
-
-        if isinstance(result, dict) and result.get('error'):
-            # 是中断状态
-            interrupt_data_list = []
-            for output_scheme in result.get("value", []):
-                interrupt_data_list.append(output_scheme)
-                await self._runtime.write_stream(output_scheme)
-
-            self._state_machine.update_state_data({"interrupt_state": interrupt_data_list})
-            self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-            return interrupt_data_list
-        else:
-            output = self.handle_workflow_results(results)
-            self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
-            self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-            result = await self._state_machine.handle_state(self._state_machine.get_current_status(), output)
-            logger.info(f"State handler result: {result}")
-
-            self._state_machine.update_state_data({
-                "sub_tasks": sub_tasks[0],
-                "final_result": result
-            })
-            return result
-
-    async def _stream_handle_initialized_state(self, inputs:Dict):
-        current_inputs = inputs
-        while True:
-            controller_output: WorkflowControllerOutput = self.invoke(current_inputs, None)
-            results = {}
-
-            if controller_output.sub_tasks:
-                for sub_task in controller_output.sub_tasks:
-                    if sub_task.sub_task_type != SubTaskType.WORKFLOW:
-                        logger.error("Only support workflow sub task in workflow agent")
-                        continue
-                    inputs = AgentHandlerInputs(context=self._runtime, name=sub_task.func_name,
-                                                arguments=sub_task.func_args)
-                    workflow = self._find_workflow(inputs)
-                    async for result in workflow.stream(inputs.arguments, inputs.context.create_workflow_runtime()):
-                        if hasattr(result, 'type') and result.type == 'workflow_final':
-                            final_result = result
-                        else:
-                            yield result
-
-            if not self.should_continue(controller_output) and final_result is not None:
-                self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
-                self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-                async for result in self._state_machine.handle_stream_state(self._state_machine.get_current_status(),
-                                                                        final_result):
-                    yield result
-                break
-            else:
-                current_inputs = results
-
-    async def _stream_handle_completed_state(self, output):
-        self._state_machine.update_state_data({"final_result": output})
-        if output.type == 'workflow_final':
-            message = AIMessage(content=output.payload.get("responseContent"))
-            self._add_msg_to_chat_histroy(message)
-            logger.info(f"Added ai message to chat history: {output.payload.get('responseContent')}")
-        yield output
-
-    async def _stream_handle_interrupted_state(self, inputs):
-        """处理中断状态"""
-        user_input = InteractiveInput()
-        state_data = self._state_machine.get_state_data()
-        interrupt_state = state_data.get("interrupt_state", {})
-        user_input.update(interrupt_state.get("interrupt_component_id", ""), inputs.get("query"))
-
-        # 更新SubTask参数
-        sub_tasks = state_data.get("sub_tasks", [])
-        logger.info(f"Retrieved {len(sub_tasks)} sub_tasks from interrupted state")
-        if sub_tasks:
-            # 直接修改 SubTask 对象的 func_args
-            sub_tasks[0].func_args = user_input
-            self._state_machine.update_state_data({"sub_tasks": sub_tasks})
-        else:
-            logger.error("No sub_tasks found in interrupted state!")
-
-        inputs = AgentHandlerInputs(context=self._runtime, name=sub_tasks[0].func_name,
-                                    arguments=sub_tasks[0].func_args)
-        workflow = self._find_workflow(inputs)
-        async for result in workflow.stream(inputs.arguments, inputs.context.create_workflow_runtime()):
-            if hasattr(result, 'type') and result.type == 'workflow_final':
-                final_result = result
-            yield result
-        results = {}
-        results[sub_tasks[0].func_name] = final_result
-
-        if isinstance(final_result, dict) and final_result.get('error'):
-            # 是中断状态
-            interrupt_data = {
-                "interrupt_component_id": final_result.get('id'),
-                "question": final_result.get('value')
-            }
-            self._state_machine.update_state_data({"interrupt_state": interrupt_data})
-            self._state_machine.set_current_status(WorkflowAgentStatus.INTERRUPTED)
-            try:
-                await self._runtime.interact({"output": interrupt_data["question"], "result_type": "question"})
-            finally:
-                yield {"output": interrupt_data["question"], "result_type": "question"}
-        else:
-            output = self.handle_workflow_results(results)
-            self._state_machine.set_current_status(WorkflowAgentStatus.COMPLETED)
-            self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-
-            async for result in self._state_machine.handle_stream_state(self._state_machine.get_current_status(),
-                                                                        output):
-                yield result
+    def set_agent_handler(self, agent_handler: AgentHandler):
+        """设置Agent处理器"""
+        self._agent_handler = agent_handler
 
     @staticmethod
     def _filter_inputs(schema: dict, user_data: dict) -> dict:
@@ -289,19 +99,18 @@ class WorkflowController(Controller):
             filtered[k] = user_data[k]
 
         return filtered
+
     def _find_workflow(self, inputs: AgentHandlerInputs) -> Workflow:
         context = inputs.context
         workflow_name = inputs.name
-        context_manager = context.controller_context_manager()
-        workflow_manager = context_manager.workflow_mgr
         workflow_metadata = self._agent_handler.search_workflow_metadata_by_workflow_name(workflow_name)
-        workflow = workflow_manager.find_workflow_by_id_and_version(generate_workflow_key(workflow_metadata.id,
-                                                                    workflow_metadata.version))
+        workflow_id = generate_workflow_key(workflow_metadata.id, workflow_metadata.version)
+        workflow = context.get_workflow(workflow_id)
         return workflow
 
-    def _add_msg_to_chat_histroy(self, message : Union[HumanMessage, AIMessage]):
+    def _add_msg_to_chat_histroy(self, message: Union[HumanMessage, AIMessage]):
         workflow_context = self._context_engine.get_workflow_context(workflow_id=self._config.workflows[0].id,
-                                                                  session_id=self._runtime.session_id())
+                                                                     session_id=self._runtime.session_id())
         workflow_context.add_message(message)
 
     def invoke(
@@ -344,80 +153,129 @@ class WorkflowController(Controller):
         """
         return not output.is_task
 
-    def set_agent_handler(self, agent_handler: AgentHandler):
-        """设置Agent处理器"""
-        self._agent_handler = agent_handler
-
-    def set_is_single_workflow(self, is_single_workflow: bool):
-        self._is_single_workflow = is_single_workflow
-
     def handle_workflow_results(self, results):
         if self._config.is_single_workflow:
             return results[self._config.workflows[0].name]
         raise Exception("Multi-workflow not implemented yet")
 
-    async def execute(self, inputs: Dict) -> Dict:
-        logger.info(f"Starting Workflow Controller execution with inputs: {inputs}")
-        self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-
-        if self._state_machine.is_interrupted():
-            if not isinstance(inputs.get("query"), InteractiveInput):
-                raise JiuWenBaseException(5000, "Interrupt status data format error.")
-            current_status = self._state_machine.get_current_status()
-            logger.info(f"Current status: {current_status}")
-            result = await self._state_machine.handle_state(current_status, inputs)
-            logger.info(f"State handler result: {result}")
-
-            # 如果返回了最终结果，直接返回
-            if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                logger.info(f"Returning final result: {result}")
-                await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=result))
-                return result
-
+    @staticmethod
+    def _validate_inputs(inputs: Dict):
+        """验证输入"""
         if isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
 
-        while not self._state_machine.is_completed() and not self._state_machine.is_interrupted():
-            current_status = self._state_machine.get_current_status()
-            logger.info(f"Current status: {current_status}")
+    async def execute(self, inputs: Dict) -> Dict:
+        """主执行流程 - 简化的workflow执行"""
+        logger.info(f"Starting Workflow execution with inputs: {inputs}")
 
-            if not self._state_machine.can_handle_status(current_status):
-                logger.error(f"Cannot handle status: {current_status}")
-                break
+        # 输入验证（仅在非中断恢复时进行）
+        if not self._state.is_interrupted():
+            self._validate_inputs(inputs)
 
-            result = await self._state_machine.handle_state(current_status, inputs)
-            logger.info(f"State handler result: {result}")
+        # 检查是否需要处理中断恢复
+        if self._state.is_interrupted():
+            return await self._resume_task(inputs)
 
-            # 如果返回了最终结果，直接返回
-            if result and isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type in ["__interaction__"]:
-                logger.info(f"Returning final result: {result}")
-                logger.info(f"Returning __interaction__ result: {result}")
+        # 执行workflow
+        return await self._run_workflow(inputs)
+
+    async def _resume_task(self, inputs: Dict) -> Dict:
+        """恢复中断的任务"""
+        if not isinstance(inputs.get("query"), InteractiveInput):
+            raise JiuWenBaseException(5000, "Interrupt status data format error.")
+
+        logger.info(f"Processing interrupt recovery: {inputs}")
+
+        # 获取中断的任务
+        sub_tasks = self._state.get_interrupted_sub_tasks()
+        if not sub_tasks:
+            self._state.set_status("normal")
+            return await self._run_workflow(inputs)
+
+        # 更新第一个任务的参数
+        sub_tasks[0].func_args = inputs.get("query", "")
+
+        # 执行恢复的任务
+        result = await self._execute_workflow_task(sub_tasks[0])
+
+        # 检查是否为交互中断结果
+        if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
+            # 是中断状态
+            interrupt_data = {}
+            for output_scheme in result.result:
+                await self._runtime.write_stream(output_scheme)
+                interrupt_data = {"output": output_scheme.payload.value, "result_type": "answer"}
+            return interrupt_data
+        else:
+            # 恢复正常状态并返回结果
+            self._state.set_status("normal")
+            final_result = self.handle_workflow_results({sub_tasks[0].func_name: result})
+            return {"output": final_result, "result_type": "answer"}
+
+    async def _run_workflow(self, inputs: Dict) -> Dict:
+        """执行workflow主流程"""
+        # 生成sub_tasks
+        controller_output: WorkflowControllerOutput = self.invoke(inputs, None)
+
+        if not controller_output.sub_tasks:
+            return {"output": "No tasks to execute", "result_type": "answer"}
+
+        # 执行第一个sub_task
+        sub_task = controller_output.sub_tasks[0]
+        result = await self._execute_workflow_task(sub_task)
+
+        # 检查是否为交互中断结果
+        if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
+            # 是中断状态，保存状态
+            self._state.save_interrupt_state([sub_task])
+            interrupt_data = {}
+            for output_scheme in result.result:
+                await self._runtime.write_stream(output_scheme)
+                interrupt_data = {"output": output_scheme.payload.value, "result_type": "answer"}
+            return interrupt_data
+        else:
+            # 正常完成
+            final_result = self.handle_workflow_results({sub_task.func_name: result})
+            return {"output": final_result, "result_type": "answer"}
+
+    async def _execute_workflow_task(self, sub_task: SubTask) -> Any:
+        """执行单个workflow任务"""
+        try:
+            inputs = AgentHandlerInputs(
+                context=self._runtime,
+                name=sub_task.func_name,
+                arguments=sub_task.func_args
+            )
+            workflow = self._find_workflow(inputs)
+
+            # 创建workflow runtime并执行
+            workflow_runtime = inputs.context.create_workflow_runtime()
+            result = await workflow.invoke(inputs.arguments, workflow_runtime)
+
+            # 处理WorkflowOutput对象
+            if hasattr(result, 'result') and hasattr(result, 'state'):
+                # 对于WorkflowOutput，存储完整对象以便后续处理状态
+                sub_task.result = result
                 return result
-            elif isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                logger.info(f"Returning final result : {result}")
+            else:
+                # 对于其他对象，尝试序列化，如果失败则直接存储
+                try:
+                    sub_task.result = json.dumps(result, ensure_ascii=False)
+                except TypeError:
+                    sub_task.result = result
                 return result
 
-            # 返回最终结果
-        final_result = self._state_machine.get_final_result()
-        if isinstance(final_result,OutputSchema):
-            await self._runtime.write_stream(final_result)
-        logger.info(f"Final execution result: {final_result}")
-        return {"output": final_result, "result_type": "answer"}
+        except AgentInterrupt as e:
+            # 插件执行失败时，添加失败信息
+            error_msg = f"Tool execution failed: {str(e)}"
+            logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
 
-    async def stream_execute(self, inputs: Dict):
-        """流式执行ReAct迭代流程"""
-        self._state_machine.set_current_event(WorkflowAgentEvent.USER_INVOKE)
-
-        while not self._state_machine.is_completed():
-            current_status = self._state_machine.get_current_status()
-
-            if not self._state_machine.can_handle_status(current_status, is_stream=True):
-                logger.error(f"Cannot handle stream status: {current_status}")
-                break
-
-            async for result in self._state_machine.handle_stream_state(current_status, inputs):
-                yield result
-
-                # 如果是最终结果，结束流式处理
-                if isinstance(result, dict) and result.get("result_type") in ["answer", "question"]:
-                    return
+            error_result = {
+                "error": True,
+                "id": "0",
+                "value": e.message,
+                "message": error_msg,
+                "tool_name": sub_task.func_name
+            }
+            sub_task.result = json.dumps(error_result, ensure_ascii=False)
+            return error_result

@@ -4,6 +4,7 @@ from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.tracer.decorator import decrate_tool_with_trace
 from jiuwen.core.utils.llm.messages import ToolInfo
 from jiuwen.core.utils.tool.base import Tool
+from jiuwen.core.utils.tool.function.function import LocalFunction
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.context.controller_context.thread_safe_dict import ThreadSafeDict
 
@@ -21,7 +22,7 @@ class ToolMgr:
         if not tools:
             return
         for id, tool in tools:
-            if isinstance(tool, RestfulApi):
+            if isinstance(tool, RestfulApi) or isinstance(tool, LocalFunction):
                 self._tools.update({id: tool})
                 self._tool_infos.update({id: tool.get_tool_info()})
 

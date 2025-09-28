@@ -7,6 +7,7 @@ from jiuwen.core.context.controller_context.workflow_manager import generate_wor
 from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.utils.tool.base import Tool
+from jiuwen.core.utils.tool.function.function import LocalFunction
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 
@@ -66,4 +67,4 @@ class Agent(ABC):
              workflows])
 
     def bind_tools(self, tools: List[Tool]):
-        self._runtime.add_tools([(tool.name, tool) for tool in tools if isinstance(tool, RestfulApi)])
+        self._runtime.add_tools([(tool.name, tool) for tool in tools if (isinstance(tool, RestfulApi) or isinstance(tool, LocalFunction))])

@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """Handler of Agent"""
-from typing import Dict, Callable, Any, Awaitable, Union
+from typing import Dict, Callable, Any, Awaitable
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,6 @@ from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.stream.base import BaseStreamMode
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
@@ -21,7 +20,7 @@ from jiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
 class AgentHandlerInputs(BaseModel):
     query: str = Field(default="")
     name: str = Field(default="")
-    arguments: Union[dict, InteractiveInput] = Field(default_factory=dict)
+    arguments: Any = Field(default_factory=dict)
     context: Any = Field(default=None)
 
 
@@ -86,9 +85,8 @@ class AgentHandlerImpl(AgentHandler):
         plugin_name = inputs.name
         plugin_args = inputs.arguments
 
-        context_manager = context.controller_context_manager()
-        tool_manager = context_manager.tool_mgr
-        plugin = tool_manager.find_tool_by_name(plugin_name)
+        plugin = context.get_tool(plugin_name)
+
         plugin_result = plugin.invoke(plugin_args)
         return plugin_result
 

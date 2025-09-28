@@ -10,6 +10,7 @@ from jiuwen.core.agent.controller.react_controller import ReActControllerInput, 
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
+from jiuwen.core.utils.tool.function.function import LocalFunction
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 
@@ -54,6 +55,42 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         return weather_plugin
 
     @staticmethod
+    def _create_function_tool():
+        weather_plugin = LocalFunction(
+            name="add",
+            description="加法",
+            params=[
+                Param(name="a", description="加数", type="number", required=True),
+                Param(name="b", description="被加数", type="number", required=True),
+            ],
+            func=lambda a, b: a + b
+        )
+        return weather_plugin
+
+    @staticmethod
+    def _create_function_tool_schema():
+        tool_info = PluginSchema(
+            name='add',
+            description='加法',
+            inputs={
+                "type": "object",
+                "properties": {
+                    "a": {
+                        "type": "number",
+                        "description": "加数",
+                        "required": True
+                    },
+                    "b": {
+                        "type": "number",
+                        "description": "被加数",
+                        "required": True
+                    }
+                }
+            }
+        )
+        return tool_info
+
+    @staticmethod
     def _create_tool_schema():
         tool_info = PluginSchema(
             name='WeatherReporter',
@@ -79,6 +116,13 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     @staticmethod
     def _create_prompt_template():
         system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
+        return [
+            dict(role="system", content=system_prompt.format(build_current_date()))
+        ]
+
+    @staticmethod
+    def _create_function_prompt_template():
+        system_prompt = "你是一个数学计算专家。"
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
@@ -134,17 +178,17 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         async for i in res:
             print(i)
 
+
     @unittest.skip("skip system test")
-    @pytest.mark.asyncio
-    async def test_react_controller_stream(self):
-        tools_schema = [self._create_tool_schema()]
+    async def test_react_agent_invoke_with_real_function_plugin(self):
+        tools_schema = [self._create_function_tool_schema()]
         model_config = self._create_model()
-        prompt_template = self._create_prompt_template()
+        prompt_template = self._create_function_prompt_template()
 
         react_agent_config = create_react_agent_config(
-            agent_id="react_agent_123",
-            agent_version="0.0.1",
-            description="AI助手",
+            agent_id="react_agent_1234",
+            agent_version="0.0.2",
+            description="AI计算助手",
             plugins=tools_schema,
             workflows=[],
             model=model_config,
@@ -154,15 +198,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         react_agent: ReActAgent = create_react_agent(
             agent_config=react_agent_config,
             workflows=[],
-            tools=[self._create_tool()]
+            tools=[self._create_function_tool()]
         )
 
-        controller = react_agent._controller
-        task = react_agent._task_manager.create_task("conversation_id")
-        context = task.context
-        inputs = dict(query="请调用工具WeatherReporter，帮我查询上海今天的天气")
-        async for chunk in controller.stream(ReActControllerInput(**inputs), context):
-            if isinstance(chunk, BaseMessageChunk):
-                print(f"stream output 中间帧 >>> {chunk}")
-            elif isinstance(chunk, ReActControllerOutput):
-                print(f"stream output 最后一帧是controller的批结果 >>> {chunk}")
+        result = await react_agent.invoke({"query": "计算1+2"})
+        print(f"ReActAgent 最终输出结果：{result}")

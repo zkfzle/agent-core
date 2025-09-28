@@ -28,7 +28,7 @@ class ToolMgr:
     def find_tool_by_name(self, name: str) -> Optional[Tool]:
         return self._tools.get(name)
 
-    def get_tool(self, tool_id: str, runtime) -> Tool:
+    def get_tool(self, tool_id: str, runtime = None) -> Tool:
         tool = self._tools.get(tool_id)
         if not tool or not runtime or not runtime.tracer():
             return tool

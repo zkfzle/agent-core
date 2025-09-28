@@ -95,8 +95,12 @@ class TestDecator(unittest.TestCase):
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):
             results.append([handler_class_name, event_name, kwargs])
 
+        def mock_sync_trigger(handler_class_name: str, event_name: str, **kwargs):
+            results.append([handler_class_name, event_name, kwargs])
+
         mock_tracer = MagicMock()
         mock_tracer.trigger = mock_trigger
+        mock_tracer.sync_trigger = mock_sync_trigger
         mock_trigger.side_effect = mock_trigger
 
         mock_agent_span_manager = MagicMock()
@@ -128,8 +132,12 @@ class TestDecator(unittest.TestCase):
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):
             results.append([handler_class_name, event_name, kwargs])
 
+        def mock_sync_trigger(handler_class_name: str, event_name: str, **kwargs):
+            results.append([handler_class_name, event_name, kwargs])
+
         mock_tracer = MagicMock()
         mock_tracer.trigger = mock_trigger
+        mock_tracer.sync_trigger = mock_sync_trigger
         mock_trigger.side_effect = mock_trigger
 
         mock_agent_span_manager = MagicMock()
@@ -156,8 +164,12 @@ class TestDecator(unittest.TestCase):
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):
             results.append([handler_class_name, event_name, kwargs])
 
+        def mock_sync_trigger(handler_class_name: str, event_name: str, **kwargs):
+            results.append([handler_class_name, event_name, kwargs])
+
         mock_tracer = MagicMock()
         mock_tracer.trigger = mock_trigger
+        mock_tracer.sync_trigger = mock_sync_trigger
         mock_trigger.side_effect = mock_trigger
 
         mock_agent_span_manager = MagicMock()

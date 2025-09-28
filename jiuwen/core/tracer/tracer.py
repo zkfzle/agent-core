@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from jiuwen.core.tracer.handler import TraceAgentHandler, TraceWorkflowHandler, TracerHandlerName
@@ -43,6 +44,13 @@ class Tracer:
         if parent_node_id is not None:
             handler_class_name += "." + parent_node_id if parent_node_id != "" else ""
         await self._callback_manager.trigger(handler_class_name, event_name, **kwargs)
+
+    def sync_trigger(self, handler_class_name: str, event_name: str, **kwargs):
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(self.trigger(handler_class_name, event_name, **kwargs), loop)
+        else:
+            loop.run_until_complete(self.trigger(handler_class_name, event_name, **kwargs))
 
     def pop_workflow_span(self, invoke_id: str, parent_node_id: str):
         if parent_node_id not in self.tracer_workflow_span_manager_dict:

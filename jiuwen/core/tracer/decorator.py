@@ -1,12 +1,10 @@
-import asyncio
 from functools import wraps
 from types import MethodType
 from jiuwen.core.tracer.data import InvokeType
-# from jiuwen.core.tracer.wrapped import WrappedBaseChatModel
 
 
 def decrate_model_with_trace(wrapped_model, base_runtime):
-    instance_info = {"name": type(wrapped_model.inner).__name__, "type": "llm"}
+    instance_info = {"class_name": type(wrapped_model.inner).__name__, "type": "llm"}
     wrapped_model.invoke = MethodType(
         trace(wrapped_model.invoke, base_runtime, InvokeType.LLM, instance_info), wrapped_model)
     wrapped_model.ainvoke = MethodType(
@@ -17,7 +15,7 @@ def decrate_model_with_trace(wrapped_model, base_runtime):
 
 
 def decrate_tool_with_trace(wrapped_tool, base_runtime):
-    instance_info = {"name": type(wrapped_tool.inner).__name__, "type": "tool"}
+    instance_info = {"class_name": type(wrapped_tool.inner).__name__, "type": "tool"}
     wrapped_tool.invoke = MethodType(
         trace(wrapped_tool.invoke, base_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool)
     wrapped_tool.ainvoke = MethodType(
@@ -26,7 +24,7 @@ def decrate_tool_with_trace(wrapped_tool, base_runtime):
 
 
 def decrate_workflow_with_trace(wrapped_workflow, base_runtime):
-    instance_info = {"name": wrapped_workflow.get_workflow_metadata(), "type": "workflow"}
+    instance_info = {"class_name": wrapped_workflow.get_workflow_metadata(), "type": "workflow"}
     wrapped_workflow.invoke = MethodType(
         async_trace(wrapped_workflow.invoke, base_runtime, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)
@@ -43,21 +41,18 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info):
         try:
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
-            asyncio.get_event_loop().run_until_complete(
-                tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
-                               inputs={"inputs": kwargs.get("inputs", {})},
-                               instance_info=instance_info))
+            tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
+                                inputs={"inputs": kwargs.get("inputs", {})},
+                                instance_info=instance_info)
 
             args = args[1:]
             result = func(*args, **kwargs)
-            asyncio.get_event_loop().run_until_complete(
-                tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
-                               outputs={"outputs": result}))
+            tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
+                                outputs={"outputs": result})
             return result
         except Exception as error:
-            asyncio.get_event_loop().run_until_complete(
-                tracer.trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error))
-            raise error
+            tracer.sync_trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
+        raise error
 
     return decorator
 
@@ -85,17 +80,16 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info):
     return decorator
 
 
-def trace_stream(func, runtime, invoke_type: InvokeType, class_name):
+def trace_stream(func, runtime, invoke_type: InvokeType, instance_info):
     @wraps(func)
     def decorator(*args, **kwargs):
         tracer = runtime.tracer()
         try:
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
-            asyncio.get_event_loop().run_until_complete(
-                tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
-                               inputs={"inputs": kwargs.get("inputs", {})},
-                               instance_info={"class_name": class_name}))
+            tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
+                                inputs={"inputs": kwargs.get("inputs", {})},
+                                instance_info=instance_info)
             args = args[1:]
             result = func(*args, **kwargs)
             results = []
@@ -105,18 +99,16 @@ def trace_stream(func, runtime, invoke_type: InvokeType, class_name):
                     results.append(item)
             else:
                 results.append(result)
-            asyncio.get_event_loop().run_until_complete(
-                tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
-                               outputs={"outputs": result}))
+            tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
+                                outputs={"outputs": result})
         except Exception as error:
-            asyncio.get_event_loop().run_until_complete(
-                tracer.trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error))
+            tracer.sync_trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
             raise error
 
     return decorator
 
 
-def async_trace_stream(func, runtime, invoke_type: InvokeType, class_name):
+def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info):
     @wraps(func)
     async def decorator(*args, **kwargs):
         tracer = runtime.tracer()
@@ -125,7 +117,7 @@ def async_trace_stream(func, runtime, invoke_type: InvokeType, class_name):
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                  inputs={"inputs": kwargs.get("inputs", {})},
-                                 instance_info={"class_name": class_name})
+                                 instance_info=instance_info)
             args = args[1:]
             result = func(*args, **kwargs)
             results = []

@@ -65,6 +65,13 @@ class Agent(ABC):
             [(generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow) for
              workflow in
              workflows])
+        for workflow in workflows:
+            workflow_key = generate_workflow_key(
+                workflow.config().metadata.id,
+                workflow.config().metadata.version
+            )
+            workflow_schema = workflow.config().metadata.schema
+            self._runtime.add_schema(workflow_key, workflow_schema)
 
     def bind_tools(self, tools: List[Tool]):
         self._runtime.add_tools([(tool.name, tool) for tool in tools if (isinstance(tool, RestfulApi) or isinstance(tool, LocalFunction))])

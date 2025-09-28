@@ -13,7 +13,7 @@ from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 
@@ -159,6 +159,18 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
+                description="用户输入"
+            ),
+            workflow_inputs_schema = WorkflowInputsSchema(
+                type="object",
+                properties={
+                    "query": {
+                        "type": "string",
+                        "description": "用户输入",
+                        "required": True
+                    }
+                },
+                required=['query']
             )
         )
 
@@ -260,7 +272,20 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
+                description="用户输入"
+            ),
+            workflow_inputs_schema = WorkflowInputsSchema(
+                type="object",
+                properties={
+                    "query": {
+                        "type": "string",
+                        "description": "用户输入",
+                        "required": True
+                    }
+                },
+                required=['query']
             )
+
         )
 
         flow = Workflow(workflow_config=questioner_workflow_config)

@@ -21,7 +21,7 @@ class WorkflowMetadata(BaseModel):
     name: str = Field(default="")
     id: str = Field(default_factory=uuid.uuid4)
     version: str = Field(default="")
-
+    description: str = Field(default="")
 
 class NodeSpec(BaseModel):
     io_config: CompIOConfig
@@ -34,11 +34,18 @@ class WorkflowSpec(BaseModel):
     stream_edges: Dict[str, list[str]] = Field(default_factory=dict)
 
 
+class WorkflowInputsSchema(BaseModel):
+    type: str = Field(default="")
+    properties: Dict[str, Any] = Field(default_factory=dict)
+    required: List[str] = Field(default_factory=list)
+
+
 class WorkflowConfig(BaseModel):
     metadata: Optional[WorkflowMetadata] = Field(default_factory=WorkflowMetadata)
     comp_configs: Dict[str, Any] = Field(default_factory=dict)
     stream_timeout: float = Field(default=0.2)
     spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
+    workflow_inputs_schema: Optional[WorkflowInputsSchema] = Field(default_factory=WorkflowInputsSchema)
 
 
 class ComponentAbility(Enum):

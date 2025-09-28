@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Any, Iterator, Dict, List
 
-from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.task_context import AgentRuntime
 from jiuwen.core.agent.task.task_manager import TaskManager
 from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.agent_context import AgentContext
+from jiuwen.core.runtime.config import Config
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
@@ -19,9 +19,8 @@ class Agent(ABC):
         - stream : 流式调用
     """
 
-    def __init__(self, agent_config: "AgentConfig", agent_context: "AgentContext" = None) -> None:
-        self._config = agent_config
-        self._runtime = AgentRuntime()
+    def __init__(self, config: Config, agent_context: "AgentContext" = None) -> None:
+        self._runtime = AgentRuntime(config=config)
         self._controller: "Controller | None" = self._init_controller()
         self._agent_handler: "AgentHandler | None" = self._init_agent_handler()
         self._task_manager: "TaskManager | None" = self._init_task_manager(agent_context)

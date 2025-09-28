@@ -18,6 +18,7 @@ from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.format.format_utils import FormatUtils
+from jiuwen.core.utils.llm.hash_util import generate_key
 from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, HumanMessage, AIMessage, \
     ToolCall, UsageMetadata, ToolMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
@@ -583,8 +584,24 @@ class ReActController(Controller):
                 .to_messages())
 
     def _init_model(self):
-        return ModelFactory().get_model(model_provider=self._config.model.model_provider, api_base=self._config.model.model_info.api_base,
-                                        api_key=self._config.model.model_info.api_key)
+        model_id = generate_key(
+            self._config.model.model_info.api_key,
+            self._config.model.model_info.api_base,
+            self._config.model.model_provider
+        )
+
+        model = self._runtime.get_model(model_id=model_id)
+
+        if model is None:
+            model = ModelFactory().get_model(
+                model_provider=self._config.model.model_provider,
+                api_base=self._config.model.model_info.api_base,
+                api_key=self._config.model.model_info.api_key
+            )
+            self._runtime.add_model(model_id=model_id, model=model)
+
+        return self._runtime.get_model(model_id=model_id)
+
 
     def _update_llm_response_to_context(self, llm_output: AIMessage):
         """更新LLM响应到上下文"""

@@ -215,6 +215,18 @@ class TaskRuntime(StateRuntime):
     async def trace_error(self, error: Exception):
         pass
 
+    def set_agent_config(self, data: dict):
+        self._inner.config().set_agent_config(data)
+
+    def get_agent_config(self):
+        return self._inner.config().get_agent_config()
+
+    def get_workflow_config(self, workflow_id):
+        return self._inner.config().get_workflow_config(workflow_id)
+
+    def add_workflow_config(self, workflow_id, workflow_config):
+        self._inner.config().add_workflow_config(workflow_id, workflow_config)
+
     async def interact(self, value):
         if self._interaction is None:
             self._interaction = SimpleAgentInteraction(self._inner)

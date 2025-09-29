@@ -4,6 +4,7 @@ from collections.abc import Callable
 
 import pytest
 
+from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.branch_router import BranchRouter
@@ -106,6 +107,30 @@ class WorkflowTest(unittest.TestCase):
                     WorkflowOutput(result=expect_results, state=WorkflowExecutionState.COMPLETED))
         elif checker is not None:
             checker(self.invoke_workflow(inputs, runtime, flow))
+
+    def test_start_comp(self):
+        flow = Workflow()
+        with self.assertRaises(JiuWenBaseException):
+            Start(conf = {"inputs": [{"required": True}]})
+
+        conf = {"inputs": [
+            {"id": "query", "required": True},
+            {"id": "param1", "required": False},
+            {"id": "param2", "required": False, "default_value": False}
+        ]}
+
+        flow.set_start_comp("s", Start(conf=conf), inputs_schema={"query": "${user_inputs.query}"})
+        flow.set_end_comp("e", Start(),
+                          inputs_schema={"query": "${s.query}", "param1": "${s.param1}", "param2": "${s.param2}"})
+
+        flow.add_connection("s", "e")
+        # 没有提供必选项
+        with self.assertRaises(JiuWenBaseException) as e:
+            self.invoke_workflow(inputs={"user_inputs": {}}, runtime=WorkflowRuntime(), flow=flow)
+            print(e)
+
+        result = self.invoke_workflow(inputs={"user_inputs": {"query": "hello"}}, runtime=WorkflowRuntime(), flow=flow)
+        assert result.result == {"query": "hello", "param1": None, "param2": False}
 
     def test_simple_workflow(self):
         # flow1: start -> a -> end

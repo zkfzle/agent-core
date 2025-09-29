@@ -18,7 +18,7 @@ class ContextImpl(Context):
         self._accessor: ContextAccessor = accessor
 
     def batch_add_messages(self,
-                     messages:Union[List[Dict], List[ConversationMessage], List[BaseMessage]],
+                     messages:List[BaseMessage],
                      tags: Optional[Dict[str, str]] = None):
         history = self._accessor.history()
         history.batch_add_messages(messages=messages, owner=[self._owner], tags=tags)

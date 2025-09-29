@@ -71,7 +71,7 @@ class ConversationHistory:
         return filtered_history[-1 * num:]
 
     def batch_add_messages(self,
-                           messages: Union[List[Dict], List[ConversationMessage], List[BaseMessage]],
+                           messages: List[BaseMessage],
                            owner: Optional[List[ContextOwner]] = None,
                            tags: Optional[Dict[str, str]] = None
                            ):
@@ -86,16 +86,6 @@ class ConversationHistory:
                     owner=owner or [],
                     tags=tags or {}
                 ))
-            elif isinstance(msg, dict):
-                self.__history.append(ConversationMessage(
-                    order_id=self.__conversation_order_id,
-                    message=ContextUtils.convert_dict_to_message(msg),
-                    owner=owner or [],
-                    tags=tags or {}
-                ))
-            else:
-                logger.error(
-                    "ConversationHistory input message type should be ConversationMessage, BaseMessage or dict")
 
     def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
         if len(self.__history) == 0:

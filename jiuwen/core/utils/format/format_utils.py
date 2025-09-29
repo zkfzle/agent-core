@@ -3,8 +3,7 @@ import ast
 import json
 from typing import List
 
-from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, Function, Parameters
-from jiuwen.agent.common.schema import WorkflowSchema, PluginSchema
+from jiuwen.core.utils.llm.messages import BaseMessage
 
 
 class FormatUtils:
@@ -20,8 +19,6 @@ class FormatUtils:
         Returns:
             完整的LLM输入消息列表
         """
-        from jiuwen.core.utils.llm.messages import HumanMessage
-
         # 创建新的消息列表，避免修改原始chat_history
         result_messages = []
 

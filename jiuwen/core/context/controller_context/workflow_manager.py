@@ -44,7 +44,7 @@ class WorkflowMgr:
 
     def get_tool_infos(self, workflow_id: List[str]):
         if not workflow_id:
-            return []
+            return [info for info in self._workflow_tool_infos.values()]
         return [self._workflow_tool_infos.get(id) for id in workflow_id]
 
 

@@ -41,7 +41,7 @@ class ToolMgr:
 
     def get_tool_infos(self, tool_id: List[str]):
         if not tool_id:
-            return []
+            return [info for info in self._tool_infos.values()]
         return [self._tool_infos.get(id) for id in tool_id]
 
 

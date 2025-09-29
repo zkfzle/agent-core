@@ -5,7 +5,6 @@ from unittest.mock import patch
 import pytest
 
 from jiuwen.core.context_engine.config import ContextEngineConfig
-from jiuwen.core.context_engine.context import WorkflowContext
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.runtime import Runtime
@@ -21,8 +20,6 @@ from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-from tests.unit_tests.core.context_engine.test_context_engine import TestMemoryCompressorConfig, TestAssemblerConfig, \
-    TestSuffixAdderConfig
 
 
 class MockLLMModel:

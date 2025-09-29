@@ -69,37 +69,6 @@ class Context(ABC):
                            role: str = None) -> Union[BaseMessage, None]:
         pass
 
-    @abstractmethod
-    def get_variable(self,
-                     name: str) -> Optional[ContextVariable]:
-        pass
-
-    @abstractmethod
-    def set_variable(self,
-                     name: str,
-                     value: ContextVariable):
-        pass
-
-    @abstractmethod
-    def assemble(self,
-                 message: Union[str, BaseMessage, List[BaseMessage]],
-                 variables: Optional[Dict[str, str]] = None,
-                 **kwargs) -> Union[str, BaseMessage, List[BaseMessage]]:
-        pass
-
-    @abstractmethod
-    def assemble_by_pipeline(self,
-                             message: Union[str, BaseMessage, List[BaseMessage]],
-                             variables: Optional[Dict[str, str]] = None,
-                             **kwargs) -> Union[str, BaseMessage, List[BaseMessage]]:
-        pass
-
-    @abstractmethod
-    def get_compressed_history(self,
-                               config: Optional[Dict[str, Any]] = None,
-                               owner: Optional[ContextOwner] = None) -> List[BaseMessage]:
-        pass
-
 
 class ContextType(Enum):
     USER_INPUT = "user_input"

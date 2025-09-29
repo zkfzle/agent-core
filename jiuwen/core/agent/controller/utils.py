@@ -9,7 +9,7 @@ from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.agent.controller.base import ControllerOutput, ControllerInput
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.format.format_utils import FormatUtils
-from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, ToolCall, AIMessage, HumanMessage, ToolMessage
+from jiuwen.core.utils.llm.messages import BaseMessage, ToolCall, AIMessage, HumanMessage, ToolMessage
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.context_engine.engine import ContextEngine
@@ -40,14 +40,6 @@ class ReActControllerOutput(ControllerOutput):
 
 class ReActControllerUtils:
     """ReAct Controller 通用工具方法类"""
-
-    @staticmethod
-    def get_tools_info(config: AgentConfig) -> List[ToolInfo]:
-        """获取可用工具信息"""
-        tool_info_list = []
-        tool_info_list.extend(FormatUtils.format_workflows_metadata(config.workflows))
-        tool_info_list.extend(FormatUtils.format_plugins_metadata(config.plugins))
-        return tool_info_list
 
     @staticmethod
     def format_llm_inputs(

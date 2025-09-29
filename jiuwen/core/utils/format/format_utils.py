@@ -9,50 +9,6 @@ from jiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 
 class FormatUtils:
     """输入输出格式化工具类"""
-
-    @classmethod
-    def format_input_parameters(cls, inputs: dict) -> Parameters:
-        """格式化输入参数为Parameters对象"""
-        properties, required_parameters = dict(), list()
-        if inputs.get("properties"):
-            for key, value in inputs.get("properties").items():
-                if value.get("required", False):
-                    required_parameters.append(key)
-                param_type = value.get("type", "").lower()
-                if param_type in ["array", "object"]:
-                    nested_result = dict()
-                    cls._recursive_format_nested_params(param_type, value.get("properties", dict()), nested_result)
-                    properties[key] = nested_result
-                else:
-                    properties[key] = dict(description=value.get("description", ""), type=param_type)
-        parameters = Parameters(properties=properties, required=required_parameters)
-        return parameters
-
-    @classmethod
-    def _recursive_format_nested_params(cls, param_type, properties, output):
-        """递归格式化嵌套参数"""
-        pass
-
-    @staticmethod
-    def format_workflows_metadata(workflows_metadata: List[WorkflowSchema]) -> List[ToolInfo]:
-        """格式化工作流元数据为工具信息"""
-        result = []
-        for workflow in workflows_metadata:
-            parameters = FormatUtils.format_input_parameters(workflow.inputs)
-            function = Function(name=workflow.name, description=workflow.description, parameters=parameters)
-            result.append(ToolInfo(function=function))
-        return result
-
-    @staticmethod
-    def format_plugins_metadata(plugins_metadata: List[PluginSchema]) -> List[ToolInfo]:
-        """格式化插件元数据为工具信息"""
-        result = []
-        for plugin in plugins_metadata:
-            parameters = FormatUtils.format_input_parameters(plugin.inputs)
-            function = Function(name=plugin.name, description=plugin.description, parameters=parameters)
-            result.append(ToolInfo(function=function))
-        return result
-
     @staticmethod
     def create_llm_inputs(system_prompt: List[BaseMessage], chat_history: List[BaseMessage]) -> List[BaseMessage]:
         """创建LLM输入消息列表

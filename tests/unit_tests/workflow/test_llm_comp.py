@@ -445,7 +445,7 @@ class TestLLMExecutableInvokeNew:
             controller_type=ControllerType.WorkflowController,
         )
 
-        agent = WorkflowAgent(config, agent_context=None)
+        agent = WorkflowAgent(config)
         agent.bind_workflows([flow])
 
         async for result in agent.stream({"query": "please write a 3-line poem", "conversation_id": "c123"}):
@@ -567,7 +567,7 @@ class TestLLMExecutableInvokeNew:
             controller_type=ControllerType.WorkflowController,
         )
 
-        agent = WorkflowAgent(config, agent_context=None)
+        agent = WorkflowAgent(config)
         agent.bind_workflows([flow])
 
         result = await agent.invoke({"query": "please write a 3-line poem", "conversation_id": "c123"})

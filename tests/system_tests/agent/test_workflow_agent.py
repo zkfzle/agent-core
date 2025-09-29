@@ -122,12 +122,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         config = IntentDetectionConfig(
             user_prompt="请判断用户意图",
             category_name_list=["查询某地天气"],
-            default_class="分类0",
             model=model_config,
-            intent_detection_template=Template(
-                name="default",
-                content=[{"role": "user", "content": user_prompt}],
-            ),
             enable_input=True,
         )
         component = IntentDetectionComponent(config)
@@ -245,31 +240,32 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_workflow_comp(
             "intent",
             intent,
-            inputs_schema={"input": "${start.systemFields.query}"},
+            inputs_schema={"input": "${start.query}"},
         )
         flow.add_workflow_comp(
             "llm",
             llm,
-            inputs_schema={"userFields": {"query": "${start.systemFields.query}"}},
+            inputs_schema={"query": "${start.query}"},
         )
         flow.add_workflow_comp(
             "questioner",
             questioner,
-            inputs_schema={"query": "${llm.userFields.query}"}
+            inputs_schema={"query": "${llm.query}"}
         )
         flow.add_workflow_comp(
             "plugin",
             plugin,
             inputs_schema={
-                "userFields": "${questioner.userFields.key_fields}",
-                "validated": True,
+                "location": "${questioner.location}",
+                "date": "${questioner.date}",
             },
         )
-        flow.set_end_comp("end", end, inputs_schema={"userFields": {"output": "${plugin.data}"}})
+        flow.set_end_comp("end", end, inputs_schema={"output": "${plugin.data}"})
 
         # 4. 连接拓扑
         flow.add_connection("start", "intent")
-        flow.add_connection("intent", "llm")
+        # flow.add_connection("intent", "llm")
+        # flow.add_connection("intent", "end")
         flow.add_connection("llm", "questioner")
         flow.add_connection("questioner", "plugin")
         flow.add_connection("plugin", "end")

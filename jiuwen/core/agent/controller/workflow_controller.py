@@ -163,7 +163,7 @@ class WorkflowController(Controller):
         if isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
 
-    async def execute(self, inputs: Dict) -> Dict:
+    async def execute(self, inputs: Dict) -> Dict | list:
         """主执行流程 - 简化的workflow执行"""
         logger.info(f"Starting Workflow execution with inputs: {inputs}")
 
@@ -178,7 +178,7 @@ class WorkflowController(Controller):
         # 执行workflow
         return await self._run_workflow(inputs)
 
-    async def _resume_task(self, inputs: Dict) -> Dict:
+    async def _resume_task(self, inputs: Dict) -> Dict | list:
         """恢复中断的任务"""
         if not isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Interrupt status data format error.")
@@ -200,18 +200,18 @@ class WorkflowController(Controller):
         # 检查是否为交互中断结果
         if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
             # 是中断状态
-            interrupt_data = {}
+            interrupt_data_list = []
             for output_scheme in result.result:
                 await self._runtime.write_stream(output_scheme)
-                interrupt_data = {"output": output_scheme.payload.value, "result_type": "answer"}
-            return interrupt_data
+                interrupt_data_list.append(output_scheme)
+            return interrupt_data_list
         else:
             # 恢复正常状态并返回结果
             self._state.set_status("normal")
             final_result = self.handle_workflow_results({sub_tasks[0].func_name: result})
             return {"output": final_result, "result_type": "answer"}
 
-    async def _run_workflow(self, inputs: Dict) -> Dict:
+    async def _run_workflow(self, inputs: Dict) -> Dict | list:
         """执行workflow主流程"""
         # 生成sub_tasks
         controller_output: WorkflowControllerOutput = self.invoke(inputs, None)
@@ -227,11 +227,11 @@ class WorkflowController(Controller):
         if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
             # 是中断状态，保存状态
             self._state.save_interrupt_state([sub_task])
-            interrupt_data = {}
+            interrupt_data_list = []
             for output_scheme in result.result:
                 await self._runtime.write_stream(output_scheme)
-                interrupt_data = {"output": output_scheme.payload.value, "result_type": "answer"}
-            return interrupt_data
+                interrupt_data_list.append(output_scheme)
+            return interrupt_data_list
         else:
             # 正常完成
             final_result = self.handle_workflow_results({sub_task.func_name: result})

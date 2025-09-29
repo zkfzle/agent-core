@@ -26,10 +26,10 @@ from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.stream.writer import OutputSchema
 from typing import List
 
-API_BASE = os.getenv("API_BASE", "https://api.siliconflow.cn/v1/chat/completions")
-API_KEY = os.getenv("API_KEY", "sk-nmnhybbdjhfxupgadeapqseqqomzpahglmctzvfoigrfltwi")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen3-32B")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "siliconflow")
+API_BASE = os.getenv("API_BASE", "")
+API_KEY = os.getenv("API_KEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 # Mock RESTful Api 元信息
 _MOCK_TOOL = RestfulApi(
     name="test",
@@ -373,14 +373,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
     def _test_interaction_detection(self, result, method_name):
         """检测交互请求的通用方法"""
-        if (isinstance(result, dict) and 
-            'output' in result and 
-            isinstance(result['output'], list) and 
-            len(result['output']) > 0 and 
-            isinstance(result['output'][0], OutputSchema) and 
-            result['output'][0].type == '__interaction__'):
+        if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
             print(f"✅ {method_name} 检测到交互请求!")
-            return result['output']
+            return result
         return []
 
     def _create_interactive_input(self, interaction_outputs):

@@ -120,7 +120,7 @@ class ReActController(Controller):
         # 执行ReAct主循环
         return await self._run_react_loop(inputs)
 
-    async def _run_react_loop(self, inputs: Dict) -> Dict:
+    async def _run_react_loop(self, inputs: Dict) -> Dict | list:
         """核心ReAct循环：Reason→Act→Observe→Decide，包含中断恢复处理"""
 
         # 标准ReAct循环
@@ -230,16 +230,16 @@ class ReActController(Controller):
 
         return completed_tasks, exec_result
 
-    async def observe(self, completed_tasks: List[SubTask], exec_result: Any = None) -> dict[str, str | Any] | None:
+    async def observe(self, completed_tasks: List[SubTask], exec_result: Any = None) -> Any | None:
         """Observe: 观察结果并更新历史"""
         # 检查是否为交互中断结果
         if exec_result and ReActControllerUtils.is_interaction_result(exec_result):
             # 处理交互请求 - 写入流式输出
-            interrupt_data = {}
+            interrupt_data_list = []
             for output_scheme in exec_result.get("value", []):
                 await self._runtime.write_stream(output_scheme)
-                interrupt_data = {"output": output_scheme.payload.value, "result_type": "answer"}
-            return interrupt_data
+                interrupt_data_list.append(output_scheme)
+            return interrupt_data_list
 
         # 更新历史 - 这里会将中断恢复任务的结果也加入对话历史
         ReActControllerUtils.add_tool_results(completed_tasks, self._context_engine, self._runtime)

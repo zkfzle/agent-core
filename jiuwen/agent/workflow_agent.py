@@ -11,7 +11,6 @@ from jiuwen.core.agent.agent import Agent
 from jiuwen.core.agent.handler.base import AgentHandlerImpl
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.stream.writer import TraceSchema
 from jiuwen.core.workflow.base import Workflow
 
 

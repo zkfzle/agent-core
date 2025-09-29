@@ -17,7 +17,3 @@ class AgentConfig(BaseModel):
     controller_type: ControllerType = Field(default=ControllerType.Undefined)
     plugins: List[PluginSchema] = Field(default_factory=list)
     workflows: List[WorkflowSchema] = Field(default_factory=list)
-
-
-class AgentCard:
-    ...

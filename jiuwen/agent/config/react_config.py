@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -29,4 +29,3 @@ class ReActAgentConfig(AgentConfig):
     prompt_template_name: str = Field(default="react_system_prompt")
     prompt_template: List[Dict] = Field(default_factory=list)
     constrain: ConstrainConfig = Field(default=ConstrainConfig())
-    # intent_detection_config: IntentDetectionConfig = Field(default=IntentDetectionConfig())

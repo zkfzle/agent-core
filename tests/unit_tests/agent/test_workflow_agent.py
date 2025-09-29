@@ -6,12 +6,9 @@ from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.agent.workflow_agent import WorkflowAgent
-from jiuwen.core.agent.controller.workflow_controller import WorkflowController
-from jiuwen.core.runtime.agent_context import AgentContext
 from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowMetadata
-from jiuwen.graph.pregel.graph import PregelGraph
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, Node1, MockEndNode
 
 
@@ -42,7 +39,6 @@ class TestWorkflowAgent:
     # 真正实例化
     @pytest.fixture(scope="class")
     def agent(self):
-        agent_context = AgentContext()
         id = "test_workflow"
         name = "test_workflow"
         version = "1"
@@ -72,4 +68,7 @@ class TestWorkflowAgent:
     async def test_invoke_single(self, agent):
         inputs = {"query": "hi"}
         result = await agent.invoke(inputs)  # ✅ 使用 await
-        assert result == {'output': {'result': 'hi'}, 'result_type': 'answer'}
+        # 修改断言以匹配实际返回的WorkflowOutput对象结构
+        assert result['result_type'] == 'answer'
+        assert result['output'].result == {'result': 'hi'}
+        assert result['output'].state.name == 'COMPLETED'

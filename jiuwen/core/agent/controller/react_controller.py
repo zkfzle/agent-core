@@ -1,6 +1,5 @@
 """Controller of ReActAgent"""
 from typing import List, Dict, Optional, Union, Any
-
 import json
 
 from jiuwen.core.agent.controller.base import Controller

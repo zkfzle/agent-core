@@ -29,7 +29,7 @@ class Start(ComponentExecutable, WorkflowComponent):
         default_maps = {var["id"]: var["default_value"]
                         for var in defined_variables
                         if "id" in var and "default_value" in var and var["default_value"] is not None}
-        return default_maps | inputs
+        return inputs | default_maps
 
     def _validate_inputs(self, inputs: Input):
         defined_variables = self.conf.get("inputs", {})
@@ -41,7 +41,7 @@ class Start(ComponentExecutable, WorkflowComponent):
             if variables_not_given:
                 raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE.code,
                                           message=StatusCode.WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE.errmsg.format(
-                                              variable_names=variables_not_given))
+                                              variable_name=variables_not_given))
 
 
 class StartInputSchema(TypedDict):

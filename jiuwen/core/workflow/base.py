@@ -21,7 +21,7 @@ from jiuwen.core.graph.executable import Executable, Input, Output
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
-from jiuwen.core.runtime.state import Transformer
+from jiuwen.core.runtime.state import Transformer, DEFAULT_WORKFLOW_ID
 from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
@@ -32,7 +32,7 @@ from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata, WorkflowSpec, \
-    NodeSpec, CompIOConfig
+    NodeSpec, CompIOConfig, WorkflowInputsSchema
 from jiuwen.graph.pregel.graph import PregelGraph
 
 
@@ -174,6 +174,21 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         self.tool_info = tool_info
         self._end_comp_id: str = ""
         self._end_comp = None
+
+        self.inputs_schema = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
+
+    def _convert_to_tool_info(self, inputs_schema: WorkflowInputsSchema) -> ToolInfo:
+        parameters = Parameters(
+            type=inputs_schema.type,
+            properties=inputs_schema.properties,
+            required=inputs_schema.required
+        )
+        function = Function(
+            name=self._workflow_config.metadata.name,
+            parameters=parameters,
+            description=self._workflow_config.metadata.description,
+        )
+        return ToolInfo(function=function)
 
     def set_start_comp(
             self,

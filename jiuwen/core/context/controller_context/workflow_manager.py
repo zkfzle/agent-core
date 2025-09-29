@@ -47,47 +47,6 @@ class WorkflowMgr:
             return []
         return [self._workflow_tool_infos.get(id) for id in workflow_id]
 
-    def add_schema(self, workflow_id: str, schema: WorkflowInputsSchema):
-        if not schema:
-            return
-        self._workflow_schema.update({workflow_id: schema})
-
-    def get_schema(self, workflow_id: str, runtime=None) -> ToolInfo:
-        if not workflow_id:
-            workflow_id = DEFAULT_WORKFLOW_ID
-
-        workflow = self._workflows.get(workflow_id)
-        workflow_inputs_schema = self._workflow_inputs_schema.get(workflow_id)
-        if not workflow or not workflow_inputs_schema:
-            return ToolInfo(
-                type="function",
-                function=Function(
-                    name=workflow_id,
-                    description="",
-                    parameters=Parameters(
-                        type="object",
-                        properties={},
-                        required=[]
-                    )
-                )
-            )
-
-        parameters = Parameters(
-            type=workflow_inputs_schema.type,
-            properties=workflow_inputs_schema.properties,
-            required=workflow_inputs_schema.required
-        )
-
-        function = Function(
-            name=workflow_id,
-            parameters=parameters,
-            description=workflow.config().metadata.description or "",
-        )
-
-        return ToolInfo(
-            type="function",
-            function=function
-        )
 
 class WrappedWorkflow:
     def __init__(self, workflow):

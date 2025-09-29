@@ -115,12 +115,6 @@ class WrappedRuntime(Runtime, ABC):
         infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
         return infos
 
-    def add_schema(self, workflow_id: str, schema: WorkflowInputsSchema):
-        self._inner.resource_manager().workflow().add_schema(workflow_id, schema)
-
-    def get_schema(self, workflow_id: str) -> ToolInfo:
-        return self._inner.resource_manager().workflow().get_schema(workflow_id, self._inner)
-
     def base(self) -> BaseRuntime:
         return self._inner
 
@@ -195,9 +189,6 @@ class WrappedNodeRuntime(StateRuntime):
     def get_tool(self, tool_id: str) -> Tool:
         return self._inner.resource_manager().tool().get_tool(tool_id)
 
-    def get_schema(self, workflow_id: str) -> ToolInfo:
-        return self._inner.resource_manager().workflow().get_schema(workflow_id)
-
     def get_current_workflow_config(self):
         return self._inner.config().get_workflow_config(self._inner.workflow_id())
 
@@ -253,9 +244,6 @@ class TaskRuntime(StateRuntime):
 
     def get_tool(self, tool_id: str) -> Tool:
         return self._inner.resource_manager().tool().get_tool(tool_id, self._inner)
-
-    def get_schema(self, workflow_id: str) -> ToolInfo:
-        return self._inner.resource_manager().workflow().get_schema(workflow_id)
 
     def stream_iterator(self) -> AsyncIterator[Any]:
         return self._inner.stream_writer_manager().stream_output()

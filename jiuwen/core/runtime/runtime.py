@@ -184,14 +184,6 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def add_schema(self, workflow_id: str, workflow: Workflow):
-        pass
-
-    @abstractmethod
-    def get_schema(self, workflow_id: str) -> ToolInfo:
-        pass
-
-    @abstractmethod
     def base(self) -> BaseRuntime:
         pass
 

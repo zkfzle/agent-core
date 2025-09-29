@@ -193,7 +193,6 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         loop_runtime = runtime
-        assert isinstance(loop_runtime, NodeRuntime)
         self._node_id = loop_runtime.node_id()
         self._node_runtime = NodeRuntime(loop_runtime, self._node_id)
 

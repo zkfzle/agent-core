@@ -6,13 +6,12 @@ import pytest
 
 from jiuwen.agent.common.schema import PluginSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
-from jiuwen.core.agent.controller.react_controller import ReActControllerInput, ReActControllerOutput
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.utils.tool.function.function import LocalFunction
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from jiuwen.core.utils.tool.tool import tool
 
 
 API_BASE = os.getenv("API_BASE", "")
@@ -66,6 +65,24 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             func=lambda a, b: a + b
         )
         return weather_plugin
+    
+    @staticmethod
+    @tool(
+        name="add",
+        descripton="加法",
+        params=[
+            Param(name="a", description="加数", type="number", required=True),
+            Param(name="b", description="被加数", type="number", required=True),
+        ]
+    )
+    def add_function(a, b):
+        """加法函数，使用tool注解装饰"""
+        return a + b
+    
+    @staticmethod
+    def _create_function_tool_with_annotation():
+        # 直接返回被tool注解装饰后的函数，它已经是一个LocalFunction对象
+        return ReActAgentTest.add_function
 
     @staticmethod
     def _create_function_tool_schema():
@@ -195,6 +212,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             prompt_template=prompt_template
         )
 
+        # 使用传统方式创建的LocalFunction对象
         react_agent: ReActAgent = create_react_agent(
             agent_config=react_agent_config,
             workflows=[],
@@ -203,3 +221,30 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
         result = await react_agent.invoke({"query": "计算1+2"})
         print(f"ReActAgent 最终输出结果：{result}")
+    
+    @unittest.skip("skip system test")
+    async def test_react_agent_invoke_with_annotated_function_plugin(self):
+        """测试使用tool注解装饰的函数作为工具"""
+        tools_schema = [self._create_function_tool_schema()]
+        model_config = self._create_model()
+        prompt_template = self._create_function_prompt_template()
+
+        react_agent_config = create_react_agent_config(
+            agent_id="react_agent_1235",
+            agent_version="0.0.3",
+            description="AI计算助手（使用注解）",
+            plugins=tools_schema,
+            workflows=[],
+            model=model_config,
+            prompt_template=prompt_template
+        )
+
+        # 使用tool注解创建的LocalFunction对象
+        react_agent: ReActAgent = create_react_agent(
+            agent_config=react_agent_config,
+            workflows=[],
+            tools=[self._create_function_tool_with_annotation()]
+        )
+
+        result = await react_agent.invoke({"query": "计算1+2"})
+        print(f"ReActAgent 使用注解工具最终输出结果：{result}")

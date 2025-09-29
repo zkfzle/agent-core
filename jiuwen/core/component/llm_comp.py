@@ -201,7 +201,8 @@ class LLMExecutable(ComponentExecutable):
     def _create_llm_instance(self):
         return ModelFactory().get_model(model_provider=self._config.model.model_provider,
                                         api_base=self._config.model.model_info.api_base,
-                                        api_key=self._config.model.model_info.api_key)
+                                        api_key=self._config.model.model_info.api_key,
+                                        timeout=self._config.model.model_info.timeout)
 
     def _validate_inputs(self, inputs: Input) -> None:
         if not inputs or not inputs.get(QUERY):

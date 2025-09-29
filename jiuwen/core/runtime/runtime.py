@@ -180,7 +180,7 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def get_tool_info(self, tool_id: List[str], workflow_id: List[str]) -> List[ToolInfo]:
+    def get_tool_info(self, tool_id: List[str]=None, workflow_id: List[str]=None) -> List[ToolInfo]:
         pass
 
     @abstractmethod

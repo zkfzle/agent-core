@@ -260,7 +260,7 @@ class ReActController(Controller):
             ReActControllerUtils.add_user_message(controller_input.query, self._context_engine, self._runtime)
 
         # 准备LLM输入
-        tools = ReActControllerUtils.get_tools_info(self._config)
+        tools = self._runtime.get_tool_info()
         chat_history = ReActControllerUtils.get_chat_history(self._context_engine, self._runtime, self._config)
         llm_inputs = ReActControllerUtils.format_llm_inputs(controller_input, chat_history, self._config)
         logger.info(f"React llm inputs: {llm_inputs}")

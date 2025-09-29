@@ -31,7 +31,7 @@ from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata, WorkflowSpec, \
+from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema
 from jiuwen.graph.pregel.graph import PregelGraph
 
@@ -171,7 +171,7 @@ class WorkflowExecutable(ABC):
 class Workflow(BaseWorkFlow, WorkflowExecutable):
     def __init__(self, workflow_config: WorkflowConfig = None, tool_info: ToolInfo = None):
         super().__init__(workflow_config, PregelGraph())
-        self.tool_info = tool_info
+        self.tool_info = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
         self._end_comp_id: str = ""
         self._end_comp = None
 

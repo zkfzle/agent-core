@@ -126,12 +126,10 @@ class LLMPromptFormatter:
 @dataclass
 class LLMCompConfig(ComponentConfig):
     model: 'ModelConfig' = None
-    deployMode: str = ""
     template_content: List[Any] = field(default_factory=list)
     response_format: Dict[str, Any] = field(default_factory=dict)
-    enable_history: bool = False
-    user_fields: Dict[str, Any] = field(default_factory=dict)
     output_config: Dict[str, Any] = field(default_factory=dict)
+    enable_history: bool = False
 
 
 class LLMExecutable(ComponentExecutable):
@@ -161,8 +159,6 @@ class LLMExecutable(ComponentExecutable):
         except JiuWenBaseException:
             raise
         except Exception as e:
-            import traceback
-            print(traceback.format_exc())
             raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
                                       message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg=str(e))) from e
 

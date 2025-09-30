@@ -30,28 +30,28 @@ class StatusCode(Enum):
     # Multi-Agent编排 多Agent调测能力 133000 - 133999
     # Multi-Agent编排 分布式运行时 134000 - 134999
     # 多Agent        103200~103299
-    # > 多Agent运行器异常 103200-103230
-    MULTI_AGENT_RUNNER_ALREADY_STARTED = (103200, "Runner is already started")
-    MULTI_AGENT_TARGET_MEMBER_NOT_FOUND = (103201, "Target member not found: {}")
-    MULTI_AGENT_MESSAGE_SUSPENDED = (103202, "Message suspended, waiting for user input: {}")
-    MULTI_AGENT_PROCESSING_INTERRUPTED = (103203, "Processing interrupted: {}")
-    MULTI_AGENT_RUNNER_NOT_RUNNING = (103204, "Runner not running: {}")
-    MULTI_AGENT_RUNNER_NOT_STARTED = (103205, "Runner not started: {}")
+    # > 多Agent运行器异常 131000-131030
+    MULTI_AGENT_RUNNER_ALREADY_STARTED = (131000, "Runner is already started")
+    MULTI_AGENT_TARGET_MEMBER_NOT_FOUND = (131001, "Target member not found: {}")
+    MULTI_AGENT_MESSAGE_SUSPENDED = (131002, "Message suspended, waiting for user input: {}")
+    MULTI_AGENT_PROCESSING_INTERRUPTED = (131003, "Processing interrupted: {}")
+    MULTI_AGENT_RUNNER_NOT_RUNNING = (131004, "Runner not running: {}")
+    MULTI_AGENT_RUNNER_NOT_STARTED = (131005, "Runner not started: {}")
 
-    # > 多Agent运行空间异常 103231-103260
-    MULTI_AGENT_RUN_SPACE_EXECUTION_ERROR = (103231, "AgentRunSpace execution error: {}")
-    MULTI_AGENT_RUN_SPACE_SHUTDOWN_QUEUE_ERROR = (103232, "Failed to shutdown message queue: {}")
-    MULTI_AGENT_RUN_SPACE_STOP_TASK_ERROR = (103233, "Failed to stop run task: {}")
-    MULTI_AGENT_RUN_SPACE_STOP_IDLE_ERROR = (103234, "Failed to stop when idle: {}")
-    MULTI_AGENT_RUN_SPACE_CHECK_CONDITION_ERROR = (103235, "Failed to check stop condition: {}")
-    MULTI_AGENT_RUN_SPACE_EXECUTE_STOP_WHEN_ERROR = (103236, "Failed to execute stop_when: {}")
+    # > 多Agent运行空间异常 131031-131060
+    MULTI_AGENT_RUN_SPACE_EXECUTION_ERROR = (131031, "AgentRunSpace execution error: {}")
+    MULTI_AGENT_RUN_SPACE_SHUTDOWN_QUEUE_ERROR = (131032, "Failed to shutdown message queue: {}")
+    MULTI_AGENT_RUN_SPACE_STOP_TASK_ERROR = (131033, "Failed to stop run task: {}")
+    MULTI_AGENT_RUN_SPACE_STOP_IDLE_ERROR = (131034, "Failed to stop when idle: {}")
+    MULTI_AGENT_RUN_SPACE_CHECK_CONDITION_ERROR = (131035, "Failed to check stop condition: {}")
+    MULTI_AGENT_RUN_SPACE_EXECUTE_STOP_WHEN_ERROR = (131036, "Failed to execute stop_when: {}")
 
-    # > 多Agent成员异常 103261-103290
-    MULTI_AGENT_MEMBER_PROCESS_MESSAGE_ERROR = (103261, "Failed to process message in member {}: {}")
-    MULTI_AGENT_MEMBER_PROCESSING_ERROR = (103262, "Error occurred while processing message: {}")
+    # > 多Agent成员异常 131061-131090
+    MULTI_AGENT_MEMBER_PROCESS_MESSAGE_ERROR = (131061, "Failed to process message in member {}: {}")
+    MULTI_AGENT_MEMBER_PROCESSING_ERROR = (131062, "Error occurred while processing message: {}")
 
-    # > 多Agent消息队列异常 103291-103299
-    MULTI_AGENT_MESSAGE_NOT_PROCESSING = (103291, "Message {} is not currently being processed")
+    # > 多Agent消息队列异常 131091-131099
+    MULTI_AGENT_MESSAGE_NOT_PROCESSING = (131091, "Message {} is not currently being processed")
 
     # 图执行引擎 140000 - 149999
     # 图执行引擎 图的编排和执行 140000 - 140999

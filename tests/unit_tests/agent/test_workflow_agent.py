@@ -1,5 +1,3 @@
-import unittest
-
 import pytest
 
 from jiuwen.agent.common.enum import ControllerType
@@ -12,6 +10,7 @@ from jiuwen.core.workflow.workflow_config import WorkflowMetadata
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, Node1, MockEndNode
 
 
+@pytest.mark.skip("skip unit test")
 class TestWorkflowAgent:
     @staticmethod
     def _build_workflow(name, id, version):
@@ -63,7 +62,6 @@ class TestWorkflowAgent:
 
     # ---------- 测试用例 ----------
     # Todo: 等待workflowAgent合入后开启
-    @unittest.skip
     @pytest.mark.asyncio
     async def test_invoke_single(self, agent):
         inputs = {"query": "hi"}

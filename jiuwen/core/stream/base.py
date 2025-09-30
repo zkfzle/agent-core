@@ -41,6 +41,9 @@ class StreamCode(Enum):
     MESSAGE_END = 5000 #一个组件的流式结束标识，带有该组件的总结信息
     PARTIAL_CONTENT = 1206 #部分输出
     FINISH = 0 #表示最后一条消息
+    ERROR = -1  # 流式过程中组件执行错误
+    CONTROLLER_AGENT_HANDOFF_MESSAGE = 14000  # 控制器调用其他Agent事件
+    CONTROLLER_AGENT_INTERRUPT_MESSAGE = 15000
 
 
 class StreamData:
@@ -49,7 +52,7 @@ class StreamData:
         self.msg = msg
         self.data = data
         self.execution_id = execution_id
-        self.indecx = index
+        self.index = index
 
     def __str__(self):
         return f"StreamData(code={self.code}, msg={self.msg}, data={self.data}, execution_id={self.execution_id}, index={self.index})"

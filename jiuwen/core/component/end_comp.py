@@ -3,6 +3,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import AsyncIterator, TypedDict, Union
 
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.utils.utils import TemplateUtils
 from jiuwen.core.component.base import WorkflowComponent
@@ -14,15 +16,26 @@ from jiuwen.core.stream.base import StreamCode
 
 STREAM_CACHE_KEY = "_stream_cache_key"
 
+
 class EndConfig(TypedDict):
     responseTemplate: str
+
 
 class End(ComponentExecutable, WorkflowComponent):
     def __init__(self, conf: Union[EndConfig, dict] = None):
         super().__init__()
         self.conf = conf
-        self.template = conf["responseTemplate"] if ( conf and
-                "responseTemplate" in conf and len(conf["responseTemplate"]) > 0) else None
+        if conf and "responseTemplate" in conf:
+            self.template = conf["responseTemplate"]
+        else:
+            self.template = None
+
+        if self.template and not isinstance(self.template, str):
+            raise JiuWenBaseException(StatusCode.WORKFLOW_END_CREATE_VALUE.code,
+                                      message=StatusCode.WORKFLOW_END_CREATE_VALUE.errmsg.format(
+                                          reason="`responseTemplate` type error, is not str"))
+        if self.template and len(self.template) == 0:
+            self.template = None
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self.template:
@@ -64,9 +77,9 @@ class End(ComponentExecutable, WorkflowComponent):
                 final_output = TemplateUtils.render_template(self.template, inputs)
             else:
                 index = 0
-                for res in inputs:
+                for key, value in inputs.items():
                     yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index,
-                               payload=dict(outputs=res))
+                               payload=dict(outputs={key: value}))
                     index += 1
                 final_output = dict(outputs=inputs)
             final_index = 0
@@ -77,7 +90,8 @@ class End(ComponentExecutable, WorkflowComponent):
         except Exception as e:
             logger.info("stream output error: {}".format(e))
 
-    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
+        Output]:
         # 异步遍历输入迭代器
         index = 0
         stream_cache_value = {}

@@ -95,6 +95,7 @@ class StatusCode(Enum):
 
     WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (101501, "start component: global variable(s) defined with no value assigned:  {variable_name}")
     WORKFLOW_START_CREATE_VALUE = (101502, "start component create error:  {reason}")
+    WORKFLOW_END_CREATE_VALUE = (101511, "end component create error: {reason}")
 
     WORKFLOW_LLM_INIT_ERROR = (101561, "LLM component initialization error, msg = {msg}")
     WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR = (101562, "LLM component template assemble error")

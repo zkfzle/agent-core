@@ -5,7 +5,7 @@ triggers:
   trigger: auto
   pr:
     branches:
-      prefix:
+      precise:
         - develop
 stages:
   - name: stage-c019e95c

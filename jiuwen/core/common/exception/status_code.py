@@ -104,6 +104,8 @@ class StatusCode(Enum):
                                                           "message = {error_msg}")
     WORKFLOW_INTENT_DETECTION_LLM_INVOKE_ERROR = (101696, "Model invoke failed with error message = {error_msg}")
     WORKFLOW_INTENT_DETECTION_PROMPT_INVOKE_ERROR = (101698, "Prompt invoke failed with error message = {error_msg}")
+    WORKFLOW_BRANCH_NOT_FOUND = (101531, "Branch meeting the condition was not found")
+    WORKFLOW_COMP_INPUT_NOT_NONE = (10055, "sub_workflow cannot be None")
 
     WORKFLOW_QUESTIONER_EXCEED_LOOP = (101713, "Exceeded the maximum number of conversation")
     WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR = (

@@ -4,6 +4,7 @@
 from typing import Callable, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
 from jiuwen.core.runtime.runtime import Runtime, BaseRuntime
@@ -40,7 +41,7 @@ class BranchRouter:
         self.report_trace = report_trace
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
-                   branch_id: str = None):
+                   branch_id: str = ""):
         if isinstance(target, str):
             target = [target]
         self._branches.append(Branch(condition, target, branch_id))
@@ -66,4 +67,5 @@ class BranchRouter:
                 if self.report_trace:
                     await trace_outputs(runtime, {"branch_id": branch.branch_id})
                 return branch.target
-        raise JiuWenBaseException(-1, "branch not found")
+        raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_BRANCH_NOT_FOUND.code,
+                                      message=StatusCode.WORKFLOW_BRANCH_NOT_FOUND.errmsg)

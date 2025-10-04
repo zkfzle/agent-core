@@ -34,7 +34,7 @@ class ValidationUtils:
             "string": lambda value: isinstance(value, str),
             "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
             "boolean": lambda value: isinstance(value, bool),
-            "number": lambda value: isinstance(value, int) and not isinstance(value, bool),
+            "number": lambda value: isinstance(value, float) and not isinstance(value, bool),
         }
 
         validator = type_validators.get(expected_type)
@@ -171,14 +171,16 @@ class OutputFormatter:
     @staticmethod
     def _format_text_response(response_content: str, outputs_config: dict) -> dict:
         if len(outputs_config) != 1:
-            ValidationUtils.raise_invalid_params_error(f"文本/markdown响应类型的outputs_config必须只包含一个字段")
+            ValidationUtils.raise_invalid_params_error(
+                f"text/markdown response type, outputs_config must contain only one field")
         field_name = next(iter(outputs_config))
         return {field_name: response_content}
 
     @staticmethod
     def _format_json_response(response_content: str, outputs_config: dict) -> dict:
         if not outputs_config:
-            ValidationUtils.raise_invalid_params_error(f"文本/markdown响应类型的outputs_config必须至少包含一个字段")
+            ValidationUtils.raise_invalid_params_error(
+                f"json response format, output config should contain at least one field")
 
         parsed_json = JsonParser.parse_json_content(response_content)
         json_schema = SchemaGenerator.generate_json_schema(outputs_config)
@@ -193,7 +195,7 @@ class OutputFormatter:
         except JiuWenBaseException:
             raise
         except Exception as e:
-            ValidationUtils.raise_invalid_params_error(f"JSON schema验证失败: {original_content}")
+            ValidationUtils.raise_invalid_params_error(f"json schema validation failed: {original_content}")
 
     @staticmethod
     def _extract_configured_fields(parsed_json: dict, outputs_config: dict) -> dict:
@@ -208,7 +210,7 @@ class OutputFormatter:
                 output[field_name] = parsed_json[field_name]
 
         if missing_keys:
-            ValidationUtils.raise_invalid_params_error(f"响应中缺少必填字段: {', '.join(missing_keys)}")
+            ValidationUtils.raise_invalid_params_error(f"missing required fields: {', '.join(missing_keys)}")
 
         return output
 

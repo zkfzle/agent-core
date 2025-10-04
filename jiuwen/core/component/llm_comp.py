@@ -3,9 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import json
 from dataclasses import dataclass, field
-from typing import List, Any, Dict, Optional, AsyncIterator
+from typing import List, Any, Dict, Optional, AsyncIterator, Union
 
-from jiuwen.core.common.constants.constant import QUERY
+from pydantic import ValidationError, Field, BaseModel
+
 from jiuwen.core.common.enum.enum import WorkflowLLMResponseType, MessageRole
 from jiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -18,7 +19,7 @@ from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.utils.llm.messages import AIMessage
+from jiuwen.core.utils.llm.messages import AIMessage, SystemMessage, HumanMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
@@ -45,6 +46,9 @@ RESPONSE_FORMAT_TO_PROMPT_MAP = {
         _TEMPLATE_NAME: "llm_markdown_formatting"
     }
 }
+
+def raise_exception(error_code: StatusCode, error_msg: str = "", exception: Exception = None):
+    raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
 
 
 class LLMPromptFormatter:
@@ -96,6 +100,7 @@ class LLMPromptFormatter:
         if last_user_idx is None:
             return history
         query = history[last_user_idx]["content"]
+        prompt = query
 
         if res_type == "markdown":
             instruction = (
@@ -116,9 +121,6 @@ class LLMPromptFormatter:
                 .replace("${query}", query)
             )
 
-        else:
-            ValidationUtils.raise_invalid_params_error(f"'{res_type}' is not supported")
-
         history[last_user_idx]["content"] = prompt
         return history
 
@@ -132,54 +134,93 @@ class LLMCompConfig(ComponentConfig):
     enable_history: bool = False
 
 
+class ResponseFormatConfig(BaseModel):
+    response_type: str = Field(pattern=r'^(text|markdown|json)$', alias="type")
+
+
+class OutputParamConfig(BaseModel):
+    param_type: str = Field(default="", alias="type")
+    param_description: str = Field(default="", alias="description")
+    param_required: bool = Field(default=False, alias="required")
+
+
 class LLMExecutable(ComponentExecutable):
     def __init__(self, component_config: LLMCompConfig):
         super().__init__()
-        self._config = component_config
-        self._llm: BaseChatModel = None
+        self._validate_config(component_config)
+        self._config: LLMCompConfig = component_config
+        self._llm: Union[BaseChatModel, None] = None
         self._initialized: bool = False
+        self._runtime = None
         self._context = None
 
+    @staticmethod
+    def _validate_template_content(template_content):
+        if len(template_content) >= 1:
+            try:
+                for element in template_content:
+                    if element.get(_ROLE, "") == "system":
+                        SystemMessage.model_validate(element)
+            except ValidationError as e:
+                raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR, "system message is invalid", e)
+
+            if_contain_user_message = False
+            for element in template_content:
+                if element.get(_ROLE, "") == "user":
+                    HumanMessage.model_validate(element)
+                    if_contain_user_message = True
+                if if_contain_user_message and element.get(_ROLE, "") == "system":
+                    SystemMessage.model_validate(element)
+                    raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR,
+                                    "system message must be before user message")
+            if not if_contain_user_message:
+                raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR, "user message is required")
+        else:
+            raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR, "template content is empty")
+
+    @staticmethod
+    def _validate_output_config(output_config):
+        if not output_config:
+            raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR, "output config is empty")
+        for param, value in output_config.items():
+            if not param:
+                raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                f"output config parameter {param} is empty")
+            try:
+                OutputParamConfig.model_validate(value)
+            except ValidationError as e:
+                raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                f"output config parameter's config {value} is invalid", e)
+
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        self._set_runtime(runtime)
+        self._set_context(context)
+        model_inputs = self._prepare_model_inputs(inputs)
+        logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
+        response = ""
         try:
-            self._set_runtime(runtime)
-            self._set_context(context)
-            model_inputs = self._prepare_model_inputs(inputs)
-            logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
             llm_response = await self._llm.ainvoke(
                 model_name=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
-
-            # 临时调试：用于调用streamWriter实现流式输出
-            await runtime.write_custom_stream({"streamOutput": response})
-
-            self._runtime.update_global_state({"response": response})
-            logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
-            return self._create_output(response)
-        except JiuWenBaseException:
-            raise
         except Exception as e:
-            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
-                                      message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg=str(e))) from e
+            raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+
+        logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
+        return self._create_output(response)
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        self._set_runtime(runtime)
+        self._set_context(context)
+        response_format_type = self._get_response_format().get(_TYPE)
         try:
-            self._set_runtime(runtime)
-            response_format_type = self._get_response_format().get(_TYPE)
-
             if response_format_type == WorkflowLLMResponseType.JSON.value:
                 async for out in self._invoke_for_json_format(inputs):
                     yield out
             else:
                 async for out in self._stream_with_chunks(inputs):
                     yield out
-        except JiuWenBaseException:
-            raise
         except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_LLM_STREAMING_OUTPUT_ERROR.code,
-                message=StatusCode.WORKFLOW_LLM_STREAMING_OUTPUT_ERROR.errmsg.format(msg=str(e))
-            ) from e
+            raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
     async def interrupt(self, message: dict):
         raise InterruptException(
@@ -204,47 +245,20 @@ class LLMExecutable(ComponentExecutable):
                                         api_key=self._config.model.model_info.api_key,
                                         timeout=self._config.model.model_info.timeout)
 
-    def _validate_inputs(self, inputs: Input) -> None:
-        if not inputs or not inputs.get(QUERY):
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.code,
-                message=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.errmsg
-            )
-
-    def _process_inputs(self, inputs: dict) -> dict:
-        processed_inputs = {}
-        if inputs:
-            processed_inputs = inputs.copy()
-            if self._runtime:
-                chat_history: list = self._runtime.get_global_state(WORKFLOW_CHAT_HISTORY)
-                chat_history = chat_history[:-1] if chat_history else []
-                full_input = ""
-                for history in chat_history[-CHAT_HISTORY_MAX_TURN:]:
-                    full_input += "{}：{}\n".format(ROLE_MAP.get(history.get("role", "user"), "用户"),
-                                                   history.get("content"))
-                inputs.update({"CHAT_HISTORY": full_input})
-        return processed_inputs
-
-    def _build_prompt_message(self, inputs: dict) -> str:
+    def _build_user_prompt_content(self, inputs: dict) -> list[dict]:
         template_content_list = self._config.template_content
         user_prompt = [element for element in template_content_list if element.get(_ROLE, "") == MessageRole.USER.value]
-        if not user_prompt or not isinstance(user_prompt[0], dict):
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
-                message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg="Failed to retrieve llm template content")
-            )
-        default_template = Template(name="default", content=str(user_prompt[0].get("content")))
-        return default_template.format(inputs).content
+        return Template(content=[user_prompt[0]]).format(inputs).content
 
     def _get_model_input(self, inputs: dict):
         system_prompt = self._build_system_prompt(inputs)
-        user_prompt = self._build_prompt_message(inputs)
-        history = self._get_history(system_prompt, user_prompt)
-        return LLMPromptFormatter.format_prompt(history=history,
+        user_prompt = self._build_user_prompt_content(inputs)
+        all_prompts = self._insert_history_to_system_and_user_prompt(system_prompt, user_prompt)
+        return LLMPromptFormatter.format_prompt(history=all_prompts,
                                                 response_format=self._config.response_format,
                                                 output_config=self._config.output_config)
 
-    def _get_history(self, system_prompt: list, user_prompt: str):
+    def _insert_history_to_system_and_user_prompt(self, system_prompt: list, user_prompt: list):
         original_history = system_prompt if isinstance(system_prompt, list) else []
         if self._context:
             chat_history = []
@@ -252,7 +266,7 @@ class LLMExecutable(ComponentExecutable):
             if chat_history_messages and self._config.enable_history:
                 chat_history = [dict(role=message.role, content=message.content) for message in chat_history_messages]
             original_history.extend(chat_history)
-        original_history.append({"role": "user", "content": user_prompt})
+        original_history.extend(user_prompt)
         return original_history
 
     def _get_response_format(self):
@@ -295,10 +309,7 @@ class LLMExecutable(ComponentExecutable):
 
             return getattr(template, "content", None) if template else None
         except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.code,
-                message=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.errmsg
-            )(e)
+            return None
 
     def _build_template_filters(self) -> dict:
         filters = {}
@@ -310,60 +321,44 @@ class LLMExecutable(ComponentExecutable):
         return filters
 
     def _create_output(self, llm_output) -> Output:
-        formatted_res = OutputFormatter.format_response(llm_output,
-                                                        self._config.response_format,
-                                                        self._config.output_config)
-        return formatted_res
+        try:
+            formatted_res = OutputFormatter.format_response(llm_output,
+                                                            self._config.response_format,
+                                                            self._config.output_config)
+            return formatted_res
+        except JiuWenBaseException as e:
+            if e.error_code == StatusCode.PROMPT_JSON_SCHEMA_ERROR.code:
+                raise_exception(StatusCode.LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR, error_msg=e.message)
+            else:
+                raise e
 
     def _set_runtime(self, runtime: Runtime):
         self._runtime = runtime
 
+    def _set_context(self, context):
+        self._context = context
+
     def _prepare_model_inputs(self, inputs):
         self._initialize_if_needed()
-
-        processed_inputs = self._process_inputs(inputs)
-        return self._get_model_input(processed_inputs)
+        return self._get_model_input(inputs)
 
     async def _invoke_for_json_format(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
         logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
         llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name, messages=model_inputs)  # 如果 invoke 是异步接口，要加 await
-        yield self._create_output(llm_output)
+        llm_output_content = llm_output.content
+        yield self._create_output(llm_output_content)
 
     async def _stream_with_chunks(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
-        # 假设 self._llm.stream 本身就是异步生成器
         async for chunk in self._llm.astream(model_name=self._config.model.model_info.model_name, messages=model_inputs):
             content = WorkflowLLMUtils.extract_content(chunk)
-            formatted_res = OutputFormatter.format_response(content,
-                                                            self._config.response_format,
-                                                            self._config.output_config)
-            stream_out = formatted_res
-            yield stream_out
-
-    def _format_response_content(self, response_content: str) -> dict:
-        pass
-
-    async def _stream_llm_with_stream_writer(self, model_inputs, stream_writer) -> AIMessage:
-        final_response = AIMessage()
-        response_format_type = self._get_response_format().get(_TYPE)
-
-        if response_format_type == WorkflowLLMResponseType.JSON.value:
-            final_response = await self._llm.ainvoke(
-                model_name=self._config.model.model_info.model_name, messages=model_inputs)
-        else:
-            index = 0
-            result = ""
-            async for chunk in self._llm.astream(model_name=self._config.model.model_info.model_name,
-                                                 messages=model_inputs):
-                if chunk.content:
-                    if stream_writer:
-                        await stream_writer.write(OutputSchema(type="workflow", index=index, payload=chunk.content))
-                    result += chunk.content
-                index += 1
-            final_response.content = result
-
-        return final_response
+            if content:
+                formatted_res = OutputFormatter.format_response(content,
+                                                                self._config.response_format,
+                                                                self._config.output_config)
+                stream_out = formatted_res
+                yield stream_out
 
     def _build_system_prompt(self, inputs: dict):
         system_prompt = []
@@ -372,11 +367,24 @@ class LLMExecutable(ComponentExecutable):
                 system_prompt.append(element)
             else:
                 break
-        system_prompt_template = Template(name="default_system_prompt", content=system_prompt)
-        return system_prompt_template.format(inputs).content
+        return Template(content=system_prompt).format(inputs).content
 
-    def _set_context(self, context):
-        self._context = context
+    def _validate_config(self, config: LLMCompConfig):
+        self._validate_template_content(config.template_content)
+        self._validate_response_format(config.response_format, config.output_config)
+        self._validate_output_config(config.output_config)
+
+    def _validate_response_format(self, response_format, output_config):
+        response_type = ""
+        try:
+            response_type = ResponseFormatConfig.model_validate(response_format).response_type
+        except ValidationError as e:
+            raise_exception(StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
+                            f"response format {response_format} is invalid", e)
+
+        if response_type in ["text", "markdown"] and len(output_config) != 1:
+            raise_exception(StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
+                            "output config must contain exactly one parameter for text or markdown response type")
 
 
 class LLMComponent(WorkflowComponent):

@@ -12,7 +12,14 @@ class StatusCode(Enum):
 
     # 组件 100000 - 109999
     # 组件 组件开发 100000 - 100999
-    # 组件 预制组件 101000 - 101999
+    # 组件 预置组件 101000 - 109999
+
+    ## 大模型组件  101000 - 101049
+    LLM_COMPONENT_TEMPLATE_CONFIG_ERROR = (101000, "LLM component template config error, as {error_msg}")
+    LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR = (101001, "LLM component response format config error, as {error_msg}")
+    LLM_COMPONENT_OUTPUT_CONFIG_ERROR = (101002, "LLM component output config error, as {error_msg}")
+    LLM_COMPONENT_INVOKE_LLM_ERROR = (101003, "LLM component invoke llm error, as {error_msg}")
+    LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR = (101004, "Failed to output json schema, as {error_msg}.")
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999

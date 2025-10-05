@@ -20,6 +20,13 @@ class StatusCode(Enum):
     LLM_COMPONENT_OUTPUT_CONFIG_ERROR = (101002, "LLM component output config error, as {error_msg}")
     LLM_COMPONENT_INVOKE_LLM_ERROR = (101003, "LLM component invoke llm error, as {error_msg}")
     LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR = (101004, "Failed to output json schema, as {error_msg}.")
+    LLM_COMPONENT_INIT_LLM_ERROR = (101005, "Failed to init llm, as {error_msg}.")
+    LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}")
+
+    ## 意图识别组件 101050 - 101069
+    INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050, "Intent detection component user input error, as {error_msg}")
+    INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR = (101051, "Intent detection component init llm error, as {error_msg}")
+    INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052, "Intent detection component invoke llm error, as {error_msg}")
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999

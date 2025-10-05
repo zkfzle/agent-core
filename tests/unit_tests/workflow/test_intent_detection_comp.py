@@ -6,19 +6,19 @@ import sys
 import types
 from unittest.mock import Mock, AsyncMock, patch
 
-from jiuwen.core.common.constants.constant import USER_FIELDS
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionConfig, \
     IntentDetectionComponent
 from jiuwen.core.component.start_comp import Start
+from jiuwen.core.context_engine.config import ContextEngineConfig
+from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
 from jiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.graph.pregel.graph import PregelGraph
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -122,7 +122,6 @@ class TestIntentDetectionComponent:
             user_prompt="请判断用户意图",
             category_name_list=["查询某地的景点", "查询某地天气"],
             model=model_config,
-            enable_input=True,
         )
         intent_component = IntentDetectionComponent(config)
         intent_component.add_branch("${intent.classification_id} == 0", ["end"], "默认分支")
@@ -144,6 +143,10 @@ class TestIntentDetectionComponent:
 
         flow.add_connection("start", "intent")
 
-        workflow_context = TaskRuntime(trace_id="session id").create_workflow_runtime()
-        async for chunk in flow.stream({"query": "我的意图是查询景点"}, workflow_context):
+        session_id = "test_intent_detection"
+        config = ContextEngineConfig()
+        ce_engine = ContextEngine("123", config)
+        workflow_context = ce_engine.get_workflow_context(workflow_id="intent_detection_workflow", session_id=session_id)
+        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        async for chunk in flow.stream({"query": "我的意图是查询景点"}, workflow_runtime, workflow_context):
             print(chunk)

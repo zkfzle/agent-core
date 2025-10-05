@@ -11,15 +11,14 @@ from jiuwen.core.common.enum.enum import WorkflowLLMResponseType, MessageRole
 from jiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
-from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, ValidationUtils, SchemaGenerator
+from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, SchemaGenerator
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.stream.writer import OutputSchema
 from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.utils.llm.messages import AIMessage, SystemMessage, HumanMessage
+from jiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
@@ -234,10 +233,7 @@ class LLMExecutable(ComponentExecutable):
                 self._llm = self._create_llm_instance()
                 self._initialized = True
             except Exception as e:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.WORKFLOW_LLM_INIT_ERROR.code,
-                    message=StatusCode.WORKFLOW_LLM_INIT_ERROR.errmsg.format(msg=str(e))
-                ) from e
+                raise_exception(StatusCode.LLM_COMPONENT_INIT_LLM_ERROR, str(e), e)
 
     def _create_llm_instance(self):
         return ModelFactory().get_model(model_provider=self._config.model.model_provider,
@@ -292,10 +288,7 @@ class LLMExecutable(ComponentExecutable):
             return response_format
 
         except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.code,
-                message=StatusCode.WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR.errmsg
-            ) from e
+            raise_exception(StatusCode.LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR, str(e))
 
     def _get_instruction_from_template(self, format_config: dict) -> Optional[str]:
         template_name = format_config.get(_TEMPLATE_NAME)

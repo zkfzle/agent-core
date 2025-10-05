@@ -3,11 +3,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from dataclasses import dataclass
+from typing import Union, List, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.utils.utils import ExceptionUtils
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Executable, Input, Output
@@ -15,7 +16,11 @@ from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.utils.tool import constant
 from jiuwen.core.utils.tool.base import Tool
+from jiuwen.core.utils.tool.function.function import LocalFunction
+from jiuwen.core.utils.tool.param import Param
 
+
+DEFAULT_EXCEPTION_ERROR_CODE = -1
 
 @dataclass
 class ToolComponentConfig(ComponentConfig):
@@ -27,9 +32,9 @@ class ToolComponentInput(BaseModel):
 
 
 class ToolComponentOutput(BaseModel):
-    error_code: int = Field(default=-1, alias=constant.ERR_CODE)
+    error_code: int = Field(default=0, alias=constant.ERR_CODE)
     error_message: str = Field(default="", alias=constant.ERR_MESSAGE)
-    data: str = Field(default="", alias=constant.RESTFUL_DATA)
+    data: Any = Field(default="", alias=constant.RESTFUL_DATA)
 
 
 class ToolExecutable(ComponentExecutable):
@@ -37,88 +42,111 @@ class ToolExecutable(ComponentExecutable):
     def __init__(self, config: ToolComponentConfig):
         super().__init__()
         self._config = config
-        self._tool: Tool = None
+        self._tool: Union[Tool, None] = None
+
+    @staticmethod
+    def _validate_inputs(inputs) -> dict:
+        try:
+            return ToolComponentInput(**inputs).model_dump()
+        except ValidationError as e:
+            ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_INPUTS_ERROR,
+                                           ExceptionUtils.format_validation_error(e))
+
+    @staticmethod
+    def _set_defaults_for_required_params(inputs, params):
+        result = inputs
+        for param in params:
+            if param.required and param.name and inputs.get(param.name) is None:
+                if param.default_value is not None:
+                    result[param.name] = param.default_value
+                else:
+                    ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                   f"Required parameter {param.name} is missing.")
+        return result
+
+    @staticmethod
+    def _validate_inputs_type(inputs, params):
+        for param in params:
+            if param.name in inputs:
+                value = inputs[param.name]
+                if value is None or not isinstance(param.type, str):
+                    ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                   f"Parameter {param.name} or type is None.")
+
+                if "integer" == param.type.lower():
+                    try:
+                        value = int(value)
+                    except ValueError:
+                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                       f"Parameter {param.name} is not an integer.")
+                elif "number" == param.type.lower():
+                    try:
+                        value = float(value)
+                    except ValueError:
+                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                       f"Parameter {param.name} is not a float.")
+                elif "boolean" == param.type.lower():
+                    if value in [True, False, "true", "false", "True", "False"]:
+                        value = bool(value)
+                    else:
+                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                       f"Parameter {param.name} is not a boolean.")
+                elif "string" == param.type.lower():
+                    value = str(value)
+                elif "object" == param.type.lower():
+                    if not isinstance(value, dict):
+                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                       f"Parameter {param.name} is not an object.")
+                elif "array" == param.type.lower():
+                    if not isinstance(value, list):
+                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                       f"Parameter {param.name} is not an array.")
+                else:
+                    ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
+                                                   f"Parameter {param.name}, {param.type} is not a valid type.")
+                inputs[param.name] = value
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self._tool is None:
             self._tool = self.get_tool(runtime)
-        tool_inputs = ToolComponentInput(**inputs).model_dump()
-        formatted_inputs = prepare_inputs(tool_inputs, self.get_tool_param())
+        tool_inputs = self._validate_inputs(inputs)
+        formatted_inputs = self._prepare_inputs(tool_inputs, self._get_tool_param())
         try:
             response = self._tool.invoke(formatted_inputs)
-            return self._create_output(response)
+            response = self._post_process_tool_result(response)
         except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.TOOL_COMPONENT_EXECUTE_ERROR.code,
-                message='tool component execution error'
-            ) from e
+            response = {constant.ERR_MESSAGE: str(e), constant.RESTFUL_DATA: "",
+                        constant.ERR_CODE: e.code if hasattr(e, "code") else DEFAULT_EXCEPTION_ERROR_CODE}
 
-    def _create_output(self, response):
-        return ToolComponentOutput(**response).model_dump()
-
-    def get_tool(self, runtime: Runtime) -> Tool:
-        pass
+        return self._create_output(response)
 
     def set_tool(self, tool: Tool):
         self._tool = tool
         return self
 
-    def get_tool_param(self):
-        return self._tool.params
+    def _create_output(self, response: dict):
+        return ToolComponentOutput(**response).model_dump()
 
-    def validate_require_params(self, user_field):
-        require_params = self.get_tool_param()
-        params_dict = {param.name: param.descrpition for param in require_params}
-        missing_params = {param for param in params_dict if param not in user_field}
-        if missing_params:
-            missing_params_dict = {param: params_dict[param] for param in missing_params}
-            interrupt_message = {
-                'type': 'MessageSubTypes.PLUGIN_PARAM_MISS.value',
-                'tool_name': self._tool.name,
-                'missing_params': missing_params_dict,
-            }
-            self.interrupt(interrupt_message)
+    def get_tool(self, runtime: Runtime) -> Tool:
+        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
 
+    def _get_tool_param(self) -> List[Param]:
+        return self._tool.params if hasattr(self._tool, "params") else []
 
-TYPE_CASTER = {
-    "str": str,
-    "integer": int,
-    "number": float,
-    "bool": bool
-}
+    def _prepare_inputs(self, tool_inputs, params: List[Param]) -> dict:
+        result = tool_inputs
+        result = self._set_defaults_for_required_params(result, params)
+        self._validate_inputs_type(result, params)
+        return result
 
-
-def _transform_type(value, expected_type, key):
-    expected_type = expected_type.lower()
-    caster = TYPE_CASTER.get(expected_type)
-    if caster:
-        try:
-            return caster(value)
-        except(TypeError, ValueError) as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.TOOL_COMPONENT_PARAM_CHECK_ERROR.code,
-                message=f'{StatusCode.TOOL_COMPONENT_PARAM_CHECK_ERROR.errmsg}'
-                        f'param name is {key}, expected type: {expected_type}'
-            ) from e
-    return value
-
-
-def prepare_inputs(user_field, defined_param) -> dict:
-    define_dict = {}
-    formatted_inputs = {}
-    for param in defined_param:
-        define_dict[param.name] = param
-    for k, v in user_field.items():
-        if define_dict.get(k):
-            param = define_dict.get(k)
-            expected_type = param.type
-            formatted_inputs[k] = _transform_type(v, expected_type, k)
+    def _post_process_tool_result(self, tool_result):
+        result = dict()
+        if isinstance(self._tool, LocalFunction):
+            result[constant.RESTFUL_DATA] = tool_result
         else:
-            raise JiuWenBaseException(
-                error_code=StatusCode.TOOL_COMPONENT_INPUTS_ERROR.code,
-                message=f'{StatusCode.TOOL_COMPONENT_INPUTS_ERROR.errmsg}, param is {k}'
-            )
-    return formatted_inputs
+            result.update(tool_result)
+        return result
+
 
 class ToolComponent(WorkflowComponent):
 

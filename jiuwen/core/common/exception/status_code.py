@@ -15,27 +15,33 @@ class StatusCode(Enum):
     # 组件 预置组件 101000 - 109999
 
     ## 大模型组件  101000 - 101049
-    LLM_COMPONENT_TEMPLATE_CONFIG_ERROR = (101000, "LLM component template config error, as {error_msg}")
-    LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR = (101001, "LLM component response format config error, as {error_msg}")
-    LLM_COMPONENT_OUTPUT_CONFIG_ERROR = (101002, "LLM component output config error, as {error_msg}")
-    LLM_COMPONENT_INVOKE_LLM_ERROR = (101003, "LLM component invoke llm error, as {error_msg}")
+    LLM_COMPONENT_TEMPLATE_CONFIG_ERROR = (101000, "LLM component template config error, as {error_msg}.")
+    LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR = (101001, "LLM component response format config error, as {error_msg}.")
+    LLM_COMPONENT_OUTPUT_CONFIG_ERROR = (101002, "LLM component output config error, as {error_msg}.")
+    LLM_COMPONENT_INVOKE_LLM_ERROR = (101003, "LLM component invoke llm error, as {error_msg}.")
     LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR = (101004, "Failed to output json schema, as {error_msg}.")
     LLM_COMPONENT_INIT_LLM_ERROR = (101005, "Failed to init llm, as {error_msg}.")
-    LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}")
+    LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
 
     ## 意图识别组件 101050 - 101069
-    INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050, "Intent detection component user input error, as {error_msg}")
-    INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR = (101051, "Intent detection component init llm error, as {error_msg}")
-    INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052, "Intent detection component invoke llm error, as {error_msg}")
+    INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050, "Intent detection component user input error, as {error_msg}.")
+    INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR = (101051, "Intent detection component init llm error, as {error_msg}.")
+    INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052, "Intent detection component invoke llm error, as {error_msg}.")
 
     ## 提问器组件 101070 - 101099
-    QUESTIONER_COMPONENT_USER_INPUT_ERROR = (101070, "Questioner component user input error, as {error_msg}")
-    QUESTIONER_COMPONENT_CONFIG_ERROR = (101071, "Questioner component config error, as {error_msg}")
+    QUESTIONER_COMPONENT_USER_INPUT_ERROR = (101070, "Questioner component user input error, as {error_msg}.")
+    QUESTIONER_COMPONENT_CONFIG_ERROR = (101071, "Questioner component config error, as {error_msg}.")
     QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY = \
-        (101072, "Questioner component empty question in direct reply mode")
-    QUESTIONER_COMPONENT_INIT_STATE_ERROR = (101073, "Questioner component init state error")
-    QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response, as {error_msg}")
-    QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}")
+        (101072, "Questioner component empty question in direct reply mode.")
+    QUESTIONER_COMPONENT_INIT_STATE_ERROR = (101073, "Questioner component init state error.")
+    QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response, as {error_msg}.")
+    QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
+
+    ## 插件组件  102000 - 102019
+    TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
+    TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
+    TOOL_COMPONENT_CHECK_PARAM_ERROR = (102002, "Tool component check parameter error, as {error_msg}.")
+
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
@@ -122,10 +128,6 @@ class StatusCode(Enum):
 
     WORKFLOW_BRANCH_NOT_FOUND = (101531, "Branch meeting the condition was not found")
     WORKFLOW_COMP_INPUT_NOT_NONE = (10055, "sub_workflow cannot be None")
-
-    TOOL_COMPONENT_PARAM_CHECK_ERROR = (101742, 'Tool component parameter check error')
-    TOOL_COMPONENT_INPUTS_ERROR = (101743, 'Tool component inputs not defined')
-    TOOL_COMPONENT_EXECUTE_ERROR = (101745, "Tool component execute error")
 
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (101771, "Message queue manager error: {error_msg}")
 

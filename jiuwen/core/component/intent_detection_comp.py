@@ -9,9 +9,9 @@ from typing import Optional, Union, Callable, List
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
+from jiuwen.core.common.utils.utils import ExceptionUtils
 from jiuwen.core.component.base import WorkflowComponent, ComponentConfig
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
@@ -103,15 +103,6 @@ def get_default_template():
                     {"role": "user", "content": DEFAULT_USER_PROMPT}
                 ]
             )
-
-
-def raise_exception(error_code: StatusCode, error_msg: str = "", exception: Exception = None):
-    raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
-
-
-def format_validation_error(e: ValidationError) -> str:
-    """format validation error"""
-    return "\n".join([f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors()])
 
 
 @dataclass
@@ -216,7 +207,7 @@ class IntentDetectionExecutable(ComponentExecutable):
                 self._llm = self._create_llm_instance()
                 self._initialized = True
             except Exception as e:
-                raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR, str(e), e)
+                ExceptionUtils.raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR, str(e), e)
 
     def _prepare_detection_inputs(self, inputs, chat_history):
         """准备意图检测所需的输入"""
@@ -246,7 +237,8 @@ class IntentDetectionExecutable(ComponentExecutable):
                 intent_detection_input = IntentDetectionInput.model_validate(inputs)
                 current_inputs.update({INPUT: intent_detection_input.query or ""})
             except ValidationError as e:
-                raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR, format_validation_error(e))
+                ExceptionUtils.raise_exception(
+                    StatusCode.INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR, ExceptionUtils.format_validation_error(e))
 
         # 保存全局意图映射用于后续处理
         current_inputs['global_intent_map'] = global_intent_map
@@ -285,7 +277,7 @@ class IntentDetectionExecutable(ComponentExecutable):
             llm_output = self._llm.invoke(model_name=self._config.model.model_info.model_name, messages=llm_inputs)
             llm_output_content = llm_output.content
         except Exception as e:
-            raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+            ExceptionUtils.raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
         return llm_output_content
 

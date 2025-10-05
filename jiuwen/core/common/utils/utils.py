@@ -2,8 +2,23 @@ import json
 import re
 from typing import Dict, Any
 
+from pydantic import ValidationError
+
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+
+
+class ExceptionUtils:
+    """异常工具类"""
+    @staticmethod
+    def raise_exception(error_code: StatusCode, error_msg: str = "", exception: Exception = None):
+        """抛出异常"""
+        raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
+
+    @staticmethod
+    def format_validation_error(e: ValidationError) -> str:
+        """格式化校验异常信息"""
+        return "\n".join([f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors()])
 
 
 class WorkflowLLMUtils:

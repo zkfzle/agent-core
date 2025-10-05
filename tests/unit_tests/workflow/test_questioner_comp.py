@@ -1,4 +1,5 @@
 import asyncio
+import os
 import unittest
 from unittest.mock import patch
 
@@ -18,9 +19,10 @@ from jiuwen.core.graph.executable import Input
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.writer import TraceSchema, OutputSchema
+from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-
+from jiuwen.core.workflow.workflow_config import WorkflowConfig
 
 class MockLLMModel:
     pass
@@ -144,7 +146,6 @@ class QuestionerTest(unittest.TestCase):
             extract_fields_from_response=True,
             field_names=key_fields,
             with_chat_history=False,
-            prompt_template=mock_prompt_template
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
@@ -390,6 +391,74 @@ class TestQuestionerStream:
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
+            workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+            async for chunk in flow.stream(user_input, workflow_runtime, workflow_context):
+                print(f"stream output >>> {chunk}")
+
+    @unittest.skip("skip system test")
+    @pytest.mark.asyncio  # 新增
+    async def test_real_workflow_stream_start_questioner_end_with_interaction(self):
+        flow = Workflow(workflow_config=WorkflowConfig())
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
+
+        API_BASE = os.getenv("API_BASE", "")
+        API_KEY = os.getenv("API_KEY", "")
+        MODEL_NAME = os.getenv("MODEL_NAME", "")
+        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+
+        key_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
+        ]
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=True
+        )
+        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "questioner")
+        flow.add_connection("questioner", "e")
+
+        session_id = "test_questioner"
+        config = ContextEngineConfig()
+        ce_engine = ContextEngine("123", config)
+        workflow_context = ce_engine.get_workflow_context(workflow_id="questioner_workflow", session_id=session_id)
+        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        interaction_output_schema = list()
+        async for chunk in flow.stream({"query": "时间为2025-10-01"}, workflow_runtime, workflow_context):
+            if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
+                interaction_output_schema.append(chunk)
+
+        if interaction_output_schema:
+            user_input = InteractiveInput()
+            for item in interaction_output_schema:
+                component_id = item.payload.id
+                user_input.update(component_id, "地点是杭州")
             workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
             async for chunk in flow.stream(user_input, workflow_runtime, workflow_context):
                 print(f"stream output >>> {chunk}")

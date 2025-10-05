@@ -8,10 +8,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional, List, Dict, Union
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.utils.utils import ExceptionUtils
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.context_engine.base import Context
@@ -22,7 +22,6 @@ from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
 
 START_STR = "start"
 END_STR = "end"
@@ -96,9 +95,13 @@ class QuestionerConfig(ComponentConfig):
     max_response: int = field(default=3)
     with_chat_history: bool = field(default=False)
     chat_history_max_rounds: int = field(default=5)
-    prompt_template: List[Dict] = field(default_factory=questioner_default_template)
     extra_prompt_for_fields_extraction: str = field(default="")
     example_content: str = field(default="")
+
+
+@dataclass
+class QuestionerDefaultConfig:
+    prompt_template: List[Dict] = field(default_factory=questioner_default_template)
 
 
 class QuestionerInput(BaseModel):
@@ -215,6 +218,32 @@ class QuestionerUtils:
         result = ", ".join(non_extracted_key_fields_names)
         return CONTINUE_ASK_STATEMENT.format(non_extracted_key_fields_names=result)
 
+    @staticmethod
+    def format_questioner_output(output_cache: OutputCache) -> Dict:
+        output = QuestionerOutput(**output_cache.key_fields)
+        output.user_response = output_cache.user_response
+        output.question = output_cache.question
+        return output.model_dump(exclude_defaults=True)
+
+    @staticmethod
+    def validate_inputs(inputs):
+        try:
+            return QuestionerInput.model_validate(inputs)
+        except ValidationError as e:
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_USER_INPUT_ERROR,
+                                           ExceptionUtils.format_validation_error(e))
+
+    @staticmethod
+    def is_valid_value(input_value):
+        if input_value is None:
+            return False
+        if input_value in ("", {}, []):
+            return False
+        if isinstance(input_value, str):
+            value = input_value.strip().lower()
+            return value not in ("null", "none")
+        return True
+
 
 class QuestionerDirectReplyHandler:
     def __init__(self):
@@ -253,7 +282,7 @@ class QuestionerDirectReplyHandler:
         return dict()
 
     def _handle_start_state(self, inputs, runtime, context):
-        questioner_input = QuestionerInput.model_validate(inputs)
+        questioner_input = QuestionerUtils.validate_inputs(inputs)
         output = OutputCache()
         self._query = questioner_input.query or ""
         chat_history = self._get_latest_chat_history(context)
@@ -261,18 +290,15 @@ class QuestionerDirectReplyHandler:
             user_fields = questioner_input.model_dump(exclude={'query'})
             output.question = QuestionerUtils.format_template(self._config.question_content, user_fields)
             self._state = self._state.handle_event(QuestionerEvent.USER_INTERACT_EVENT)
-            return self._format_questioner_output(output)
+            return QuestionerUtils.format_questioner_output(output)
 
         if self._need_extract_fields():
             is_continue_ask = self._initial_extract_from_chat_history(chat_history, output)
             event = QuestionerEvent.USER_INTERACT_EVENT if is_continue_ask else QuestionerEvent.END_EVENT
             self._state = self._state.handle_event(event)
         else:
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.code,
-                message=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.errmsg
-            )
-        return self._format_questioner_output(output)
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY)
+        return QuestionerUtils.format_questioner_output(output)
 
     async def _handle_user_interact_state(self, inputs, runtime: Runtime, context):
         output = OutputCache()
@@ -283,18 +309,15 @@ class QuestionerDirectReplyHandler:
         if self._is_set_question_content() and not self._need_extract_fields():
             output.user_response = user_response
             self._state = self._state.handle_event(QuestionerEvent.END_EVENT)
-            return self._format_questioner_output(output)
+            return QuestionerUtils.format_questioner_output(output)
 
         if self._need_extract_fields():
             is_continue_ask = self._repeat_extract_from_chat_history(chat_history, output)
             event = QuestionerEvent.USER_INTERACT_EVENT if is_continue_ask else QuestionerEvent.END_EVENT
             self._state = self._state.handle_event(event)
         else:
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.code,
-                message=StatusCode.WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR.errmsg
-            )
-        return self._format_questioner_output(output)
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY)
+        return QuestionerUtils.format_questioner_output(output)
 
     def _handle_end_state(self, inputs, runtime, context):
         output = QuestionerOutput(**self._state.extracted_key_fields)
@@ -354,24 +377,22 @@ class QuestionerDirectReplyHandler:
                     dialogue_history=dialogue_history_str)
 
     def _invoke_llm_for_extraction(self, llm_inputs: List[BaseMessage]):
+        response = ""
         try:
             response = self._model.invoke(
                 model_name=self._config.model.model_info.model_name, messages=llm_inputs).content
         except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.INVOKE_LLM_FAILED.code,
-                message=StatusCode.INVOKE_LLM_FAILED.errmsg
-            ) from e
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_INVOKE_LLM_ERROR, error_msg=str(e))
 
         result = dict()
         try:
             cleaned = re.sub(r'^\s*```json\s*|\s*```\s*$', '', response.strip(), flags=re.IGNORECASE)
             cleaned = re.sub(r"^\s*'''json\s*|\s*'''\s*$", '', cleaned, flags=re.IGNORECASE)
             result = json.loads(cleaned, strict=False)
-            result = {k: v for k, v in result.items() if v is not None and str(v)}
-        except json.JSONDecodeError as e:
+            result = {k: v for k, v in result.items() if QuestionerUtils.is_valid_value(v)}
+        except json.JSONDecodeError as _:
             try:
-                result = {k: v for k, v in ast.literal_eval(response).items() if v is not None and str(v)}
+                result = {k: v for k, v in ast.literal_eval(response).items() if QuestionerUtils.is_valid_value(v)}
             except (SyntaxError, AttributeError, ValueError):
                 return result
         return result
@@ -406,10 +427,7 @@ class QuestionerDirectReplyHandler:
                 output.question = QuestionerUtils.format_continue_ask_question(non_extracted_key_fields)
                 is_continue_ask = True
             else:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.WORKFLOW_QUESTIONER_EXCEED_LOOP.code,
-                    message=StatusCode.WORKFLOW_QUESTIONER_EXCEED_LOOP.errmsg
-                )
+                ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE)
         if is_continue_ask:
             output.key_fields.clear()
         else:
@@ -426,18 +444,13 @@ class QuestionerDirectReplyHandler:
         self._increment_state_of_response_num()
         self._update_state_of_key_fields(extracted_key_fields)
 
-    @staticmethod
-    def _format_questioner_output(output_cache: OutputCache) -> Dict:
-        output = QuestionerOutput(**output_cache.key_fields)
-        output.user_response = output_cache.user_response
-        output.question = output_cache.question
-        return output.model_dump(exclude_defaults=True)
-
 
 class QuestionerExecutable(ComponentExecutable):
     def __init__(self, config: QuestionerConfig):
         super().__init__()
+        self._validate_config(config)
         self._config = config
+        self._default_config = QuestionerDefaultConfig()
         self._llm = self._create_llm_instance()
         self._prompt: Template = self._init_prompt()
         self._state = None
@@ -455,6 +468,25 @@ class QuestionerExecutable(ComponentExecutable):
         state_dict = state.serialize()
         runtime.update_state({QUESTIONER_STATE_KEY: state_dict})
 
+    @staticmethod
+    def _validate_max_response_num_config(max_response_num: int):
+        if max_response_num <= 0:
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_CONFIG_ERROR,
+                                           "max response must be greater than 0")
+
+    @staticmethod
+    def _validate_extract_key_fields_config(if_extract: bool, extract_key_fields: List[FieldInfo]):
+        if if_extract and not extract_key_fields:
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_CONFIG_ERROR,
+                                           "extracted key fields cannot be empty")
+
+    @staticmethod
+    def _validate_response_type_config(response_type: str):
+        response_type_values = [member.value for member in ResponseType]
+        if response_type not in response_type_values:
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_CONFIG_ERROR,
+                                           f"response type {response_type} is invalid")
+
     def state(self, state: QuestionerState):
         self._state = state
         return self
@@ -467,10 +499,7 @@ class QuestionerExecutable(ComponentExecutable):
             self._state = state_from_runtime
 
         if self._state is None:
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_QUESTIONER_INIT_STATE_ERROR.code,
-                message=StatusCode.WORKFLOW_QUESTIONER_INIT_STATE_ERROR.errmsg
-            )
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_INIT_STATE_ERROR)
         self._state = self._state.handle_event(QuestionerEvent.START_EVENT)
 
         invoke_result = dict()
@@ -491,11 +520,7 @@ class QuestionerExecutable(ComponentExecutable):
                                         api_key=self._config.model.model_info.api_key)
 
     def _init_prompt(self) -> Template:
-        if self._config.prompt_template:
-            return Template(name="question_user_prompt", content=self._config.prompt_template)
-
-        filters = dict(model_name=self._config.model.model_info.model_name)
-        return TemplateManager().get(name=TEMPLATE_NAME, filters=filters)
+        return Template(content=self._default_config.prompt_template)
 
     async def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime, context):
         handler = (QuestionerDirectReplyHandler()
@@ -504,6 +529,10 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = handler.get_state()
         return result
 
+    def _validate_config(self, config: QuestionerConfig):
+        self._validate_response_type_config(config.response_type)
+        self._validate_extract_key_fields_config(config.extract_fields_from_response, config.field_names)
+        self._validate_max_response_num_config(config.max_response)
 
 
 class QuestionerComponent(WorkflowComponent):

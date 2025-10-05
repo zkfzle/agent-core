@@ -11,7 +11,7 @@ from jiuwen.core.common.enum.enum import WorkflowLLMResponseType, MessageRole
 from jiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
-from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, SchemaGenerator
+from jiuwen.core.common.utils.utils import WorkflowLLMUtils, OutputFormatter, SchemaGenerator, ExceptionUtils
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
@@ -45,9 +45,6 @@ RESPONSE_FORMAT_TO_PROMPT_MAP = {
         _TEMPLATE_NAME: "llm_markdown_formatting"
     }
 }
-
-def raise_exception(error_code: StatusCode, error_msg: str = "", exception: Exception = None):
-    raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
 
 
 class LLMPromptFormatter:
@@ -161,7 +158,8 @@ class LLMExecutable(ComponentExecutable):
                     if element.get(_ROLE, "") == "system":
                         SystemMessage.model_validate(element)
             except ValidationError as e:
-                raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR, "system message is invalid", e)
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR,
+                                               "system message is invalid", e)
 
             if_contain_user_message = False
             for element in template_content:
@@ -170,26 +168,43 @@ class LLMExecutable(ComponentExecutable):
                     if_contain_user_message = True
                 if if_contain_user_message and element.get(_ROLE, "") == "system":
                     SystemMessage.model_validate(element)
-                    raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR,
-                                    "system message must be before user message")
+                    ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR,
+                                            "system message must be before user message")
             if not if_contain_user_message:
-                raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR, "user message is required")
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR,
+                                               "user message is required")
         else:
-            raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR, "template content is empty")
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_TEMPLATE_CONFIG_ERROR,
+                                           "template content is empty")
 
     @staticmethod
     def _validate_output_config(output_config):
         if not output_config:
-            raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR, "output config is empty")
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                           "output config is empty")
         for param, value in output_config.items():
             if not param:
-                raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
-                                f"output config parameter {param} is empty")
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                    f"output config parameter {param} is empty")
             try:
                 OutputParamConfig.model_validate(value)
             except ValidationError as e:
-                raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
-                                f"output config parameter's config {value} is invalid", e)
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                     f"output config parameter's config {value} is invalid", e)
+
+    @staticmethod
+    def _validate_response_format(response_format, output_config):
+        response_type = ""
+        try:
+            response_type = ResponseFormatConfig.model_validate(response_format).response_type
+        except ValidationError as e:
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
+                            f"response format {response_format} is invalid", e)
+
+        if response_type in ["text", "markdown"] and len(output_config) != 1:
+            ExceptionUtils.raise_exception(
+                StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
+                "output config must contain exactly one parameter for text or markdown response type")
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         self._set_runtime(runtime)
@@ -202,7 +217,7 @@ class LLMExecutable(ComponentExecutable):
                 model_name=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
         except Exception as e:
-            raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
         logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
         return self._create_output(response)
@@ -219,7 +234,7 @@ class LLMExecutable(ComponentExecutable):
                 async for out in self._stream_with_chunks(inputs):
                     yield out
         except Exception as e:
-            raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
     async def interrupt(self, message: dict):
         raise InterruptException(
@@ -233,7 +248,7 @@ class LLMExecutable(ComponentExecutable):
                 self._llm = self._create_llm_instance()
                 self._initialized = True
             except Exception as e:
-                raise_exception(StatusCode.LLM_COMPONENT_INIT_LLM_ERROR, str(e), e)
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INIT_LLM_ERROR, str(e), e)
 
     def _create_llm_instance(self):
         return ModelFactory().get_model(model_provider=self._config.model.model_provider,
@@ -288,7 +303,7 @@ class LLMExecutable(ComponentExecutable):
             return response_format
 
         except Exception as e:
-            raise_exception(StatusCode.LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR, str(e))
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR, str(e))
 
     def _get_instruction_from_template(self, format_config: dict) -> Optional[str]:
         template_name = format_config.get(_TEMPLATE_NAME)
@@ -321,7 +336,7 @@ class LLMExecutable(ComponentExecutable):
             return formatted_res
         except JiuWenBaseException as e:
             if e.error_code == StatusCode.PROMPT_JSON_SCHEMA_ERROR.code:
-                raise_exception(StatusCode.LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR, error_msg=e.message)
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR, error_msg=e.message)
             else:
                 raise e
 
@@ -366,18 +381,6 @@ class LLMExecutable(ComponentExecutable):
         self._validate_template_content(config.template_content)
         self._validate_response_format(config.response_format, config.output_config)
         self._validate_output_config(config.output_config)
-
-    def _validate_response_format(self, response_format, output_config):
-        response_type = ""
-        try:
-            response_type = ResponseFormatConfig.model_validate(response_format).response_type
-        except ValidationError as e:
-            raise_exception(StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
-                            f"response format {response_format} is invalid", e)
-
-        if response_type in ["text", "markdown"] and len(output_config) != 1:
-            raise_exception(StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
-                            "output config must contain exactly one parameter for text or markdown response type")
 
 
 class LLMComponent(WorkflowComponent):

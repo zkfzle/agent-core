@@ -28,6 +28,15 @@ class StatusCode(Enum):
     INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR = (101051, "Intent detection component init llm error, as {error_msg}")
     INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052, "Intent detection component invoke llm error, as {error_msg}")
 
+    ## 提问器组件 101070 - 101099
+    QUESTIONER_COMPONENT_USER_INPUT_ERROR = (101070, "Questioner component user input error, as {error_msg}")
+    QUESTIONER_COMPONENT_CONFIG_ERROR = (101071, "Questioner component config error, as {error_msg}")
+    QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY = \
+        (101072, "Questioner component empty question in direct reply mode")
+    QUESTIONER_COMPONENT_INIT_STATE_ERROR = (101073, "Questioner component init state error")
+    QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response, as {error_msg}")
+    QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}")
+
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
     # 工作流 异常处理 111000 - 111999
@@ -111,21 +120,8 @@ class StatusCode(Enum):
     WORKFLOW_START_CREATE_VALUE = (101502, "start component create error:  {reason}")
     WORKFLOW_END_CREATE_VALUE = (101511, "end component create error: {reason}")
 
-    WORKFLOW_LLM_INIT_ERROR = (101561, "LLM component initialization error, msg = {msg}")
-    WORKFLOW_LLM_TEMPLATE_ASSEMBLE_ERROR = (101562, "LLM component template assemble error")
-    WORKFLOW_LLM_STREAMING_OUTPUT_ERROR = (101563, "Get model streaming output error, msg = {msg}")
-
-    WORKFLOW_INTENT_DETECTION_USER_INPUT_ERROR = (101695, "User input pre-processing failed with error"
-                                                          "message = {error_msg}")
-    WORKFLOW_INTENT_DETECTION_LLM_INVOKE_ERROR = (101696, "Model invoke failed with error message = {error_msg}")
-    WORKFLOW_INTENT_DETECTION_PROMPT_INVOKE_ERROR = (101698, "Prompt invoke failed with error message = {error_msg}")
     WORKFLOW_BRANCH_NOT_FOUND = (101531, "Branch meeting the condition was not found")
     WORKFLOW_COMP_INPUT_NOT_NONE = (10055, "sub_workflow cannot be None")
-
-    WORKFLOW_QUESTIONER_EXCEED_LOOP = (101713, "Exceeded the maximum number of conversation")
-    WORKFLOW_QUESTIONER_QUESTION_EMPTY_DIRECT_COLLECTION_ERROR = (
-        101715, "The question cannot be empty in direct user response collection mode")
-    WORKFLOW_QUESTIONER_INIT_STATE_ERROR = (101729, "Failed to initialize questioner state")
 
     TOOL_COMPONENT_PARAM_CHECK_ERROR = (101742, 'Tool component parameter check error')
     TOOL_COMPONENT_INPUTS_ERROR = (101743, 'Tool component inputs not defined')

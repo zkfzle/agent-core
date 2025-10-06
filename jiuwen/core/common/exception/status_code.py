@@ -137,6 +137,8 @@ class StatusCode(Enum):
     # Runtime 调测能力 191000 - 191999
     # Runtime 状态管理 192000 - 192999
     # Runtime 流式输出StreamWriter 193000 - 193999
+    STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001, "failed to write stream, stream schema validate failed, details: {detail}")
+    STREAM_WRITER_WRITE_FAILED = (193001, "failed to write stream, reason: {reason}")
     # Runtime Config管理 194000 - 194999
     # Runtime callback 195000 - 195999
 

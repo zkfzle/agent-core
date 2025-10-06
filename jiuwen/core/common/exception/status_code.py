@@ -12,6 +12,9 @@ class StatusCode(Enum):
 
     # 组件 100000 - 109999
     # 组件 组件开发 100000 - 100999
+    # 组件 组件开发 中断恢复 100000 - 100029
+    INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")
+
     # 组件 预置组件 101000 - 109999
 
     ## 大模型组件  101000 - 101049

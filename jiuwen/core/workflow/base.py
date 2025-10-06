@@ -18,6 +18,7 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
@@ -48,7 +49,7 @@ class WorkflowOutput(BaseModel):
 
 class WorkflowChunk(BaseModel):
     chunk_id: str
-    payload: str
+    payload: Union[str, InteractionOutput]
     metadata: Dict[str, Any]
     is_final: bool
 

@@ -27,9 +27,11 @@ class StatusCode(Enum):
     LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
 
     ## 意图识别组件 101050 - 101069
-    INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050, "Intent detection component user input error, as {error_msg}.")
+    INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050,
+                                                   "Intent detection component user input error, as {error_msg}.")
     INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR = (101051, "Intent detection component init llm error, as {error_msg}.")
-    INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052, "Intent detection component invoke llm error, as {error_msg}.")
+    INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052,
+                                                   "Intent detection component invoke llm error, as {error_msg}.")
 
     ## 提问器组件 101070 - 101099
     QUESTIONER_COMPONENT_USER_INPUT_ERROR = (101070, "Questioner component user input error, as {error_msg}.")
@@ -44,7 +46,6 @@ class StatusCode(Enum):
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
     TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
     TOOL_COMPONENT_CHECK_PARAM_ERROR = (102002, "Tool component check parameter error, as {error_msg}.")
-
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
@@ -119,13 +120,28 @@ class StatusCode(Enum):
 
     # Runtime 190000 - 199999
     # Runtime 资源管理 190000 - 190999
+    RUNTIME_WORKFLOW_GET_FAILED = (190001, "failed to get workflow, reason: {reason}")
+    RUNTIME_WORKFLOW_ADD_FAILED = (190002, "failed to add workflow, reason: {reason}")
+    RUNTIME_WORKFLOW_CONFIG_ADD_FAILED = (190011, "failed to add workflow config, reason: {reason}")
+    RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (19021, "failed to get toolInfo of workflow, reason: {reason}")
+
+    RUNTIME_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
+    RUNTIME_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")
+    RUNTIME_TOOL_TOOL_INFO_GET_FAILED = (19121, "failed to get toolInfo of tool, reason: {reason}")
+
+    RUNTIME_PROMPT_GET_FAILED = (190201, "failed to get prompt template, reason: {reason}")
+    RUNTIME_PROMPT_ADD_FAILED = (190202, "failed to add prompt template, reason: {reason}")
+
+    RUNTIME_MODEL_GET_FAILED = (190301, "failed to get model, reason: {reason}")
+    RUNTIME_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
     # Runtime 调测能力 191000 - 191999
     # Runtime 状态管理 192000 - 192999
     # Runtime 流式输出StreamWriter 193000 - 193999
     # Runtime Config管理 194000 - 194999
     # Runtime callback 195000 - 195999
 
-    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (101501, "start component: global variable(s) defined with no value assigned:  {variable_name}")
+    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (101501,
+                                                    "start component: global variable(s) defined with no value assigned:  {variable_name}")
     WORKFLOW_START_CREATE_VALUE = (101502, "start component create error:  {reason}")
     WORKFLOW_END_CREATE_VALUE = (101511, "end component create error: {reason}")
 
@@ -165,7 +181,8 @@ class StatusCode(Enum):
     )
 
     AGENT_BUILDER_PROMPT_OPTIMIZE_RESTART_TASK_ERROR = (110004, "Prompt optimization restart task error: {error_msg}")
-    AGENT_BUILDER_PROMPT_OPTIMIZE_EVALUATE_ERROR = (110005, "Prompt optimization evaluate failed, root cause: {error_msg}")
+    AGENT_BUILDER_PROMPT_OPTIMIZE_EVALUATE_ERROR = (110005,
+                                                    "Prompt optimization evaluate failed, root cause: {error_msg}")
     AGENT_BUILDER_PROMPT_OPTIMIZE_INVALID_PARAMS_ERROR = (
         110006, "Prompt optimization parameters are invalid, root cause = {error_msg}")
     AGENT_BUILDER_PROMPT_OPTIMIZE_CASE_VALIDATION_ERROR = (

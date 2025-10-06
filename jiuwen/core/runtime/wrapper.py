@@ -86,9 +86,12 @@ class WrappedRuntime(Runtime, ABC):
 
     def add_workflow(self, workflow_id: str, workflow: Workflow):
         self._inner.resource_manager().workflow().add_workflow(workflow_id, workflow)
+        self._inner.config().add_workflow_config(workflow_id, workflow.config())
 
     def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
         self._inner.resource_manager().workflow().add_workflows(workflows)
+        for workflow_id, workflow in workflows:
+            self._inner.config().add_workflow_config(workflow_id, workflow)
 
     def remove_workflow(self, workflow_id: str):
         self._inner.resource_manager().workflow().remove_workflow(workflow_id)
@@ -110,9 +113,21 @@ class WrappedRuntime(Runtime, ABC):
 
     def get_tool_info(self, tool_id: List[str]=None, workflow_id: List[str]=None) -> List[ToolInfo]:
         infos = []
-        infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
-        infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
+        if tool_id is None and workflow_id is None:
+            infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
+            infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
+            return infos
+        if tool_id is not None:
+            infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
+        if workflow_id is not None:
+            infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
         return infos
+
+    def get_workflow_config(self, workflow_id):
+        return self._inner.config().get_workflow_config(workflow_id)
+
+    def get_agent_config(self):
+        return self._inner.config().get_agent_config()
 
     def base(self) -> BaseRuntime:
         return self._inner
@@ -214,18 +229,6 @@ class TaskRuntime(StateRuntime):
 
     async def trace_error(self, error: Exception):
         pass
-
-    def set_agent_config(self, data: dict):
-        self._inner.config().set_agent_config(data)
-
-    def get_agent_config(self):
-        return self._inner.config().get_agent_config()
-
-    def get_workflow_config(self, workflow_id):
-        return self._inner.config().get_workflow_config(workflow_id)
-
-    def add_workflow_config(self, workflow_id, workflow_config):
-        self._inner.config().add_workflow_config(workflow_id, workflow_config)
 
     async def interact(self, value):
         if self._interaction is None:

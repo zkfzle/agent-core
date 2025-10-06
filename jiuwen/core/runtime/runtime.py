@@ -124,11 +124,11 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def remove_prompt(self, template_id: str):
+    def remove_prompt(self, template_id: str) -> Optional[Template]:
         pass
 
     @abstractmethod
-    def get_prompt(self, template_id: str) -> Template:
+    def get_prompt(self, template_id: str) -> Optional[Template]:
         pass
 
     @abstractmethod
@@ -140,11 +140,11 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def remove_model(self, model_id: str):
+    def remove_model(self, model_id: str) -> Optional[BaseChatModel]:
         pass
 
     @abstractmethod
-    def get_model(self, model_id: str) -> BaseChatModel:
+    def get_model(self, model_id: str) -> Optional[BaseChatModel]:
         pass
 
     @abstractmethod
@@ -156,15 +156,15 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def remove_workflow(self, workflow_id: str):
+    def remove_workflow(self, workflow_id: str) -> Optional[Workflow]:
         pass
 
     @abstractmethod
-    def get_workflow(self, workflow_id: str) -> Workflow:
+    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
         pass
 
     @abstractmethod
-    def add_tool(self, tool_id: str, tool: Tool):
+    def add_tool(self, tool_id: str, tool: Tool) -> Optional[Tool]:
         pass
 
     @abstractmethod
@@ -172,15 +172,23 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def remove_tool(self, tool_id: str):
+    def remove_tool(self, tool_id: str) -> Optional[Tool]:
         pass
 
     @abstractmethod
-    def get_tool(self, tool_id: str) -> Tool:
+    def get_tool(self, tool_id: str) -> Optional[Tool]:
         pass
 
     @abstractmethod
-    def get_tool_info(self, tool_id: List[str]=None, workflow_id: List[str]=None) -> List[ToolInfo]:
+    def get_tool_info(self, tool_id: List[str] = None, workflow_id: List[str] = None) -> List[ToolInfo]:
+        pass
+
+    @abstractmethod
+    def get_workflow_config(self, workflow_id):
+        pass
+
+    @abstractmethod
+    def get_agent_config(self):
         pass
 
     @abstractmethod

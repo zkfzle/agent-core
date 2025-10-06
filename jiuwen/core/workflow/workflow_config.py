@@ -42,7 +42,6 @@ class WorkflowInputsSchema(BaseModel):
 
 class WorkflowConfig(BaseModel):
     metadata: Optional[WorkflowMetadata] = Field(default_factory=WorkflowMetadata)
-    comp_configs: Dict[str, Any] = Field(default_factory=dict)
     stream_timeout: float = Field(default=0.2)
     spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
     workflow_inputs_schema: Optional[WorkflowInputsSchema] = Field(default_factory=WorkflowInputsSchema)

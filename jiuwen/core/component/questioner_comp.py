@@ -79,8 +79,8 @@ class ResponseType(Enum):
     ReplyDirectly = "reply_directly"
 
 class FieldInfo(BaseModel):
-    field_name: str = Field(default="")
-    description: str = Field(default="")
+    field_name: str
+    description: str
     cn_field_name: str = Field(default="")
     required: bool = Field(default=False)
     default_value: Any = Field(default="")

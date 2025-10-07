@@ -37,7 +37,7 @@ class StatusCode(Enum):
     QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY = \
         (101072, "Questioner component empty question in direct reply mode.")
     QUESTIONER_COMPONENT_INIT_STATE_ERROR = (101073, "Questioner component init state error.")
-    QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response, as {error_msg}.")
+    QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response.")
     QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
 
     ## 插件组件  102000 - 102019

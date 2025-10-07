@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 import unittest
 from unittest.mock import patch
 
@@ -462,3 +463,69 @@ class TestQuestionerStream:
             workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
             async for chunk in flow.stream(user_input, workflow_runtime, workflow_context):
                 print(f"stream output >>> {chunk}")
+
+    @unittest.skip("skip system test")
+    @pytest.mark.asyncio  # 新增
+    async def test_real_workflow_invoke_start_questioner_end_with_interaction(self):
+        flow = Workflow(workflow_config=WorkflowConfig())
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
+
+        API_BASE = os.getenv("API_BASE", "")
+        API_KEY = os.getenv("API_KEY", "")
+        MODEL_NAME = os.getenv("MODEL_NAME", "")
+        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+
+        key_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
+        ]
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=True
+        )
+        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
+
+        flow.add_connection("s", "questioner")
+        flow.add_connection("questioner", "e")
+
+        session_id = "test_questioner"
+        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        workflow_result = await flow.invoke({"query": "时间为2025-10-01"}, workflow_runtime)
+        assert workflow_result.state == WorkflowExecutionState.INPUT_REQUIRED
+
+        time.sleep(3)
+
+        if workflow_result.state == WorkflowExecutionState.INPUT_REQUIRED:
+            component_id = workflow_result.result[0].payload.id
+            assert component_id == "questioner"
+            workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+            user_feedback = InteractiveInput()
+            user_feedback.update(component_id, "地点是杭州")
+            workflow_result = await flow.invoke(user_feedback, workflow_runtime)
+            assert workflow_result.state == WorkflowExecutionState.COMPLETED
+            assert workflow_result.result.get("responseContent", "") == "杭州 | 2025-10-01"

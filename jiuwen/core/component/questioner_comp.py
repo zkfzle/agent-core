@@ -349,7 +349,7 @@ class QuestionerDirectReplyHandler:
 
     def _get_latest_chat_history(self, context) -> List:
         result = list()
-        if self._config.with_chat_history:
+        if self._config.with_chat_history and context:
             raw_chat_history = context.get_messages()
             if raw_chat_history:
                 result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history, self._config.chat_history_max_rounds)
@@ -401,7 +401,9 @@ class QuestionerDirectReplyHandler:
         return [_ for _ in self._config.field_names if _.field_name not in self._state.extracted_key_fields]
 
     def _update_state_of_key_fields(self, key_fields):
-        self._state.extracted_key_fields.update(key_fields)
+        for k, v in key_fields.items():
+            if v:
+                self._state.extracted_key_fields.update({k: v})
 
     def _update_param_default_value(self, output: OutputCache):
         result = dict()

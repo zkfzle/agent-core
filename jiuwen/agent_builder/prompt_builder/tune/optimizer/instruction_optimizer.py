@@ -4,14 +4,15 @@ prompt optimization evaluators
 """
 
 import re
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional
 
+from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
+from jiuwen.core.agent.agent import Agent
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant, EvaluatedCase
-from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
-from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
+from jiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer
+
 
 
 PROMPT_INSTRUCTION_OPTIMIZE_TEMPLATE = Template(content="""
@@ -57,7 +58,7 @@ CREATE_PROMPT_TEXTUAL_GRADIENT_TEMPLATE = Template(content="""
 作为提示词优化专家，我的目标是帮助代理高效且成功地完成任务
 当前的提示词是:“{instruction}”
 然而，这个提示词在以下实例中并未能给出正确的结果
-“{{examples}}”
+“{{bad_cases}}”
 
 请提供详细的反馈，分析指令可能出错的原因。
 针对每个实例，具体说明指令中的问题，解释代理为何会误解指令，并提出如何让指令更加清晰和精确的建议
@@ -65,7 +66,7 @@ CREATE_PROMPT_TEXTUAL_GRADIENT_TEMPLATE = Template(content="""
 每个反馈信息请用<INS>和</INS>包裹
 """)
 
-CREATE_ERROR_EXAMPLE_TEMPLATE = Template(content="""
+CREATE_BAD_CASE_TEMPLATE = Template(content="""
 [question]: {{question}}
 [expected answer]: {{label}}
 [assistant answer]: {{answer}}
@@ -73,43 +74,60 @@ CREATE_ERROR_EXAMPLE_TEMPLATE = Template(content="""
 === 
 """)
 
+
 class InstructionOptimizer(BaseOptimizer):
-    def __init__(self, model: BaseChatModel, model_name: str, **kwargs):
-        super().__init__(model, model_name)
-        self._num_retires = kwargs.get("num_retires", TuneConstant.DEFAULT_LLM_CALL_RETRY_NUM)
+    def __init__(self,
+                 agent: Agent,
+                 model: BaseChatModel,
+                 model_name: str,
+                 **kwargs):
+        super().__init__(agent)
+        self._model = model
+        self._model_name = model_name
+        self._bad_cases_string: str = ""
 
-    def optimize(self, original_prompt: str, case_loader: CaseLoader) -> Optional[Tuple[str, List[Case]]]:
+    def _backward(self,
+                 evaluated_cases: List[EvaluatedCase],
+                 ):
         """optimize Instruction"""
-        return self._optimize_by_textual_gradient(
-            original_prompt, case_loader.get_bad_cases(), None
-        ), []
+        for name, param in self._parameters.items():
+            textual_gradient =  self._get_textual_gradient(
+                param.llm_call.get_system_prompt(), None
+            )
+            param.set_gradient("system_prompt", textual_gradient)
 
-    def _optimize_by_textual_gradient(self,
-                                      original_prompt: str,
-                                      error_cases: List[EvaluatedCase],
-                                      tools: Optional[list] = None) -> str:
-        error_example_string = "\n".join(
-            CREATE_ERROR_EXAMPLE_TEMPLATE.format(
-                dict(question=TuneUtils.get_input_string_from_case(case),
-                     label=TuneUtils.get_output_string_from_message(case.label),
-                     answer=TuneUtils.get_output_string_from_message(case.answer),
-                     reason=case.reason)
-            ).content
-            for case in error_cases
-        )
-        prompt = original_prompt
+    def _update(self) -> Optional[Agent]:
+        optimized_agent = self._agent.copy()
+        llm_calls = optimized_agent.get_llm_calls()
+        for name, param in self._parameters.items():
+            optimized_prompt = self._optimize_instruction(
+                param.llm_call.get_system_prompt(), param.get_gradient("system_prompt"), None
+            )
+            param.llm_call.update_system_prompt(optimized_prompt)
+            llm_calls.get(name).update_system_prompt(optimized_prompt)
+        return optimized_agent
+
+    def _get_textual_gradient(self,
+                              original_prompt: Template,
+                              tools: Optional[list] = None) -> str:
+        prompt = TuneUtils.get_content_string_from_template(original_prompt)
         messages = CREATE_PROMPT_TEXTUAL_GRADIENT_TEMPLATE.format(
-            dict(instruction=prompt, examples=error_example_string)
+            dict(instruction=prompt, bad_cases=self._get_bad_cases_string())
         ).to_messages()
         textual_gradient = self._model.invoke(self._model_name, messages).content
-        optimized_prompt = self._optimize_instruction(original_prompt, error_example_string, textual_gradient, None)
-        return optimized_prompt
+        return textual_gradient
 
-    def _optimize_instruction(self, instruction, error_example_string, textual_gradient, tools):
+    def _optimize_instruction(self,
+                              instruction: Template,
+                              textual_gradient,
+                              tools):
         """update instruction"""
         messages = PROMPT_INSTRUCTION_OPTIMIZE_TEMPLATE.format(
-            dict(prompt_instruction=instruction, bad_cases=error_example_string,
-                 reflections_on_bad_cases=textual_gradient, tools_description=str(tools) if tools else "None")
+            dict(prompt_instruction=TuneUtils.get_content_string_from_template(instruction),
+                 bad_cases=self._get_bad_cases_string(),
+                 reflections_on_bad_cases=textual_gradient,
+                 tools_description=str(tools) if tools else "None"
+                 )
         ).to_messages()
         response = self._model.invoke(self._model_name, messages).content
         return self._extract_optimized_prompt_from_response(response)
@@ -123,3 +141,15 @@ class InstructionOptimizer(BaseOptimizer):
             return None
         optimized_prompt = match.group(1)
         return optimized_prompt.replace("<prompt_base>", "").replace("</prompt_base>", "")
+
+    def _get_bad_cases_string(self) -> str:
+        error_example_string = "\n".join(
+            CREATE_BAD_CASE_TEMPLATE.format(
+                dict(question=str(eval_case.case.inputs),
+                     label=str(eval_case.case.label),
+                     answer=str(eval_case.answer),
+                     reason=eval_case.reason)
+            ).content
+            for eval_case in self._bad_cases
+        )
+        return error_example_string

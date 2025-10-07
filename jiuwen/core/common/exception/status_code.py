@@ -217,6 +217,15 @@ class StatusCode(Enum):
     AGENT_BUILDER_PROMPT_OPTIMIZE_ERROR = (
         110009, "Do optimize failed, root cause = {error_msg}"
     )
+    AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR = (
+        110010, "Do optimizer's backward failed, root cause = {error_msg}"
+    )
+    AGENT_BUILDER_AGENT_OPTIMIZER_UPDATE_ERROR = (
+        110011, "Do optimizer's update failed, root cause = {error_msg}"
+    )
+    AGENT_BUILDER_AGENT_EVALUATOR_EVALUATE_ERROR = (
+        110011, "Do evaluator's evaluate failed, root cause = {error_msg}"
+    )
 
     @property
     def code(self):

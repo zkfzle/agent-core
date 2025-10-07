@@ -1,8 +1,6 @@
 """ReActAgent"""
 from typing import Dict, Any, List, AsyncIterator
 
-from huggingface_hub import ModelInfo
-
 from jiuwen.agent.config.base import LLMCallConfig
 from jiuwen.agent.config.chat_config import ChatAgentConfig
 from jiuwen.core.agent.agent import Agent
@@ -93,9 +91,8 @@ class ChatAgent(Agent):
             history=agent_context.get_messages(),
             tools=self._runtime.get_tool_info()
         )
-        # agent_context.add_message()
         await runtime.post_run()
-        return dict(output=result.content, tools=result.tool_calls)
+        return dict(output=result.content, tool_calls=result.tool_calls)
 
     async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
         """流式调用接口"""
@@ -103,3 +100,6 @@ class ChatAgent(Agent):
 
     def get_llm_calls(self) -> Dict:
         return dict(llm_call=self._llm_call)
+
+    def copy(self) -> "Agent":
+        return create_react_agent(self._config.get_agent_config())

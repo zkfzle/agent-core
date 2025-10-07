@@ -8,6 +8,7 @@ from ast import literal_eval
 from typing import Optional, List, Dict, Any
 
 from jiuwen.core.common.logging import logger
+from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.llm.messages import BaseMessage, AIMessage
 from jiuwen.agent_builder.prompt_builder.tune.base import Case
 
@@ -32,6 +33,10 @@ class TuneUtils:
         if isinstance(message, AIMessage) and message.tool_calls:
             return "".join("".join(json.dumps(tool_call.function.model_dump()) for tool_call in message.tool_calls))
         return message.content
+
+    @staticmethod
+    def get_content_string_from_template(template: Template):
+        return "\n".join(msg.content for msg in template.to_messages())
 
     @staticmethod
     def parse_json_from_llm_response(json_like_string: str) -> Optional[Dict[str, Any]]:
@@ -74,8 +79,12 @@ class TuneUtils:
             return ""
         examples_list = [
             f"example {i + 1}:\n" \
-            f"[question]: {TuneUtils.get_input_string_from_case(case)}\n" \
-            f"[expected answer]: {TuneUtils.get_output_string_from_message(case.label)}"
+            f"[question]: {TuneUtils._convert_dict_to_string(case.inputs)}\n" \
+            f"[expected answer]: {TuneUtils._convert_dict_to_string(case.label)}"
             for i, case in enumerate(cases)
         ]
         return "\n".join(examples_list)
+
+    @staticmethod
+    def _convert_dict_to_string(data: Dict) -> str:
+        return " | ".join(f"{key}:{value}" for key, value in data.items())

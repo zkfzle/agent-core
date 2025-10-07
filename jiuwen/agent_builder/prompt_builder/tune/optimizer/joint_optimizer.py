@@ -5,13 +5,11 @@ prompt optimization evaluators
 """
 
 import random
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
+from jiuwen.core.agent.agent import Agent
 from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant
-from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
+from jiuwen.agent_builder.prompt_builder.tune.base import TuneConstant, EvaluatedCase
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.instruction_optimizer import InstructionOptimizer
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.example_optimizer import ExampleOptimizer
@@ -20,46 +18,42 @@ from jiuwen.agent_builder.prompt_builder.tune.optimizer.example_optimizer import
 class JointOptimizer(BaseOptimizer):
     def __init__(
             self,
+            agent: Agent,
             model: BaseChatModel,
             model_name: str,
-            instruction_optimizer: Optional[InstructionOptimizer] = None,
-            example_optimizer: Optional[ExampleOptimizer] = None,
+            num_examples: int = TuneConstant.DEFAULT_EXAMPLE_NUM,
             **kwargs
     ):
-        super().__init__(model, model_name)
-
-        if not isinstance(instruction_optimizer, InstructionOptimizer) \
-                or not isinstance(example_optimizer, ExampleOptimizer):
-            raise JiuWenBaseException(
-                StatusCode.AGENT_BUILDER_CREATE_OPTIMIZER_ERROR.code,
-                StatusCode.AGENT_BUILDER_CREATE_OPTIMIZER_ERROR.errmsg.format(
-                    error_msg=f"type of example optimizer or instruction optimizer is invalid"
-                )
-            )
-
+        super().__init__(agent)
+        self._model = model,
+        self._model_name = model_name,
         self._num_retires = kwargs.get("num_retires", TuneConstant.DEFAULT_LLM_CALL_RETRY_NUM)
+        self._instruction_optimizer = InstructionOptimizer(agent, model, model_name)
+        self._example_optimizer = ExampleOptimizer(agent, model, model_name, num_examples)
 
-        self._instruction_optimizer = (
-            instruction_optimizer
-            if instruction_optimizer
-            else InstructionOptimizer(model, model_name, num_retires=self._num_retires)
-        )
-
-        self._example_optimizer = (
-            example_optimizer
-            if example_optimizer
-            else ExampleOptimizer(model, model_name, num_retires=self._num_retires)
-        )
-
-    def optimize(self, original_prompt: str, case_loader: CaseLoader) -> Optional[Tuple[str, List[Case]]]:
-        """optimize instruction"""
+    def _backward(self,
+                 evaluated_cases: List[EvaluatedCase] ,
+                 ) -> Optional[Agent]:
         need_optimize_example = self._example_optimizer._num_examples > 0
         is_optimize_instruction = random.choice([True, False]) if need_optimize_example else True
-        return self._instruction_optimizer.optimize(original_prompt, case_loader) \
-            if is_optimize_instruction \
-            else self._example_optimizer.optimize(original_prompt, case_loader)
+        self._example_optimizer.init_examples(evaluated_cases)
+        for name, param in self._parameters.items():
+            if is_optimize_instruction:
+                self._instruction_optimizer.backward(evaluated_cases)
+                backward_params = self._instruction_optimizer.parameters()
+            else:
+                self._example_optimizer.backward(evaluated_cases)
+                backward_params = self._example_optimizer.parameters()
+            param.llm_call = backward_params.get(name).llm_call
+            param.set_gradient("system_prompt", backward_params.get(name).get_gradient("system_prompt"))
 
-    def pre_optimize(self, original_prompt: str, case_loader: CaseLoader) -> Optional[Tuple[str, List[Case]]]:
-        _, examples = self._example_optimizer.pre_optimize(original_prompt, case_loader)
-        instruction, _ = self._instruction_optimizer.pre_optimize(original_prompt, case_loader)
-        return instruction, examples
+    def _update(self) -> Optional[Agent]:
+        optimized_agent = self._instruction_optimizer._update()
+        llm_calls = optimized_agent.get_llm_calls()
+        for name, param in self._parameters.items():
+            optimized_prompt = self._example_optimizer._format_prompt(
+                llm_calls.get(name).get_system_prompt(),
+                self._example_optimizer.parameters().get(name, {}).get_gradient("system_prompt")
+            )
+            llm_calls.get(name).update_system_prompt(optimized_prompt)
+        return optimized_agent

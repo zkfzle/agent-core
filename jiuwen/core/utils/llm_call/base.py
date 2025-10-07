@@ -57,14 +57,20 @@ class LLMCall:
         if self._optimizer_callback is not None:
             await self._optimizer_callback(inputs, response, runtime)
 
-    def set_optimizer_callback(self, callback: Callable) -> None:
+    def set_optimizer_callback(self, callback: Optional[Callable]) -> None:
         self._optimizer_callback = callback
 
-    def set_system_prompt(self, system_prompt: str | List[BaseMessage] | List[Dict]) -> None:
+    def get_system_prompt(self) -> Template:
+        return self._system_prompt
+
+    def get_user_prompt(self) -> Template:
+        return self._user_prompt
+
+    def update_system_prompt(self, system_prompt: str | List[BaseMessage] | List[Dict]) -> None:
         if not self._freeze_system_prompt:
             self._system_prompt = Template(content=system_prompt)
 
-    def set_user_prompt(self, user_prompt: str | List[BaseMessage] | List[Dict]) -> None:
+    def update_user_prompt(self, user_prompt: str | List[BaseMessage] | List[Dict]) -> None:
         if not self._freeze_user_prompt:
             self._user_prompt = Template(content=user_prompt)
 

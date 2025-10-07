@@ -65,7 +65,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             func=lambda a, b: a + b
         )
         return weather_plugin
-    
+
     @staticmethod
     @tool(
         name="add",
@@ -78,7 +78,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     def add_function(a, b):
         """加法函数，使用tool注解装饰"""
         return a + b
-    
+
     @staticmethod
     def _create_function_tool_with_annotation():
         # 直接返回被tool注解装饰后的函数，它已经是一个LocalFunction对象
@@ -133,13 +133,6 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     @staticmethod
     def _create_prompt_template():
         system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
-        return [
-            dict(role="system", content=system_prompt.format(build_current_date()))
-        ]
-
-    @staticmethod
-    def _create_function_prompt_template():
-        system_prompt = "你是一个数学计算专家。"
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
@@ -221,7 +214,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
         result = await react_agent.invoke({"query": "计算1+2"})
         print(f"ReActAgent 最终输出结果：{result}")
-    
+
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_annotated_function_plugin(self):
         """测试使用tool注解装饰的函数作为工具"""

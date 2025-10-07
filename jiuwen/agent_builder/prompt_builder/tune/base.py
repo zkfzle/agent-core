@@ -2,11 +2,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
 from pydantic import BaseModel, Field
 
-from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, AIMessage
+from jiuwen.core.utils.llm.messages import ToolInfo
 
 
 class TuneConstant:
@@ -39,31 +39,26 @@ class TuneConstant:
 
 class Case(BaseModel):
     """definition of case"""
-    messages: List[BaseMessage] = Field(default=[])
-    variables: Dict[str, str] = Field(default={})
-    label: AIMessage = Field(...)
+    inputs: Dict[str, Any] = Field(...)
+    label: Dict[str, Any] = Field(...)
     tools: Optional[List[ToolInfo]] = Field(default=None)
 
 
-class EvaluatedCase(Case):
+class EvaluatedCase(BaseModel):
     """definition of evaluated case"""
-    answer: Optional[AIMessage] = Field(default=None)
-    score: int = Field(default=0)
+    case: Case = Field(...)
+    answer: Dict[str, Any] = Field(default=None)
+    score: float = Field(default=0.0)
     reason: str = Field(default="")
 
+    @property
+    def inputs(self):
+        return self.case.inputs
 
-class PromptOptimizeHistory(BaseModel):
-    iteration_round: int = Field(default=0)
-    optimized_prompt: str = Field(default="")
-    accuracy: float = Field(default=0.0)
+    @property
+    def label(self):
+        return self.case.label
 
-
-class PromptOptimizeProgress(BaseModel):
-    instruction: str = Field(default="")
-    examples: List[Case] = Field(default=[])
-    best_prompt: str = Field(default="")
-    best_accuracy: float = Field(default=0.0)
-    iteration_round: int = Field(default=0)
-    status: str = Field(default="running")
-    exception_info: str = Field(default="")
-    history: List[PromptOptimizeHistory] = Field(default=[])
+    @property
+    def tools(self):
+        return self.case.tools

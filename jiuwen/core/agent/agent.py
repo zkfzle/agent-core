@@ -59,3 +59,6 @@ class Agent(ABC):
 
     def get_llm_calls(self) -> Dict:
         raise NotImplementedError("")
+
+    def copy(self) -> "Agent":
+        raise NotImplementedError("")

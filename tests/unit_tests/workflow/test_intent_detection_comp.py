@@ -9,7 +9,7 @@ from unittest.mock import Mock, AsyncMock, patch
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionConfig, \
+from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionCompConfig, \
     IntentDetectionComponent
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.context_engine.config import ContextEngineConfig
@@ -51,8 +51,8 @@ def fake_model_config() -> ModelConfig:
 
 
 @pytest.fixture
-def fake_config(fake_model_config) -> IntentDetectionConfig:
-    return IntentDetectionConfig(
+def fake_config(fake_model_config) -> IntentDetectionCompConfig:
+    return IntentDetectionCompConfig(
         user_prompt="请判断用户意图",
         category_name_list=["name1", "name2", "name3"],
         model=fake_model_config
@@ -118,7 +118,7 @@ class TestIntentDetectionComponent:
                                    ))
 
 
-        config = IntentDetectionConfig(
+        config = IntentDetectionCompConfig(
             user_prompt="请判断用户意图",
             category_name_list=["查询某地的景点", "查询某地天气"],
             model=model_config,

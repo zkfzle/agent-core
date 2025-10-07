@@ -98,7 +98,7 @@ def create_model_config() -> ModelConfig:
 
 ```python
 from jiuwen.core.component.intent_detection_comp import (
-    IntentDetectionComponent, IntentDetectionConfig)
+    IntentDetectionComponent, IntentDetectionCompConfig)
 from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.component.questioner_comp import (
     QuestionerComponent, QuestionerConfig, FieldInfo)
@@ -126,19 +126,19 @@ def _create_intent_detection_component() -> IntentDetectionComponent:
     {"class": "分类xx"}
     如果没有合适的分类，请输出 {{default_class}}。
     """
-    config = IntentDetectionConfig(
-                user_prompt="请判断用户意图",
-                category_info="",
-                category_list=["分类1", "分类2"],
-                category_name_list=["默认意图", "查询某地天气"],
-                default_class="分类1",
-                model=model_config,
-                intent_detection_template=Template(
-                    name="default",
-                    content=[{"role": "user", "content": user_prompt}],
-                ),
-                enable_input=True,
-            )
+    config = IntentDetectionCompConfig(
+        user_prompt="请判断用户意图",
+        category_info="",
+        category_list=["分类1", "分类2"],
+        category_name_list=["默认意图", "查询某地天气"],
+        default_class="分类1",
+        model=model_config,
+        intent_detection_template=Template(
+            name="default",
+            content=[{"role": "user", "content": user_prompt}],
+        ),
+        enable_input=True,
+    )
     component = IntentDetectionComponent(config)
     component.add_branch("${intent.classificationId} == 0", ["end"], "默认分支")
     component.add_branch("${intent.classificationId} == 1", ["llm"], "查询天气分支")
@@ -150,7 +150,7 @@ def _create_llm_component() -> LLMComponent:
     """创建 LLM 组件，仅用于抽取结构化字段（location/date）。"""
     model_config = create_model_config()
     current_date = build_current_date()
-    user_prompt_prefix = "你是一个query改写的AI助手。今天的日期是{}。" 
+    user_prompt_prefix = "你是一个query改写的AI助手。今天的日期是{}。"
     user_prompt = "\n原始query为：{{query}}\n\n帮我改写原始query，要求：\n1. 只把地名改为英文，其他信息保留中文；\n2. 默认日期为今天；\n3. 时间为YYYY-MM-DD格式。"
     config = LLMCompConfig(
         model=model_config,

@@ -25,7 +25,7 @@ from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.intent_detection_comp import (
     IntentDetectionComponent,
-    IntentDetectionConfig,
+    IntentDetectionCompConfig,
 )
 from jiuwen.core.component.llm_comp import LLMCompConfig, LLMComponent
 from jiuwen.core.component.questioner_comp import (
@@ -152,7 +152,7 @@ class RealWorkflowTest(unittest.TestCase):
         {"class": "分类xx"}
         如果没有合适的分类，请输出 {{default_class}}。
         """
-        config = IntentDetectionConfig(
+        config = IntentDetectionCompConfig(
             user_prompt="请判断用户意图",
             category_name_list=["旅游", "天气"],
             default_class="分类1",

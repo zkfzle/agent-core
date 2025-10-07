@@ -10,7 +10,7 @@ from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionConfig
+from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
 from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from jiuwen.core.component.start_comp import Start
@@ -119,7 +119,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         {"class": "分类xx"}
         如果没有合适的分类，请输出 {{default_class}}。
         """
-        config = IntentDetectionConfig(
+        config = IntentDetectionCompConfig(
             user_prompt="请判断用户意图",
             category_name_list=["查询某地天气"],
             model=model_config,

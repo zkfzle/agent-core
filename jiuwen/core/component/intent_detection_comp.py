@@ -106,7 +106,7 @@ def get_default_template():
 
 
 @dataclass
-class IntentDetectionConfig(ComponentConfig):
+class IntentDetectionCompConfig(ComponentConfig):
     category_name_list: list[str] = field(default_factory=list)
     model: 'ModelConfig' = None
     user_prompt: str = ""
@@ -136,7 +136,7 @@ class IntentDetectionOutput(BaseModel):
 
 @dataclass()
 class IntentDetectionExecutable(ComponentExecutable):
-    def __init__(self, component_config: IntentDetectionConfig):
+    def __init__(self, component_config: IntentDetectionCompConfig):
         super().__init__()
         self._runtime: Union[Runtime, None] = None
         self._llm: Union[BaseChatModel, None] = None
@@ -325,14 +325,14 @@ class IntentDetectionExecutable(ComponentExecutable):
             intent_res = {CLASSIFICATION_ID: idx, CLASSIFICATION_NAME: self._config.category_name_list[idx]}
         return intent_res
 
-    def _init_default_config_category_list(self, component_config: IntentDetectionConfig):
+    def _init_default_config_category_list(self, component_config: IntentDetectionCompConfig):
         self._default_config = IntentDetectionDefaultConfig()
         for index, _ in enumerate(component_config.category_name_list, start=1):
             self._default_config.category_list.append(f"分类{index}")
 
 
 class IntentDetectionComponent(WorkflowComponent):
-    def __init__(self, component_config: Optional[IntentDetectionConfig] = None):
+    def __init__(self, component_config: Optional[IntentDetectionCompConfig] = None):
         super().__init__()
         self._executable = None
         self._config = component_config

@@ -49,6 +49,12 @@ class StatusCode(Enum):
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
+    GRAPH_SET_START_NODE_FAILED = (110001, "Graph create error, caused by start node set failed, detail: {detail}")
+    GRAPH_SET_END_NODE_FAILED = (110002, "Graph create error, caused by end node set failed, detail: {detail}")
+    GRAPH_ADD_NODE_FAILED = (110003, "Graph create error, caused by add node failed, detail: {detail}")
+    GRAPH_ADD_EDGE_FAILED = (110004, "Graph create error, caused by add edge failed, detail: {detail}")
+    GRAPH_ADD_CONDITION_EDGE_FAILED =  (110005, "Graph create error, caused by add conditional edge failed, detail: {detail}")
+
     # 工作流 异常处理 111000 - 111999
 
     # Agent编排 120000 - 129999
@@ -123,6 +129,7 @@ class StatusCode(Enum):
     RUNTIME_WORKFLOW_GET_FAILED = (190001, "failed to get workflow, reason: {reason}")
     RUNTIME_WORKFLOW_ADD_FAILED = (190002, "failed to add workflow, reason: {reason}")
     RUNTIME_WORKFLOW_CONFIG_ADD_FAILED = (190011, "failed to add workflow config, reason: {reason}")
+    RUNTIME_WORKFLOW_CONFIG_GET_FAILED = (190012, "failed to get workflow config, reason: {reason}")
     RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (19021, "failed to get toolInfo of workflow, reason: {reason}")
 
     RUNTIME_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
@@ -135,10 +142,11 @@ class StatusCode(Enum):
     RUNTIME_MODEL_GET_FAILED = (190301, "failed to get model, reason: {reason}")
     RUNTIME_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
     # Runtime 调测能力 191000 - 191999
+    RUNTIME_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
     # Runtime 状态管理 192000 - 192999
     # Runtime 流式输出StreamWriter 193000 - 193999
     STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001, "failed to write stream, stream schema validate failed, details: {detail}")
-    STREAM_WRITER_WRITE_FAILED = (193001, "failed to write stream, reason: {reason}")
+    STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
     # Runtime Config管理 194000 - 194999
     # Runtime callback 195000 - 195999
 

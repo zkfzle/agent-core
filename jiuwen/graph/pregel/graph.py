@@ -8,6 +8,8 @@ from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel._loop import PregelLoop
 
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.runtime.interaction.base import Checkpointer
 from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from jiuwen.core.runtime.runtime import BaseRuntime
@@ -52,14 +54,32 @@ class PregelGraph(Graph):
         self._graph_checkpointer = None
 
     def start_node(self, node_id: str) -> Self:
+        if node_id is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_SET_START_NODE_FAILED.code,
+                                      StatusCode.GRAPH_SET_START_NODE_FAILED.errmsg.format(detail="node_id is None"))
         self.pregel.set_entry_point(node_id)
         return self
 
     def end_node(self, node_id: str) -> Self:
+        if node_id is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_SET_END_NODE_FAILED.code,
+                                      StatusCode.GRAPH_SET_END_NODE_FAILED.errmsg.format(
+                                          detail="node_id is invalid, can not be None"))
         self.pregel.set_finish_point(node_id)
         return self
 
     def add_node(self, node_id: str, node: Executable, *, wait_for_all: bool = False) -> Self:
+        if node_id is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_NODE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_NODE_FAILED.errmsg.format(
+                                          detail="node_id is invalid, can not be None"))
+        if node is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_NODE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_NODE_FAILED.errmsg.format(detail="node is None"))
+        if node_id in self.nodes:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_NODE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_NODE_FAILED.errmsg.format(
+                                          detail=f"already has node {node_id}, can not add again"))
         vertex_node = Vertex(node_id, node)
         self.nodes[node_id] = vertex_node
         self.pregel.add_node(node_id, vertex_node)
@@ -71,10 +91,32 @@ class PregelGraph(Graph):
         return {key: vertex for key, vertex in self.nodes.items()}
 
     def add_edge(self, source_node_id: Union[str, list[str]], target_node_id: str) -> Self:
+        if source_node_id is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_EDGE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_EDGE_FAILED.errmsg.format(
+                                          detail="source_node_id is invalid, can not be None"))
+        if isinstance(source_node_id, list):
+            for node_id in source_node_id:
+                if node_id is None:
+                    raise JiuWenBaseException(StatusCode.GRAPH_ADD_EDGE_FAILED.code,
+                                              StatusCode.GRAPH_ADD_EDGE_FAILED.errmsg.format(
+                                                  detail="source_node_id list is invalid, can not has None"))
+        if target_node_id is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_EDGE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_EDGE_FAILED.errmsg.format(
+                                          detail="target_node_id is invalid, can not be None"))
         self.edges.append((source_node_id, target_node_id))
         return self
 
     def add_conditional_edges(self, source_node_id: str, router: Router) -> Self:
+        if source_node_id is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_CONDITION_EDGE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_CONDITION_EDGE_FAILED.errmsg.format(
+                                          detail="source_node_id is invalid, can not be None"))
+        if router is None:
+            raise JiuWenBaseException(StatusCode.GRAPH_ADD_CONDITION_EDGE_FAILED.code,
+                                      StatusCode.GRAPH_ADD_CONDITION_EDGE_FAILED.errmsg.format(
+                                          detail="router is None"))
         self.pregel.add_conditional_edges(source_node_id, router)
         return self
 
@@ -128,7 +170,6 @@ class CompiledGraph(ExecutableGraph):
             await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
         else:
             runtime.state().commit_user_inputs(inputs)
-
 
         result = None
         exception = None

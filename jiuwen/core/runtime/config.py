@@ -54,8 +54,8 @@ class Config(ABC):
 
     def get_workflow_config(self, workflow_id):
         if workflow_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_GET_FAILED.code,
-                                      message=StatusCode.RUNTIME_WORKFLOW_GET_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_CONFIG_GET_FAILED.code,
+                                      message=StatusCode.RUNTIME_WORKFLOW_CONFIG_GET_FAILED.errmsg.format(
                                           reason="workflow_id is invalid, cannot be None"))
         return self._workflow_configs.get(workflow_id)
 

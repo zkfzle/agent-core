@@ -1,6 +1,8 @@
 from typing import Optional
 
 from jiuwen.core.common.constants.constant import LOOP_ID, INDEX
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 from jiuwen.core.tracer.handler import TracerHandlerName
 
@@ -49,7 +51,7 @@ async def trace_outputs(runtime, outputs: Optional[dict]):
     runtime.state().update_trace(tracer.get_workflow_span(executable_id, parent_id))
 
 
-async def trace(runtime, data: dict):
+async def trace(runtime, data: dict = None):
     tracer = runtime.tracer()
     if tracer is None:
         return
@@ -66,6 +68,9 @@ async def trace_error(runtime, error: Exception):
     tracer = runtime.tracer()
     if tracer is None:
         return
+    if error is None:
+        raise JiuWenBaseException(StatusCode.RUNTIME_TRACE_ERROR_FAILED.code,
+                                  StatusCode.RUNTIME_TRACE_ERROR_FAILED.errmsg.format(reason="error is None"))
     invoke_id = runtime.executable_id()
     parent_id = runtime.parent_id()
     await runtime.tracer().trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_invoke",

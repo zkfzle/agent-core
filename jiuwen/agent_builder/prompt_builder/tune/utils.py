@@ -8,12 +8,24 @@ from ast import literal_eval
 from typing import Optional, List, Dict, Any
 
 from jiuwen.core.common.logging import logger
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.llm.messages import BaseMessage, AIMessage
-from jiuwen.agent_builder.prompt_builder.tune.base import Case
+from jiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant
 
 
 class TuneUtils:
+    @staticmethod
+    def validate_digital_parameter(param: float, param_name: str, lower: float, upper: float):
+        if param < lower or param > upper:
+            raise JiuWenBaseException(
+                StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.code,
+                StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.errmsg.format(
+                    error_msg=f"{param_name} should be between {lower} and {upper}"
+                )
+            )
+
     @staticmethod
     def get_input_string_from_case(case: Case):
         messages_content = []

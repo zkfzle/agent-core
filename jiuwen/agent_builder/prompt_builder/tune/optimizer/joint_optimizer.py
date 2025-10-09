@@ -27,7 +27,6 @@ class JointOptimizer(BaseOptimizer):
         super().__init__(agent)
         self._model = model,
         self._model_name = model_name,
-        self._num_retires = kwargs.get("num_retires", TuneConstant.DEFAULT_LLM_CALL_RETRY_NUM)
         self._instruction_optimizer = InstructionOptimizer(agent, model, model_name)
         self._example_optimizer = ExampleOptimizer(agent, model, model_name, num_examples)
 

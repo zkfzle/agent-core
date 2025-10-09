@@ -20,7 +20,6 @@ class RequestChatModel(BaseChatModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     sync_client: Session = Session()
-    aiohttp_session: Optional[ClientSession] = None
 
     def __init__(self,
                  api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
@@ -33,14 +32,9 @@ class RequestChatModel(BaseChatModel):
         }
         self._usage = dict()
 
-    async def ensure_session(self):
-        if self.aiohttp_session is None or self.aiohttp_session.closed:
-            self.aiohttp_session = aiohttp.ClientSession()
-
-    async def close_session(self):
-        if self.aiohttp_session is not None and not self.aiohttp_session.closed:
-            await self.aiohttp_session.close()
-            self.aiohttp_session = None
+    def close_session(self):
+        if self.sync_client is not None:
+            self.sync_client.close()
 
     def model_provider(self) -> str:
         return "generic_http_api"
@@ -67,12 +61,11 @@ class RequestChatModel(BaseChatModel):
 
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
-        await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
 
-        async with self.aiohttp_session.post(
+        async with aiohttp.ClientSession().post(
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
@@ -83,7 +76,6 @@ class RequestChatModel(BaseChatModel):
         ) as response:
             response.raise_for_status()
             data = await response.json()
-            await self.close_session()
             return self._parse_response(model_name, data)
 
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
@@ -123,12 +115,11 @@ class RequestChatModel(BaseChatModel):
         # 重置流状态
         self._reset_stream_state()
 
-        await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
-        async with self.aiohttp_session.post(
+        async with aiohttp.ClientSession().post(
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
@@ -143,7 +134,6 @@ class RequestChatModel(BaseChatModel):
                     chunk = self._parse_stream_line(line)
                     if chunk:
                         yield chunk
-        await self.close_session()
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -291,10 +281,6 @@ class RequestChatModel(BaseChatModel):
         except json.JSONDecodeError:
             return None
 
-    async def close(self):
-        if self.aiohttp_session:
-            await self.aiohttp_session.close()
-
 
 class OpenAIChatModel(BaseChatModel):
     """OpenAI 专用聊天模型实现，使用官方 openai 库"""
@@ -302,21 +288,6 @@ class OpenAIChatModel(BaseChatModel):
     def __init__(self,
                  api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
-        self._init_clients()
-
-    def _init_clients(self):
-        """init OpenAI client"""
-
-        self._sync_client = openai.OpenAI(
-            api_key=self.api_key,
-            base_url=self.api_base
-        )
-
-        self._async_client = openai.AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=self.api_base
-        )
-
 
     def model_provider(self) -> str:
         return "openai"
@@ -326,8 +297,12 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
-            response = self._sync_client.chat.completions.create(**params)
-            self._sync_client.close()
+            sync_client = openai.OpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base
+            )
+            response = sync_client.chat.completions.create(**params)
+            sync_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             raise Exception(f"OpenAI API 调用失败: {str(e)}")
@@ -338,8 +313,12 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
-            response = await self._async_client.chat.completions.create(**params)
-            await self._async_client.close()
+            async_client = openai.AsyncOpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base
+            )
+            response = await async_client.chat.completions.create(**params)
+            await async_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
@@ -349,12 +328,16 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
-            stream = self._sync_client.chat.completions.create(**params)
-            self._sync_client.close()
+            sync_client = openai.OpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base
+            )
+            stream = sync_client.chat.completions.create(**params)
             for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
                     yield parsed_chunk
+            sync_client.close()
         except Exception as e:
             raise Exception(f"OpenAI API 流式调用失败: {str(e)}")
 
@@ -365,12 +348,17 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
-            stream = await self._async_client.chat.completions.create(**params)
-            self._async_client.close()
+            async_client = openai.AsyncOpenAI(
+                api_key=self.api_key,
+                base_url=self.api_base,
+                timeout=100
+            )
+            stream = await async_client.chat.completions.create(**params)
             async for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
                     yield parsed_chunk
+            await async_client.close()
         except Exception as e:
             raise Exception(f"OpenAI API 异步流式调用失败: {str(e)}")
 

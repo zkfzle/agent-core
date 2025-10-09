@@ -4,7 +4,7 @@ import unittest
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.common.logging import logger
-from jiuwen.core.stream.writer import CustomSchema
+from jiuwen.core.stream.base import CustomSchema
 from jiuwen.core.workflow.base import Workflow
 from tests.unit_tests.tracer.test_mock_node_with_tracer import StreamNodeWithTracer
 from tests.unit_tests.tracer.test_workflow_tracer import record_tracer_info

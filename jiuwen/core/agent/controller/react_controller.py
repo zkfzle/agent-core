@@ -11,7 +11,7 @@ from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 from jiuwen.core.utils.llm.hash_util import generate_key
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput

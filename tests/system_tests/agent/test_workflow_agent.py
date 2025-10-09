@@ -23,7 +23,7 @@ from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 from typing import List
 
 API_BASE = os.getenv("API_BASE", "")

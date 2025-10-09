@@ -6,7 +6,8 @@ from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
 from jiuwen.core.runtime.runtime import Runtime, Workflow, BaseRuntime
 from jiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
-from jiuwen.core.stream.writer import StreamWriter, OutputSchema
+from jiuwen.core.stream.base import OutputSchema
+from jiuwen.core.stream.writer import StreamWriter
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.tracer.workflow_tracer import trace, trace_error
 from jiuwen.core.utils.llm.base import BaseChatModel

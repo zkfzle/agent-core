@@ -9,7 +9,7 @@ from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 from jiuwen.core.workflow.base import Workflow
 
 

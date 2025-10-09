@@ -22,8 +22,7 @@ from jiuwen.core.graph.executable import Input
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.state import ReadableStateLike
 from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.stream.base import BaseStreamMode
-from jiuwen.core.stream.writer import CustomSchema
+from jiuwen.core.stream.base import BaseStreamMode, CustomSchema
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph

@@ -12,8 +12,7 @@ from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
-from jiuwen.core.stream.base import BaseStreamMode
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import BaseStreamMode, OutputSchema
 from jiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
 
 

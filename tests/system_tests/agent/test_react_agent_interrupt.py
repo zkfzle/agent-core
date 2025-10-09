@@ -9,7 +9,7 @@ from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi

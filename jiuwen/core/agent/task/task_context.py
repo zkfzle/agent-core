@@ -7,7 +7,7 @@ from jiuwen.core.runtime.agent import StaticAgentRuntime
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.wrapper import TaskRuntime, WrappedRuntime, StaticWrappedRuntime
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 
 
 class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):

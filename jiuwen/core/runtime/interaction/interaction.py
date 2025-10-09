@@ -15,7 +15,7 @@ from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from jiuwen.core.runtime.agent import AgentRuntime
 from jiuwen.core.runtime.interaction.base import BaseInteraction, AgentInterrupt
 from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 
 
 class InteractionOutput(BaseModel):

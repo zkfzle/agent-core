@@ -17,8 +17,7 @@ from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.stream.base import BaseStreamMode
-from jiuwen.core.stream.writer import TraceSchema, OutputSchema
+from jiuwen.core.stream.base import BaseStreamMode, TraceSchema, OutputSchema
 from jiuwen.core.workflow.base import WorkflowConfig, Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.graph.pregel.graph import PregelGraph
 from test_node import AddTenNode, CommonNode

@@ -31,10 +31,9 @@ from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
-from jiuwen.core.stream.writer import CustomSchema, OutputSchema
+from jiuwen.core.stream.base import CustomSchema, OutputSchema, TraceSchema
 from jiuwen.graph.pregel.graph import PregelGraph
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, MockEndNode
-from jiuwen.core.stream.writer import TraceSchema
 
 switcher = False
 

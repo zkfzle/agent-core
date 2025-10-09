@@ -1,8 +1,9 @@
-from typing import Type, Generic, TypeVar, Any
+from typing import Type, Generic, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.stream.base import OutputSchema, TraceSchema, CustomSchema
 from jiuwen.core.stream.emitter import StreamEmitter
 
 T = TypeVar("T")
@@ -38,12 +39,6 @@ class StreamWriter(Generic[T, S]):
         await self._stream_emitter.emit(validated_data)
 
 
-class OutputSchema(BaseModel):
-    type: str
-    index: int
-    payload: Any
-
-
 class OutputStreamWriter(StreamWriter[dict, OutputSchema]):
 
     def __init__(
@@ -54,11 +49,6 @@ class OutputStreamWriter(StreamWriter[dict, OutputSchema]):
         super().__init__(stream_emitter, schema_type)
 
 
-class TraceSchema(BaseModel):
-    type: str
-    payload: Any
-
-
 class TraceStreamWriter(StreamWriter[dict, TraceSchema]):
 
     def __init__(
@@ -67,16 +57,6 @@ class TraceStreamWriter(StreamWriter[dict, TraceSchema]):
             schema_type: Type[TraceSchema] = TraceSchema,
     ):
         super().__init__(stream_emitter, schema_type)
-
-
-class CustomSchema(BaseModel):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
 
 
 class CustomStreamWriter(StreamWriter[dict, CustomSchema]):

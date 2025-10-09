@@ -18,7 +18,7 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.writer import OutputSchema
+from jiuwen.core.stream.base import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.workflow.base import Workflow

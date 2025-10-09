@@ -9,7 +9,8 @@ from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.state import State
 from jiuwen.core.stream.manager import StreamWriterManager
-from jiuwen.core.stream.writer import OutputSchema, StreamWriter
+from jiuwen.core.stream.base import OutputSchema
+from jiuwen.core.stream.writer import StreamWriter
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import ToolInfo
 from jiuwen.core.utils.prompt.template.template import Template

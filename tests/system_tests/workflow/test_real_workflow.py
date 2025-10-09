@@ -36,7 +36,7 @@ from jiuwen.core.component.questioner_comp import (
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.stream.writer import CustomSchema
+from jiuwen.core.stream.base import CustomSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.tool.param import Param

@@ -25,7 +25,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from jiuwen.core.runtime.state import Transformer, DEFAULT_WORKFLOW_ID
 from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
-from jiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema
+from jiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream_actor.base import StreamActor
@@ -46,11 +46,7 @@ class WorkflowOutput(BaseModel):
     state: WorkflowExecutionState
 
 
-class WorkflowChunk(BaseModel):
-    chunk_id: str
-    payload: Union[str, InteractionOutput]
-    metadata: Dict[str, Any]
-    is_final: bool
+WorkflowChunk = Union[OutputSchema, CustomSchema, TraceSchema]
 
 
 class BaseWorkFlow:

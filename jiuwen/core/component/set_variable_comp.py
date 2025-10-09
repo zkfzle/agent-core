@@ -4,6 +4,7 @@
 from typing import Any
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
@@ -17,6 +18,10 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
 
     def __init__(self, variable_mapping: dict[str, Any]):
         super().__init__()
+        if not variable_mapping:
+            raise JiuWenBaseException(StatusCode.SET_VAR_COMPONENT_VAR_MAPPING_ERROR.code,
+                                      StatusCode.SET_VAR_COMPONENT_VAR_MAPPING_ERROR.errmsg.format(
+                                          error_msg=f'variable_mapping is None or empty'))
         self._variable_mapping = variable_mapping
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
@@ -26,7 +31,9 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
             keys = left_ref_str.split(NESTED_PATH_SPLIT)
 
             if len(keys) == 0:
-                raise JiuWenBaseException(-1, "error variable config in SetVariableComponent")
+                raise JiuWenBaseException(StatusCode.SET_VAR_COMPONENT_VAR_MAPPING_ERROR.code,
+                                          StatusCode.SET_VAR_COMPONENT_VAR_MAPPING_ERROR.errmsg.format(
+                                              error_msg=f'key[{left}] not supported format'))
 
             node_id = keys[0]
             node_runtime = NodeRuntime(root_runtime, node_id)

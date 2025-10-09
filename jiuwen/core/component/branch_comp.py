@@ -21,8 +21,6 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
                    branch_id: str = None):
-        if isinstance(target, str):
-            target = [target]
         self._router.add_branch(condition, target, branch_id=branch_id)
 
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:

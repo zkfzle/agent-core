@@ -15,10 +15,11 @@ from jiuwen.core.workflow.base import Workflow
 
 class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
     def __init__(self, sub_workflow: Workflow):
-        if sub_workflow is None:
-            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMP_INPUT_NOT_NONE.code,
-                                      message=StatusCode.WORKFLOW_COMP_INPUT_NOT_NONE.errmsg)
         super().__init__()
+        if sub_workflow is None:
+            raise JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_INIT_ERROR.code,
+                                      StatusCode.SUB_WORKFLOW_COMPONENT_INIT_ERROR.errmsg.format(
+                                          error_msg="sub_workflow is None"))
         self._sub_workflow = sub_workflow
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:

@@ -23,7 +23,8 @@ class Branch:
         elif isinstance(condition, Callable):
             self._condition = FuncCondition(condition)
         else:
-            raise JiuWenBaseException(-1, "condition must be either a string or a callable")
+            raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_BRANCH_CONDITION_TYPE_ERROR.code,
+                                      StatusCode.BRANCH_COMPONENT_BRANCH_CONDITION_TYPE_ERROR.errmsg)
         self.target = target
 
     def evaluate(self, runtime: BaseRuntime) -> bool:
@@ -41,9 +42,12 @@ class BranchRouter:
         self.report_trace = report_trace
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
-                   branch_id: str = ""):
-        if isinstance(target, str):
-            target = [target]
+                   branch_id: str = None):
+        if condition is None or target is None:
+            raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
+                                      StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
+                                          error_msg="condition is None or target is None"))
+        target = [target] if isinstance(target, str) else target
         self._branches.append(Branch(condition, target, branch_id))
 
     def set_runtime(self, runtime: Union[Runtime, BaseRuntime]):
@@ -67,5 +71,5 @@ class BranchRouter:
                 if self.report_trace:
                     await trace_outputs(runtime, {"branch_id": branch.branch_id})
                 return branch.target
-        raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_BRANCH_NOT_FOUND.code,
-                                      message=StatusCode.WORKFLOW_BRANCH_NOT_FOUND.errmsg)
+        raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.code,
+                                  StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.errmsg)

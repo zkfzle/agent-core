@@ -3,7 +3,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 import re
 
-from jiuwen.core.common.constants.constant import INDEX
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.condition.condition import Condition
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input, Output
@@ -53,6 +54,8 @@ class ExpressionCondition(Condition):
         try:
             return eval(expression, runtime)
         except SyntaxError as e:
-            raise e
+            raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.code,
+                                      StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(error_msg=str(e)))
         except Exception as e:
-            raise e
+            raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(error_msg=str(e)))

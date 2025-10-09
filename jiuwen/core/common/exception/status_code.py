@@ -42,6 +42,18 @@ class StatusCode(Enum):
     QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response.")
     QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
 
+    ## 分支组件  101100 - 101119
+    BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")
+    BRANCH_COMPONENT_BRANCH_CONDITION_TYPE_ERROR = (101101, "Branch condition type does not meet the requirements.")
+    BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR = (101102, "Branch meeting the condition was not found.")
+
+    ## 变量赋值组件  101120 - 101139
+    SET_VAR_COMPONENT_VAR_MAPPING_ERROR = (101120, "Set variable component mapping error, as {error_msg}.")
+
+    ## 子工作流组件  101140 - 101159
+    SUB_WORKFLOW_COMPONENT_INIT_ERROR = (101140, "Sub workflow component init error, as {error_msg}.")
+
+
     ## 插件组件  102000 - 102019
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
     TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
@@ -93,6 +105,10 @@ class StatusCode(Enum):
 
     # 图执行引擎 140000 - 149999
     # 图执行引擎 图的编排和执行 140000 - 140999
+    ## 图执行条件判断 140000 - 140019
+    EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, as {error_msg}.")
+    EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
+
 
     # 上下文引擎 150000 - 159999
     # 上下文引擎 上下文结构化存取 150000 - 150999
@@ -154,9 +170,6 @@ class StatusCode(Enum):
                                                     "start component: global variable(s) defined with no value assigned:  {variable_name}")
     WORKFLOW_START_CREATE_VALUE = (101502, "start component create error:  {reason}")
     WORKFLOW_END_CREATE_VALUE = (101511, "end component create error: {reason}")
-
-    WORKFLOW_BRANCH_NOT_FOUND = (101531, "Branch meeting the condition was not found")
-    WORKFLOW_COMP_INPUT_NOT_NONE = (10055, "sub_workflow cannot be None")
 
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (101771, "Message queue manager error: {error_msg}")
 

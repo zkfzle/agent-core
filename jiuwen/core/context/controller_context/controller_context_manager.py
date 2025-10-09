@@ -1,8 +1,8 @@
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.context.controller_context.message_manager import MessageMgr
-from jiuwen.core.context.controller_context.model_manager import ModelMgr
-from jiuwen.core.context.controller_context.tool_manager import ToolMgr
-from jiuwen.core.context.controller_context.workflow_manager import WorkflowMgr
+from jiuwen.core.runtime.model_manager import ModelMgr
+from jiuwen.core.runtime.tool_manager import ToolMgr
+from jiuwen.core.runtime.workflow_manager import WorkflowMgr
 
 
 class ControllerContextMgr:

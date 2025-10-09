@@ -9,7 +9,7 @@ from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.core.agent.task.sub_task import SubTask
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
-from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
+from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput

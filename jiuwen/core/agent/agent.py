@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Iterator, Dict, List
 
 from jiuwen.core.agent.task.task_context import AgentRuntime
-from jiuwen.core.context.controller_context.workflow_manager import generate_workflow_key
+from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.utils.tool.function.function import LocalFunction

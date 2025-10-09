@@ -3,7 +3,7 @@ from typing import List, Tuple, Optional
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.context.controller_context.thread_safe_dict import ThreadSafeDict
+from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
 
 class PromptMgr:

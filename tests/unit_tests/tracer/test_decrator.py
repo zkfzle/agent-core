@@ -4,9 +4,9 @@ from typing import Dict, List, Any, Union
 from unittest.mock import MagicMock
 
 from jiuwen.core.common.logging import logger
-from jiuwen.core.context.controller_context.model_manager import WrappedBaseChatModel
-from jiuwen.core.context.controller_context.tool_manager import WrappedTool
-from jiuwen.core.context.controller_context.workflow_manager import WrappedWorkflow
+from jiuwen.core.runtime.model_manager import WrappedBaseChatModel
+from jiuwen.core.runtime.tool_manager import WrappedTool
+from jiuwen.core.runtime.workflow_manager import WrappedWorkflow
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode

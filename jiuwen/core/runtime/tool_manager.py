@@ -6,7 +6,7 @@ from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.tracer.decorator import decrate_tool_with_trace
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool.base import Tool
-from jiuwen.core.context.controller_context.thread_safe_dict import ThreadSafeDict
+from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
 
 class ToolMgr:

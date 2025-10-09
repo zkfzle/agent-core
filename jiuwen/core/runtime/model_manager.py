@@ -4,7 +4,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.tracer.decorator import decrate_model_with_trace
 from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.context.controller_context.thread_safe_dict import ThreadSafeDict
+from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
 
 class ModelMgr:

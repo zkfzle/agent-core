@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar
 
-from jiuwen.core.context.controller_context.tool_manager import ToolMgr
-from jiuwen.core.context.controller_context.workflow_manager import WorkflowMgr
-from jiuwen.core.context.controller_context.prompt_manager import PromptMgr
-from jiuwen.core.context.controller_context.model_manager import ModelMgr
+from jiuwen.core.runtime.tool_manager import ToolMgr
+from jiuwen.core.runtime.workflow_manager import WorkflowMgr
+from jiuwen.core.runtime.prompt_manager import PromptMgr
+from jiuwen.core.runtime.model_manager import ModelMgr
 
 Workflow = TypeVar("Workflow", contravariant=True)
 

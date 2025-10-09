@@ -391,10 +391,7 @@ class QuestionerDirectReplyHandler:
             result = json.loads(cleaned, strict=False)
             result = {k: v for k, v in result.items() if QuestionerUtils.is_valid_value(v)}
         except json.JSONDecodeError as _:
-            try:
-                result = {k: v for k, v in ast.literal_eval(response).items() if QuestionerUtils.is_valid_value(v)}
-            except (SyntaxError, AttributeError, ValueError):
-                return result
+            return result
         return result
 
     def _filter_non_extracted_key_fields(self) -> List[FieldInfo]:

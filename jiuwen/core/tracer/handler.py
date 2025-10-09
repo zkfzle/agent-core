@@ -275,7 +275,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
         await self._send_data(span)
 
     @trigger_event
-    async def on_invoke(self, invoke_id: str, on_invoke_data: dict, exception: Exception = None, **kwargs):
+    async def on_invoke(self, invoke_id: str, on_invoke_data: dict = None, exception: Exception = None, **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
         update_data = {}
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)

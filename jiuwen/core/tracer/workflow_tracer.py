@@ -76,5 +76,5 @@ async def trace_error(runtime, error: Exception):
     await runtime.tracer().trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_invoke",
                                    invoke_id=invoke_id,
                                    parent_node_id=parent_id,
-                                   error=error)
+                                   exception=error)
     runtime.state().update_trace(tracer.get_workflow_span(invoke_id, parent_id))

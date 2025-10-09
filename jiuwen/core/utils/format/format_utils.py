@@ -1,5 +1,4 @@
 """格式化工具类模块"""
-import ast
 import json
 from typing import List
 
@@ -37,9 +36,6 @@ class FormatUtils:
         result = dict()
         try:
             result = json.loads(arguments, strict=False)
-        except json.JSONDecodeError:
-            try:
-                result = ast.literal_eval(arguments)
-            except (SyntaxError, AttributeError, ValueError):
-                pass
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to decode JSON from llm_output")
         return result

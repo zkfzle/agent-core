@@ -344,19 +344,6 @@ class OpenAIChatModel(BaseChatModel):
         except Exception as e:
             raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
 
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
-        try:
-            params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
-                                                messages=messages, tools=tools, stream=True, **kwargs)
-            stream = self._sync_client.chat.completions.create(**params)
-            self._sync_client.close()
-            for chunk in stream:
-                parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
-                if parsed_chunk:
-                    yield parsed_chunk
-        except Exception as e:
-            raise Exception(f"OpenAI API 流式调用失败: {str(e)}")
 
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[

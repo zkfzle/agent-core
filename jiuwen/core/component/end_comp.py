@@ -74,19 +74,13 @@ class End(ComponentExecutable, WorkflowComponent):
                     else:
                         yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=res))
                     index += 1
-                final_output = TemplateUtils.render_template(self.template, inputs)
             else:
                 index = 0
                 for key, value in inputs.items():
                     yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index,
-                               payload=dict(outputs={key: value}))
+                               payload=dict(output={key: value}))
                     index += 1
-                final_output = dict(outputs=inputs)
-            final_index = 0
 
-            yield dict(type=StreamCode.MESSAGE_END.name, index=final_index, payload=dict(outputs=final_output))
-            yield dict(type=StreamCode.WORKFLOW_END.name, index=final_index, payload=dict(outputs=final_output))
-            yield dict(type=StreamCode.FINISH.name, index=final_index, payload=dict(outputs=final_output))
         except Exception as e:
             logger.info("stream output error: {}".format(e))
 
@@ -100,6 +94,6 @@ class End(ComponentExecutable, WorkflowComponent):
             if isinstance(input_item, dict):
                 for key, value in input_item.items():
                     stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)
-            yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=input_item))
+            yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(output=input_item))
             index += 1
         runtime.update_state({STREAM_CACHE_KEY: stream_cache_value})

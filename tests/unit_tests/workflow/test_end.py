@@ -9,10 +9,8 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable, Input, Output
-from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.stream.base import BaseStreamMode
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.core.workflow.workflow_config import ComponentAbility
@@ -86,6 +84,7 @@ class EndNodeTest(unittest.TestCase):
                                     runtime=WorkflowRuntime(), flow=flow).result == {
                    'output': {'param1': '你好', 'param2': '杭州'}, 'responseContent': ''}
 
+
     def test_end_stream_template(self):
         flow = Workflow()
         flow.set_start_comp("s", Start(),
@@ -103,9 +102,6 @@ class EndNodeTest(unittest.TestCase):
             {'type': 'PARTIAL_CONTENT', 'index': 2, 'payload': {'answer': ','}},
             {'type': 'PARTIAL_CONTENT', 'index': 3, 'payload': {'answer': '杭州'}},
             {'type': 'PARTIAL_CONTENT', 'index': 4, 'payload': {'answer': ''}},
-            {'type': 'MESSAGE_END', 'index': 0, 'payload': {'outputs': '渲染结果:你好,杭州'}},
-            {'type': 'WORKFLOW_END', 'index': 0, 'payload': {'outputs': '渲染结果:你好,杭州'}},
-            {'type': 'FINISH', 'index': 0, 'payload': {'outputs': '渲染结果:你好,杭州'}},
         ]
 
         async def iter_result(result):
@@ -128,13 +124,8 @@ class EndNodeTest(unittest.TestCase):
                              stream_modes=[BaseStreamMode.OUTPUT])
 
         expect_result = [
-            {'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'outputs': {'param1': '你好'}}},
-            {'type': 'PARTIAL_CONTENT', 'index': 1, 'payload': {'outputs': {'param2': '杭州'}}},
-            {'type': 'MESSAGE_END', 'index': 0,
-             'payload': {'outputs': {'outputs': {'param1': '你好', 'param2': '杭州'}}}},
-            {'type': 'WORKFLOW_END', 'index': 0,
-             'payload': {'outputs': {'outputs': {'param1': '你好', 'param2': '杭州'}}}},
-            {'type': 'FINISH', 'index': 0, 'payload': {'outputs': {'outputs': {'param1': '你好', 'param2': '杭州'}}}}
+            {'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'output': {'param1': '你好'}}},
+            {'type': 'PARTIAL_CONTENT', 'index': 1, 'payload': {'output': {'param2': '杭州'}}},
         ]
 
         async def iter_result(result):
@@ -158,7 +149,7 @@ class EndNodeTest(unittest.TestCase):
         flow.add_stream_connection("n", "e")
         result = flow.stream(inputs={"user_inputs": {"query": "你好", "content": "杭州"}}, runtime=WorkflowRuntime(),
                              stream_modes=[BaseStreamMode.OUTPUT])
-        exepct_result = [{'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'answer': {'param1': '你好', 'param2': '杭州'}}}]
+        exepct_result = [{'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'output': {'param1': '你好', 'param2': '杭州'}}}]
         async def iter_result(result):
             streams = []
             async for stream in result:

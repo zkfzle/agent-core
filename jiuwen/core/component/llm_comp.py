@@ -222,8 +222,10 @@ class LLMExecutable(ComponentExecutable):
             response = llm_response.content
         except Exception as e:
             ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
-
-        logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
+        if UserConfig.is_sensitive():
+            logger.info("[%s] model outputs", self._runtime.executable_id())
+        else:
+            logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
         return self._create_output(response)
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
@@ -238,7 +240,10 @@ class LLMExecutable(ComponentExecutable):
                 async for out in self._stream_with_chunks(inputs):
                     yield out
         except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+            if UserConfig.is_sensitive():
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, "", e)
+            else:
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
     async def interrupt(self, message: dict):
         raise InterruptException(
@@ -356,7 +361,10 @@ class LLMExecutable(ComponentExecutable):
 
     async def _invoke_for_json_format(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
-        logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
+        if UserConfig.is_sensitive():
+            logger.info("[%s] model inputs", self._runtime.executable_id())
+        else:
+            logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
         llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name, messages=model_inputs)  # 如果 invoke 是异步接口，要加 await
         llm_output_content = llm_output.content
         yield self._create_output(llm_output_content)

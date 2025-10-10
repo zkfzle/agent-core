@@ -2,6 +2,7 @@ import re
 from typing import Any, Iterator, Optional, Union, Dict, List
 from dataclasses import dataclass
 
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.output_parser.base import BaseOutputParser
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
@@ -81,7 +82,10 @@ class MarkdownOutputParser(BaseOutputParser):
         elif isinstance(llm_output, str):
             text = llm_output
         else:
-            logger.warning(f"Unsupported llm_output type for parse: {type(llm_output)}")
+            if UserConfig.is_sensitive():
+                logger.warning("Unsupported llm_output type for parse.")
+            else:
+                logger.warning(f"Unsupported llm_output type for parse: {type(llm_output)}")
             return None
 
         if not text:
@@ -97,7 +101,10 @@ class MarkdownOutputParser(BaseOutputParser):
             return markdown_content
 
         except Exception as e:
-            logger.error(f"An unexpected error occurred during Markdown parsing: {e}\nContent: {text}")
+            if UserConfig.is_sensitive():
+                logger.error(f"An unexpected error occurred during Markdown parsing: {e}")
+            else:
+                logger.error(f"An unexpected error occurred during Markdown parsing: {e}\nContent: {text}")
             return None
 
     async def stream_parse(self, streaming_inputs: Iterator[Union[str, AIMessageChunk]]) -> Iterator[
@@ -122,7 +129,10 @@ class MarkdownOutputParser(BaseOutputParser):
             elif isinstance(chunk, str):
                 buffer += chunk
             else:
-                logger.warning(f"Unsupported chunk type for stream_parse: {type(chunk)}")
+                if UserConfig.is_sensitive():
+                    logger.warning("Unsupported chunk type for stream_parse.")
+                else:
+                    logger.warning(f"Unsupported chunk type for stream_parse: {type(chunk)}")
                 continue
 
             if len(buffer) > last_parsed_length:
@@ -137,8 +147,12 @@ class MarkdownOutputParser(BaseOutputParser):
                     last_parsed_length = len(buffer)
 
                 except Exception as e:
-                    logger.error(
-                        f"An unexpected error occurred during streaming Markdown parsing: {e}\nContent: {buffer}")
+                    if UserConfig.is_sensitive():
+                        logger.error(
+                            f"An unexpected error occurred during streaming Markdown parsing: {e}")
+                    else:
+                        logger.error(
+                            f"An unexpected error occurred during streaming Markdown parsing: {e}\nContent: {buffer}")
                     continue
 
         if buffer.strip():
@@ -152,8 +166,12 @@ class MarkdownOutputParser(BaseOutputParser):
                 yield markdown_content
 
             except Exception as e:
-                logger.error(
-                    f"An unexpected error occurred during final streaming Markdown parsing: {e}\nContent: {buffer}")
+                if UserConfig.is_sensitive():
+                    logger.error(
+                        f"An unexpected error occurred during final streaming Markdown parsing: {e}")
+                else:
+                    logger.error(
+                        f"An unexpected error occurred during final streaming Markdown parsing: {e}\nContent: {buffer}")
 
     def _extract_all_elements(self, text: str, markdown_content: MarkdownContent):
         """提取所有Markdown元素并按位置排序"""

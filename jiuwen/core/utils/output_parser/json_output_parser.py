@@ -3,6 +3,7 @@ import re
 import asyncio
 from typing import Any, Iterator, Optional, Union, Dict
 
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.output_parser.base import BaseOutputParser
 from jiuwen.core.utils.llm.messages import AIMessage
 from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
@@ -23,7 +24,10 @@ class JsonOutputParser(BaseOutputParser):
         elif isinstance(llm_output, str):
             text = llm_output
         else:
-            logger.warning(f"Unsupported llm_output type for parse: {type(llm_output)}")
+            if UserConfig.is_sensitive():
+                logger.warning("Unsupported llm_output type for parse.")
+            else:
+                logger.warning(f"Unsupported llm_output type for parse: {type(llm_output)}")
             return None
 
         if not text:
@@ -39,10 +43,16 @@ class JsonOutputParser(BaseOutputParser):
             parsed_data = json.loads(json_str)
             return parsed_data
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON from LLM output: {e}\nContent: {json_str}")
+            if UserConfig.is_sensitive():
+                logger.error(f"Failed to decode JSON from LLM output: {e}")
+            else:
+                logger.error(f"Failed to decode JSON from LLM output: {e}\nContent: {json_str}")
             return None
         except Exception as e:
-            logger.error(f"An unexpected error occurred during JSON parsing: {e}\nContent: {json_str}")
+            if UserConfig.is_sensitive():
+                logger.error(f"An unexpected error occurred during JSON parsing: {e}")
+            else:
+                logger.error(f"An unexpected error occurred during JSON parsing: {e}\nContent: {json_str}")
             return None
 
     async def stream_parse(self, streaming_inputs: Iterator[Union[str, AIMessageChunk]]) -> Iterator[Optional[Dict[str, Any]]]:
@@ -59,7 +69,10 @@ class JsonOutputParser(BaseOutputParser):
             elif isinstance(chunk, str):
                 buffer += chunk
             else:
-                logger.warning(f"Unsupported chunk type for stream_parse: {type(chunk)}")
+                if UserConfig.is_sensitive():
+                    logger.warning("Unsupported chunk type for stream_parse.")
+                else:
+                    logger.warning(f"Unsupported chunk type for stream_parse: {type(chunk)}")
                 continue
 
             match = re.search(r"```json\n(.*?)```", buffer, re.DOTALL)
@@ -72,8 +85,12 @@ class JsonOutputParser(BaseOutputParser):
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
-                    logger.error(
-                        f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
+                    if UserConfig.is_sensitive():
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}")
+                    else:
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
                     buffer = ""
             elif buffer.strip().startswith("{") and buffer.strip().endswith("}"):
                 try:
@@ -83,8 +100,12 @@ class JsonOutputParser(BaseOutputParser):
                 except json.JSONDecodeError:
                     pass
                 except Exception as e:
-                    logger.error(
-                        f"An unexpected error occurred during streaming JSON parsing (direct): {e}\nContent: {buffer}")
+                    if UserConfig.is_sensitive():
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing (direct): {e}")
+                    else:
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing (direct): {e}\nContent: {buffer}")
                     buffer = ""
 
         if buffer.strip():
@@ -98,7 +119,14 @@ class JsonOutputParser(BaseOutputParser):
                 parsed_data = json.loads(json_str)
                 yield parsed_data
             except json.JSONDecodeError as e:
-                logger.warning(f"Remaining buffer could not be fully parsed as JSON: {e}\nContent: {json_str}")
+                if UserConfig.is_sensitive():
+                    logger.warning(f"Remaining buffer could not be fully parsed as JSON: {e}")
+                else:
+                    logger.warning(f"Remaining buffer could not be fully parsed as JSON: {e}\nContent: {json_str}")
             except Exception as e:
-                logger.error(
-                    f"An unexpected error occurred during final streaming JSON parsing: {e}\nContent: {json_str}")
+                if UserConfig.is_sensitive():
+                    logger.error(
+                        f"An unexpected error occurred during final streaming JSON parsing: {e}")
+                else:
+                    logger.error(
+                        f"An unexpected error occurred during final streaming JSON parsing: {e}\nContent: {json_str}")

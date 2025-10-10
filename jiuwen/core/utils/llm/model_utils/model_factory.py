@@ -7,6 +7,7 @@ import logging
 import os
 from typing import Dict, Type
 
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.model_utils.singleton import Singleton
 
@@ -67,5 +68,8 @@ class ModelFactory(metaclass=Singleton):
         model_cls = self.model_map.get(model_provider.lower())
         if not model_cls:
             available_models = ", ".join(self.model_map.keys())
-            raise ValueError(f"Unavailable model provider: {model_provider}. Available models: {available_models}")
+            if UserConfig.is_sensitive():
+                raise ValueError("Unavailable model provider.")
+            else:
+                raise ValueError(f"Unavailable model provider: {model_provider}. Available models: {available_models}")
         return model_cls(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)

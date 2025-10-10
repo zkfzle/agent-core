@@ -14,6 +14,7 @@ from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from jiuwen.core.workflow.base import Workflow
@@ -165,7 +166,10 @@ class WorkflowController(Controller):
 
     async def execute(self, inputs: Dict) -> Dict | list:
         """主执行流程 - 简化的workflow执行"""
-        logger.info(f"Starting Workflow execution with inputs: {inputs}")
+        if UserConfig.is_sensitive():
+            logger.info("Starting Workflow execution with inputs.")
+        else:
+            logger.info(f"Starting Workflow execution with inputs: {inputs}")
 
         # 输入验证（仅在非中断恢复时进行）
         if not self._state.is_interrupted():

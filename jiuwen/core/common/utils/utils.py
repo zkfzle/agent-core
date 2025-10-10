@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class ExceptionUtils:
@@ -146,7 +147,10 @@ class JsonParser:
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
-            ValidationUtils.raise_invalid_params_error(f"JSON解析失败: {response_content} 不是有效的JSON格式")
+            if UserConfig.is_sensitive():
+                ValidationUtils.raise_invalid_params_error("JSON解析失败，不是有效的JSON格式")
+            else:
+                ValidationUtils.raise_invalid_params_error(f"JSON解析失败: {response_content} 不是有效的JSON格式")
 
     @staticmethod
     def _clean_markdown_blocks(content: str):
@@ -211,7 +215,10 @@ class OutputFormatter:
         except JiuWenBaseException:
             raise
         except Exception as e:
-            ValidationUtils.raise_invalid_params_error(f"json schema validation failed: {original_content}")
+            if UserConfig.is_sensitive():
+                ValidationUtils.raise_invalid_params_error("json schema validation failed.")
+            else:
+                ValidationUtils.raise_invalid_params_error(f"json schema validation failed: {original_content}")
 
     @staticmethod
     def _extract_configured_fields(parsed_json: dict, outputs_config: dict) -> dict:
@@ -226,7 +233,10 @@ class OutputFormatter:
                 output[field_name] = parsed_json[field_name]
 
         if missing_keys:
-            ValidationUtils.raise_invalid_params_error(f"missing required fields: {', '.join(missing_keys)}")
+            if UserConfig.is_sensitive():
+                ValidationUtils.raise_invalid_params_error("missing required fields.")
+            else:
+                ValidationUtils.raise_invalid_params_error(f"missing required fields: {', '.join(missing_keys)}")
 
         return output
 

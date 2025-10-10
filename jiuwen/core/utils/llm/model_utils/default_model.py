@@ -11,6 +11,7 @@ from pydantic import ConfigDict
 from requests import Session
 import openai
 
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
 from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
@@ -321,7 +322,10 @@ class OpenAIChatModel(BaseChatModel):
             await async_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
-            raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
+            if UserConfig.is_sensitive():
+                raise Exception("OpenAI API 异步调用失败")
+            else:
+                raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
 
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:

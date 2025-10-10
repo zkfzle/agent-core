@@ -4,12 +4,13 @@
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
+from concurrent.futures import ThreadPoolExecutor
 
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.agent_builder.prompt_builder.tune.base import Case, EvaluatedCase
+from jiuwen.agent_builder.prompt_builder.tune.base import Case, EvaluatedCase, TuneConstant
 from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
 
 
@@ -23,7 +24,8 @@ class BaseEvaluator(ABC):
 
     def batch_evaluate(self,
                        cases: List[Case],
-                       predicts: List[Dict[str, Any]]
+                       predicts: List[Dict[str, Any]],
+                       **kwargs
                        ) -> List[EvaluatedCase]:
         if len(cases) != len(predicts):
             raise JiuWenBaseException(
@@ -32,10 +34,15 @@ class BaseEvaluator(ABC):
                     error_msg=f"length of cases: {len(cases)} dose not equal with length of predicts: {len(predicts)} "
                 )
             )
-        evaluated_cases = []
-        for case, predict in zip(cases, predicts):
-            evaluated_cases.append(self.evaluate(case, predict))
-        return evaluated_cases
+
+        TuneUtils.validate_digital_parameter(kwargs.get("num_parallel", 1), "num_parallel",
+                                             TuneConstant.MIN_PARALLEL_NUM, TuneConstant.MAX_PARALLEL_NUM)
+        num_workers = min(kwargs.get("num_parallel", 1), len(cases))
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            evaluated_cases = executor.map(
+                self.evaluate,
+                cases, predicts)
+            return list(evaluated_cases)
 
 
 LLM_METRIC_TEMPLATE = Template(content=
@@ -108,6 +115,6 @@ class DefaultEvaluator(BaseEvaluator):
         result = evaluated_result.get("result", False)
         evaluated_case.reason = evaluated_result.get("reason", "")
         if result is True or (isinstance(result, str) and result.strip().lower() == "true"):
-            evaluated_case.score = 1
+            evaluated_case.score = 1.0
             return evaluated_case
         return evaluated_case

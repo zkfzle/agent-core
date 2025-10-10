@@ -16,20 +16,17 @@ class TuneConstant:
     DEFAULT_EXAMPLE_NUM: int = 0
     DEFAULT_ITERATION_NUM: int = 3
     DEFAULT_MAX_SAMPLED_EXAMPLE_NUM: int = 10
-    DEFAULT_NUM_PARALLEL: int = 1
-    DEFAULT_LLM_CALL_RETRY_NUM: int = 5
+    DEFAULT_PARALLEL_NUM: int = 1
     DEFAULT_MAX_NUM_SAMPLE_ERROR_CASES: int = 20,
-    DEFAULT_EARLY_STOP_ACCURACY: int = 1.0
+    DEFAULT_EARLY_STOP_SCORE: int = 1.0
 
     """optimizer parameters threshold constant"""
     MIN_ITERATION_NUM: int = 1
     MAX_ITERATION_NUM: int = 20
-    MIN_LLM_CALL_RETRY_NUM: int = 1
-    MAX_LLM_CALL_RETRY_NUM: int = 10
-    MIN_LLM_PARALLEL_DEGREE: int = 1
-    MAX_LLM_PARALLEL_DEGREE: int = 10
+    MIN_PARALLEL_NUM: int = 1
+    MAX_PARALLEL_NUM: int = 10
     MIN_EXAMPLE_NUM: int = 0
-    MAX_EXAMPLE_NUM: int = 10
+    MAX_EXAMPLE_NUM: int = 20
 
     """training status"""
     TASK_RUNNING = "running"

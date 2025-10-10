@@ -7,6 +7,8 @@ from typing import List, Optional
 
 from jiuwen.core.agent.agent import Agent
 from jiuwen.core.common.logging import logger
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant, EvaluatedCase
@@ -46,8 +48,15 @@ class ExampleOptimizer(BaseOptimizer):
         super().__init__(agent)
         self._model = model
         self._model_name = model_name
+        if num_examples < TuneConstant.MIN_EXAMPLE_NUM or num_examples > TuneConstant.MAX_EXAMPLE_NUM:
+            raise JiuWenBaseException(
+                StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR.code,
+                StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR.errmsg.format(
+                    error_msg=f"num_examples should be between {TuneConstant.MIN_EXAMPLE_NUM} "
+                              f"and {TuneConstant.MAX_EXAMPLE_NUM}"
+                )
+            )
         self._num_examples = num_examples
-        self._best_examples: List[Case] = []
 
     def _backward(self,
                   evaluated_cases: List[EvaluatedCase],
@@ -64,7 +73,6 @@ class ExampleOptimizer(BaseOptimizer):
                 "system_prompt",
                 TuneUtils.convert_cases_to_examples(selected_examples)
             )
-            self._best_examples = selected_examples
 
     def _update(self) -> Optional[Agent]:
         optimized_agent = self._agent.copy()
@@ -84,7 +92,6 @@ class ExampleOptimizer(BaseOptimizer):
                 "system_prompt",
                 TuneUtils.convert_cases_to_examples(pre_select_examples)
             )
-            self._best_examples = pre_select_examples
 
     @staticmethod
     def _format_prompt(prompt: Template, gradient: str):

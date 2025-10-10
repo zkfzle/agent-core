@@ -17,6 +17,7 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
@@ -210,7 +211,10 @@ class LLMExecutable(ComponentExecutable):
         self._set_runtime(runtime)
         self._set_context(context)
         model_inputs = self._prepare_model_inputs(inputs)
-        logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
+        if UserConfig.is_sensitive():
+            logger.info("[%s] model inputs", self._runtime.executable_id())
+        else:
+            logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
         response = ""
         try:
             llm_response = await self._llm.ainvoke(

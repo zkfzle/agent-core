@@ -53,7 +53,6 @@ class MessageQueueManager:
                 stream_queues = self._get_queue(consumer_id)
                 for _, queue in stream_queues.items():
                     await queue.send({producer_id: message_content})
-                    logger.debug(f"===produce message {producer_id} {consumer_id} {message_content}")
 
     async def end_message(self, producer_id: str):
         end_message_content = f"END_{producer_id}"
@@ -76,13 +75,11 @@ class MessageQueueManager:
             ended_producers = set()
             while True:
                 message = await queue.receive()
-                logger.debug(f"===consume message {consumer_id} {ability} {message}")
                 if message is None:
                     continue
                 if self._is_end_message(message, ended_producers):
                     if ended_producers == set(key for key, value in self._stream_edges.items() if consumer_id in value):
                         await self.close_stream(consumer_id)
-                        logger.debug(f"===consumer end {consumer_id} {ability}")
                         break
                     else:
                         continue

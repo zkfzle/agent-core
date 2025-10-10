@@ -12,10 +12,9 @@ from jiuwen.core.utils.tool.function.function import LocalFunction, Param
 
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.joint_optimizer import JointOptimizer
 from jiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import DefaultEvaluator
-from jiuwen.core.agent.agent import Agent
 from jiuwen.core.utils.llm.messages import UsageMetadata
 from jiuwen.agent_builder.prompt_builder.tune.base import Case
-from jiuwen.agent_builder.prompt_builder.tune.trainer import Trainer
+from jiuwen.agent_builder.prompt_builder.tune.trainer.trainer import Trainer
 from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
 from jiuwen.core.utils.llm.messages import ToolCall, FunctionInfo
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
@@ -145,7 +144,7 @@ INFORMATION_EXTRACTION_CASES_WITH_VARIABLES = [
 ]
 
 
-class PromptTuneTest(unittest.TestCase):
+class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
     # ------------------------------------------------------------------ #
     #                          提示词自由化初始化方法                        #
     # ------------------------------------------------------------------ #
@@ -175,7 +174,7 @@ class PromptTuneTest(unittest.TestCase):
         agent = create_react_agent(config, tools)
         return agent
 
-    def create_trainer(self, agent: Agent):
+    def create_trainer(self):
         # 1. define optimizer
         llm = ModelFactory().get_model(
             model_provider=MODEL_PROVIDER,
@@ -183,24 +182,24 @@ class PromptTuneTest(unittest.TestCase):
             api_base=API_BASE,
         )
         optimizer = JointOptimizer(
-            agent=agent,
             model_name=MODEL_NAME,
             model=llm,
-            num_examples=1
+            num_examples=0
         )
 
         # 2. define evaluator
         evaluator = DefaultEvaluator(
             model=llm,
             model_name=MODEL_NAME,
-            metric="1. 如果回答不包含工具调用内容，两个回答需要完全一致，包括数量和名字。但可以忽略对单引号、双引号格式问题以及tool_calls字段"
+            metric="1. 如果是非工具调用，两个回答需要一致，包括数量和名字。注意：但可以忽略对引号格式问题以及tool_calls字段"
                    "2. 如果是工具调用，则只需要关注tool_calls字段中插件名称和插件参数是否一致，无需关注文本内容"
         )
 
         # 3. define trainer
         trainer = Trainer(
             evaluator=evaluator,
-            optimizer=optimizer
+            optimizer=optimizer,
+            num_parallel=5
         )
         return trainer
 
@@ -227,38 +226,40 @@ class PromptTuneTest(unittest.TestCase):
         evaluator = DefaultEvaluator(
             model=llm,
             model_name=MODEL_NAME,
-            metric="如果是非工具调用，两个回答需要完全一致，包括数量和名字。但可以忽略对单引号、双引号格式问题以及tool_calls字段"
-                   "如果是工具调用，则只需要关注tool_calls字段中插件名称和插件参数是否一致，忽略文本内容"
+            metric="1. 如果是非工具调用，两个回答需要一致，包括数量和名字。注意：但可以忽略对引号格式问题以及tool_calls字段"
+                   "2. 如果是工具调用，则只需要关注tool_calls字段中插件名称和插件参数是否一致，无需关注文本内容"
         )
         results = evaluator.batch_evaluate(INFORMATION_EXTRACTION_CASES, predicts)
         self.show_result(results)
 
         # 创建优化器，执行优化
         optimizer = JointOptimizer(
-            agent=agent,
+            parameters=agent.get_llm_calls(),
             model_name=MODEL_NAME,
             model=llm,
             num_examples=1
         )
 
         optimizer.backward(results)
-        optimized_agent = optimizer.update()
+        optimizer.update()
 
         # 评估优化后agent
-        predicts = asyncio.run(forward(optimized_agent, INFORMATION_EXTRACTION_CASES))
+        predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))
         results = evaluator.batch_evaluate(INFORMATION_EXTRACTION_CASES, predicts)
         self.show_result(results)
 
     @unittest.skip("skip system test")
     def test_information_extraction_prompt_optimization(self):
         agent = self.create_agent(INFORMATION_EXTRACTION_TEMPLATE)
-        trainer = self.create_trainer(agent)
+        trainer = self.create_trainer()
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES)
-        optimized_agent = trainer.train(agent, case_loader)
 
         score, result = trainer.evaluate(agent, case_loader)
         print(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
+
+        optimized_agent = trainer.train(agent, case_loader)
+
         score, result = trainer.evaluate(optimized_agent, case_loader)
         print(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
@@ -266,13 +267,15 @@ class PromptTuneTest(unittest.TestCase):
     @unittest.skip("skip system test")
     def test_tool_calls_prompt_optimization(self):
         agent = self.create_agent(TOOL_CALLS_TEMPLATE, TOOLS)
-        trainer = self.create_trainer(agent)
+        trainer = self.create_trainer()
         case_loader = CaseLoader(cases=TOOL_CALL_CASES)
-        optimized_agent = trainer.train(agent, case_loader, num_iterations=1)
 
         score, result = trainer.evaluate(agent, case_loader)
         print(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
+
+        optimized_agent = trainer.train(agent, case_loader, num_iterations=2)
+
         score, result = trainer.evaluate(optimized_agent, case_loader)
         print(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
@@ -280,13 +283,15 @@ class PromptTuneTest(unittest.TestCase):
     @unittest.skip("skip system test")
     def test_information_extraction_prompt_optimization_with_variables(self):
         agent = self.create_agent(INFORMATION_EXTRACTION_TEMPLATE_WITH_VARIABLES, TOOLS)
-        trainer = self.create_trainer(agent)
+        trainer = self.create_trainer()
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES_WITH_VARIABLES)
-        optimized_agent = trainer.train(agent, case_loader, num_iterations=1)
 
         score, result = trainer.evaluate(agent, case_loader)
         print(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
+
+        optimized_agent = trainer.train(agent, case_loader, num_iterations=3)
+
         score, result = trainer.evaluate(optimized_agent, case_loader)
         print(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)

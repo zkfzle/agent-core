@@ -25,4 +25,4 @@ class LLMCallConfig(BaseModel):
     system_prompt: List[Dict] = Field(default_factory=list)
     user_prompt: List[Dict] = Field(default_factory=list)
     freeze_system_prompt: bool = Field(default=False)
-    freeze_user_prompt: bool = Field(default=False)
+    freeze_user_prompt: bool = Field(default=True)

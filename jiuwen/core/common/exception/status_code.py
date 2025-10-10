@@ -200,7 +200,7 @@ class StatusCode(Enum):
     AGENT_BUILDER_AGENT_OPTIMIZER_UPDATE_ERROR = (110011, "Do optimizer's update failed: {error_msg}")
     AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR = (110012, "Agent optimizer parameters error: {error_msg}")
     AGENT_BUILDER_AGENT_EVALUATOR_EVALUATE_ERROR = (110030, "Do evaluator's evaluate failed: {error_msg}")
-    AGENT_BUILDER_AGENT_EVALUATOR_PARAMS_ERROR = (110031, "Agent evaluator parameters error: {error_msg}")
+    AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR = (110040, "Do trainer's train error: {error_msg}")
 
     @property
     def code(self):

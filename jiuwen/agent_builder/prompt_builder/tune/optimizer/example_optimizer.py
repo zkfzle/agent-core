@@ -3,13 +3,14 @@
 prompt optimization evaluators
 """
 import random
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from jiuwen.core.agent.agent import Agent
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.llm.base import BaseChatModel
+from jiuwen.core.utils.llm_call.base import LLMCall
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant, EvaluatedCase
 from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
@@ -18,7 +19,8 @@ from jiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimize
 
 EXAMPLE_SELECTION_TEMPLATE = Template(content="""作为提示词优化专家,我的任务是帮助代理高效且成功地完成任务。
 当前任务描述:
-[任务描述]{{task_description}}
+[任务描述]
+{{task_description}}
 请从以下回答错误的数据或正确但又代表性的示例集合中选择最具代表性的{{num_examples}}个示例,以解决上述任务中的任何问题。
 当前的错误示例集是
 {{examples}}
@@ -40,12 +42,12 @@ EXAMPLE_SELECTION_TEMPLATE = Template(content="""作为提示词优化专家,我
 
 class ExampleOptimizer(BaseOptimizer):
     def __init__(self,
-                 agent: Agent,
                  model: BaseChatModel,
                  model_name: str,
+                 parameters: Optional[Dict[str, LLMCall]] = None,
                  num_examples: int = TuneConstant.DEFAULT_EXAMPLE_NUM,
-                 **kwargs):
-        super().__init__(agent)
+                 ):
+        super().__init__(parameters)
         self._model = model
         self._model_name = model_name
         if num_examples < TuneConstant.MIN_EXAMPLE_NUM or num_examples > TuneConstant.MAX_EXAMPLE_NUM:
@@ -60,38 +62,56 @@ class ExampleOptimizer(BaseOptimizer):
 
     def _backward(self,
                   evaluated_cases: List[EvaluatedCase],
-                  ) -> Optional[Agent]:
+                  ):
         """optimize instruction"""
         if self._num_examples <= 0:
-            return self._agent
+            logger.info(f"skip do example optimization.")
+            return
 
         for name, param in self._parameters.items():
             selected_examples = self._select_best_examples(
-                param.llm_call.get_system_prompt(), evaluated_cases
+                param.llm_call.get_system_prompt(),
+                param.llm_call.get_user_prompt(),
+                evaluated_cases
             )
-            param.set_gradient(
-                "system_prompt",
-                TuneUtils.convert_cases_to_examples(selected_examples)
-            )
+            if not param.llm_call.get_freeze_system_prompt():
+                param.set_gradient(
+                    "system_prompt",
+                    TuneUtils.convert_cases_to_examples(selected_examples)
+                )
+            if not param.llm_call.get_freeze_user_prompt():
+                param.set_gradient(
+                    "user_prompt",
+                    TuneUtils.convert_cases_to_examples(selected_examples)
+                )
 
     def _update(self) -> Optional[Agent]:
-        optimized_agent = self._agent.copy()
-        llm_calls = optimized_agent.get_llm_calls()
         for name, param in self._parameters.items():
-            optimized_prompt = self._format_prompt(
-                param.llm_call.get_system_prompt(), param.get_gradient("system_prompt")
-            )
-            llm_calls.get(name).update_system_prompt(optimized_prompt)
-        return optimized_agent
+            if not param.llm_call.get_freeze_user_prompt():
+                optimized_prompt = self._format_prompt(
+                    param.llm_call.get_user_prompt(), param.get_gradient("user_prompt")
+                )
+                param.llm_call.update_user_prompt(optimized_prompt)
+            elif not param.llm_call.get_freeze_system_prompt():
+                optimized_prompt = self._format_prompt(
+                    param.llm_call.get_system_prompt(), param.get_gradient("system_prompt")
+                )
+                param.llm_call.update_system_prompt(optimized_prompt)
 
     def init_examples(self, evaluated_cases: List[EvaluatedCase]):
         """prepare few-shot examples"""
         pre_select_examples = self._sample_example(self._num_examples, evaluated_cases)
         for name, param in self._parameters.items():
-            param.set_gradient(
-                "system_prompt",
-                TuneUtils.convert_cases_to_examples(pre_select_examples)
-            )
+            if not param.llm_call.get_freeze_system_prompt():
+                param.set_gradient(
+                    "system_prompt",
+                    TuneUtils.convert_cases_to_examples(pre_select_examples)
+                )
+            if not param.llm_call.get_freeze_user_prompt():
+                param.set_gradient(
+                    "user_prompt",
+                    TuneUtils.convert_cases_to_examples(pre_select_examples)
+                )
 
     @staticmethod
     def _format_prompt(prompt: Template, gradient: str):
@@ -121,7 +141,8 @@ class ExampleOptimizer(BaseOptimizer):
         return [eval_case.case for eval_case in sampled_examples]
 
     def _select_best_examples(self,
-                              original_prompt: Template,
+                              system_prompt: Template,
+                              user_prompt: Template,
                               evaluated_cases: List[EvaluatedCase],
                               ) -> List[Case]:
         """select best examples"""
@@ -135,7 +156,8 @@ class ExampleOptimizer(BaseOptimizer):
         )
 
         messages = EXAMPLE_SELECTION_TEMPLATE.format(
-            dict(task_description=TuneUtils.get_content_string_from_template(original_prompt),
+            dict(task_description=TuneUtils.get_content_string_from_template(system_prompt) + "\n" +
+                                  TuneUtils.get_content_string_from_template(user_prompt),
                  num_examples=num_selected_examples,
                  examples=examples_string)
         ).to_messages()

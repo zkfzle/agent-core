@@ -4,12 +4,9 @@
 
 from abc import abstractmethod
 from typing import Dict, Optional, Any, List, Callable
-import copy
 
 from pydantic import BaseModel, Field
 
-from jiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase
-from jiuwen.core.agent.agent import Agent
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
@@ -17,21 +14,30 @@ from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo
 from jiuwen.core.utils.llm_call.base import LLMCall
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
-from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
-from jiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import BaseEvaluator
+from jiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase
 
 
 class BaseOptimizer:
     def __init__(self,
-                 agent: Agent,
+                 parameters: Optional[Dict[str, LLMCall]] = None,
                  **kwargs
                  ):
-        from jiuwen.agent.chat_agent import ChatAgent
-        if not isinstance(agent, ChatAgent):
-            raise TypeError("optimizer only support Chat Agent right now.")
-        self._agent = agent
         self._parameters: Dict[str, TextualParameter] = {}
-        for name, llm_call in agent.get_llm_calls().items():
+        self._history = OptimizeHistory()
+        self._bad_cases: List[EvaluatedCase] = []
+        self.bind_parameter(parameters)
+
+    def bind_parameter(self, parameters: Dict[str, LLMCall]):
+        if parameters is None:
+            return
+        for name, llm_call in parameters.items():
+            if not llm_call:
+                raise JiuWenBaseException(
+                    StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR.code,
+                    StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR.errmsg.format(
+                        error_msg=f"cannot bind a None parameter of {name}"
+                    )
+                )
             self._parameters[name] = TextualParameter(llm_call)
         self._history = OptimizeHistory()
         self._bad_cases: List[EvaluatedCase] = []
@@ -39,6 +45,7 @@ class BaseOptimizer:
     def backward(self,
                  evaluated_cases: List[EvaluatedCase],
                  ):
+        self._validate_parameters()
         self._batch_set_optimizer_callback(self.trace_callback)
         self._get_bad_cases(evaluated_cases)
         try:
@@ -53,14 +60,18 @@ class BaseOptimizer:
             )
         self._batch_set_optimizer_callback(None)
 
-    def update(self) -> Optional[Agent]:
+    def update(self):
+        self._validate_parameters()
         try:
-            optimized_agent = self._update()
-            for name, llm_call in optimized_agent.get_llm_calls().items():
+            self._update()
+            for name, param in self._parameters.items():
                 logger.info(f"[llm_call name]: {name}\n"
-                            f"[optimized prompt]:{str(llm_call.get_system_prompt().content)}")
+                            f"[frozen]: {param.llm_call.get_freeze_system_prompt()}\n"
+                            f"[system prompt]: {str(param.llm_call.get_system_prompt().content)}")
+                logger.info(f"[llm_call name]: {name}\n"
+                            f"[frozen]: {param.llm_call.get_freeze_user_prompt()}\n"
+                            f"[user prompt]: {str(param.llm_call.get_user_prompt().content)}")
             self._history.clear_history()
-            return optimized_agent
         except Exception as e:
             self._history.clear_history()
             raise JiuWenBaseException(
@@ -71,23 +82,17 @@ class BaseOptimizer:
             )
 
     @abstractmethod
-    def _update(self) -> Optional[Agent]:
-        return self._agent
+    def _update(self):
+        pass
 
     @abstractmethod
     def _backward(self,
                  evaluated_cases: List[EvaluatedCase] ,
-                 ) -> Optional[Agent]:
+                 ):
         pass
 
-    def parameters(self):
+    def parameters(self) -> Dict[str, "TextualParameter"]:
         return self._parameters
-
-    def prepare(self,
-                case_loader: CaseLoader,
-                evaluator: Optional[BaseEvaluator] = None,
-                ) -> Optional[Agent]:
-        return self._agent
 
     def trace_callback(self,
                        input: Dict[str, str],
@@ -112,10 +117,19 @@ class BaseOptimizer:
         self._bad_cases = bad_cases
         return bad_cases
 
+    def _validate_parameters(self):
+        if not self._parameters:
+            raise JiuWenBaseException(
+                StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.code,
+                StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.errmsg.format(
+                    error_msg="cannot optimize empty parameters"
+                )
+            )
+
 
 class TextualParameter:
     def __init__(self, llm_call: LLMCall):
-        self.llm_call = copy.deepcopy(llm_call)
+        self.llm_call = llm_call
         self.gradients: Dict[str, str] = {}
 
     def set_gradient(self, name: str, gradient: str):

@@ -20,7 +20,7 @@ class LLMCall:
                  system_prompt: str | List[BaseMessage] | List[Dict],
                  user_prompt: str | List[BaseMessage] | List[Dict],
                  freeze_system_prompt: bool = False,
-                 freeze_user_prompt: bool = False,
+                 freeze_user_prompt: bool = True,
                  ) -> None:
         self._llm = llm
         self._model_name = model_name
@@ -74,11 +74,17 @@ class LLMCall:
         if not self._freeze_user_prompt:
             self._user_prompt = Template(content=user_prompt)
 
-    def freeze_system_prompt(self, switch: bool) -> None:
+    def set_freeze_system_prompt(self, switch: bool) -> None:
         self._freeze_system_prompt = switch
 
-    def freeze_user_prompt(self, switch: bool) -> None:
+    def set_freeze_user_prompt(self, switch: bool) -> None:
         self._freeze_user_prompt = switch
+
+    def get_freeze_system_prompt(self) -> bool:
+        return self._freeze_system_prompt
+
+    def get_freeze_user_prompt(self) -> bool:
+        return self._freeze_user_prompt
 
     def _format_llm_input(self,
                           inputs: Dict[str, Any],

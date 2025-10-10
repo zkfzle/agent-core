@@ -1,5 +1,6 @@
 import json
 import re
+import string
 from typing import Dict, Any
 
 from pydantic import ValidationError
@@ -233,10 +234,26 @@ class TemplateUtils:
 
     @staticmethod
     def render_template(template: str, inputs: dict) -> str:
-        pattern = re.compile(r'\{\{(\w+)}}')
+        """
+           使用string.Template安全渲染模板
 
-        # 替换所有匹配的变量
-        return pattern.sub(lambda match: str(inputs.get(match.group(1), match.group(0))), template)
+           参数:
+               template: 包含{{变量}}的模板字符串
+               inputs: 用于替换的变量字典
+
+           返回:
+               替换后的字符串
+           """
+        # 输入验证
+        if not isinstance(template, str):
+            raise TypeError("模板必须是字符串类型")
+        if not isinstance(inputs, dict):
+            raise TypeError("输入数据必须是字典类型")
+
+        # 创建模板实例
+        template = template.replace("{{","$").replace("}}","")
+        t = string.Template(template)
+        return t.safe_substitute(**inputs)
 
     @staticmethod
     def render_template_to_list(template: str) -> list[str | Any]:

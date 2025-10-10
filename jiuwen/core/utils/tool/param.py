@@ -58,13 +58,13 @@ class Param:
             if not type_check.get(main_type.value)(default_value):
                 raise JiuWenBaseException(
                     error_code=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.code,
-                    message=f"Default value '{default_value}' must be a array."
+                    message=f"Default value must be a array."
                 )
         else:
             if not isinstance(default_value, list):
                 raise JiuWenBaseException(
                     error_code=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.code,
-                    message=f"Default value '{default_value}' must be a array."
+                    message=f"Default value must be a array."
                 )
             if not all(type_check.get(sub_type.value)(item) for item in default_value):
                 raise JiuWenBaseException(

@@ -240,7 +240,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         return self
 
     async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
-        logger.info("begin to sub_invoke, input=%s", inputs)
+        logger.info("begin to sub_invoke")
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         compiled_graph = self._graph.compile(SubWorkflowRuntime(runtime, workflow_id=self._workflow_config.metadata.id))
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)

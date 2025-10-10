@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 import re
+import ast
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -46,13 +47,52 @@ class ExpressionCondition(Condition):
         expression = re.sub(r'\btrue\b', r'True', expression)
         expression = re.sub(r'\bfalse\b', r'False', expression)
 
-        expression = re.sub(r'\$\{(.*?)\}', lambda match: f'inputs["{match.group(0)}"]', expression)
-
-        runtime = {
-            "inputs": inputs
-        }
+        processed_expression = re.sub(r'\$\{(.*?)\}', lambda match: f'inputs["{match.group(0)}"]', expression)
+        
         try:
-            return eval(expression, runtime)
+            parsed_expr = ast.parse(processed_expression, mode='eval')
+            
+            class SafeExprChecker(ast.NodeVisitor):
+                def visit_Call(self, node):
+                    # 只允许调用len函数
+                    if isinstance(node.func, ast.Name) and node.func.id != 'len':
+                        raise ValueError(f"Function calls other than 'len' are not allowed: {node.func.id}")
+                    # 不允许任何属性访问（防止如os.system调用）
+                    if isinstance(node.func, ast.Attribute):
+                        raise ValueError(f"Attribute access is not allowed: {ast.unparse(node.func)}")
+                    self.generic_visit(node)
+                
+                def visit_Name(self, node):
+                    # 只允许访问inputs、len和True/False/None
+                    if node.id not in ['inputs', 'len', 'True', 'False', 'None']:
+                        raise ValueError(f"Variable access not allowed: {node.id}")
+                
+                def visit_Attribute(self, node):
+                    # 不允许任何属性访问
+                    raise ValueError(f"Attribute access is not allowed: {ast.unparse(node)}")
+                
+                def visit_Subscript(self, node):
+                    # 只允许对inputs进行下标访问
+                    if isinstance(node.value, ast.Name) and node.value.id == 'inputs':
+                        self.generic_visit(node)
+                    else:
+                        raise ValueError(f"Subscript access only allowed for 'inputs': {ast.unparse(node)}")
+            
+            checker = SafeExprChecker()
+            checker.visit(parsed_expr)
+
+            eval_globals = {"__builtins__": {}}
+            # 只允许访问inputs和len函数
+            eval_locals = {
+                'inputs': inputs,
+                'len': len
+            }
+            
+            result = eval(compile(parsed_expr, '<string>', 'eval'), eval_globals, eval_locals)
+            
+            if not isinstance(result, bool):
+                raise ValueError(f"Expression result must be boolean, got: {type(result).__name__}")
+            return result
         except SyntaxError as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(error_msg=str(e)))

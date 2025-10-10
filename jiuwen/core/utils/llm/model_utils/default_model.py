@@ -1,12 +1,12 @@
 #!/usr/bin/python3.11
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+import os
 
 import aiohttp
 import json
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 
-from aiohttp import ClientSession
 from pydantic import ConfigDict
 from requests import Session
 import openai
@@ -18,12 +18,11 @@ from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 
 
 class RequestChatModel(BaseChatModel):
-
     model_config = ConfigDict(arbitrary_types_allowed=True)
     sync_client: Session = Session()
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
+                 api_key: str, api_base: str, max_retrie: int = 3, timeout: int = 60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
         self._stream_state = {
             'current_tool_call_id': '',
@@ -40,28 +39,44 @@ class RequestChatModel(BaseChatModel):
     def model_provider(self) -> str:
         return "generic_http_api"
 
-    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                top_p: float = 0.1, **kwargs: Any) -> AIMessage:
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
 
+        verify = os.getenv("LLM_SSL_VERIFY", "True").lower() != "false"
+
+        # 2. 客户端证书
+        cert = None
+        if verify:
+            cert_path = os.getenv("LLM_CLIENT_CERT")
+            key_path = os.getenv("LLM_CLIENT_KEY")
+            if cert_path and key_path:
+                cert = (cert_path, key_path)
+            elif cert_path:
+                cert = cert_path
+            else:
+                raise ValueError("LLM_CLIENT_CERT or LLM_CLIENT_KEY must be set when LLM_SSL_VERIFY is True")
+
         response = self.sync_client.post(
-            verify=False,
-            url=self.api_base,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            },
-            json=params,
-            timeout=self.timeout
-        )
+                verify=verify,
+                cert=cert,
+                url=self.api_base,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}"
+                },
+                json=params,
+                timeout=self.timeout
+            )
+
         response.raise_for_status()
         self.close_session()
         return self._parse_response(model_name, response.json())
 
-    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                       top_p: float = 0.1, **kwargs: Any) -> AIMessage:
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
@@ -79,8 +94,8 @@ class RequestChatModel(BaseChatModel):
             data = await response.json()
             return self._parse_response(model_name, data)
 
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                top_p: float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
 
         self._reset_stream_state()
 
@@ -88,9 +103,23 @@ class RequestChatModel(BaseChatModel):
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
         params["stream"] = True
+        verify = os.getenv("LLM_SSL_VERIFY", "True").lower() != "false"
+
+        # 2. 客户端证书
+        cert = None
+        if verify:
+            cert_path = os.getenv("LLM_CLIENT_CERT")
+            key_path = os.getenv("LLM_CLIENT_KEY")
+            if cert_path and key_path:
+                cert = (cert_path, key_path)
+            elif cert_path:
+                cert = cert_path
+            else:
+                raise ValueError("LLM_CLIENT_CERT or LLM_CLIENT_KEY must be set when LLM_SSL_VERIFY is True")
 
         with self.sync_client.post(
-                verify=False,
+                verify=verify,
+                cert=cert,
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
@@ -108,16 +137,16 @@ class RequestChatModel(BaseChatModel):
                         yield chunk
         self.close_session()
 
-
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
+    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                       top_p: float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
 
         # 重置流状态
         self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
+        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages,
+                                      tools=tools, **kwargs)
         params["stream"] = True
 
         async with aiohttp.ClientSession().post(
@@ -287,14 +316,14 @@ class OpenAIChatModel(BaseChatModel):
     """OpenAI 专用聊天模型实现，使用官方 openai 库"""
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
+                 api_key: str, api_base: str, max_retrie: int = 3, timeout: int = 60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
 
     def model_provider(self) -> str:
         return "openai"
 
-    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                top_p: float = 0.1, **kwargs: Any) -> AIMessage:
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
@@ -308,8 +337,8 @@ class OpenAIChatModel(BaseChatModel):
         except Exception as e:
             raise Exception(f"OpenAI API 调用失败: {str(e)}")
 
-    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                       top_p: float = 0.1, **kwargs: Any) -> AIMessage:
         """异步调用 OpenAI API"""
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
@@ -327,8 +356,8 @@ class OpenAIChatModel(BaseChatModel):
             else:
                 raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
 
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                top_p: float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
@@ -345,8 +374,8 @@ class OpenAIChatModel(BaseChatModel):
         except Exception as e:
             raise Exception(f"OpenAI API 流式调用失败: {str(e)}")
 
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
+    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
+                       top_p: float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
         """异步流式调用 OpenAI API"""
         try:
@@ -366,8 +395,7 @@ class OpenAIChatModel(BaseChatModel):
         except Exception as e:
             raise Exception(f"OpenAI API 异步流式调用失败: {str(e)}")
 
-
-    def _build_request_params(self, model_name:str, temperature: float, top_p:float, messages: List[Dict],
+    def _build_request_params(self, model_name: str, temperature: float, top_p: float, messages: List[Dict],
                               tools: List[Dict] = None, stream: bool = False,
                               **kwargs) -> Dict:
         """构建 OpenAI API 请求参数"""
@@ -386,7 +414,6 @@ class OpenAIChatModel(BaseChatModel):
             params["tool_choice"] = "auto"
 
         return params
-
 
     def _parse_openai_response(self, model_name, response) -> AIMessage:
         """解析 OpenAI API 响应"""
@@ -416,7 +443,6 @@ class OpenAIChatModel(BaseChatModel):
                 total_latency=response.usage.total_tokens if response.usage else 0
             )
         )
-
 
     def _parse_openai_stream_chunk(self, model_name, chunk) -> Optional[AIMessageChunk]:
         """解析 OpenAI 流式响应块"""

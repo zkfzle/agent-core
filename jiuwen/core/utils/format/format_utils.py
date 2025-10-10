@@ -2,6 +2,7 @@
 import json
 from typing import List
 
+from jiuwen.core.common.logging import logger
 from jiuwen.core.utils.llm.messages import BaseMessage
 
 
@@ -36,6 +37,6 @@ class FormatUtils:
         result = dict()
         try:
             result = json.loads(arguments, strict=False)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to decode JSON from llm_output")
+        except json.JSONDecodeError:
+            logger.error(f"JSON parser error.")
         return result

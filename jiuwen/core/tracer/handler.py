@@ -283,7 +283,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
             if isinstance(exception, JiuWenBaseException):
                 span.error = {"error_code": exception.error_code, "message": exception.message}
             else:
-                span.error = repr(exception)
+                span.error = {"error_code": -1, "message": type(exception).__name__}
             if on_invoke_data:
                 span.on_invoke_data.append(on_invoke_data)
             update_data = {

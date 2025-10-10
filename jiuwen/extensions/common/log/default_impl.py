@@ -126,6 +126,7 @@ class DefaultLogger(LoggerProtocol):
         log_file = self.config.get('log_file', f'{self.log_type}.log')
 
         for handler in self._logger.handlers[:]:
+            handler.close()
             self._logger.removeHandler(handler)
 
         if 'console' in output:

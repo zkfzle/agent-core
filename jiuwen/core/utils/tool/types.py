@@ -54,11 +54,11 @@ class ValueTypeEnum(Enum):
             }
             if sub_type in array_enum_map:
                 return array_enum_map[sub_type]
-            raise ValueError(f"Invalid type: {type_string}")
+            raise ValueError("Invalid type")
         for item in cls:
             if item.value.lower() == type_string.lower():
                 return item
-        raise ValueError(f"Invalid type: {type_string}")
+        raise ValueError("Invalid type")
 
 
 class Type:

@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 import json
+import os
 from typing import List
 
 import requests
@@ -77,9 +78,10 @@ class RestfulApi(Tool):
         request_params = RequestParams(self, inputs, **kwargs)
         try:
             request_params.prepare_params()
+            verify = self._verify_ssl_cert()
             response = requests.request(
                 self.method, request_params.ip_address_url, headers=request_params.headers,
-                verify=False, stream=False, params=request_params.query_params_in_inputs,
+                verify=verify, stream=False, params=request_params.query_params_in_inputs,
                 timeout=constant.REQUEST_TIMEOUT,
                 **request_params.request_arg
             )
@@ -140,6 +142,17 @@ class RestfulApi(Tool):
             ) as response:
                 response_data = await _data_of_async_request(response)
         return response_data
+
+    @staticmethod
+    def _verify_ssl_cert():
+        ssl_verify_is_false = os.getenv("SSL_VERIFY", "true").lower() == "false"
+        if ssl_verify_is_false:
+            verify = False
+        else:
+            ssl_cert = os.getenv("SSL_CERT")
+            verify = ssl_cert if ssl_cert else True
+        return verify
+
 
 class RequestParams:
     """Restful API request parameters"""

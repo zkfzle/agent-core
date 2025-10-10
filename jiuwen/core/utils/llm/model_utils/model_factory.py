@@ -23,9 +23,6 @@ class ModelFactory(metaclass=Singleton):
             'model_library'
         )
         self._load_model_dir(core_model_dir)
-        custom_model_dir = os.getenv('MODEL_DIR')
-        if custom_model_dir and os.path.exists(custom_model_dir):
-            self._load_model_dir(custom_model_dir)
 
     @staticmethod
     def _load_models(model_dir: str) -> Dict[str, Type[BaseChatModel]]:

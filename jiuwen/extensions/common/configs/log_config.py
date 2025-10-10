@@ -10,13 +10,16 @@ from typing import Dict, Any, List
 
 
 class LogConfig:
-    
     def __init__(self, config_path: str = None):
         if config_path is None:
             # 优先从环境变量读取配置路径
             env_path = os.getenv('JIUWEN_LOG_CONFIG') or os.getenv('JIUWEN_APP_CONFIG')
             if env_path:
-                config_path = env_path
+                normalized_path = os.path.normpath(env_path)
+                if normalized_path.startswith(env_path):
+                    config_path = normalized_path
+                else:
+                    raise ValueError("Config file path is not valid")
             else:
                 config_path = os.path.join(
                     os.path.dirname(__file__),

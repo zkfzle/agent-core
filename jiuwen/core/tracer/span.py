@@ -33,14 +33,10 @@ class TraceAgentSpan(Span):
 
 class TraceWorkflowSpan(Span):
     execution_id: str = Field(default="", alias="executionId")
-    conversation_id: str = Field(default="", alias="conversationId")
     on_invoke_data: List[dict] = Field(default=[], alias="onInvokeData")  # 用于记录当前组件执行时间的中间过程信息
-    agent_id: str = Field(default="", alias="agentId")
     component_id: str = Field(default="", alias="componentId")  # 放到metadata
     component_name: str = Field(default="", alias="componentName")  # 放到metadata
     component_type: str = Field(default="", alias="componentType")  # 即invoke_type
-    agent_parent_invoke_id: str = Field(default="", alias="agentParentInvokeId")  # 给未来适配workflow节点中嵌套workflow预留
-    meta_data: Optional[str] = Field(default=None, alias="metaData")  # 包括：模型的输入的function tools信息，模型的token使用信息
     # for loop component
     loop_node_id: Optional[str] = Field(default=None, alias="loopNodeId")
     loop_index: Optional[int] = Field(default=None, alias="loopIndex")

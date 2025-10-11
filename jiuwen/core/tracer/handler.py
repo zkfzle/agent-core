@@ -253,22 +253,12 @@ class TraceWorkflowHandler(TraceBaseHandler):
     async def on_pre_invoke(self, invoke_id: str, inputs: Any, component_metadata: dict,
                             **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
-        try:
-            meta_data = json.dumps({
-                "component_id": component_metadata.get("component_id", ""),
-                "component_name": component_metadata.get("component_name", ""),
-                "component_type": component_metadata.get("component_type", "")
-            })
-        except json.decoder.JSONDecodeError as err:
-            logger.error("meta_data process error")
-            raise ValueError(f"meta_data error: Decoder error") from err
 
         update_data = {
             "start_time": datetime.now(tz=tzlocal()).replace(tzinfo=None),
             "inputs": inputs,
             "invoke_type": component_metadata["component_type"],
             "on_invoke_data": [],
-            "meta_data": meta_data,
             **component_metadata
         }
         self._span_manager.update_span(span, update_data)

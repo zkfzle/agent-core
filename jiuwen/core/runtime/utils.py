@@ -112,7 +112,7 @@ def extract_origin_key(key: str) -> str:
         return key
     if '$' not in key:
         return key
-    pattern = re.compile(r"\${(.+?)\}")
+    pattern = re.compile(r"\${([^{}]*)}")
     match = pattern.search(key, endpos=REGEX_MAX_LENGTH)
     if match:
         return match.group(1)

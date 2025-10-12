@@ -5,7 +5,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.prompt.assemble.variables.variable import Variable
 
-TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN = r"\{\{(.*?)\}\}"
+TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN = r"\{\{([^{}]*)\}\}"
 
 
 class TextableVariable(Variable):

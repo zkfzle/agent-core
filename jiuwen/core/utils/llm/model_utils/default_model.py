@@ -2,13 +2,16 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import os
+import ssl
 
 import aiohttp
 import json
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 
+from aiohttp import ClientSession
 from pydantic import ConfigDict
 from requests import Session
+from requests.adapters import HTTPAdapter
 import openai
 
 from jiuwen.core.utils.config.user_config import UserConfig
@@ -18,11 +21,13 @@ from jiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 
 
 class RequestChatModel(BaseChatModel):
+
     model_config = ConfigDict(arbitrary_types_allowed=True)
     sync_client: Session = Session()
+    aiohttp_session: Optional[ClientSession] = None
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int = 3, timeout: int = 60, **kwargs):
+                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
         self._stream_state = {
             'current_tool_call_id': '',
@@ -31,13 +36,96 @@ class RequestChatModel(BaseChatModel):
             'tool_calls': []
         }
         self._usage = dict()
+        self._setup_ssl_adapter()
 
-    def close_session(self):
-        if self.sync_client is not None:
-            self.sync_client.close()
+    async def ensure_session(self):
+        if self.aiohttp_session is None or self.aiohttp_session.closed:
+            self.aiohttp_session = aiohttp.ClientSession()
+
+    async def close_session(self):
+        if self.aiohttp_session is not None and not self.aiohttp_session.closed:
+            await self.aiohttp_session.close()
+            self.aiohttp_session = None
 
     def model_provider(self) -> str:
         return "generic_http_api"
+
+    def _bool_env(self, name: str) -> bool:
+        """解析布尔型环境变量"""
+        return os.getenv(name, "").strip().lower() in {"true"}
+    
+    def _get_ssl_config(self):
+        """获取SSL配置，统一处理SSL验证逻辑"""
+        ssl_verify = self._bool_env("LLM_SSL_VERIFY")
+        ssl_cert = os.getenv("LLM_SSL_CERT")
+        
+        if not ssl_verify:
+            # 当ssl_verify为false时，ssl_cert为false
+            return False, False
+        
+        # 当ssl_verify为true时，ssl_cert是证书本身
+        if ssl_cert is None:
+            raise ValueError("当LLM_SSL_VERIFY=true时，必须提供LLM_SSL_CERT证书")
+        
+        return True, ssl_cert
+
+    def _create_strict_ssl_context(self, ssl_cert: str = None) -> ssl.SSLContext:
+        """创建严格的SSL上下文，要求TLS 1.2以上和指定的密码套件"""
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        
+        # 禁用不安全的协议版本
+        ctx.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
+        ctx.options |= ssl.OP_NO_RENEGOTIATION
+        
+        # 设置最小TLS版本为1.2
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+        
+        # 设置严格的密码套件要求
+        ctx.set_ciphers(
+            "ECDHE-ECDSA-AES256-GCM-SHA384:"
+            "ECDHE-RSA-AES256-GCM-SHA384:"
+            "ECDHE-ECDSA-AES128-GCM-SHA256:"
+            "ECDHE-RSA-AES128-GCM-SHA256"
+        )
+        
+        # 如果提供了证书，加载证书
+        if ssl_cert:
+            if os.path.isfile(ssl_cert):
+                # 防路径穿越安全检查
+                abs_cert_path = os.path.abspath(ssl_cert)
+                real_cert_path = os.path.realpath(ssl_cert)
+                
+                # 确保路径规范化后仍然指向同一个文件
+                if abs_cert_path != real_cert_path:
+                    raise ValueError(f"Certificate path contains symbolic links or path traversal attack.")
+                
+                # 检查路径中是否包含危险字符
+                if ".." in ssl_cert or ssl_cert.startswith("/") or "\\" in ssl_cert:
+                    raise ValueError(f"The certificate path contains unsafe characters.")
+                
+                # 如果是文件路径，加载证书文件
+                ctx.load_verify_locations(ssl_cert)
+        
+        return ctx
+
+    def _setup_ssl_adapter(self):
+        """设置SSL适配器，仅在启用SSL校验时挂载"""
+        ssl_verify, ssl_cert = self._get_ssl_config()
+        if ssl_verify:
+            # 创建自定义SSL适配器
+            class SSLAdapter(HTTPAdapter):
+                def __init__(self, ssl_context, *args, **kwargs):
+                    self.ssl_context = ssl_context
+                    super().__init__(*args, **kwargs)
+                
+                def init_poolmanager(self, *args, **kwargs):
+                    kwargs["ssl_context"] = self.ssl_context
+                    return super().init_poolmanager(*args, **kwargs)
+            
+            # 挂载SSL适配器到HTTPS连接
+            ssl_context = self._create_strict_ssl_context(ssl_cert)
+            adapter = SSLAdapter(ssl_context)
+            self.sync_client.mount("https://", adapter)
 
     def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
                 top_p: float = 0.1, **kwargs: Any) -> AIMessage:
@@ -45,22 +133,14 @@ class RequestChatModel(BaseChatModel):
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
 
-        verify = os.getenv("LLM_SSL_VERIFY", "True").lower() != "false"
-
-        cert = None
-        if verify:
-            cert_path = os.getenv("LLM_CLIENT_CERT")
-            key_path = os.getenv("LLM_CLIENT_KEY")
-            if cert_path and key_path:
-                cert = (cert_path, key_path)
-            elif cert_path:
-                cert = cert_path
-            else:
-                raise ValueError("LLM_CLIENT_CERT or LLM_CLIENT_KEY must be set when LLM_SSL_VERIFY is True")
+        # 单向TLS校验配置
+        ssl_verify, ssl_cert = self._get_ssl_config()
+        
+        # 设置verify参数：如果启用SSL校验则使用证书，否则禁用校验
+        verify = ssl_cert if ssl_verify else ssl_verify
 
         response = self.sync_client.post(
                 verify=verify,
-                cert=cert,
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
@@ -74,27 +154,38 @@ class RequestChatModel(BaseChatModel):
         self.close_session()
         return self._parse_response(model_name, response.json())
 
-    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                       top_p: float = 0.1, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+        await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
 
-        async with aiohttp.ClientSession().post(
+        # 单向TLS校验配置
+        ssl_verify, ssl_cert = self._get_ssl_config()
+        
+        # 创建SSL上下文（仅在启用校验时）
+        ssl_context = None
+        if ssl_verify:
+            ssl_context = self._create_strict_ssl_context(ssl_cert)
+
+        async with self.aiohttp_session.post(
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
+                ssl=ssl_context if ssl_verify else ssl_verify,
                 timeout=self.timeout
         ) as response:
             response.raise_for_status()
             data = await response.json()
+            await self.close_session()
             return self._parse_response(model_name, data)
 
-    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                top_p: float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
 
         self._reset_stream_state()
 
@@ -102,22 +193,15 @@ class RequestChatModel(BaseChatModel):
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
         params["stream"] = True
-        verify = os.getenv("LLM_SSL_VERIFY", "True").lower() != "false"
 
-        cert = None
-        if verify:
-            cert_path = os.getenv("LLM_CLIENT_CERT")
-            key_path = os.getenv("LLM_CLIENT_KEY")
-            if cert_path and key_path:
-                cert = (cert_path, key_path)
-            elif cert_path:
-                cert = cert_path
-            else:
-                raise ValueError("LLM_CLIENT_CERT or LLM_CLIENT_KEY must be set when LLM_SSL_VERIFY is True")
+        # 单向TLS校验配置
+        ssl_verify, ssl_cert = self._get_ssl_config()
+        
+        # 设置verify参数：如果启用SSL校验则使用证书，否则禁用校验
+        verify = ssl_cert if ssl_verify else ssl_verify
 
         with self.sync_client.post(
                 verify=verify,
-                cert=cert,
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
@@ -135,24 +219,35 @@ class RequestChatModel(BaseChatModel):
                         yield chunk
         self.close_session()
 
-    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                       top_p: float = 0.1, **kwargs: Any) -> AsyncIterator[
+
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
 
+        # 重置流状态
         self._reset_stream_state()
 
+        await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages,
-                                      tools=tools, **kwargs)
+        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
-        async with aiohttp.ClientSession().post(
+        # 单向TLS校验配置
+        ssl_verify, ssl_cert = self._get_ssl_config()
+        
+        # 创建SSL上下文（仅在启用校验时）
+        ssl_context = None
+        if ssl_verify:
+            ssl_context = self._create_strict_ssl_context(ssl_cert)
+
+        async with self.aiohttp_session.post(
                 url=self.api_base,
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
+                ssl=ssl_context if ssl_verify else ssl_verify,
                 timeout=aiohttp.ClientTimeout(total=self.timeout)
         ) as response:
             response.raise_for_status()
@@ -161,12 +256,13 @@ class RequestChatModel(BaseChatModel):
                     chunk = self._parse_stream_line(line)
                     if chunk:
                         yield chunk
+        await self.close_session()
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        Clean the tool_calls in messages, retain the OpenAI standard fields:
+        清洗 messages 中的 tool_calls，保留 OpenAI 标准字段：
         id, type, function.name, function.arguments
-        and force the type to be set to "function"
+        并把 type 强制设为 "function"
         """
         for msg in messages:
             if msg.get("role") != "assistant":
@@ -179,6 +275,7 @@ class RequestChatModel(BaseChatModel):
             for tc in tool_calls:
                 if not isinstance(tc, dict):
                     continue
+                # 只提取合法字段
                 func = tc.get("function", {})
                 cleaned.append({
                     "id": tc.get("id", ""),
@@ -221,6 +318,7 @@ class RequestChatModel(BaseChatModel):
         )
 
     def _reset_stream_state(self):
+        """重置流处理状态"""
         self._stream_state = {
             'current_tool_call_id': '',
             'current_tool_name': '',
@@ -233,6 +331,7 @@ class RequestChatModel(BaseChatModel):
             line = line[6:]
 
         if line.strip() == b"[DONE]":
+            # 处理流结束，返回最终的工具调用信息
             tool_calls = []
             if (self._stream_state['current_tool_name'] and
                     self._stream_state['current_tool_args']):
@@ -249,6 +348,7 @@ class RequestChatModel(BaseChatModel):
                 )
                 tool_calls.append(tool_call)
 
+            # 添加之前完成的工具调用
             tool_calls.extend(self._stream_state['tool_calls'])
 
             chunk = AIMessageChunk(
@@ -270,6 +370,7 @@ class RequestChatModel(BaseChatModel):
             content = delta.get("content", "") or ""
             reasoning_content = delta.get("reasoning_content", "") or ""
 
+            # 处理工具调用
             tool_calls_delta = delta.get("tool_calls")
             tool_calls = []
 
@@ -303,43 +404,55 @@ class RequestChatModel(BaseChatModel):
         except json.JSONDecodeError:
             return None
 
+    async def close(self):
+        if self.aiohttp_session:
+            await self.aiohttp_session.close()
+
 
 class OpenAIChatModel(BaseChatModel):
-    """Implementation of OpenAI-specific chat model, using the official openai library"""
+    """OpenAI 专用聊天模型实现，使用官方 openai 库"""
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int = 3, timeout: int = 60, **kwargs):
+                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
+        self._init_clients()
+
+    def _init_clients(self):
+        """init OpenAI client"""
+
+        self._sync_client = openai.OpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base
+        )
+
+        self._async_client = openai.AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base
+        )
+
 
     def model_provider(self) -> str:
         return "openai"
 
-    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                top_p: float = 0.1, **kwargs: Any) -> AIMessage:
+    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
-            sync_client = openai.OpenAI(
-                api_key=self.api_key,
-                base_url=self.api_base
-            )
-            response = sync_client.chat.completions.create(**params)
-            sync_client.close()
+            response = self._sync_client.chat.completions.create(**params)
+            self._sync_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             raise Exception(f"OpenAI API 调用失败: {str(e)}")
 
-    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                       top_p: float = 0.1, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+        """异步调用 OpenAI API"""
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
-            async_client = openai.AsyncOpenAI(
-                api_key=self.api_key,
-                base_url=self.api_base
-            )
-            response = await async_client.chat.completions.create(**params)
-            await async_client.close()
+            response = await self._async_client.chat.completions.create(**params)
+            await self._async_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             if UserConfig.is_sensitive():
@@ -347,47 +460,41 @@ class OpenAIChatModel(BaseChatModel):
             else:
                 raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
 
-    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                top_p: float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
-            sync_client = openai.OpenAI(
-                api_key=self.api_key,
-                base_url=self.api_base
-            )
-            stream = sync_client.chat.completions.create(**params)
+            stream = self._sync_client.chat.completions.create(**params)
+            self._sync_client.close()
             for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
                     yield parsed_chunk
-            sync_client.close()
         except Exception as e:
             raise Exception(f"OpenAI API 流式调用失败: {str(e)}")
 
-    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                       top_p: float = 0.1, **kwargs: Any) -> AsyncIterator[
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
+               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
+        """异步流式调用 OpenAI API"""
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
-            async_client = openai.AsyncOpenAI(
-                api_key=self.api_key,
-                base_url=self.api_base,
-                timeout=100
-            )
-            stream = await async_client.chat.completions.create(**params)
+            stream = await self._async_client.chat.completions.create(**params)
+            self._async_client.close()
             async for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
                     yield parsed_chunk
-            await async_client.close()
         except Exception as e:
             raise Exception(f"OpenAI API 异步流式调用失败: {str(e)}")
 
-    def _build_request_params(self, model_name: str, temperature: float, top_p: float, messages: List[Dict],
+
+    def _build_request_params(self, model_name:str, temperature: float, top_p:float, messages: List[Dict],
                               tools: List[Dict] = None, stream: bool = False,
                               **kwargs) -> Dict:
+        """构建 OpenAI API 请求参数"""
         params = {
             "model": model_name,
             "messages": messages,
@@ -404,10 +511,13 @@ class OpenAIChatModel(BaseChatModel):
 
         return params
 
+
     def _parse_openai_response(self, model_name, response) -> AIMessage:
+        """解析 OpenAI API 响应"""
         choice = response.choices[0]
         message = choice.message
 
+        # 解析工具调用
         tool_calls = []
         if hasattr(message, 'tool_calls') and message.tool_calls:
             for tc in message.tool_calls:
@@ -431,7 +541,9 @@ class OpenAIChatModel(BaseChatModel):
             )
         )
 
+
     def _parse_openai_stream_chunk(self, model_name, chunk) -> Optional[AIMessageChunk]:
+        """解析 OpenAI 流式响应块"""
         if not chunk.choices:
             return None
 
@@ -441,6 +553,7 @@ class OpenAIChatModel(BaseChatModel):
         content = getattr(delta, 'content', None) or ""
         tool_calls = []
 
+        # 处理工具调用增量
         if hasattr(delta, 'tool_calls') and delta.tool_calls:
             for tc_delta in delta.tool_calls:
                 if hasattr(tc_delta, 'function') and tc_delta.function:

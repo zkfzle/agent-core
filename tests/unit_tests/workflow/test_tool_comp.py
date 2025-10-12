@@ -50,9 +50,10 @@ def mock_tool():
 
 
 @patch('requests.request')
+@patch('jiuwen.core.utils.tool.service_api.restful_api.RestfulApi._async_request')
 @patch('jiuwen.core.component.tool_comp.ToolExecutable.get_tool')
 @pytest.mark.asyncio
-async def test_tool_comp_invoke(mock_get_tool, mock_request, mock_tool, mock_tool_config, mock_tool_input, fake_ctx):
+async def test_tool_comp_invoke(mock_get_tool, mock_async_request, mock_request, mock_tool, mock_tool_config, mock_tool_input, fake_ctx):
     mock_get_tool.return_value = mock_tool
     tool_executable = ToolExecutable(mock_tool_config)
 
@@ -62,6 +63,7 @@ async def test_tool_comp_invoke(mock_get_tool, mock_request, mock_tool, mock_too
     mock_response.text = "{}"
     mock_response.content = b"{}"
     mock_request.return_value = mock_response
+    mock_async_request.return_value = mock_response
     res = await tool_executable.invoke(mock_tool_input, fake_ctx, context=Mock())
 
     assert res.get('error_code') == 0

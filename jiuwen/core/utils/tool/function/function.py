@@ -1,7 +1,7 @@
 #!/usr/bin/python3.11
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-
+import inspect
 from typing import Callable, List
 
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
@@ -29,7 +29,10 @@ class LocalFunction(Tool):
     async def ainvoke(self, inputs: Input, **kwargs) -> Output:
         """async invoke the tool"""
         inputs = ParamUtil.format_input_with_default_when_required(self.params, inputs)
-        res = await self.func(**inputs)
+        if inspect.iscoroutinefunction(self.func):
+            res = await self.func(**inputs)
+        else:
+            res = self.func(**inputs)
         return res
 
     def get_tool_info(self) -> ToolInfo:

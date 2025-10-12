@@ -112,7 +112,7 @@ class ToolExecutable(ComponentExecutable):
         tool_inputs = self._validate_inputs(inputs)
         formatted_inputs = self._prepare_inputs(tool_inputs, self._get_tool_param())
         try:
-            response = self._tool.invoke(formatted_inputs)
+            response = await self._tool.ainvoke(formatted_inputs)
             response = self._post_process_tool_result(response)
         except Exception as e:
             response = {constant.ERR_MESSAGE: str(e), constant.RESTFUL_DATA: "",

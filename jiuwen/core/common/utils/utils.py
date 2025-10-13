@@ -102,8 +102,7 @@ class ValidationUtils:
             try:
                 ValidationUtils.validate_json_schema(instance=item, schema=schema["items"])
             except JiuWenBaseException as e:
-                original_msg = str(e)
-                ValidationUtils.raise_invalid_params_error(f"invalid array item {i}: {original_msg}")
+                ValidationUtils.raise_invalid_params_error(f"invalid array item {i}: {type(e).__name__}")
 
     @staticmethod
     def validate_outputs_config(outputs_config: Any) -> None:

@@ -73,12 +73,12 @@ class Template(BaseModel):
             placeholder_matches = re.findall(TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN, self.content)
             if placeholder_matches:
                 logger.warning(f"template content has not assembled "
-                            f"with variable placeholders: {', '.join(placeholder_matches)}")
+                            f"with variable placeholders: {len(placeholder_matches)}")
             return
         for message in self.content:
             content = message.content if isinstance(message, BaseMessage) else message.get('content', '')
             placeholder_matches = re.findall(TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN, content)
             if placeholder_matches:
                 logger.warning(f"template content has not assembled "
-                            f"with variable placeholders: {', '.join(placeholder_matches)}")
+                            f"with variable placeholders: {len(placeholder_matches)}")
         return

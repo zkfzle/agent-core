@@ -13,6 +13,7 @@ from logging.handlers import RotatingFileHandler
 
 from jiuwen.core.common.logging.protocol import LoggerProtocol
 from jiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
+from jiuwen.extensions.common.utils.safe_check import is_safe_path
 
 
 class SafeRotatingFileHandler(RotatingFileHandler):
@@ -124,6 +125,8 @@ class DefaultLogger(LoggerProtocol):
 
         output = self.config.get('output', ['console'])
         log_file = self.config.get('log_file', f'{self.log_type}.log')
+        if not is_safe_path(log_file):
+            raise Exception("log file path is not safe")
 
         for handler in self._logger.handlers[:]:
             handler.close()

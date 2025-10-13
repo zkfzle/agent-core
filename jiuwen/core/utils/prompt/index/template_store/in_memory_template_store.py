@@ -58,7 +58,7 @@ class InMemoryTemplateStore(TemplateStore):
         if not result:
             raise JiuWenBaseException(
                 error_code=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code,
-                message=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.errmsg.format(error_message=f"template name: {name}")
+                message=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.errmsg
             )
         return Template(**result)
 

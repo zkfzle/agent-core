@@ -74,7 +74,7 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info):
                                  outputs={"outputs": result})
             return result
         except Exception as error:
-            await tracer.trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
+            await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
             raise error
 
     return decorator
@@ -102,7 +102,7 @@ def trace_stream(func, runtime, invoke_type: InvokeType, instance_info):
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
                                 outputs={"outputs": result})
         except Exception as error:
-            tracer.sync_trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
+            tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
             raise error
 
     return decorator
@@ -130,7 +130,7 @@ def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info):
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
                                  outputs={"outputs": results})
         except Exception as error:
-            await tracer.trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
+            await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
             raise error
 
     return decorator

@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 from typing import Callable, Dict, List
 
@@ -48,7 +49,8 @@ class CallbackManager:
         if handler_class_name not in self._trigger_events or event_name not in self._trigger_events[
             handler_class_name
         ]:
-            raise TypeError(f"event name not exists: {handler_class_name}, {event_name}")
+            logging.error(f"event name not exists: {handler_class_name}, {event_name}")
+            raise TypeError(f"event name not exists")
         handler = self._handlers[handler_class_name]
         if hasattr(handler, event_name):
             method = getattr(handler, event_name)

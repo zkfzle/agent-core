@@ -104,7 +104,7 @@ class TraceAgentHandler(TraceBaseHandler):
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)
         update_data = {
             "end_time": end_time,
-            "error": repr(error),
+            "error": {"error_code": -1, "message": type(error).__name__},
             "elapsed_time": self._get_elapsed_time(span.start_time, end_time)
         }
         self._span_manager.update_span(span, update_data)

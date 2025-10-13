@@ -43,7 +43,7 @@ class TraceWorkflowSpan(Span):
     # node status
     status: Optional[str] = Field(default=None, alias="status")
     # for llm invoke data
-    llm_invoke_data: Dict[str, dict] = Field(default=[], exclude=True)  # 模型数据，临时存储
+    llm_invoke_data: Dict[str, dict] = Field(default={}, exclude=True)  # 模型数据，临时存储
     # for subworkflow
     parent_node_id: str = Field(default="", alias="parentNodeId")
 

@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 import json
+import logging
 import os
 from typing import List
 
@@ -214,7 +215,8 @@ def _data_of(response):
                     )
             res = json.loads(content.decode('utf-8'))
         except json.JSONDecodeError:
-            return {constant.ERR_CODE: 0, constant.ERR_MESSAGE: 'success', constant.RESTFUL_DATA: response.text}
+            logging.error("JSON deocde failed. Raw response suppressed for security.")
+            return {constant.ERR_CODE: 0, constant.ERR_MESSAGE: 'success', constant.RESTFUL_DATA: ""}
         if constant.ERR_CODE not in res or constant.ERR_MESSAGE not in res or constant.RESTFUL_DATA not in res:
             return {constant.ERR_CODE: 0, constant.ERR_MESSAGE: 'success', constant.RESTFUL_DATA: res}
         return res

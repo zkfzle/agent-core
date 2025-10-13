@@ -4,6 +4,8 @@ from typing import Literal
 from unittest.mock import patch
 
 from jiuwen.core.common.configs.env_constant import WORKFLOW_DRAWABLE
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.condition.number import NumberCondition
@@ -15,6 +17,7 @@ from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import ComponentAbility
+from jiuwen.graph.visualization.drawable import Drawable
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, Node1, MockEndNode, StreamCompNode, CollectCompNode
 from tests.unit_tests.workflow.test_node import CommonNode, AddTenNode
 
@@ -482,3 +485,35 @@ end
 \tnode_4 --> node_5
 """
         self.assertEqual(flow.to_mermaid("jiuwen workflow", expand_subgraph=True), mermaid_script)
+
+    def test_drawable_exception(self):
+        drawable = Drawable()
+        # set start node failed
+        node_id = "start"
+        with self.assertRaises(JiuWenBaseException) as cm:
+            drawable.set_start_node(node_id)
+        self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_SET_START_NODE_FAILED.code)
+        self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_SET_START_NODE_FAILED.errmsg.format(
+            node_id=node_id))
+
+        # set end node failed
+        node_id = "end"
+        with self.assertRaises(JiuWenBaseException) as cm:
+            drawable.set_end_node(node_id)
+        self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_SET_END_NODE_FAILED.code)
+        self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_SET_END_NODE_FAILED.errmsg.format(
+            node_id=node_id))
+
+        # set end node failed
+        node_id = "break"
+        with self.assertRaises(JiuWenBaseException) as cm:
+            drawable.set_break_node(node_id)
+        self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED.code)
+        self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED.errmsg.format(
+            node_id=node_id))
+
+        # to mermaid failed
+        with self.assertRaises(JiuWenBaseException) as cm:
+            drawable.to_mermaid(expand_subgraph=-1)
+        self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code)
+        self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)

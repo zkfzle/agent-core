@@ -61,13 +61,21 @@ class StatusCode(Enum):
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
-    WORKFLOW_COMPONENT_NOT_EXIST = (110000, "workflow component {comp_id} not exist")
     GRAPH_SET_START_NODE_FAILED = (110001, "Graph create error, caused by start node set failed, detail: {detail}")
     GRAPH_SET_END_NODE_FAILED = (110002, "Graph create error, caused by end node set failed, detail: {detail}")
     GRAPH_ADD_NODE_FAILED = (110003, "Graph create error, caused by add node failed, detail: {detail}")
     GRAPH_ADD_EDGE_FAILED = (110004, "Graph create error, caused by add edge failed, detail: {detail}")
     GRAPH_ADD_CONDITION_EDGE_FAILED = (110005,
                                        "Graph create error, caused by add conditional edge failed, detail: {detail}")
+    DRAWABLE_GRAPH_SET_START_NODE_FAILED = (110021, "Drawable Graph create error, caused by start node set failed, "\
+                                                    "node id: {node_id}")
+    DRAWABLE_GRAPH_SET_END_NODE_FAILED = (110022, "Drawable Graph create error, caused by end node set failed, "\
+                                                    "node id: {node_id}")
+    DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED = (110023, "Drawable Graph create error, caused by break node set failed, "\
+                                                    "node id: {node_id}")
+    DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH = (110024, "Invalid value of argument 'expand_subgraph', "\
+                                              "expected a boolean or a non-negative integer")
+
 
     # 工作流 异常处理 111000 - 111999
     # Agent编排 120000 - 129999

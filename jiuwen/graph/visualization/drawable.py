@@ -58,22 +58,25 @@ class Drawable:
     def set_start_node(self, node_id: str):
         """save node whose id is node_id to self._graph.start_nodes"""
         if node_id not in self._graph.nodes:
-            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.code,
-                                      message=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.errmsg.format(comp_id=node_id))
+            raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_SET_START_NODE_FAILED.code,
+                                      message=StatusCode.DRAWABLE_GRAPH_SET_START_NODE_FAILED.errmsg.format(
+                                          node_id=node_id))
         self._graph.start_nodes.append(self._graph.nodes[node_id])
 
     def set_end_node(self, node_id: str):
         """save node whose id is node_id to self._graph.end_nodes"""
         if node_id not in self._graph.nodes:
-            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.code,
-                                      message=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.errmsg.format(comp_id=node_id))
+            raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_SET_END_NODE_FAILED.code,
+                                      message=StatusCode.DRAWABLE_GRAPH_SET_END_NODE_FAILED.errmsg.format(
+                                          node_id=node_id))
         self._graph.end_nodes.append(self._graph.nodes[node_id])
 
     def set_break_node(self, node_id: str):
         """save node whose id is node_id to self._graph.break_nodes"""
         if node_id not in self._graph.nodes:
-            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.code,
-                                      message=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.errmsg.format(comp_id=node_id))
+            raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED.code,
+                                      message=StatusCode.DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED.errmsg.format(
+                                          node_id=node_id))
         self._graph.break_nodes.append(self._graph.nodes[node_id])
 
     def add_edge(self, source: str, target: str = None, conditional: bool = False, streaming: bool = False,
@@ -110,6 +113,9 @@ class Drawable:
 
     def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False) -> str:
         """convert self._graph to Mermaid syntax"""
+        if not isinstance(expand_subgraph, bool) and expand_subgraph < 0:
+            raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code,
+                                      message=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
         return MermaidDiagram().to_mermaid(self._graph, title, expand_subgraph)
 
     def to_mermaid_png(self, title: str = "", expand_subgraph: int | bool = False) -> bytes:

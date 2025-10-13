@@ -13,6 +13,7 @@ import ssl
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.utils.common.ssl_utils import SslUtils
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool import constant
 from jiuwen.core.utils.tool.base import Tool
@@ -21,6 +22,8 @@ from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.param_util import ParamUtil
 from jiuwen.core.utils.tool.types import ValueTypeEnum
 
+RESTFUL_SSL_VERIFY = "RESTFUL_SSL_VERIFY"
+RESTFUL_SSL_CERT = "RESTFUL_SSL_CERT"
 
 timeout_aiohttp = aiohttp.ClientTimeout(total=constant.REQUEST_TIMEOUT)
 
@@ -80,8 +83,13 @@ class RestfulApi(Tool):
         request_params = RequestParams(self, inputs, **kwargs)
         try:
             request_params.prepare_params()
-            verify = self._verify_ssl_cert()
-            response = requests.request(
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
+            verify = ssl_cert if ssl_verify else False
+            session = requests.Session()
+            adapter = SslUtils.create_ssl_adapter(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
+            if adapter is not None:
+                session.mount("https://", adapter)
+            response = session.request(
                 self.method, request_params.ip_address_url, headers=request_params.headers,
                 verify=verify, stream=False, params=request_params.query_params_in_inputs,
                 timeout=constant.REQUEST_TIMEOUT,
@@ -136,22 +144,24 @@ class RestfulApi(Tool):
         ip_address_url = request_args.get('ip_address_url')
         query_params_in_inputs = request_args.get('query_params_in_inputs')
         request_arg = request_args.get('request_arg')
-        cafile = None
-        certpath = self._verify_ssl_cert()
-        if isinstance(certpath, str):
-            cafile = certpath
-        ssl_context = ssl.create_default_context(cafile=cafile)
-        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
-        ssl_context.check_hostname = True
-        ssl_context.verify_mode = ssl.CERT_REQUIRED
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            async with session.request(
-                self.method, ip_address_url, headers=request_args.get("headers"),
-                allow_redirects=False, timeout=timeout_aiohttp,
-                params=query_params_in_inputs, **request_arg
-            ) as response:
-                response_data = await _data_of_async_request(response)
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
+        if ssl_verify:
+            ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+                async with session.request(
+                        self.method, ip_address_url, headers=request_args.get("headers"),
+                        allow_redirects=False, timeout=timeout_aiohttp,
+                        params=query_params_in_inputs, **request_arg
+                ) as response:
+                    response_data = await _data_of_async_request(response)
+        else:
+            async with aiohttp.ClientSession() as session:
+                async with session.request(
+                    self.method, ip_address_url, headers=request_args.get("headers"),
+                    allow_redirects=False, timeout=timeout_aiohttp,
+                    params=query_params_in_inputs, **request_arg
+                ) as response:
+                    response_data = await _data_of_async_request(response)
         return response_data
 
     @staticmethod

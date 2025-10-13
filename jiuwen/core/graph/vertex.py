@@ -117,6 +117,7 @@ class Vertex(AsyncAtomicNode):
             else:
                 message = queue_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
             await self._process_chunk(end_stream_index, message)
+            end_stream_index += 1
         await queue_manager.end_message(self._node_id)
 
     async def _process_chunk(self, end_stream_index: int, message: Any) -> None:

@@ -12,7 +12,6 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.stream.base import StreamCode
 
 STREAM_CACHE_KEY = "_stream_cache_key"
 
@@ -54,7 +53,6 @@ class End(ComponentExecutable, WorkflowComponent):
         try:
             if self.template:
                 response_list = TemplateUtils.render_template_to_list(self.template)
-                index = 0
                 for res in response_list:
                     if res.startswith("{{") and res.endswith("}}"):
                         param_name = res[2:-2]
@@ -70,16 +68,12 @@ class End(ComponentExecutable, WorkflowComponent):
                                 param_value = None
                         if param_value is None:
                             continue
-                        yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=param_value))
+                        yield dict(answer=param_value)
                     else:
-                        yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(answer=res))
-                    index += 1
+                        yield dict(answer=res)
             else:
-                index = 0
                 for key, value in inputs.items():
-                    yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index,
-                               payload=dict(output={key: value}))
-                    index += 1
+                    yield dict(output={key: value})
 
         except Exception as e:
             logger.info("stream output error: {}".format(e))
@@ -87,13 +81,11 @@ class End(ComponentExecutable, WorkflowComponent):
     async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
         Output]:
         # 异步遍历输入迭代器
-        index = 0
         stream_cache_value = {}
         async for input_item in inputs:
             # 将当前输入项存入runtime
             if isinstance(input_item, dict):
                 for key, value in input_item.items():
                     stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)
-            yield dict(type=StreamCode.PARTIAL_CONTENT.name, index=index, payload=dict(output=input_item))
-            index += 1
+            yield dict(output=input_item)
         runtime.update_state({STREAM_CACHE_KEY: stream_cache_value})

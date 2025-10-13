@@ -3,6 +3,7 @@ import unittest
 from collections.abc import Callable
 from typing import AsyncIterator
 
+from jiuwen.core.common.constants.constant import END_NODE_STREAM
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.end_comp import End
@@ -11,7 +12,7 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable, Input, Output
 from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.stream.base import BaseStreamMode
+from jiuwen.core.stream.base import OutputSchema, BaseStreamMode
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from tests.unit_tests.workflow.test_mock_node import Node1, StreamCompNode
@@ -84,7 +85,6 @@ class EndNodeTest(unittest.TestCase):
                                     runtime=WorkflowRuntime(), flow=flow).result == {
                    'output': {'param1': '你好', 'param2': '杭州'}, 'responseContent': ''}
 
-
     def test_end_stream_template(self):
         flow = Workflow()
         flow.set_start_comp("s", Start(),
@@ -96,18 +96,17 @@ class EndNodeTest(unittest.TestCase):
         result = flow.stream(inputs={"user_inputs": {"query": "你好", "content": "杭州"}}, runtime=WorkflowRuntime(),
                              stream_modes=[BaseStreamMode.OUTPUT])
 
-        expect_result = [
-            {'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'answer': '渲染结果:'}},
-            {'type': 'PARTIAL_CONTENT', 'index': 1, 'payload': {'answer': '你好'}},
-            {'type': 'PARTIAL_CONTENT', 'index': 2, 'payload': {'answer': ','}},
-            {'type': 'PARTIAL_CONTENT', 'index': 3, 'payload': {'answer': '杭州'}},
-            {'type': 'PARTIAL_CONTENT', 'index': 4, 'payload': {'answer': ''}},
-        ]
+        expect_result = [OutputSchema(type=END_NODE_STREAM, index=0, payload={'answer': '渲染结果:'}),
+                         OutputSchema(type=END_NODE_STREAM, index=1, payload={'answer': '你好'}),
+                         OutputSchema(type=END_NODE_STREAM, index=2, payload={'answer': ','}),
+                         OutputSchema(type=END_NODE_STREAM, index=3, payload={'answer': '杭州'}),
+                         OutputSchema(type=END_NODE_STREAM, index=4, payload={'answer': ''})]
 
         async def iter_result(result):
             streams = []
             async for stream in result:
-                streams.append(stream.payload)
+                print(stream)
+                streams.append(stream)
             return streams
 
         assert asyncio.get_event_loop().run_until_complete(iter_result(result)) == expect_result
@@ -124,15 +123,15 @@ class EndNodeTest(unittest.TestCase):
                              stream_modes=[BaseStreamMode.OUTPUT])
 
         expect_result = [
-            {'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'output': {'param1': '你好'}}},
-            {'type': 'PARTIAL_CONTENT', 'index': 1, 'payload': {'output': {'param2': '杭州'}}},
+            OutputSchema(type=END_NODE_STREAM, index=0, payload={'output': {'param1': '你好'}}),
+            OutputSchema(type=END_NODE_STREAM, index=1, payload={'output': {'param2': '杭州'}}),
         ]
 
         async def iter_result(result):
             streams = []
             async for stream in result:
-                print(stream.payload)
-                streams.append(stream.payload)
+                print(stream)
+                streams.append(stream)
             return streams
 
         assert asyncio.get_event_loop().run_until_complete(iter_result(result)) == expect_result
@@ -144,17 +143,20 @@ class EndNodeTest(unittest.TestCase):
         flow.add_workflow_comp("n", MockStreamCmp(), inputs_schema={"param1": "${s.query}", "param2": "${s.content}"},
                                comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
         conf = {"responseTemplate": "渲染结果:{{param1}},{{param2}}"}
-        flow.set_end_comp("e", End(conf=conf), stream_inputs_schema={"param1": "${n.param1}", "param2": "${n.param2}"}, response_mode="streaming")
+        flow.set_end_comp("e", End(conf=conf), stream_inputs_schema={"param1": "${n.param1}", "param2": "${n.param2}"},
+                          response_mode="streaming")
         flow.add_connection("s", "n")
         flow.add_stream_connection("n", "e")
         result = flow.stream(inputs={"user_inputs": {"query": "你好", "content": "杭州"}}, runtime=WorkflowRuntime(),
                              stream_modes=[BaseStreamMode.OUTPUT])
-        exepct_result = [{'type': 'PARTIAL_CONTENT', 'index': 0, 'payload': {'output': {'param1': '你好', 'param2': '杭州'}}}]
+        exepct_result = [
+            OutputSchema(type=END_NODE_STREAM, index=0, payload={'output': {'param1': '你好', 'param2': '杭州'}})]
+
         async def iter_result(result):
             streams = []
             async for stream in result:
-                print(stream.payload)
-                streams.append(stream.payload)
+                print(stream)
+                streams.append(stream)
             return streams[:1]
 
         assert asyncio.get_event_loop().run_until_complete(iter_result(result)) == exepct_result
@@ -179,7 +181,8 @@ class EndNodeTest(unittest.TestCase):
                           )
         flow.add_connection("start", "a")
         flow.add_connection("a", "end")
-        self.assert_workflow_invoke({"a": 1, "b": "haha"}, WorkflowRuntime(), flow, expect_results={'output': {'end_input': 'haha'}, 'responseContent': ''})
+        self.assert_workflow_invoke({"a": 1, "b": "haha"}, WorkflowRuntime(), flow,
+                                    expect_results={'output': {'end_input': 'haha'}, 'responseContent': ''})
 
     def test_end_stream_workflow(self):
         async def stream_workflow():
@@ -206,8 +209,6 @@ class EndNodeTest(unittest.TestCase):
                 index += 1
 
         self.loop.run_until_complete(stream_workflow())
-
-
 
     def test_end_batch_stream_workflow(self):
 

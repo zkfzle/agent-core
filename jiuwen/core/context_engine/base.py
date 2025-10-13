@@ -40,8 +40,8 @@ class ContextOwner(BaseModel):
     def __contains__(self, other: "ContextOwner"):
         if isinstance(other, ContextOwner):
             return (not self.session_id or self.session_id == other.session_id) \
-                    and (not self.agent_id or self.agent_id == self.agent_id) \
-                    and (not self.workflow_id or self.workflow_id == self.workflow_id)
+                    and (not self.agent_id or self.agent_id == other.agent_id) \
+                    and (not self.workflow_id or self.workflow_id == other.workflow_id)
         return False
 
 

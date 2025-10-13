@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, AsyncGenerator, Sequence, Union
 
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.stream.base import StreamData, StreamCode, StreamDataMsg
+from jiuwen.core.multi_agent.stream.base import StreamData, StreamCode, StreamDataMsg
 
 
 class MemberMessageType(Enum):

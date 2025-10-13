@@ -5,7 +5,7 @@ import os
 import unittest
 import asyncio
 
-from jiuwen.agent.chat_agent import create_chat_agent_config, create_react_agent
+from jiuwen.agent.chat_agent import create_chat_agent_config, create_chat_agent
 from jiuwen.agent.config.base import LLMCallConfig, ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.function.function import LocalFunction, Param
@@ -171,7 +171,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
                 system_prompt=[{"role": "system", "content": prompt}],
             )
         )
-        agent = create_react_agent(config, tools)
+        agent = create_chat_agent(config, tools)
         return agent
 
     def create_trainer(self):
@@ -216,7 +216,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         agent = self.create_agent(INFORMATION_EXTRACTION_TEMPLATE)
         predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))
 
-        # 创建评估器，评估基线
+        # 创建评估器
         llm = ModelFactory().get_model(
             model_provider=MODEL_PROVIDER,
             api_key=API_KEY,
@@ -229,19 +229,18 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
             metric="1. 如果是非工具调用，两个回答需要一致，包括数量和名字。注意：但可以忽略对引号格式问题以及tool_calls字段"
                    "2. 如果是工具调用，则只需要关注tool_calls字段中插件名称和插件参数是否一致，无需关注文本内容"
         )
-        results = evaluator.batch_evaluate(INFORMATION_EXTRACTION_CASES, predicts)
-        self.show_result(results)
 
         # 创建优化器，执行优化
-        optimizer = JointOptimizer(
+        with JointOptimizer(
             parameters=agent.get_llm_calls(),
             model_name=MODEL_NAME,
             model=llm,
             num_examples=1
-        )
-
-        optimizer.backward(results)
-        optimizer.update()
+        ) as optimizer:
+            results = evaluator.batch_evaluate(INFORMATION_EXTRACTION_CASES, predicts)
+            self.show_result(results)
+            optimizer.backward(results)
+            optimizer.update()
 
         # 评估优化后agent
         predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))

@@ -52,7 +52,6 @@ class JointOptimizer(BaseOptimizer):
             else:
                 self._example_optimizer.backward(evaluated_cases)
                 backward_params = self._example_optimizer.parameters()
-            param.llm_call = backward_params.get(name).llm_call
             param.set_gradient("system_prompt", backward_params.get(name).get_gradient("system_prompt"))
             param.set_gradient("user_prompt", backward_params.get(name).get_gradient("user_prompt"))
 

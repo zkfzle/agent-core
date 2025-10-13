@@ -50,16 +50,18 @@ class Trainer:
             )
         best_score = 0.0
         num_iterations = kwargs.get('num_iterations', TuneConstant.DEFAULT_ITERATION_NUM)
-        score, evaluated_cases = self.evaluate(agent, train_cases)
+        with self._optimizer:
+            score, evaluated_cases = self.evaluate(agent, train_cases)
         logger.info(f"train iteration: (baseline), score: {score}")
         self._pre_train(agent)
         for i in range(1, num_iterations + 1):
-            self._optimizer.backward(evaluated_cases)
-            self._optimizer.update()
-            cur_parameters = copy.deepcopy(agent.get_llm_calls())
-            self._update_agent(agent, self._optimizer.parameters())
-            score, evaluated_cases = self.evaluate(agent, train_cases)
-            self._update_agent(agent, cur_parameters)
+            with self._optimizer as optimizer:
+                optimizer.backward(evaluated_cases)
+                optimizer.update()
+                cur_parameters = copy.deepcopy(agent.get_llm_calls())
+                self._update_agent(agent, optimizer.parameters())
+                score, evaluated_cases = self.evaluate(agent, train_cases)
+                self._update_agent(agent, cur_parameters)
             logger.info(f"train iteration: {i}, score: {score}")
             if score > best_score:
                 best_score = score

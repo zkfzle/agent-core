@@ -13,7 +13,7 @@ class TuneConstant:
     """prompt tuning constants"""
 
     """optimizer parameters default value constant"""
-    DEFAULT_EXAMPLE_NUM: int = 0
+    DEFAULT_EXAMPLE_NUM: int = 1
     DEFAULT_ITERATION_NUM: int = 3
     DEFAULT_MAX_SAMPLED_EXAMPLE_NUM: int = 10
     DEFAULT_PARALLEL_NUM: int = 1

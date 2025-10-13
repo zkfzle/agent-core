@@ -27,8 +27,8 @@ def create_chat_agent_config(agent_id: str,
     return config
 
 
-def create_react_agent(agent_config: ChatAgentConfig,
-                       tools: List[Tool] = None):
+def create_chat_agent(agent_config: ChatAgentConfig,
+                      tools: List[Tool] = None):
     agent = ChatAgent(agent_config)
     agent.bind_tools(tools or [])
     return agent
@@ -102,4 +102,4 @@ class ChatAgent(Agent):
         return dict(llm_call=self._llm_call)
 
     def copy(self) -> "Agent":
-        return create_react_agent(self._config.get_agent_config())
+        return create_chat_agent(self._config.get_agent_config())

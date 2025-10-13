@@ -27,6 +27,13 @@ class BaseOptimizer:
         self._bad_cases: List[EvaluatedCase] = []
         self.bind_parameter(parameters)
 
+    def __enter__(self):
+        self._batch_set_optimizer_callback(self.trace_callback)
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._batch_set_optimizer_callback(None)
+
     def bind_parameter(self, parameters: Dict[str, LLMCall]):
         if parameters is None:
             return
@@ -46,19 +53,16 @@ class BaseOptimizer:
                  evaluated_cases: List[EvaluatedCase],
                  ):
         self._validate_parameters()
-        self._batch_set_optimizer_callback(self.trace_callback)
         self._get_bad_cases(evaluated_cases)
         try:
             self._backward(evaluated_cases)
         except Exception as e:
-            self._batch_set_optimizer_callback(None)
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR.code,
                 StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR.errmsg.format(
                     error_msg=f"{str(e)}"
                 )
             )
-        self._batch_set_optimizer_callback(None)
 
     def update(self):
         self._validate_parameters()

@@ -8,6 +8,7 @@ from typing import List
 
 import requests
 import aiohttp
+import ssl
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -134,7 +135,16 @@ class RestfulApi(Tool):
         ip_address_url = request_args.get('ip_address_url')
         query_params_in_inputs = request_args.get('query_params_in_inputs')
         request_arg = request_args.get('request_arg')
-        async with aiohttp.ClientSession() as session:
+        cafile = None
+        certpath = self._verify_ssl_cert()
+        if isinstance(certpath, str):
+            cafile = certpath
+        ssl_context = ssl.create_default_context(cafile=cafile)
+        ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+        ssl_context.check_hostname = True
+        ssl_context.verify_mode = ssl.CERT_REQUIRED
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
             async with session.request(
                 self.method, ip_address_url, headers=request_args.get("headers"),
                 allow_redirects=False, timeout=timeout_aiohttp,

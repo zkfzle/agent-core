@@ -8,6 +8,8 @@
 import os
 import yaml
 from typing import Dict, Any, Union
+from jiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
+import copy
 
 CRITICAL = 50
 FATAL = CRITICAL
@@ -33,18 +35,6 @@ name_to_level = {
 class ConfigManager:
 
     def __init__(self, config_path: str = None):
-        if config_path is None:
-            # 优先从环境变量读取，其次回退到默认测试配置路径
-            env_path = os.getenv('JIUWEN_LOG_CONFIG') or os.getenv('JIUWEN_APP_CONFIG')
-            if env_path:
-                config_path = env_path
-            else:
-                # 默认从tests/unit_tests/common/log/app_config.yaml读取
-                config_path = os.path.join(
-                    os.path.dirname(__file__),
-                    '..', '..', '..', '..', 'tests', 'unit_tests', 'common', 'log', 'app_config.yaml'
-                )
-
         self._config = None
         self._load_config(config_path)
 
@@ -54,8 +44,11 @@ class ConfigManager:
 
     def _load_config(self, config_path: str):
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_dict = yaml.safe_load(f)
+            if config_path is None:
+                config_dict = copy.deepcopy(DEFAULT_LOG_CONFIG)
+            else:
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config_dict = yaml.safe_load(f)
 
             if 'logging' in config_dict:
                 level_str = config_dict['logging'].get('level', 'WARNING').upper()

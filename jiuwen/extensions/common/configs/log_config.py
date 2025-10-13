@@ -7,26 +7,16 @@
 import os
 import yaml
 from typing import Dict, Any, List
+from jiuwen.extensions.common.configs.constant import DEFAULT_INNER_LOG_CONFIG
+import copy
 
 
 class LogConfig:
     def __init__(self, config_path: str = None):
         if config_path is None:
-            # 优先从环境变量读取配置路径
-            env_path = os.getenv('JIUWEN_LOG_CONFIG') or os.getenv('JIUWEN_APP_CONFIG')
-            if env_path:
-                normalized_path = os.path.normpath(env_path)
-                if normalized_path.startswith(env_path):
-                    config_path = normalized_path
-                else:
-                    raise ValueError("Config file path is not valid")
-            else:
-                config_path = os.path.join(
-                    os.path.dirname(__file__),
-                    '..', '..', '..', '..', 'tests', 'unit_tests', 'common', 'log', 'app_config.yaml'
-                )
-
-        self._log_config = self._load_config(config_path)
+            self._log_config = copy.deepcopy(DEFAULT_INNER_LOG_CONFIG)
+        else:
+            self._log_config = self._load_config(config_path)
         self._log_path = self._get_log_path()
 
     def reload(self, config_path: str):

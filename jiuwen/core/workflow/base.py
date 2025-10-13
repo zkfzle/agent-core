@@ -240,10 +240,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         logger.info("begin to sub_invoke")
-        if runtime.config().get_workflow_config(self._workflow_config.metadata.id):
-            raise JiuWenBaseException(StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.code,
-                                      StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.errmsg.format(
-                                          workflow_id=self._workflow_config.metadata.id))
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         sub_workflow_runtime = SubWorkflowRuntime(runtime, workflow_id=self._workflow_config.metadata.id)
         main_workflow_config = sub_workflow_runtime.config().get_workflow_config(
@@ -327,10 +323,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
         if isinstance(runtime, WorkflowRuntime):
-            if runtime.config().get_workflow_config(self._workflow_config.metadata.id):
-                raise JiuWenBaseException(StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.code,
-                                          StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.errmsg.format(
-                                              workflow_id=self._workflow_config.metadata.id))
             runtime.set_workflow_id(self._workflow_config.metadata.id)
             if context:
                 runtime._context = context

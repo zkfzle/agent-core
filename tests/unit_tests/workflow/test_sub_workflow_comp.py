@@ -2,7 +2,6 @@ import asyncio
 import unittest
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
@@ -13,13 +12,17 @@ from jiuwen.core.workflow.workflow_config import WorkflowConfig
 
 class TestSubWorkflowComp(unittest.TestCase):
     def test_add_component(self):
-        main_workflow = Workflow()
-        with self.assertRaises(JiuWenBaseException) as error:
-            main_workflow.add_workflow_comp("fick_comp", SubWorkflowComponent(main_workflow))
-            assert error.error_code == StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code
-            assert ('sub_workflow can not be main workflow' in error.message) == True
-        sub_workflow = Workflow()
-        main_workflow.add_workflow_comp("fick_comp", SubWorkflowComponent(sub_workflow))
+        main_workflow = Workflow(WorkflowConfig(workflow_max_nesting_depth=2))
+        main_workflow.set_start_comp("start", Start())
+        main_workflow.add_workflow_comp("fick_comp", SubWorkflowComponent(main_workflow))
+        main_workflow.set_end_comp("end", End())
+        main_workflow.add_connection("start", 'fick_comp')
+        main_workflow.add_connection('fick_comp', "end")
+        with self.assertRaises(JiuWenBaseException):
+            async def run():
+                return await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
+
+            print(asyncio.get_event_loop().run_until_complete(run()))
 
     def create_nesting_workflow(self, sub_workflow_depth=0, workflow_config=None):
         workflow = Workflow(workflow_config)

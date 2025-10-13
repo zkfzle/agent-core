@@ -69,8 +69,6 @@ class StatusCode(Enum):
                                        "Graph create error, caused by add conditional edge failed, detail: {detail}")
 
     # 工作流 异常处理 111000 - 111999
-    WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR = (111003,
-                                      "Workflow run error, caused by workflow config of {workflow_id} is already exist in runtime, please remove old workflow config from runtime")
     # Agent编排 120000 - 129999
     # Agent编排 ReAct Agent编排和执行 120000 - 120999
     # Agent编排 Workflow Agent编排和执行 121000 - 121999

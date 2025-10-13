@@ -236,7 +236,7 @@ class LoopInput(BaseModel):
     loop_type: Optional[str] = Field("")
     loop_number: Optional[int] = Field(0)
     loop_array: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    bool_expression: Optional[str] = Field("")
+    bool_expression: Optional[Union[str, bool]] = Field("")
     intermediate_var: Dict[str, Union[str, Any]] = Field(default_factory=dict)
 
 
@@ -256,7 +256,13 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
         elif loop_input.loop_type == LoopType.AlwaysTrue.value:
             condition = AlwaysTrue()
         elif loop_input.loop_type == LoopType.Expression.value:
-            condition = ExpressionCondition(loop_input.bool_expression)
+            # 适配非字符串类型的布尔表达式值
+            if isinstance(loop_input.bool_expression, bool):
+                # 如果直接传入布尔值，创建一个FuncCondition来返回该值
+                condition = FuncCondition(lambda: loop_input.bool_expression)
+            else:
+                # 否则使用标准的ExpressionCondition
+                condition = ExpressionCondition(loop_input.bool_expression)
         else:
             raise JiuWenBaseException(-1, "error loop type config of LoopComponent")
         output_callback = OutputCallback(self._output_schema)

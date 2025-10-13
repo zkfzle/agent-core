@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+
 from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Self, Union, Callable, Any, Optional, Dict
@@ -28,6 +29,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
 from jiuwen.core.workflow.base import BaseWorkFlow
 from jiuwen.graph.pregel.graph import PregelGraph
+from jiuwen.graph.visualization.drawable_graph import DrawableGraph
 
 
 class EmptyExecutable(Executable):
@@ -71,6 +73,8 @@ class LoopGroup(BaseWorkFlow, Executable):
                                   stream_inputs_transformer=stream_inputs_transformer,
                                   stream_outputs_transformer=stream_outputs_transformer, comp_ability=comp_ability,
                                   )
+        if self._drawable and isinstance(workflow_comp, BreakComponent):
+            self._drawable.set_break_node(comp_id)
 
     def start_nodes(self, nodes: list[str]) -> Self:
         for node in nodes:
@@ -97,6 +101,9 @@ class LoopGroup(BaseWorkFlow, Executable):
     @property
     def break_components(self):
         return self._break_components
+
+    def get_drawable_graph(self):
+        return self._drawable.get_graph()
 
 
 BROKEN = "_broken"
@@ -214,6 +221,9 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
     def graph_invoker(self) -> bool:
         return True
 
+    def get_drawable_graph(self) -> DrawableGraph:
+        return self._body.get_drawable_graph()
+
 
 class LoopType(str, Enum):
     Array = "array"
@@ -259,3 +269,6 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
 
     def graph_invoker(self) -> bool:
         return True
+
+    def get_drawable_graph(self) -> DrawableGraph:
+        return self._loop_group.get_drawable_graph()

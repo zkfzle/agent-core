@@ -5,10 +5,12 @@ import asyncio
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from enum import Enum
+import os
 from typing import Self, Any, Union, AsyncIterator, List
 
 from pydantic import BaseModel
 
+from jiuwen.core.common.configs.env_constant import WORKFLOW_DRAWABLE
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -34,6 +36,8 @@ from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
 from jiuwen.graph.pregel.graph import PregelGraph
+from jiuwen.graph.visualization.drawable import Drawable
+from jiuwen.graph.visualization.drawable_graph import DrawableGraph
 
 
 class WorkflowExecutionState(Enum):
@@ -58,6 +62,9 @@ class BaseWorkFlow:
         self._workflow_spec = self._workflow_config.spec
         self._stream_actor = StreamActor()
         self._runtime = ProxyRuntime()
+        self._drawable = None
+        if os.environ.get(WORKFLOW_DRAWABLE, "false").lower() == "true":
+            self._drawable = Drawable()
 
     def config(self):
         return self._workflow_config
@@ -94,6 +101,9 @@ class BaseWorkFlow:
                 if not wait_for_all:
                     raise JiuWenBaseException(-1, "stream components need to wait for all")
         self._workflow_spec.comp_configs[comp_id] = node_spec
+
+        if self._drawable:
+            self._drawable.add_node(comp_id, workflow_comp)
         return self
 
     def start_comp(
@@ -101,6 +111,9 @@ class BaseWorkFlow:
             start_comp_id: str,
     ) -> Self:
         self._graph.start_node(start_comp_id)
+
+        if self._drawable:
+            self._drawable.set_start_node(start_comp_id)
         return self
 
     def end_comp(
@@ -108,10 +121,16 @@ class BaseWorkFlow:
             end_comp_id: str,
     ) -> Self:
         self._graph.end_node(end_comp_id)
+
+        if self._drawable:
+            self._drawable.set_end_node(end_comp_id)
         return self
 
     def add_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
         self._graph.add_edge(src_comp_id, target_comp_id)
+
+        if self._drawable:
+            self._drawable.add_edge(src_comp_id, target_comp_id)
         return self
 
     def add_stream_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
@@ -122,6 +141,9 @@ class BaseWorkFlow:
             self._workflow_spec.stream_edges[src_comp_id] = [target_comp_id]
         else:
             self._workflow_spec.stream_edges[src_comp_id].append(target_comp_id)
+
+        if self._drawable:
+            self._drawable.add_edge(src_comp_id, target_comp_id, False, True)
         return self
 
     def add_conditional_connection(self, src_comp_id: str, router: Router) -> Self:
@@ -133,12 +155,28 @@ class BaseWorkFlow:
                 return router(self._runtime)
 
             self._graph.add_conditional_edges(source_node_id=src_comp_id, router=new_router)
+
+        if self._drawable:
+            self._drawable.add_edge(source=src_comp_id, conditional=True, data=router)
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         self._runtime.set_runtime(runtime)
         return self._graph.compile(runtime)
+
+    def get_drawable_graph(self) -> DrawableGraph:
+        return self._drawable.get_graph()
+
+    def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False):
+        if self._drawable:
+            return self._drawable.to_mermaid(title=title, expand_subgraph=expand_subgraph)
+        return ""
+
+    def to_mermaid_png(self, title: str = "", expand_subgraph: int | bool = False) -> bytes:
+        if self._drawable:
+            return self._drawable.to_mermaid_png(title=title, expand_subgraph=expand_subgraph)
+        return b""
 
 
 class WorkflowExecutable(ABC):

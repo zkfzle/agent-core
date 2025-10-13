@@ -11,6 +11,7 @@ from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.workflow.base import Workflow
+from jiuwen.graph.visualization.drawable_graph import DrawableGraph
 
 
 class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
@@ -30,3 +31,6 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
 
     def component_type(self) -> str:
         return SUB_WORKFLOW_COMPONENT
+    
+    def get_drawable_graph(self) -> DrawableGraph:
+        return self._sub_workflow.get_drawable_graph()

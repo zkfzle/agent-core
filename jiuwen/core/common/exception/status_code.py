@@ -61,6 +61,7 @@ class StatusCode(Enum):
 
     # 工作流 110000 - 119999
     # 工作流 工作流编排和执行 110000 - 110999
+    WORKFLOW_COMPONENT_NOT_EXIST = (110000, "workflow component {comp_id} not exist")
     GRAPH_SET_START_NODE_FAILED = (110001, "Graph create error, caused by start node set failed, detail: {detail}")
     GRAPH_SET_END_NODE_FAILED = (110002, "Graph create error, caused by end node set failed, detail: {detail}")
     GRAPH_ADD_NODE_FAILED = (110003, "Graph create error, caused by add node failed, detail: {detail}")

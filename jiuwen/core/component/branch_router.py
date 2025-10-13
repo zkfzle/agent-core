@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+import os
 from typing import Callable, Union
 
+from jiuwen.core.common.configs.env_constant import WORKFLOW_DRAWABLE
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.condition.condition import Condition, FuncCondition
 from jiuwen.core.component.condition.expression import ExpressionCondition
 from jiuwen.core.runtime.runtime import Runtime, BaseRuntime
 from jiuwen.core.tracer.workflow_tracer import trace_outputs, trace_inputs
+from jiuwen.graph.visualization.drawable_edge import DrawableBranchRouter
 
 
 class Branch:
@@ -40,6 +43,9 @@ class BranchRouter:
         self._branches: list[Branch] = []
         self._runtime: BaseRuntime = None
         self.report_trace = report_trace
+        self._drawable_branch_router = None
+        if os.environ.get(WORKFLOW_DRAWABLE, "false").lower() == "true":
+            self._drawable_branch_router = DrawableBranchRouter(targets=[], datas=[])
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
                    branch_id: str = None):
@@ -48,7 +54,17 @@ class BranchRouter:
                                       StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
                                           error_msg="condition is None or target is None"))
         target = [target] if isinstance(target, str) else target
+        if self._drawable_branch_router:
+            branch_data = branch_id if branch_id else ""
+            if isinstance(condition, str):
+                branch_data = condition
+            for t in target:
+                self._drawable_branch_router.targets.append(t)
+                self._drawable_branch_router.datas.append(branch_data)
         self._branches.append(Branch(condition, target, branch_id))
+
+    def get_drawable_branch_router(self):
+        return self._drawable_branch_router
 
     def set_runtime(self, runtime: Union[Runtime, BaseRuntime]):
         if isinstance(runtime, Runtime):

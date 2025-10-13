@@ -1,0 +1,234 @@
+from dataclasses import dataclass
+from inspect import ismethod, isfunction, isclass
+from typing import Any, get_args, get_type_hints, get_origin, Literal, List, Optional
+
+from mermaid import Direction, Mermaid
+
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.component.base import WorkflowComponent
+from jiuwen.core.component.branch_router import BranchRouter
+from jiuwen.graph.visualization.drawable_edge import DrawableEdge
+from jiuwen.graph.visualization.drawable_graph import DrawableGraph
+from jiuwen.graph.visualization.drawable_subgraph_node import DrawableSubgraphNode
+from mermaid.flowchart import FlowChart, Link, LinkShape, Node
+from jiuwen.graph.visualization.drawable_node import DrawableNode
+
+
+def _get_targets(data: Any) -> list[str]:
+    func = None
+    if isfunction(data) or ismethod(data):
+        func = data
+    elif isclass(data):
+        func = data.__call__ if hasattr(data, "__call__") else None
+    elif callable(data):
+        func = data.__call__
+    if func is None:
+        return []
+    if rtn_type := get_type_hints(func).get("return"):
+        if get_origin(rtn_type) is Literal:
+            targets = [name for name in get_args(rtn_type)]
+            return targets
+    return []
+
+
+class Drawable:
+    def __init__(self):
+        self._graph = DrawableGraph(nodes={}, edges=[], start_nodes=[], end_nodes=[], break_nodes=[])
+        self._loop_nodes = set()
+
+    def add_node(self, node_id: str, component: WorkflowComponent):
+        """convert component to DrawableNode & save it to self._graph.nodes"""
+        from jiuwen.core.component.loop_comp import LoopComponent, AdvancedLoopComponent
+        from jiuwen.core.component.workflow_comp import SubWorkflowComponent
+        from jiuwen.core.component.branch_comp import BranchComponent
+        if isinstance(component, LoopComponent) or isinstance(component, AdvancedLoopComponent):
+            subgraph = component.get_drawable_graph()
+            self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id, subgraph=subgraph)
+            self._loop_nodes.add(node_id)
+            self.add_edge(node_id, node_id)
+        elif isinstance(component, SubWorkflowComponent):
+            self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id, subgraph=component.get_drawable_graph())
+        elif isinstance(component, BranchComponent):
+            self._graph.nodes[node_id] = DrawableNode(node_id)
+            self.add_edge(source=node_id, conditional=True, data=component.router())
+        else:
+            self._graph.nodes[node_id] = DrawableNode(node_id)
+
+    def set_start_node(self, node_id: str):
+        """save node whose id is node_id to self._graph.start_nodes"""
+        if node_id not in self._graph.nodes:
+            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.code,
+                                      message=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.errmsg.format(comp_id=node_id))
+        self._graph.start_nodes.append(self._graph.nodes[node_id])
+
+    def set_end_node(self, node_id: str):
+        """save node whose id is node_id to self._graph.end_nodes"""
+        if node_id not in self._graph.nodes:
+            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.code,
+                                      message=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.errmsg.format(comp_id=node_id))
+        self._graph.end_nodes.append(self._graph.nodes[node_id])
+
+    def set_break_node(self, node_id: str):
+        """save node whose id is node_id to self._graph.break_nodes"""
+        if node_id not in self._graph.nodes:
+            raise JiuWenBaseException(error_code=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.code,
+                                      message=StatusCode.WORKFLOW_COMPONENT_NOT_EXIST.errmsg.format(comp_id=node_id))
+        self._graph.break_nodes.append(self._graph.nodes[node_id])
+
+    def add_edge(self, source: str, target: str = None, conditional: bool = False, streaming: bool = False,
+                 data: Any = None):
+        """add edge to self._graph.edges"""
+        if source in self._loop_nodes:
+            self._graph.edges.append(DrawableEdge(source=source, target=target, conditional=True))
+            return
+        if not conditional:
+            self._graph.edges.append(DrawableEdge(source=source, target=target, data=data, conditional=conditional,
+                                                  streaming=streaming))
+            return
+        branch_datas = None
+        if isinstance(data, BranchRouter):
+            drawable_branch_router = data.get_drawable_branch_router()
+            targets = drawable_branch_router.targets
+            branch_datas = drawable_branch_router.datas
+        else:
+            targets = _get_targets(data)
+        for i, t in enumerate(targets):
+            self._graph.edges.append(DrawableEdge(source=source, target=t,
+                                                  data=branch_datas[i] if branch_datas is not None else None,
+                                                  conditional=conditional, streaming=streaming))
+
+    class NodeIdGenerator:
+        _prefix = "node"
+
+        def __init__(self):
+            self._node_id = 0
+
+        def next(self):
+            self._node_id += 1
+            return  "_".join([self._prefix, str(self._node_id)])
+
+    def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False) -> str:
+        """convert self._graph to Mermaid syntax"""
+        return MermaidDiagram().to_mermaid(self._graph, title, expand_subgraph)
+
+    def to_mermaid_png(self, title: str = "", expand_subgraph: int | bool = False) -> bytes:
+        """convert self._graph to Mermaid syntax and render it as png"""
+        return MermaidDiagram().to_mermaid_png(self._graph, title, expand_subgraph)
+
+    def get_graph(self) -> DrawableGraph:
+        """get drawable graph"""
+        return self._graph
+
+class MermaidDiagram:
+    class NodeIdGenerator:
+        _prefix = "node"
+
+        def __init__(self):
+            self._node_id = 0
+
+        def next(self):
+            self._node_id += 1
+            return  "_".join([self._prefix, str(self._node_id)])
+
+    @dataclass
+    class SubGraphNode:
+        node: Node
+        subgraph_links: Optional[List[Link]] = None
+        subgraph_start_nodes: Optional[List[Node]] = None
+        subgraph_end_nodes: Optional[List[Node]] = None
+        subgraph_break_nodes: Optional[List[Node]] = None
+
+    def to_mermaid(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> str:
+        """convert graph to Mermaid syntax"""
+        mermaid_nodes = {}
+        subgraph_mermaid_nodes = {}
+        node_id_generator = self.NodeIdGenerator()
+        for node in graph.nodes.values():
+            if expand_subgraph and isinstance(node, DrawableSubgraphNode):
+                subgraph_mermaid_nodes[node.id] = self._gen_mermaid_node(
+                    expand_subgraph=expand_subgraph \
+                        if isinstance(expand_subgraph, bool) or expand_subgraph <= 0 else expand_subgraph - 1,
+                    node=node, node_id_generator=node_id_generator)
+            else:
+                shape = "normal"
+                if node in graph.start_nodes or node in graph.end_nodes:
+                    shape = "round-edge"
+                mermaid_nodes[node.id] = Node(id_=node_id_generator.next(), content=node.id, shape=shape)
+
+        links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes)
+        nodes = [node for node in mermaid_nodes.values()] + [node.node for node in subgraph_mermaid_nodes.values()]
+        chart = FlowChart(title, nodes, links)
+        return chart.script
+
+    def to_mermaid_png(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> bytes:
+        """convert self._graph to Mermaid syntax and render it as png"""
+        return Mermaid(self.to_mermaid(graph=graph, title=title,
+                                       expand_subgraph=expand_subgraph)).img_response.content
+
+    @staticmethod
+    def _gen_mermaid_node(expand_subgraph: int | bool, node: DrawableSubgraphNode,
+                          node_id_generator: NodeIdGenerator) -> SubGraphNode:
+        mermaid_nodes = {}
+        subgraph_mermaid_nodes = {}
+        graph = node.subgraph
+        for sub_node in graph.nodes.values():
+            if expand_subgraph and isinstance(sub_node, DrawableSubgraphNode):
+                subgraph_mermaid_nodes[sub_node.id] = MermaidDiagram._gen_mermaid_node(
+                    expand_subgraph=expand_subgraph \
+                        if isinstance(expand_subgraph, bool) or expand_subgraph <= 0 else expand_subgraph - 1,
+                    node=sub_node, node_id_generator=node_id_generator)
+            else:
+                shape = "normal"
+                if sub_node in graph.start_nodes or sub_node in graph.end_nodes:
+                    shape = "round-edge"
+                mermaid_nodes[sub_node.id] = Node(id_=node_id_generator.next(), content=sub_node.id, shape=shape)
+
+        links = MermaidDiagram._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes)
+        subgraph_start_nodes = [mermaid_nodes[start_node.id]
+                                if start_node.id in mermaid_nodes
+                                else subgraph_mermaid_nodes[start_node.id].node for start_node in graph.start_nodes]
+        subgraph_end_nodes = [mermaid_nodes[end_node.id]
+                                if end_node.id in mermaid_nodes
+                                else subgraph_mermaid_nodes[end_node.id].node for end_node in graph.end_nodes]
+        subgraph_break_nodes = [mermaid_nodes[break_node.id]
+                                if break_node.id in mermaid_nodes
+                                else subgraph_mermaid_nodes[break_node.id].node for break_node in graph.break_nodes]
+        sub_nodes = ([sub_node for sub_node in mermaid_nodes.values()] +
+                     [sub_node.node for sub_node in subgraph_mermaid_nodes.values()])
+        subgraph_node = MermaidDiagram.SubGraphNode(node=Node(id_=node_id_generator.next(), content=node.id,
+                                                        sub_nodes=sub_nodes, direction=Direction.TOP_TO_BOTTOM),
+                                              subgraph_links=links,
+                                              subgraph_start_nodes=subgraph_start_nodes,
+                                              subgraph_end_nodes=subgraph_end_nodes,
+                                              subgraph_break_nodes=subgraph_break_nodes)
+        return subgraph_node
+
+    @staticmethod
+    def _gen_mermaid_links(graph: DrawableGraph, mermaid_nodes: dict, subgraph_mermaid_nodes: dict) -> List[Link]:
+        links = []
+        for edge in graph.edges:
+            shape = LinkShape.DOTTED if edge.conditional else LinkShape.NORMAL
+            message = ""
+            if edge.streaming:
+                message = "stream"
+            if edge.conditional and edge.data:
+                message = f"\"{edge.data}\""
+            if edge.source in mermaid_nodes and edge.target in mermaid_nodes:
+                links.append(Link(mermaid_nodes[edge.source], mermaid_nodes[edge.target], shape=shape, message=message))
+            elif edge.source in mermaid_nodes and edge.target in subgraph_mermaid_nodes:
+                for node in subgraph_mermaid_nodes[edge.target].subgraph_start_nodes:
+                    links.append(Link(mermaid_nodes[edge.source], node, shape=shape, message=message))
+            elif edge.source in subgraph_mermaid_nodes and edge.target in mermaid_nodes:
+                for node in subgraph_mermaid_nodes[edge.source].subgraph_end_nodes:
+                    links.append(Link(node, mermaid_nodes[edge.target], shape=shape, message=message))
+                for node in subgraph_mermaid_nodes[edge.source].subgraph_break_nodes:
+                    links.append(Link(node, mermaid_nodes[edge.target]))
+            elif edge.source in subgraph_mermaid_nodes and edge.target in subgraph_mermaid_nodes:
+                for node_source in subgraph_mermaid_nodes[edge.source].subgraph_end_nodes:
+                    for node_target in subgraph_mermaid_nodes[edge.target].subgraph_start_nodes:
+                        links.append(Link(node_source, node_target, shape=shape, message=message))
+
+        for node in subgraph_mermaid_nodes.values():
+            links += node.subgraph_links
+        return links

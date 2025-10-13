@@ -19,7 +19,7 @@ class CompIOConfig(BaseModel):
 
 class WorkflowMetadata(BaseModel):
     name: str = Field(default="")
-    id: str = Field(default_factory=uuid.uuid4)
+    id: str = Field(default_factory=lambda:uuid.uuid4().hex)
     version: str = Field(default="")
     description: str = Field(default="")
 
@@ -45,7 +45,7 @@ class WorkflowConfig(BaseModel):
     stream_timeout: float = Field(default=0.2)
     spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
     workflow_inputs_schema: Optional[WorkflowInputsSchema] = Field(default_factory=WorkflowInputsSchema)
-
+    workflow_max_nesting_depth: int = Field(default=5, ge=0, le=10)
 
 class ComponentAbility(Enum):
     INVOKE = ("invoke", "batch in, batch out")

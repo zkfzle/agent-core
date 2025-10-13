@@ -5,12 +5,13 @@ import asyncio
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from enum import Enum
-from typing import Self, Dict, Any, Union, AsyncIterator, List
+from typing import Self, Any, Union, AsyncIterator, List
 
 from pydantic import BaseModel
 
 from jiuwen.core.common.constants.constant import INTERACTION
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
@@ -18,11 +19,10 @@ from jiuwen.core.component.end_comp import End
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from jiuwen.core.graph.executable import Executable, Input, Output
-from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
-from jiuwen.core.runtime.state import Transformer, DEFAULT_WORKFLOW_ID
+from jiuwen.core.runtime.state import Transformer
 from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
@@ -32,7 +32,7 @@ from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
-    NodeSpec, CompIOConfig, WorkflowInputsSchema
+    NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
 from jiuwen.graph.pregel.graph import PregelGraph
 
 
@@ -53,6 +53,8 @@ class BaseWorkFlow:
     def __init__(self, workflow_config: WorkflowConfig = None, new_graph: Graph = None):
         self._graph = new_graph if new_graph else PregelGraph()
         self._workflow_config = workflow_config if workflow_config else WorkflowConfig()
+        if not self._workflow_config.metadata:
+            self._workflow_config.metadata = WorkflowMetadata()
         self._workflow_spec = self._workflow_config.spec
         self._stream_actor = StreamActor()
         self._runtime = ProxyRuntime()
@@ -134,8 +136,6 @@ class BaseWorkFlow:
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
-        if isinstance(runtime, WorkflowRuntime):
-            runtime.set_workflow_id(self._workflow_config.metadata.id)
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         self._runtime.set_runtime(runtime)
         return self._graph.compile(runtime)
@@ -170,7 +170,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         self.tool_info = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
         self._end_comp_id: str = ""
         self._end_comp = None
-
         self.inputs_schema = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
 
     def _convert_to_tool_info(self, inputs_schema: WorkflowInputsSchema) -> ToolInfo:
@@ -241,8 +240,25 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         logger.info("begin to sub_invoke")
+        if runtime.config().get_workflow_config(self._workflow_config.metadata.id):
+            raise JiuWenBaseException(StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.code,
+                                      StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.errmsg.format(
+                                          workflow_id=self._workflow_config.metadata.id))
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
-        compiled_graph = self._graph.compile(SubWorkflowRuntime(runtime, workflow_id=self._workflow_config.metadata.id))
+        sub_workflow_runtime = SubWorkflowRuntime(runtime, workflow_id=self._workflow_config.metadata.id)
+        main_workflow_config = sub_workflow_runtime.config().get_workflow_config(
+            sub_workflow_runtime.main_workflow_id())
+        if main_workflow_config is None:
+            raise JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
+                                      StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
+                                          detail=f"main workflow config is not exit,"
+                                                 f" main workflow_id={sub_workflow_runtime.main_workflow_id()}"))
+        if sub_workflow_runtime.workflow_nesting_depth() > main_workflow_config.workflow_max_nesting_depth:
+            raise JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
+                                      StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
+                                          detail=f"workflow nesting hierarchy is too big, must <= "
+                                                 f"{main_workflow_config.workflow_max_nesting_depth}"))
+        compiled_graph = self._graph.compile(sub_workflow_runtime)
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
         node_runtime = NodeRuntime(runtime, self._end_comp_id)
         output_key = self._end_comp_id
@@ -279,15 +295,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             context: Context = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
-        if isinstance(runtime, WorkflowRuntime) and context is not None:
-            runtime._context = context
-        mq_manager = MessageQueueManager(self._workflow_spec, False)
-        runtime.set_queue_manager(mq_manager)
-        runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
-        if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
-            tracer = Tracer()
-            tracer.init(runtime.stream_writer_manager(), runtime.callback_manager())
-            runtime.set_tracer(tracer)
+        self._validate_and_init_runtime(runtime, stream_modes, context)
         compiled_graph = self.compile(runtime)
         self._stream_actor.init(runtime)
 
@@ -299,12 +307,10 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 await runtime.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(stream_process())
-        is_interaction = False
         interaction_chuck_list = []
         async for chunk in runtime.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
             yield chunk
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
-                is_interaction = True
                 interaction_chuck_list.append(chunk)
 
         results = runtime.state().get_outputs(self._end_comp_id)
@@ -318,6 +324,23 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             await task
         except Exception:
             raise
+
+    def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
+        if isinstance(runtime, WorkflowRuntime):
+            if runtime.config().get_workflow_config(self._workflow_config.metadata.id):
+                raise JiuWenBaseException(StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.code,
+                                          StatusCode.WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR.errmsg.format(
+                                              workflow_id=self._workflow_config.metadata.id))
+            runtime.set_workflow_id(self._workflow_config.metadata.id)
+            if context:
+                runtime._context = context
+        mq_manager = MessageQueueManager(self._workflow_spec, False)
+        runtime.set_queue_manager(mq_manager)
+        runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
+        if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
+            tracer = Tracer()
+            tracer.init(runtime.stream_writer_manager(), runtime.callback_manager())
+            runtime.set_tracer(tracer)
 
     def _convert_to_component(self, executable: Executable) -> WorkflowComponent:
         pass

@@ -6,7 +6,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.context_engine.base import Context
-from jiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY
+from jiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY, Graph
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
@@ -24,6 +24,13 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY))
+
+    def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
+        if self._sub_workflow._graph == graph:
+            raise JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
+                                      StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
+                                          detail="sub_workflow can not be main workflow"))
+        return super().add_component(graph, node_id, wait_for_all)
 
     def graph_invoker(self) -> bool:
         return True

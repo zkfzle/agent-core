@@ -90,6 +90,12 @@ class WorkflowRuntime(BaseRuntime):
     def workflow_id(self):
         return self._workflow_id
 
+    def main_workflow_id(self):
+        return self.workflow_id()
+
+    def workflow_nesting_depth(self):
+        return 0
+
 
 def create_parent_id(runtime: BaseRuntime):
     return runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
@@ -110,6 +116,8 @@ class NodeRuntime(BaseRuntime):
         self._executable_id = executable_id
         self._runtime = runtime
         self._workflow_id = runtime.workflow_id()
+        self._workflow_nesting_depth = runtime.workflow_nesting_depth()
+        self._main_workflow_id = runtime.main_workflow_id()
 
     def node_id(self):
         return self._node_id
@@ -122,6 +130,12 @@ class NodeRuntime(BaseRuntime):
 
     def workflow_id(self):
         return self._workflow_id
+
+    def main_workflow_id(self):
+        return self._main_workflow_id
+
+    def workflow_nesting_depth(self):
+        return self._workflow_nesting_depth
 
     def queue_manager(self) -> MessageQueueManager:
         return self._runtime.queue_manager()
@@ -170,6 +184,14 @@ class SubWorkflowRuntime(NodeRuntime):
     def __init__(self, runtime: NodeRuntime, workflow_id: str):
         super().__init__(runtime=runtime.parent(), node_id=runtime.node_id())
         self._workflow_id = workflow_id
+        self._workflow_nesting_depth = runtime.workflow_nesting_depth() + 1
+        self._main_workflow_id = runtime.main_workflow_id()
 
     def workflow_id(self):
         return self._workflow_id
+
+    def workflow_nesting_depth(self):
+        return self._workflow_nesting_depth
+
+    def main_workflow_id(self):
+        return self._main_workflow_id

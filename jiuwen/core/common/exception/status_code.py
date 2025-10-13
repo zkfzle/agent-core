@@ -52,7 +52,7 @@ class StatusCode(Enum):
 
     ## 子工作流组件  101140 - 101159
     SUB_WORKFLOW_COMPONENT_INIT_ERROR = (101140, "Sub workflow component init error, as {error_msg}.")
-
+    SUB_WORKFLOW_COMPONENT_RUNNING_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
 
     ## 插件组件  102000 - 102019
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
@@ -65,10 +65,12 @@ class StatusCode(Enum):
     GRAPH_SET_END_NODE_FAILED = (110002, "Graph create error, caused by end node set failed, detail: {detail}")
     GRAPH_ADD_NODE_FAILED = (110003, "Graph create error, caused by add node failed, detail: {detail}")
     GRAPH_ADD_EDGE_FAILED = (110004, "Graph create error, caused by add edge failed, detail: {detail}")
-    GRAPH_ADD_CONDITION_EDGE_FAILED =  (110005, "Graph create error, caused by add conditional edge failed, detail: {detail}")
+    GRAPH_ADD_CONDITION_EDGE_FAILED = (110005,
+                                       "Graph create error, caused by add conditional edge failed, detail: {detail}")
 
     # 工作流 异常处理 111000 - 111999
-
+    WORKFLOW_CONFIG_RUNTIME_DUPLICATE_ERROR = (111003,
+                                      "Workflow run error, caused by workflow config of {workflow_id} is already exist in runtime, please remove old workflow config from runtime")
     # Agent编排 120000 - 129999
     # Agent编排 ReAct Agent编排和执行 120000 - 120999
     # Agent编排 Workflow Agent编排和执行 121000 - 121999
@@ -161,7 +163,8 @@ class StatusCode(Enum):
     RUNTIME_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
     # Runtime 状态管理 192000 - 192999
     # Runtime 流式输出StreamWriter 193000 - 193999
-    STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001, "failed to write stream, stream schema validate failed, details: {detail}")
+    STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001,
+                                         "failed to write stream, stream schema validate failed, details: {detail}")
     STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
     # Runtime Config管理 194000 - 194999
     # Runtime callback 195000 - 195999

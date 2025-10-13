@@ -133,7 +133,10 @@ class WorkflowController(Controller):
 
         user_message = HumanMessage(content=inputs.get("query"))
         self._add_msg_to_chat_histroy(user_message)
-        logger.info(f"Added user message to chat history: {inputs.get('query')}")
+        if UserConfig.is_sensitive():
+            logger.info(f"Added user message to chat history")
+        else:
+            logger.info(f"Added user message to chat history: {inputs.get('query')}")
 
         return WorkflowControllerOutput(is_task=True, sub_tasks=sub_tasks)
 
@@ -173,8 +176,10 @@ class WorkflowController(Controller):
     async def _resume_task(self, inputs: Dict) -> Dict | list:
         if not isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Interrupt status data format error.")
-
-        logger.info(f"Processing interrupt recovery: {inputs}")
+        if UserConfig.is_sensitive():
+            logger.info(f"Processing interrupt recovery")
+        else:
+            logger.info(f"Processing interrupt recovery: {inputs}")
 
         sub_tasks = self._state.get_interrupted_sub_tasks()
         if not sub_tasks:

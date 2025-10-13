@@ -14,6 +14,7 @@ from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.logging import logger
 from pydantic import Field, ConfigDict
+from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class WorkflowControllerOutput(ControllerOutput):
@@ -143,7 +144,10 @@ class ReActControllerUtils:
             agent_context = context_engine.get_agent_context(runtime.session_id())
             user_message = HumanMessage(content=query)
             agent_context.add_message(user_message)
-            logger.info(f"Added user message: {query}")
+            if UserConfig.is_sensitive():
+                logger.info(f"Added user message")
+            else:
+                logger.info(f"Added user message: {query}")
 
     @staticmethod
     def add_ai_message(ai_message: AIMessage, context_engine: ContextEngine, runtime: Runtime):
@@ -164,9 +168,15 @@ class ReActControllerUtils:
             if sub_task.result:
                 tool_message = ToolMessage(content=sub_task.result, tool_call_id=sub_task.id)
                 agent_context.add_message(tool_message)
-                logger.info(f"Added tool result: {sub_task.func_name}")
+                if UserConfig.is_sensitive():
+                    logger.info(f"Added tool result")
+                else:
+                    logger.info(f"Added tool result: {sub_task.func_name}")
             else:
-                logger.warning(f"Sub task {sub_task.func_name} has no result")
+                if UserConfig.is_sensitive():
+                    logger.warning(f"Sub task {sub_task.func_name} has no result")
+                else:
+                    logger.warning(f"Sub task {sub_task.func_name} has no result")
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime, config: AgentConfig) -> List[BaseMessage]:

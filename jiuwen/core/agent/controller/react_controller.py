@@ -18,6 +18,7 @@ from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.common.logging import logger
 from jiuwen.core.agent.controller.utils import ReActControllerUtils, ReActControllerOutput, ReActControllerInput
 from jiuwen.agent.common.enum import ReActControllerStatus
+from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class ReActState:
@@ -103,7 +104,10 @@ class ReActController(Controller):
         self._agent_handler = agent_handler
 
     async def execute(self, inputs: Dict) -> Dict:
-        logger.info(f"Starting ReAct execution with inputs: {inputs}")
+        if UserConfig.is_sensitive():
+            logger.info(f"Starting ReAct execution.")
+        else:
+            logger.info(f"Starting ReAct execution with inputs: {inputs}")
 
         if not self._state.is_interrupted():
             self._validate_inputs(inputs)
@@ -159,8 +163,10 @@ class ReActController(Controller):
         """
         if not isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Interrupt status data format error.")
-
-        logger.info(f"Processing interrupt recovery within ReAct loop: {inputs}")
+        if UserConfig.is_sensitive():
+            logger.info(f"Processing interrupt recovery within ReAct loop")
+        else:
+            logger.info(f"Processing interrupt recovery within ReAct loop: {inputs}")
 
         for _, query in inputs.get("query").user_inputs.items():
             ReActControllerUtils.add_user_message(query, self._context_engine, self._runtime)
@@ -212,6 +218,7 @@ class ReActController(Controller):
 
     async def observe(self, completed_tasks: List[SubTask], exec_result: Any = None) -> Any | None:
         if exec_result and ReActControllerUtils.is_interaction_result(exec_result):
+            # 处理交互请求 - 写入流式输出
             interrupt_data_list = []
             for output_scheme in exec_result.get("value", []):
                 await self._runtime.write_stream(output_scheme)
@@ -234,8 +241,12 @@ class ReActController(Controller):
         tools = self._runtime.get_tool_info()
         chat_history = ReActControllerUtils.get_chat_history(self._context_engine, self._runtime, self._config)
         llm_inputs = ReActControllerUtils.format_llm_inputs(controller_input, chat_history, self._config)
-        logger.info(f"React llm inputs: {llm_inputs}")
+        if UserConfig.is_sensitive():
+            logger.info(f"React llm inputs")
+        else:
+            logger.info(f"React llm inputs: {llm_inputs}")
 
+        # 调用LLM
         try:
             response = await self._model.ainvoke(
                 self._config.model.model_info.model_name,
@@ -250,5 +261,8 @@ class ReActController(Controller):
 
         result = ReActControllerUtils.parse_llm_output(response, self._config)
         ReActControllerUtils.add_ai_message(result.llm_output, self._context_engine, self._runtime)
-        logger.info(f"React llm output: {result.llm_output}")
+        if UserConfig.is_sensitive():
+            logger.info(f"React llm output")
+        else:
+            logger.info(f"React llm output: {result.llm_output}")
         return result

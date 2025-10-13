@@ -44,13 +44,13 @@ class JsonOutputParser(BaseOutputParser):
             return parsed_data
         except json.JSONDecodeError as e:
             if UserConfig.is_sensitive():
-                logger.error(f"Failed to decode JSON from LLM output: {e}")
+                logger.error(f"Failed to decode JSON from LLM output")
             else:
                 logger.error(f"Failed to decode JSON from LLM output: {e}\nContent: {json_str}")
             return None
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.error(f"An unexpected error occurred during JSON parsing: {e}")
+                logger.error(f"An unexpected error occurred during JSON parsing")
             else:
                 logger.error(f"An unexpected error occurred during JSON parsing: {e}\nContent: {json_str}")
             return None
@@ -87,7 +87,7 @@ class JsonOutputParser(BaseOutputParser):
                 except Exception as e:
                     if UserConfig.is_sensitive():
                         logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing: {e}")
+                            f"An unexpected error occurred during streaming JSON parsing")
                     else:
                         logger.error(
                             f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
@@ -102,7 +102,7 @@ class JsonOutputParser(BaseOutputParser):
                 except Exception as e:
                     if UserConfig.is_sensitive():
                         logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing (direct): {e}")
+                            f"An unexpected error occurred during streaming JSON parsing (direct)")
                     else:
                         logger.error(
                             f"An unexpected error occurred during streaming JSON parsing (direct): {e}\nContent: {buffer}")
@@ -120,13 +120,13 @@ class JsonOutputParser(BaseOutputParser):
                 yield parsed_data
             except json.JSONDecodeError as e:
                 if UserConfig.is_sensitive():
-                    logger.warning(f"Remaining buffer could not be fully parsed as JSON: {e}")
+                    logger.warning(f"Remaining buffer could not be fully parsed as JSON")
                 else:
                     logger.warning(f"Remaining buffer could not be fully parsed as JSON: {e}\nContent: {json_str}")
             except Exception as e:
                 if UserConfig.is_sensitive():
                     logger.error(
-                        f"An unexpected error occurred during final streaming JSON parsing: {e}")
+                        f"An unexpected error occurred during final streaming JSON parsing")
                 else:
                     logger.error(
                         f"An unexpected error occurred during final streaming JSON parsing: {e}\nContent: {json_str}")

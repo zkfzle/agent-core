@@ -102,7 +102,7 @@ class MarkdownOutputParser(BaseOutputParser):
 
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.error(f"An unexpected error occurred during Markdown parsing: {e}")
+                logger.error(f"An unexpected error occurred during Markdown parsing")
             else:
                 logger.error(f"An unexpected error occurred during Markdown parsing: {e}\nContent: {text}")
             return None
@@ -149,7 +149,7 @@ class MarkdownOutputParser(BaseOutputParser):
                 except Exception as e:
                     if UserConfig.is_sensitive():
                         logger.error(
-                            f"An unexpected error occurred during streaming Markdown parsing: {e}")
+                            f"An unexpected error occurred during streaming Markdown parsing")
                     else:
                         logger.error(
                             f"An unexpected error occurred during streaming Markdown parsing: {e}\nContent: {buffer}")
@@ -168,7 +168,7 @@ class MarkdownOutputParser(BaseOutputParser):
             except Exception as e:
                 if UserConfig.is_sensitive():
                     logger.error(
-                        f"An unexpected error occurred during final streaming Markdown parsing: {e}")
+                        f"An unexpected error occurred during final streaming Markdown parsing")
                 else:
                     logger.error(
                         f"An unexpected error occurred during final streaming Markdown parsing: {e}\nContent: {buffer}")

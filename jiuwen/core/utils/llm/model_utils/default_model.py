@@ -11,9 +11,9 @@ from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 from aiohttp import ClientSession
 from pydantic import ConfigDict
 from requests import Session
-from requests.adapters import HTTPAdapter
 import openai
 
+from jiuwen.core.utils.common.ssl_utils import SslUtils
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
@@ -50,81 +50,10 @@ class RequestChatModel(BaseChatModel):
     def model_provider(self) -> str:
         return "generic_http_api"
 
-    def _bool_env(self, name: str) -> bool:
-        """解析布尔型环境变量"""
-        return os.getenv(name, "").strip().lower() in {"true"}
-    
-    def _get_ssl_config(self):
-        """获取SSL配置，统一处理SSL验证逻辑"""
-        ssl_verify = self._bool_env("LLM_SSL_VERIFY")
-        ssl_cert = os.getenv("LLM_SSL_CERT")
-        
-        if not ssl_verify:
-            # 当ssl_verify为false时，ssl_cert为false
-            return False, False
-        
-        # 当ssl_verify为true时，ssl_cert是证书本身
-        if ssl_cert is None:
-            raise ValueError("当LLM_SSL_VERIFY=true时，必须提供LLM_SSL_CERT证书")
-        
-        return True, ssl_cert
-
-    def _create_strict_ssl_context(self, ssl_cert: str = None) -> ssl.SSLContext:
-        """创建严格的SSL上下文，要求TLS 1.2以上和指定的密码套件"""
-        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-        
-        # 禁用不安全的协议版本
-        ctx.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
-        ctx.options |= ssl.OP_NO_RENEGOTIATION
-        
-        # 设置最小TLS版本为1.2
-        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-        
-        # 设置严格的密码套件要求
-        ctx.set_ciphers(
-            "ECDHE-ECDSA-AES256-GCM-SHA384:"
-            "ECDHE-RSA-AES256-GCM-SHA384:"
-            "ECDHE-ECDSA-AES128-GCM-SHA256:"
-            "ECDHE-RSA-AES128-GCM-SHA256"
-        )
-        
-        # 如果提供了证书，加载证书
-        if ssl_cert:
-            if os.path.isfile(ssl_cert):
-                # 防路径穿越安全检查
-                abs_cert_path = os.path.abspath(ssl_cert)
-                real_cert_path = os.path.realpath(ssl_cert)
-                
-                # 确保路径规范化后仍然指向同一个文件
-                if abs_cert_path != real_cert_path:
-                    raise ValueError(f"Certificate path contains symbolic links or path traversal attack.")
-                
-                # 检查路径中是否包含危险字符
-                if ".." in ssl_cert or ssl_cert.startswith("/") or "\\" in ssl_cert:
-                    raise ValueError(f"The certificate path contains unsafe characters.")
-                
-                # 如果是文件路径，加载证书文件
-                ctx.load_verify_locations(ssl_cert)
-        
-        return ctx
-
     def _setup_ssl_adapter(self):
         """设置SSL适配器，仅在启用SSL校验时挂载"""
-        ssl_verify, ssl_cert = self._get_ssl_config()
-        if ssl_verify:
-            # 创建自定义SSL适配器
-            class SSLAdapter(HTTPAdapter):
-                def __init__(self, ssl_context, *args, **kwargs):
-                    self.ssl_context = ssl_context
-                    super().__init__(*args, **kwargs)
-                
-                def init_poolmanager(self, *args, **kwargs):
-                    kwargs["ssl_context"] = self.ssl_context
-                    return super().init_poolmanager(*args, **kwargs)
-            
-            # 挂载SSL适配器到HTTPS连接
-            ssl_context = self._create_strict_ssl_context(ssl_cert)
-            adapter = SSLAdapter(ssl_context)
+        adapter = SslUtils.create_ssl_adapter("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        if adapter is not None:
             self.sync_client.mount("https://", adapter)
 
     def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
@@ -133,11 +62,8 @@ class RequestChatModel(BaseChatModel):
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
 
-        # 单向TLS校验配置
-        ssl_verify, ssl_cert = self._get_ssl_config()
-        
-        # 设置verify参数：如果启用SSL校验则使用证书，否则禁用校验
-        verify = ssl_cert if ssl_verify else ssl_verify
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        verify = ssl_cert if ssl_verify else False
 
         response = self.sync_client.post(
                 verify=verify,
@@ -161,13 +87,10 @@ class RequestChatModel(BaseChatModel):
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
 
-        # 单向TLS校验配置
-        ssl_verify, ssl_cert = self._get_ssl_config()
-        
-        # 创建SSL上下文（仅在启用校验时）
-        ssl_context = None
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         if ssl_verify:
-            ssl_context = self._create_strict_ssl_context(ssl_cert)
+            ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+            self.aiohttp_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context))
 
         async with self.aiohttp_session.post(
                 url=self.api_base,
@@ -176,7 +99,6 @@ class RequestChatModel(BaseChatModel):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
-                ssl=ssl_context if ssl_verify else ssl_verify,
                 timeout=self.timeout
         ) as response:
             response.raise_for_status()
@@ -194,11 +116,8 @@ class RequestChatModel(BaseChatModel):
                                       messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
-        # 单向TLS校验配置
-        ssl_verify, ssl_cert = self._get_ssl_config()
-        
-        # 设置verify参数：如果启用SSL校验则使用证书，否则禁用校验
-        verify = ssl_cert if ssl_verify else ssl_verify
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        verify = ssl_cert if ssl_verify else False
 
         with self.sync_client.post(
                 verify=verify,
@@ -232,13 +151,10 @@ class RequestChatModel(BaseChatModel):
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
-        # 单向TLS校验配置
-        ssl_verify, ssl_cert = self._get_ssl_config()
-        
-        # 创建SSL上下文（仅在启用校验时）
-        ssl_context = None
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         if ssl_verify:
-            ssl_context = self._create_strict_ssl_context(ssl_cert)
+            ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+            self.aiohttp_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context))
 
         async with self.aiohttp_session.post(
                 url=self.api_base,
@@ -247,7 +163,6 @@ class RequestChatModel(BaseChatModel):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
-                ssl=ssl_context if ssl_verify else ssl_verify,
                 timeout=aiohttp.ClientTimeout(total=self.timeout)
         ) as response:
             response.raise_for_status()

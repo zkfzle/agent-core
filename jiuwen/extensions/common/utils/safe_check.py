@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 SENSITIVE_PATHS = [
-    '/etc', '/bin', '/usr/bin', '/usr/sbin', '/boot', '/root'
+    '/etc/passwd', '/etc/shadow', '/etc/hosts', '/etc/hostname'
 ]
 
 

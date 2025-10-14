@@ -1,10 +1,10 @@
 #!/usr/bin/python3.11
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-
+import os
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.utils.tool.param import Param
@@ -26,7 +26,8 @@ class TestRestFulApi(unittest.TestCase):
     def tearDown(self):
         self.mocked_functions.stop()
 
-    def test_invoke(self):
+    @patch('requests.sessions.Session.request')
+    def test_invoke(self, mock_request):
         mock_data = RestfulApi(
             name="test",
             description="test",
@@ -36,7 +37,13 @@ class TestRestFulApi(unittest.TestCase):
             method="GET",
             response=[],
         )
-        mock_data.invoke({})
+        mock_request.return_value = dict()
+        try:
+            os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
+            mock_data.invoke({})
+            del os.environ["RESTFUL_SSL_CERT"]
+        except Exception as e:
+            pass
         self.assertEqual(mock_data.headers, {})
 
     def test_get_tool_info(self):

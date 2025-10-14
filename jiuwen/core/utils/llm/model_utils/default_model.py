@@ -14,6 +14,7 @@ from requests import Session
 import openai
 
 from jiuwen.core.utils.common.ssl_utils import SslUtils
+from jiuwen.core.utils.common.url_utils import UrlUtils
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
@@ -58,6 +59,7 @@ class RequestChatModel(BaseChatModel):
 
     def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
                 top_p: float = 0.1, **kwargs: Any) -> AIMessage:
+        UrlUtils.check_url_is_valid(self.api_base)
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
@@ -73,6 +75,7 @@ class RequestChatModel(BaseChatModel):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
+                allow_redirects=False,
                 timeout=self.timeout
             )
 
@@ -82,11 +85,11 @@ class RequestChatModel(BaseChatModel):
 
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+        UrlUtils.check_url_is_valid(self.api_base)
         await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
-
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
@@ -99,6 +102,7 @@ class RequestChatModel(BaseChatModel):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
+                allow_redirects=False,
                 timeout=self.timeout
         ) as response:
             response.raise_for_status()
@@ -108,14 +112,13 @@ class RequestChatModel(BaseChatModel):
 
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
-
+        UrlUtils.check_url_is_valid(self.api_base)
         self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
         params["stream"] = True
-
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         verify = ssl_cert if ssl_verify else False
 
@@ -128,6 +131,7 @@ class RequestChatModel(BaseChatModel):
                 },
                 json=params,
                 stream=True,
+                allow_redirects=False,
                 timeout=self.timeout
         ) as response:
             response.raise_for_status()
@@ -142,8 +146,7 @@ class RequestChatModel(BaseChatModel):
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
-
-        # 重置流状态
+        UrlUtils.check_url_is_valid(self.api_base)
         self._reset_stream_state()
 
         await self.ensure_session()
@@ -163,6 +166,7 @@ class RequestChatModel(BaseChatModel):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
+                allow_redirects=False,
                 timeout=aiohttp.ClientTimeout(total=self.timeout)
         ) as response:
             response.raise_for_status()

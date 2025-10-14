@@ -9,18 +9,17 @@ from typing import List
 
 import requests
 import aiohttp
-import ssl
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.common.ssl_utils import SslUtils
+from jiuwen.core.utils.common.url_utils import UrlUtils
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool import constant
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.utils.tool.constant import Input, Output
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.param_util import ParamUtil
-from jiuwen.core.utils.tool.types import ValueTypeEnum
 
 RESTFUL_SSL_VERIFY = "RESTFUL_SSL_VERIFY"
 RESTFUL_SSL_CERT = "RESTFUL_SSL_CERT"
@@ -81,17 +80,18 @@ class RestfulApi(Tool):
     def invoke(self, inputs: Input, **kwargs) -> Output:
         """invoke api"""
         request_params = RequestParams(self, inputs, **kwargs)
+        request_params.prepare_params()
+        UrlUtils.check_url_is_valid(request_params.ip_address_url)
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
+        verify = ssl_cert if ssl_verify else False
+        session = requests.Session()
+        adapter = SslUtils.create_ssl_adapter(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
+        if adapter is not None:
+            session.mount("https://", adapter)
         try:
-            request_params.prepare_params()
-            ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
-            verify = ssl_cert if ssl_verify else False
-            session = requests.Session()
-            adapter = SslUtils.create_ssl_adapter(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
-            if adapter is not None:
-                session.mount("https://", adapter)
             response = session.request(
                 self.method, request_params.ip_address_url, headers=request_params.headers,
-                verify=verify, stream=False, params=request_params.query_params_in_inputs,
+                verify=verify, stream=False, allow_redirects=False, params=request_params.query_params_in_inputs,
                 timeout=constant.REQUEST_TIMEOUT,
                 **request_params.request_arg
             )
@@ -142,6 +142,7 @@ class RestfulApi(Tool):
 
     async def _async_request(self, request_args: dict):
         ip_address_url = request_args.get('ip_address_url')
+        UrlUtils.check_url_is_valid(ip_address_url)
         query_params_in_inputs = request_args.get('query_params_in_inputs')
         request_arg = request_args.get('request_arg')
         ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
@@ -163,16 +164,6 @@ class RestfulApi(Tool):
                 ) as response:
                     response_data = await _data_of_async_request(response)
         return response_data
-
-    @staticmethod
-    def _verify_ssl_cert():
-        ssl_verify_is_false = os.getenv("SSL_VERIFY", "true").lower() == "false"
-        if ssl_verify_is_false:
-            verify = False
-        else:
-            ssl_cert = os.getenv("SSL_CERT")
-            verify = ssl_cert if ssl_cert else True
-        return verify
 
 
 class RequestParams:

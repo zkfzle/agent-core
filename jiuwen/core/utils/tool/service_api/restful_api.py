@@ -252,7 +252,7 @@ async def _data_of_async_request(response: aiohttp.ClientResponse):
             return {
                 constant.ERR_CODE: 0,
                 constant.ERR_MESSAGE: 'success',
-                constant.RESTFUL_DATA: content.decode('utf-8')
+                constant.RESTFUL_DATA: ""
             }
         if constant.ERR_CODE not in res or constant.ERR_MESSAGE not in res or constant.RESTFUL_DATA not in res:
             return {constant.ERR_CODE: 0, constant.ERR_MESSAGE: 'success', constant.RESTFUL_DATA: res}

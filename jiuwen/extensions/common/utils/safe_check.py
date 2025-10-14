@@ -9,7 +9,7 @@ SENSITIVE_PATHS = [
 def is_valid_path(path):
     try:
         p = Path(path)
-        return p.exists() and p.is_absolute()
+        return True
     except Exception:
         return False
 

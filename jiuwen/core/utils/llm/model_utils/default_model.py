@@ -387,7 +387,7 @@ class OpenAIChatModel(BaseChatModel):
                 if parsed_chunk:
                     yield parsed_chunk
         except Exception as e:
-            raise Exception(f"OpenAI API 流式调用失败: {str(e)}")
+            raise Exception(f"OpenAI API 流式调用失败")
 
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
@@ -403,7 +403,7 @@ class OpenAIChatModel(BaseChatModel):
                 if parsed_chunk:
                     yield parsed_chunk
         except Exception as e:
-            raise Exception(f"OpenAI API 异步流式调用失败: {str(e)}")
+            raise Exception(f"OpenAI API 异步流式调用失败")
 
 
     def _build_request_params(self, model_name:str, temperature: float, top_p:float, messages: List[Dict],

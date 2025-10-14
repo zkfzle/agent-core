@@ -29,7 +29,10 @@ class ModelFactory(metaclass=Singleton):
     def _load_models(model_dir: str) -> Dict[str, Type[BaseChatModel]]:
         model_dict = {}
         if not os.path.exists(model_dir):
-            logging.warning(f"Model directory not found: {model_dir}")
+            if UserConfig.is_sensitive():
+                logging.warning(f"Model directory not found")
+            else:
+                logging.warning(f"Model directory not found: {model_dir}")
             return model_dict
 
         try:
@@ -51,12 +54,18 @@ class ModelFactory(metaclass=Singleton):
                     for name, obj in module.__dict__.items():
                         if (isinstance(obj, type) and issubclass(obj, BaseChatModel) and obj != BaseChatModel):
                             model_dict[module_name] = obj
-                            logging.info(f"Loaded model: {module_name} -> {obj.__name__}")
+                            if UserConfig.is_sensitive():
+                                logging.info(f"Loaded model")
+                            else:
+                                logging.info(f"Loaded model: {module_name} -> {obj.__name__}")
                 except Exception as e:
-                    logging.error(f"Error loading module {py_file}: {str(e)}")
+                    if UserConfig.is_sensitive():
+                        logging.error(f"Error loading module.")
+                    else:
+                        logging.error(f"Error loading module {py_file}: {str(e)}")
                     continue
         except Exception as e:
-            raise Exception(f"module load error: {str(e)}")
+            raise Exception(f"module load error")
         return model_dict
 
     def _load_model_dir(self, model_dir: str):

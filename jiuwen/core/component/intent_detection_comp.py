@@ -25,6 +25,8 @@ from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import BaseMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.utils.prompt.template.template import Template
+from jiuwen.core.utils.config.user_config import UserConfig
+
 
 LUI = "llm"
 NAME = "name"
@@ -177,7 +179,10 @@ class IntentDetectionExecutable(ComponentExecutable):
         chat_history = self._get_chat_history_from_context(None)
         current_inputs = self._prepare_detection_inputs(inputs, chat_history)
         llm_output = self._invoke_llm_and_get_result(current_inputs)
-        logger.info(f"[%s] intent detection output_inputs: %s", self._runtime.executable_id(), llm_output)
+        if UserConfig.is_sensitive():
+            logger.info(f"[%s] intent detection", self._runtime.executable_id())
+        else:
+            logger.info(f"[%s] intent detection output_inputs: %s", self._runtime.executable_id(), llm_output)
         intent_res = self._parse_detection_result(llm_output)
         return intent_res
 
@@ -271,7 +276,10 @@ class IntentDetectionExecutable(ComponentExecutable):
     def _invoke_llm_and_get_result(self, current_inputs):
         """invoke llm and get result"""
         llm_inputs = self._default_config.intent_detection_template.format(current_inputs).to_messages()
-        logger.info(f"[%s] intent detection llm_inputs: %s", self._runtime.executable_id(), llm_inputs)
+        if UserConfig.is_sensitive():
+            logger.info(f"[%s] intent detection", self._runtime.executable_id())
+        else:
+            logger.info(f"[%s] intent detection llm_inputs: %s", self._runtime.executable_id(), llm_inputs)
         llm_output_content = ""
         try:
             llm_output = self._llm.invoke(model_name=self._config.model.model_info.model_name, messages=llm_inputs)

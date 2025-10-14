@@ -190,8 +190,12 @@ class LLMExecutable(ComponentExecutable):
             try:
                 OutputParamConfig.model_validate(value)
             except ValidationError as e:
-                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
-                                     f"output config parameter's config {value} is invalid", e)
+                if UserConfig.is_sensitive():
+                    ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                         "output config parameter's config value is invalid")
+                else:
+                    ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_OUTPUT_CONFIG_ERROR,
+                                         f"output config parameter's config {value} is invalid", e)
 
     @staticmethod
     def _validate_response_format(response_format, output_config):

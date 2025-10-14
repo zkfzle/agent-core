@@ -46,12 +46,11 @@ class ConfigManager:
 
     def _load_config(self, config_path: str):
         try:
-            if not is_safe_path(config_path):
-                raise Exception("path is not safe")
-
             if config_path is None:
                 config_dict = copy.deepcopy(DEFAULT_LOG_CONFIG)
             else:
+                if not is_safe_path(config_path):
+                    raise Exception("path is not safe")
                 with open(config_path, "r", encoding="utf-8") as f:
                     config_dict = yaml.safe_load(f)
 

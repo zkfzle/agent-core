@@ -163,7 +163,7 @@ class Vertex(AsyncAtomicNode):
                 await self._run_executable(ability, is_subgraph, config)
 
         except JiuWenBaseException as e:
-            raise JiuWenBaseException(e.error_code, "failed to invoke, caused by " + e.message)
+            raise JiuWenBaseException(e.error_code, "failed to invoke, caused by internal error")
 
         # wait only when stream_call called
         if self._stream_called:

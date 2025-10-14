@@ -107,8 +107,8 @@ class StatusCode(Enum):
     # 图执行引擎 140000 - 149999
     # 图执行引擎 图的编排和执行 140000 - 140999
     ## 图执行条件判断 140000 - 140019
-    EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, as {error_msg}.")
-    EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
+    EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, expression as {expression}, error as {error_msg}.")
+    EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, expression as {expression}, as {error_msg}.")
 
 
     # 上下文引擎 150000 - 159999

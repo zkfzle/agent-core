@@ -37,13 +37,28 @@ class ExpressionCondition(Condition):
             return True
         return self._evaluate_expression(self._expression, self._get_inputs(runtime))
 
-    def _evaluate_expression(self, expression, inputs) -> bool:
+    def _is_empty_replacement(self, match):
+        placeholder = match.group(1)
+        indices_part  = match.group(2) if match.group(2) else ""
+        variable_access = f'${{{placeholder}}}{indices_part}'
+        return f'({variable_access} is None) or (len({variable_access}) == 0)'
+
+    def _is_not_empty_replacement(self, match):
+        placeholder = match.group(1)
+        indices_part  = match.group(2) if match.group(2) else ""
+        variable_access = f'${{{placeholder}}}{indices_part}'
+        return f'({variable_access} is not None) and (len({variable_access}) > 0)'
+
+    def _evaluate_expression(self, raw_expression, inputs) -> bool:
+        expression = raw_expression
         expression = expression.replace("&&", " and ") \
             .replace("||", " or ") \
             .replace("not_in", " not in ") \
             .replace("length", "len")
-        expression = re.sub(r'is_empty\(\s*\$\{(.*?)\}\s*\)', r'len(${\1}) == 0', expression)
-        expression = re.sub(r'is_not_empty\(\s*\$\{(.*?)\}\s*\)', r'len(${\1}) > 0', expression)
+
+        expression = re.sub(r'is_empty\(\s*\$\{(.*?)\}\s*((?:\[[^\]]+\])*)\)', self._is_empty_replacement, expression)
+        expression = re.sub(r'is_not_empty\(\s*\$\{(.*?)\}\s*((?:\[[^\]]+\])*)\)', self._is_not_empty_replacement,
+                            expression)
         expression = re.sub(r'\btrue\b', r'True', expression)
         expression = re.sub(r'\bfalse\b', r'False', expression)
 
@@ -75,6 +90,9 @@ class ExpressionCondition(Condition):
                     # 只允许对inputs进行下标访问
                     if isinstance(node.value, ast.Name) and node.value.id == 'inputs':
                         self.generic_visit(node)
+                    elif isinstance(node.value, ast.Subscript):
+                        # 允许链式下标访问，如 inputs["a"][0]
+                        self.generic_visit(node)
                     else:
                         raise ValueError(f"Subscript access only allowed for 'inputs': {ast.unparse(node)}")
             
@@ -91,11 +109,14 @@ class ExpressionCondition(Condition):
             result = eval(compile(parsed_expr, '<string>', 'eval'), eval_globals, eval_locals)
             
             if not isinstance(result, bool):
-                raise ValueError(f"Expression result must be boolean, got: {type(result).__name__}")
+                raise SyntaxError(f"Expression result must be boolean, got: {type(result).__name__}")
             return result
-        except SyntaxError as e:
+        except (SyntaxError, TypeError) as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(error_msg=str(e)))
+                                      StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(
+                                          expression=expression,
+                                          error_msg=f'{str(e)}, please check the expression inputs')) from e
         except Exception as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(error_msg=str(e)))
+                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(expression=expression,
+                                                                                               error_msg=str(e))) from e

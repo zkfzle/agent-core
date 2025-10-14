@@ -3,6 +3,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 from typing import Callable, Union, Hashable
 
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.condition.condition import Condition
@@ -21,6 +23,19 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
                    branch_id: str = None):
+        if not condition:
+            raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
+                                      StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
+                                          error_msg="condition is not invalid, can not be None"))
+        if not target:
+            raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
+                                      StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
+                                          error_msg="target is not invalid, can not None or empty"))
+        for item in target:
+            if not item:
+                raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
+                                          StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
+                                              error_msg="target list item is not invalid, can not None or empty"))
         self._router.add_branch(condition, target, branch_id=branch_id)
 
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:

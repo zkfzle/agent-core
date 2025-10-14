@@ -22,7 +22,7 @@ class InMemoryTemplateStore(TemplateStore):
         if self.index.get_documents(template_id):
             raise JiuWenBaseException(
                 error_code=StatusCode.PROMPT_TEMPLATE_DUPLICATED_ERROR.code,
-                message=f"Template: {template.name} is duplicated to register"
+                message=f"Template is duplicated to register"
             )
         return self.index.add_document(
             record=Document(page_content='', metadata=template.model_dump()),

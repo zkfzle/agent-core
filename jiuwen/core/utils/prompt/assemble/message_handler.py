@@ -1,10 +1,8 @@
 import json
 import re
-from typing import List
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.utils.llm.messages import BaseMessage
 
 MESSAGE_VALIDATION_SCHEMA = {
     "system": {
@@ -35,77 +33,6 @@ EXTRA_VALIDATION_SCHEMA = {
 }
 
 
-def messages_to_template(messages: List[dict]) -> str:
-    """messages to template"""
-    template = ""
-    for message in messages:
-        if isinstance(message, BaseMessage):
-            message = message.__dict__
-            message.pop("name", None)
-        if not isinstance(message, dict):
-            raise JiuWenBaseException(
-                error_code=StatusCode.PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR.code,
-                message="Each message in the template must be a dict"
-            )
-        role = message.get("role")
-        validate_schema = MESSAGE_VALIDATION_SCHEMA.get(role)
-        if not validate_schema:
-            raise JiuWenBaseException(
-                error_code=StatusCode.PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR.code,
-                message=f"No validation schema found for message role `{role}`."
-            )
-        validate(message, validate_schema)
-        content = message.get("content")
-        if not content:
-            content = ""
-        template += f"`#{role}#`\n{content}\n"
-        for extra_key in set(message.keys()) - {"role", "content"}:
-            if isinstance(message[extra_key], str):
-                extra_content = message[extra_key]
-            elif isinstance(message[extra_key], dict):
-                extra_content = json.dumps(message['function_call'], ensure_ascii=False)
-            else:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR.code,
-                    message="Cannot parse data into string"
-                )
-            template += f"`*{extra_key}*`\n{extra_content}\n"
-
-    return template
-
-
-def template_to_messages(template: str) -> List[dict]:
-    """template to messages"""
-    messages = []
-    message_prefix_matches = list(re.finditer(r'`#(system|assistant|user|tool|function)#`', template))
-    for message_index, message_match in enumerate(message_prefix_matches):
-        message_content, message_prefix, validation_schema = get_message(
-            message_index, message_match, message_prefix_matches, template
-        )
-        message = padding_message(message_prefix, message_content, validation_schema)
-        validate(message, validation_schema)
-        messages.append(message)
-    return messages
-
-
-def get_message(message_index, message_match, message_prefix_matches, template):
-    """get message"""
-    message_prefix = message_match.group(1)
-    message_start = message_match.end()
-    if message_index < len(message_prefix_matches) - 1:
-        message_end = message_prefix_matches[message_index + 1].start()
-    else:
-        message_end = len(template)
-    message_content = template[message_start:message_end].strip()
-    validation_schema = MESSAGE_VALIDATION_SCHEMA.get(message_prefix)
-    if not validation_schema:
-        raise JiuWenBaseException(
-            error_code=StatusCode.PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR.code,
-            message=f"No validation schema found for message role `{message_prefix}`."
-        )
-    return message_content, message_prefix, validation_schema
-
-
 def validate(data: dict, schema: dict):
     """validate data"""
     if len(set(data.keys()) - set(schema.keys())) > 0:
@@ -117,7 +44,7 @@ def validate(data: dict, schema: dict):
         if not isinstance(data.get(name), data_type):
             raise JiuWenBaseException(
                 error_code=StatusCode.PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR.code,
-                message=f"Failed validate the data against the schema `{name}`."
+                message=f"Failed validate the data against the schema."
             )
         if name in EXTRA_VALIDATION_SCHEMA and data.get(name) is not None:
             validate(data.get(name), EXTRA_VALIDATION_SCHEMA.get(name))

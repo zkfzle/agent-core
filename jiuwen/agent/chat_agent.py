@@ -78,12 +78,11 @@ class ChatAgent(Agent):
         )
 
     async def invoke(self, inputs: Dict) -> Dict:
-        """同步调用接口"""
-        # 1. 初始化ContextEngine和Runtime
+        # 1. init ContextEngine and Runtime
         session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
 
-        # 2. 执行单词chat流程
+        # 2. invoke LLMCall
         agent_context = self.context_engine.get_agent_context(session_id)
         result = await self._llm_call.invoke(
             inputs=inputs,
@@ -95,8 +94,21 @@ class ChatAgent(Agent):
         return dict(output=result.content, tool_calls=result.tool_calls)
 
     async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
-        """流式调用接口"""
-        raise NotImplementedError()
+        # 1. init ContextEngine and Runtime
+        session_id = inputs.pop("conversation_id", "default_session")
+        runtime = await self._runtime.pre_run(session_id=session_id)
+
+        # 2. stream invoke LLMCall
+        agent_context = self.context_engine.get_agent_context(session_id)
+        stream_iterator = self._llm_call.stream(
+            inputs=inputs,
+            runtime=runtime,
+            history=agent_context.get_messages(),
+            tools=self._runtime.get_tool_info()
+        )
+        await runtime.post_run()
+        async for result in stream_iterator:
+            yield dict(output=result.content, tool_calls=result.tool_calls)
 
     def get_llm_calls(self) -> Dict:
         return dict(llm_call=self._llm_call)

@@ -131,6 +131,12 @@ class StatusCode(Enum):
 
     # Optimization Toolchain 170000 - 179999
     # Optimization Toolchain - Prompt Self-optimization 170000 - 170999
+    AGENT_BUILDER_AGENT_PARAMS_ERROR = (170000, "Parameters error: {error_msg}")
+    AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR = (170010, "Do optimizer's backward failed: {error_msg}")
+    AGENT_BUILDER_AGENT_OPTIMIZER_UPDATE_ERROR = (170011, "Do optimizer's update failed: {error_msg}")
+    AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR = (170012, "Agent optimizer parameters error: {error_msg}")
+    AGENT_BUILDER_AGENT_EVALUATOR_EVALUATE_ERROR = (170030, "Do evaluator's evaluate failed: {error_msg}")
+    AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR = (170040, "Do trainer's train error: {error_msg}")
     # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
     # Optimization Toolchain - AgentRL 172000 - 172999
 
@@ -205,13 +211,6 @@ class StatusCode(Enum):
     AGENT_SUB_TASK_TYPE_ERROR = (103032, "SubTask type {msg} is not supported")
 
     CONTEXT_ENGINE_MESSAGE_PROCESS_ERROR = (106000, "Message process error: {error_msg}")
-
-    AGENT_BUILDER_AGENT_PARAMS_ERROR = (110000, "Parameters error: {error_msg}")
-    AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR = (110010, "Do optimizer's backward failed: {error_msg}")
-    AGENT_BUILDER_AGENT_OPTIMIZER_UPDATE_ERROR = (110011, "Do optimizer's update failed: {error_msg}")
-    AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR = (110012, "Agent optimizer parameters error: {error_msg}")
-    AGENT_BUILDER_AGENT_EVALUATOR_EVALUATE_ERROR = (110030, "Do evaluator's evaluate failed: {error_msg}")
-    AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR = (110040, "Do trainer's train error: {error_msg}")
 
     @property
     def code(self):

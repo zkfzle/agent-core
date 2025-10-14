@@ -8,6 +8,7 @@ from jiuwen.core.runtime.model_manager import ModelMgr
 
 Workflow = TypeVar("Workflow", contravariant=True)
 
+
 class ResourceManager(ABC):
     @abstractmethod
     def tool(self) -> ToolMgr:
@@ -25,8 +26,12 @@ class ResourceManager(ABC):
     def workflow(self) -> WorkflowMgr:
         pass
 
+
 class ResourceMgr(ResourceManager):
-    """线程安全单机资源管理器，封装多个管理器"""
+    """
+    Resource Manager for Model, Workflow, Prompt, Tool
+    """
+
     def __init__(self) -> None:
         self._tool_mgr = ToolMgr()
         self._workflow_mgr = WorkflowMgr()

@@ -8,7 +8,9 @@ from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
 
 class ModelMgr:
-    """线程安全单机模型管理器"""
+    """
+    Thread-Safe Model Manager
+    """
     __slots__ = ("_models",)
 
     def __init__(self) -> None:

@@ -69,29 +69,28 @@ class ExpressionCondition(Condition):
             
             class SafeExprChecker(ast.NodeVisitor):
                 def visit_Call(self, node):
-                    # 只允许调用len函数
+                    # only allow len()
                     if isinstance(node.func, ast.Name) and node.func.id != 'len':
                         raise ValueError(f"Function calls other than 'len' are not allowed: {node.func.id}")
-                    # 不允许任何属性访问（防止如os.system调用）
+                    # not allow any attribute access（such as: os.system）
                     if isinstance(node.func, ast.Attribute):
                         raise ValueError(f"Attribute access is not allowed: {ast.unparse(node.func)}")
                     self.generic_visit(node)
                 
                 def visit_Name(self, node):
-                    # 只允许访问inputs、len和True/False/None
+                    # only allow inputs、len and True/False/None
                     if node.id not in ['inputs', 'len', 'True', 'False', 'None']:
                         raise ValueError(f"Variable access not allowed: {node.id}")
                 
                 def visit_Attribute(self, node):
-                    # 不允许任何属性访问
+                    # not allow any attribute visit
                     raise ValueError(f"Attribute access is not allowed: {ast.unparse(node)}")
                 
                 def visit_Subscript(self, node):
-                    # 只允许对inputs进行下标访问
+                    # allow chained subscript access, such as inputs["a"][0]
                     if isinstance(node.value, ast.Name) and node.value.id == 'inputs':
                         self.generic_visit(node)
                     elif isinstance(node.value, ast.Subscript):
-                        # 允许链式下标访问，如 inputs["a"][0]
                         self.generic_visit(node)
                     else:
                         raise ValueError(f"Subscript access only allowed for 'inputs': {ast.unparse(node)}")
@@ -100,7 +99,6 @@ class ExpressionCondition(Condition):
             checker.visit(parsed_expr)
 
             eval_globals = {"__builtins__": {}}
-            # 只允许访问inputs和len函数
             eval_locals = {
                 'inputs': inputs,
                 'len': len

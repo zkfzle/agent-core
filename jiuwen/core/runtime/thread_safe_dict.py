@@ -9,7 +9,10 @@ V = TypeVar("V")
 
 
 class ThreadSafeDict(MutableMapping[K, V], Generic[K, V]):
-    """线程安全通用字典，支持任意键值类型。"""
+    """
+    Thread-Safe Dict
+    """
+
     __slots__ = ("_lock", "_data")
 
     def __init__(self, initial_data: Optional[Dict[K, V]] = None) -> None:

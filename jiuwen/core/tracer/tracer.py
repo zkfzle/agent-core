@@ -8,7 +8,6 @@ class Tracer:
     def __init__(self):
         self._trace_id = str(uuid.uuid4())
         self.tracer_agent_span_manager = SpanManager(self._trace_id)
-        # 一个workflow对应一个span_manager
         self.tracer_workflow_span_manager_dict = {}
         self._callback_manager = None
         self._stream_writer_manager = None

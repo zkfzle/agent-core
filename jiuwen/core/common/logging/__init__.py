@@ -24,7 +24,7 @@ class LazyLogger:
 
     def __getattr__(self, name):
         if self._logger is None:
-            _ensure_initialized()  # 确保初始化
+            _ensure_initialized()
             self._logger = self._getter_func()
         return getattr(self._logger, name)
 

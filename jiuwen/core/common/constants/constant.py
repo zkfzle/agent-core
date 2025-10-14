@@ -7,6 +7,7 @@ QUERY = "query"
 SYSTEM_FIELDS = "systemFields"
 
 INTERACTION = sys.intern("__interaction__")
+
 # for dynamic interaction raised by nodes
 
 INTERACTIVE_INPUT = sys.intern("__interactive_input__")

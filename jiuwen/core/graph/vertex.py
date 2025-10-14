@@ -142,7 +142,7 @@ class Vertex(AsyncAtomicNode):
     async def __trace_inputs__(self, inputs: Optional[dict]) -> None:
         if self._executable.skip_trace():
             return
-        # TODO 组件信息
+        # TODO tool info
         await trace_inputs(self._runtime, inputs)
 
         if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
@@ -165,14 +165,14 @@ class Vertex(AsyncAtomicNode):
         except JiuWenBaseException as e:
             raise JiuWenBaseException(e.error_code, "failed to invoke, caused by " + e.message)
 
-        # 仅当 stream_call 被调用时才等待
+        # wait only when stream_call called
         if self._stream_called:
             await self._stream_done.wait()
         logger.debug("node [%s] call finished", self._node_id)
 
     async def stream_call(self):
-        self._stream_called = True  # 标记 stream_call 已被调用
-        self._stream_done.clear()  # 清除之前的完成状态
+        self._stream_called = True
+        self._stream_done.clear()
 
         if self._runtime is None or self._runtime.queue_manager() is None:
             raise JiuWenBaseException(1, "queue manager is not initialized")
@@ -186,7 +186,7 @@ class Vertex(AsyncAtomicNode):
         except JiuWenBaseException as e:
             raise JiuWenBaseException(e.error_code, "failed to stream, caused by " + e.message)
         finally:
-            self._stream_done.set()  # 标记完成
+            self._stream_done.set()
             logger.info("end to stream call, node %s", self._node_id)
 
     async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:

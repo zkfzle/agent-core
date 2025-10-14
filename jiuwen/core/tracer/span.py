@@ -33,23 +33,23 @@ class TraceAgentSpan(Span):
 
 class TraceWorkflowSpan(Span):
     execution_id: str = Field(default="", alias="executionId")
-    on_invoke_data: List[dict] = Field(default=[], alias="onInvokeData")  # 用于记录当前组件执行时间的中间过程信息
-    component_id: str = Field(default="", alias="componentId")  # 放到metadata
-    component_name: str = Field(default="", alias="componentName")  # 放到metadata
-    component_type: str = Field(default="", alias="componentType")  # 即invoke_type
+    on_invoke_data: List[dict] = Field(default=[], alias="onInvokeData")  # Recording intermediate process information for the current component's execution time
+    component_id: str = Field(default="", alias="componentId")  # put it to metadata
+    component_name: str = Field(default="", alias="componentName")  # put it to metadata
+    component_type: str = Field(default="", alias="componentType")  # is invoke_type
     # for loop component
     loop_node_id: Optional[str] = Field(default=None, alias="loopNodeId")
     loop_index: Optional[int] = Field(default=None, alias="loopIndex")
     # node status
     status: Optional[str] = Field(default=None, alias="status")
     # for llm invoke data
-    llm_invoke_data: Dict[str, dict] = Field(default={}, exclude=True)  # 模型数据，临时存储
+    llm_invoke_data: Dict[str, dict] = Field(default={}, exclude=True)  # model data
     # for subworkflow
     parent_node_id: str = Field(default="", alias="parentNodeId")
 
 
 class SpanManager:
-    """用于管理tracer handler运行期间的span"""
+    """Managing spans during tracer handler runtime"""
 
     def __init__(self, trace_id: str, parent_node_id: str = ""):
         self._trace_id = trace_id

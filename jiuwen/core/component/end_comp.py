@@ -42,7 +42,6 @@ class End(ComponentExecutable, WorkflowComponent):
             output = {}
         else:
             answer = ""
-            # 只输出inputs中值不为None的键值对
             output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
         return {
             "responseContent": answer,
@@ -57,10 +56,8 @@ class End(ComponentExecutable, WorkflowComponent):
                     if res.startswith("{{") and res.endswith("}}"):
                         param_name = res[2:-2]
                         if inputs:
-                            # 参数从当前input获取
                             param_value = inputs.get(param_name)
                         else:
-                            # 参数transform存入的runtime中获取
                             content = runtime.get_state(STREAM_CACHE_KEY)
                             if content:
                                 param_value = content.get(param_name)
@@ -80,10 +77,8 @@ class End(ComponentExecutable, WorkflowComponent):
 
     async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
         Output]:
-        # 异步遍历输入迭代器
         stream_cache_value = {}
         async for input_item in inputs:
-            # 将当前输入项存入runtime
             if isinstance(input_item, dict):
                 for key, value in input_item.items():
                     stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)

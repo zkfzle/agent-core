@@ -5,19 +5,19 @@ from enum import Enum
 
 
 class StatusCode(Enum):
-    """状态码枚举类"""
+    """Status code enum"""
 
     SUCCESS = (0, "success")
     ERROR = (-1, "error")
 
-    # 组件 100000 - 109999
-    # 组件 组件开发 100000 - 100999
-    # 组件 组件开发 中断恢复 100000 - 100029
+    # Workflow Component  100000 - 109999
+    # Workflow Component - Component Development:  100000 - 100999
+    # Workflow Component - Component Development: Interactive And Recovery 100000 - 100029
     INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")
 
-    # 组件 预置组件 101000 - 109999
+    # Workflow Component - Builtin-workflow Component 101000 - 109999
 
-    ## 大模型组件  101000 - 101049
+    ## LLMComponent  101000 - 101049
     LLM_COMPONENT_TEMPLATE_CONFIG_ERROR = (101000, "LLM component template config error, as {error_msg}.")
     LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR = (101001, "LLM component response format config error, as {error_msg}.")
     LLM_COMPONENT_OUTPUT_CONFIG_ERROR = (101002, "LLM component output config error, as {error_msg}.")
@@ -26,14 +26,14 @@ class StatusCode(Enum):
     LLM_COMPONENT_INIT_LLM_ERROR = (101005, "Failed to init llm, as {error_msg}.")
     LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
 
-    ## 意图识别组件 101050 - 101069
+    ## IntentDetectionComponent 101050 - 101069
     INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050,
                                                    "Intent detection component user input error, as {error_msg}.")
     INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR = (101051, "Intent detection component init llm error, as {error_msg}.")
     INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR = (101052,
                                                    "Intent detection component invoke llm error, as {error_msg}.")
 
-    ## 提问器组件 101070 - 101099
+    ## QuestionComponent 101070 - 101099
     QUESTIONER_COMPONENT_USER_INPUT_ERROR = (101070, "Questioner component user input error, as {error_msg}.")
     QUESTIONER_COMPONENT_CONFIG_ERROR = (101071, "Questioner component config error, as {error_msg}.")
     QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY = \
@@ -42,25 +42,25 @@ class StatusCode(Enum):
     QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response.")
     QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
 
-    ## 分支组件  101100 - 101119
+    ## BranchComponent  101100 - 101119
     BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")
     BRANCH_COMPONENT_BRANCH_CONDITION_TYPE_ERROR = (101101, "Branch condition type does not meet the requirements.")
     BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR = (101102, "Branch meeting the condition was not found.")
 
-    ## 变量赋值组件  101120 - 101139
+    ## SetVariableComponent  101120 - 101139
     SET_VAR_COMPONENT_VAR_MAPPING_ERROR = (101120, "Set variable component mapping error, as {error_msg}.")
 
-    ## 子工作流组件  101140 - 101159
+    ## SubWorkflowComponent  101140 - 101159
     SUB_WORKFLOW_COMPONENT_INIT_ERROR = (101140, "Sub workflow component init error, as {error_msg}.")
     SUB_WORKFLOW_COMPONENT_RUNNING_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
 
-    ## 插件组件  102000 - 102019
+    ## ToolComponent  102000 - 102019
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
     TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
     TOOL_COMPONENT_CHECK_PARAM_ERROR = (102002, "Tool component check parameter error, as {error_msg}.")
 
-    # 工作流 110000 - 119999
-    # 工作流 工作流编排和执行 110000 - 110999
+    # Workflow 110000 - 119999
+    # Workflow - Orchestration And Execution 110000 - 110999
     GRAPH_SET_START_NODE_FAILED = (110001, "Graph create error, caused by start node set failed, detail: {detail}")
     GRAPH_SET_END_NODE_FAILED = (110002, "Graph create error, caused by end node set failed, detail: {detail}")
     GRAPH_ADD_NODE_FAILED = (110003, "Graph create error, caused by add node failed, detail: {detail}")
@@ -77,19 +77,19 @@ class StatusCode(Enum):
                                               "expected a boolean or a non-negative integer")
 
 
-    # 工作流 异常处理 111000 - 111999
-    # Agent编排 120000 - 129999
-    # Agent编排 ReAct Agent编排和执行 120000 - 120999
-    # Agent编排 Workflow Agent编排和执行 121000 - 121999
-    # Agent编排 自定义Agent接口定义 122000 - 122999
+    # Workflow - Exception Handling 111000 - 111999
+    # Agent Orchestration 120000 - 129999
+    # Agent Orchestration - ReAct Agent Orchestration And Execution 120000 - 120999
+    # Agent Orchestration - Workflow Agent Orchestration And Execution 121000 - 121999
+    # Agent Orchestration - Custom Agent Interface 122000 - 122999
 
-    # Multi-Agent编排 130000 - 139999
-    # Multi-Agent编排 多Agent通信机制 130000 - 130999
-    # Multi-Agent编排 单机运行时 131000 - 131999
-    # Multi-Agent编排 AgentGroup 132000 - 132999
-    # Multi-Agent编排 多Agent调测能力 133000 - 133999
-    # Multi-Agent编排 分布式运行时 134000 - 134999
-    # > 多Agent运行器异常 131000-131030
+    # Multi-Agent Orchestration 130000 - 139999
+    # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999
+    # Multi-Agent Orchestration - Single Runtime 131000 - 131999
+    # Multi-Agent Orchestration - AgentGroup 132000 - 132999
+    # Multi-Agent Orchestration - Multi-Agent Debug 133000 - 133999
+    # Multi-Agent Orchestration - Distribution Runtime 134000 - 134999
+    # Multi-Agent Orchestration - Multi-Agent Runner 131000-131030
     MULTI_AGENT_RUNNER_ALREADY_STARTED = (131000, "Runner is already started")
     MULTI_AGENT_TARGET_MEMBER_NOT_FOUND = (131001, "Target member not found: {}")
     MULTI_AGENT_MESSAGE_SUSPENDED = (131002, "Message suspended, waiting for user input: {}")
@@ -97,7 +97,7 @@ class StatusCode(Enum):
     MULTI_AGENT_RUNNER_NOT_RUNNING = (131004, "Runner not running: {}")
     MULTI_AGENT_RUNNER_NOT_STARTED = (131005, "Runner not started: {}")
 
-    # > 多Agent运行空间异常 131031-131060
+    #  Multi-Agent Orchestration - Multi-Agent AgentRunSpace 131031-131060
     MULTI_AGENT_RUN_SPACE_EXECUTION_ERROR = (131031, "AgentRunSpace execution error: {}")
     MULTI_AGENT_RUN_SPACE_SHUTDOWN_QUEUE_ERROR = (131032, "Failed to shutdown message queue: {}")
     MULTI_AGENT_RUN_SPACE_STOP_TASK_ERROR = (131033, "Failed to stop run task: {}")
@@ -105,39 +105,39 @@ class StatusCode(Enum):
     MULTI_AGENT_RUN_SPACE_CHECK_CONDITION_ERROR = (131035, "Failed to check stop condition: {}")
     MULTI_AGENT_RUN_SPACE_EXECUTE_STOP_WHEN_ERROR = (131036, "Failed to execute stop_when: {}")
 
-    # > 多Agent成员异常 131061-131090
+    # Multi-Agent Orchestration - Multi-Agent Member 131061-131090
     MULTI_AGENT_MEMBER_PROCESS_MESSAGE_ERROR = (131061, "Failed to process message in member {}: {}")
     MULTI_AGENT_MEMBER_PROCESSING_ERROR = (131062, "Error occurred while processing message: {}")
 
-    # > 多Agent消息队列异常 131091-131099
+    # Multi-Agent Orchestration - Multi-Agent MessageQueue 131091-131099
     MULTI_AGENT_MESSAGE_NOT_PROCESSING = (131091, "Message {} is not currently being processed")
 
-    # 图执行引擎 140000 - 149999
-    # 图执行引擎 图的编排和执行 140000 - 140999
-    ## 图执行条件判断 140000 - 140019
+    # GraphEngine 140000 - 149999
+    # GraphEngine - Graph Orchestration and Execution 140000 - 140999
+    # GraphEngine - Conditional Evaluation 140000 - 140019
     EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, expression as {expression}, error as {error_msg}.")
     EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, expression as {expression}, as {error_msg}.")
 
 
-    # 上下文引擎 150000 - 159999
-    # 上下文引擎 上下文结构化存取 150000 - 150999
-    # 上下文引擎 上下文动态组装 151000 - 151999
-    # 上下文引擎 上下文异步加工 152000 - 152999
+    # ContextEngine 150000 - 159999
+    # ContextEngine - Context Structured Storage and Retrieval 150000 - 150999
+    # ContextEngine - Context Dynamic Assembly  151000 - 151999
+    # ContextEngine - Context Asynchronous Processing 152000 - 152999
 
-    # 开发工具链 160000 - 169999
-    # 开发工具链 提示词生成 160000 - 160999
-    # 开发工具链 Agent DL convertor 161000 - 161999
-    # 开发工具链 NL2Agent 162000 - 162999
+    # Development Toolchain 160000 - 169999
+    # Development Toolchain - Prompt Generation 160000 - 160999
+    # Development Toolchain - Agent DL convertor 161000 - 161999
+    # Development Toolchain - NL2Agent 162000 - 162999
 
-    # 调优工具链 170000 - 179999
-    # 调优工具链 提示词自优化 170000 - 170999
-    # 调优工具链 全链路优化 171000 - 171999
-    # 调优工具链 AgentRL 172000 - 172999
+    # Optimization Toolchain 170000 - 179999
+    # Optimization Toolchain - Prompt Self-optimization 170000 - 170999
+    # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
+    # Optimization Toolchain - AgentRL 172000 - 172999
 
-    # 公共能力 180000 - 189999
-    # 公共能力 提示词填充 180000 - 180999
-    # 公共能力 大模型接口 181000 - 181999
-    # 公共能力 工具定义和执行 182000 - 182999
+    # Common Capabilities 180000 - 189999
+    # Common Capabilities - Prompt Population 180000 - 180999
+    # Common Capabilities - Model API 181000 - 181999
+    # Common Capabilities - Tool Definition and Execution 182000 - 182999
     PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
     PLUGIN_REQUEST_TIMEOUT_ERROR = (182001, "Plugin restful api request timed out")
     PLUGIN_PROXY_CONNECT_ERROR = (182002, "Plugin restful api proxy connection error")
@@ -145,12 +145,12 @@ class StatusCode(Enum):
     PLUGIN_RESPONSE_HTTP_CODE_ERROR = (182004, "Plugin restful api http code error")
     PLUGIN_PARAMS_CHECK_FAILED = (182005, "Plugin params check failed")
 
-    # 公共能力 日志Logger 183000 - 183999
-    # 公共能力 异常处理 184000 - 184999
-    # 公共能力 支持mcp插件 185000 - 185999
+    # Common Capabilities - Logger 183000 - 183999
+    # Common Capabilities - Exception Handling 184000 - 184999
+    # Common Capabilities - Support Mcp Tool 185000 - 185999
 
     # Runtime 190000 - 199999
-    # Runtime 资源管理 190000 - 190999
+    # Runtime - Resource Management 190000 - 190999
     RUNTIME_WORKFLOW_GET_FAILED = (190001, "failed to get workflow, reason: {reason}")
     RUNTIME_WORKFLOW_ADD_FAILED = (190002, "failed to add workflow, reason: {reason}")
     RUNTIME_WORKFLOW_CONFIG_ADD_FAILED = (190011, "failed to add workflow config, reason: {reason}")
@@ -166,15 +166,16 @@ class StatusCode(Enum):
 
     RUNTIME_MODEL_GET_FAILED = (190301, "failed to get model, reason: {reason}")
     RUNTIME_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
-    # Runtime 调测能力 191000 - 191999
+
+    # Runtime - Tracer 191000 - 191999
     RUNTIME_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
-    # Runtime 状态管理 192000 - 192999
-    # Runtime 流式输出StreamWriter 193000 - 193999
+    # Runtime - State 192000 - 192999
+    # Runtime - StreamWriter 193000 - 193999
     STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001,
                                          "failed to write stream, stream schema validate failed, details: {detail}")
     STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
-    # Runtime Config管理 194000 - 194999
-    # Runtime callback 195000 - 195999
+    # Runtime - Config 194000 - 194999
+    # Runtime - callback 195000 - 195999
 
     WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (101501,
                                                     "start component: global variable(s) defined with no value assigned:  {variable_name}")

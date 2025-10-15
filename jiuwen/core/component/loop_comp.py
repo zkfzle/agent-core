@@ -10,6 +10,7 @@ from langgraph.constants import END, START
 
 from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.break_comp import BreakComponent, LoopController
 from jiuwen.core.component.condition.array import ArrayConditionInRuntime
@@ -24,10 +25,10 @@ from jiuwen.core.graph.atomic_node import AtomicNode
 from jiuwen.core.graph.base import Graph, INPUTS_KEY
 from jiuwen.core.graph.executable import Output, Input, Executable
 from jiuwen.core.runtime.base import ComponentExecutable
-from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
 from jiuwen.core.workflow.base import BaseWorkFlow
+from jiuwen.core.workflow.workflow_config import ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
 from jiuwen.graph.visualization.drawable_graph import DrawableGraph
 
@@ -58,21 +59,13 @@ class LoopGroup(BaseWorkFlow, Executable):
             outputs_schema: dict = None,
             inputs_transformer=None,
             outputs_transformer=None,
-            stream_inputs_schema: dict = None,
-            stream_outputs_schema: dict = None,
-            stream_inputs_transformer=None,
-            stream_outputs_transformer=None,
-            comp_ability=None
+            **kwargs
     ) -> Self:
         if isinstance(workflow_comp, BreakComponent):
             self._break_components.append(workflow_comp)
         super().add_workflow_comp(comp_id, workflow_comp, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
                                   outputs_schema=outputs_schema, inputs_transformer=inputs_transformer,
-                                  outputs_transformer=outputs_transformer, stream_inputs_schema=stream_inputs_schema,
-                                  stream_outputs_schema=stream_outputs_schema,
-                                  stream_inputs_transformer=stream_inputs_transformer,
-                                  stream_outputs_transformer=stream_outputs_transformer, comp_ability=comp_ability,
-                                  )
+                                  outputs_transformer=outputs_transformer, comp_ability=[ComponentAbility.INVOKE])
         if self._drawable and isinstance(workflow_comp, BreakComponent):
             self._drawable.set_break_node(comp_id)
 
@@ -91,6 +84,9 @@ class LoopGroup(BaseWorkFlow, Executable):
         self.compiled_graph = self.compile(loop_runtime)
         await self.compiled_graph.invoke(inputs, loop_runtime)
         return None
+
+    def add_stream_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
+        logger.warning("loop component not support stream connection")
 
     def skip_trace(self) -> bool:
         return True

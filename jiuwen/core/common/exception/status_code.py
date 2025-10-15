@@ -50,9 +50,11 @@ class StatusCode(Enum):
     ## SetVariableComponent  101120 - 101139
     SET_VAR_COMPONENT_VAR_MAPPING_ERROR = (101120, "Set variable component mapping error, as {error_msg}.")
 
-    ## SubWorkflowComponent  101140 - 101159
+    ## SubWorkflowComponent  101140 - 101149
     SUB_WORKFLOW_COMPONENT_INIT_ERROR = (101140, "Sub workflow component init error, as {error_msg}.")
     SUB_WORKFLOW_COMPONENT_RUNNING_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
+
+    ## LoopComponent  101150 - 101159
 
     ## ToolComponent  102000 - 102019
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")

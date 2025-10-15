@@ -32,6 +32,7 @@ from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
@@ -306,11 +307,17 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if isinstance(self._end_comp, End):
             output_key = self._end_comp_id + NESTED_PATH_SPLIT + "output"
         results = node_runtime.state().get_outputs(output_key)
-        logger.info("end to sub_invoke, results=%s", results)
+        if UserConfig.is_sensitive():
+            logger.info("end to sub_invoke")
+        else:
+            logger.info("end to sub_invoke, results = %s", results)
         return results
 
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> Output:
-        logger.info("begin to invoke, input=%s", inputs)
+        if UserConfig.is_sensitive():
+            logger.info("begin to invoke workflow")
+        else:
+            logger.info("begin to invoke workflow, input = %s", inputs)
         chunks = []
         async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
             chunks.append(chunk)
@@ -326,7 +333,10 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         else:
             output = WorkflowOutput(result=runtime.state().get_outputs(self._end_comp_id),
                                     state=WorkflowExecutionState.COMPLETED)
-        logger.info("end to invoke, results=%s", output)
+        if UserConfig.is_sensitive():
+            logger.info("end to invoke workflow")
+        else:
+            logger.info("end to invoke workflow, results = %s", output)
         return output
 
     async def stream(

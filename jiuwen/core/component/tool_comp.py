@@ -115,7 +115,7 @@ class ToolExecutable(ComponentExecutable):
             response = await self._tool.ainvoke(formatted_inputs)
             response = self._post_process_tool_result(response)
         except Exception as e:
-            response = {constant.ERR_MESSAGE: str(e), constant.RESTFUL_DATA: "",
+            response = {constant.ERR_MESSAGE: "Failed to execute tool", constant.RESTFUL_DATA: "",
                         constant.ERR_CODE: e.code if hasattr(e, "code") else DEFAULT_EXCEPTION_ERROR_CODE}
 
         return self._create_output(response)

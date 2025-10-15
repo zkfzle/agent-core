@@ -4,6 +4,7 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.writer import StreamWriter, OutputStreamWriter, TraceStreamWriter, CustomStreamWriter
+from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class StreamWriterManager:
@@ -39,7 +40,10 @@ class StreamWriterManager:
                         await self._stream_emitter.stream_queue.close()
                     break
                 else:
-                    logger.info(f"Received stream data: {data}")
+                    if UserConfig.is_sensitive():
+                        logger.info(f"Received stream data")
+                    else:
+                        logger.info(f"Received stream data: {data}")
                     yield data
             else:
                 logger.warning("No data received, waiting for data.")

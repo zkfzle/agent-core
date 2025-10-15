@@ -2,8 +2,6 @@ import os
 import unittest
 from datetime import datetime
 
-import pytest
-
 from jiuwen.agent.common.schema import PluginSchema
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
@@ -18,6 +16,7 @@ API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 def build_current_date():
     current_datetime = datetime.now()
@@ -136,6 +135,14 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
+
+    @staticmethod
+    def _create_function_prompt_template():
+        system_prompt = "你是一个数学计算专家。"
+        return [
+            dict(role="system", content=system_prompt.format(build_current_date()))
+        ]
+
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_plugin(self):

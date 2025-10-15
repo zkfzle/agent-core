@@ -34,6 +34,13 @@ class BaseOptimizer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._batch_set_optimizer_callback(None)
 
+    async def __aenter__(self):
+        self._batch_set_optimizer_callback(self.trace_callback)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self._batch_set_optimizer_callback(None)
+
     def bind_parameter(self, parameters: Dict[str, LLMCall]):
         if parameters is None:
             return
@@ -57,6 +64,8 @@ class BaseOptimizer:
         try:
             self._backward(evaluated_cases)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR.code,
                 StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR.errmsg.format(
@@ -98,7 +107,7 @@ class BaseOptimizer:
     def parameters(self) -> Dict[str, "TextualParameter"]:
         return self._parameters
 
-    def trace_callback(self,
+    async def trace_callback(self,
                        input: Dict[str, str],
                        output: BaseMessage,
                        runtime: Runtime

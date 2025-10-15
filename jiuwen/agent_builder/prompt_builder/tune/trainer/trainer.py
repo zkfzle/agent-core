@@ -13,7 +13,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.utils.llm_call.base import LLMCall
-from jiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase, TuneConstant
+from jiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase, TuneConstant, Case
 from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
 from jiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import BaseEvaluator
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
@@ -86,14 +86,10 @@ class Trainer:
                 agent: Agent,
                 cases: CaseLoader
                 ) -> List[Dict]:
+        async def forward_batch(cases: CaseLoader) -> List[Dict]:
+            return [await agent.invoke(case.inputs) for case in cases.get_cases()]
 
-        num_workers = min(self._num_parallel, cases.size())
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            predicts = executor.map(
-                asyncio.run,
-                [agent.invoke(case.inputs) for case in cases.get_cases()]
-            )
-            return list(predicts)
+        return asyncio.run(forward_batch(cases))
 
     def _pre_train(self, agent: Agent):
         parameters = copy.deepcopy(agent.get_llm_calls())

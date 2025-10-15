@@ -3,14 +3,18 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import os
 import ssl
+import stat
 
 from requests.adapters import HTTPAdapter
+
+from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.utils.utils import ExceptionUtils
 
 
 class SslUtils:
     @staticmethod
     def create_ssl_adapter(verify_switch_env:str, ssl_cert_env:str, trigger_value: list):
-        """设置SSL适配器，仅在启用SSL校验时挂载"""
+        """create ssl adapter"""
         ssl_verify, ssl_cert = SslUtils.get_ssl_config(verify_switch_env, ssl_cert_env, trigger_value)
         if ssl_verify:
             class SSLAdapter(HTTPAdapter):
@@ -42,7 +46,7 @@ class SslUtils:
 
     @staticmethod
     def create_strict_ssl_context(ssl_cert: str = None) -> ssl.SSLContext:
-        """创建严格的SSL上下文，要求TLS 1.2以上和指定的密码套件"""
+        """create strict ssl context"""
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 
         ctx.options |= ssl.OP_NO_TLSv1 | ssl.OP_NO_TLSv1_1 | ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
@@ -63,16 +67,48 @@ class SslUtils:
                 real_cert_path = os.path.realpath(ssl_cert)
 
                 if abs_cert_path != real_cert_path:
-                    raise ValueError(f"Certificate path contains symbolic links or path traversal attack.")
+                    ExceptionUtils.raise_exception(
+                        StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR,
+                        f"Certificate path contains symbolic links or path traversal attack.")
 
                 if ".." in ssl_cert or ssl_cert.startswith("/") or "\\" in ssl_cert:
-                    raise ValueError(f"The certificate path contains unsafe characters.")
+                    ExceptionUtils.raise_exception(
+                        StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR,
+                        f"The certificate path contains unsafe characters.")
 
-                ctx.load_verify_locations(ssl_cert)
+                SslUtils._secure_load_cert(ctx, ssl_cert)
 
         return ctx
 
     @staticmethod
     def _bool_env(name: str, trigger_value: list) -> bool:
-        """解析布尔型环境变量"""
+        """parse boolean env"""
         return os.getenv(name, "").strip().lower() in trigger_value
+
+    @staticmethod
+    def _secure_load_cert(ctx, ssl_cert):
+        try:
+            fd = os.open(ssl_cert, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        except OSError:
+            ExceptionUtils.raise_exception(
+                StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR, "Failed to open certificate file")
+
+        try:
+            st = os.fstat(fd)
+            if not stat.S_ISREG(st.st_mode):
+                ExceptionUtils.raise_exception(
+                    StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR, "file path is invalid")
+            if st.st_size == 0 or st.st_size > 1024 * 1024:
+                ExceptionUtils.raise_exception(
+                    StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR, "file size is invalid")
+
+            with os.fdopen(fd, "rb") as f:
+                ca_pem = f.read()
+            if not ca_pem:
+                ExceptionUtils.raise_exception(
+                    StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR, "file content is empty")
+        except Exception:
+            os.close(fd)
+            raise
+
+        ctx.load_verify_locations(cadata=ca_pem.decode("ascii"))

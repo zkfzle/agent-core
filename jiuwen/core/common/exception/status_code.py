@@ -157,6 +157,9 @@ class StatusCode(Enum):
     # Common Capabilities - Exception Handling 184000 - 184999
     # Common Capabilities - Support Mcp Tool 185000 - 185999
 
+    # Common Capabilities - Common Utility 188000 - 180099
+    SSL_UTILS_CREATE_SSL_CONTEXT_ERROR = (188000, "ssl utils error, as {error_msg}")
+
     # Runtime 190000 - 199999
     # Runtime - Resource Management 190000 - 190999
     RUNTIME_WORKFLOW_GET_FAILED = (190001, "failed to get workflow, reason: {reason}")

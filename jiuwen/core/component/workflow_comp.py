@@ -31,6 +31,7 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
 
     def component_type(self) -> str:
         return SUB_WORKFLOW_COMPONENT
-    
-    def get_drawable_graph(self) -> DrawableGraph:
-        return self._sub_workflow.get_drawable_graph()
+
+    @property
+    def sub_workflow(self) -> Workflow:
+        return self._sub_workflow

@@ -165,8 +165,9 @@ class BaseWorkFlow:
         self._runtime.set_runtime(runtime)
         return self._graph.compile(runtime)
 
-    def get_drawable_graph(self) -> DrawableGraph:
-        return self._drawable.get_graph()
+    @property
+    def drawable(self):
+        return self._drawable
 
     def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False):
         if self._drawable:

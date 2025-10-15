@@ -102,9 +102,6 @@ class LoopGroup(BaseWorkFlow, Executable):
     def break_components(self):
         return self._break_components
 
-    def get_drawable_graph(self):
-        return self._drawable.get_graph()
-
 
 BROKEN = "_broken"
 FIRST_IN_LOOP = "_first_in_loop"
@@ -221,8 +218,9 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
     def graph_invoker(self) -> bool:
         return True
 
-    def get_drawable_graph(self) -> DrawableGraph:
-        return self._body.get_drawable_graph()
+    @property
+    def body(self) -> LoopGroup:
+        return self._body
 
 
 class LoopType(str, Enum):
@@ -276,5 +274,6 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
     def graph_invoker(self) -> bool:
         return True
 
-    def get_drawable_graph(self) -> DrawableGraph:
-        return self._loop_group.get_drawable_graph()
+    @property
+    def loop_group(self) -> LoopGroup:
+        return self._loop_group

@@ -43,12 +43,14 @@ class Drawable:
         from jiuwen.core.component.workflow_comp import SubWorkflowComponent
         from jiuwen.core.component.branch_comp import BranchComponent
         if isinstance(component, LoopComponent) or isinstance(component, AdvancedLoopComponent):
-            subgraph = component.get_drawable_graph()
+            subgraph = component.loop_group.drawable.get_graph()\
+                if isinstance(component, LoopComponent) else component.body.drawable.get_graph()
             self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id, subgraph=subgraph)
             self._loop_nodes.add(node_id)
             self.add_edge(node_id, node_id)
         elif isinstance(component, SubWorkflowComponent):
-            self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id, subgraph=component.get_drawable_graph())
+            self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id,
+                                                              subgraph=component.sub_workflow.drawable.get_graph())
         elif isinstance(component, BranchComponent):
             self._graph.nodes[node_id] = DrawableNode(node_id)
             self.add_edge(source=node_id, conditional=True, data=component.router())
@@ -100,16 +102,6 @@ class Drawable:
             self._graph.edges.append(DrawableEdge(source=source, target=t,
                                                   data=branch_datas[i] if branch_datas is not None else None,
                                                   conditional=conditional, streaming=streaming))
-
-    class NodeIdGenerator:
-        _prefix = "node"
-
-        def __init__(self):
-            self._node_id = 0
-
-        def next(self):
-            self._node_id += 1
-            return  "_".join([self._prefix, str(self._node_id)])
 
     def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False) -> str:
         """convert self._graph to Mermaid syntax"""

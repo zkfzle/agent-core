@@ -51,8 +51,8 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info):
                                 outputs={"outputs": result})
             return result
         except Exception as error:
-            tracer.sync_trigger("trace_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
-        raise error
+            tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_error", span=span, error=error)
+            raise error
 
     return decorator
 

@@ -3,6 +3,7 @@ from typing import Dict, Any, AsyncIterator
 
 from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from jiuwen.core.common.logging import logger
 from jiuwen.core.context_engine.config import ContextEngineConfig
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.agent.controller.workflow_controller import WorkflowController
@@ -10,6 +11,7 @@ from jiuwen.core.agent.agent import Agent
 from jiuwen.core.agent.handler.base import AgentHandlerImpl
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class WorkflowAgent(Agent):
@@ -57,6 +59,11 @@ class WorkflowAgent(Agent):
         try:
             result = await self._execute_with_controller(inputs, runtime)
             return result
+        except Exception as e:
+            if UserConfig.is_sensitive():
+                logger.info(f"WorkflowAgent stream error.")
+            else:
+                logger.error(f"WorkflowAgent stream error: {e}")
         finally:
             await runtime.post_run()
 

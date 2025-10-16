@@ -8,10 +8,12 @@ from jiuwen.agent.config.react_config import ReActAgentConfig
 from jiuwen.core.agent.agent import Agent
 from jiuwen.core.agent.controller.react_controller import ReActController
 from jiuwen.core.agent.handler.base import AgentHandlerImpl
+from jiuwen.core.common.logging import logger
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.context_engine.engine import ContextEngine
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.context_engine.config import ContextEngineConfig
 from jiuwen.core.workflow.base import Workflow
@@ -103,6 +105,11 @@ class ReActAgent(Agent):
         async def stream_process():
             try:
                 await controller.execute(inputs)
+            except Exception as e:
+                if UserConfig.is_sensitive():
+                    logger.info(f"ReActAgent stream error.")
+                else:
+                    logger.error(f"ReActAgent stream error: {e}")
             finally:
                 await runtime.post_run()
 

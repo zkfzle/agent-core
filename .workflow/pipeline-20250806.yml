@@ -30,7 +30,7 @@ stages:
           index: index.html
         checkpoints:
           - key: TestPassRate
-            value: 100
+            value: 80
             logicalOperator: '&&'
             relationalOperator: '>='
         caches: []

@@ -1,4 +1,5 @@
 import os
+import textwrap
 import unittest
 from typing import Literal
 from unittest.mock import patch
@@ -42,16 +43,17 @@ class WorkflowTest(unittest.TestCase):
                               "result": "${a.aa}"})
         flow.add_connection("start", "a")
         flow.add_connection("a", "end")
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_3("end")
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3("end")
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -68,18 +70,19 @@ flowchart TB
         flow.add_connection("start", "a")
         flow.add_stream_connection("a", "b")
         flow.add_connection("b", "end")
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_3["b"]
-\tnode_4("end")
-\tnode_1 --> node_2
-\tnode_2 -->|stream| node_3
-\tnode_3 --> node_4
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3["b"]
+            \tnode_4("end")
+            \tnode_1 --> node_2
+            \tnode_2 ==> node_3
+            \tnode_3 --> node_4
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -106,21 +109,22 @@ flowchart TB
         flow.add_connection("a", "end")
         flow.add_connection("b", "end")
 
-        mermaid_script = """---
-title: 
----
-flowchart TB
-\tnode_1("start")
-\tnode_2("end")
-\tnode_3["sw"]
-\tnode_4["a"]
-\tnode_5["b"]
-\tnode_3 -.->|"${a} <= 10"| node_5
-\tnode_3 -.->|"${a} > 10"| node_4
-\tnode_1 --> node_3
-\tnode_4 --> node_2
-\tnode_5 --> node_2
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: 
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2("end")
+            \tnode_3["sw"]
+            \tnode_4["a"]
+            \tnode_5["b"]
+            \tnode_3 -.->|"${a} <= 10"| node_5
+            \tnode_3 -.->|"${a} > 10"| node_4
+            \tnode_1 --> node_3
+            \tnode_4 --> node_2
+            \tnode_5 --> node_2
+            """).lstrip()
         self.assertEqual(flow.to_mermaid(), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -145,19 +149,20 @@ flowchart TB
         flow.set_end_comp("end", MockEndNode("end"), {"result1": "${a.a}", "result2": "${b.b}"})
         flow.add_connection("a", "end")
         flow.add_connection("b", "end")
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_3["b"]
-\tnode_4("end")
-\tnode_1 -.->|"${start.a} is not None"| node_2
-\tnode_1 -.->|"${start.b} is not None"| node_3
-\tnode_2 --> node_4
-\tnode_3 --> node_4
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3["b"]
+            \tnode_4("end")
+            \tnode_1 -.->|"${start.a} is not None"| node_2
+            \tnode_1 -.->|"${start.b} is not None"| node_3
+            \tnode_2 --> node_4
+            \tnode_3 --> node_4
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -189,19 +194,20 @@ flowchart TB
         flow.add_connection("a", "end")
         flow.add_connection("b", "end")
 
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_3["b"]
-\tnode_4("end")
-\tnode_1 -.-> node_2
-\tnode_1 -.-> node_3
-\tnode_2 --> node_4
-\tnode_3 --> node_4
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3["b"]
+            \tnode_4("end")
+            \tnode_1 -.-> node_2
+            \tnode_1 -.-> node_3
+            \tnode_2 --> node_4
+            \tnode_3 --> node_4
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -244,40 +250,42 @@ flowchart TB
         flow.add_connection("sub_flow", "end")
 
         # no expand sub graph
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_3["sub_flow"]
-\tnode_4("end")
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_3 --> node_4
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3["sub_flow"]
+            \tnode_4("end")
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_3 --> node_4
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
         # expand sub graph
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_7("end")
-\tsubgraph node_6 ["sub_flow"]
-\tdirection TB
-\tnode_3("sub_start")
-\tnode_4["sub_a"]
-\tnode_5("sub_end")
-end
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_5 --> node_7
-\tnode_3 --> node_4
-\tnode_4 --> node_5
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_7("end")
+            \tsubgraph node_6 ["sub_flow"]
+            \tdirection TB
+            \tnode_3("sub_start")
+            \tnode_4["sub_a"]
+            \tnode_5("sub_end")
+            end
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_5 --> node_7
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            """).lstrip()
         self.assertEqual(flow.to_mermaid(title="jiuwen workflow", expand_subgraph=True), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -340,73 +348,76 @@ end
         flow.add_connection("sub_flow", "end")
 
         # no expand sub graph
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_3["sub_flow"]
-\tnode_4("end")
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_3 --> node_4
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3["sub_flow"]
+            \tnode_4("end")
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_3 --> node_4
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
         # expand first layer sub graph
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_8("end")
-\tsubgraph node_7 ["sub_flow"]
-\tdirection TB
-\tnode_3("sub_start")
-\tnode_4["sub_a"]
-\tnode_5["sub_sub_flow"]
-\tnode_6("sub_end")
-end
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_6 --> node_8
-\tnode_3 --> node_4
-\tnode_4 --> node_5
-\tnode_5 --> node_6
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_8("end")
+            \tsubgraph node_7 ["sub_flow"]
+            \tdirection TB
+            \tnode_3("sub_start")
+            \tnode_4["sub_a"]
+            \tnode_5["sub_sub_flow"]
+            \tnode_6("sub_end")
+            end
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_6 --> node_8
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            \tnode_5 --> node_6
+            """).lstrip()
         self.assertEqual(flow.to_mermaid(title="jiuwen workflow", expand_subgraph=1), mermaid_script)
 
         # expand second layer sub graph
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("start")
-\tnode_2["a"]
-\tnode_11("end")
-\tsubgraph node_10 ["sub_flow"]
-\tdirection TB
-\tnode_3("sub_start")
-\tnode_4["sub_a"]
-\tnode_9("sub_end")
-\tsubgraph node_8 ["sub_sub_flow"]
-\tdirection TB
-\tnode_5("sub_sub_start")
-\tnode_6["sub_sub_a"]
-\tnode_7("sub_sub_end")
-end
-end
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_9 --> node_11
-\tnode_3 --> node_4
-\tnode_4 --> node_5
-\tnode_7 --> node_9
-\tnode_5 --> node_6
-\tnode_6 --> node_7
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_11("end")
+            \tsubgraph node_10 ["sub_flow"]
+            \tdirection TB
+            \tnode_3("sub_start")
+            \tnode_4["sub_a"]
+            \tnode_9("sub_end")
+            \tsubgraph node_8 ["sub_sub_flow"]
+            \tdirection TB
+            \tnode_5("sub_sub_start")
+            \tnode_6["sub_sub_a"]
+            \tnode_7("sub_sub_end")
+            end
+            end
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_9 --> node_11
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            \tnode_7 --> node_9
+            \tnode_5 --> node_6
+            \tnode_6 --> node_7
+            """).lstrip()
         self.assertEqual(flow.to_mermaid(title="jiuwen workflow", expand_subgraph=2), mermaid_script)
 
         # expand all layer sub graph
@@ -444,46 +455,48 @@ end
         flow.add_connection("b", "e")
 
         # no expand loop
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("s")
-\tnode_2["a"]
-\tnode_3["l"]
-\tnode_4["b"]
-\tnode_5("e")
-\tnode_3 -.-> node_3
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_3 -.-> node_4
-\tnode_4 --> node_5
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("s")
+            \tnode_2["a"]
+            \tnode_3["l"]
+            \tnode_4["b"]
+            \tnode_5("e")
+            \tnode_3 -.-> node_3
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_3 -.-> node_4
+            \tnode_4 --> node_5
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
         # expand loop
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("s")
-\tnode_2["a"]
-\tnode_7["b"]
-\tnode_8("e")
-\tsubgraph node_6 ["l"]
-\tdirection TB
-\tnode_3("1")
-\tnode_4["2"]
-\tnode_5("3")
-end
-\tnode_5 -.-> node_3
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_5 -.-> node_7
-\tnode_7 --> node_8
-\tnode_3 --> node_4
-\tnode_4 --> node_5
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("s")
+            \tnode_2["a"]
+            \tnode_7["b"]
+            \tnode_8("e")
+            \tsubgraph node_6 ["l"]
+            \tdirection TB
+            \tnode_3("1")
+            \tnode_4["2"]
+            \tnode_5("3")
+            end
+            \tnode_5 -.-> node_3
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_5 -.-> node_7
+            \tnode_7 --> node_8
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow", expand_subgraph=True), mermaid_script)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -527,48 +540,50 @@ end
         flow.add_connection("b", "e")
 
         # no expand loop
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("s")
-\tnode_2["a"]
-\tnode_3["l"]
-\tnode_4["b"]
-\tnode_5("e")
-\tnode_3 -.-> node_3
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_3 -.-> node_4
-\tnode_4 --> node_5
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("s")
+            \tnode_2["a"]
+            \tnode_3["l"]
+            \tnode_4["b"]
+            \tnode_5("e")
+            \tnode_3 -.-> node_3
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_3 -.-> node_4
+            \tnode_4 --> node_5
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
 
         # expand loop
-        mermaid_script = """---
-title: jiuwen workflow
----
-flowchart TB
-\tnode_1("s")
-\tnode_2["a"]
-\tnode_8["b"]
-\tnode_9("e")
-\tsubgraph node_7 ["l"]
-\tdirection TB
-\tnode_3("1")
-\tnode_4["2"]
-\tnode_5["3"]
-\tnode_6("4")
-end
-\tnode_6 -.-> node_3
-\tnode_1 --> node_2
-\tnode_2 --> node_3
-\tnode_6 -.-> node_8
-\tnode_8 --> node_9
-\tnode_3 --> node_4
-\tnode_4 --> node_5
-\tnode_5 --> node_6
-"""
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("s")
+            \tnode_2["a"]
+            \tnode_8["b"]
+            \tnode_9("e")
+            \tsubgraph node_7 ["l"]
+            \tdirection TB
+            \tnode_3("1")
+            \tnode_4["2"]
+            \tnode_5["3"]
+            \tnode_6("4")
+            end
+            \tnode_6 -.-> node_3
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_6 -.-> node_8
+            \tnode_8 --> node_9
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            \tnode_5 --> node_6
+            """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow", expand_subgraph=True), mermaid_script)
 
     def test_drawable_exception(self):
@@ -602,3 +617,33 @@ end
             drawable.to_mermaid(expand_subgraph=-1)
         self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code)
         self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
+
+    @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
+    def test_visualize_simple_stream_workflow_animation(self):
+        # flow: start -> a ---> b -> end
+        flow = Workflow()
+        flow.set_start_comp("start", MockStartNode("start"), inputs_schema={"a": "${a}"})
+        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${start.a}"},
+                               comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+        flow.add_workflow_comp("b", CollectCompNode("b"), inputs_schema={"value": "${a.value}"},
+                               stream_inputs_schema={"value": "${a.value}"}, comp_ability=[ComponentAbility.COLLECT],
+                               wait_for_all=True)
+        flow.set_end_comp("end", MockEndNode("end"), inputs_schema={"result1": "${b.value}"})
+        flow.add_connection("start", "a")
+        flow.add_stream_connection("a", "b")
+        flow.add_connection("b", "end")
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["a"]
+            \tnode_3["b"]
+            \tnode_4("end")
+            \tnode_1 --> node_2
+            \tnode_2 link_1@==> node_3
+            link_1@{animate: true}
+            \tnode_3 --> node_4
+            """).lstrip()
+        self.assertEqual(flow.to_mermaid("jiuwen workflow", enable_animation=True), mermaid_script)

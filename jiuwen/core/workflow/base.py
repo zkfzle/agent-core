@@ -169,14 +169,20 @@ class BaseWorkFlow:
     def drawable(self):
         return self._drawable
 
-    def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False):
+    def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False, enable_animation: bool = False) -> str:
         if self._drawable:
-            return self._drawable.to_mermaid(title=title, expand_subgraph=expand_subgraph)
+            return self._drawable.to_mermaid(title=title, expand_subgraph=expand_subgraph,
+                                             enable_animation=enable_animation)
         return ""
 
     def to_mermaid_png(self, title: str = "", expand_subgraph: int | bool = False) -> bytes:
         if self._drawable:
             return self._drawable.to_mermaid_png(title=title, expand_subgraph=expand_subgraph)
+        return b""
+
+    def to_mermaid_svg(self, title: str = "", expand_subgraph: int | bool = False) -> bytes:
+        if self._drawable:
+            return self._drawable.to_mermaid_svg(title=title, expand_subgraph=expand_subgraph)
         return b""
 
 

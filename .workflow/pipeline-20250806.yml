@@ -20,9 +20,11 @@ stages:
         pythonVersion: '3.11'
         commands:
           - '# Python单元测试默认命令'
-          - pip install uv -i https://mirrors.aliyun.com/pypi/simple/
+          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
           - uv sync --group dev
           - uv run pytest
+          - /usr/local/python3.11/bin/uv sync --group dev
+          - /usr/local/python3.11/bin/uv run pytest
         report:
           path: report
           index: index.html

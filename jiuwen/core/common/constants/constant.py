@@ -22,3 +22,8 @@ END_NODE_STREAM = "end node stream"
 LOOP_ID = "__sys_loop_id"
 
 INDEX = "index"
+
+# safe limit constants
+MAX_COLLECTION_SIZE = 100000  # maximum collection size limit
+MAX_EXPRESSION_LENGTH = 5000  # maximum length of expression string
+MAX_AST_DEPTH = 50  # maximum depth of AST tree

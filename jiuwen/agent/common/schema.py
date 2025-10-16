@@ -13,8 +13,6 @@ class WorkflowSchema(BaseModel):
     description: str = Field(default="")
     version: str = Field(default="")
     inputs: Dict[str, Any] = Field(default_factory=dict)
-    outputs: Dict[str, Any] = Field(default_factory=dict)
-    configs: Dict[str, Any] = Field(default_factory=dict)
 
 
 class PluginSchema(BaseModel):
@@ -23,8 +21,6 @@ class PluginSchema(BaseModel):
     name: str = Field(default="")
     description: str = Field(default="")
     inputs: Dict[str, Any] = Field(default_factory=dict)
-    outputs: Dict[str, Any] = Field(default_factory=dict)
-    configs: Dict[str, Any] = Field(default_factory=dict)
 
 
 class McpSchema(BaseModel):
@@ -32,5 +28,3 @@ class McpSchema(BaseModel):
     name: str = Field(default="")
     description: str = Field(default="")
     inputs: Dict[str, Any] = Field(default_factory=dict)
-    outputs: Dict[str, Any] = Field(default_factory=dict)
-    configs: Dict[str, Any] = Field(default_factory=dict)

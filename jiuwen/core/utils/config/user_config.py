@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.logging import logger
 
 
 class UserConfig:
@@ -26,7 +27,7 @@ class UserConfig:
             try:
                 self._cfg.read(config_path, encoding="utf-8")
             except Exception:
-                pass
+                logger.error(f"Failed to read config file.")
         self.is_sensitive: bool = self._cfg.getboolean("settings", "is_sensitive")
 
     @classmethod

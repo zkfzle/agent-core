@@ -112,7 +112,7 @@ class WorkflowController(Controller):
     def invoke(
             self, inputs: Dict, context
     ) -> WorkflowControllerOutput:
-        if len(self._config.workflows) > 1:
+        if len(self._config.workflows) != 1:
             raise NotImplementedError("Multi-workflow not implemented yet")
 
         workflow = self._config.workflows[0]

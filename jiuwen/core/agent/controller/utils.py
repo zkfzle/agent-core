@@ -174,7 +174,7 @@ class ReActControllerUtils:
                     logger.info(f"Added tool result: {sub_task.func_name}")
             else:
                 if UserConfig.is_sensitive():
-                    logger.warning(f"Sub task {sub_task.func_name} has no result")
+                    logger.warning(f"Sub task has no result")
                 else:
                     logger.warning(f"Sub task {sub_task.func_name} has no result")
 

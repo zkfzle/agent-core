@@ -11,7 +11,7 @@ from typing import Dict, Any, Union
 from jiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
 import copy
 
-from jiuwen.extensions.common.utils.safe_check import is_safe_path
+from jiuwen.extensions.common.utils.safe_check import is_sensitive_path
 
 CRITICAL = 50
 FATAL = CRITICAL
@@ -49,9 +49,10 @@ class ConfigManager:
             if config_path is None:
                 config_dict = copy.deepcopy(DEFAULT_LOG_CONFIG)
             else:
-                if not is_safe_path(config_path):
+                real_path = os.path.realpath(config_path)
+                if is_sensitive_path(real_path):
                     raise Exception("path is not safe")
-                with open(config_path, "r", encoding="utf-8") as f:
+                with open(real_path, "r", encoding="utf-8") as f:
                     config_dict = yaml.safe_load(f)
 
             if 'logging' in config_dict:

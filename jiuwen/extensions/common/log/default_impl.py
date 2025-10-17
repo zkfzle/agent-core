@@ -13,7 +13,7 @@ from logging.handlers import RotatingFileHandler
 
 from jiuwen.core.common.logging.protocol import LoggerProtocol
 from jiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
-from jiuwen.extensions.common.utils.safe_check import is_safe_path
+from jiuwen.extensions.common.utils.safe_check import is_sensitive_path
 
 
 class SafeRotatingFileHandler(RotatingFileHandler):
@@ -125,7 +125,8 @@ class DefaultLogger(LoggerProtocol):
 
         output = self.config.get('output', ['console'])
         log_file = self.config.get('log_file', f'{self.log_type}.log')
-        if not is_safe_path(log_file):
+
+        if is_sensitive_path(log_file):
             raise Exception("log file path is not safe")
 
         for handler in self._logger.handlers[:]:
@@ -139,8 +140,11 @@ class DefaultLogger(LoggerProtocol):
             self._logger.addHandler(stream_handler)
 
         if 'file' in output:
-            log_dir = os.path.dirname(log_file)
-            if log_dir:
+            real_path = os.path.realpath(log_file)
+            if is_sensitive_path(real_path):
+                raise Exception("log file path is not safe")
+            log_dir = os.path.dirname(real_path)
+            if not os.path.exists(log_dir):
                 os.makedirs(log_dir, mode=0o750, exist_ok=True)
 
             backup_count = self.config.get('backup_count', 20)

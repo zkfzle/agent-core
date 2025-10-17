@@ -1,26 +1,20 @@
 import os
-from pathlib import Path
 
-SENSITIVE_PATHS = [
-    '/etc/passwd', '/etc/shadow', '/etc/hosts', '/etc/hostname'
-]
+import yaml
+
+SENSITIVE_CONFIG_FILE = "sensitive_config.yaml"
 
 
-def is_valid_path(path):
-    try:
-        p = Path(path)
-        return True
-    except Exception:
-        return False
+def load_sensitive_keywords() -> list:
+    sensitive_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), SENSITIVE_CONFIG_FILE)
+    config = {}
+    with open(sensitive_config_file, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+    return config.get('sensitive_paths', [])
 
 
 def is_sensitive_path(path):
-    abs_path = os.path.abspath(path)
-    for sensitive in SENSITIVE_PATHS:
-        if abs_path.startswith(os.path.abspath(sensitive)):
+    for sensitive in load_sensitive_keywords():
+        if path.startswith(os.path.abspath(sensitive)):
             return True
     return False
-
-
-def is_safe_path(path):
-    return is_valid_path(path) and not is_sensitive_path(path)

@@ -1,0 +1,6 @@
+
+sensitive_paths:
+  - /etc/passwd
+  - /etc/shadow
+  - /etc/hosts
+  - /etc/hostname

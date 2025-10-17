@@ -3,6 +3,8 @@ from typing import Dict, Any, AsyncIterator
 
 from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.context_engine.config import ContextEngineConfig
 from jiuwen.core.context_engine.engine import ContextEngine
@@ -74,6 +76,13 @@ class WorkflowAgent(Agent):
         async def stream_process():
             try:
                 await self._execute_with_controller(inputs, runtime)
+            except Exception as e:
+                if UserConfig.is_sensitive():
+                    logger.info(f"WorkflowAgent stream error.")
+                else:
+                    logger.error(f"WorkflowAgent stream error: {e}")
+                raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                          "WorkflowAgent stream error.")
             finally:
                 await runtime.post_run()
 
@@ -84,5 +93,12 @@ class WorkflowAgent(Agent):
 
         try:
             await task
-        except Exception:
-            raise
+        except Exception as e:
+            logger.error(f"WorkflowAgent stream error.")
+            if UserConfig.is_sensitive():
+                raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                          "WorkflowAgent stream error.")
+            else:
+                raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                          "WorkflowAgent stream error.") from e
+

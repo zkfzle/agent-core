@@ -65,6 +65,10 @@ class ModelFactory(metaclass=Singleton):
                         logging.error(f"Error loading module {py_file}: {str(e)}")
                     continue
         except Exception as e:
+            if UserConfig.is_sensitive():
+                logging.error(f"Error loading module.")
+            else:
+                logging.error(f"Error loading module: {str(e)}")
             raise Exception(f"module load error")
         return model_dict
 

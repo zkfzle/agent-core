@@ -90,7 +90,7 @@ class WorkflowController(Controller):
         for k in schema:
             if k not in user_data:
                 if k in required_fields:
-                    raise KeyError(f"缺少必填参数: {k}")
+                    raise KeyError(f"missing required parameter: {k}")
                 continue
             filtered[k] = user_data[k]
 
@@ -246,8 +246,12 @@ class WorkflowController(Controller):
                 return result
 
         except AgentInterrupt as e:
-            error_msg = f"Tool execution failed: {str(e)}"
-            logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
+            if UserConfig.is_sensitive():
+                error_msg = f"Tool execution failed"
+                logger.info(f"Sub task {sub_task.func_name} failed.")
+            else:
+                error_msg = f"Tool execution failed: {str(e)}"
+                logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
 
             error_result = {
                 "error": True,

@@ -75,9 +75,9 @@ class End(ComponentExecutable, WorkflowComponent):
 
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.warn("stream output error: {}".format(e))
+                logger.info("stream output error: {}".format(e))
             else:
-                logger.warn("stream output error")
+                logger.error("stream output error: {}".format(e))
 
     async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
         Output]:

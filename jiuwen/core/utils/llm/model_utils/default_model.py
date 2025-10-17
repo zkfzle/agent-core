@@ -362,7 +362,10 @@ class OpenAIChatModel(BaseChatModel):
             self._sync_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
-            raise Exception(f"OpenAI API 调用失败: {str(e)}")
+            if UserConfig.is_sensitive():
+                raise Exception("OpenAI API error")
+            else:
+                raise Exception(f"OpenAI API error: {str(e)}")
 
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
@@ -375,9 +378,9 @@ class OpenAIChatModel(BaseChatModel):
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             if UserConfig.is_sensitive():
-                raise Exception("OpenAI API 异步调用失败")
+                raise Exception("OpenAI API async error")
             else:
-                raise Exception(f"OpenAI API 异步调用失败: {str(e)}")
+                raise Exception(f"OpenAI API async error: {str(e)}")
 
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
@@ -391,7 +394,10 @@ class OpenAIChatModel(BaseChatModel):
                 if parsed_chunk:
                     yield parsed_chunk
         except Exception as e:
-            raise Exception(f"OpenAI API 流式调用失败")
+            if UserConfig.is_sensitive():
+                raise Exception("OpenAI API stream error")
+            else:
+                raise Exception(f"OpenAI API stream error: {str(e)}")
 
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
@@ -407,7 +413,10 @@ class OpenAIChatModel(BaseChatModel):
                 if parsed_chunk:
                     yield parsed_chunk
         except Exception as e:
-            raise Exception(f"OpenAI API 异步流式调用失败")
+            if UserConfig.is_sensitive():
+                raise Exception("OpenAI API async stream error")
+            else:
+                raise Exception(f"OpenAI API async stream error: {str(e)}")
 
 
     def _build_request_params(self, model_name:str, temperature: float, top_p:float, messages: List[Dict],

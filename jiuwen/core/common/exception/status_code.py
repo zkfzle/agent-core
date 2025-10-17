@@ -118,7 +118,7 @@ class StatusCode(Enum):
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999
     # GraphEngine - Conditional Evaluation 140000 - 140019
     EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, expression as {expression}, error as {error_msg}.")
-    EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, expression as {expression}, as {error_msg}.")
+    EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
 
 
     # ContextEngine 150000 - 159999

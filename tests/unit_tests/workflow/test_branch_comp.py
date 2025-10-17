@@ -2,6 +2,7 @@ import asyncio
 import unittest
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
@@ -50,11 +51,14 @@ class TestBranchComponent(unittest.TestCase):
        self.runtime_with_expression("is_empty(${start.input})", {})
        with self.assertRaises(JiuWenBaseException) as error:
            self.runtime_with_expression("is_empty(${start.input})", 0)
+       assert error.exception.error_code == StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code
        print(error.exception)
 
        with self.assertRaises(JiuWenBaseException) as error:
            self.runtime_with_expression("is_not_empty(${start.input})", 1.2)
+       assert error.exception.error_code == StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code
        print(error.exception)
+
        self.runtime_with_expression("is_empty(${start.input}[0])", [None, 'y'])
        self.runtime_with_expression("is_empty(${start.input}['x'])", {'x': None})
        self.runtime_with_expression("is_empty(${start.input}['x'][0])", {'x': [None]})
@@ -67,15 +71,23 @@ class TestBranchComponent(unittest.TestCase):
         with self.assertRaises(JiuWenBaseException) as error:
             self.runtime_with_expression("is_not_empty(${start.input})", None)
         print(error.exception)
-
-        with self.assertRaises(JiuWenBaseException) as error:
-            self.runtime_with_expression("is_not_empty(${start.input})", None)
-        print(error.exception)
+        assert error.exception.error_code == StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.code
 
         with self.assertRaises(JiuWenBaseException) as error:
             self.runtime_with_expression("is_not_empty(${start.input})", 1.2)
+        assert error.exception.error_code == StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code
         print(error.exception)
 
         self.runtime_with_expression("is_not_empty(${start.input}[0])", ['x', 'y'])
         self.runtime_with_expression("is_not_empty(${start.input}['x'])", {'x' : 'x'})
         self.runtime_with_expression("is_not_empty(${start.input}['x'][0])", {'x' : ['x']})
+
+    def test_expression_length(self):
+        with self.assertRaises(JiuWenBaseException) as error:
+            self.runtime_with_expression("length(${start.input}) == 0", 0)
+        assert error.exception.error_code == StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code
+        print(error.exception)
+        self.runtime_with_expression("length(${start.input}) == 0", {})
+        self.runtime_with_expression("length(${start.input}) == 0", [])
+        self.runtime_with_expression("length(${start.input}) == 0", '')
+        self.runtime_with_expression("length(${start.input}) == 0", ())

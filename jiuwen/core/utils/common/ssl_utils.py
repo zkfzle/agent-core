@@ -63,20 +63,22 @@ class SslUtils:
 
         if ssl_cert:
             if os.path.isfile(ssl_cert):
-                abs_cert_path = os.path.abspath(ssl_cert)
                 real_cert_path = os.path.realpath(ssl_cert)
 
-                if abs_cert_path != real_cert_path:
+                safe_cert_dir = os.getenv("SAFE_CERT_DIR")
+                if safe_cert_dir:
+                    safe_prefix = os.path.realpath(safe_cert_dir)
+                    if not real_cert_path.startswith(safe_prefix + os.sep):
+                        ExceptionUtils.raise_exception(
+                            StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR,
+                            "Certificate path is outside the allowed directory."
+                        )
+                else:
                     ExceptionUtils.raise_exception(
                         StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR,
-                        f"Certificate path contains symbolic links or path traversal attack.")
+                        f"SAFE_CERT_DIR is not set.")
 
-                if ".." in ssl_cert or ssl_cert.startswith("/") or "\\" in ssl_cert:
-                    ExceptionUtils.raise_exception(
-                        StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR,
-                        f"The certificate path contains unsafe characters.")
-
-                SslUtils._secure_load_cert(ctx, ssl_cert)
+                SslUtils._secure_load_cert(ctx, real_cert_path)
 
         return ctx
 
@@ -109,6 +111,9 @@ class SslUtils:
                     StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR, "file content is empty")
         except Exception:
             os.close(fd)
-            raise
+            ExceptionUtils.raise_exception(
+                StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR,
+                "Failed to read certificate file."
+            )
 
         ctx.load_verify_locations(cadata=ca_pem.decode("ascii"))

@@ -13,17 +13,16 @@ from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.common.constants.constant import MAX_COLLECTION_SIZE, MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
 
-
 class ExpressionCondition(Condition):
     def __init__(self, expression: str):
         super().__init__()
         self._expression = expression
-        
         # Check expression length limit
         if len(expression) > MAX_EXPRESSION_LENGTH:
             raise JiuWenBaseException(
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                    expression=expression,
                     error_msg=f"Expression length exceeds maximum allowed length of {MAX_EXPRESSION_LENGTH}"
                 )
             )
@@ -55,7 +54,6 @@ class ExpressionCondition(Condition):
         return self._evaluate_expression(self._expression, self._get_inputs(runtime))
 
     def _evaluate_expression(self, expression, inputs) -> bool:
-        # Convert condition expression
         processed_expression = convert_condition(expression, inputs)
 
         var_pattern = r'\$\{([^{}]*)\}'
@@ -64,7 +62,7 @@ class ExpressionCondition(Condition):
             full_match = f'${{{match}}}'
             safe_var_name = f'var_{i}'
             var_mapping[full_match] = safe_var_name
-
+        
         # Replace variable references in the expression
         for full_match, safe_var_name in var_mapping.items():
             processed_expression = processed_expression.replace(full_match, safe_var_name)
@@ -79,7 +77,9 @@ class ExpressionCondition(Condition):
             "sum": sum,
             "inputs": inputs,
             "_safe_is_empty": _safe_is_empty,
-            "_safe_is_not_empty": _safe_is_not_empty
+            "_safe_is_not_empty": _safe_is_not_empty,
+            "is_empty": _safe_is_empty,
+            "is_not_empty": _safe_is_not_empty
         }
 
         # Add variable values to the runtime environment
@@ -88,31 +88,17 @@ class ExpressionCondition(Condition):
                 runtime[safe_var_name] = inputs[full_match]
 
         try:
-            # Check for disallowed operations
-            disallowed_patterns = [
-                r'__import__', r'import\s*\(', r'eval\s*\(', r'exec\s*\(',
-                r'open\s*\(', r'file\s*\(', r'compile\s*\(', r'globals\s*\(',
-                r'locals\s*\(', r'vars\s*\(', r'__dict__', r'__class__',
-                r'__bases__', r'__subclasses__', r'__module__', r'__file__'
-            ]
-            for pattern in disallowed_patterns:
-                if re.search(pattern, processed_expression):
-                    raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                              StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                                  error_msg="Disallowed operation detected"
-                                              ))
-
             tree = ast.parse(processed_expression, mode='eval')
-
+            
             # Check AST depth before evaluation
             _check_ast_depth(tree)
-            # Now evaluate the AST
             result = _evaluate_ast(tree, runtime)
-
+            
             # Ensure the result is a boolean value
             if not isinstance(result, bool):
                 raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                           StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                                              expression=self._expression,
                                               error_msg="Expression did not evaluate to a boolean value"
                                           ))
 
@@ -127,6 +113,7 @@ class ExpressionCondition(Condition):
             # Handle undefined variable cases
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                                          expression=self._expression,
                                           error_msg=str(e)
                                       ))
         except JiuWenBaseException:
@@ -135,9 +122,9 @@ class ExpressionCondition(Condition):
         except Exception as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                                          expression=self._expression,
                                           error_msg=str(e)
                                       ))
-
 
 def convert_condition(condition, inputs):
     # 1. Replace basic logical operators
@@ -163,15 +150,18 @@ def convert_condition(condition, inputs):
 
     return condition
 
-
 def _safe_is_empty(value):
     """Safely check if a value is empty"""
     if value is None:
         return True
-    if not hasattr(value, '__len__'):
-        raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                  StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                      error_msg=f'object of \'{type(value)}\' has no is_empty()'))
+    # Check if value is a non-collection type that shouldn't be checked for emptiness
+    if isinstance(value, (int, float, bool)):
+        raise JiuWenBaseException(
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                error_msg=f"Cannot check emptiness of {type(value).__name__} type"
+            )
+        )
     try:
         # Check collection size limit
         if hasattr(value, '__len__') and len(value) > MAX_COLLECTION_SIZE:
@@ -185,15 +175,18 @@ def _safe_is_empty(value):
     except (TypeError, AttributeError):
         return False
 
-
 def _safe_is_not_empty(value):
     """Safely check if a value is not empty"""
     if value is None:
         return False
-    if not hasattr(value, '__len__'):
-        raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                  StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                      error_msg=f'object of \'{type(value)}\' has no is_not_empty()'))
+    # Check if value is a non-collection type that shouldn't be checked for emptiness
+    if isinstance(value, (int, float, bool)):
+        raise JiuWenBaseException(
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                error_msg=f"Cannot check emptiness of {type(value).__name__} type"
+            )
+        )
     try:
         # Check collection size limit
         if hasattr(value, '__len__') and len(value) > MAX_COLLECTION_SIZE:
@@ -207,7 +200,6 @@ def _safe_is_not_empty(value):
     except (TypeError, AttributeError):
         return False
 
-
 def _check_ast_depth(node: ast.AST, current_depth: int = 0) -> int:
     """
     Recursively check the nesting depth of an AST node and raise exception if it exceeds the limit.
@@ -217,17 +209,16 @@ def _check_ast_depth(node: ast.AST, current_depth: int = 0) -> int:
         raise JiuWenBaseException(
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                expression="",
                 error_msg=f"Expression nesting depth exceeds maximum allowed depth of {MAX_AST_DEPTH}"
             )
         )
-
+    
     # Base case: if node is a leaf node
     if isinstance(node, (ast.Constant, ast.Name)):
         return current_depth
-
     # For binary operations, comparisons, etc.
     max_depth = current_depth
-
     # Check child nodes based on node type
     if isinstance(node, ast.BinOp):
         max_depth = max(max_depth, _check_ast_depth(node.left, current_depth + 1))
@@ -266,39 +257,51 @@ def _check_ast_depth(node: ast.AST, current_depth: int = 0) -> int:
                 max_depth = max(max_depth, _check_ast_depth(value, current_depth + 1))
     elif isinstance(node, ast.Expression):
         max_depth = max(max_depth, _check_ast_depth(node.body, current_depth + 1))
-
     return max_depth
 
-
 def _evaluate_ast(node: Any, runtime: dict) -> Optional[Any]:
-    if isinstance(node, ast.BoolOp):
-        return _evaluate_bool_op(node, runtime)
-    elif isinstance(node, ast.Compare):
-        return _evaluate_compare(node, runtime)
-    elif isinstance(node, ast.Name):
-        return _evaluate_name(node, runtime)
-    elif isinstance(node, ast.Constant):
-        return node.value
-    elif isinstance(node, ast.Subscript):
-        return _evaluate_subscript(node, runtime)
-    elif isinstance(node, ast.Attribute):
-        return _evaluate_attribute(node, runtime)
-    elif isinstance(node, ast.Call):
-        return _evaluate_call(node, runtime)
-    elif isinstance(node, ast.List):
-        return _evaluate_list(node, runtime)
-    elif isinstance(node, ast.Tuple):
-        return _evaluate_tuple(node, runtime)
-    elif isinstance(node, ast.Dict):
-        return _evaluate_dict(node, runtime)
-    elif isinstance(node, ast.Expression):
-        return _evaluate_ast(node.body, runtime)
-    elif isinstance(node, ast.UnaryOp):
-        return _evaluate_unary_op(node, runtime)
-    elif isinstance(node, ast.BinOp):
-        return _evaluate_bin_op(node, runtime)
-    raise ValueError(f"Unsupported AST node type: {type(node).__name__}")
-
+    try:
+        if isinstance(node, ast.BoolOp):
+            return _evaluate_bool_op(node, runtime)
+        elif isinstance(node, ast.Compare):
+            return _evaluate_compare(node, runtime)
+        elif isinstance(node, ast.Name):
+            return _evaluate_name(node, runtime)
+        elif isinstance(node, ast.Constant):
+            return node.value
+        elif isinstance(node, ast.Subscript):
+            return _evaluate_subscript(node, runtime)
+        elif isinstance(node, ast.Attribute):
+            return _evaluate_attribute(node, runtime)
+        elif isinstance(node, ast.Call):
+            return _evaluate_call(node, runtime)
+        elif isinstance(node, ast.List):
+            return _evaluate_list(node, runtime)
+        elif isinstance(node, ast.Tuple):
+            return _evaluate_tuple(node, runtime)
+        elif isinstance(node, ast.Dict):
+            return _evaluate_dict(node, runtime)
+        elif isinstance(node, ast.Expression):
+            return _evaluate_ast(node.body, runtime)
+        elif isinstance(node, ast.UnaryOp):
+            return _evaluate_unary_op(node, runtime)
+        elif isinstance(node, ast.BinOp):
+            return _evaluate_bin_op(node, runtime)
+        raise JiuWenBaseException(
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                error_msg=f"Unsupported AST node type: {type(node).__name__}"
+            )
+        )
+    except JiuWenBaseException:
+        raise
+    except Exception as e:
+        raise JiuWenBaseException(
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                error_msg=f"Error evaluating AST: {str(e)}"
+            )
+        ) from e
 
 # Handle unary operators
 def _evaluate_unary_op(node: ast.UnaryOp, runtime: dict) -> Any:
@@ -311,10 +314,13 @@ def _evaluate_unary_op(node: ast.UnaryOp, runtime: dict) -> Any:
         return not operand
     elif isinstance(node.op, ast.Invert):
         return ~operand
-    raise ValueError(f"Unsupported unary operator: {type(node.op).__name__}")
-
-
-# Safe limit constants are imported from common constants module
+    raise JiuWenBaseException(
+        StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+        StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+            expression=f"{ast.unparse(node)}",
+            error_msg=f"Unsupported unary operator: {type(node.op).__name__}"
+        )
+    )
 
 # Handle binary operators
 def _evaluate_bin_op(node: ast.BinOp, runtime: dict) -> Any:
@@ -371,14 +377,18 @@ def _evaluate_bin_op(node: ast.BinOp, runtime: dict) -> Any:
         return left ^ right
     elif isinstance(node.op, ast.BitAnd):
         return left & right
-    raise ValueError(f"Unsupported binary operator: {type(node.op).__name__}")
-
+    raise JiuWenBaseException(
+        StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+        StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+            expression=f"{ast.unparse(node)}",
+            error_msg=f"Unsupported binary operator: {type(node.op).__name__}"
+        )
+    )
 
 def _evaluate_bool_op(node: ast.BoolOp, runtime: dict) -> Any:
     op = node.op
     values = [_evaluate_ast(value, runtime) for value in node.values]
     return all(values) if isinstance(op, ast.And) else any(values)
-
 
 def _evaluate_compare(node: ast.Compare, runtime: dict) -> Any:
     left = _evaluate_ast(node.left, runtime)
@@ -387,7 +397,6 @@ def _evaluate_compare(node: ast.Compare, runtime: dict) -> Any:
         if not _compare_values(left, right, operation):
             return False
     return True
-
 
 def _compare_values(left: Any, right: Any, op: ast.operator) -> Any:
     if isinstance(op, ast.Eq):
@@ -416,18 +425,21 @@ def _compare_values(left: Any, right: Any, op: ast.operator) -> Any:
             return left not in right
         except TypeError:
             return False
-    raise ValueError(f"Unsupported comparison operator: {type(op).__name__}")
+    raise JiuWenBaseException(
+        StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+        StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+            error_msg=f"Unsupported comparison operator: {type(op).__name__}"
+        )
+    )
 
 def _evaluate_name(node: ast.Name, runtime: dict) -> Any:
     # First check if it's a direct key in runtime
     if node.id in runtime:
         return runtime[node.id]
-
     # Special handling: Ensure correct processing when referencing variables via inputs["${var}"]
     # Check if there's an inputs dictionary and node.id is a key in inputs
     if 'inputs' in runtime and node.id in runtime['inputs']:
         return runtime['inputs'][node.id]
-
     # Try to handle the name as a numeric literal
     try:
         # Check if it's an integer
@@ -446,9 +458,7 @@ def _evaluate_name(node: ast.Name, runtime: dict) -> Any:
                 return None
             # According to test requirements, raise JiuWenBaseException instead of NameError
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                          error_msg=f"Name '{node.id}' is not defined"))
-
+                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(error_msg=f"Name '{node.id}' is not defined"))
 
 def _evaluate_subscript(node: ast.Subscript, runtime: dict) -> Any:
     value = _evaluate_ast(node.value, runtime)
@@ -462,13 +472,12 @@ def _evaluate_subscript(node: ast.Subscript, runtime: dict) -> Any:
             )
         )
 
-    # Handle different index types in Python 3.9+
     if isinstance(node.slice, ast.Slice):
         # Handle slice operations
         lower = _evaluate_ast(node.slice.lower, runtime) if node.slice.lower else None
         upper = _evaluate_ast(node.slice.upper, runtime) if node.slice.upper else None
         step = _evaluate_ast(node.slice.step, runtime) if node.slice.step else None
-
+        
         # Check for potential large slice operations
         if isinstance(lower, int) and isinstance(upper, int) and (upper - lower) > MAX_COLLECTION_SIZE:
             raise JiuWenBaseException(
@@ -477,7 +486,7 @@ def _evaluate_subscript(node: ast.Subscript, runtime: dict) -> Any:
                     error_msg=f"Slice operation would create collection exceeding maximum size of {MAX_COLLECTION_SIZE}"
                 )
             )
-
+            
         slice_obj = slice(lower, upper, step)
         return value[slice_obj]
     else:
@@ -485,26 +494,25 @@ def _evaluate_subscript(node: ast.Subscript, runtime: dict) -> Any:
         index = _evaluate_ast(node.slice, runtime)
         return value[index]
 
-
 def _evaluate_attribute(node: ast.Attribute, runtime: dict) -> Any:
     value = _evaluate_ast(node.value, runtime)
-
     # Block access to special attributes (dunder methods/properties)
     if node.attr.startswith('__') and node.attr.endswith('__'):
         raise JiuWenBaseException(
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                error_msg=f"Access to special attribute '{node.attr}' is prohibited"
+                expression=f"{ast.unparse(node)}",
+                error_msg=f"Disallowed operation: Access to special attribute '{node.attr}' is prohibited"
             )
         )
-
     # Block access to sensitive attributes even if not full dunder
     sensitive_attributes = ['__class__', '__bases__', '__subclasses__', '__module__', '__dict__']
     if node.attr in sensitive_attributes:
         raise JiuWenBaseException(
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                error_msg=f"Access to sensitive attribute '{node.attr}' is prohibited"
+                expression=f"{ast.unparse(node)}",
+                error_msg=f"Disallowed operation: Access to sensitive attribute '{node.attr}' is prohibited"
             )
         )
 
@@ -518,17 +526,22 @@ def _evaluate_attribute(node: ast.Attribute, runtime: dict) -> Any:
         # If both fail, raise an error
         raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                   StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                                      expression=f"${{data.{node.attr}}}",
                                       error_msg=f"'dict' object has no attribute '{node.attr}'"
                                   ))
-
 
 def _evaluate_call(node: ast.Call, runtime: dict) -> Any:
     func = _evaluate_ast(node.func, runtime)
     args = [_evaluate_ast(arg, runtime) for arg in node.args]
     if func is None or not callable(func):
-        raise ValueError(f"Function {func} is not defined or not callable.")
+        raise JiuWenBaseException(
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                expression=f"{ast.unparse(node)}",
+                error_msg=f"Function {func} is not defined or not callable."
+            )
+        )
     return func(*args)
-
 
 def _evaluate_list(node: ast.List, runtime: dict) -> Any:
     # Check if list contains too many elements
@@ -541,10 +554,8 @@ def _evaluate_list(node: ast.List, runtime: dict) -> Any:
         )
     return [_evaluate_ast(item, runtime) for item in node.elts]
 
-
 def _evaluate_tuple(node: ast.Tuple, runtime: dict) -> Any:
     return tuple(_evaluate_ast(item, runtime) for item in node.elts)
-
 
 def _evaluate_dict(node: ast.Dict, runtime: dict) -> Any:
     # Check if dictionary has too many key-value pairs

@@ -250,12 +250,9 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
         elif loop_input.loop_type == LoopType.AlwaysTrue.value:
             condition = AlwaysTrue()
         elif loop_input.loop_type == LoopType.Expression.value:
-            # 适配非字符串类型的布尔表达式值
             if isinstance(loop_input.bool_expression, bool):
-                # 如果直接传入布尔值，创建一个FuncCondition来返回该值
                 condition = FuncCondition(lambda: loop_input.bool_expression)
             else:
-                # 否则使用标准的ExpressionCondition
                 condition = ExpressionCondition(loop_input.bool_expression)
         else:
             raise JiuWenBaseException(-1, "error loop type config of LoopComponent")

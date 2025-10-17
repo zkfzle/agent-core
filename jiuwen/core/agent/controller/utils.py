@@ -100,7 +100,7 @@ class ReActControllerUtils:
             if tool_name == plugin.name:
                 return SubTaskType.PLUGIN
 
-        raise JiuWenBaseException(5000, f"未找到工具调用类型: {tool_name}")
+        raise JiuWenBaseException(5000, f"not find tool call type: {tool_name}")
 
     @staticmethod
     def is_interaction_result(exec_result: Any) -> bool:

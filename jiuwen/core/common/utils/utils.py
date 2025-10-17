@@ -11,20 +11,16 @@ from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class ExceptionUtils:
-    """异常工具类"""
     @staticmethod
     def raise_exception(error_code: StatusCode, error_msg: str = "", exception: Exception = None):
-        """抛出异常"""
         raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
 
     @staticmethod
     def format_validation_error(e: ValidationError) -> str:
-        """格式化校验异常信息"""
         return "\n".join([f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors()])
 
 
 class WorkflowLLMUtils:
-    """工作流LLM组件相关工具类"""
 
     @staticmethod
     def extract_content(response) -> str:
@@ -32,11 +28,9 @@ class WorkflowLLMUtils:
 
 
 class ValidationUtils:
-    """验证工具类"""
 
     @staticmethod
     def raise_invalid_params_error(error_msg: str = "") -> None:
-        """抛出参数无效错误"""
         raise JiuWenBaseException(
             StatusCode.PROMPT_JSON_SCHEMA_ERROR.code,
             StatusCode.PROMPT_JSON_SCHEMA_ERROR.errmsg.format(error_msg=error_msg),
@@ -44,7 +38,6 @@ class ValidationUtils:
 
     @staticmethod
     def validate_type(instance: Any, expected_type: str) -> None:
-        """校验schema json实例类型：object,array,string,integer,boolean, and number types"""
         type_validators = {
             "object": lambda x: isinstance(x, dict),
             "array": lambda value: isinstance(value, list),
@@ -64,17 +57,13 @@ class ValidationUtils:
 
     @staticmethod
     def validate_json_schema(instance: Any, schema: Dict[str, Any]) -> None:
-        """对json schema实例进行schema校验type类型和缺失字段"""
         if "type" not in schema:
             ValidationUtils.raise_invalid_params_error("schema must have 'type' key")
-        # 验证类型
         ValidationUtils.validate_type(instance=instance, expected_type=schema["type"])
 
-        # 验证对象属性
         if schema["type"] == "object":
             ValidationUtils._validate_object_properties(instance, schema)
 
-        # 验证数组元素
         elif schema["type"] == "array":
             ValidationUtils._validate_array_items(instance, schema)
 
@@ -82,12 +71,10 @@ class ValidationUtils:
     def _validate_object_properties(instance: Any, schema: Dict[str, Any]) -> None:
         if "properties" not in schema:
             return
-        # 检查必填字段
         required_fields = schema.get("required", [])
         missing_fields = [field for field in required_fields if field not in instance]
         if missing_fields:
             ValidationUtils.raise_invalid_params_error(f"missing required properties {missing_fields}")
-        # 递归验证每个属性
         for prop_name, prop_schema in schema["properties"].items():
             if prop_name in instance:
                 ValidationUtils.validate_json_schema(instance=instance[prop_name], schema=prop_schema)
@@ -97,7 +84,6 @@ class ValidationUtils:
         if "items" not in schema:
             return
 
-        # 递归验证每个数组元素
         for i, item in enumerate(instance):
             try:
                 ValidationUtils.validate_json_schema(instance=item, schema=schema["items"])
@@ -147,9 +133,9 @@ class JsonParser:
             return json.loads(content)
         except json.JSONDecodeError as e:
             if UserConfig.is_sensitive():
-                ValidationUtils.raise_invalid_params_error("JSON解析失败，不是有效的JSON格式")
+                ValidationUtils.raise_invalid_params_error("Json parse error")
             else:
-                ValidationUtils.raise_invalid_params_error(f"JSON解析失败: {response_content} 不是有效的JSON格式")
+                ValidationUtils.raise_invalid_params_error(f"Json parse error: {response_content}")
 
     @staticmethod
     def _clean_markdown_blocks(content: str):
@@ -183,7 +169,7 @@ class OutputFormatter:
 
         formatter = formatters.get(response_type)
         if not formatter:
-            ValidationUtils.raise_invalid_params_error(f"不支持的响应类型: '{response_type}'")
+            ValidationUtils.raise_invalid_params_error(f"no supported response type: '{response_type}'")
 
         return formatter(response_content, outputs_config)
 
@@ -243,23 +229,12 @@ class TemplateUtils:
 
     @staticmethod
     def render_template(template: str, inputs: dict) -> str:
-        """
-           使用string.Template安全渲染模板
 
-           参数:
-               template: 包含{{变量}}的模板字符串
-               inputs: 用于替换的变量字典
-
-           返回:
-               替换后的字符串
-           """
-        # 输入验证
         if not isinstance(template, str):
-            raise TypeError("模板必须是字符串类型")
+            raise TypeError("template must be a string")
         if not isinstance(inputs, dict):
-            raise TypeError("输入数据必须是字典类型")
+            raise TypeError("inputs must be a dict")
 
-        # 创建模板实例
         template = template.replace("{{","$").replace("}}","")
         t = string.Template(template)
         return t.safe_substitute(**inputs)
@@ -267,5 +242,12 @@ class TemplateUtils:
     @staticmethod
     def render_template_to_list(template: str) -> list[str | Any]:
 
-        # 替换所有匹配的变量
         return re.split(r'(\{\{[^}]+\}\})', template)
+
+class SafeTemplate(string.Template):
+    delimiter = '{{'
+    pattern = r'''
+    \{\{             # 起始分隔符: {{
+    (?P<identifier>\w+)  # 变量名: 字母、数字或下划线
+    }}               # 结束分隔符: }}
+    '''

@@ -49,9 +49,7 @@ RESPONSE_FORMAT_TO_PROMPT_MAP = {
 
 
 class LLMPromptFormatter:
-    """格式化对话历史中的最后一条用户消息，追加输出格式指令。"""
 
-    # 常量模板，避免在函数内重复创建
     _DEFAULT_MARKDOWN_INSTRUCTION = (
         "Please return the answer in markdown format.\n"
         "- For headings, use number signs (#).\n"
@@ -76,7 +74,6 @@ class LLMPromptFormatter:
 
     @staticmethod
     def _find_last_user_index(history: List[Dict[str, Any]]) -> int | None:
-        """返回最后一条 role=user 的索引；不存在则返回 None。"""
         for idx in range(len(history) - 1, -1, -1):
             if history[idx].get("role") == "user":
                 return idx
@@ -88,7 +85,6 @@ class LLMPromptFormatter:
             response_format: Dict[str, Any],
             output_config: dict,
     ) -> List[Dict[str, Any]]:
-        """根据 response_format 格式化最后一条用户消息。"""
         res_type = response_format.get("type")
         if res_type == "text":
             return history

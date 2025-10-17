@@ -61,21 +61,8 @@ class MarkdownContent:
 
 
 class MarkdownOutputParser(BaseOutputParser):
-    """
-    解析Markdown格式内容的输出解析器。
-    支持提取标题、代码块、链接、图片、表格、列表等Markdown元素。
-    """
 
     async def parse(self, llm_output: Union[str, AIMessage]) -> Optional[MarkdownContent]:
-        """
-        非流式解析LLM输出，提取并返回Markdown内容结构。
-
-        Args:
-            llm_output: LLM的输出，可以是字符串或AIMessage对象。
-
-        Returns:
-            解析后的MarkdownContent对象，如果解析失败则返回None。
-        """
 
         if isinstance(llm_output, AIMessage):
             text = llm_output.content
@@ -109,15 +96,6 @@ class MarkdownOutputParser(BaseOutputParser):
 
     async def stream_parse(self, streaming_inputs: Iterator[Union[str, AIMessageChunk]]) -> Iterator[
         Optional[MarkdownContent]]:
-        """
-        流式解析LLM输出，逐块提取并返回Markdown内容。
-
-        Args:
-            streaming_inputs: LLM输出的迭代器，可以是字符串块或AIMessageChunk对象。
-
-        Yields:
-            解析后的MarkdownContent对象，包含当前已解析的所有Markdown元素。
-        """
         buffer = ""
         last_parsed_length = 0
 
@@ -174,7 +152,6 @@ class MarkdownOutputParser(BaseOutputParser):
                         f"An unexpected error occurred during final streaming Markdown parsing: {e}\nContent: {buffer}")
 
     def _extract_all_elements(self, text: str, markdown_content: MarkdownContent):
-        """提取所有Markdown元素并按位置排序"""
         elements = []
 
         # 提取标题
@@ -201,7 +178,6 @@ class MarkdownOutputParser(BaseOutputParser):
                 raw=match.group(0)
             ))
 
-        # 提取内联代码
         for match in re.finditer(r'`([^`\n]+)`', text):
             elements.append(MarkdownElement(
                 type=MarkdownElementType.INLINE_CODE,
@@ -211,7 +187,6 @@ class MarkdownOutputParser(BaseOutputParser):
                 raw=match.group(0)
             ))
 
-        # 提取图片
         for match in re.finditer(r'!\[([^\]]*)\]\(([^)]+)\)', text):
             alt_text = match.group(1)
             url = match.group(2)
@@ -223,7 +198,6 @@ class MarkdownOutputParser(BaseOutputParser):
                 raw=match.group(0)
             ))
 
-        # 提取链接
         for match in re.finditer(r'(?<!\!)\[([^\]]+)\]\(([^)]+)\)', text):
             text_part = match.group(1)
             url = match.group(2)
@@ -235,19 +209,15 @@ class MarkdownOutputParser(BaseOutputParser):
                 raw=match.group(0)
             ))
 
-        # 提取表格和列表（这些是多行元素，需要特殊处理）
         self._extract_multiline_elements(text, elements)
 
-        # 按位置排序
         elements.sort(key=lambda x: x.start_pos)
         markdown_content.elements = elements
 
     def _extract_multiline_elements(self, text: str, elements: List[MarkdownElement]):
-        """提取多行元素（表格和列表）"""
         lines = text.split('\n')
         current_pos = 0
 
-        # 处理表格和列表
         table_lines = []
         list_lines = []
         table_start_pos = -1
@@ -258,7 +228,6 @@ class MarkdownOutputParser(BaseOutputParser):
             line_end_pos = current_pos + len(line)
             current_pos = line_end_pos + 1
 
-            # 检查表格
             if '|' in line.strip() and line.strip():
                 if not table_lines:
                     table_start_pos = line_start_pos
@@ -276,7 +245,6 @@ class MarkdownOutputParser(BaseOutputParser):
                     ))
                     table_lines = []
 
-            # 检查列表
             if re.match(r'^\s*[-*+]\s+', line) or re.match(r'^\s*\d+\.\s+', line):
                 if not list_lines:
                     list_start_pos = line_start_pos
@@ -285,7 +253,6 @@ class MarkdownOutputParser(BaseOutputParser):
                 list_lines.append(line)
             else:
                 if list_lines:
-                    # 列表结束
                     list_content = '\n'.join(list_lines).strip()
                     if list_content:
                         elements.append(MarkdownElement(
@@ -297,7 +264,6 @@ class MarkdownOutputParser(BaseOutputParser):
                         ))
                     list_lines = []
 
-        # 处理文档末尾的表格和列表
         if table_lines:
             table_content = '\n'.join(table_lines)
             elements.append(MarkdownElement(
@@ -320,7 +286,6 @@ class MarkdownOutputParser(BaseOutputParser):
                 ))
 
     def _populate_categorized_lists(self, markdown_content: MarkdownContent):
-        """填充分类列表"""
         for element in markdown_content.elements:
             if element.type == MarkdownElementType.HEADER:
                 markdown_content.headers.append({
@@ -358,9 +323,7 @@ class MarkdownOutputParser(BaseOutputParser):
                 markdown_content.lists.append(element.content["list"])
 
     def _extract_headers(self, text: str) -> List[Dict[str, str]]:
-        """提取Markdown标题"""
         headers = []
-        # 匹配 # ## ### 等标题
         pattern = r'^(#{1,6})\s+(.+)$'
         for match in re.finditer(pattern, text, re.MULTILINE):
             level = len(match.group(1))
@@ -373,9 +336,7 @@ class MarkdownOutputParser(BaseOutputParser):
         return headers
 
     def _extract_code_blocks(self, text: str) -> List[Dict[str, str]]:
-        """提取代码块"""
         code_blocks = []
-        # 匹配 ```language\ncode\n``` 格式的代码块
         pattern = r'```(\w*)\n(.*?)\n```'
         for match in re.finditer(pattern, text, re.DOTALL):
             language = match.group(1) or "text"
@@ -386,7 +347,6 @@ class MarkdownOutputParser(BaseOutputParser):
                 "raw": match.group(0)
             })
 
-        # 匹配单行代码 `code`
         inline_pattern = r'`([^`\n]+)`'
         for match in re.finditer(inline_pattern, text):
             code_blocks.append({
@@ -398,9 +358,7 @@ class MarkdownOutputParser(BaseOutputParser):
         return code_blocks
 
     def _extract_links(self, text: str) -> List[Dict[str, str]]:
-        """提取链接"""
         links = []
-        # 匹配 [text](url) 格式的链接
         pattern = r'\[([^\]]+)\]\(([^)]+)\)'
         for match in re.finditer(pattern, text):
             text_part = match.group(1)
@@ -413,9 +371,7 @@ class MarkdownOutputParser(BaseOutputParser):
         return links
 
     def _extract_images(self, text: str) -> List[Dict[str, str]]:
-        """提取图片"""
         images = []
-        # 匹配 ![alt](url) 格式的图片
         pattern = r'!\[([^\]]*)\]\(([^)]+)\)'
         for match in re.finditer(pattern, text):
             alt_text = match.group(1)
@@ -428,15 +384,12 @@ class MarkdownOutputParser(BaseOutputParser):
         return images
 
     def _extract_tables(self, text: str) -> List[str]:
-        """提取表格"""
         tables = []
-        # 匹配Markdown表格
         lines = text.split('\n')
         table_lines = []
         in_table = False
 
         for line in lines:
-            # 检查是否是表格行（包含 | 分隔符）
             if '|' in line.strip() and line.strip():
                 table_lines.append(line)
                 in_table = True
@@ -452,14 +405,12 @@ class MarkdownOutputParser(BaseOutputParser):
         return tables
 
     def _extract_lists(self, text: str) -> List[str]:
-        """提取列表"""
         lists = []
         lines = text.split('\n')
         list_lines = []
         in_list = False
 
         for line in lines:
-            # 检查是否是列表项（- * + 或数字.）
             if re.match(r'^\s*[-*+]\s+', line) or re.match(r'^\s*\d+\.\s+', line):
                 list_lines.append(line)
                 in_list = True

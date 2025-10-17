@@ -48,7 +48,6 @@ class UserConfig:
 
     @classmethod
     def is_sensitive(cls) -> bool:
-        """直接返回当前单例的 is_sensitive 值（延迟初始化）"""
         return cls.get_config().is_sensitive
 
     @staticmethod

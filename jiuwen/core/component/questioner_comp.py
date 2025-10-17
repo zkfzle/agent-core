@@ -1,7 +1,6 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-import ast
 import json
 import re
 from dataclasses import dataclass, field
@@ -507,7 +506,6 @@ class QuestionerExecutable(ComponentExecutable):
 
         self._store_state_to_runtime(self._state, runtime)
 
-        # 向用户追问
         if self._state.is_undergoing_interaction():
             await runtime.interact(invoke_result.get("question", ""))
 

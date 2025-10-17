@@ -14,7 +14,6 @@ class WorkflowAgentConfig(AgentConfig):
     start_workflow: WorkflowSchema = Field(default_factory=WorkflowSchema)
     end_workflow: WorkflowSchema = Field(default_factory=WorkflowSchema)
     global_variables: List[dict] = Field(default_factory=list)
-    # Global Parameter Template (Optional)
     global_params: Dict[str, Any] = Field(default_factory=dict)
 
     constrain: ConstrainConfig = Field(default=ConstrainConfig())

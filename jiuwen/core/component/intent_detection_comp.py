@@ -150,9 +150,6 @@ class IntentDetectionExecutable(ComponentExecutable):
 
     @staticmethod
     def _get_chat_history_from_context(context) -> List[BaseMessage]:
-        """从上下文中获取对话历史
-        :param context:
-        """
         chat_history = []
         if context:
             chat_history = context.get_messages()
@@ -160,7 +157,6 @@ class IntentDetectionExecutable(ComponentExecutable):
 
     @staticmethod
     def _refix_llm_output(input_str):
-        """大模型输出后处理"""
         json_path = r'\{.*\}'
         match = re.search(json_path, input_str, re.DOTALL)
         if match:
@@ -198,7 +194,6 @@ class IntentDetectionExecutable(ComponentExecutable):
                          zip(self._default_config.category_list, self._config.category_name_list))
 
     def _set_runtime(self, runtime: Runtime):
-        """设置runtime属性"""
         self._runtime = runtime
 
     def _create_llm_instance(self):
@@ -215,11 +210,9 @@ class IntentDetectionExecutable(ComponentExecutable):
                 ExceptionUtils.raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INIT_LLM_ERROR, str(e), e)
 
     def _prepare_detection_inputs(self, inputs, chat_history):
-        """准备意图检测所需的输入"""
         current_inputs = {}
         global_intent_map = []
 
-        # 添加基本配置参数
         current_inputs.update({
             USER_PROMPT: self._config.user_prompt,
             CATEGORY_INFO: self._get_category_info(),
@@ -245,13 +238,11 @@ class IntentDetectionExecutable(ComponentExecutable):
                 ExceptionUtils.raise_exception(
                     StatusCode.INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR, ExceptionUtils.format_validation_error(e))
 
-        # 保存全局意图映射用于后续处理
         current_inputs['global_intent_map'] = global_intent_map
 
         return current_inputs
 
     def _format_chat_history(self, chat_history):
-        """格式化聊天历史记录"""
         chat_history_str = ""
         for history in chat_history[-self._config.chat_history_max_turn:]:
             chat_history_str += "{}: {}\n".format(
@@ -266,7 +257,6 @@ class IntentDetectionExecutable(ComponentExecutable):
         return final_prompts
 
     def _parse_detection_result(self, llm_output):
-        """处理意图检测结果"""
         intent_class, reason = self._post_process_intent_detection(llm_output)
         intent_id_and_name = self._get_intent_id_and_name(intent_class)
         return IntentDetectionOutput(classification_id=intent_id_and_name.get(CLASSIFICATION_ID, -1), reason=reason,
@@ -348,7 +338,6 @@ class IntentDetectionComponent(WorkflowComponent):
 
     @property
     def executable(self) -> IntentDetectionExecutable:
-        """延迟创建executable实例"""
         if self._executable is None:
             self._executable = self.to_executable()
         return self._executable
@@ -358,7 +347,6 @@ class IntentDetectionComponent(WorkflowComponent):
         graph.add_conditional_edges(node_id, self._router)
 
     def to_executable(self) -> IntentDetectionExecutable:
-        """创建可执行实例"""
         return IntentDetectionExecutable(self._config).set_router(self._router)
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],

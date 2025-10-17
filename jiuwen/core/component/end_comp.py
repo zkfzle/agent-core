@@ -75,7 +75,7 @@ class End(ComponentExecutable, WorkflowComponent):
 
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.info("stream output error: {}".format(e))
+                logger.info("stream output error")
             else:
                 logger.error("stream output error: {}".format(e))
 

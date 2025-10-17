@@ -1,5 +1,3 @@
-"""ReAct Controller 工具方法"""
-
 import copy
 from typing import List, Dict, Any, Optional
 
@@ -32,14 +30,12 @@ class ReActControllerInput(ControllerInput):
 
 
 class ReActControllerOutput(ControllerOutput):
-    """ReAct Controller输出类"""
     should_continue: bool = Field(default=False)
     llm_output: Optional[AIMessage] = Field(default=None)
     sub_tasks: List[SubTask] = Field(default_factory=list)
 
 
 class ReActControllerUtils:
-    """ReAct Controller 通用工具方法类"""
 
     @staticmethod
     def format_llm_inputs(
@@ -47,7 +43,6 @@ class ReActControllerUtils:
             chat_history: List[BaseMessage],
             config: AgentConfig
     ) -> List[BaseMessage]:
-        """格式化LLM输入"""
         if isinstance(inputs.query, InteractiveInput):
             user_fields = copy.deepcopy(inputs.model_dump())
             user_fields.pop("query")
@@ -63,7 +58,6 @@ class ReActControllerUtils:
 
     @staticmethod
     def parse_llm_output(response: BaseMessage, config: AgentConfig) -> "ReActControllerOutput":
-        """解析LLM输出并生成行动计划"""
         sub_tasks = ReActControllerUtils.create_sub_tasks_from_tool_calls(
             response.tool_calls, config
         )
@@ -79,7 +73,6 @@ class ReActControllerUtils:
             tool_calls: List[ToolCall],
             config: AgentConfig
     ) -> List[SubTask]:
-        """从工具调用创建SubTask"""
         if not tool_calls:
             return []
 
@@ -98,13 +91,10 @@ class ReActControllerUtils:
 
     @staticmethod
     def determine_sub_task_type(tool_name: str, config: AgentConfig) -> SubTaskType:
-        """确定SubTask类型"""
-        # 检查workflow
         for workflow in config.workflows:
             if tool_name == workflow.name:
                 return SubTaskType.WORKFLOW
 
-        # 检查plugin
         for plugin in config.plugins:
             if tool_name == plugin.name:
                 return SubTaskType.PLUGIN
@@ -113,14 +103,12 @@ class ReActControllerUtils:
 
     @staticmethod
     def is_interaction_result(exec_result: Any) -> bool:
-        """检查是否为交互中断结果"""
         return (isinstance(exec_result, dict) and
                 exec_result.get("error") and
                 isinstance(exec_result.get("value"), list))
 
     @staticmethod
     def create_interrupt_result(e, tool_name: str) -> Dict[str, Any]:
-        """创建中断结果"""
         return {
             "error": True,
             "value": e.message,
@@ -129,13 +117,10 @@ class ReActControllerUtils:
 
     @staticmethod
     def validate_execution_inputs(exec_result: Any, sub_task_result: Any) -> bool:
-        """验证执行结果"""
-        # 可以在这里添加更多的验证逻辑
         return exec_result is not None
 
     @staticmethod
     def should_add_user_message(query: str, context_engine: ContextEngine, runtime: Runtime) -> bool:
-        """判断是否需要添加用户消息"""
         agent_context = context_engine.get_agent_context(runtime.session_id())
         last_message = agent_context.get_latest_message()
 
@@ -154,7 +139,6 @@ class ReActControllerUtils:
 
     @staticmethod
     def add_user_message(query: Any, context_engine: ContextEngine, runtime: Runtime):
-        """添加用户消息到上下文"""
         if ReActControllerUtils.should_add_user_message(query, context_engine, runtime):
             agent_context = context_engine.get_agent_context(runtime.session_id())
             user_message = HumanMessage(content=query)
@@ -163,14 +147,12 @@ class ReActControllerUtils:
 
     @staticmethod
     def add_ai_message(ai_message: AIMessage, context_engine: ContextEngine, runtime: Runtime):
-        """添加AI消息到上下文"""
         if ai_message:
             agent_context = context_engine.get_agent_context(runtime.session_id())
             agent_context.add_message(ai_message)
 
     @staticmethod
     def add_tool_results(completed_tasks: List[SubTask], context_engine: ContextEngine, runtime: Runtime):
-        """添加工具执行结果到上下文"""
         if not completed_tasks:
             logger.warning("No completed sub tasks to add to chat history")
             return
@@ -188,7 +170,6 @@ class ReActControllerUtils:
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime, config: AgentConfig) -> List[BaseMessage]:
-        """获取最新的对话历史"""
         agent_context = context_engine.get_agent_context(runtime.session_id())
         chat_history = agent_context.get_messages()
         max_rounds = config.constrain.reserved_max_chat_rounds

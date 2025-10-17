@@ -18,13 +18,9 @@ class SubTask(BaseModel):
     @field_validator('func_args', mode='before')
     @classmethod
     def validate_func_args(cls, v):
-        """验证func_args字段，确保字典不会被错误地转换为InteractiveInput"""
-        # 如果已经是InteractiveInput实例，直接返回
         if isinstance(v, InteractiveInput):
             return v
-        # 如果是字典，直接返回字典
         elif isinstance(v, dict):
             return v
-        # 其他情况直接返回原值
         else:
             return v

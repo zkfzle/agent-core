@@ -70,7 +70,6 @@ class ChatAgent(Agent):
         return self._runtime.get_model(model_id=model_id)
 
     def _create_context_engine(self) -> ContextEngine:
-        """创建ContextEngine实例"""
         context_config = ContextEngineConfig()
         return ContextEngine(
             agent_id=self._config.get_agent_config().id,

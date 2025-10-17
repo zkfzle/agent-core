@@ -20,16 +20,15 @@ class SubTaskType(Enum):
 
 
 class TaskStatus(Enum):
-    PENDING = auto()  # 已创建，尚未开始
-    RUNNING = auto()  # 正在执行
-    SUCCESS = auto()  # 成功结束
-    FAILED = auto()  # 异常结束
-    CANCELLED = auto()  # 被取消
+    PENDING = auto()
+    RUNNING = auto()
+    SUCCESS = auto()
+    FAILED = auto()
+    CANCELLED = auto()
 
 
 class ReActControllerStatus(Enum):
-    """ReAct控制器状态枚举"""
-    NORMAL = "NORMAL"  # 正常运行状态
-    INTERRUPTED = "INTERRUPTED"  # 中断状态
-    COMPLETED = "COMPLETED"  # 完成状态
-    TIMEOUT = "TIMEOUT"  # 超时状态
+    NORMAL = "NORMAL"
+    INTERRUPTED = "INTERRUPTED"
+    COMPLETED = "COMPLETED"
+    TIMEOUT = "TIMEOUT"

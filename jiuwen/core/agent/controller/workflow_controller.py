@@ -21,7 +21,6 @@ from jiuwen.core.workflow.base import Workflow
 
 
 class WorkflowState:
-    """Workflow状态管理类"""
 
     def __init__(self, runtime: Runtime):
         self._runtime = runtime
@@ -45,14 +44,12 @@ class WorkflowState:
         })
 
     def get_current_status(self) -> str:
-        """获取当前状态"""
         track_state = self._runtime.get_state("workflow_state")
         if not track_state:
             return "normal"
         return track_state.get("status", "normal")
 
     def set_status(self, status: str, sub_tasks: List[SubTask] = None):
-        """设置状态"""
         self._runtime.update_state({
             "workflow_state": {
                 "status": status,
@@ -70,17 +67,16 @@ class WorkflowController(Controller):
         self._agent_handler = None
 
     def set_agent_handler(self, agent_handler: AgentHandler):
-        """设置Agent处理器"""
         self._agent_handler = agent_handler
 
     @staticmethod
     def _filter_inputs(schema: dict, user_data: dict) -> dict:
         """
-        根据 schema 过滤并校验用户输入
-        :param schema:   workflow.inputs 的 schema，形如 {"query": {"type": "string", "required": True}}
-        :param user_data: 用户实际传入的数据，形如 {"query": "你好", "foo": "bar"}
-        :return: 仅保留 schema 中声明的字段
-        :raises KeyError: 缺失必填字段时抛出
+        Filter and validate user input according to the schema
+        :param schema: The schema of workflow.inputs, in the form of {"query": {"type": "string", "required": True}}
+        :param user_data: The actual data passed in by the user, in the form of {"query": "Hello", "foo": "bar"}
+        :return: Only retain the fields declared in the schema
+        :raises KeyError: Raised when a required field is missing
         """
         if not schema:
             return {}
@@ -148,9 +144,6 @@ class WorkflowController(Controller):
         pass
 
     def should_continue(self, output: WorkflowControllerOutput) -> bool:
-        """
-        当且仅当 output 是 Task 时继续下一轮
-        """
         return not output.is_task
 
     def handle_workflow_results(self, results):
@@ -160,76 +153,59 @@ class WorkflowController(Controller):
 
     @staticmethod
     def _validate_inputs(inputs: Dict):
-        """验证输入"""
         if isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
 
     async def execute(self, inputs: Dict) -> Dict | list:
-        """主执行流程 - 简化的workflow执行"""
         if UserConfig.is_sensitive():
             logger.info("Starting Workflow execution with inputs.")
         else:
             logger.info(f"Starting Workflow execution with inputs: {inputs}")
 
-        # 输入验证（仅在非中断恢复时进行）
         if not self._state.is_interrupted():
             self._validate_inputs(inputs)
 
-        # 检查是否需要处理中断恢复
         if self._state.is_interrupted():
             return await self._resume_task(inputs)
 
-        # 执行workflow
         return await self._run_workflow(inputs)
 
     async def _resume_task(self, inputs: Dict) -> Dict | list:
-        """恢复中断的任务"""
         if not isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Interrupt status data format error.")
 
         logger.info(f"Processing interrupt recovery: {inputs}")
 
-        # 获取中断的任务
         sub_tasks = self._state.get_interrupted_sub_tasks()
         if not sub_tasks:
             self._state.set_status("normal")
             return await self._run_workflow(inputs)
 
-        # 更新第一个任务的参数
         sub_tasks[0].func_args = inputs.get("query", "")
 
-        # 执行恢复的任务
         result = await self._execute_workflow_task(sub_tasks[0])
 
-        # 检查是否为交互中断结果
         if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
-            # 是中断状态
             interrupt_data_list = []
             for output_scheme in result.result:
                 await self._runtime.write_stream(output_scheme)
                 interrupt_data_list.append(output_scheme)
             return interrupt_data_list
         else:
-            # 恢复正常状态并返回结果
             self._state.set_status("normal")
             final_result = self.handle_workflow_results({sub_tasks[0].func_name: result})
             return {"output": final_result, "result_type": "answer"}
 
     async def _run_workflow(self, inputs: Dict) -> Dict | list:
-        """执行workflow主流程"""
-        # 生成sub_tasks
         controller_output: WorkflowControllerOutput = self.invoke(inputs, None)
 
         if not controller_output.sub_tasks:
             return {"output": "No tasks to execute", "result_type": "answer"}
 
-        # 执行第一个sub_task
         sub_task = controller_output.sub_tasks[0]
         result = await self._execute_workflow_task(sub_task)
 
-        # 检查是否为交互中断结果
         if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
-            # 是中断状态，保存状态
             self._state.save_interrupt_state([sub_task])
             interrupt_data_list = []
             for output_scheme in result.result:
@@ -237,12 +213,10 @@ class WorkflowController(Controller):
                 interrupt_data_list.append(output_scheme)
             return interrupt_data_list
         else:
-            # 正常完成
             final_result = self.handle_workflow_results({sub_task.func_name: result})
             return {"output": final_result, "result_type": "answer"}
 
     async def _execute_workflow_task(self, sub_task: SubTask) -> Any:
-        """执行单个workflow任务"""
         try:
             inputs = AgentHandlerInputs(
                 context=self._runtime,
@@ -251,17 +225,15 @@ class WorkflowController(Controller):
             )
             workflow = self._find_workflow(inputs)
 
-            # 创建workflow runtime并执行
             workflow_runtime = inputs.context.create_workflow_runtime()
             result = await workflow.invoke(inputs.arguments, workflow_runtime)
 
-            # 处理WorkflowOutput对象
             if hasattr(result, 'result') and hasattr(result, 'state'):
-                # 对于WorkflowOutput，存储完整对象以便后续处理状态
+                # For WorkflowOutput, store the complete object to facilitate subsequent status processing.
                 sub_task.result = result
                 return result
             else:
-                # 对于其他对象，尝试序列化，如果失败则直接存储
+                # For other objects, attempt serialization; if it fails, store them directly.
                 try:
                     sub_task.result = json.dumps(result, ensure_ascii=False)
                 except TypeError:
@@ -269,7 +241,6 @@ class WorkflowController(Controller):
                 return result
 
         except AgentInterrupt as e:
-            # 插件执行失败时，添加失败信息
             error_msg = f"Tool execution failed: {str(e)}"
             logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
 

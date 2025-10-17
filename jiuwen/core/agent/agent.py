@@ -12,10 +12,10 @@ from jiuwen.core.workflow.base import Workflow
 
 class Agent(ABC):
     """
-    最顶层抽象，所有 Agent 的公共基类。
-    子类必须实现：
-        - invoke : 同步一次性调用
-        - stream : 流式调用
+    The top-level abstract class and the common base class for all Agents.
+    Subclasses must implement:
+        - invoke : synchronous one-time call
+        - stream : streaming call
     """
     def __init__(self, config: Config) -> None:
         self._runtime = AgentRuntime(config=config)
@@ -23,29 +23,17 @@ class Agent(ABC):
         self._agent_handler: "AgentHandler | None" = self._init_agent_handler()
 
     def _init_controller(self) -> "Controller | None":
-        """
-        留给子类按需实例化 Controller；默认返回 None
-        """
         return None
 
     def _init_agent_handler(self) -> "AgentHandler | None":
-        """
-        留给子类按需实例化 AgentHandler；默认返回 None
-        """
         return None
 
     @abstractmethod
     async def invoke(self, inputs: Dict) -> Dict:
-        """
-        同步调用，一次性返回最终结果
-        """
         pass
 
     @abstractmethod
     async def stream(self, inputs: Dict) -> Iterator[Any]:
-        """
-        流式调用，逐个 yield 中间结果
-        """
         pass
 
     def bind_workflows(self, workflows: List[Workflow]):

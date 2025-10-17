@@ -21,7 +21,6 @@ from jiuwen.agent.common.enum import ReActControllerStatus
 
 
 class ReActState:
-    """ReAct状态管理类"""
 
     def __init__(self, runtime: Runtime):
         self._runtime = runtime
@@ -45,7 +44,6 @@ class ReActState:
         })
 
     def get_current_status(self) -> ReActControllerStatus:
-        """获取当前状态"""
         track_state = self._runtime.get_state("react_state")
         if not track_state:
             return ReActControllerStatus.NORMAL
@@ -54,11 +52,9 @@ class ReActState:
         try:
             return ReActControllerStatus(status_value)
         except ValueError:
-            # 如果状态值不是有效的枚举值，返回默认状态
             return ReActControllerStatus.NORMAL
 
     def set_status(self, status: ReActControllerStatus, sub_tasks: List[SubTask] = None):
-        """设置状态"""
         self._runtime.update_state({
             "react_state": {
                 "status": status.value,
@@ -68,7 +64,7 @@ class ReActState:
 
 
 class ReActController(Controller):
-    """优化的ReAct控制器 - 清晰的Reason→Act→Observe→Decide循环"""
+    """Reason→Act→Observe→Decide"""
 
     def __init__(self, config: AgentConfig, context_engine: ContextEngine, runtime: Runtime):
         super().__init__(config)
@@ -76,7 +72,6 @@ class ReActController(Controller):
         self._runtime = runtime
         self._model = self._init_model()
 
-        # 组件初始化
         self._state = ReActState(runtime)
         self._agent_handler = None
 
@@ -101,107 +96,93 @@ class ReActController(Controller):
 
     @staticmethod
     def _validate_inputs(inputs: Dict):
-        """验证输入"""
         if isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Non-interrupt status data format error.")
 
     def set_agent_handler(self, agent_handler: AgentHandler):
-        """设置Agent处理器"""
         self._agent_handler = agent_handler
 
     async def execute(self, inputs: Dict) -> Dict:
-        """主执行流程 - 统一的ReAct循环"""
         logger.info(f"Starting ReAct execution with inputs: {inputs}")
 
-        # 输入验证（仅在非中断恢复时进行）
         if not self._state.is_interrupted():
             self._validate_inputs(inputs)
 
-        # 执行ReAct主循环
         return await self._run_react_loop(inputs)
 
     async def _run_react_loop(self, inputs: Dict) -> Dict | list:
-        """核心ReAct循环：Reason→Act→Observe→Decide，包含中断恢复处理"""
+        """Reason→Act→Observe→Decide"""
 
-        # 标准ReAct循环
         for iteration in range(self._config.constrain.max_iteration):
             logger.info(f"ReAct iteration {iteration + 1}")
 
-            # 首先检查是否需要处理中断恢复
+            # Check whether interrupt recovery needs to be handled.
             if self._state.is_interrupted():
                 interrupt_data = await self._resume_task(inputs)
                 if interrupt_data is not None:
                     return interrupt_data
-                # 中断恢复完成后，继续到下一次迭代进行reason总结
+                # After the interrupt recovery is completed, proceed to the next iteration to summarize the reasons.
                 continue
 
-            # 1. Reason: LLM推理生成计划
+            # 1. Reason: LLM inference generation plan
             plan_result = await self.reason(inputs)
 
-            # 2. Decide: 判断是否需要继续
+            # 2. Decide: Determine whether to continue
             if not plan_result.should_continue:
-                self._state.set_status(ReActControllerStatus.COMPLETED)  # 设置完成状态
+                self._state.set_status(ReActControllerStatus.COMPLETED)
                 final_result = {"output": plan_result.llm_output.content, "result_type": "answer"}
                 await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=final_result))
                 return final_result
 
-            # 3. Act: 执行工具调用
+            # 3. Act: Execute tool call
             completed_tasks, exec_result = await self.act(plan_result.sub_tasks)
 
-            # 4. Observe: 观察结果并更新历史
+            # 4. Observe: Observe the results and update the history
             interrupt_data = await self.observe(completed_tasks, exec_result)
             if interrupt_data is not None:
                 return interrupt_data
 
-        # 设置超时状态并返回超时结果
+        # Set the timeout status and return the timeout result.
         self._state.set_status(ReActControllerStatus.TIMEOUT)
         timeout_result = {"output": "执行超过最大迭代次数", "result_type": "answer"}
         await self._runtime.write_stream(OutputSchema(type="answer", index=0, payload=timeout_result))
         return timeout_result
 
     async def _resume_task(self, inputs: Dict) -> Optional[Dict]:
-        """恢复中断的任务
+        """Resume the Interrupted Task
 
         Args:
-            inputs: 输入数据，包含InteractiveInput
+            inputs: Input data, including InteractiveInput
 
         Returns:
-            如果任务完成并需要返回结果，返回结果字典；否则返回None继续循环
+            If the task is completed and requires returning a result, return a result dictionary; otherwise, return None to continue the loop.
         """
         if not isinstance(inputs.get("query"), InteractiveInput):
             raise JiuWenBaseException(5000, "Interrupt status data format error.")
 
         logger.info(f"Processing interrupt recovery within ReAct loop: {inputs}")
 
-        # 添加用户输入
         for _, query in inputs.get("query").user_inputs.items():
             ReActControllerUtils.add_user_message(query, self._context_engine, self._runtime)
 
-        # 获取中断的任务
         sub_tasks = self._state.get_interrupted_sub_tasks()
         if not sub_tasks:
             self._state.set_status(ReActControllerStatus.NORMAL)
             return None
 
-        # 更新第一个任务的参数
         sub_tasks[0].func_args = inputs.get("query", "")
 
-        # 执行恢复的任务
         completed_tasks, exec_result = await self.act(sub_tasks)
 
-        # 观察结果并更新历史
         interrupt_data = await self.observe(completed_tasks, exec_result)
 
-        # 如果观察阶段返回了交互结果，直接返回
         if interrupt_data is not None:
             return interrupt_data
 
-        # 恢复正常状态
         self._state.set_status(ReActControllerStatus.NORMAL)
         return None
 
     async def act(self, sub_tasks: List[SubTask]) -> tuple[List[SubTask], Any]:
-        """Act: 执行工具 - 执行SubTask列表，返回(完成的任务, 执行结果)"""
         if not sub_tasks:
             return [], None
 
@@ -224,47 +205,37 @@ class ReActController(Controller):
                 sub_task.result = interrupt_result
                 exec_result = interrupt_result
 
-                # 保存中断状态
                 self._state.save_interrupt_state(sub_tasks)
                 break
 
         return completed_tasks, exec_result
 
     async def observe(self, completed_tasks: List[SubTask], exec_result: Any = None) -> Any | None:
-        """Observe: 观察结果并更新历史"""
-        # 检查是否为交互中断结果
         if exec_result and ReActControllerUtils.is_interaction_result(exec_result):
-            # 处理交互请求 - 写入流式输出
             interrupt_data_list = []
             for output_scheme in exec_result.get("value", []):
                 await self._runtime.write_stream(output_scheme)
                 interrupt_data_list.append(output_scheme)
             return interrupt_data_list
 
-        # 更新历史 - 这里会将中断恢复任务的结果也加入对话历史
         ReActControllerUtils.add_tool_results(completed_tasks, self._context_engine, self._runtime)
         return None
 
-    # === ReAct推理引擎 ===
     async def reason(self, inputs: Union[Dict, ReActControllerInput],
                      context: Optional[Runtime] = None) -> ReActControllerOutput:
-        """推理阶段：分析情况并生成行动计划"""
-        # 转换为ReActControllerInput
         if isinstance(inputs, dict):
             controller_input = ReActControllerInput(**inputs)
         else:
             controller_input = inputs
 
-        # 统一处理用户消息 - 包括普通查询和InteractiveInput
         if not isinstance(controller_input.query, InteractiveInput):
             ReActControllerUtils.add_user_message(controller_input.query, self._context_engine, self._runtime)
 
-        # 准备LLM输入
         tools = self._runtime.get_tool_info()
         chat_history = ReActControllerUtils.get_chat_history(self._context_engine, self._runtime, self._config)
         llm_inputs = ReActControllerUtils.format_llm_inputs(controller_input, chat_history, self._config)
         logger.info(f"React llm inputs: {llm_inputs}")
-        # 调用LLM
+
         try:
             response = await self._model.ainvoke(
                 self._config.model.model_info.model_name,
@@ -277,7 +248,6 @@ class ReActController(Controller):
                 message=StatusCode.INVOKE_LLM_FAILED.errmsg
             ) from e
 
-        # 解析结果
         result = ReActControllerUtils.parse_llm_output(response, self._config)
         ReActControllerUtils.add_ai_message(result.llm_output, self._context_engine, self._runtime)
         logger.info(f"React llm output: {result.llm_output}")

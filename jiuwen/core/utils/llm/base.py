@@ -14,9 +14,6 @@ from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChun
 
 class BaseChatModel:
     def __init__(self, api_key:str, api_base:str, max_retrie: int=3, timeout: int=60, **kwargs):
-        """
-        初始化模型，子类应该在这里设置自己的配置参数
-        """
         self.api_key = api_key
         self.api_base = api_base
         self.max_retrie = max_retrie
@@ -124,7 +121,7 @@ class BaseChatModel:
 
     def clean_tools(self, tools):
         """
-        去除工具列表中每个 dict 的非标准字段（如 results），只保留 OpenAI 格式。
+        Remove non-standard fields (such as "results") from each dictionary in the tool list, and retain only the OpenAI format.
         """
         cleaned = []
         for tool in tools:

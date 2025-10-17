@@ -53,7 +53,6 @@ class ReActAgent(Agent):
 
 
     def _init_controller(self):
-        """初始化Controller - 延迟到invoke/stream时进行"""
         if self._config.get_agent_config().controller_type != ControllerType.ReActController:
             raise NotImplementedError("")
         return None
@@ -62,18 +61,16 @@ class ReActAgent(Agent):
         return AgentHandlerImpl(self._config.get_agent_config())
 
     def _create_context_engine(self) -> ContextEngine:
-        """创建ContextEngine实例"""
         context_config = ContextEngineConfig(
             conversation_history_length=self._config.get_agent_config().constrain.reserved_max_chat_rounds * 2
         )
         return ContextEngine(
             agent_id=self._config.get_agent_config().id,
             config=context_config,
-            model=None  # 可以根据需要传入模型
+            model=None
         )
 
     def _create_controller(self, context_engine: ContextEngine, runtime: Runtime) -> ReActController:
-        """创建ReActController实例"""
         controller = ReActController(
             self._config.get_agent_config(),
             context_engine,
@@ -83,26 +80,24 @@ class ReActAgent(Agent):
         return controller
 
     async def invoke(self, inputs: Dict) -> Dict:
-        """同步调用接口"""
-        # 1. 初始化ContextEngine和Runtime
+        # 1. Initialize ContextEngine and Runtime
         session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
 
-        # 2. 创建Controller
+        # 2. Create the Controller
         controller = self._create_controller(self.context_engine, runtime)
 
-        # 3. 执行ReAct流程
+        # 3. Execute the ReAct process
         result = await controller.execute(inputs)
         await runtime.post_run()
         return result
 
     async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
-        """流式调用接口"""
-        # 1. 初始化ContextEngine和Runtime
+        # 1. Initialize ContextEngine and Runtime
         session_id = inputs.pop("conversation_id", "default_session")
         runtime = await self._runtime.pre_run(session_id=session_id)
 
-        # 2. 创建Controller
+        # 2. Create the Controller
         controller = self._create_controller(self.context_engine, runtime)
 
         async def stream_process():
@@ -112,7 +107,7 @@ class ReActAgent(Agent):
                 await runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        # 3. 执行流式ReAct流程
+        # 3. Execute the streaming ReAct process
         async for result in runtime.stream_iterator():
             yield result
 

@@ -47,7 +47,6 @@ class RequestChatModel(BaseChatModel):
 
         verify = os.getenv("LLM_SSL_VERIFY", "True").lower() != "false"
 
-        # 2. 客户端证书
         cert = None
         if verify:
             cert_path = os.getenv("LLM_CLIENT_CERT")
@@ -105,7 +104,6 @@ class RequestChatModel(BaseChatModel):
         params["stream"] = True
         verify = os.getenv("LLM_SSL_VERIFY", "True").lower() != "false"
 
-        # 2. 客户端证书
         cert = None
         if verify:
             cert_path = os.getenv("LLM_CLIENT_CERT")
@@ -141,7 +139,6 @@ class RequestChatModel(BaseChatModel):
                        top_p: float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
 
-        # 重置流状态
         self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
@@ -167,9 +164,9 @@ class RequestChatModel(BaseChatModel):
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        清洗 messages 中的 tool_calls，保留 OpenAI 标准字段：
+        Clean the tool_calls in messages, retain the OpenAI standard fields:
         id, type, function.name, function.arguments
-        并把 type 强制设为 "function"
+        and force the type to be set to "function"
         """
         for msg in messages:
             if msg.get("role") != "assistant":
@@ -182,7 +179,6 @@ class RequestChatModel(BaseChatModel):
             for tc in tool_calls:
                 if not isinstance(tc, dict):
                     continue
-                # 只提取合法字段
                 func = tc.get("function", {})
                 cleaned.append({
                     "id": tc.get("id", ""),
@@ -225,7 +221,6 @@ class RequestChatModel(BaseChatModel):
         )
 
     def _reset_stream_state(self):
-        """重置流处理状态"""
         self._stream_state = {
             'current_tool_call_id': '',
             'current_tool_name': '',
@@ -238,7 +233,6 @@ class RequestChatModel(BaseChatModel):
             line = line[6:]
 
         if line.strip() == b"[DONE]":
-            # 处理流结束，返回最终的工具调用信息
             tool_calls = []
             if (self._stream_state['current_tool_name'] and
                     self._stream_state['current_tool_args']):
@@ -255,7 +249,6 @@ class RequestChatModel(BaseChatModel):
                 )
                 tool_calls.append(tool_call)
 
-            # 添加之前完成的工具调用
             tool_calls.extend(self._stream_state['tool_calls'])
 
             chunk = AIMessageChunk(
@@ -277,7 +270,6 @@ class RequestChatModel(BaseChatModel):
             content = delta.get("content", "") or ""
             reasoning_content = delta.get("reasoning_content", "") or ""
 
-            # 处理工具调用
             tool_calls_delta = delta.get("tool_calls")
             tool_calls = []
 
@@ -313,7 +305,7 @@ class RequestChatModel(BaseChatModel):
 
 
 class OpenAIChatModel(BaseChatModel):
-    """OpenAI 专用聊天模型实现，使用官方 openai 库"""
+    """Implementation of OpenAI-specific chat model, using the official openai library"""
 
     def __init__(self,
                  api_key: str, api_base: str, max_retrie: int = 3, timeout: int = 60, **kwargs):
@@ -339,7 +331,6 @@ class OpenAIChatModel(BaseChatModel):
 
     async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
                        top_p: float = 0.1, **kwargs: Any) -> AIMessage:
-        """异步调用 OpenAI API"""
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
@@ -377,7 +368,6 @@ class OpenAIChatModel(BaseChatModel):
     async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
                        top_p: float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
-        """异步流式调用 OpenAI API"""
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
@@ -398,7 +388,6 @@ class OpenAIChatModel(BaseChatModel):
     def _build_request_params(self, model_name: str, temperature: float, top_p: float, messages: List[Dict],
                               tools: List[Dict] = None, stream: bool = False,
                               **kwargs) -> Dict:
-        """构建 OpenAI API 请求参数"""
         params = {
             "model": model_name,
             "messages": messages,
@@ -416,11 +405,9 @@ class OpenAIChatModel(BaseChatModel):
         return params
 
     def _parse_openai_response(self, model_name, response) -> AIMessage:
-        """解析 OpenAI API 响应"""
         choice = response.choices[0]
         message = choice.message
 
-        # 解析工具调用
         tool_calls = []
         if hasattr(message, 'tool_calls') and message.tool_calls:
             for tc in message.tool_calls:
@@ -445,7 +432,6 @@ class OpenAIChatModel(BaseChatModel):
         )
 
     def _parse_openai_stream_chunk(self, model_name, chunk) -> Optional[AIMessageChunk]:
-        """解析 OpenAI 流式响应块"""
         if not chunk.choices:
             return None
 
@@ -455,7 +441,6 @@ class OpenAIChatModel(BaseChatModel):
         content = getattr(delta, 'content', None) or ""
         tool_calls = []
 
-        # 处理工具调用增量
         if hasattr(delta, 'tool_calls') and delta.tool_calls:
             for tc_delta in delta.tool_calls:
                 if hasattr(tc_delta, 'function') and tc_delta.function:

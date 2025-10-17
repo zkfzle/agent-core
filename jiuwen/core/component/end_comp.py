@@ -12,6 +12,7 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
+from jiuwen.core.utils.config.user_config import UserConfig
 
 STREAM_CACHE_KEY = "_stream_cache_key"
 
@@ -73,7 +74,10 @@ class End(ComponentExecutable, WorkflowComponent):
                     yield dict(output={key: value})
 
         except Exception as e:
-            logger.info("stream output error: {}".format(e))
+            if UserConfig.is_sensitive():
+                logger.warn("stream output error: {}".format(e))
+            else:
+                logger.warn("stream output error")
 
     async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
         Output]:

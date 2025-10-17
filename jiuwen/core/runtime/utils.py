@@ -189,19 +189,105 @@ def root_to_path(nested_path: str, source: dict, create_if_absent: bool = False)
     return (None, None)
 
 
-def root_to_index(idxes: list[int], source: dict, create_if_absent: bool = False) -> Optional[tuple[int, dict]]:
+def _safe_extend_container(container: list, target_index: int, is_final_index: bool = False) -> bool:
+    if not isinstance(container, list):
+        return False
+
+    if target_index < 0 or target_index > 10000:
+        return False
+
+    current_length = len(container)
+    if target_index < current_length:
+        return True  # No extension needed
+
+    expansion_needed = target_index - current_length + 1
+    if expansion_needed > 10000:
+        return False
+
+    try:
+        # Fill intermediate positions with None
+        if target_index > current_length:
+            container += [None] * (target_index - current_length)
+
+        # Append the appropriate value at target position
+        if is_final_index:
+            container.append({})  # Final position gets empty dict
+        else:
+            container.append([])  # Intermediate position gets empty list
+
+        return True
+    except (MemoryError, TypeError):
+        return False
+
+
+def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], create_if_absent: bool = False):
+    """
+    Navigates through a nested list/tuple structure using a path of indexes.
+
+    This function traverses a hierarchical data structure following the given index path.
+    If create_if_absent is True, it will automatically create missing list elements
+    (with None placeholders) to reach the target location. Tuples are immutable and
+    cannot be modified.
+    """
+    if source is None or not indexes:
+        return None, None
+    if len(indexes) > 10:
+        raise ValueError('Nesting level too deep, level limit is 10')
+
     current = source
-    if len(idxes) > 1:
-        for idx in idxes[:-1]:
-            if idx >= len(current):
-                if not create_if_absent:
-                    return None
-                current += [None] * (idx - len(source) - idx)
-                current.append([])
-        current = current[idx]
-    if idxes[-1] >= len(source):
-        if not create_if_absent:
-            return None
-        current += [None] * (idxes[-1] - len(source))
-        current.append({})
-    return idxes[-1], current
+
+    # Process intermediate indexes
+    if len(indexes) > 1:
+        for idx in indexes[:-1]:
+            # Handle negative indexes first
+            if idx < 0:
+                adjusted_idx = idx + len(current)
+                if adjusted_idx < 0:  # Negative index remains out of bounds after adjustment
+                    return None, None
+            else:
+                adjusted_idx = idx
+                if adjusted_idx > 10000:
+                    raise ValueError('Index must be between [0,10000]')
+
+            # Check bounds (using adjusted index)
+            if adjusted_idx >= len(current):
+                if not create_if_absent or isinstance(current, tuple):
+                    return None, None
+                # Use safe extension method for intermediate index (append [])
+                if not _safe_extend_container(current, adjusted_idx, is_final_index=False):
+                    return None, None
+
+            # Safe access
+            try:
+                current = current[adjusted_idx]
+            except IndexError:
+                return None, None
+
+            if not isinstance(current, (list, tuple)):
+                return None, None
+
+    # Process final index
+    if not isinstance(current, (list, tuple)):
+        return None, None
+
+    # Handle negative index for final index
+    final_idx = indexes[-1]
+    if final_idx < 0:
+        adjusted_final_idx = final_idx + len(current)
+        if adjusted_final_idx < 0:
+            return None, None
+    else:
+        adjusted_final_idx = final_idx
+        if adjusted_final_idx > 10000:
+            raise ValueError('Index must be between [0,10000]')
+
+    # Check final index bounds
+    if adjusted_final_idx >= len(current):
+        if not create_if_absent or isinstance(current, tuple):
+            return None, None
+        # Use safe extension method for final index (append {})
+        if not _safe_extend_container(current, adjusted_final_idx, is_final_index=True):
+            return None, None
+
+    # Return adjusted index (handles negative index conversion)
+    return adjusted_final_idx, current

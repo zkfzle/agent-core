@@ -8,6 +8,8 @@ from jiuwen.agent.config.react_config import ReActAgentConfig
 from jiuwen.core.agent.agent import Agent
 from jiuwen.core.agent.controller.react_controller import ReActController
 from jiuwen.core.agent.handler.base import AgentHandlerImpl
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.runtime.config import Config
@@ -120,5 +122,11 @@ class ReActAgent(Agent):
 
         try:
             await task
-        except Exception:
-            raise
+        except Exception as e:
+            logger.error(f"ReActAgent stream error.")
+            if UserConfig.is_sensitive():
+                raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                          "ReActAgent stream error.")
+            else:
+                raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                          "ReActAgent stream error.") from e

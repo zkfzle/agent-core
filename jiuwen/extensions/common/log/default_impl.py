@@ -8,12 +8,12 @@ import os
 import sys
 import inspect
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from logging.handlers import RotatingFileHandler
 
 from jiuwen.core.common.logging.protocol import LoggerProtocol
 from jiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
-from jiuwen.extensions.common.utils.safe_check import is_sensitive_path
+from jiuwen.core.utils.config.path_checker import is_sensitive_path
 
 
 class SafeRotatingFileHandler(RotatingFileHandler):

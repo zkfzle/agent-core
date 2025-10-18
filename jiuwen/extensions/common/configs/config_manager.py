@@ -7,11 +7,11 @@
 
 import os
 import yaml
-from typing import Dict, Any, Union
+from typing import Any
 from jiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
 import copy
 
-from jiuwen.extensions.common.utils.safe_check import is_sensitive_path
+from jiuwen.core.utils.config.path_checker import is_sensitive_path
 
 CRITICAL = 50
 FATAL = CRITICAL

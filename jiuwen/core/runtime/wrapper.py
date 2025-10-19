@@ -175,6 +175,93 @@ class StateRuntime(WrappedRuntime, ABC):
         if writer:
             await writer.write(data)
 
+class RouterRuntime(StateRuntime):
+    async def interact(self, value):
+        pass
+
+    async def trace(self, data: dict):
+        await trace(self._inner, data)
+
+    def stream_writer(self) -> Optional[StreamWriter]:
+        pass
+
+    def custom_writer(self) -> Optional[StreamWriter]:
+        pass
+
+    def write_stream(self, data: Union[dict, OutputSchema]):
+        pass
+
+    def write_custom_stream(self, data: dict):
+        pass
+
+    async def trace_error(self, error: Exception):
+        await trace_error(self._inner, error)
+
+    def update_global_state(self, data: dict):
+        pass
+
+    def update_state(self, data: dict):
+        pass
+
+    def add_prompt(self, template_id: str, template: Template):
+        pass
+
+    def add_prompts(self, templates: List[Tuple[str, Template]]):
+        pass
+
+    def remove_prompt(self, template_id: str):
+        pass
+
+    def get_prompt(self, template_id: str) -> Template:
+        pass
+
+    def add_model(self, model_id: str, model: BaseChatModel):
+        pass
+
+    def add_models(self, models: List[Tuple[str, BaseChatModel]]):
+        pass
+
+    def remove_model(self, model_id: str):
+        pass
+
+    def get_model(self, model_id: str) -> BaseChatModel:
+        pass
+
+    def add_workflow(self, workflow_id: str, workflow: Workflow):
+        pass
+
+    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+        pass
+
+    def remove_workflow(self, workflow_id: str):
+        pass
+
+    def get_workflow(self, workflow_id: str) -> Workflow:
+        pass
+
+    def add_tool(self, tool_id: str, tool: Tool):
+        pass
+
+    def add_tools(self, tools: List[Tuple[str, Tool]]):
+        pass
+
+    def remove_tool(self, tool_id: str):
+        pass
+
+    def get_tool(self, tool_id: str) -> Tool:
+        pass
+
+    def get_tool_info(self, tool_id: List[str]=None, workflow_id: List[str]=None) -> List[ToolInfo]:
+        pass
+
+    def get_workflow_config(self, workflow_id):
+        pass
+
+    def get_agent_config(self):
+        pass
+
+    def base(self) -> BaseRuntime:
+        pass
 
 class WrappedNodeRuntime(StateRuntime):
     def __init__(self, runtime: NodeRuntime):

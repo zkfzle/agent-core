@@ -19,7 +19,7 @@ from jiuwen.core.component.set_variable_comp import SetVariableComponent
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.graph.executable import Input
-from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.state import ReadableStateLike
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.base import BaseStreamMode, CustomSchema
@@ -178,11 +178,11 @@ class WorkflowTest(unittest.TestCase):
                                            "c": 1,
                                            "d": [1, 2, 3]})
 
-        def router(runtime: BaseRuntime):
-            val = runtime.state().get_global("start.a")
+        def router(runtime: Runtime):
+            val = runtime.get_global_state("start.a")
             if val is not None:
                 return "a"
-            val = runtime.state().get_global("start.b")
+            val = runtime.get_global_state("start.b")
             if val is not None:
                 return "b"
             return "a"

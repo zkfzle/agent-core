@@ -2,6 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
+import inspect
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from enum import Enum
@@ -27,12 +28,12 @@ from jiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from jiuwen.core.runtime.state import Transformer
 from jiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 from jiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
+from jiuwen.core.runtime.wrapper import StateRuntime, RouterRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
 from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
-from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
@@ -153,7 +154,11 @@ class BaseWorkFlow:
             self._graph.add_conditional_edges(source_node_id=src_comp_id, router=router)
         else:
             def new_router(state):
-                return router(self._runtime)
+                sig = inspect.signature(router)
+                if 'runtime' in sig.parameters:
+                    return router(runtime=RouterRuntime(self._runtime))
+                else:
+                    return router()
 
             self._graph.add_conditional_edges(source_node_id=src_comp_id, router=new_router)
 
@@ -307,17 +312,11 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if isinstance(self._end_comp, End):
             output_key = self._end_comp_id + NESTED_PATH_SPLIT + "output"
         results = node_runtime.state().get_outputs(output_key)
-        if UserConfig.is_sensitive():
-            logger.info("end to sub_invoke")
-        else:
-            logger.info("end to sub_invoke, results = %s", results)
+        logger.info("end to sub_invoke, results=%s", results)
         return results
 
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> Output:
-        if UserConfig.is_sensitive():
-            logger.info("begin to invoke workflow")
-        else:
-            logger.info("begin to invoke workflow, input = %s", inputs)
+        logger.info("begin to invoke, input=%s", inputs)
         chunks = []
         async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
             chunks.append(chunk)
@@ -333,10 +332,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         else:
             output = WorkflowOutput(result=runtime.state().get_outputs(self._end_comp_id),
                                     state=WorkflowExecutionState.COMPLETED)
-        if UserConfig.is_sensitive():
-            logger.info("end to invoke workflow")
-        else:
-            logger.info("end to invoke workflow, results = %s", output)
+        logger.info("end to invoke, results=%s", output)
         return output
 
     async def stream(

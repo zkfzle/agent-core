@@ -187,6 +187,7 @@ class StatusCode(Enum):
     STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001,
                                          "failed to write stream, stream schema validate failed, details: {detail}")
     STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
+    STREAM_FRAME_TIMEOUT_FAILED = (193003, "stream frame is timeout ({timeout}s), no stream output")
     # Runtime - Config 194000 - 194999
     # Runtime - callback 195000 - 195999
 

@@ -68,13 +68,13 @@ class MessageQueueManager:
             return True
         return False
 
-    async def consume(self, consumer_id: str, ability: ComponentAbility) -> AsyncIterator[dict[str, Any]]:
+    async def consume(self, consumer_id: str, ability: ComponentAbility, frame_timeout: float = 0.2) -> AsyncIterator[dict[str, Any]]:
         stream_queues = self._get_queue(consumer_id)
         queue = stream_queues[ability]
         if queue is not None:
             ended_producers = set()
             while True:
-                message = await queue.receive()
+                message = await queue.receive(timeout=frame_timeout)
                 if message is None:
                     continue
                 if self._is_end_message(message, ended_producers):

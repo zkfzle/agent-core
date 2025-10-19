@@ -37,7 +37,7 @@ class StreamWriterManager:
                 if data == StreamEmitter.END_FRAME:
                     logger.info("Received END_FRAME, stopping stream output.")
                     if need_close:
-                        await self._stream_emitter.stream_queue.close()
+                        await self._stream_emitter.stream_queue.close(timeout=timeout)
                     break
                 else:
                     if UserConfig.is_sensitive():

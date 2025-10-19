@@ -7,8 +7,10 @@ from typing import Any, Optional, AsyncIterator
 from jiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
 from jiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.end_comp import End
+from jiuwen.core.graph.TimeoutAsyncInteratorWrapper import TimeoutAsyncIteratorWrapper
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
@@ -24,12 +26,17 @@ class Vertex(AsyncAtomicNode):
         self._node_id = node_id
         self._executable = executable
         self._runtime: NodeRuntime = None
+        self._stream_called_timeout = 10
+        self._stream_frame_timeout = 10
         # if stream_call is available, call should wait for it
-        self._stream_done = asyncio.Event()
+        self._stream_done = asyncio.Future()
         self._stream_called = False
 
     def init(self, runtime: BaseRuntime) -> bool:
         self._runtime = NodeRuntime(runtime, self._node_id)
+        self._stream_frame_timeout = self._runtime.config().get_workflow_config(
+            self._runtime.workflow_id()).stream_timeout
+        self._stream_called_timeout = self._stream_frame_timeout
         self._node_config = self._runtime.node_config()
         return True
 
@@ -96,7 +103,7 @@ class Vertex(AsyncAtomicNode):
         queue_manager = self._runtime.queue_manager()
         inputs_transformer = self._node_config.stream_io_configs.inputs_transformer if self._node_config else None
         inputs_schema = self._node_config.stream_io_configs.inputs_schema if self._node_config else None
-        async for message in queue_manager.consume(self._node_id, ability):
+        async for message in queue_manager.consume(self._node_id, ability, frame_timeout=self._stream_frame_timeout):
             # message 是{id: content}
             if inputs_transformer is None:
                 inputs = queue_manager.stream_transform.get_by_default_transformer(message, inputs_schema) \
@@ -110,7 +117,9 @@ class Vertex(AsyncAtomicNode):
         output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
         output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config else None
         end_stream_index = 0
-        async for chunk in results_iter:
+        timeout_results_iter = TimeoutAsyncIteratorWrapper(results_iter, timeout=self._stream_called_timeout,
+                                                           raise_on_timeout=True)
+        async for chunk in timeout_results_iter:
             if output_transformer is None:
                 message = queue_manager.stream_transform.get_by_default_transformer(chunk, output_schema) \
                     if output_schema else chunk
@@ -167,16 +176,23 @@ class Vertex(AsyncAtomicNode):
 
         # wait only when stream_call called
         if self._stream_called:
-            await self._stream_done.wait()
+            try:
+                result = await asyncio.wait_for(self._stream_done, timeout=self._stream_called_timeout)
+                if isinstance(result, Exception):
+                    raise result
+            except asyncio.TimeoutError:
+                raise JiuWenBaseException(StatusCode.STREAM_FRAME_TIMEOUT_FAILED.code,
+                                          StatusCode.STREAM_FRAME_TIMEOUT_FAILED.errmsg.format(
+                                              timeout=self._stream_called_timeout))
         logger.debug("node [%s] call finished", self._node_id)
 
     async def stream_call(self):
         self._stream_called = True
-        self._stream_done.clear()
+        self._stream_done = asyncio.Future()
 
         if self._runtime is None or self._runtime.queue_manager() is None:
             raise JiuWenBaseException(1, "queue manager is not initialized")
-
+        error = None
         try:
             component_ability = self._node_config.abilites if self._node_config else None
             call_ability = [ability for ability in component_ability if
@@ -184,9 +200,9 @@ class Vertex(AsyncAtomicNode):
             for ability in call_ability:
                 await self._run_executable(ability)
         except JiuWenBaseException as e:
-            raise JiuWenBaseException(e.error_code, "failed to stream, caused by " + e.message)
+            error = JiuWenBaseException(e.error_code, "failed to stream, caused by " + e.message)
         finally:
-            self._stream_done.set()
+            self._stream_done.set_result(error if error else True)
             logger.info("end to stream call, node %s", self._node_id)
 
     async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:

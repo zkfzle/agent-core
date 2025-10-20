@@ -24,6 +24,7 @@ LOOP_ID = "__sys_loop_id"
 INDEX = "index"
 
 # safe limit constants
-MAX_COLLECTION_SIZE = 100000  # maximum collection size limit
-MAX_EXPRESSION_LENGTH = 5000  # maximum length of expression string
-MAX_AST_DEPTH = 50  # maximum depth of AST tree
+MAX_COLLECTION_SIZE = 100000  # maximum allowed collection size
+MAX_EXPRESSION_LENGTH = 5000  # maximum allowed expression length
+MAX_AST_DEPTH = 50  # maximum allowed AST depth
+NESTED_LOOP_DEPTH = 1  # maximum allowed nested loop depth (1 means no nesting)

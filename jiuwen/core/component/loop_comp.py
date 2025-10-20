@@ -61,6 +61,9 @@ class LoopGroup(BaseWorkFlow, Executable):
             outputs_transformer=None,
             **kwargs
     ) -> Self:
+        # Check for nested loop components
+        if isinstance(workflow_comp, LoopComponent):
+            raise JiuWenBaseException(-1, "Nested loops are not supported. Cannot add LoopComponent to a LoopGroup")
         if isinstance(workflow_comp, BreakComponent):
             self._break_components.append(workflow_comp)
         super().add_workflow_comp(comp_id, workflow_comp, wait_for_all=wait_for_all, inputs_schema=inputs_schema,

@@ -445,7 +445,7 @@ class WorkflowTest(unittest.TestCase):
                                        {"results": "${1.result}", "user_var": "${l.user_var}"})
 
         flow.add_workflow_comp("l", loop_component, inputs_schema={"loop_type": "expression",
-                                                                   "bool_expression": "(${l.index} != ${loop_number} - 1)",
+                                                                   "bool_expression": "(${l.index} != ${loop_number})",
                                                                    "intermediate_var": {"user_var": "${input_number}"}})
 
         # s->a->(1->2->3)->b->e

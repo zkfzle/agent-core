@@ -153,8 +153,7 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
 
     def _atomic_invoke(self, **kwargs) -> Any:
         outputs = self._condition_invoke(runtime=self._node_runtime)
-        self._node_runtime.state().set_outputs(outputs[1])
-        return outputs[0]
+        return outputs
 
     def _condition_invoke(self, runtime: BaseRuntime) -> Output:
         index = runtime.state().get(INDEX)
@@ -162,6 +161,9 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
             runtime.state().update({BROKEN: False, INDEX: -1})
             runtime.state().commit()
             index = -1
+
+        runtime.state().set_outputs({INDEX: index + 1})
+        runtime.state().commit()
 
         continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
         for callback in self._callbacks:
@@ -180,7 +182,7 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
         else:
             runtime.state().update({INDEX: index})
 
-        return self._in_loop if continue_loop else self._out_loop, {INDEX: index}
+        return self._in_loop if continue_loop else self._out_loop
 
     def is_broken(self) -> bool:
         _is_broken = self._node_runtime.state().get(BROKEN)

@@ -14,6 +14,7 @@ class StatusCode(Enum):
     # Workflow Component - Component Development:  100000 - 100999
     # Workflow Component - Component Development: Interactive And Recovery 100000 - 100029
     INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")
+    INTERACTIVE_UPDATE_FAILED = (100001, "raw_inputs existed, update is invalid")
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 

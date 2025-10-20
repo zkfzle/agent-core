@@ -13,7 +13,6 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 
 _sentinel = object()
 
-# class InteractiveInput(BaseModel):
 class InteractiveInput(BaseModel):
     # key is id of interaction, value is input for the id
     user_inputs: Dict[str, Any] = Field(default_factory=dict)
@@ -32,6 +31,9 @@ class InteractiveInput(BaseModel):
         self.raw_inputs = raw_inputs
 
     def update(self, node_id: str, value: Any):
+        if self.raw_inputs is not None:
+            raise JiuWenBaseException(StatusCode.INTERACTIVE_UPDATE_FAILED.code,
+                                      StatusCode.INTERACTIVE_UPDATE_FAILED.errmsg)
         if node_id is None or value is None:
             raise JiuWenBaseException(StatusCode.INTERACTIVE_INVALID_INPUT_ERROR.code,
                             StatusCode.INTERACTIVE_INVALID_INPUT_ERROR.errmsg)

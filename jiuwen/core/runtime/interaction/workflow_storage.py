@@ -43,16 +43,16 @@ class WorkflowStorage(Storage):
 
         if inputs.raw_inputs is not None:
             runtime.state().update_and_commit_workflow_state({INTERACTIVE_INPUT: inputs.raw_inputs})
-
-        for node_id, value in inputs.user_inputs.items():
-            node_runtime = NodeRuntime(runtime, node_id)
-            interactive_input = node_runtime.state().get(INTERACTIVE_INPUT)
-            if isinstance(interactive_input, list):
-                interactive_input.append(value)
-                node_runtime.state().update({INTERACTIVE_INPUT: interactive_input})
-            else:
-                node_runtime.state().update({INTERACTIVE_INPUT: [value]})
-        runtime.state().commit()
+        else:
+            for node_id, value in inputs.user_inputs.items():
+                node_runtime = NodeRuntime(runtime, node_id)
+                interactive_input = node_runtime.state().get(INTERACTIVE_INPUT)
+                if isinstance(interactive_input, list):
+                    interactive_input.append(value)
+                    node_runtime.state().update({INTERACTIVE_INPUT: interactive_input})
+                else:
+                    node_runtime.state().update({INTERACTIVE_INPUT: [value]})
+            runtime.state().commit()
 
         if state_updates_blob := self.state_updates_blobs.get(session_id):
             state_updates = self.serde.loads_typed(state_updates_blob)

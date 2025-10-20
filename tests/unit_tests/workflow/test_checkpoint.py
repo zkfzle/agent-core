@@ -7,6 +7,8 @@ from unittest.mock import Mock
 import pytest
 
 from jiuwen.core.common.constants.constant import INTERACTION
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.condition.array import ArrayCondition
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
@@ -592,3 +594,52 @@ async def test_simple_interactive_workflow_raw_input():
     assert res == WorkflowOutput(
         result={'result': 'any key'},
         state=WorkflowExecutionState.COMPLETED)
+
+async def test_simple_interactive_workflow_both_raw_input_update():
+        """
+        graph : start->a->end
+        """
+        start_node = MockStartNode4Cp("start")
+        flow = Workflow()
+        flow.set_start_comp("start", start_node,
+                            inputs_schema={
+                                "a": "${inputs.a}",
+                                "b": "${inputs.b}",
+                                "c": 1,
+                                "d": [1, 2, 3]})
+        flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
+                               inputs_schema={
+                                   "aa": "${start.a}",
+                                   "ac": "${start.c}"})
+        flow.set_end_comp("end", MockEndNode("end"),
+                          inputs_schema={
+                              "result": "${a.aa}"})
+        flow.add_connection("start", "a")
+        flow.add_connection("a", "end")
+
+        session_id = uuid.uuid4().hex
+
+        res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                                 'payload': InteractionOutput.model_validate(
+                                                     {'id': 'a', 'value': 'Please enter any key'})})],
+            state=WorkflowExecutionState.INPUT_REQUIRED)
+
+        user_input = InteractiveInput({"aa": "any key"})
+        with pytest.raises(JiuWenBaseException) as exc_info:
+            user_input.update("a", {"aa": "abc"})
+        assert exc_info.value.error_code == StatusCode.INTERACTIVE_UPDATE_FAILED.code
+        assert exc_info.value.message == StatusCode.INTERACTIVE_UPDATE_FAILED.errmsg
+
+        res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result=[OutputSchema.model_validate(
+                {'index': 1, 'payload': InteractionOutput.model_validate({'id': 'a', 'value': 'Please enter any key'}),
+                 'type': '__interaction__'})],
+            state=WorkflowExecutionState.INPUT_REQUIRED)
+        assert start_node.runtime == 1
+        res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result={'result': 'any key'},
+            state=WorkflowExecutionState.COMPLETED)

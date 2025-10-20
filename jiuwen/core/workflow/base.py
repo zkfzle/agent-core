@@ -34,6 +34,7 @@ from jiuwen.core.stream.emitter import StreamEmitter
 from jiuwen.core.stream.manager import StreamWriterManager
 from jiuwen.core.stream_actor.base import StreamActor
 from jiuwen.core.tracer.tracer import Tracer
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
@@ -412,8 +413,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
         try:
             await task
-        except Exception:
-            raise
+        except Exception as e:
+            raise e
 
     def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
         if isinstance(runtime, WorkflowRuntime):

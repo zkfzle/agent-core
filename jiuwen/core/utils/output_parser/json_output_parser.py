@@ -82,8 +82,14 @@ class JsonOutputParser(BaseOutputParser):
                     parsed_data = json.loads(json_str)
                     yield parsed_data
                     buffer = buffer[match.end():].strip()
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    if UserConfig.is_sensitive():
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing")
+                    else:
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
+
                 except Exception as e:
                     if UserConfig.is_sensitive():
                         logger.error(
@@ -97,8 +103,14 @@ class JsonOutputParser(BaseOutputParser):
                     parsed_data = json.loads(buffer.strip())
                     yield parsed_data
                     buffer = ""
-                except json.JSONDecodeError:
-                    pass
+                except json.JSONDecodeError as e:
+                    if UserConfig.is_sensitive():
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing")
+                    else:
+                        logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
+
                 except Exception as e:
                     if UserConfig.is_sensitive():
                         logger.error(

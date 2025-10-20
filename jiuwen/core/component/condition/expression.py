@@ -115,9 +115,9 @@ class ExpressionCondition(Condition):
                                           expression="<expression>",
                                           error_msg=str(e)
                                       ))
-        except JiuWenBaseException:
+        except JiuWenBaseException as e:
             # Re-raise existing JiuWenBaseException
-            raise
+            raise e
         except Exception as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(

@@ -11,6 +11,7 @@ class StatusCode(Enum):
     ERROR = (-1, "error")
 
     # Workflow Component  100000 - 109999
+
     # Workflow Component - Component Development:  100000 - 100999
     # Workflow Component - Component Development: Interactive And Recovery 100000 - 100029
     INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")

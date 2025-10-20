@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.logging import logger
 from jiuwen.core.utils.config.user_config import UserConfig
 
 
@@ -211,7 +210,7 @@ class OutputFormatter:
                 ValidationUtils.raise_invalid_params_error("json schema validation failed.")
             else:
                 ValidationUtils.raise_invalid_params_error(f"json schema validation failed: {original_content}")
-            raise e
+
     @staticmethod
     def _extract_configured_fields(parsed_json: dict, outputs_config: dict) -> dict:
         output = {}

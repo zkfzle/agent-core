@@ -11,8 +11,8 @@ def _ensure_initialized():
         try:
             from jiuwen.extensions.common.log.default_impl import DefaultLogger
             LogManager.set_default_logger_class(DefaultLogger)
-        except ImportError as e:
-            raise ImportError("DefaultLogger not found") from e
+        except ImportError:
+            pass
         LogManager.initialize()
         _initialized = True
 

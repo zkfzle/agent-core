@@ -63,8 +63,7 @@ class ExpressionCondition(Condition):
             safe_var_name = f'var_{i}'
             var_mapping[full_match] = safe_var_name
         
-        # Replace variable references in the expression
-        for full_match, safe_var_name in var_mapping.items():
+        for full_match, safe_var_name in sorted(var_mapping.items(), key=lambda x: len(x[0]), reverse=True):
             processed_expression = processed_expression.replace(full_match, safe_var_name)
 
         runtime = {

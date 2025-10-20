@@ -70,30 +70,30 @@ def get_value_by_nested_path(nested_key: str, source: dict) -> Optional[Any]:
 
 def split_nested_path(nested_key: str) -> list:
     '''
-    split nested path
+    Split nested path
     :param nested_key: path
     :return: e.g. a_1.b.c[1].d -> ["a_1", "b", "c", 1, "d"]
+             a.b[0]['key'] -> ["a", "b", 0, "key"]
     '''
 
-    if (NESTED_PATH_SPLIT not in nested_key) and (NESTED_PATH_LIST_SPLIT not in nested_key):
+    if (NESTED_PATH_SPLIT not in nested_key) and (NESTED_PATH_LIST_SPLIT not in nested_key) and ("['" not in nested_key):
         return []
     final_list = []
     params = nested_key.split(NESTED_PATH_SPLIT)
-    pattern = re.compile(r'^([\w]+)((?:\[\d+\])*)$')
     for param in params:
-        match = re.match(pattern, param)
-        if match:
-            index = match.group(2)
-            if len(index) > 0:
-                numbers = re.findall(r'\d+', index)
-                idxes = [int(num) if str.isdigit(num) else num for num in numbers]
-                if len(idxes) == 0:
-                    raise JiuWenBaseException(1, "failed to split nested path")
-                final_list.append((match.group(1), idxes))
-            else:
-                final_list.append(match.group(1))
+        if '[' in param:
+            base_part = param.split('[')[0]
+            if base_part:
+                final_list.append(base_part)
+
+            indexes = re.findall(r'\[(\d+)\]|\[\'([^\']+)\'\]', param)
+            for idx_tuple in indexes:
+                if idx_tuple[0]:
+                    final_list.append(int(idx_tuple[0]))
+                elif idx_tuple[1]:
+                    final_list.append(idx_tuple[1])
         else:
-            raise JiuWenBaseException(1, f"failed to process nested path {param} in {nested_key}")
+            final_list.append(param)
     return final_list
 
 
@@ -159,33 +159,43 @@ def root_to_path(nested_path: str, source: dict, create_if_absent: bool = False)
         return (nested_path, source)
     current = source
     for i in range(len(paths)):
-        if not isinstance(current, dict):
-            return (None, None)
         path = paths[i]
+        is_last = (i == len(paths) - 1)
         if isinstance(path, str):
-            if path not in current:
-                if not create_if_absent:
+            if isinstance(current, dict):
+                if path not in current:
+                    if not create_if_absent:
+                        return (None, None)
+                    if not is_last and i + 1 < len(paths) and isinstance(paths[i + 1], int):
+                        current[path] = []
+                    else:
+                        current[path] = {}
+
+                if is_last:
+                    return (path, current)
+
+                if not create_if_absent and current[path] is None:
                     return (None, None)
-                current[path] = {}
-            if i == len(paths) - 1:
-                return (path, current)
-            elif not isinstance(current[path], dict) and create_if_absent:
-                current[path] = {}
-            current = current[path]
-        else:
-            token = path[0]
-            if token not in current:
-                if not create_if_absent:
-                    return (None, None)
-                current[token] = []
-            current = current[token]
-            if i == len(paths) - 1:
-                return root_to_index(path[1], current, create_if_absent)
+                
+                current = current[path]
             else:
-                idx, current = root_to_index(path[1], current, create_if_absent)
-                if current is None:
+                return (None, None)
+
+        elif isinstance(path, int):
+            if isinstance(current, list):
+                if path >= len(current):
+                    if not create_if_absent:
+                        return (None, None)
+                    while len(current) <= path:
+                        current.append(None)
+
+                if is_last:
+                    return (path, current)
+                if not create_if_absent and current[path] is None:
                     return (None, None)
-                current = current[idx]
+                current = current[path]
+            else:
+                return (None, None)
     return (None, None)
 
 

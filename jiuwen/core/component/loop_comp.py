@@ -260,7 +260,7 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
         self._loop_group = loop_group
         self._output_schema = output_schema
         if loop_group.is_empty:
-            raise JiuWenBaseException(StatusCode.ERROR, "empty loop group has no components to execute")
+            raise JiuWenBaseException(-1, "empty loop group has no components to execute")
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         try:

@@ -8,7 +8,7 @@ from typing import Self, Union, Callable, Any, Optional, Dict
 
 from langgraph.constants import END, START
 
-from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID
+from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID, NESTED_LOOP_DEPTH
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
@@ -89,7 +89,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         return None
 
     def add_stream_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
-        logger.warning("loop component not support stream connection")
+        logger.warning("Loop component does not support stream connection")
 
     def skip_trace(self) -> bool:
         return True
@@ -100,6 +100,16 @@ class LoopGroup(BaseWorkFlow, Executable):
     @property
     def break_components(self):
         return self._break_components
+    
+    @property
+    def is_empty(self):
+        """Check if loop group has no components"""
+        try:
+            nodes = self._graph.get_nodes()
+            return len(nodes) == 0
+        except Exception:
+            # If we can't get nodes, assume empty
+            return True
 
 
 BROKEN = "_broken"
@@ -155,8 +165,13 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
         return self.atomic_invoke(runtime=self._node_runtime)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        outputs = self._condition_invoke(runtime=self._node_runtime)
-        return outputs
+        try:
+            outputs = self._condition_invoke(runtime=self._node_runtime)
+            return outputs
+        except Exception as e:
+            if isinstance(e, JiuWenBaseException):
+                raise
+            raise JiuWenBaseException(-1, f"Loop execution error: {str(e)}") from e
 
     def _condition_invoke(self, runtime: BaseRuntime) -> Output:
         index = runtime.state().get(INDEX)
@@ -244,30 +259,49 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
         super().__init__()
         self._loop_group = loop_group
         self._output_schema = output_schema
+        if loop_group.is_empty:
+            raise JiuWenBaseException(StatusCode.ERROR, "empty loop group has no components to execute")
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        loop_input = LoopInput.model_validate(inputs.get(INPUTS_KEY))
-        condition: Condition
-        if loop_input.loop_type == LoopType.Array.value:
-            condition = ArrayConditionInRuntime(loop_input.loop_array)
-        elif loop_input.loop_type == LoopType.Number.value:
-            condition = NumberConditionInRuntime(loop_input.loop_number)
-        elif loop_input.loop_type == LoopType.AlwaysTrue.value:
-            condition = AlwaysTrue()
-        elif loop_input.loop_type == LoopType.Expression.value:
-            if isinstance(loop_input.bool_expression, bool):
-                condition = FuncCondition(lambda: loop_input.bool_expression)
+        try:
+            if not isinstance(inputs, dict):
+                raise JiuWenBaseException(-1, f"Inputs must be a dictionary, got {type(inputs).__name__}")
+                
+            if INPUTS_KEY not in inputs:
+                raise JiuWenBaseException(-1, f"Invalid inputs: missing required key {INPUTS_KEY}")
+                
+            loop_input = LoopInput.model_validate(inputs.get(INPUTS_KEY))
+            condition: Condition
+            if loop_input.loop_type == LoopType.Array.value:
+                condition = ArrayConditionInRuntime(loop_input.loop_array)
+            elif loop_input.loop_type == LoopType.Number.value:
+                condition = NumberConditionInRuntime(loop_input.loop_number)
+            elif loop_input.loop_type == LoopType.AlwaysTrue.value:
+                condition = AlwaysTrue()
+            elif loop_input.loop_type == LoopType.Expression.value:
+                if isinstance(loop_input.bool_expression, bool):
+                    condition = FuncCondition(lambda: loop_input.bool_expression)
+                else:
+                    condition = ExpressionCondition(loop_input.bool_expression)
             else:
-                condition = ExpressionCondition(loop_input.bool_expression)
-        else:
-            raise JiuWenBaseException(-1, "error loop type config of LoopComponent")
-        output_callback = OutputCallback(self._output_schema)
-        callbacks: list = [output_callback]
-        if loop_input.intermediate_var:
-            callbacks.append(IntermediateLoopVarCallback(loop_input.intermediate_var))
-        loop_component = AdvancedLoopComponent(self._loop_group, condition, self._loop_group.break_components,
-                                               callbacks)
-        return await loop_component.on_invoke({INPUTS_KEY: {}, CONFIG_KEY: inputs.get(CONFIG_KEY)}, runtime.base())
+                raise JiuWenBaseException(-1, f"Invalid loop type '{loop_input.loop_type}' for LoopComponent")
+            
+            if self._loop_group.is_empty:
+                raise JiuWenBaseException(-1, "Loop group is empty, no components to execute")
+            
+            output_callback = OutputCallback(self._output_schema)
+            callbacks: list = [output_callback]
+            if loop_input.intermediate_var:
+                callbacks.append(IntermediateLoopVarCallback(loop_input.intermediate_var))
+                
+            loop_component = AdvancedLoopComponent(self._loop_group, condition, self._loop_group.break_components,
+                                                   callbacks)
+            return await loop_component.on_invoke({INPUTS_KEY: {}, CONFIG_KEY: inputs.get(CONFIG_KEY)},
+                                                  runtime.base())
+        except JiuWenBaseException:
+            raise
+        except Exception as e:
+            raise JiuWenBaseException(-1, f"LoopComponent error: {str(e)}") from e
 
     def graph_invoker(self) -> bool:
         return True

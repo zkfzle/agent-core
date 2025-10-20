@@ -7,6 +7,7 @@ from jiuwen.core.component.condition.condition import Condition
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.common.constants.constant import INDEX
+from jiuwen.core.common.exception.exception import JiuWenBaseException
 
 
 class NumberCondition(Condition):
@@ -28,4 +29,7 @@ class NumberConditionInRuntime(Condition):
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         current_idx = runtime.state().get(INDEX) + 1
         limit_num = self._limit
+        if limit_num is None:
+            raise JiuWenBaseException(-1, "loop_number variable not found or is None")
+            
         return current_idx < limit_num

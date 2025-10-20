@@ -381,7 +381,8 @@ class QuestionerDirectReplyHandler:
             response = self._model.invoke(
                 model_name=self._config.model.model_info.model_name, messages=llm_inputs).content
         except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_INVOKE_LLM_ERROR, error_msg=str(e))
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_INVOKE_LLM_ERROR,
+                                           "Failed to invoke llm for extraction", e)
 
         result = dict()
         try:

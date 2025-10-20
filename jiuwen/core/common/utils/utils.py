@@ -13,11 +13,17 @@ from jiuwen.core.utils.config.user_config import UserConfig
 class ExceptionUtils:
     @staticmethod
     def raise_exception(error_code: StatusCode, error_msg: str = "", exception: Exception = None):
-        raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
+        if exception is not None:
+            raise JiuWenBaseException(error_code=error_code.code,
+                                      message=error_code.errmsg.format(error_msg=error_msg)) from exception
+        else:
+            raise JiuWenBaseException(error_code=error_code.code, message=error_code.errmsg.format(error_msg=error_msg))
 
     @staticmethod
     def format_validation_error(e: ValidationError) -> str:
-        return "\n".join([f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors()])
+        return "\n".join([f"{'.'.join(map(str, err.get('loc', [])))}: {err.get('msg', '未知错误')}"
+                          for err in e.errors()
+                          ])
 
 
 class WorkflowLLMUtils:

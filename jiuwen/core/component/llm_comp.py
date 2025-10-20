@@ -200,7 +200,7 @@ class LLMExecutable(ComponentExecutable):
             response_type = ResponseFormatConfig.model_validate(response_format).response_type
         except ValidationError as e:
             ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
-                            f"response format {response_format} is invalid", e)
+                                  f"response format {response_format} is invalid", e)
 
         if response_type in ["text", "markdown"] and len(output_config) != 1:
             ExceptionUtils.raise_exception(
@@ -221,7 +221,8 @@ class LLMExecutable(ComponentExecutable):
                 model_name=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
         except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR,
+                                           "Failed to invoke", e)
         if UserConfig.is_sensitive():
             logger.info("[%s] model outputs", self._runtime.executable_id())
         else:
@@ -241,7 +242,8 @@ class LLMExecutable(ComponentExecutable):
                     yield out
         except Exception as e:
             if UserConfig.is_sensitive():
-                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, "", e)
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR,
+                                               "Failed to stream", e)
             else:
                 ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
@@ -257,7 +259,8 @@ class LLMExecutable(ComponentExecutable):
                 self._llm = self._create_llm_instance()
                 self._initialized = True
             except Exception as e:
-                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INIT_LLM_ERROR, str(e), e)
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INIT_LLM_ERROR,
+                                               "Failed to initialize llm if needed", e)
 
     def _create_llm_instance(self):
         return ModelFactory().get_model(model_provider=self._config.model.model_provider,
@@ -312,7 +315,8 @@ class LLMExecutable(ComponentExecutable):
             return response_format
 
         except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR, str(e))
+            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR,
+                                           "Failed to get response format", e)
 
     def _get_instruction_from_template(self, format_config: dict) -> Optional[str]:
         template_name = format_config.get(_TEMPLATE_NAME)

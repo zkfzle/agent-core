@@ -643,3 +643,148 @@ async def test_simple_interactive_workflow_both_raw_input_update():
         assert res == WorkflowOutput(
             result={'result': 'any key'},
             state=WorkflowExecutionState.COMPLETED)
+
+
+async def test_simple_interactive_workflow_raw_inputs_empty_str_list():
+    """
+    graph : start->a->end
+    """
+    start_node = MockStartNode4Cp("start")
+    flow = Workflow()
+    flow.set_start_comp("start", start_node,
+                        inputs_schema={
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
+                            "c": 1,
+                            "d": [1, 2, 3]})
+    flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
+                           inputs_schema={
+                               "aa": "${start.a}",
+                               "ac": "${start.c}"})
+    flow.set_end_comp("end", MockEndNode("end"),
+                      inputs_schema={
+                          "result": "${a}"})
+    flow.add_connection("start", "a")
+    flow.add_connection("a", "end")
+
+    for raw_inputs in [[], ""]:
+
+        session_id = uuid.uuid4().hex
+        start_node.runtime = 0
+
+        res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                                 'payload': InteractionOutput.model_validate(
+                                                     {'id': 'a', 'value': 'Please enter any key'})})],
+            state=WorkflowExecutionState.INPUT_REQUIRED)
+
+        user_input = InteractiveInput(raw_inputs)
+
+        res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result=[OutputSchema.model_validate(
+                {'index': 1, 'payload': InteractionOutput.model_validate({'id': 'a', 'value': 'Please enter any key'}),
+                 'type': '__interaction__'})],
+            state=WorkflowExecutionState.INPUT_REQUIRED)
+        assert start_node.runtime == 1
+        res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result={'result': raw_inputs},
+            state=WorkflowExecutionState.COMPLETED)
+
+async def test_simple_interactive_workflow_update_empty_str_list():
+    """
+    graph : start->a->end
+    """
+    start_node = MockStartNode4Cp("start")
+    flow = Workflow()
+    flow.set_start_comp("start", start_node,
+                        inputs_schema={
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
+                            "c": 1,
+                            "d": [1, 2, 3]})
+    flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
+                           inputs_schema={
+                               "aa": "${start.a}",
+                               "ac": "${start.c}"})
+    flow.set_end_comp("end", MockEndNode("end"),
+                      inputs_schema={
+                          "result": "${a}"})
+    flow.add_connection("start", "a")
+    flow.add_connection("a", "end")
+
+    for raw_inputs in [[], ""]:
+
+        session_id = uuid.uuid4().hex
+        start_node.runtime = 0
+
+        res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                                 'payload': InteractionOutput.model_validate(
+                                                     {'id': 'a', 'value': 'Please enter any key'})})],
+            state=WorkflowExecutionState.INPUT_REQUIRED)
+
+        user_input = InteractiveInput()
+        user_input.update("a", raw_inputs)
+
+        res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result=[OutputSchema.model_validate(
+                {'index': 1, 'payload': InteractionOutput.model_validate({'id': 'a', 'value': 'Please enter any key'}),
+                 'type': '__interaction__'})],
+            state=WorkflowExecutionState.INPUT_REQUIRED)
+        assert start_node.runtime == 1
+        res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+        assert res == WorkflowOutput(
+            result={'result': raw_inputs},
+            state=WorkflowExecutionState.COMPLETED)
+
+async def test_simple_interactive_workflow_none():
+    """
+    graph : start->a->end
+    """
+    start_node = MockStartNode4Cp("start")
+    flow = Workflow()
+    flow.set_start_comp("start", start_node,
+                        inputs_schema={
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
+                            "c": 1,
+                            "d": [1, 2, 3]})
+    flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
+                           inputs_schema={
+                               "aa": "${start.a}",
+                               "ac": "${start.c}"})
+    flow.set_end_comp("end", MockEndNode("end"),
+                      inputs_schema={
+                          "result": "${a}"})
+    flow.add_connection("start", "a")
+    flow.add_connection("a", "end")
+
+    session_id = uuid.uuid4().hex
+
+    res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'a', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+
+    user_input = InteractiveInput()
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate(
+            {'index': 0, 'payload': InteractionOutput.model_validate({'id': 'a', 'value': 'Please enter any key'}),
+             'type': '__interaction__'})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    assert start_node.runtime == 1
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate(
+            {'index': 0, 'payload': InteractionOutput.model_validate({'id': 'a', 'value': 'Please enter any key'}),
+             'type': '__interaction__'})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)

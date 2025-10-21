@@ -32,7 +32,7 @@ class WorkflowInteraction(BaseInteraction):
         super().__init__(runtime, workflow_interactive_input)
 
     async def wait_user_inputs(self, value: Any) -> Any:
-        if res := self._get_next_interactive_input():
+        if (res := self._get_next_interactive_input()) is not None:
             return res
         self._runtime.state().commit_cmp()
         payload = InteractionOutput(id=self._node_id, value=value)
@@ -41,7 +41,7 @@ class WorkflowInteraction(BaseInteraction):
             await output_writer.write(OutputSchema(type=INTERACTION, index=self._idx, payload=payload))
 
         raise GraphInterrupt((Interrupt(
-            value=OutputSchema(type=INTERACTION, index=self._idx, payload=payload)),))
+            value=OutputSchema(type=INTERACTION, index=self._idx, payload=None)),))
 
     async def user_latest_input(self, value: Any) -> Any:
         if res := self._latest_interactive_inputs:
@@ -52,7 +52,7 @@ class WorkflowInteraction(BaseInteraction):
             await output_writer.write(OutputSchema(type=INTERACTION, index=self._idx, payload=(self._node_id, value)))
 
         raise GraphInterrupt((Interrupt(
-            value=OutputSchema(type=INTERACTION, index=self._idx, payload=(self._node_id, value)), resumable=True,
+            value=OutputSchema(type=INTERACTION, index=self._idx, payload=(self._node_id, None)), resumable=True,
             ns=self._node_id),))
 
 class SimpleAgentInteraction:

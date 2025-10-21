@@ -16,7 +16,7 @@ from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.workflow import NodeRuntime
-from jiuwen.core.runtime.utils import get_by_schema
+from jiuwen.core.runtime.utils import get_by_schema, EndFrame
 from jiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs
 from jiuwen.core.workflow.workflow_config import ComponentAbility, NodeSpec
 
@@ -104,6 +104,8 @@ class Vertex(AsyncAtomicNode):
         inputs_transformer = self._node_config.stream_io_configs.inputs_transformer if self._node_config else None
         inputs_schema = self._node_config.stream_io_configs.inputs_schema if self._node_config else None
         async for message in queue_manager.consume(self._node_id, ability, frame_timeout=self._stream_frame_timeout):
+            if isinstance(message, EndFrame):
+                continue
             # message 是{id: content}
             if inputs_transformer is None:
                 inputs = queue_manager.stream_transform.get_by_default_transformer(message, inputs_schema) \
@@ -164,7 +166,7 @@ class Vertex(AsyncAtomicNode):
         is_subgraph = self._executable.graph_invoker()
 
         try:
-            component_ability = self._node_config.abilites if self._node_config else None
+            component_ability = self._node_config.abilities if self._node_config else None
             component_ability = component_ability if component_ability else [ComponentAbility.INVOKE]
             call_ability = [ability for ability in component_ability if
                             ability in [ComponentAbility.INVOKE, ComponentAbility.STREAM]]
@@ -194,7 +196,7 @@ class Vertex(AsyncAtomicNode):
             raise JiuWenBaseException(1, "queue manager is not initialized")
         error = None
         try:
-            component_ability = self._node_config.abilites if self._node_config else None
+            component_ability = self._node_config.abilities if self._node_config else None
             call_ability = [ability for ability in component_ability if
                             ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
             for ability in call_ability:

@@ -3,13 +3,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import TypedDict
 
-from jiuwen.core.context_engine.base import Context
-from jiuwen.core.runtime.base import ComponentExecutable
-from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.base import WorkflowComponent
+from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
+from jiuwen.core.runtime.base import ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 
 
 class Start(ComponentExecutable, WorkflowComponent):
@@ -59,7 +59,7 @@ class Start(ComponentExecutable, WorkflowComponent):
         return inputs
 
     def _validate_inputs(self, inputs: Input):
-        if not self.conf:
+        if self.conf is None:
             return
         defined_variables = self.conf.get("inputs", {})
         variables_not_given = []

@@ -55,7 +55,7 @@ class LoopGroup(BaseWorkFlow, Executable):
             comp_id: str,
             workflow_comp: Union[Executable, WorkflowComponent],
             *,
-            wait_for_all: bool = False,
+            wait_for_all: bool = None,
             inputs_schema: dict = None,
             outputs_schema: dict = None,
             inputs_transformer=None,

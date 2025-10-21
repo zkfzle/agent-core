@@ -76,7 +76,7 @@ class BaseWorkFlow:
             comp_id: str,
             workflow_comp: Union[Executable, WorkflowComponent],
             *,
-            wait_for_all: bool = False,
+            wait_for_all: bool = None,
             inputs_schema: dict = None,
             outputs_schema: dict = None,
             inputs_transformer: Transformer = None,
@@ -89,20 +89,24 @@ class BaseWorkFlow:
     ) -> Self:
         if not isinstance(workflow_comp, WorkflowComponent):
             workflow_comp = self._convert_to_component(workflow_comp)
-        workflow_comp.add_component(graph=self._graph, node_id=comp_id, wait_for_all=wait_for_all)
         node_spec = NodeSpec(
             io_config=CompIOConfig(inputs_schema=inputs_schema, outputs_schema=outputs_schema,
                                    inputs_transformer=inputs_transformer, outputs_transformer=outputs_transformer),
             stream_io_configs=CompIOConfig(inputs_schema=stream_inputs_schema, outputs_schema=stream_outputs_schema,
                                            inputs_transformer=stream_inputs_transformer,
                                            outputs_transformer=stream_outputs_transformer),
-            abilites=comp_ability if comp_ability is not None else [ComponentAbility.INVOKE])
+            abilities=comp_ability if comp_ability is not None else [])
 
-        for ability in node_spec.abilites:
+        for ability in node_spec.abilities:
             if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM, ComponentAbility.COLLECT]:
+                if wait_for_all is None:
+                    wait_for_all = True
                 if not wait_for_all:
                     raise JiuWenBaseException(-1, "stream components need to wait for all")
         self._workflow_spec.comp_configs[comp_id] = node_spec
+        if wait_for_all is None:
+            wait_for_all = False
+        workflow_comp.add_component(graph=self._graph, node_id=comp_id, wait_for_all=wait_for_all)
 
         if self._drawable:
             self._drawable.add_node(comp_id, workflow_comp)
@@ -130,6 +134,10 @@ class BaseWorkFlow:
 
     def add_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
         self._graph.add_edge(src_comp_id, target_comp_id)
+        if src_comp_id not in self._workflow_spec.edges:
+            self._workflow_spec.edges[src_comp_id] = [target_comp_id]
+        else:
+            self._workflow_spec.edges[src_comp_id].append(target_comp_id)
 
         if self._drawable:
             self._drawable.add_edge(src_comp_id, target_comp_id)
@@ -139,7 +147,7 @@ class BaseWorkFlow:
         self._graph.add_edge(src_comp_id, target_comp_id)
         stream_executables = self._graph.get_nodes()
         self._stream_actor.add_stream_consumer(stream_executables[target_comp_id], target_comp_id)
-        if target_comp_id not in self._workflow_spec.stream_edges:
+        if src_comp_id not in self._workflow_spec.stream_edges:
             self._workflow_spec.stream_edges[src_comp_id] = [target_comp_id]
         else:
             self._workflow_spec.stream_edges[src_comp_id].append(target_comp_id)
@@ -167,6 +175,9 @@ class BaseWorkFlow:
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
+        if isinstance(runtime, WorkflowRuntime):
+            runtime.set_workflow_id(self._workflow_config.metadata.id)
+        self._auto_complete_abilities()
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
         self._runtime.set_runtime(runtime)
         return self._graph.compile(runtime)
@@ -190,6 +201,37 @@ class BaseWorkFlow:
         if self._drawable:
             return self._drawable.to_mermaid_svg(title=title, expand_subgraph=expand_subgraph)
         return b""
+
+    def _auto_complete_abilities(self):
+        conf = self._workflow_spec.comp_configs
+        source_map = self._workflow_spec.edges
+        target_map = self._source_to_target_map(source_map)
+        source_stream_map = self._workflow_spec.stream_edges
+        target_stream_map = self._source_to_target_map(source_stream_map)
+
+        for source in source_stream_map:
+            if source in target_map:
+                self._add_ability(conf, source, ComponentAbility.STREAM)
+            if source in target_stream_map:
+                self._add_ability(conf, source, ComponentAbility.TRANSFORM)
+        for target in target_stream_map:
+            if target in source_map:
+                self._add_ability(conf, target, ComponentAbility.COLLECT)
+
+    @staticmethod
+    def _add_ability(conf: dict[str, NodeSpec], comp: str, ability: ComponentAbility):
+        if ability not in conf[comp].abilities:
+            conf[comp].abilities.append(ability)
+
+    @staticmethod
+    def _source_to_target_map(source_map: dict[str, list[str]]):
+        target_map = {}
+        for source, targets in source_map.items():
+            for target in targets:
+                if target not in target_map:
+                    target_map[target] = []
+                target_map[target].append(source)
+        return target_map
 
 
 class WorkflowExecutable(ABC):
@@ -216,7 +258,7 @@ class WorkflowExecutable(ABC):
 
 
 class Workflow(BaseWorkFlow, WorkflowExecutable):
-    def __init__(self, workflow_config: WorkflowConfig = None, tool_info: ToolInfo = None):
+    def __init__(self, workflow_config: WorkflowConfig = None):
         super().__init__(workflow_config, PregelGraph())
         self.tool_info = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
         self._end_comp_id: str = ""

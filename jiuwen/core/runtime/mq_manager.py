@@ -2,9 +2,8 @@ from typing import Dict, Any, AsyncIterator
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.logging import logger
 from jiuwen.core.runtime.state import Transformer
-from jiuwen.core.runtime.utils import get_by_schema
+from jiuwen.core.runtime.utils import get_by_schema, EndFrame, Frame
 from jiuwen.core.stream.emitter import AsyncStreamQueue
 from jiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowSpec
 
@@ -16,7 +15,6 @@ class StreamTransform:
     def get_by_default_transformer(self, origin_message: dict, stream_inputs_schema: dict) -> dict:
         return get_by_schema(stream_inputs_schema, origin_message)
 
-
 class MessageQueueManager:
     def __init__(self, workflow_spec: WorkflowSpec, sub_graph: bool):
         self._stream_edges = workflow_spec.stream_edges
@@ -24,7 +22,7 @@ class MessageQueueManager:
         self._streams_transform = StreamTransform()
         for producer_id, consumer_ids in self._stream_edges.items():
             for consumer_id in consumer_ids:
-                consumer_stream_ability = [ability for ability in workflow_spec.comp_configs[consumer_id].abilites if
+                consumer_stream_ability = [ability for ability in workflow_spec.comp_configs[consumer_id].abilities if
                                            ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
                 self._streams[consumer_id] = {ability: AsyncStreamQueue(maxsize=10 * 1024)
                                               for ability in consumer_stream_ability}
@@ -58,17 +56,23 @@ class MessageQueueManager:
         end_message_content = f"END_{producer_id}"
         await self.produce(producer_id, end_message_content)
 
-    def _is_end_message(self, message: dict[str, Any], ended_producers: set) -> bool:
-        if not isinstance(message, dict) or len(message) != 1:
-            raise ValueError("message is invalid")
-        produce_id = next(iter(message))
-        message_content = message[produce_id]
+    @staticmethod
+    def _is_end_message(message: dict[str, Any], ended_producers: set) -> bool:
+        producer_id = MessageQueueManager._get_producer_id(message)
+        message_content = message[producer_id]
         if isinstance(message_content, str) and message_content.startswith("END_"):
-            ended_producers.add(produce_id)
+            ended_producers.add(producer_id)
             return True
         return False
 
-    async def consume(self, consumer_id: str, ability: ComponentAbility, frame_timeout: float = 0.2) -> AsyncIterator[dict[str, Any]]:
+    @staticmethod
+    def _get_producer_id(message):
+        if not isinstance(message, dict) or len(message) != 1:
+            raise ValueError("message is invalid")
+        return next(iter(message))  # 从一个单键值map中获取key
+
+    async def consume(self, consumer_id: str, ability: ComponentAbility, frame_timeout: float = 0.2) -> AsyncIterator[
+        Frame]:
         stream_queues = self._get_queue(consumer_id)
         queue = stream_queues[ability]
         if queue is not None:
@@ -82,6 +86,7 @@ class MessageQueueManager:
                         await self.close_stream(consumer_id)
                         break
                     else:
+                        yield EndFrame(self._get_producer_id(message))
                         continue
                 yield message
 

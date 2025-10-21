@@ -2,6 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import re
+from dataclasses import dataclass
 from typing import Optional, Any, Union
 
 REGEX_MAX_LENGTH = 1000
@@ -314,3 +315,11 @@ def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], crea
 
     # Return adjusted index (handles negative index conversion)
     return adjusted_final_idx, current
+
+
+@dataclass
+class EndFrame:
+    source: str
+
+
+Frame = Union[Any, EndFrame]

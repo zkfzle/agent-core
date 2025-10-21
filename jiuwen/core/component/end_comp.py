@@ -1,11 +1,13 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+import asyncio
 from typing import AsyncIterator, TypedDict, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
+from jiuwen.core.common.utils.dict import safe_get
 from jiuwen.core.common.utils.utils import TemplateUtils
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.context_engine.base import Context
@@ -36,6 +38,9 @@ class End(ComponentExecutable, WorkflowComponent):
                                           reason="`responseTemplate` type error, is not str"))
         if self.template and len(self.template) == 0:
             self.template = None
+        self.use_cache = False
+        self.cache_all = asyncio.Condition()
+        self.cache = dict()
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self.template:
@@ -50,20 +55,20 @@ class End(ComponentExecutable, WorkflowComponent):
         }
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        if self.use_cache:
+            async with self.cache_all:
+                await self.cache_all.wait()
         try:
             if self.template:
                 response_list = TemplateUtils.render_template_to_list(self.template)
                 for res in response_list:
                     if res.startswith("{{") and res.endswith("}}"):
                         param_name = res[2:-2]
-                        if inputs:
-                            param_value = inputs.get(param_name)
+                        value = safe_get(inputs, param_name)
+                        if value is not None:
+                            param_value = value
                         else:
-                            content = runtime.get_state(STREAM_CACHE_KEY)
-                            if content:
-                                param_value = content.get(param_name)
-                            else:
-                                param_value = None
+                            param_value = safe_get(self.cache, f'{STREAM_CACHE_KEY}.{param_name}')
                         if param_value is None:
                             continue
                         yield dict(answer=param_value)
@@ -78,13 +83,24 @@ class End(ComponentExecutable, WorkflowComponent):
                 logger.info("stream output error")
             else:
                 logger.error("stream output error: {}".format(e))
+        finally:
+            self.cache = dict()
 
     async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
         Output]:
-        stream_cache_value = {}
-        async for input_item in inputs:
-            if isinstance(input_item, dict):
-                for key, value in input_item.items():
-                    stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)
-            yield dict(output=input_item)
-        runtime.update_state({STREAM_CACHE_KEY: stream_cache_value})
+        self.use_cache = True
+        if self.template is None:
+            async for input_item in inputs:
+                yield dict(output=input_item)
+        else:
+            stream_cache_value = {}
+            async for input_item in inputs:
+                if isinstance(input_item, dict):
+                    for key, value in input_item.items():
+                        if value is None:
+                            continue
+                        stream_cache_value[key] = stream_cache_value.get(key, "") + str(value)
+            self.cache.update({STREAM_CACHE_KEY: stream_cache_value})
+        async with self.cache_all:
+            self.use_cache = False
+            self.cache_all.notify_all()

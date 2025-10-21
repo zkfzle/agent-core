@@ -26,12 +26,13 @@ class WorkflowMetadata(BaseModel):
 class NodeSpec(BaseModel):
     io_config: CompIOConfig
     stream_io_configs: CompIOConfig
-    abilites: List[Any] = Field(default_factory=list)
+    abilities: List[Any] = Field(default_factory=list)
 
 
 class WorkflowSpec(BaseModel):
     comp_configs: Dict[str, NodeSpec] = Field(default_factory=dict)
     stream_edges: Dict[str, list[str]] = Field(default_factory=dict)
+    edges: Dict[str, list[str]] = Field(default_factory=dict)
 
 
 class WorkflowInputsSchema(BaseModel):

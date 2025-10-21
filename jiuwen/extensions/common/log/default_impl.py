@@ -140,11 +140,8 @@ class DefaultLogger(LoggerProtocol):
             self._logger.addHandler(stream_handler)
 
         if 'file' in output:
-            real_path = os.path.realpath(log_file)
-            if is_sensitive_path(real_path):
-                raise Exception("log file path is not safe")
-            log_dir = os.path.dirname(real_path)
-            if not os.path.exists(log_dir):
+            log_dir = os.path.dirname(log_file)
+            if log_dir:
                 os.makedirs(log_dir, mode=0o750, exist_ok=True)
 
             backup_count = self.config.get('backup_count', 20)

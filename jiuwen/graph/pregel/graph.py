@@ -40,6 +40,7 @@ def after_tick(self) -> None:
 
 
 PregelLoop.after_tick = after_tick
+MAX_RECURSIVE_LIMIT = 10000
 
 
 class PregelGraph(Graph):
@@ -165,7 +166,7 @@ class CompiledGraph(ExecutableGraph):
 
         if config is None:
             is_main = True
-            config = {"configurable": {"thread_id": session_id}}
+            config = {"configurable": {"thread_id": session_id}, "recursion_limit": MAX_RECURSIVE_LIMIT}
         if isinstance(inputs, InteractiveInput):
             await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
         else:

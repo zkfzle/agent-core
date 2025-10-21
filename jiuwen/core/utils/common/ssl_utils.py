@@ -89,8 +89,10 @@ class SslUtils:
 
     @staticmethod
     def _secure_load_cert(ctx, ssl_cert):
+        flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+        mode = stat.S_IRUSR
         try:
-            fd = os.open(ssl_cert, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+            fd = os.open(ssl_cert, flags, mode)
         except OSError:
             ExceptionUtils.raise_exception(
                 StatusCode.SSL_UTILS_CREATE_SSL_CONTEXT_ERROR, "Failed to open certificate file")

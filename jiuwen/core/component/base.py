@@ -8,6 +8,7 @@ from enum import Enum
 from typing import Optional
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode as StatusCode
 from jiuwen.core.graph.base import Graph
 from jiuwen.core.graph.executable import Executable
 
@@ -40,4 +41,4 @@ class WorkflowComponent(ABC):
     def to_executable(self) -> Executable:
         if isinstance(self, Executable):
             return self
-        raise JiuWenBaseException(-1, "workflow component should implement Executable")
+        raise JiuWenBaseException(StatusCode.COMPONENT_NOT_EXECUTABLE_ERROR.code, "workflow component should implement Executable")

@@ -15,6 +15,7 @@ class StatusCode(Enum):
     # Workflow Component - Component Development: Interactive And Recovery 100000 - 100029
     INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")
     INTERACTIVE_UPDATE_FAILED = (100001, "raw_inputs existed, update is invalid")
+    COMPONENT_NOT_EXECUTABLE_ERROR = (100002, "workflow component should implement Executable")
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 
@@ -56,6 +57,12 @@ class StatusCode(Enum):
     SUB_WORKFLOW_COMPONENT_RUNNING_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
 
     ## LoopComponent  101150 - 101159
+    LOOP_COMPONENT_NESTED_LOOP_ERROR = (101150, "Nested loops are not supported. Cannot add LoopComponent to a LoopGroup")
+    LOOP_COMPONENT_EXECUTION_ERROR = (101151, "Loop execution error: {error_msg}")
+    LOOP_COMPONENT_EMPTY_GROUP_ERROR = (101152, "Loop group is empty, no components to execute")
+    LOOP_COMPONENT_INPUT_TYPE_ERROR = (101153, "Inputs must be a dictionary, got {type}")
+    LOOP_COMPONENT_MISSING_INPUT_KEY_ERROR = (101154, "Invalid inputs: missing required key {key}")
+    LOOP_COMPONENT_INVALID_LOOP_TYPE_ERROR = (101155, "Invalid loop type '{loop_type}' for LoopComponent")
 
     ## ToolComponent  102000 - 102019
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
@@ -120,6 +127,8 @@ class StatusCode(Enum):
     # GraphEngine - Conditional Evaluation 140000 - 140019
     EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, expression as {expression}, error as {error_msg}.")
     EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
+    ARRAY_CONDITION_ERROR = (140002, "Array condition error")
+    NUMBER_CONDITION_ERROR = (140003, "Number condition error")
 
 
     # ContextEngine 150000 - 159999

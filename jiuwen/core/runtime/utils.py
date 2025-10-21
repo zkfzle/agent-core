@@ -4,8 +4,6 @@
 import re
 from typing import Optional, Any, Union
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-
 REGEX_MAX_LENGTH = 1000
 NESTED_PATH_LIST_PATTERN = re.compile(r'^([\w]+)((?:\[\d+\])*)$')
 NESTED_PATH_SPLIT = '.'
@@ -238,7 +236,18 @@ def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], crea
     If create_if_absent is True, it will automatically create missing list elements
     (with None placeholders) to reach the target location. Tuples are immutable and
     cannot be modified.
+    
+    Returns:
+        tuple: (index, container) - The final index and its container
     """
+    # Input validation
+    if not isinstance(indexes, list):
+        raise TypeError("indexes must be a list")
+    if not all(isinstance(idx, int) for idx in indexes):
+        raise TypeError("all elements in indexes must be integers")
+    # Check source type, but don't raise error immediately - just return None, None
+    if source is not None and not isinstance(source, (list, tuple)):
+        return None, None
     if source is None or not indexes:
         return None, None
     if len(indexes) > 10:
@@ -270,10 +279,10 @@ def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], crea
             # Safe access
             try:
                 current = current[adjusted_idx]
-            except IndexError:
+            except (IndexError, TypeError):
                 return None, None
 
-            if not isinstance(current, (list, tuple)):
+            if current is not None and not isinstance(current, (list, tuple)):
                 return None, None
 
     # Process final index
@@ -298,6 +307,10 @@ def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], crea
         # Use safe extension method for final index (append {})
         if not _safe_extend_container(current, adjusted_final_idx, is_final_index=True):
             return None, None
+    
+    # Final validation: ensure adjusted_final_idx is valid after potential extension
+    if adjusted_final_idx < 0 or (adjusted_final_idx >= len(current) and isinstance(current, tuple)):
+        return None, None
 
     # Return adjusted index (handles negative index conversion)
     return adjusted_final_idx, current

@@ -22,7 +22,7 @@ class ExpressionCondition(Condition):
             raise JiuWenBaseException(
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                    expression=expression,
+                    expression="<expression_too_long>",
                     error_msg=f"Expression length exceeds maximum allowed length of {MAX_EXPRESSION_LENGTH}"
                 )
             )
@@ -97,7 +97,7 @@ class ExpressionCondition(Condition):
             if not isinstance(result, bool):
                 raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                           StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                              expression=self._expression,
+                                              expression="<expression>",
                                               error_msg="Expression did not evaluate to a boolean value"
                                           ))
 
@@ -105,14 +105,14 @@ class ExpressionCondition(Condition):
         except SyntaxError as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(
-                                          expression=self._expression,
+                                          expression="<expression>",
                                           error_msg=str(e)
                                       ))
         except NameError as e:
             # Handle undefined variable cases
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                          expression=self._expression,
+                                          expression="<expression>",
                                           error_msg=str(e)
                                       ))
         except JiuWenBaseException:
@@ -121,7 +121,7 @@ class ExpressionCondition(Condition):
         except Exception as e:
             raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                                       StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                          expression=self._expression,
+                                          expression="<expression>",
                                           error_msg=str(e)
                                       ))
 
@@ -158,6 +158,7 @@ def _safe_is_empty(value):
         raise JiuWenBaseException(
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                expression="<expression>",
                 error_msg=f"Cannot check emptiness of {type(value).__name__} type"
             )
         )
@@ -167,6 +168,7 @@ def _safe_is_empty(value):
             raise JiuWenBaseException(
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                    expression="<expression>",
                     error_msg=f"Collection size exceeds maximum allowed size of {MAX_COLLECTION_SIZE}"
                 )
             )
@@ -183,6 +185,7 @@ def _safe_is_not_empty(value):
         raise JiuWenBaseException(
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                expression="<expression>",
                 error_msg=f"Cannot check emptiness of {type(value).__name__} type"
             )
         )
@@ -192,6 +195,7 @@ def _safe_is_not_empty(value):
             raise JiuWenBaseException(
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
                 StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                    expression="<expression>",
                     error_msg=f"Collection size exceeds maximum allowed size of {MAX_COLLECTION_SIZE}"
                 )
             )

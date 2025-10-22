@@ -1,16 +1,82 @@
 import asyncio
 import unittest
 
+from jiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
+from jiuwen.core.common.constants.constant import INPUTS_KEY, CONFIG_KEY
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.component.branch_comp import BranchComponent
+from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
+from jiuwen.core.context_engine.base import Context
+from jiuwen.core.runtime.base import Input, Output, ComponentExecutable
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.workflow.base import Workflow
+from jiuwen.core.workflow.workflow_config import WorkflowConfig
+from test_mock_node import MockStartNode, Node1, MockEndNode
+
+
+class MockSubWorkflowComponent(WorkflowComponent, ComponentExecutable):
+    def __init__(self):
+        super().__init__()
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        results = []
+        for i in range (0,8):
+            workflow = self.sub_workflow()
+            results.append(await workflow.sub_invoke({"a": "1", "b": 2}, runtime.base(), inputs.get(CONFIG_KEY)))
+        output = {"results": results}
+        print(output)
+        return output
+
+
+    def graph_invoker(self) -> bool:
+        return True
+
+    def component_type(self) -> str:
+        return SUB_WORKFLOW_COMPONENT
+
+    def sub_workflow(self) -> Workflow:
+        flow = Workflow(workflow_config=WorkflowConfig(stream_timeout=10))
+        flow.set_start_comp("start", MockStartNode("start"),
+                            inputs_schema={"a": "${a}",
+                                           "b": "${b}",
+                                           "c": 1,
+                                           "d": [1, 2, 3]})
+
+        router = BranchRouter()
+        router.add_branch("len(${start.d}) > 2", "a")
+        router.add_branch("len(${start.d}) < 2", "b")
+
+        flow.add_conditional_connection("start", router=router)
+        flow.add_workflow_comp("a", Node1("a"), inputs_schema={"a": "${start.a}"})
+        flow.add_workflow_comp("b", Node1("b"), inputs_schema={"b": "${start.b}"})
+        flow.set_end_comp("end", End(), {"result1": "${a.a}", "result2": "${b.b}"})
+        flow.add_connection("a", "end")
+        flow.add_connection("b", "end")
+        return flow
 
 
 class TestBranchComponent(unittest.TestCase):
+    def test_sub_workflow_with_branch(self):
+        workflow = Workflow()
+        workflow.set_start_comp("s", Start(), inputs_schema={"input": "${data}"})
+        workflow.add_workflow_comp("sub_workflow", MockSubWorkflowComponent())
+        workflow.set_end_comp("e", End(), inputs_schema={"end_out": "${print_inputs}"})
+
+        workflow.add_connection("s", "sub_workflow")
+        workflow.add_connection("sub_workflow", "e")
+
+        inputs = {"data":'aaa'}
+
+        async def run_workflow():
+            return await workflow.invoke(inputs, WorkflowRuntime())
+        results = asyncio.get_event_loop().run_until_complete(run_workflow())
+        print(results)
+
     def test_add_branch_error(self):
         branch = BranchComponent()
         with self.assertRaises(JiuWenBaseException):

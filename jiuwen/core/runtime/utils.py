@@ -60,7 +60,7 @@ def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str =
 
 def get_value_by_nested_path(nested_key: str, source: dict) -> Optional[Any]:
     result = root_to_path(nested_key, source)
-    if result[1] is None:
+    if result[1] is None or (not hasattr(result[1], '__contains__')) or (not hasattr(result[1], '__getitem__')):
         return None
     if result[0] not in result[1]:
         return None

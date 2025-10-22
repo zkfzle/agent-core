@@ -29,7 +29,9 @@ class StateCollection(State):
             return None
         result = self._global_state.get(key)
         if result is None:
-            return self._io_state.get_by_prefix(key, self._parent_id)
+            result = self._io_state.get_by_prefix(key, self._parent_id)
+        if result is None:
+            result = self._io_state.get_by_prefix(key, self._node_id)
         return result
 
     def update_global(self, data: dict) -> None:

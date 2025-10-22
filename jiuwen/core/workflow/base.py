@@ -347,8 +347,9 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                                       StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
                                           detail=f"workflow nesting hierarchy is too big, must <= "
                                                  f"{main_workflow_config.workflow_max_nesting_depth}"))
+        self._runtime.set_runtime(runtime)
         compiled_graph = self._graph.compile(sub_workflow_runtime)
-        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, sub_workflow_runtime)
         node_runtime = NodeRuntime(runtime, self._end_comp_id)
         output_key = self._end_comp_id
         if isinstance(self._end_comp, End):

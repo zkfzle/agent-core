@@ -357,7 +357,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         logger.info("end to sub_invoke, results=%s", results)
         return results
 
-    async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> Output:
+    async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
         logger.info("begin to invoke, input=%s", inputs)
         chunks = []
         async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):

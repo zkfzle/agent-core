@@ -10,7 +10,7 @@ from typing import Any, Optional, List, Dict, Union
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.utils.utils import ExceptionUtils
+from jiuwen.core.utils.common.verify_utils import ExceptionUtils
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.context_engine.base import Context

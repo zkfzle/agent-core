@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
-from jiuwen.core.common.utils.utils import ExceptionUtils
+from jiuwen.core.utils.common.verify_utils import ExceptionUtils
 from jiuwen.core.component.base import WorkflowComponent, ComponentConfig
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.common.configs.model_config import ModelConfig

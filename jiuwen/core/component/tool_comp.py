@@ -8,7 +8,7 @@ from typing import Union, List, Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.utils.utils import ExceptionUtils
+from jiuwen.core.utils.common.verify_utils import ExceptionUtils
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Executable, Input, Output

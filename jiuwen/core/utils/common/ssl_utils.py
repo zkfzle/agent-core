@@ -8,7 +8,7 @@ import stat
 from requests.adapters import HTTPAdapter
 
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.utils.utils import ExceptionUtils
+from jiuwen.core.utils.common.verify_utils import ExceptionUtils
 
 
 class SslUtils:

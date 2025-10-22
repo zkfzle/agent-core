@@ -242,7 +242,7 @@ class TemplateUtils:
     @staticmethod
     def render_template_to_list(template: str) -> list[str | Any]:
 
-        return re.split(r'(\{\{[^}]+\}\})', template)
+        return list(filter(None, re.split(r'(\{\{[^}]+\}\})', template)))
 
 class SafeTemplate(string.Template):
     delimiter = '{{'

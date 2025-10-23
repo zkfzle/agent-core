@@ -6,13 +6,13 @@ from unittest.mock import patch
 
 import pytest
 
-from jiuwen.agent.common.enum import SubTaskType, ControllerType
+from jiuwen.agent.common.enum import TaskType, ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.agent.workflow_agent import WorkflowAgent
 from jiuwen.core.agent.controller.react_controller import ReActControllerOutput
-from jiuwen.core.agent.task.sub_task import SubTask
+from jiuwen.core.agent.task import Task, TaskInput
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
@@ -132,11 +132,13 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             }}
         )
 
-        sub_task = SubTask(
+        task = Task(
             id = workflow_schema.id,
-            sub_task_type = SubTaskType.WORKFLOW,
-            func_id = f"{workflow_schema.id}_{workflow_schema.version}",
-            func_name = workflow_schema.name,
+            task_type = TaskType.WORKFLOW,
+            input = TaskInput(
+                target_id = f"{workflow_schema.id}_{workflow_schema.version}",
+                target_name = workflow_schema.name,
+            )
         )
 
         react_agent_config = create_react_agent_config(
@@ -156,21 +158,21 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             tools=[]
         )
 
-        # 第一次大模型返回的结果让调用sub_task
+        # 第一次大模型返回的结果让调用task
         mock_react_controller_invoke.return_value = ReActControllerOutput(
             should_continue = True,
             llm_output=AIMessage(content = "This is first mock LLM output"),
-            sub_tasks=[sub_task],
+            tasks=[task],
         )
 
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州的天气"})
         print(f"ReActAgent 第一次输出结果：{result}")
 
-        # 第二次大模型返回的结果不让调用sub_task
+        # 第二次大模型返回的结果不让调用task
         mock_react_controller_invoke.return_value = ReActControllerOutput(
             should_continue=False,
             llm_output=AIMessage(content="This is second mock LLM output"),
-            sub_tasks=[sub_task],
+            tasks=[task],
         )
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
@@ -251,11 +253,13 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             }}
         )
 
-        sub_task = SubTask(
+        task = Task(
             id=workflow_schema.id,
-            sub_task_type=SubTaskType.WORKFLOW,
-            func_id=f"{workflow_schema.id}_{workflow_schema.version}",
-            func_name=workflow_schema.name,
+            task_type=TaskType.WORKFLOW,
+            input=TaskInput(
+                target_id=f"{workflow_schema.id}_{workflow_schema.version}",
+                target_name=workflow_schema.name,
+            )
         )
 
         react_agent_config = create_react_agent_config(
@@ -275,11 +279,11 @@ class ReActAgentInterruptTest(unittest.IsolatedAsyncioTestCase):  # ① 关键�
             tools=[]
         )
 
-        # 第一次大模型返回的结果要让调用sub_task
+        # 第一次大模型返回的结果要让调用task
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
         print(f"ReActAgent 第一次输出结果：{result}")
 
-        # 第二次大模型返回的结果不让调用sub_task
+        # 第二次大模型返回的结果不让调用task
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
             print(f"ReActAgent 第二次输出结果：{result}")

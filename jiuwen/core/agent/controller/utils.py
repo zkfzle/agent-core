@@ -1,9 +1,9 @@
 import copy
 from typing import List, Dict, Any, Optional
 
-from jiuwen.agent.common.enum import SubTaskType
+from jiuwen.agent.common.enum import TaskType
 from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.task.sub_task import SubTask
+from jiuwen.core.agent.task import Task, TaskInput
 from jiuwen.core.agent.controller.base import ControllerOutput, ControllerInput
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.format.format_utils import FormatUtils
@@ -18,7 +18,7 @@ from jiuwen.core.utils.config.user_config import UserConfig
 
 
 class WorkflowControllerOutput(ControllerOutput):
-    sub_tasks: List[SubTask] = Field(default_factory=list)
+    tasks: List[Task] = Field(default_factory=list)
     messages: Any = Field(default_factory=list)
 
 
@@ -33,7 +33,7 @@ class ReActControllerInput(ControllerInput):
 class ReActControllerOutput(ControllerOutput):
     should_continue: bool = Field(default=False)
     llm_output: Optional[AIMessage] = Field(default=None)
-    sub_tasks: List[SubTask] = Field(default_factory=list)
+    tasks: List[Task] = Field(default_factory=list)
 
 
 class ReActControllerUtils:
@@ -59,46 +59,48 @@ class ReActControllerUtils:
 
     @staticmethod
     def parse_llm_output(response: BaseMessage, config: AgentConfig) -> "ReActControllerOutput":
-        sub_tasks = ReActControllerUtils.create_sub_tasks_from_tool_calls(
+        tasks = ReActControllerUtils.create_tasks_from_tool_calls(
             response.tool_calls, config
         )
-        should_continue = len(sub_tasks) > 0
+        should_continue = len(tasks) > 0
         return ReActControllerOutput(
             should_continue=should_continue,
             llm_output=response,
-            sub_tasks=sub_tasks
+            tasks=tasks
         )
 
     @staticmethod
-    def create_sub_tasks_from_tool_calls(
+    def create_tasks_from_tool_calls(
             tool_calls: List[ToolCall],
             config: AgentConfig
-    ) -> List[SubTask]:
+    ) -> List[Task]:
         if not tool_calls:
             return []
 
         result = []
         for tool_call in tool_calls:
-            sub_task_type = ReActControllerUtils.determine_sub_task_type(
+            task_type = ReActControllerUtils.determine_task_type(
                 tool_call.function.name, config
             )
-            result.append(SubTask(
+            result.append(Task(
                 id=tool_call.id,
-                func_name=tool_call.function.name,
-                func_args=FormatUtils.json_loads(tool_call.function.arguments),
-                sub_task_type=sub_task_type
+                input=TaskInput(
+                    target_name=tool_call.function.name,
+                    arguments=FormatUtils.json_loads(tool_call.function.arguments)
+                ),
+                task_type=task_type
             ))
         return result
 
     @staticmethod
-    def determine_sub_task_type(tool_name: str, config: AgentConfig) -> SubTaskType:
+    def determine_task_type(tool_name: str, config: AgentConfig) -> TaskType:
         for workflow in config.workflows:
             if tool_name == workflow.name:
-                return SubTaskType.WORKFLOW
+                return TaskType.WORKFLOW
 
         for plugin in config.plugins:
             if tool_name == plugin.name:
-                return SubTaskType.PLUGIN
+                return TaskType.PLUGIN
 
         raise JiuWenBaseException(5000, f"not find tool call type: {tool_name}")
 
@@ -156,7 +158,7 @@ class ReActControllerUtils:
             agent_context.add_message(ai_message)
 
     @staticmethod
-    def add_tool_results(completed_tasks: List[SubTask], context_engine: ContextEngine, runtime: Runtime):
+    def add_tool_results(completed_tasks: List[Task], context_engine: ContextEngine, runtime: Runtime):
         if not completed_tasks:
             logger.warning("No completed sub tasks to add to chat history")
             return
@@ -164,19 +166,19 @@ class ReActControllerUtils:
         agent_context = context_engine.get_agent_context(runtime.session_id())
         logger.info(f"Adding {len(completed_tasks)} tool results to chat history")
 
-        for sub_task in completed_tasks:
-            if sub_task.result:
-                tool_message = ToolMessage(content=sub_task.result, tool_call_id=sub_task.id)
+        for task in completed_tasks:
+            if task.result:
+                tool_message = ToolMessage(content=task.result, tool_call_id=task.id)
                 agent_context.add_message(tool_message)
                 if UserConfig.is_sensitive():
                     logger.info(f"Added tool result")
                 else:
-                    logger.info(f"Added tool result: {sub_task.func_name}")
+                    logger.info(f"Added tool result: {task.input.target_name}")
             else:
                 if UserConfig.is_sensitive():
-                    logger.warning(f"Sub task has no result")
+                    logger.warning(f"Task has no result")
                 else:
-                    logger.warning(f"Sub task {sub_task.func_name} has no result")
+                    logger.warning(f"Task {task.input.target_name} has no result")
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime, config: AgentConfig) -> List[BaseMessage]:

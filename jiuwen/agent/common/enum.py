@@ -12,7 +12,7 @@ class ControllerType(Enum):
     Undefined = "undefined"
 
 
-class SubTaskType(Enum):
+class TaskType(Enum):
     PLUGIN = "plugin"
     WORKFLOW = "workflow"
     MCP = "mcp"

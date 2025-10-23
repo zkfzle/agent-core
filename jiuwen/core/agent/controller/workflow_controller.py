@@ -1,12 +1,12 @@
 from typing import List, Union, Any, Dict, AsyncIterator
 import json
 
-from jiuwen.agent.common.enum import SubTaskType
+from jiuwen.agent.common.enum import TaskType
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.controller.base import Controller
 from jiuwen.core.agent.controller.utils import WorkflowControllerOutput, WorkflowControllerInput
 from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
-from jiuwen.core.agent.task.sub_task import SubTask
+from jiuwen.core.agent.task import Task, TaskInput
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.logging import logger
 from jiuwen.core.runtime.workflow_manager import generate_workflow_key
@@ -29,17 +29,17 @@ class WorkflowState:
         track_state = self._runtime.get_state("workflow_state")
         return (track_state and
                 track_state.get("status") == "interrupted" and
-                track_state.get("sub_tasks") is not None)
+                track_state.get("tasks") is not None)
 
-    def get_interrupted_sub_tasks(self) -> List[SubTask]:
+    def get_interrupted_tasks(self) -> List[Task]:
         state_data = self._runtime.get_state("workflow_state") or {}
-        return state_data.get("sub_tasks", [])
+        return state_data.get("tasks", [])
 
-    def save_interrupt_state(self, sub_tasks: List[SubTask]):
+    def save_interrupt_state(self, tasks: List[Task]):
         self._runtime.update_state({
             "workflow_state": {
                 "status": "interrupted",
-                "sub_tasks": sub_tasks
+                "tasks": tasks
             }
         })
 
@@ -49,11 +49,11 @@ class WorkflowState:
             return "normal"
         return track_state.get("status", "normal")
 
-    def set_status(self, status: str, sub_tasks: List[SubTask] = None):
+    def set_status(self, status: str, tasks: List[Task] = None):
         self._runtime.update_state({
             "workflow_state": {
                 "status": status,
-                "sub_tasks": sub_tasks or []
+                "tasks": tasks or []
             }
         })
 
@@ -122,12 +122,14 @@ class WorkflowController(Controller):
             user_data=inputs
         )
 
-        sub_tasks = [
-            SubTask(
-                sub_task_type=SubTaskType.WORKFLOW,
-                func_name=workflow.name,
-                func_id=f"{workflow.id}_{workflow.version}",
-                func_args=filtered_inputs,
+        tasks = [
+            Task(
+                task_type=TaskType.WORKFLOW,
+                input=TaskInput(
+                    target_name=workflow.name,
+                    target_id=f"{workflow.id}_{workflow.version}",
+                    arguments=filtered_inputs,
+                )
             )
         ]
 
@@ -138,7 +140,7 @@ class WorkflowController(Controller):
         else:
             logger.info(f"Added user message to chat history: {inputs.get('query')}")
 
-        return WorkflowControllerOutput(is_task=True, sub_tasks=sub_tasks)
+        return WorkflowControllerOutput(is_task=True, tasks=tasks)
 
     async def stream(self,
                      inputs: WorkflowControllerInput,
@@ -181,14 +183,14 @@ class WorkflowController(Controller):
         else:
             logger.info(f"Processing interrupt recovery: {inputs}")
 
-        sub_tasks = self._state.get_interrupted_sub_tasks()
-        if not sub_tasks:
+        tasks = self._state.get_interrupted_tasks()
+        if not tasks:
             self._state.set_status("normal")
             return await self._run_workflow(inputs)
 
-        sub_tasks[0].func_args = inputs.get("query", "")
+        tasks[0].input.arguments = inputs.get("query", "")
 
-        result = await self._execute_workflow_task(sub_tasks[0])
+        result = await self._execute_workflow_task(tasks[0])
 
         if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
             interrupt_data_list = []
@@ -198,35 +200,35 @@ class WorkflowController(Controller):
             return interrupt_data_list
         else:
             self._state.set_status("normal")
-            final_result = self.handle_workflow_results({sub_tasks[0].func_name: result})
+            final_result = self.handle_workflow_results({tasks[0].input.target_name: result})
             return {"output": final_result, "result_type": "answer"}
 
     async def _run_workflow(self, inputs: Dict) -> Dict | list:
         controller_output: WorkflowControllerOutput = self.invoke(inputs, None)
 
-        if not controller_output.sub_tasks:
+        if not controller_output.tasks:
             return {"output": "No tasks to execute", "result_type": "answer"}
 
-        sub_task = controller_output.sub_tasks[0]
-        result = await self._execute_workflow_task(sub_task)
+        task = controller_output.tasks[0]
+        result = await self._execute_workflow_task(task)
 
         if result and hasattr(result, 'state') and result.state.value == "INPUT_REQUIRED":
-            self._state.save_interrupt_state([sub_task])
+            self._state.save_interrupt_state([task])
             interrupt_data_list = []
             for output_scheme in result.result:
                 await self._runtime.write_stream(output_scheme)
                 interrupt_data_list.append(output_scheme)
             return interrupt_data_list
         else:
-            final_result = self.handle_workflow_results({sub_task.func_name: result})
+            final_result = self.handle_workflow_results({task.input.target_name: result})
             return {"output": final_result, "result_type": "answer"}
 
-    async def _execute_workflow_task(self, sub_task: SubTask) -> Any:
+    async def _execute_workflow_task(self, task: Task) -> Any:
         try:
             inputs = AgentHandlerInputs(
                 context=self._runtime,
-                name=sub_task.func_name,
-                arguments=sub_task.func_args
+                name=task.input.target_name,
+                arguments=task.input.arguments
             )
             workflow = self._find_workflow(inputs)
 
@@ -235,30 +237,30 @@ class WorkflowController(Controller):
 
             if hasattr(result, 'result') and hasattr(result, 'state'):
                 # For WorkflowOutput, store the complete object to facilitate subsequent status processing.
-                sub_task.result = result
+                task.result = result
                 return result
             else:
                 # For other objects, attempt serialization; if it fails, store them directly.
                 try:
-                    sub_task.result = json.dumps(result, ensure_ascii=False)
+                    task.result = json.dumps(result, ensure_ascii=False)
                 except TypeError:
-                    sub_task.result = result
+                    task.result = result
                 return result
 
         except AgentInterrupt as e:
             if UserConfig.is_sensitive():
                 error_msg = f"Tool execution failed"
-                logger.info(f"Sub task {sub_task.func_name} failed.")
+                logger.info(f"Task {task.input.target_name} failed.")
             else:
                 error_msg = f"Tool execution failed: {str(e)}"
-                logger.error(f"Sub task {sub_task.func_name} failed: {error_msg}")
+                logger.error(f"Task {task.input.target_name} failed: {error_msg}")
 
             error_result = {
                 "error": True,
                 "id": "0",
                 "value": e.message,
                 "message": error_msg,
-                "tool_name": sub_task.func_name
+                "tool_name": task.input.target_name
             }
-            sub_task.result = json.dumps(error_result, ensure_ascii=False)
+            task.result = json.dumps(error_result, ensure_ascii=False)
             return error_result

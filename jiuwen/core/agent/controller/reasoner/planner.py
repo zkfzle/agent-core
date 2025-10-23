@@ -2,6 +2,60 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-# Planner - 规划器
+import logging
+from typing import List, Optional, Dict, Any
+from jiuwen.core.agent.message.message import Message
+from jiuwen.core.agent.task.task import Task
+
+
 class Planner:
-    pass
+    """Planner - 规划器，负责复杂任务的规划和任务分解"""
+
+    def __init__(self, config, context_engine, runtime):
+        """
+        初始化Planner
+        
+        Args:
+            config: Planner配置
+            context_engine: 上下文引擎
+            runtime: 运行时环境
+        """
+        self.config = config
+        self.context_engine = context_engine
+        self.runtime = runtime
+
+        logger.info("Planner initialized")
+
+    async def process_message(self, message: Message) -> List[Task]:
+        """
+        处理消息，进行任务规划并生成任务列表
+        
+        Args:
+            message: 输入消息
+            
+        Returns:
+            List[Task]: 生成的任务列表
+        """
+        # TODO: 实现具体的任务规划逻辑
+        # 1. 分析消息内容，识别复杂任务
+        # 2. 制定执行计划，分解为多个子任务
+        # 3. 生成任务列表，设置任务依赖关系
+        # 4. 返回任务列表
+
+        logger.debug(f"Processing message {message.msg_id} with Planner")
+
+        # 临时实现：返回一个默认任务
+        from jiuwen.core.agent.task.task import Task
+        from jiuwen.agent.common.enum import TaskType, TaskStatus
+
+        default_task = Task(
+            task_type=TaskType.UNDEFINED,
+            description=f"Planner task for message: {message.content.text if message.content else 'No content'}",
+            status=TaskStatus.PENDING,
+            metadata={
+                "original_message_id": message.msg_id,
+                "task_source": "planner"
+            }
+        )
+
+        return [default_task]

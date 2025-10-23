@@ -6,7 +6,6 @@ import asyncio
 from typing import Optional
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.task import Task
-from jiuwen.core.agent.controller.enums import Message
 from jiuwen.core.agent.controller.scheduler.message_handler import MessageHandler
 from jiuwen.core.agent.controller.scheduler.task_handler import TaskHandler
 from jiuwen.core.common.logging import logger
@@ -15,8 +14,7 @@ from jiuwen.core.common.logging import logger
 class AgentScheduler:
     """AgentScheduler - 纯调度器，管理两个队列"""
     
-    def __init__(self, agent_id: str, config: AgentConfig):
-        self.agent_id = agent_id
+    def __init__(self, config: AgentConfig):
         self.config = config
         
         # 只管理两个核心队列 - 使用默认配置值

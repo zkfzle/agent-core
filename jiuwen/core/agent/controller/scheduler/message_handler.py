@@ -4,8 +4,8 @@
 
 from typing import List, Optional
 from jiuwen.agent.config.base import AgentConfig
+from jiuwen.core.agent.message.message import Message
 from jiuwen.core.agent.task.task import Task
-from jiuwen.core.agent.controller.enums import Message
 from jiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
 from jiuwen.core.common.logging import logger
 
@@ -13,8 +13,7 @@ from jiuwen.core.common.logging import logger
 class MessageHandler:
     """MessageHandler - 消息处理器基类，负责处理消息并生成任务，支持自定义实现"""
 
-    def __init__(self, agent_id: str, config: AgentConfig, context_engine=None, runtime=None):
-        self.agent_id = agent_id
+    def __init__(self, config: AgentConfig, context_engine=None, runtime=None):
         self.config = config
         self.context_engine = context_engine
         self.runtime = runtime

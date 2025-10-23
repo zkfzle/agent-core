@@ -6,7 +6,7 @@ from typing import Dict, Callable, Any, Awaitable
 
 from pydantic import BaseModel, Field
 
-from jiuwen.agent.common.enum import SubTaskType
+from jiuwen.agent.common.enum import TaskType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.common.constants.constant import INTERACTION
@@ -25,13 +25,13 @@ class AgentHandlerInputs(BaseModel):
 
 class AgentHandler:
     def __init__(self, agent_config: AgentConfig):
-        self._function_map: Dict[SubTaskType, Callable[[AgentHandlerInputs], Awaitable[dict]]] = {
-            SubTaskType.WORKFLOW: self.invoke_workflow,
-            SubTaskType.PLUGIN: self.invoke_plugin
+        self._function_map: Dict[TaskType, Callable[[AgentHandlerInputs], Awaitable[dict]]] = {
+            TaskType.WORKFLOW: self.invoke_workflow,
+            TaskType.PLUGIN: self.invoke_plugin
         }
         self._config = agent_config
 
-    async def invoke(self, sub_task_type: SubTaskType, inputs: AgentHandlerInputs):
+    async def invoke(self, sub_task_type: TaskType, inputs: AgentHandlerInputs):
         handler = self._function_map.get(sub_task_type)
         if not handler:
             raise JiuWenBaseException()
@@ -57,7 +57,7 @@ class AgentHandlerImpl(AgentHandler):
     def __init__(self, agent_config: AgentConfig):
         super().__init__(agent_config)
 
-    async def invoke(self, sub_task_type: SubTaskType, inputs: AgentHandlerInputs):
+    async def invoke(self, sub_task_type: TaskType, inputs: AgentHandlerInputs):
         handler = self._function_map.get(sub_task_type)
         if not handler:
             raise JiuWenBaseException()

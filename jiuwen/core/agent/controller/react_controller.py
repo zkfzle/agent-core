@@ -5,7 +5,7 @@ import json
 from jiuwen.core.agent.controller.base import Controller
 from jiuwen.core.agent.handler.base import AgentHandler, AgentHandlerInputs
 from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.task.sub_task import SubTask
+from jiuwen.core.agent.task import Task
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.exception.exception import JiuWenBaseException
@@ -30,17 +30,17 @@ class ReActState:
         track_state = self._runtime.get_state("react_state")
         return (track_state and
                 track_state.get("status") == ReActControllerStatus.INTERRUPTED.value and
-                track_state.get("sub_tasks") is not None)
+                track_state.get("tasks") is not None)
 
-    def get_interrupted_sub_tasks(self) -> List[SubTask]:
+    def get_interrupted_tasks(self) -> List[Task]:
         state_data = self._runtime.get_state("react_state") or {}
-        return state_data.get("sub_tasks", [])
+        return state_data.get("tasks", [])
 
-    def save_interrupt_state(self, sub_tasks: List[SubTask]):
+    def save_interrupt_state(self, tasks: List[Task]):
         self._runtime.update_state({
             "react_state": {
                 "status": ReActControllerStatus.INTERRUPTED.value,
-                "sub_tasks": sub_tasks
+                "tasks": tasks
             }
         })
 
@@ -55,11 +55,11 @@ class ReActState:
         except ValueError:
             return ReActControllerStatus.NORMAL
 
-    def set_status(self, status: ReActControllerStatus, sub_tasks: List[SubTask] = None):
+    def set_status(self, status: ReActControllerStatus, tasks: List[Task] = None):
         self._runtime.update_state({
             "react_state": {
                 "status": status.value,
-                "sub_tasks": sub_tasks or []
+                "tasks": tasks or []
             }
         })
 
@@ -139,7 +139,7 @@ class ReActController(Controller):
                 return final_result
 
             # 3. Act: Execute tool call
-            completed_tasks, exec_result = await self.act(plan_result.sub_tasks)
+            completed_tasks, exec_result = await self.act(plan_result.tasks)
 
             # 4. Observe: Observe the results and update the history
             interrupt_data = await self.observe(completed_tasks, exec_result)
@@ -171,14 +171,14 @@ class ReActController(Controller):
         for _, query in inputs.get("query").user_inputs.items():
             ReActControllerUtils.add_user_message(query, self._context_engine, self._runtime)
 
-        sub_tasks = self._state.get_interrupted_sub_tasks()
-        if not sub_tasks:
+        tasks = self._state.get_interrupted_tasks()
+        if not tasks:
             self._state.set_status(ReActControllerStatus.NORMAL)
             return None
 
-        sub_tasks[0].func_args = inputs.get("query", "")
+        tasks[0].input.arguments = inputs.get("query", "")
 
-        completed_tasks, exec_result = await self.act(sub_tasks)
+        completed_tasks, exec_result = await self.act(tasks)
 
         interrupt_data = await self.observe(completed_tasks, exec_result)
 
@@ -188,35 +188,35 @@ class ReActController(Controller):
         self._state.set_status(ReActControllerStatus.NORMAL)
         return None
 
-    async def act(self, sub_tasks: List[SubTask]) -> tuple[List[SubTask], Any]:
-        if not sub_tasks:
+    async def act(self, tasks: List[Task]) -> tuple[List[Task], Any]:
+        if not tasks:
             return [], None
 
         completed_tasks = []
         exec_result = None
 
-        for sub_task in sub_tasks:
+        for task in tasks:
             try:
                 inputs = AgentHandlerInputs(
                     context=self._runtime,
-                    name=sub_task.func_name,
-                    arguments=sub_task.func_args
+                    name=task.input.target_name,
+                    arguments=task.input.arguments
                 )
-                exec_result = await self._agent_handler.invoke(sub_task.sub_task_type, inputs)
-                sub_task.result = json.dumps(exec_result, ensure_ascii=False)
-                completed_tasks.append(sub_task)
+                exec_result = await self._agent_handler.invoke(task.task_type, inputs)
+                task.result = json.dumps(exec_result, ensure_ascii=False)
+                completed_tasks.append(task)
 
             except AgentInterrupt as e:
-                interrupt_result = ReActControllerUtils.create_interrupt_result(e, sub_task.func_name)
-                sub_task.result = interrupt_result
+                interrupt_result = ReActControllerUtils.create_interrupt_result(e, task.input.target_name)
+                task.result = interrupt_result
                 exec_result = interrupt_result
 
-                self._state.save_interrupt_state(sub_tasks)
+                self._state.save_interrupt_state(tasks)
                 break
 
         return completed_tasks, exec_result
 
-    async def observe(self, completed_tasks: List[SubTask], exec_result: Any = None) -> Any | None:
+    async def observe(self, completed_tasks: List[Task], exec_result: Any = None) -> Any | None:
         if exec_result and ReActControllerUtils.is_interaction_result(exec_result):
             # 处理交互请求 - 写入流式输出
             interrupt_data_list = []

@@ -1,6 +1,6 @@
 import pytest
 
-from jiuwen.core.agent.task.task_context import AgentRuntime
+from jiuwen.core.agent.agent import AgentRuntime
 from jiuwen.core.runtime.interaction.base import AgentInterrupt
 
 pytestmark = pytest.mark.asyncio

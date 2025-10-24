@@ -23,6 +23,7 @@ class InMemoryCheckpointer(Checkpointer):
             raise exception
 
         if result.get(INTERRUPT) is None:
+            await self._workflow_store.graph_checkpointer().adelete_thread(session_id)
             self._workflow_store.clear(session_id)
         else:
             self._workflow_store.save(runtime)
@@ -39,6 +40,7 @@ class InMemoryCheckpointer(Checkpointer):
         self._agent_store.save(runtime)
 
     async def release(self, session_id: str):
+        await self._workflow_store.graph_checkpointer().adelete_thread(session_id)
         self._workflow_store.clear(session_id)
         self._agent_store.clear(session_id)
 

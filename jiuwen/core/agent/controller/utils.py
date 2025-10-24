@@ -15,6 +15,9 @@ from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.logging import logger
 from pydantic import Field, ConfigDict
 from jiuwen.core.utils.config.user_config import UserConfig
+from jiuwen.core.utils.llm.hash_util import generate_key
+from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from jiuwen.core.component.common.configs.model_config import ModelConfig
 
 
 class WorkflowControllerOutput(ControllerOutput):
@@ -186,3 +189,32 @@ class ReActControllerUtils:
         chat_history = agent_context.get_messages()
         max_rounds = config.constrain.reserved_max_chat_rounds
         return chat_history[-2 * max_rounds:]
+
+class ReasonerUtils:
+    @staticmethod
+    def get_chat_history(context_engine: ContextEngine, runtime: Runtime, chat_history_max_turn: int) -> List[BaseMessage]:
+        """根据最大对话轮数获取历史记录"""
+        agent_context = context_engine.get_agent_context(runtime.session_id())
+        chat_history = agent_context.get_messages()
+        return chat_history[-2 * chat_history_max_turn:]
+    
+    @staticmethod
+    def get_model(model_config: ModelConfig, runtime: Runtime):
+        """根据模型配置获取模型实例"""
+        model_id = generate_key(
+            model_config.model_info.api_key,
+            model_config.model_info.api_base,
+            model_config.model_provider
+        )
+
+        model = runtime.get_model(model_id=model_id)
+
+        if model is None:
+            model = ModelFactory().get_model(
+                model_provider=model_config.model_provider,
+                api_base=model_config.model_info.api_base,
+                api_key=model_config.model_info.api_key
+            )
+            runtime.add_model(model_id=model_id, model=model)
+
+        return model

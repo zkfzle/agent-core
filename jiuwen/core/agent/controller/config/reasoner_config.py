@@ -8,15 +8,35 @@ from pydantic import BaseModel, Field
 
 from jiuwen.core.utils.prompt.template.template import Template
 
-# 默认用户提示词
-DEFAULT_USER_PROMPT = "你是一个功能分类器，你可以根据用户的请求提问，和相应的功能类别描述，选择正确的功能帮助用户解决问题。"
+DEFAULT_SYSTEM_PROMPT = """你是一个意图分类助手，擅长判断用户的输入属于哪个分类。
+当用户输入没有明确意图或者你无法判断用户输入意图时请选择 {{default_class}}。
+以下是给定的意图分类列表：
+{{category_list}}
+{{example_content}}
+请根据上述要求判断用户输入意图分类，输出要求如下：
+直接以JSON格式输出分类ID，不进行任何解释。JSON格式如下：
+ {"result": int}"""
 
+DEFAULT_USER_PROMPT = """
+{{user_prompt}}
+用户与助手的对话历史：
+{{chat_history}}
+当前输入：
+{{input}}"""
+
+def get_default_template():
+    return Template(
+                content=[
+                    {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
+                    {"role": "user", "content": DEFAULT_USER_PROMPT}
+                ]
+            )
 
 class IntentDetectionConfig(BaseModel):
     """config of Intent Detection Component"""
     category_info: str = Field(default='')
     category_list: List[str] = Field(default_factory=list)
-    intent_detection_template: Template
+    intent_detection_template: Template = field(default_factory=get_default_template)
     user_prompt: str = Field(default=DEFAULT_USER_PROMPT)
     chat_history_max_turn: int = Field(default=100)
     default_class: str = Field(default='分类0')

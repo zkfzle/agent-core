@@ -62,7 +62,7 @@ class TestRestFulApi(unittest.TestCase):
                 name='test', description='test',
                 parameters=Parameters(
                     type='object',
-                    properties={'test': {'description': 'test', 'type': 'string'}, 'required': ['test']},
+                    properties={'test': {'description': 'test', 'type': 'string'}},
                     required=['test']
                 )
             )

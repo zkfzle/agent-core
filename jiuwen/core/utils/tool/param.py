@@ -136,7 +136,7 @@ class Param:
         properties = dict()
         params = tool.params
         properties = Param.format_functions_for_complex(params, properties)
-        required = properties.get("required", [])
+        required = properties.pop("required", [])
         tool_name = tool.name
         format_tool_name = tool.name
         if '#*' in tool_name:

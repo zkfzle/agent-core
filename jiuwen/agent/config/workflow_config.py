@@ -10,7 +10,6 @@ from jiuwen.agent.config.react_config import ConstrainConfig
 
 class WorkflowAgentConfig(AgentConfig):
     controller_type: ControllerType = Field(default=ControllerType.WorkflowController)
-    timeout: int = Field(default=60, ge=1)
     start_workflow: WorkflowSchema = Field(default_factory=WorkflowSchema)
     end_workflow: WorkflowSchema = Field(default_factory=WorkflowSchema)
     global_variables: List[dict] = Field(default_factory=list)

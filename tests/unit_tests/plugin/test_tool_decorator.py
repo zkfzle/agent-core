@@ -67,7 +67,6 @@ class TestToolDecorator(unittest.TestCase):
                     type="object",
                     properties={
                         "a": {"description": "first arg", "type": "integer"},
-                        "required": ["a", "b"],
                         "b": {"description": "second arg", "type": "integer"},
                     },
                     required=["a", "b"],
@@ -114,7 +113,6 @@ class TestToolDecorator(unittest.TestCase):
                     type="object",
                     properties={
                         "title": {"description": "汇总标题", "type": "string"},
-                        "required": ["title", "products"],
                         "products": {
                             "description": "商品列表",
                             "type": "array",

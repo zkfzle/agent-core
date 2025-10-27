@@ -12,15 +12,10 @@ from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.utils.tool.tool import tool
 
 
-# API_BASE = os.getenv("API_BASE", "")
-# API_KEY = os.getenv("API_KEY", "")
-# MODEL_NAME = os.getenv("MODEL_NAME", "")
-# MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-
-API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
-API_KEY = os.getenv("API_KEY", "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")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "openai")
+API_BASE = os.getenv("API_BASE", "")
+API_KEY = os.getenv("API_KEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 def build_current_date():

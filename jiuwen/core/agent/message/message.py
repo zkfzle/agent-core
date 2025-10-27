@@ -5,6 +5,8 @@ from enum import Enum
 from typing import Dict, Any, Optional, Union
 from datetime import datetime
 
+from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+
 
 class MessageType(Enum):
     """消息类型枚举"""
@@ -50,21 +52,56 @@ class MessageSource:
 
 @dataclass
 class MessageContent:
-    """消息内容"""
-    text: Optional[str] = None  # 文本内容
-    data: Optional[Dict[str, Any]] = None  # 结构化数据
+    """消息内容 - 极简设计，三个字段解决所有问题"""
+    # 用户查询文本（用于显示和历史记录）
+    query: Optional[str] = None
+    
+    # 结构化数据字典（包含 stream_data, task_data 等所有扩展信息）
+    # 常见 key: "stream_data", "task_data", "to_agent_id" 等
+    data: Optional[Dict[str, Any]] = None
+    
+    # 交互输入对象（仅用于中断恢复场景）
+    interactive_input: Optional['InteractiveInput'] = None
 
     def __post_init__(self):
         if self.data is None:
             self.data = {}
-
-    def get_display_text(self) -> str:
-        """获取用于显示的文本"""
-        if self.text:
-            return self.text
-        elif self.data:
-            return str(self.data)
+    
+    def get_query(self) -> str:
+        """获取查询文本 - 统一处理所有情况"""
+        # 优先返回 query
+        if self.query is not None:
+            return self.query
+        
+        # 如果有 interactive_input，提取其文本
+        if self.interactive_input is not None:
+            return self._extract_interactive_text(self.interactive_input)
+        
+        # 默认返回空字符串
         return ""
+    
+    @staticmethod
+    def _extract_interactive_text(interactive_input: 'InteractiveInput') -> str:
+        """从 InteractiveInput 中提取文本"""
+        if interactive_input.raw_inputs is not None:
+            return str(interactive_input.raw_inputs)
+        
+        if interactive_input.user_inputs:
+            # 取第一个值
+            return str(list(interactive_input.user_inputs.values())[0])
+        
+        return ""
+    
+    # 便利方法：访问 data 中的常见字段
+    @property
+    def stream_data(self) -> Optional[Any]:
+        """获取流数据"""
+        return self.data.get("stream_data") if self.data else None
+    
+    @property
+    def task_data(self) -> Optional[Any]:
+        """获取任务数据"""
+        return self.data.get("task_data") if self.data else None
 
 
 @dataclass
@@ -109,14 +146,19 @@ class Message:
     # ========== 工厂方法 ==========
 
     @classmethod
-    def create_user_message(cls, content: str, conversation_id: str = "default",
-                            user_id: str = "user") -> 'Message':
-        """创建用户消息"""
+    def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default") -> 'Message':
+        """创建用户消息 - 统一处理字符串和 InteractiveInput"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.USER
         )
-        msg_content = MessageContent(text=content)
+        
+        # 根据类型分配到不同字段
+        if isinstance(content, InteractiveInput):
+            msg_content = MessageContent(interactive_input=content)
+        else:
+            msg_content = MessageContent(query=str(content))
+        
         context = MessageContext(
             conversation_id=conversation_id,
             correlation_id=str(uuid.uuid4())
@@ -137,7 +179,7 @@ class Message:
             conversation_id=conversation_id,
             source_type=SourceType.AGENT
         )
-        msg_content = MessageContent(text=content)
+        msg_content = MessageContent(query=content)
         context = MessageContext(
             conversation_id=conversation_id,
             correlation_id=reply_to_msg_id
@@ -159,7 +201,7 @@ class Message:
             source_type=SourceType.AGENT
         )
         msg_content = MessageContent(
-            text=handoff_reason,
+            query=handoff_reason,
             data={"to_agent_id": to_agent_id}
         )
         context = MessageContext(
@@ -175,17 +217,29 @@ class Message:
 
     @classmethod
     def create_task_completed(cls, conversation_id: str, task_id: str, result: Union[str, Dict[str, Any]],
-                              workflow_id: Optional[str] = None) -> 'Message':
+                              workflow_id: Optional[str] = None, stream_data: Optional[Any] = None,
+                              task_data: Optional[Any] = None) -> 'Message':
         """创建任务完成消息"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
 
+        # 构建 data 字典
+        data_dict = {}
+        if stream_data is not None:
+            data_dict["stream_data"] = stream_data
+        if task_data is not None:
+            data_dict["task_data"] = task_data
+        
+        # 根据 result 类型决定是放到 query 还是 data
         if isinstance(result, str):
-            msg_content = MessageContent(text=result)
+            msg_content = MessageContent(query=result, data=data_dict if data_dict else None)
         else:
-            msg_content = MessageContent(data=result)
+            # result 是字典，合并到 data 中
+            if isinstance(result, dict):
+                data_dict.update(result)
+            msg_content = MessageContent(data=data_dict if data_dict else None)
 
         context = MessageContext(
             conversation_id=conversation_id,
@@ -202,13 +256,25 @@ class Message:
 
     @classmethod
     def create_task_interrupted(cls, conversation_id: str, task_id: str, reason: str,
-                                workflow_id: Optional[str] = None) -> 'Message':
+                                workflow_id: Optional[str] = None, stream_data: Optional[Any] = None,
+                                task_data: Optional[Any] = None) -> 'Message':
         """创建任务中断消息"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
-        msg_content = MessageContent(text=reason)
+        
+        # 构建 data 字典
+        data_dict = {}
+        if stream_data is not None:
+            data_dict["stream_data"] = stream_data
+        if task_data is not None:
+            data_dict["task_data"] = task_data
+        
+        msg_content = MessageContent(
+            query=reason, 
+            data=data_dict if data_dict else None
+        )
         context = MessageContext(
             conversation_id=conversation_id,
             task_id=task_id,
@@ -231,7 +297,7 @@ class Message:
             conversation_id=conversation_id,
             source_type=source_type
         )
-        msg_content = MessageContent(text=error_msg)
+        msg_content = MessageContent(query=error_msg)
 
         return cls(
             msg_type=MessageType.ERROR,
@@ -248,7 +314,7 @@ class Message:
             conversation_id=conversation_id,
             source_type=source_type
         )
-        msg_content = MessageContent(text=info_msg)
+        msg_content = MessageContent(query=info_msg)
 
         return cls(
             msg_type=MessageType.INFO,
@@ -284,7 +350,7 @@ class Message:
 
     def get_display_content(self) -> str:
         """获取用于显示的内容"""
-        return self.content.get_display_text()
+        return self.content.get_query()
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典格式"""

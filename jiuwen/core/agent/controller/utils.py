@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 from jiuwen.agent.common.enum import TaskType
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task import Task, TaskInput
-from jiuwen.core.agent.controller.base import ControllerOutput, ControllerInput
+from jiuwen.core.agent.controller.types import ControllerOutput, ControllerInput
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.format.format_utils import FormatUtils
 from jiuwen.core.utils.llm.messages import BaseMessage, ToolCall, AIMessage, HumanMessage, ToolMessage

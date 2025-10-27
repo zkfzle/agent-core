@@ -50,7 +50,7 @@ class Planner:
 
         default_task = Task(
             task_type=TaskType.UNDEFINED,
-            description=f"Planner task for message: {message.content.text if message.content else 'No content'}",
+            description=f"Planner task for message: {message.content.get_query() if message.content else 'No content'}",
             status=TaskStatus.PENDING,
             metadata={
                 "original_message_id": message.msg_id,

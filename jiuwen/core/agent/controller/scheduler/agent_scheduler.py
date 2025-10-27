@@ -6,6 +6,7 @@ import asyncio
 from typing import Optional
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.task import Task
+from jiuwen.core.agent.message.message import Message
 from jiuwen.core.agent.controller.scheduler.message_handler import MessageHandler
 from jiuwen.core.agent.controller.scheduler.task_handler import TaskHandler
 from jiuwen.core.common.logging import logger
@@ -16,6 +17,7 @@ class AgentScheduler:
     
     def __init__(self, config: AgentConfig):
         self.config = config
+        self.agent_id = config.id
         
         # 只管理两个核心队列 - 使用默认配置值
         max_message_queue_size = getattr(config, 'max_message_queue_size', 1000)
@@ -94,7 +96,12 @@ class AgentScheduler:
                 # 2. 处理任务队列 - Task Handler执行任务
                 await self._process_tasks()
                 
-                # 3. 如果没有消息，短暂休眠
+                # 3. 检查是否因为任务失败而停止
+                if not self._running:
+                    logger.info(f"Scheduler stopped due to task failure")
+                    break
+                
+                # 4. 如果没有消息，短暂休眠
                 if self.message_queue.empty() and self.task_queue.empty():
                     await asyncio.sleep(getattr(self.config, 'scheduler_loop_interval', 0.1))
                     
@@ -136,7 +143,7 @@ class AgentScheduler:
                 logger.error(f"Error processing message: {e}")
                 
     async def _process_tasks(self):
-        """处理任务 - Task Handler执行任务"""
+        """处理任务 - Task Handler执行任务，返回消息并重新入队"""
         if not self.task_handler:
             return
             
@@ -151,8 +158,23 @@ class AgentScheduler:
                     timeout=getattr(self.config, 'task_timeout', 300)
                 )
                 
-                # Task Handler执行任务
-                result = await self.task_handler.execute(task)
+                # Task Handler执行任务，返回消息
+                result_message = await self.task_handler.execute(task)
+                
+                # 将结果消息重新放入消息队列，让 MessageHandler 统一处理
+                await self.schedule_message(result_message)
+                logger.debug(f"Task {task.task_id} completed, result message scheduled")
+                
+                # 检查是否是错误消息，如果是则停止调度器
+                from jiuwen.core.agent.message.message import MessageType
+                if result_message.msg_type == MessageType.ERROR:
+                    logger.error(f"Task {task.task_id} failed with error message")
+                    # 任务失败时，停止调度器 - 这是用户期望的行为
+                    logger.error(f"Stopping scheduler due to task failure: {task.task_id}")
+                    self._running = False
+                    break
+                else:
+                    logger.info(f"Task {task.task_id} executed, result message type: {result_message.msg_type}")
                 
                 executed_count += 1
                 
@@ -161,6 +183,10 @@ class AgentScheduler:
                 break
             except Exception as e:
                 logger.error(f"Error executing task: {e}")
+                # 执行异常时也停止调度器
+                logger.error(f"Stopping scheduler due to task execution error: {e}")
+                self._running = False
+                break
                 
     def is_running(self) -> bool:
         """检查调度器是否正在运行"""

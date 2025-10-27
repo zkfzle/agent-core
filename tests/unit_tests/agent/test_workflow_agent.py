@@ -3,7 +3,7 @@ import pytest
 from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.agent.workflow_agent import WorkflowAgent
+from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowMetadata

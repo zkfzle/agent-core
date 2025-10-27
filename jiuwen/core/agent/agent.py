@@ -48,6 +48,7 @@ class Agent(ABC):
         self._config = config
         self._controller: "Controller | None" = self._init_controller()
         self._agent_handler: "AgentHandler | None" = self._init_agent_handler()
+        self._custom_message_handler = None  # 支持自定义MessageHandler
 
     def _init_controller(self) -> "Controller | None":
         return None
@@ -57,6 +58,24 @@ class Agent(ABC):
 
     def config(self):
         return self._config
+
+    def set_message_handler(self, message_handler):
+        """
+        设置自定义MessageHandler
+
+        Args:
+            message_handler: 自定义的消息处理器实例，必须继承自MessageHandler基类
+
+        Example:
+            # 创建自定义MessageHandler
+            custom_handler = CustomMessageHandler(config, context_engine, runtime)
+            agent.set_message_handler(custom_handler)
+        """
+        self._custom_message_handler = message_handler
+
+    def get_message_handler(self):
+        """获取当前使用的MessageHandler"""
+        return self._custom_message_handler
 
     @abstractmethod
     async def invoke(self, inputs: Dict) -> Dict:

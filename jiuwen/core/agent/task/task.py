@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 from jiuwen.agent.common.enum import TaskStatus, TaskType
 
 
-# 依赖类型枚举
 class DependencyType(Enum):
     """依赖类型"""
     SEQUENTIAL = "sequential"  # 顺序依赖（前置任务完成后才能执行）

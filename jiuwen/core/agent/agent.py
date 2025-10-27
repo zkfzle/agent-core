@@ -45,6 +45,7 @@ class Agent(ABC):
 
     def __init__(self, config: Config) -> None:
         self._runtime = AgentRuntime(config=config)
+        self._config = config
         self._controller: "Controller | None" = self._init_controller()
         self._agent_handler: "AgentHandler | None" = self._init_agent_handler()
 
@@ -53,6 +54,9 @@ class Agent(ABC):
 
     def _init_agent_handler(self) -> "AgentHandler | None":
         return None
+
+    def config(self):
+        return self._config
 
     @abstractmethod
     async def invoke(self, inputs: Dict) -> Dict:

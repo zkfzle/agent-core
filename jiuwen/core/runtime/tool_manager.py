@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -8,13 +8,16 @@ from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
+ToolProvider = lambda: Tool
+
 
 class ToolMgr:
     def __init__(self) -> None:
         self._tools: ThreadSafeDict[str, Tool] = ThreadSafeDict()
+        self._tool_providers: ThreadSafeDict[str, ToolProvider] = ThreadSafeDict()
         self._tool_infos: ThreadSafeDict[str, ToolInfo] = ThreadSafeDict()
 
-    def add_tool(self, tool_id: str, tool: Tool) -> None:
+    def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
         if tool_id is None:
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
@@ -23,13 +26,15 @@ class ToolMgr:
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
                                           reason="tool is invalid, can not be None"))
+
+        # todo: 增加add到provider的代码
         self._tools[tool_id] = tool
         if hasattr(tool, "get_tool_info"):
             self._tool_infos[tool_id] = tool.get_tool_info()
         else:
             self._tool_infos[tool_id] = ToolInfo(function=Function())
 
-    def add_tools(self, tools: List[Tuple[str, Tool]]):
+    def add_tools(self, tools: List[Tuple[str, Union[Tool, ToolProvider]]]):
         if not tools:
             return
         for id, tool in tools:

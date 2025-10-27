@@ -1,4 +1,4 @@
-from typing import List, Tuple, TypeVar, Optional
+from typing import List, Tuple, TypeVar, Optional, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -13,14 +13,16 @@ Workflow = TypeVar("Workflow", contravariant=True)
 def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:
     return f"{workflow_id}_{workflow_version}"
 
+WorkflowProvider = lambda: Workflow
 
 class WorkflowMgr:
     def __init__(self):
         self._workflows: ThreadSafeDict[str, Workflow] = ThreadSafeDict()
+        self._workflow_providers: ThreadSafeDict[str, WorkflowProvider] = ThreadSafeDict()
         self._workflow_tool_infos: ThreadSafeDict[str, ToolInfo] = ThreadSafeDict()
         self._workflow_schema: ThreadSafeDict[str, WorkflowInputsSchema] = ThreadSafeDict()
 
-    def add_workflow(self, workflow_id: str, workflow: Workflow) -> None:
+    def add_workflow(self, workflow_id: str, workflow: Union[Workflow, WorkflowProvider]) -> None:
         if workflow_id is None:
             raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_ADD_FAILED.code,
                                       StatusCode.RUNTIME_WORKFLOW_ADD_FAILED.errmsg.format(
@@ -32,7 +34,7 @@ class WorkflowMgr:
         self._workflows[workflow_id] = workflow
         self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
 
-    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+    def add_workflows(self, workflows: List[Tuple[str, Union[Workflow, WorkflowProvider]]]):
         if not workflows:
             return
         for key, workflow in workflows:

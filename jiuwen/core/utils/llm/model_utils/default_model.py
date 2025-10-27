@@ -1,14 +1,11 @@
 #!/usr/bin/python3.11
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-import os
-import ssl
 
 import aiohttp
 import json
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 
-from aiohttp import ClientSession
 from pydantic import ConfigDict
 from requests import Session
 import openai
@@ -25,7 +22,6 @@ class RequestChatModel(BaseChatModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     sync_client: Session = Session()
-    aiohttp_session: Optional[ClientSession] = None
 
     def __init__(self,
                  api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
@@ -39,14 +35,9 @@ class RequestChatModel(BaseChatModel):
         self._usage = dict()
         self._setup_ssl_adapter()
 
-    async def ensure_session(self):
-        if self.aiohttp_session is None or self.aiohttp_session.closed:
-            self.aiohttp_session = aiohttp.ClientSession()
-
-    async def close_session(self):
-        if self.aiohttp_session is not None and not self.aiohttp_session.closed:
-            await self.aiohttp_session.close()
-            self.aiohttp_session = None
+    def close_session(self):
+        if  self.sync_client is not None:
+            self.sync_client.close()
 
     def model_provider(self) -> str:
         return "generic_http_api"
@@ -86,29 +77,31 @@ class RequestChatModel(BaseChatModel):
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         UrlUtils.check_url_is_valid(self.api_base)
-        await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                       messages=messages, tools=tools, **kwargs)
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        
+        connector = None
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-            self.aiohttp_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context))
-
-        async with self.aiohttp_session.post(
-                url=self.api_base,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                },
-                json=params,
-                allow_redirects=False,
-                timeout=self.timeout
-        ) as response:
-            response.raise_for_status()
-            data = await response.json()
-            await self.close_session()
-            return self._parse_response(model_name, data)
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
+        
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.post(
+                    url=self.api_base,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    },
+                    json=params,
+                    allow_redirects=False,
+                    timeout=timeout
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+                return self._parse_response(model_name, data)
 
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
@@ -149,33 +142,35 @@ class RequestChatModel(BaseChatModel):
         UrlUtils.check_url_is_valid(self.api_base)
         self._reset_stream_state()
 
-        await self.ensure_session()
         messages = self.sanitize_tool_calls(messages)
         params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
         params["stream"] = True
 
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        
+        connector = None
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-            self.aiohttp_session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context))
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
 
-        async with self.aiohttp_session.post(
-                url=self.api_base,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                },
-                json=params,
-                allow_redirects=False,
-                timeout=aiohttp.ClientTimeout(total=self.timeout)
-        ) as response:
-            response.raise_for_status()
-            async for line in response.content:
-                if line:
-                    chunk = self._parse_stream_line(line)
-                    if chunk:
-                        yield chunk
-        await self.close_session()
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.post(
+                    url=self.api_base,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    },
+                    json=params,
+                    allow_redirects=False,
+                    timeout=timeout
+            ) as response:
+                response.raise_for_status()
+                async for line in response.content:
+                    if line:
+                        chunk = self._parse_stream_line(line)
+                        if chunk:
+                            yield chunk
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -334,21 +329,6 @@ class OpenAIChatModel(BaseChatModel):
     def __init__(self,
                  api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
-        self._init_clients()
-
-    def _init_clients(self):
-        """init OpenAI client"""
-
-        self._sync_client = openai.OpenAI(
-            api_key=self.api_key,
-            base_url=self.api_base
-        )
-
-        self._async_client = openai.AsyncOpenAI(
-            api_key=self.api_key,
-            base_url=self.api_base
-        )
-
 
     def model_provider(self) -> str:
         return "openai"
@@ -358,8 +338,9 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
-            response = self._sync_client.chat.completions.create(**params)
-            self._sync_client.close()
+            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
+            response = sync_client.chat.completions.create(**params)
+            sync_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             if UserConfig.is_sensitive():
@@ -373,8 +354,9 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, **kwargs)
-            response = await self._async_client.chat.completions.create(**params)
-            await self._async_client.close()
+            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+            response = await async_client.chat.completions.create(**params)
+            await async_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             if UserConfig.is_sensitive():
@@ -387,8 +369,9 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
-            stream = self._sync_client.chat.completions.create(**params)
-            self._sync_client.close()
+            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
+            stream = sync_client.chat.completions.create(**params)
+            sync_client.close()
             for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
@@ -406,8 +389,9 @@ class OpenAIChatModel(BaseChatModel):
         try:
             params = self._build_request_params(model_name=model_name, temperature=temperature, top_p=top_p,
                                                 messages=messages, tools=tools, stream=True, **kwargs)
-            stream = await self._async_client.chat.completions.create(**params)
-            self._async_client.close()
+            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+            stream = await async_client.chat.completions.create(**params)
+            await async_client.close()
             async for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:

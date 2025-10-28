@@ -3,12 +3,27 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List, Optional, Any
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task.task import Task
 from jiuwen.core.agent.message.message import Message
 from jiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
 from jiuwen.core.common.logging import logger
+
+
+@dataclass
+class MessageHandlerResult:
+    """消息处理结果 - 统一的返回结构
+    
+    Attributes:
+        tasks: 生成的任务列表
+        should_continue: 是否应该继续调度循环
+        final_result: 最终结果（当 should_continue=False 时使用）
+    """
+    tasks: List[Task]
+    should_continue: bool = True
+    final_result: Optional[Any] = None
 
 
 class MessageHandler(ABC):
@@ -24,30 +39,35 @@ class MessageHandler(ABC):
         """设置决策器引用"""
         self.reasoner = reasoner
 
-    async def process_message(self, message: Message) -> List[Task]:
-        """处理消息，生成任务列表 - 统一的消息处理入口"""
+    async def process_message(self, message: Message) -> MessageHandlerResult:
+        """处理消息，返回处理结果 - 统一的消息处理入口"""
         try:
             # 1. 消息预处理
             processed_message = await self.preprocess_message(message)
 
             # 2. 自定义消息处理逻辑（子类实现）
-            tasks = await self.handle_message(processed_message)
+            result = await self.handle_message(processed_message)
 
             # 3. 任务后处理
             processed_tasks = []
-            for task in tasks:
+            for task in result.tasks:
                 processed_task = await self.postprocess_task(task)
                 processed_tasks.append(processed_task)
 
-            return processed_tasks
+            return MessageHandlerResult(
+                tasks=processed_tasks,
+                should_continue=result.should_continue,
+                final_result=result.final_result
+            )
 
         except Exception as e:
             logger.error(f"Error processing message {message.msg_id}: {e}")
-            return []
+            # 出错时停止调度
+            return MessageHandlerResult(tasks=[], should_continue=False, final_result=None)
 
     @abstractmethod
-    async def handle_message(self, message: Message) -> List[Task]:
-        """消息处理逻辑 - 子类必须实现此方法"""
+    async def handle_message(self, message: Message) -> MessageHandlerResult:
+        """消息处理逻辑 - 子类必须实现此方法，返回 MessageHandlerResult"""
         pass
 
     async def preprocess_message(self, message: Message) -> Message:

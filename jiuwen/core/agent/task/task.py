@@ -27,31 +27,19 @@ class TaskDependency:
             self.data_mapping = {}
 
 
-@dataclass
-class TaskInput:
+class TaskInput(BaseModel):
     """任务调用输入 - 统一处理工具、工作流、MCP等调用"""
-    target_id: str = ""
-    target_name: str = ""
-    arguments: Any = field(default_factory=dict)
+    target_id: str = Field(default="")
+    target_name: str = Field(default="")
+    arguments: Any = Field(default_factory=dict)
 
 
-@dataclass
-class TaskResult:
-    """任务执行结果"""
-    task_id: str
+class TaskResult(BaseModel):
+    """任务执行结果 - 极简设计，消除重复字段"""
     status: TaskStatus
-    result: Any = None
-    error: Optional[str] = None
-    execution_time: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    # 新增：输出数据，供其他任务使用
-    output_data: Dict[str, Any] = field(default_factory=dict)
-
-    def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
-        if self.output_data is None:
-            self.output_data = {}
+    output: Any = Field(default=None)  # 成功时的输出数据（WorkflowOutput等）
+    error: Optional[str] = Field(default=None)  # 失败时的错误信息
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # execution_time等扩展信息
 
 
 class Task(BaseModel):
@@ -65,7 +53,7 @@ class Task(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
     input: TaskInput = Field(default_factory=TaskInput)
-    result: Optional[Union[str, dict]] = Field(default=None)
+    result: Optional[TaskResult] = Field(default=None)  # 明确类型，不再是 Any
 
     # 依赖关系管理
     dependencies: List[TaskDependency] = Field(default_factory=list)  # 此任务依赖的其他任务

@@ -2,7 +2,7 @@
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List
 from datetime import datetime
 
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -52,20 +52,28 @@ class MessageSource:
 
 @dataclass
 class MessageContent:
-    """消息内容 - 极简设计，三个字段解决所有问题"""
-    # 用户查询文本（用于显示和历史记录）
+    """消息内容 - 显式字段设计，消除魔法字符串，类型明确"""
+    # 文本内容
     query: Optional[str] = None
     
-    # 结构化数据字典（包含 stream_data, task_data 等所有扩展信息）
-    # 常见 key: "stream_data", "task_data", "to_agent_id" 等
-    data: Optional[Dict[str, Any]] = None
-    
-    # 交互输入对象（仅用于中断恢复场景）
+    # 交互输入（用于中断恢复）
     interactive_input: Optional['InteractiveInput'] = None
+    
+    # 流数据 - 统一为列表类型，消除类型不一致
+    stream_data: List[Any] = field(default_factory=list)  # List[OutputSchema]
+    
+    # 任务结果 - 明确类型，不再是 Any
+    task_result: Optional[Any] = None  # TaskResult，避免循环导入暂时用 Any
+    
+    # 扩展字段（真正不确定的数据才放这里）
+    extensions: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        if self.data is None:
-            self.data = {}
+        """确保列表和字典字段不为 None"""
+        if self.stream_data is None:
+            self.stream_data = []
+        if self.extensions is None:
+            self.extensions = {}
     
     def get_query(self) -> str:
         """获取查询文本 - 统一处理所有情况"""
@@ -91,17 +99,6 @@ class MessageContent:
             return str(list(interactive_input.user_inputs.values())[0])
         
         return ""
-    
-    # 便利方法：访问 data 中的常见字段
-    @property
-    def stream_data(self) -> Optional[Any]:
-        """获取流数据"""
-        return self.data.get("stream_data") if self.data else None
-    
-    @property
-    def task_data(self) -> Optional[Any]:
-        """获取任务数据"""
-        return self.data.get("task_data") if self.data else None
 
 
 @dataclass
@@ -202,7 +199,7 @@ class Message:
         )
         msg_content = MessageContent(
             query=handoff_reason,
-            data={"to_agent_id": to_agent_id}
+            extensions={"to_agent_id": to_agent_id}
         )
         context = MessageContext(
             conversation_id=conversation_id
@@ -216,30 +213,24 @@ class Message:
         )
 
     @classmethod
-    def create_task_completed(cls, conversation_id: str, task_id: str, result: Union[str, Dict[str, Any]],
-                              workflow_id: Optional[str] = None, stream_data: Optional[Any] = None,
-                              task_data: Optional[Any] = None) -> 'Message':
+    def create_task_completed(cls, conversation_id: str, task_id: str,
+                              task_result: Any,  # TaskResult，避免循环导入暂时用 Any
+                              workflow_id: Optional[str] = None,
+                              stream_data: Optional[List[Any]] = None) -> 'Message':
         """创建任务完成消息"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
 
-        # 构建 data 字典
-        data_dict = {}
-        if stream_data is not None:
-            data_dict["stream_data"] = stream_data
-        if task_data is not None:
-            data_dict["task_data"] = task_data
+        # 处理 stream_data 默认值
+        if stream_data is None:
+            stream_data = []
         
-        # 根据 result 类型决定是放到 query 还是 data
-        if isinstance(result, str):
-            msg_content = MessageContent(query=result, data=data_dict if data_dict else None)
-        else:
-            # result 是字典，合并到 data 中
-            if isinstance(result, dict):
-                data_dict.update(result)
-            msg_content = MessageContent(data=data_dict if data_dict else None)
+        msg_content = MessageContent(
+            stream_data=stream_data,
+            task_result=task_result
+        )
 
         context = MessageContext(
             conversation_id=conversation_id,
@@ -256,24 +247,23 @@ class Message:
 
     @classmethod
     def create_task_interrupted(cls, conversation_id: str, task_id: str, reason: str,
-                                workflow_id: Optional[str] = None, stream_data: Optional[Any] = None,
-                                task_data: Optional[Any] = None) -> 'Message':
+                                task_result: Any,  # TaskResult，避免循环导入暂时用 Any
+                                workflow_id: Optional[str] = None,
+                                stream_data: Optional[List[Any]] = None) -> 'Message':
         """创建任务中断消息"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
         
-        # 构建 data 字典
-        data_dict = {}
-        if stream_data is not None:
-            data_dict["stream_data"] = stream_data
-        if task_data is not None:
-            data_dict["task_data"] = task_data
+        # 处理 stream_data 默认值
+        if stream_data is None:
+            stream_data = []
         
         msg_content = MessageContent(
-            query=reason, 
-            data=data_dict if data_dict else None
+            query=reason,
+            stream_data=stream_data,
+            task_result=task_result
         )
         context = MessageContext(
             conversation_id=conversation_id,

@@ -25,6 +25,7 @@ class TaskStatus(Enum):
     SUCCESS = auto()
     FAILED = auto()
     CANCELLED = auto()
+    INTERRUPTED = auto()  # 任务被中断，等待用户输入
 
 
 class ReActControllerStatus(Enum):

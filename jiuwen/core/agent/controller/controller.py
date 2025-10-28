@@ -56,3 +56,29 @@ class Controller:
         """接收消息 - 外部系统调用此接口，统一消息入口"""
         # 所有外部消息都统一放到AgentScheduler的消息队列中进行统一调度
         await self._scheduler.schedule_message(message)
+
+    async def run_until_complete(self):
+        """等待调度器运行完成，返回最终结果"""
+        return await self._scheduler.run_until_complete()
+
+    async def process_inputs(self, inputs: dict):
+        """处理输入并等待完成 - 统一的调用入口
+        
+        Args:
+            inputs: 输入字典，包含 query 和 conversation_id
+            
+        Returns:
+            最终结果（从 MessageHandler 的 final_result 返回）
+        """
+        # 1. 创建消息
+        session_id = inputs.get("conversation_id", "default_session")
+        message = Message.create_user_message(
+            content=inputs.get("query", ""),
+            conversation_id=session_id
+        )
+
+        # 2. 发送消息到调度器
+        await self._scheduler.schedule_message(message)
+
+        # 3. 等待调度器完成并返回结果
+        return await self._scheduler.run_until_complete()

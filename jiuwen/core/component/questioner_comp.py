@@ -482,6 +482,10 @@ class QuestionerExecutable(ComponentExecutable):
         if if_extract and not extract_key_fields:
             ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_CONFIG_ERROR,
                                            "extracted key fields cannot be empty")
+        for item in extract_key_fields:
+            if not item.field_name:
+                ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_CONFIG_ERROR,
+                                           "extracted key field name cannot be empty")
 
     @staticmethod
     def _validate_response_type_config(response_type: str):

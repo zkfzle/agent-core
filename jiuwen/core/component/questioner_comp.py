@@ -301,7 +301,8 @@ class QuestionerDirectReplyHandler:
 
     async def _handle_user_interact_state(self, inputs, runtime: Runtime, context):
         output = OutputCache()
-        self._query = await runtime.interact("")
+        await self._get_latest_human_feedback(runtime)
+
         chat_history = self._get_latest_chat_history(context)
         user_response = chat_history[-1].content if chat_history else ""
 
@@ -446,6 +447,10 @@ class QuestionerDirectReplyHandler:
 
         self._increment_state_of_response_num()
         self._update_state_of_key_fields(extracted_key_fields)
+
+    async def _get_latest_human_feedback(self, runtime):
+        for _ in range(self._state.response_num):
+            self._query = await runtime.interact("")
 
 
 class QuestionerExecutable(ComponentExecutable):

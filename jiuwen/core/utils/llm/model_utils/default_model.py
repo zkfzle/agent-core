@@ -340,13 +340,14 @@ class OpenAIChatModel(BaseChatModel):
                                                 messages=messages, tools=tools, **kwargs)
             sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
             response = sync_client.chat.completions.create(**params)
-            sync_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             if UserConfig.is_sensitive():
                 raise Exception("OpenAI API error")
             else:
                 raise Exception(f"OpenAI API error: {str(e)}")
+        finally:
+            sync_client.close()
 
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
@@ -356,13 +357,15 @@ class OpenAIChatModel(BaseChatModel):
                                                 messages=messages, tools=tools, **kwargs)
             async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
             response = await async_client.chat.completions.create(**params)
-            await async_client.close()
             return self._parse_openai_response(model_name, response)
         except Exception as e:
             if UserConfig.is_sensitive():
                 raise Exception("OpenAI API async error")
             else:
                 raise Exception(f"OpenAI API async error: {str(e)}")
+        finally:
+            await async_client.close()
+
 
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
@@ -371,7 +374,6 @@ class OpenAIChatModel(BaseChatModel):
                                                 messages=messages, tools=tools, stream=True, **kwargs)
             sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
             stream = sync_client.chat.completions.create(**params)
-            sync_client.close()
             for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
@@ -381,6 +383,8 @@ class OpenAIChatModel(BaseChatModel):
                 raise Exception("OpenAI API stream error")
             else:
                 raise Exception(f"OpenAI API stream error: {str(e)}")
+        finally:
+            sync_client.close()
 
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
@@ -391,7 +395,6 @@ class OpenAIChatModel(BaseChatModel):
                                                 messages=messages, tools=tools, stream=True, **kwargs)
             async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
             stream = await async_client.chat.completions.create(**params)
-            await async_client.close()
             async for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
@@ -401,6 +404,8 @@ class OpenAIChatModel(BaseChatModel):
                 raise Exception("OpenAI API async stream error")
             else:
                 raise Exception(f"OpenAI API async stream error: {str(e)}")
+        finally:
+            await async_client.close()
 
 
     def _build_request_params(self, model_name:str, temperature: float, top_p:float, messages: List[Dict],
@@ -433,12 +438,14 @@ class OpenAIChatModel(BaseChatModel):
         tool_calls = []
         if hasattr(message, 'tool_calls') and message.tool_calls:
             for tc in message.tool_calls:
+                function_name = getattr(getattr(tc, 'function', None), 'name', None) or ""
+                function_arguments = getattr(getattr(tc, 'function', None), 'arguments', None) or ""
                 tool_call = ToolCall(
-                    id=tc.id,
+                    id=getattr(tc, 'id', '') or "",
                     type="function",
                     function=FunctionInfo(
-                        name=tc.function.name,
-                        arguments=tc.function.arguments
+                        name=function_name,
+                        arguments=function_arguments
                     )
                 )
                 tool_calls.append(tool_call)
@@ -469,12 +476,14 @@ class OpenAIChatModel(BaseChatModel):
         if hasattr(delta, 'tool_calls') and delta.tool_calls:
             for tc_delta in delta.tool_calls:
                 if hasattr(tc_delta, 'function') and tc_delta.function:
+                    function_name = getattr(tc_delta.function, 'name', None) or ""
+                    function_arguments = getattr(tc_delta.function, 'arguments', None) or ""
                     tool_call = ToolCall(
-                        id=getattr(tc_delta, 'id', ''),
+                        id=getattr(tc_delta, 'id', '') or "",
                         type="function",
                         function=FunctionInfo(
-                            name=getattr(tc_delta.function, 'name', ''),
-                            arguments=getattr(tc_delta.function, 'arguments', '')
+                            name=function_name,
+                            arguments=function_arguments
                         )
                     )
                     tool_calls.append(tool_call)

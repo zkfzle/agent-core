@@ -36,7 +36,9 @@ from typing import List
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "siliconflow")
+os.environ.setdefault("LLM_SSL_VERIFY", "false")
+
 # Mock RESTful Api 元信息
 _MOCK_TOOL = RestfulApi(
     name="test",
@@ -111,21 +113,21 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """创建意图识别组件。"""
         model_config = WorkflowAgentTest._create_model_config()
         user_prompt = """
-        {{user_prompt}}
+            {{user_prompt}}
 
-        当前可供选择的功能分类如下：
-        {{category_info}}
+            当前可供选择的功能分类如下：
+            {{category_info}}
 
-        用户与助手的对话历史：
-        {{chat_history}}
+            用户与助手的对话历史：
+            {{chat_history}}
 
-        当前输入：
-        {{input}}
+            当前输入：
+            {{input}}
 
-        请根据当前输入和对话历史分析并输出最适合的功能分类。输出格式为 JSON：
-        {"class": "分类xx"}
-        如果没有合适的分类，请输出 {{default_class}}。
-        """
+            请根据当前输入和对话历史分析并输出最适合的功能分类。输出格式为 JSON：
+            {"class": "分类xx"}
+            如果没有合适的分类，请输出 {{default_class}}。
+            """
         config = IntentDetectionCompConfig(
             user_prompt="请判断用户意图",
             category_name_list=["查询某地天气"],

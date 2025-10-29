@@ -395,7 +395,11 @@ class QuestionerDirectReplyHandler:
         return result
 
     def _filter_non_extracted_key_fields(self) -> List[FieldInfo]:
-        return [_ for _ in self._config.field_names if _.field_name not in self._state.extracted_key_fields]
+        result = []
+        for item in self._config.field_names:
+            if item.required and item.field_name not in self._state.extracted_key_fields:
+                result.append(item)
+        return result
 
     def _update_state_of_key_fields(self, key_fields):
         for k, v in key_fields.items():

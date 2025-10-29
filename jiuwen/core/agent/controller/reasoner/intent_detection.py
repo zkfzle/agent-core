@@ -51,17 +51,18 @@ class IntentDetection:
         """
         # 1. 识别意图
         llm_inputs = self._prepare_detection_input(message)
+        session_id = self.runtime.session_id()
         if UserConfig.is_sensitive():
-            logger.info(f"[%s] <LLM Input>", self.runtime.executable_id())
+            logger.info(f"[%s] <LLM Input>", session_id)
         else:
-            logger.info(f"[%s] <LLM Input>: %s", self.runtime.executable_id(), llm_inputs)
+            logger.info(f"[%s] <LLM Input>: %s", session_id, llm_inputs)
         
         # 2. 调用大模型识别意图
         llm_output = await self._invoke_llm_get_output(llm_inputs)
         if UserConfig.is_sensitive():
-            logger.info(f"[%s] <LLM Output>", self.runtime.executable_id())
+            logger.info(f"[%s] <LLM Output>", session_id)
         else:
-            logger.info(f"[%s] <LLM Output>: %s", self.runtime.executable_id(), llm_output)
+            logger.info(f"[%s] <LLM Output>: %s", session_id, llm_output)
         detected_intent_id = self._parse_intent_from_output(llm_output)
         
         # 3. 根据意图创建任务
@@ -78,7 +79,8 @@ class IntentDetection:
         3. 返回任务列表
         """
         tasks = []
-        task_unique_id = f"{self.runtime.executable_id()}_workflow_{workflow_id}_{secrets.token_hex(4)}"
+        session_id = self.runtime.session_id()
+        task_unique_id = f"{session_id}_workflow_{workflow_id}_{secrets.token_hex(4)}"
         if workflow_id == IntentDetectionConstants.DEFAULT_CLASS:
             # 意图识别没有匹配的工作流，返回空任务列表
             pass
@@ -95,7 +97,7 @@ class IntentDetection:
                             arguments=message.content
                         )
                     ))
-                    logger.info(f"[%s] success to create task for intent: %s", self.runtime.executable_id(), workflow_id)
+                    logger.info(f"[%s] success to create task for intent: %s", session_id, workflow_id)
         return tasks
 
     def _parse_intent_from_output(self, llm_output: str) -> str:
@@ -107,6 +109,7 @@ class IntentDetection:
         2. 返回意图工作流id
         """
         detected_intent_id = ""
+        session_id = self.runtime.session_id()
         try:
             output_data = json.loads(llm_output)
             detected_class_number = int(output_data.get('result', ''))
@@ -118,7 +121,7 @@ class IntentDetection:
                 for workflow in self.agent_config.workflows:
                     if workflow.name == detected_intent_name:
                         detected_intent_id = workflow.id
-                        logger.info(f"[%s] get intent: %s", self.runtime.executable_id(), detected_intent_id)
+                        logger.info(f"[%s] get intent: %s", session_id, detected_intent_id)
                         break
                 return detected_intent_id
         except Exception as e:
@@ -181,6 +184,6 @@ class IntentDetection:
 
         # 处理当前输入
         if self.intent_config.enable_input:
-            current_inputs.update({IntentDetectionConstants.INPUT: message.content.text or ""})
+            current_inputs.update({IntentDetectionConstants.INPUT: message.content.get_query() or ""})
         llm_inputs = self.intent_config.intent_detection_template.format(current_inputs).to_messages()
         return llm_inputs

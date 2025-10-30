@@ -64,7 +64,8 @@ class WorkflowMgr:
     def remove_workflow(self, workflow_id: str) -> Optional[Workflow]:
         if workflow_id is None:
             return None
-        return self._workflow_tool_infos.pop(workflow_id, None)
+        self._workflow_tool_infos.pop(workflow_id, None)
+        return self._workflows.pop(workflow_id)
 
     def get_tool_infos(self, workflow_id: List[str]):
         if not workflow_id:

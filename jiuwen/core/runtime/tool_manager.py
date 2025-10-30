@@ -64,7 +64,8 @@ class ToolMgr:
     def remove_tool(self, tool_id: str) -> Optional[Tool]:
         if tool_id is None:
             return tool_id
-        return self._tool_infos.pop(tool_id, None)
+        self._tool_infos.pop(tool_id, None)
+        return self._tools.pop(tool_id, None)
 
     def get_tool_infos(self, tool_id: List[str]):
         if not tool_id:

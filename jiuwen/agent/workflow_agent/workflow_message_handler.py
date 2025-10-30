@@ -131,6 +131,78 @@ class WorkflowMessageHandler(MessageHandler):
         self._state = WorkflowControllerState()  # 状态数据对象
         self.load_state()  # 从runtime加载状态
 
+    def save_state(self):
+        """将状态保存到runtime"""
+        if not self._state.interrupted_tasks:
+            self.runtime.update_state({_RUNTIME_STATE_KEY: None})
+            logger.debug("Cleared workflow state")
+            return
+
+        # 使用 Pydantic 的序列化能力
+        state_data = {
+            _STATE_INTERRUPTED_TASKS_KEY: [task.model_dump() for task in self._state.interrupted_tasks]
+        }
+        self.runtime.update_state({_RUNTIME_STATE_KEY: state_data})
+        logger.debug(f"Saved {len(self._state.interrupted_tasks)} interrupted tasks")
+
+    def load_state(self):
+        """从runtime加载状态"""
+        state_data = self.runtime.get_state(_RUNTIME_STATE_KEY)
+        if not state_data:
+            self._state.interrupted_tasks = []
+            logger.debug("No saved state found")
+            return
+
+        tasks_data = state_data.get(_STATE_INTERRUPTED_TASKS_KEY, [])
+
+        # 使用 Pydantic 的反序列化能力
+        deserialized_tasks = []
+        for task_dict in tasks_data:
+            try:
+                task = Task.model_validate(task_dict)
+                deserialized_tasks.append(task)
+            except Exception as e:
+                logger.error(f"Failed to deserialize task: {e}")
+
+        self._state.interrupted_tasks = deserialized_tasks
+        logger.info(f"Loaded {len(deserialized_tasks)} interrupted tasks")
+
+    async def handle_message(self, message: Message) -> MessageHandlerResult:
+        """处理工作流模式的消息，返回处理结果"""
+        try:
+            # 根据消息类型分发处理
+            if message.msg_type == MessageType.TASK_COMPLETED:
+                # 任务完成：写入流数据，决定是否停止
+                return await self._handle_task_completed(message)
+
+            elif message.msg_type == MessageType.TASK_INTERRUPTED:
+                # 任务中断：写入流数据，保存状态，决定是否停止
+                return await self._handle_task_interrupted(message)
+
+            elif message.msg_type == MessageType.USER_INPUT:
+                # 用户输入：根据当前状态决定是新任务还是恢复任务
+                return await self._handle_user_input(message)
+
+            elif message.msg_type == MessageType.ERROR:
+                # 错误消息：发送错误流，停止工作流
+                return await self._handle_error(message)
+
+            else:
+                logger.warning(f"Unsupported message type: {message.msg_type}")
+                # 不支持的消息类型，继续处理下一个消息
+                return MessageHandlerResult(tasks=[], should_continue=True)
+
+        except Exception as e:
+            logger.error(f"Error in WorkflowMessageHandler: {e}")
+            # 发送错误流式消息
+            error_result = await self._send_error_stream(str(e))
+            # 返回停止信号
+            return MessageHandlerResult(
+                tasks=[],
+                should_continue=False,
+                final_result=error_result
+            )
+
     async def _handle_task_completed(self, message: Message) -> MessageHandlerResult:
         """处理任务完成消息：写入流数据，清除该workflow的中断状态，返回停止信号"""
         # 写入任务完成的流数据

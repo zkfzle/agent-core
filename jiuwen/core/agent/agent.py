@@ -5,7 +5,9 @@
 from abc import ABC, abstractmethod
 from typing import Any, Iterator, Dict, List, Union
 
+from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.core.runtime.agent import StaticAgentRuntime
+from jiuwen.core.runtime.resource_manager import ResourceMgr
 from jiuwen.core.runtime.runtime import Runtime
 
 from jiuwen.core.runtime.workflow_manager import generate_workflow_key
@@ -19,8 +21,8 @@ from jiuwen.core.workflow.base import Workflow
 
 
 class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
-    def __init__(self, config: Config = None):
-        inner = StaticAgentRuntime(config)
+    def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
+        inner = StaticAgentRuntime(config, resource_mgr=resource_mgr)
         super().__init__(inner)
         self._runtime = inner
 
@@ -82,11 +84,11 @@ class Agent(ABC):
         return self._message_handler
 
     @abstractmethod
-    async def invoke(self, inputs: Dict) -> Dict:
+    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
         pass
 
     @abstractmethod
-    async def stream(self, inputs: Dict) -> Iterator[Any]:
+    async def stream(self, inputs: Dict, runtime: Runtime = None) -> Iterator[Any]:
         pass
 
     def bind_workflows(self, workflows: List[Workflow]):
@@ -94,10 +96,17 @@ class Agent(ABC):
             [(generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow) for
              workflow in
              workflows])
+        for workflow in workflows:
+            self._config.get_agent_config().workflows.append(WorkflowSchema(id=workflow.config().metadata.id,
+                                                         name=workflow.config().metadata.name,
+                                                         version=workflow.config().metadata.version,
+                                                         description=workflow.config().metadata.description))
 
     def bind_tools(self, tools: List[Tool]):
         self._runtime.add_tools(
             [(tool.name, tool) for tool in tools if (isinstance(tool, RestfulApi) or isinstance(tool, LocalFunction))])
+        for tool in tools:
+            self._config.get_agent_config().tools.append(tool.name)
 
     def get_llm_calls(self) -> Dict:
         raise NotImplementedError("")

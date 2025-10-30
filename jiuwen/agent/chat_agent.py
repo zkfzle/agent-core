@@ -6,6 +6,7 @@ from jiuwen.agent.config.chat_config import ChatAgentConfig
 from jiuwen.core.agent.agent import Agent
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.context_engine.engine import ContextEngine
+from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.utils.llm_call.base import LLMCall
 from jiuwen.core.utils.llm.hash_util import generate_key
@@ -76,36 +77,48 @@ class ChatAgent(Agent):
             config=context_config,
         )
 
-    async def invoke(self, inputs: Dict) -> Dict:
+    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
         # 1. init ContextEngine and Runtime
         session_id = inputs.pop("conversation_id", "default_session")
-        runtime = await self._runtime.pre_run(session_id=session_id)
+
+        if runtime is None:
+            # 兼容不传runtime的旧用法
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        else:
+            agent_runtime = runtime
 
         # 2. invoke LLMCall
         agent_context = self.context_engine.get_agent_context(session_id)
         result = await self._llm_call.invoke(
             inputs=inputs,
-            runtime=runtime,
+            runtime=agent_runtime,
             history=agent_context.get_messages(),
             tools=self._runtime.get_tool_info()
         )
-        await runtime.post_run()
+        if runtime is None:
+            await agent_runtime.post_run()
         return dict(output=result.content, tool_calls=result.tool_calls)
 
-    async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
         # 1. init ContextEngine and Runtime
         session_id = inputs.pop("conversation_id", "default_session")
-        runtime = await self._runtime.pre_run(session_id=session_id)
+
+        if runtime is None:
+            # 兼容不传runtime的旧用法
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        else:
+            agent_runtime = runtime
 
         # 2. stream invoke LLMCall
         agent_context = self.context_engine.get_agent_context(session_id)
         stream_iterator = self._llm_call.stream(
             inputs=inputs,
-            runtime=runtime,
+            runtime=agent_runtime,
             history=agent_context.get_messages(),
             tools=self._runtime.get_tool_info()
         )
-        await runtime.post_run()
+        if runtime is None:
+            await agent_runtime.post_run()
         async for result in stream_iterator:
             yield dict(output=result.content, tool_calls=result.tool_calls)
 

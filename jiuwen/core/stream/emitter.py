@@ -118,4 +118,8 @@ class StreamEmitter:
             logger.debug("StreamWriter is already closed.")
         self._closed = True
 
+        if not self._stream_queue.is_closed:
+            await self._stream_queue.send(self.END_FRAME)
+
+    async def end_stream(self):
         await self._stream_queue.send(self.END_FRAME)

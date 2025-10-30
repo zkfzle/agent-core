@@ -18,6 +18,7 @@ class AgentConfig(BaseModel):
     controller_type: ControllerType = Field(default=ControllerType.Undefined)
     workflows: List[WorkflowSchema] = Field(default_factory=list)
     model: Optional[ModelConfig] = Field(default=None)
+    tools: List[str] = Field(default_factory=list)
 
 class LLMCallConfig(BaseModel):
     model: Optional[ModelConfig] = Field(default=None)

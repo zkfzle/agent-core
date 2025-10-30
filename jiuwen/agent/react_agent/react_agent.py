@@ -116,23 +116,29 @@ class ReActAgent(Agent):
         # 否则直接返回
         return result
 
-    async def invoke(self, inputs: Dict) -> Dict:
+    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
         """直接调用"""
         session_id = inputs.pop("conversation_id", "default_session")
-        runtime = await self._runtime.pre_run(session_id=session_id)
+
+        if runtime is None:
+            # 兼容不传runtime的用法
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        else:
+            agent_runtime = runtime
         controller = None
         try:
             # 每次调用都创建新的 controller
-            controller = self._create_controller(runtime)
+            controller = self._create_controller(agent_runtime)
             await controller.start()
 
             # 处理输入并等待完成（统一接口，不再访问私有属性）
             result = await controller.process_inputs(inputs)
             
             logger.info("Controller completed, closing stream")
-            
-            # 调度器完成后，关闭流（发送 END_FRAME）
-            await runtime.post_run()
+
+            if runtime is None:
+                # 调度器完成后，关闭流（发送 END_FRAME）
+                await agent_runtime.post_run()
 
             # 解包结果
             # result 来自 MessageHandler 的 final_result，是 OutputSchema 或 OutputSchema 列表
@@ -151,16 +157,20 @@ class ReActAgent(Agent):
             if controller:
                 await controller.stop()
 
-    async def stream(self, inputs: Dict) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
         """流式调用"""
         session_id = inputs.pop("conversation_id", "default_session")
-        runtime = await self._runtime.pre_run(session_id=session_id)
+
+        if runtime is None:
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        else:
+            agent_runtime = runtime
 
         async def stream_process():
             controller = None
             try:
                 # 每次调用都创建新的 controller
-                controller = self._create_controller(runtime)
+                controller = self._create_controller(agent_runtime)
                 await controller.start()
 
                 # 处理输入并等待完成（统一接口，不再访问私有属性）
@@ -179,14 +189,17 @@ class ReActAgent(Agent):
                 if controller:
                     await controller.stop()
                 # 调度器完成后，关闭流
-                await runtime.post_run()
+                if runtime is None:
+                    await agent_runtime.post_run()
+                else:
+                    await agent_runtime.end_stream()
 
         # 启动后台任务处理消息和任务
         task = asyncio.create_task(stream_process())
 
         # 前台负责 yield 所有流数据
-        # stream_iterator() 会一直迭代直到收到 END_FRAME（由 runtime.post_run() 发送）
-        async for result in runtime.stream_iterator():
+        # stream_iterator() 会一直迭代直到收到 END_FRAME（由 agent_runtime.post_run() 或 agent_runtime.end_stream()发送）
+        async for result in agent_runtime.stream_iterator():
             yield result
 
         # 等待后台任务完成

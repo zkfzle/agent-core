@@ -203,6 +203,9 @@ class Runtime(ABC):
     async def post_run(self):
         pass
 
+    async def end_stream(self):
+        pass
+
     async def pre_run(self, **kwargs):
         pass
 

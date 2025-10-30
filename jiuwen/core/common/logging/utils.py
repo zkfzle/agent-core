@@ -1,8 +1,6 @@
-"""
-核心日志工具函数
-
-提供线程会话管理和日志工具函数
-"""
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import os
 import threading

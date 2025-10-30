@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer

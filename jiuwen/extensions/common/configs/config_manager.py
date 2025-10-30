@@ -1,9 +1,6 @@
-# jiuwen/extensions/common/configs/config_manager.py
-"""
-配置管理器
-
-提供配置访问接口，支持从代码配置和 YAML 文件加载
-"""
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
 
 import os
 import yaml

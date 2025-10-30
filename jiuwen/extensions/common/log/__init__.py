@@ -1,9 +1,6 @@
-# jiuwen/extensions/common/log/__init__.py
-"""
-扩展日志模块
-
-提供自定义日志实现和配置管理
-"""
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from .default_impl import DefaultLogger, SafeRotatingFileHandler, ThreadContextFilter, CallerAwareFormatter
 from jiuwen.core.common.logging.utils import set_thread_session, get_thread_session

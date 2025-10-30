@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import hashlib
 
 def generate_key(api_key: str, api_base: str, model_provider: str="openai") -> str:

@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, List, Callable

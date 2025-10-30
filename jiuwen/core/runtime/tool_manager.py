@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from typing import List, Optional, Tuple, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
@@ -8,8 +12,8 @@ from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
-ToolProvider = lambda: Tool
 
+ToolProvider = lambda: Tool
 
 class ToolMgr:
     def __init__(self) -> None:

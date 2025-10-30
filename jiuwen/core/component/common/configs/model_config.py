@@ -1,6 +1,6 @@
-#!/usr/bin/python3.11
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from dataclasses import field, dataclass
 
 from jiuwen.core.utils.llm.base import BaseModelInfo

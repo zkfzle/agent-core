@@ -1,8 +1,6 @@
-"""
-核心日志管理器
-
-提供日志管理器的完整实现，支持自定义日志器注册和默认日志器创建
-"""
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import threading
 from typing import Dict, Optional, Type

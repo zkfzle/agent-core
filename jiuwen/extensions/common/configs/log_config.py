@@ -1,8 +1,6 @@
-"""
-日志配置管理
-
-统一管理所有日志相关的配置
-"""
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import os
 import yaml

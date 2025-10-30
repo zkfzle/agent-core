@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from .protocol import LoggerProtocol
 from .manager import LogManager
 from .utils import set_thread_session, get_thread_session

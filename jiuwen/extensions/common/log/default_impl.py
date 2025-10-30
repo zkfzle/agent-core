@@ -1,8 +1,6 @@
-"""
-扩展日志默认实现
-
-提供默认的日志实现，包括DefaultLogger和相关的处理器
-"""
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import os
 import sys

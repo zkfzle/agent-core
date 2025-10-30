@@ -1,8 +1,6 @@
-"""
-日志协议定义
-
-定义所有日志实现必须遵循的接口
-"""
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from typing import Protocol, runtime_checkable, Dict, Any, Optional
 import logging

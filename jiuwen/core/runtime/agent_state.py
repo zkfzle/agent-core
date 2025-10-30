@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from typing import Union, Optional
 
 from jiuwen.core.runtime.state import State, InMemoryStateLike, GLOBAL_STATE_KEY, AGENT_STATE_KEY

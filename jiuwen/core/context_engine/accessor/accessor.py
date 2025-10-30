@@ -1,6 +1,6 @@
-#!/usr/bin/python3.11
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from typing import Optional
 from jiuwen.core.context_engine.accessor.history import ConversationHistory

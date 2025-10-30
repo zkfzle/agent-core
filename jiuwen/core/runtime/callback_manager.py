@@ -1,10 +1,17 @@
-import logging
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from abc import abstractmethod
 from typing import Callable, Dict, List
+
+from jiuwen.core.common.logging import logger
+
 
 def trigger_event(func):
     func._is_trigger_event = True
     return func
+
 
 class BaseHandler:
     """Stateless data processing"""
@@ -24,8 +31,9 @@ class BaseHandler:
         return [
             name for name in dir(self)
             if callable(getattr(self, name)) and
-                getattr(getattr(self, name), "_is_trigger_event", False)
+               getattr(getattr(self, name), "_is_trigger_event", False)
         ]
+
 
 class CallbackManager:
     def __init__(self):
@@ -50,7 +58,7 @@ class CallbackManager:
         if handler_class_name not in self._trigger_events or event_name not in self._trigger_events[
             handler_class_name
         ]:
-            logging.error(f"event name not exists: {handler_class_name}, {event_name}")
+            logger.error(f"event name not exists: {handler_class_name}, {event_name}")
             raise TypeError(f"event name not exists")
         handler = self._handlers[handler_class_name]
         if hasattr(handler, event_name):

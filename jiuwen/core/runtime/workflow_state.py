@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from typing import Union, Optional, Any, Callable, Self
 
 from jiuwen.core.runtime.state import State, CommitStateLike, DEFAULT_NODE_ID, DEFAULT_WORKFLOW_ID, IO_STATE_KEY, \

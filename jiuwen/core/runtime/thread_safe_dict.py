@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import threading
 from typing import (
     Dict, Generic, Iterator, KeysView, MutableMapping,

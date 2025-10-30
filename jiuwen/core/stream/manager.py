@@ -45,9 +45,9 @@ class StreamWriterManager:
                     break
                 else:
                     if UserConfig.is_sensitive():
-                        logger.info(f"Received stream data")
+                        logger.debug(f"Received stream data")
                     else:
-                        logger.info(f"Received stream data: {data}")
+                        logger.debug(f"Received stream data: {data}")
                     yield data
             else:
                 logger.warning("No data received, waiting for data.")

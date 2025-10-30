@@ -32,11 +32,31 @@ class AIMessageChunk(AIMessage, BaseMessageChunk):
         if not isinstance(other, AIMessageChunk):
             raise TypeError(f"Cannot add AIMessageChunk to {type(other)}")
 
+        # merge tool_calls by concatenating fragments of the same call instead of appending new elements
+        merged_tool_calls = []
+        if self.tool_calls:
+            merged_tool_calls.extend(self.tool_calls)
+
+        if other.tool_calls:
+            for incoming in other.tool_calls:
+                if merged_tool_calls:
+                    last = merged_tool_calls[-1]
+                    same_id = (last.id and incoming.id and last.id == incoming.id) or (not last.id or not incoming.id)
+                    if same_id and getattr(last, 'function', None) and getattr(incoming, 'function', None):
+                        last.id = last.id or incoming.id
+                        last.type = last.type or incoming.type
+                        last.index = last.index if last.index is not None else incoming.index
+                        last.function.name = (last.function.name or "") + (incoming.function.name or "")
+                        last.function.arguments = (last.function.arguments or "") + (incoming.function.arguments or "")
+                        continue
+                # otherwise, push as a new tool_call
+                merged_tool_calls.append(incoming)
+
         return AIMessageChunk(
             role=self.role,
             content=(self.content or "") + (other.content or ""),
             name=other.name or self.name,
-            tool_calls=(self.tool_calls or []) + (other.tool_calls or []),
+            tool_calls=merged_tool_calls if merged_tool_calls else None,
             usage_metadata=other.usage_metadata or self.usage_metadata,
             raw_content=other.raw_content or self.raw_content,
             reason_content=other.reason_content or self.reason_content

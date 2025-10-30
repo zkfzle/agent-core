@@ -10,7 +10,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
 from jiuwen.core.component.end_comp import End
-from jiuwen.core.graph.TimeoutAsyncInteratorWrapper import TimeoutAsyncIteratorWrapper
+from jiuwen.core.graph.timeout_async_interator_wrapper import TimeoutAsyncIteratorWrapper
 from jiuwen.core.graph.atomic_node import AsyncAtomicNode
 from jiuwen.core.graph.executable import Executable, Output
 from jiuwen.core.graph.graph_state import GraphState

@@ -192,7 +192,9 @@ class QuestionerEndState(QuestionerState):
                    status=ExecutionStatus.END)
 
     def handle_event(self, event: QuestionerEvent):
-        return QuestionerState()  # loop back to STRAT state
+        if event == QuestionerEvent.START_EVENT:
+            return QuestionerState().handle_event(event)  # loop back to STRAT state
+        return self
 
 
 class QuestionerUtils:

@@ -3,8 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import json
-import logging
-import os
 from typing import List
 
 import requests
@@ -12,6 +10,7 @@ import aiohttp
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.logging import logger
 from jiuwen.core.utils.common.ssl_utils import SslUtils
 from jiuwen.core.utils.common.url_utils import UrlUtils
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
@@ -216,7 +215,7 @@ def _data_of(response):
                     )
             res = json.loads(content.decode('utf-8'))
         except json.JSONDecodeError:
-            logging.error("JSON deocde failed. Raw response suppressed for security.")
+            logger.error("JSON deocde failed. Raw response suppressed for security.")
             return {constant.ERR_CODE: 0, constant.ERR_MESSAGE: 'success', constant.RESTFUL_DATA: ""}
         if constant.ERR_CODE not in res or constant.ERR_MESSAGE not in res or constant.RESTFUL_DATA not in res:
             return {constant.ERR_CODE: 0, constant.ERR_MESSAGE: 'success', constant.RESTFUL_DATA: res}

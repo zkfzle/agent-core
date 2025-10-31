@@ -146,6 +146,9 @@ class QuestionerState(BaseModel):
     def is_undergoing_interaction(self):
         return self.status in [ExecutionStatus.USER_INTERACT]
 
+    def is_fresh_state(self):
+        return self.status == ExecutionStatus.START and self.response_num == 0
+
 
 class QuestionerStartState(QuestionerState):
     @classmethod
@@ -189,7 +192,7 @@ class QuestionerEndState(QuestionerState):
                    status=ExecutionStatus.END)
 
     def handle_event(self, event: QuestionerEvent):
-        return self
+        return QuestionerState()  # loop back to STRAT state
 
 
 class QuestionerUtils:

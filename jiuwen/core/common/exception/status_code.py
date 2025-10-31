@@ -180,6 +180,19 @@ class StatusCode(Enum):
     RUNTIME_WORKFLOW_CONFIG_GET_FAILED = (190012, "failed to get workflow config, reason: {reason}")
     RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (19021, "failed to get toolInfo of workflow, reason: {reason}")
 
+    # Runtime - Resource Management - Agent Group 190040 - 190049
+    RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add agent group, reason: {reason}")
+    RUNTIME_AGENT_GROUP_GET_FAILED = (190041, "failed to get agent group, reason: {reason}")
+    RUNTIME_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove agent group, reason: {reason}")
+    
+    # Runtime - Resource Management - Workflow Additional
+    RUNTIME_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
+    
+    # Runtime - Resource Management - Agent 190050 - 190059
+    RUNTIME_AGENT_ADD_FAILED = (190050, "failed to add agent, reason: {reason}")
+    RUNTIME_AGENT_GET_FAILED = (190051, "failed to get agent, reason: {reason}")
+    RUNTIME_AGENT_REMOVE_FAILED = (190052, "failed to remove agent, reason: {reason}")
+
     RUNTIME_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
     RUNTIME_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")
     RUNTIME_TOOL_TOOL_INFO_GET_FAILED = (19121, "failed to get toolInfo of tool, reason: {reason}")

@@ -22,21 +22,28 @@ class ToolMgr:
         self._tool_infos: ThreadSafeDict[str, ToolInfo] = ThreadSafeDict()
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
-        if tool_id is None:
+        if tool_id is None or tool_id.strip() == "":
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="tool_id is invalid, can not be None"))
+                                          reason="tool_id is invalid, can not be None or empty"))
         if tool is None:
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
                                           reason="tool is invalid, can not be None"))
 
-        # todo: 增加add到provider的代码
-        self._tools[tool_id] = tool
-        if hasattr(tool, "get_tool_info"):
-            self._tool_infos[tool_id] = tool.get_tool_info()
-        else:
-            self._tool_infos[tool_id] = ToolInfo(function=Function())
+        try:
+            if callable(tool):
+                self._tool_providers[tool_id] = tool
+            else:
+                self._tools[tool_id] = tool
+                if hasattr(tool, "get_tool_info"):
+                    self._tool_infos[tool_id] = tool.get_tool_info()
+                else:
+                    self._tool_infos[tool_id] = ToolInfo(function=Function())
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
+                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
+                                          reason=f"Failed to add tool: {str(e)}"))
 
     def add_tools(self, tools: List[Tuple[str, Union[Tool, ToolProvider]]]):
         if not tools:
@@ -45,39 +52,81 @@ class ToolMgr:
             self.add_tool(id, tool)
 
     def find_tool_by_name(self, name: str) -> Optional[Tool]:
-        if name is None:
+        if name is None or name.strip() == "":
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="name is invalid, can not be None"))
-        return self._tools.get(name)
+                                          reason="name is invalid, can not be None or empty"))
+
+        try:
+            tool = self._tools.get(name)
+            if tool:
+                return tool
+
+            provider = self._tool_providers.get(name)
+            if provider:
+                tool = provider()
+                self._tools[name] = tool
+                if hasattr(tool, "get_tool_info"):
+                    self._tool_infos[name] = tool.get_tool_info()
+                else:
+                    self._tool_infos[name] = ToolInfo(function=Function())
+                return tool
+            return None
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
+                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
+                                          reason=f"Failed to find tool: {str(e)}"))
 
     def get_tool(self, tool_id: str, runtime=None) -> Optional[Tool]:
-        if tool_id is None:
+        if tool_id is None or tool_id.strip() == "":
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="tool_id is invalid, can not be None"))
-        tool = self._tools.get(tool_id)
-        if not tool or not runtime or not runtime.tracer():
-            return tool
-        return decrate_tool_with_trace(WrappedTool(tool), runtime)
+                                          reason="tool_id is invalid, can not be None or empty"))
+
+        try:
+            tool = self.find_tool_by_name(tool_id)
+            if not tool or not runtime or not runtime.tracer():
+                return tool
+            return decrate_tool_with_trace(WrappedTool(tool), runtime)
+        except JiuWenBaseException:
+            raise
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
+                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
+                                          reason=f"Failed to get tool: {str(e)}"))
 
     def remove_tool(self, tool_id: str) -> Optional[Tool]:
         if tool_id is None:
-            return tool_id
-        self._tool_infos.pop(tool_id, None)
-        return self._tools.pop(tool_id, None)
+            return None
+
+        try:
+            tool = self._tools.pop(tool_id, None)
+            self._tool_providers.pop(tool_id, None)
+            self._tool_infos.pop(tool_id, None)
+            return tool
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
+                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
+                                          reason=f"Failed to remove tool: {str(e)}"))
 
     def get_tool_infos(self, tool_id: List[str]):
-        if not tool_id:
-            return [info for info in self._tool_infos.values()]
-        infos = []
-        for id in tool_id:
-            if id is None:
-                raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
-                                          StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                              reason="tool_id is invalid, can not be None"))
-            infos.append(self._tool_infos.get(id))
-        return infos
+        try:
+            if not tool_id:
+                return [info for info in self._tool_infos.values()]
+            infos = []
+            for id in tool_id:
+                if id is None or id.strip() == "":
+                    raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
+                                              StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
+                                                  reason="tool_id is invalid, can not be None or empty"))
+                infos.append(self._tool_infos.get(id))
+            return infos
+        except JiuWenBaseException:
+            raise
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
+                                      StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
+                                          reason=f"Failed to get tool infos: {str(e)}"))
 
 
 class WrappedTool(Tool):

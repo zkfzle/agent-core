@@ -27,16 +27,19 @@ class WorkflowMgr:
         self._workflow_schema: ThreadSafeDict[str, WorkflowInputsSchema] = ThreadSafeDict()
 
     def add_workflow(self, workflow_id: str, workflow: Union[Workflow, WorkflowProvider]) -> None:
-        if workflow_id is None:
+        if workflow_id is None or workflow_id.strip() == "":
             raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_ADD_FAILED.code,
                                       StatusCode.RUNTIME_WORKFLOW_ADD_FAILED.errmsg.format(
-                                          reason="workflow_id is invalid, can not be None"))
+                                          reason="workflow_id is invalid, can not be None or empty"))
         if workflow is None:
             raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_ADD_FAILED.code,
                                       StatusCode.RUNTIME_WORKFLOW_ADD_FAILED.errmsg.format(
                                           reason="workflow is invalid, can not be None"))
-        self._workflows[workflow_id] = workflow
-        self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
+        if callable(workflow):
+            self._workflow_providers[workflow_id] = workflow
+        else:
+            self._workflows[workflow_id] = workflow
+            self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
 
     def add_workflows(self, workflows: List[Tuple[str, Union[Workflow, WorkflowProvider]]]):
         if not workflows:
@@ -45,11 +48,11 @@ class WorkflowMgr:
             self.add_workflow(key, workflow)
 
     def get_workflow(self, workflow_id: str, runtime=None) -> Workflow:
-        if workflow_id is None:
+        if workflow_id is None or workflow_id.strip() == "":
             raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_GET_FAILED.code,
                                       StatusCode.RUNTIME_WORKFLOW_GET_FAILED.errmsg.format(
-                                          reason="workflow_id is invalid, can not be None"))
-        workflow = self._workflows.get(workflow_id)
+                                          reason="workflow_id is invalid, can not be None or empty"))
+        workflow = self.find_workflow_by_id_and_version(workflow_id)
         if not workflow or not runtime or not runtime.tracer():
             return workflow
         return decrate_workflow_with_trace(WrappedWorkflow(workflow), runtime)
@@ -59,25 +62,59 @@ class WorkflowMgr:
             raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_GET_FAILED.code,
                                       StatusCode.RUNTIME_WORKFLOW_GET_FAILED.errmsg.format(
                                           reason="workflow_id is invalid, can not be None"))
-        return self._workflows.get(workflow_id)
+        workflow = self._workflows.get(workflow_id)
+        if workflow:
+            return workflow
+        provider = self._workflow_providers.get(workflow_id)
+        if provider:
+            try:
+                workflow = provider()
+                # 添加类型验证
+                if not hasattr(workflow, "get_tool_info"):
+                    raise TypeError(f"Workflow must have get_tool_info method")
+                self._workflows[workflow_id] = workflow
+                self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
+                return workflow
+            except Exception as e:
+                raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_GET_FAILED.code,
+                                          StatusCode.RUNTIME_WORKFLOW_GET_FAILED.errmsg.format(
+                                              reason=str(e)))
+        return None
 
     def remove_workflow(self, workflow_id: str) -> Optional[Workflow]:
-        if workflow_id is None:
-            return None
-        self._workflow_tool_infos.pop(workflow_id, None)
-        return self._workflows.pop(workflow_id)
+        if workflow_id is None or workflow_id.strip() == "":
+            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED.code,
+                                      StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED.errmsg.format(
+                                          reason="workflow_id is invalid, can not be empty"))
+        try:
+            workflow = self._workflows.pop(workflow_id, None)
+            self._workflow_providers.pop(workflow_id, None)
+            self._workflow_tool_infos.pop(workflow_id, None)
+            return workflow
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED.code,
+                                      StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED.errmsg.format(
+                                          reason=str(e)))
 
-    def get_tool_infos(self, workflow_id: List[str]):
-        if not workflow_id:
-            return [info for info in self._workflow_tool_infos.values()]
-        infos = []
-        for id in workflow_id:
-            if id is None:
-                raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.code,
-                                          StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.errmsg.format(
-                                              reason="workflow_id is invalid, can not be None"))
-            infos.append(self._workflow_tool_infos.get(id))
-        return infos
+    def get_tool_infos(self, workflow_ids: List[str]):
+        try:
+            if not workflow_ids:
+                return [info for info in self._workflow_tool_infos.values()]
+            infos = []
+            for workflow_id in workflow_ids:
+                if workflow_id is None or workflow_id.strip() == "":
+                    raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.code,
+                                              StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.errmsg.format(
+                                                  reason="workflow_id is invalid, can not be None or empty"))
+                infos.append(self._workflow_tool_infos.get(workflow_id))
+            return infos
+        except JiuWenBaseException:
+            raise
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.code,
+                                      StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.errmsg.format(
+                                          reason=f"Failed to get workflow tool infos: {str(e)}"))
+
 
 
 class WrappedWorkflow:

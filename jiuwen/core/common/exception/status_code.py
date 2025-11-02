@@ -171,6 +171,8 @@ class StatusCode(Enum):
     # Common Capabilities - Common Utility 188000 - 180099
     SSL_UTILS_CREATE_SSL_CONTEXT_ERROR = (188000, "ssl utils error, as {error_msg}")
     USER_CONFIG_LOAD_ERROR = (188001, "User config load error, as {error_msg}")
+    JSON_LOADS_ERROR = (188002, "Json loads error, as {error_msg}")
+    JSON_DUMPS_ERROR = (188003, "Json dumps error, as {error_msg}")
 
     # Runtime 190000 - 199999
     # Runtime - Resource Management 190000 - 190999

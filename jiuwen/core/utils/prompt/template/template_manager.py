@@ -4,6 +4,7 @@
 
 import copy
 import os
+import re
 from typing import Callable, List
 
 from jiuwen.core.common.logging import logger
@@ -26,15 +27,77 @@ class TemplateManager(metaclass=Singleton):
         self.init_prompt_templates()
 
     @staticmethod
-    def load_from_dir(dir_path: str, suffix: str = ".pr") -> List[Template]:
-        """Read all templates from dir_path"""
-        files = os.listdir(dir_path)
+    def load_from_dir(dir_path: str, suffix: str = ".pr", max_file_size: int = 10 * 1024 * 1024) -> List[Template]:
+        dir_path = os.path.abspath(dir_path)
+        if not os.path.isdir(dir_path):
+            raise JiuWenBaseException(
+                error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                message="Template dir doesn't exist."
+            )
+
+        dir_path_realpath = os.path.realpath(dir_path).lower()
+        if not os.path.isdir(dir_path_realpath):
+            raise JiuWenBaseException(
+                error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                message="Directory path is invalid or inaccessible"
+            )
+
+        files = os.listdir(dir_path_realpath)
         templates = []
         files = [f for f in files if f.endswith(suffix)]
+        filename_pattern = re.compile(r'^[a-zA-Z0-9_.-]+$')
+
         for template_file in files:
+            # Validate filename
+            if not filename_pattern.match(template_file):
+                raise JiuWenBaseException(
+                    error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                    message="Filename contains invalid characters"
+                )
+
+            template_path = os.path.join(dir_path_realpath, template_file)
+            template_path_realpath = os.path.realpath(template_path)
+
+            # Validate path
+            template_path_normalized = os.path.normpath(template_path_realpath).lower()
+            dir_path_normalized = os.path.normpath(dir_path_realpath).lower()
+            if not (template_path_normalized.startswith(dir_path_normalized + os.sep) or
+                    template_path_normalized == dir_path_normalized):
+                raise JiuWenBaseException(
+                    error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                    message=f"Path traversal detected"
+                )
+
+            # Validate file type - must be a regular file, not directory, link, etc.
+            if not os.path.isfile(template_path_realpath):
+                raise JiuWenBaseException(
+                    error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                    message=f"Not a regular file"
+                )
+
+            # Validate file size
+            try:
+                file_size = os.path.getsize(template_path_realpath)
+                if file_size > max_file_size:
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                        message=f"File size {file_size} bytes exceeds limit {max_file_size} bytes"
+                    )
+            except OSError as e:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                    message="Failed to get file size"
+                ) from e
+
             name = os.path.splitext(template_file)[0]
-            with open(os.path.join(dir_path, template_file), 'r', encoding='utf-8') as f:
-                content = f.read()
+            try:
+                with open(template_path_realpath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+            except Exception as e:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code,
+                    message=f"Failed to load template from file"
+                ) from e
             templates.append(Template(name=name, content=content))
         return templates
 
@@ -48,8 +111,8 @@ class TemplateManager(metaclass=Singleton):
         return template.format(keywords)
 
     def init_prompt_templates(self):
-        self.__init_customer_templates()
         self.__init_default_templates()
+        self.__init_customer_templates()
 
     def __init_customer_templates(self):
         """init customer templates"""

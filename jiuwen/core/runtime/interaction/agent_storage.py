@@ -20,18 +20,18 @@ class AgentStorage(Storage):
         self.serde: SerializerProtocol = JsonPlusSerializer()
 
     def save(self, runtime: BaseRuntime):
-        session_id = runtime.session_id()
+        agent_id = runtime.agent_id()
         state = runtime.state().get_state()
         if state_blob := self.serde.dumps_typed(state):
-            self.state_blobs[session_id] = state_blob
+            self.state_blobs[agent_id] = state_blob
 
     def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):
-        session_id = runtime.session_id()
-        state_blob = self.state_blobs.get(session_id)
+        agent_id = runtime.agent_id()
+        state_blob = self.state_blobs.get(agent_id)
         if state_blob is None:
             return
         state = self.serde.loads_typed(state_blob)
         runtime.state().set_state(state)
 
-    def clear(self, session_id: str):
-        self.state_blobs.pop(session_id, None)
+    def clear(self, agent_id: str):
+        self.state_blobs.pop(agent_id, None)

@@ -119,3 +119,6 @@ class AgentRuntime(BaseRuntime):
             state=InMemoryState(InMemoryCommitState(state)),
             context=self._context,
             session_id=self._session_id)
+
+    def agent_id(self):
+        return self._config.get_agent_config().id

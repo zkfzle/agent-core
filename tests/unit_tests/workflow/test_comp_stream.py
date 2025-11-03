@@ -19,7 +19,7 @@ from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
 from jiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowChunk
-from jiuwen.core.workflow.workflow_config import WorkflowConfig
+from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
 pytestmark = pytest.mark.asyncio
 
@@ -175,7 +175,8 @@ class Interaction(WorkflowComponent, ComponentExecutable):
 
 async def test_interaction_with_stream():
     def create_workflow() -> Workflow:
-        wf = Workflow(workflow_config=WorkflowConfig(stream_timeout=0.5))
+        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_stream"),
+                                                     stream_timeout=0.5))
         wf.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
         wf.add_workflow_comp("interaction", Interaction())
         wf.add_workflow_comp("stream", Producer(), inputs_schema={"array": "${start.array}"})
@@ -219,7 +220,8 @@ async def test_interaction_with_exception():
                     yield dict(output=i)
 
     def create_workflow_with_exception() -> Workflow:
-        wf = Workflow(workflow_config=WorkflowConfig(stream_timeout=0.5))
+        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_exception"),
+                                                     stream_timeout=0.5))
         wf.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
         wf.add_workflow_comp("exception", ExceptionComp())
         end = End(EndConfig(responseTemplate="a: {{a}}; batch: {{batch}}"))

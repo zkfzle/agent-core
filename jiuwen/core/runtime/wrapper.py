@@ -5,6 +5,7 @@
 from abc import ABC
 from typing import Union, Any, Optional, List, Tuple, AsyncIterator
 
+from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.runtime.agent import AgentRuntime
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction

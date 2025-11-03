@@ -1,6 +1,9 @@
 import asyncio
 import unittest
 
+from jiuwen.agent.config.base import AgentConfig
+from jiuwen.core.agent.agent import AgentRuntime
+from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.common.logging import logger
@@ -121,7 +124,11 @@ class MockAgent(unittest.TestCase):
 
     async def run_agent_workflow_seq_exec_stream_workflow_with_tracer(self):
         # context手动初始化tracer，agent和workflow共用一个tracer
-        context = TaskRuntime(trace_id="test")
+        config = Config()
+        config.set_agent_config(AgentConfig(id="test_agent_checkpoint"))
+        agent_runtime = AgentRuntime(config)
+
+        context = await agent_runtime.pre_run(session_id="test")
         self.tracer = context.tracer()
 
         agent_span = self.tracer.tracer_agent_span_manager.create_agent_span()

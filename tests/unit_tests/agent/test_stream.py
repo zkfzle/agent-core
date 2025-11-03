@@ -2,6 +2,9 @@ import asyncio
 
 import pytest
 
+from jiuwen.agent.config.base import AgentConfig
+from jiuwen.core.agent.agent import AgentRuntime
+from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.wrapper import TaskRuntime
 
 pytestmark = pytest.mark.asyncio
@@ -9,7 +12,11 @@ pytestmark = pytest.mark.asyncio
 
 async def test_agent_stream():
     session_id = "test"
-    runtime = TaskRuntime(session_id)
+    config = Config()
+    config.set_agent_config(AgentConfig(id="test_agent_checkpoint"))
+    agent_runtime = AgentRuntime(config)
+
+    runtime = await agent_runtime.pre_run(session_id=session_id)
 
     async def consumer():
         i = runtime.stream_iterator()

@@ -29,18 +29,18 @@ class WorkflowStorage(Storage):
         self._graph_state = InMemorySaver()
 
     def save(self, runtime: BaseRuntime):
-        session_id = runtime.session_id()
+        workflow_id = runtime.workflow_id()
         state = runtime.state().get_state()
         if state_blob := self.serde.dumps_typed(state):
-            self.state_blobs[session_id] = state_blob
+            self.state_blobs[workflow_id] = state_blob
 
         updates = runtime.state().get_updates()
         if updates_blob := self.serde.dumps_typed(updates):
-            self.state_updates_blobs[session_id] = updates_blob
+            self.state_updates_blobs[workflow_id] = updates_blob
 
     def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):
-        session_id = runtime.session_id()
-        if (state_blob := self.state_blobs.get(session_id)) and \
+        workflow_id = runtime.workflow_id()
+        if (state_blob := self.state_blobs.get(workflow_id)) and \
                 state_blob[0] != "empty":
             state = self.serde.loads_typed(state_blob)
             runtime.state().set_state(state)
@@ -58,13 +58,13 @@ class WorkflowStorage(Storage):
                     node_runtime.state().update({INTERACTIVE_INPUT: [value]})
             runtime.state().commit()
 
-        if state_updates_blob := self.state_updates_blobs.get(session_id):
+        if state_updates_blob := self.state_updates_blobs.get(workflow_id):
             state_updates = self.serde.loads_typed(state_updates_blob)
             runtime.state().set_updates(state_updates)
 
-    def clear(self, session_id: str):
-        self.state_blobs.pop(session_id, None)
-        self.state_updates_blobs.pop(session_id, None)
+    def clear(self, workflow_id: str):
+        self.state_blobs.pop(workflow_id, None)
+        self.state_updates_blobs.pop(workflow_id, None)
 
 
     def graph_checkpointer(self):

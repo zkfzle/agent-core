@@ -127,7 +127,7 @@ class PregelGraph(Graph):
         if self.compiledStateGraph is None:
             self._pre_compile()
             self.checkpoint_saver = default_inmemory_checkpointer
-            graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer())
+            graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer(runtime.session_id()))
             self.compiledStateGraph = self.pregel.compile(checkpointer=graph_checkpointer)
             self._graph_checkpointer = graph_checkpointer
         else:
@@ -161,12 +161,12 @@ class CompiledGraph(ExecutableGraph):
 
     async def _invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         is_main = False
-        session_id = runtime.session_id()
+        workflow_id = runtime.workflow_id()
         graph_inputs = None if isinstance(inputs, InteractiveInput) else {"source_node_id": []}
 
         if config is None:
             is_main = True
-            config = {"configurable": {"thread_id": session_id}, "recursion_limit": MAX_RECURSIVE_LIMIT}
+            config = {"configurable": {"thread_id": workflow_id}, "recursion_limit": MAX_RECURSIVE_LIMIT}
         if isinstance(inputs, InteractiveInput):
             await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
         else:

@@ -22,6 +22,7 @@ from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.hash_util import generate_key
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from jiuwen.core.component.common.configs.model_config import ModelConfig
+from jiuwen.core.agent.message.message import Message
 
 
 class WorkflowControllerOutput(ControllerOutput):
@@ -90,7 +91,7 @@ class ReActControllerUtils:
                 tool_call.function.name, config
             )
             result.append(Task(
-                id=tool_call.id,
+                task_id=tool_call.id,
                 input=TaskInput(
                     target_name=tool_call.function.name,
                     arguments=FormatUtils.json_loads(tool_call.function.arguments)
@@ -165,27 +166,12 @@ class ReActControllerUtils:
             agent_context.add_message(ai_message)
 
     @staticmethod
-    def add_tool_results(completed_tasks: List[Task], context_engine: ContextEngine, runtime: Runtime):
-        if not completed_tasks:
-            logger.warning("No completed sub tasks to add to chat history")
-            return
-
-        agent_context = context_engine.get_agent_context(runtime.session_id())
-        logger.info(f"Adding {len(completed_tasks)} tool results to chat history")
-
-        for task in completed_tasks:
-            if task.result:
-                tool_message = ToolMessage(content=task.result, tool_call_id=task.id)
-                agent_context.add_message(tool_message)
-                if UserConfig.is_sensitive():
-                    logger.info(f"Added tool result")
-                else:
-                    logger.info(f"Added tool result: {task.input.target_name}")
-            else:
-                if UserConfig.is_sensitive():
-                    logger.warning(f"Task has no result")
-                else:
-                    logger.warning(f"Task {task.input.target_name} has no result")
+    def add_tool_result(message: Message, context_engine: ContextEngine, runtime: Runtime):
+        if message:
+            agent_context = context_engine.get_agent_context(runtime.session_id())
+            tool_message = ToolMessage(content=str(message.content.task_result.output.get("data", "")),
+                                       tool_call_id=message.context.task_id)
+            agent_context.add_message(tool_message)
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime, config: AgentConfig) -> List[BaseMessage]:

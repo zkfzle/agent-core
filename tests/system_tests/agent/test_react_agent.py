@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from jiuwen.agent.common.schema import PluginSchema
-from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.function.function import LocalFunction
@@ -45,7 +45,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
                 Param(name="location", description="天气查询的地点，必须为英文", type="string", required=True),
                 Param(name="date", description="天气查询的时间，格式为YYYY-MM-DD", type="string", required=True),
             ],
-            path="http://127.0.0.1:9000/weather",
+            path="http://127.0.0.1:8000/weather",
             headers={},
             method="GET",
             response=[],
@@ -146,6 +146,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_plugin(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         tools_schema = [self._create_tool_schema()]
         model_config = self._create_model()
         prompt_template = self._create_prompt_template()
@@ -171,6 +173,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
     @unittest.skip("skip system test")
     async def test_react_agent_stream_with_real_plugin(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         tools_schema = [self._create_tool_schema()]
         model_config = self._create_model()
         prompt_template = self._create_prompt_template()
@@ -193,11 +197,13 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
         res = react_agent.stream({"query": "查询杭州的天气"})
         async for i in res:
-            print(i)
+            print("ReActAgent 输出结果：", i)
 
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_function_plugin(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         tools_schema = [self._create_function_tool_schema()]
         model_config = self._create_model()
         prompt_template = self._create_function_prompt_template()
@@ -225,6 +231,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_annotated_function_plugin(self):
         """测试使用tool注解装饰的函数作为工具"""
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         tools_schema = [self._create_function_tool_schema()]
         model_config = self._create_model()
         prompt_template = self._create_function_prompt_template()

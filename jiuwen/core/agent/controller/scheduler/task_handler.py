@@ -13,6 +13,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.agent.message.message import Message
 from jiuwen.core.stream.base import OutputSchema
+from typing import Any
 
 
 class TaskHandler:
@@ -30,7 +31,7 @@ class TaskHandler:
             if task.task_type == TaskType.WORKFLOW:
                 return await self._execute_workflow_task(task)
             elif task.task_type == TaskType.PLUGIN:
-                return await self._execute_plugin_task(task)
+                return self._execute_plugin_task(task)
             elif task.task_type == TaskType.MCP:
                 return await self._execute_mcp_task(task)
             else:
@@ -85,6 +86,24 @@ class TaskHandler:
             return self._create_interrupted_message(task, result, stream_data)
         else:
             return self._create_completed_message(task, result, stream_data)
+
+    def _create_message_from_plugin_result(self, task: Task, result: Any) -> Message:
+        """根据插件执行结果创建对应的消息"""
+        payload = {"output": result, "result_type": "answer"}
+        stream_data = [OutputSchema(type="plugin_final", index=0, payload=payload)]
+
+        task.result = TaskResult(
+            status=TaskStatus.SUCCESS,
+            output=result,
+            metadata={"tool_name": task.input.target_name}
+        )
+
+        return Message.create_task_completed(
+            conversation_id=self.runtime.session_id(),
+            task_id=task.task_id,
+            task_result=task.result,
+            stream_data=stream_data
+        )
 
     def _create_interrupted_message(self, task: Task, result: WorkflowOutput, stream_data: list) -> Message:
         """创建中断消息"""
@@ -169,12 +188,36 @@ class TaskHandler:
             message=f"Workflow '{workflow_name}' not found in configuration"
         )
 
-    async def _execute_plugin_task(self, task: Task) -> Message:
+    def _execute_plugin_task(self, task: Task) -> Message:
         """执行插件任务"""
-        # TODO: 实现插件调用逻辑
+        try:
+            plugin = self.runtime.get_tool(task.input.target_name)
+            result = plugin.invoke(task.input.arguments)
+            return self._create_message_from_plugin_result(task, result)
+        except Exception as e:
+            return self._handle_plugin_error(task, e)
+
+    def _handle_plugin_error(self, task: Task, error: Exception) -> Message:
+        """处理插件执行错误"""
+        if UserConfig.is_sensitive():
+            error_msg = "Plugin execution failed"
+            logger.info(f"Task {task.input.target_name} failed.")
+        else:
+            error_msg = f"Plugin execution failed: {str(error)}"
+            logger.error(f"Task {task.input.target_name} failed: {error_msg}")
+
+        task.result = TaskResult(
+            status=TaskStatus.FAILED,
+            error=error_msg,
+            metadata={
+                "error_type": type(error).__name__,
+                "tool_name": task.input.target_name
+            }
+        )
+
         return Message.create_error_message(
             conversation_id=self.runtime.session_id(),
-            error_msg="Plugin task execution not implemented yet"
+            error_msg=str(error)
         )
 
     async def _execute_mcp_task(self, task: Task) -> Message:

@@ -9,8 +9,6 @@ from datetime import datetime
 import unittest
 import pytest
 
-from typing import List
-
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
@@ -24,7 +22,6 @@ from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow

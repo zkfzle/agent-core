@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 
 from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
-from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
@@ -152,21 +152,23 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
 
     @unittest.skip
     async def test_react_agent_invoke_with_workflow_interrupt_agent_invoke(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         react_agent_prompt_template = self._create_prompt_template()
 
         questioner_workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
-                name="questioner",
-                id="questioner_workflow",
+                name="questioner_weather_workflow",
+                id="questioner_weather_workflow",
                 version="1.0",
-                description="用户输入"
+                description="天气查询"
             ),
             workflow_inputs_schema = WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
                         "type": "string",
-                        "description": "用户输入",
+                        "description": "天气查询用户输入",
                         "required": True
                     }
                 },
@@ -253,26 +255,33 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         # 第一次大模型返回的结果要让调用sub_task0
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
         print(f"ReActAgent 第一次输出结果：{result}")
+        self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
+        self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
+        print(f"✅ 第一次调用校验通过：返回交互请求")
 
         # 第二次大模型返回的结果不让调用sub_task
         if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
             interactive_input = InteractiveInput()
-            interactive_input.update("questioner", "杭州")
+            interactive_input.update("questioner", "上海")
             result = await react_agent.invoke({"conversation_id": "12345", "query": interactive_input})
-
             print(f"ReActAgent 第二次输出结果：{result}")
 
+            self.assertIsInstance(result, dict, "第二次调用应该返回字典")
+            self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
+            print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
     @unittest.skip
     async def test_react_agent_invoke_with_workflow_interrupt_with_stream(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         react_agent_prompt_template = self._create_prompt_template()
 
         questioner_workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
-                name="questioner",
-                id="questioner_workflow",
+                name="questioner_weather_workflow",
+                id="questioner_weather_workflow",
                 version="1.0",
-                description="用户输入"
+                description="天气查询"
             ),
             workflow_inputs_schema = WorkflowInputsSchema(
                 type="object",

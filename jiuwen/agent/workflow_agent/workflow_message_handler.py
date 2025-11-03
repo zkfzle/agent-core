@@ -2,7 +2,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.agent.common.schema import WorkflowSchema
@@ -13,7 +12,7 @@ from jiuwen.agent.common.enum import TaskType
 from jiuwen.core.common.logging import logger
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.base import OutputSchema
+from jiuwen.core.agent.controller.controller import ControllerState
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.messages import HumanMessage
 from jiuwen.core.agent.message.message import MessageType
@@ -25,110 +24,12 @@ _RUNTIME_STATE_KEY = "workflow_controller_state"  # Runtime 中存储状态的 k
 _STATE_INTERRUPTED_TASKS_KEY = "interrupted_tasks"  # 状态中存储中断任务列表的 key
 _TASK_METADATA_COMPONENT_ID_KEY = "interrupted_component_id"  # Task metadata 中存储组件ID的 key
 
-
-@dataclass
-class WorkflowControllerState:
-    """
-    Workflow Controller 状态数据类 - 支持多个workflow的中断状态。
-    状态结构：
-    [
-        task1,  # task1.input.target_id = "workflow_id_1"
-                # task1.metadata["interrupted_component_id"] = "questioner"
-        task2,  # task2.input.target_id = "workflow_id_2"
-        ...
-    ]
-    """
-    interrupted_tasks: List[Task] = field(default_factory=list)
-    
-    def is_interrupted(self) -> bool:
-        """检查是否有任何中断的任务"""
-        return len(self.interrupted_tasks) > 0
-    
-    def get_interrupted_task(self, workflow_id: str = None) -> Optional[Task]:
-        """
-        获取中断的任务。
-        
-        Args:
-            workflow_id: 可选，指定workflow ID。如果不指定，返回第一个任务
-        
-        Returns:
-            Optional[Task]: 中断的任务，如果不存在则返回None
-        """
-        if not self.interrupted_tasks:
-            return None
-        
-        if workflow_id:
-            # 遍历查找匹配的 workflow_id
-            for task in self.interrupted_tasks:
-                if task.input and task.input.target_id:
-                    if task.input.target_id == workflow_id:
-                        return task
-            return None
-        else:
-            # 返回第一个任务 todo改成先进后出
-            return self.interrupted_tasks[0] if self.interrupted_tasks else None
-    
-    def get_interrupted_component_id(self, workflow_id: str = None) -> Optional[str]:
-        """
-        从 Task 的 metadata 中获取中断时的组件ID。
-        
-        Args:
-            workflow_id: 可选，指定workflow ID。如果不指定，使用第一个任务
-        
-        Returns:
-            Optional[str]: 中断时的组件ID
-        """
-        task = self.get_interrupted_task(workflow_id)
-        if task and task.metadata:
-            return task.metadata.get(_TASK_METADATA_COMPONENT_ID_KEY)
-        return None
-    
-    def add_interrupted_task(self, task: Task, component_id: Optional[str] = None):
-        """
-        添加中断的任务。
-        
-        将 component_id 存入 task.metadata，然后添加到列表。
-        如果该 workflow 已有中断任务，则替换它。
-        """
-        if not task:
-            return
-        
-        # 将 component_id 存入 Task 的 metadata
-        if component_id:
-            if not task.metadata:
-                task.metadata = {}
-            task.metadata[_TASK_METADATA_COMPONENT_ID_KEY] = component_id
-        
-        # 检查是否已存在该 workflow 的中断任务，如果有则替换
-        workflow_id = task.input.target_id if task.input else None
-        if workflow_id:
-            # 移除旧的同 workflow 任务
-            self.interrupted_tasks = [
-                t for t in self.interrupted_tasks 
-                if not (t.input and t.input.target_id == workflow_id)
-            ]
-        
-        # 添加新任务
-        self.interrupted_tasks.append(task)
-    
-    def clear_interrupted_task(self, workflow_id: str):
-        """清除指定workflow的中断任务"""
-        self.interrupted_tasks = [
-            task for task in self.interrupted_tasks
-            if not (task.input and task.input.target_id == workflow_id)
-        ]
-    
-    def clear_all(self):
-        """清除所有中断任务"""
-        self.interrupted_tasks.clear()
-
-
 class WorkflowMessageHandler(MessageHandler):
     """WorkflowMessageHandler - 工作流模式的消息处理器，包含Workflow状态管理"""
 
     def __init__(self, config: AgentConfig, context_engine=None, runtime=None):
         super().__init__(config, context_engine, runtime)
-        self._state = WorkflowControllerState()  # 状态数据对象
+        self._state = ControllerState()  # 状态数据对象
         self.load_state()  # 从runtime加载状态
 
     def save_state(self):
@@ -239,7 +140,8 @@ class WorkflowMessageHandler(MessageHandler):
             logger.info(f"Saving interrupt state: workflow={workflow_id}, task={interrupted_task.task_id}, component_id={component_id}")
             
             # 保存中断任务（component_id 会存入 task.metadata）
-            self._state.add_interrupted_task(interrupted_task, component_id)
+            self._state.add_interrupted_task(interrupted_task, component_id,
+                                             component_id_key=_TASK_METADATA_COMPONENT_ID_KEY)
             self.save_state()
             logger.info(f"Task {message.context.task_id} interrupted and saved")
 
@@ -251,51 +153,6 @@ class WorkflowMessageHandler(MessageHandler):
             tasks=[],
             should_continue=False,
             final_result=result
-        )
-
-    @staticmethod
-    def _extract_component_id_from_stream_data(stream_data: List) -> Optional[str]:
-        """
-        从 stream_data 中提取交互组件ID。
-
-        Args:
-            stream_data: 流数据列表 (List[OutputSchema])
-
-        Returns:
-            Optional[str]: 交互组件的ID，如果找不到则返回None
-        """
-        if not stream_data:
-            return None
-
-        try:
-            # 遍历 stream_data，找到类型为 '__interaction__' 的输出
-            for output_schema in stream_data:
-                if hasattr(output_schema, 'type') and output_schema.type == '__interaction__':
-                    # 从 payload 中提取 InteractionOutput.id
-                    if hasattr(output_schema, 'payload') and hasattr(output_schema.payload, 'id'):
-                        component_id = output_schema.payload.id
-                        logger.debug(f"Extracted component_id from stream_data: {component_id}")
-                        return component_id
-        except Exception as e:
-            logger.warning(f"Failed to extract component_id from stream_data: {e}")
-
-        return None
-
-    async def _handle_error(self, message: Message) -> MessageHandlerResult:
-        """处理错误消息：发送错误流，返回停止信号"""
-        error_msg = message.content.query if message.content.query else "Unknown error"
-        logger.error(f"Received error message: {error_msg}")
-
-        # 发送错误流式消息
-        error_result = await self._send_error_stream(str(error_msg))
-        
-        # 返回停止信号，携带错误结果
-        logger.info(f"Error occurred, returning stop signal with error result")
-        
-        return MessageHandlerResult(
-            tasks=[],
-            should_continue=False,
-            final_result=error_result
         )
 
     async def _handle_user_input(self, message: Message) -> MessageHandlerResult:
@@ -478,7 +335,8 @@ class WorkflowMessageHandler(MessageHandler):
         """
         try:
             # 直接从状态中获取组件ID（状态已经在 load_state 时加载）
-            component_id = self._state.get_interrupted_component_id(workflow_id)
+            component_id = self._state.get_interrupted_component_id(workflow_id,
+                                                                    component_id_key=_TASK_METADATA_COMPONENT_ID_KEY)
             if component_id:
                 logger.debug(f"Retrieved component_id from state: {component_id}")
             return component_id
@@ -568,27 +426,10 @@ class WorkflowMessageHandler(MessageHandler):
         self.reasoner.set_intent_detection(intent_detection)
 
     def _resolve_workflow_from_detected_tasks(self, tasks: List[Task]) -> Optional[WorkflowSchema]:
-        for task in tasks:
-            workflow = self._match_workflow(task)
-            if workflow:
-                return workflow
-        return None
+        return self._resolve_workflow_from_tasks_generic(tasks, self.config.workflows)
 
     def _match_workflow(self, detected_task: Task) -> Optional[WorkflowSchema]:
-        if not detected_task or not detected_task.input:
-            return None
-
-        target_id = detected_task.input.target_id
-        target_name = detected_task.input.target_name
-
-        for workflow in self.config.workflows:
-            workflow_full_id = f"{workflow.id}_{workflow.version}" if workflow.version else workflow.id
-            if target_id and target_id in {workflow.id, workflow_full_id}:
-                return workflow
-            if target_name and workflow.name == target_name:
-                return workflow
-
-        return None
+        return self._match_workflow_generic(detected_task, self.config.workflows)
 
     async def _handle_normal_message_from_message(self, message: Message) -> MessageHandlerResult:
         """处理正常消息，生成工作流任务"""
@@ -668,47 +509,6 @@ class WorkflowMessageHandler(MessageHandler):
             filtered[k] = user_data[k]
 
         return filtered
-
-    async def _write_message_stream_data(self, message: Message):
-        """写入消息携带的流数据 - 统一处理列表"""
-        # stream_data 是 List[OutputSchema]
-        stream_data = message.content.stream_data
-        
-        try:
-            # 直接遍历列表，空列表会自动跳过
-            for output_schema in stream_data:
-                await self.runtime.write_stream(output_schema)
-                logger.debug(f"Wrote stream data from message {message.msg_id}")
-
-        except Exception as e:
-            logger.warning(f"Failed to write message stream data: {e}")
-
-    async def _send_error_stream(self, error_message: str):
-        """发送错误流式消息并返回错误结果"""
-        try:
-            error_stream = OutputSchema(
-                type="workflow_final",
-                index=0,
-                payload={
-                    "error": True,
-                    "message": error_message,
-                    "status": "failed"
-                }
-            )
-            await self.runtime.write_stream(error_stream)
-            return error_stream
-        except Exception as e:
-            logger.error(f"Failed to send error stream: {e}")
-            # 返回一个默认错误结果
-            return OutputSchema(
-                type="workflow_final",
-                index=0,
-                payload={
-                    "error": True,
-                    "message": str(e),
-                    "status": "failed"
-                }
-            )
 
     def _add_msg_to_chat_history(self, message):
         """添加消息到聊天历史"""

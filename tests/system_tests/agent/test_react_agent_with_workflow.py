@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from jiuwen.agent.common.schema import PluginSchema
-from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.start_comp import Start
 from jiuwen.core.component.end_comp import End
@@ -212,6 +212,8 @@ class ReActAgentWorkflowTest(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test require llm")
     async def test_react_agent_with_workflow(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         tools_schema = [self._create_tool_schema()]
         model_config = self._create_model_config()
         prompt_template = self._create_prompt_template()

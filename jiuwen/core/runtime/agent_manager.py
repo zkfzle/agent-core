@@ -1,12 +1,12 @@
 from dataclasses import dataclass
-from typing import Optional, Union, TypeVar
+from typing import Optional, Union
 
+from jiuwen.core.agent.agent import AgentRuntime, Agent
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.runtime.resource_manager import ResourceMgr
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
-Agent = TypeVar("Agent", contravariant=True)
-AgentRuntime = TypeVar("AgentRuntime", contravariant=True)
 
 @dataclass
 class AgentWithRuntime:
@@ -16,7 +16,8 @@ class AgentWithRuntime:
 AgentProvider = lambda: Agent
 
 class AgentMgr:
-    def __init__(self):
+    def __init__(self, resource_manager: ResourceMgr):
+        self._resource_manager: ResourceMgr = resource_manager
         self._agents: ThreadSafeDict[str, AgentWithRuntime] = ThreadSafeDict()
         self._agent_providers: ThreadSafeDict[str, AgentProvider] = ThreadSafeDict()
 
@@ -44,7 +45,7 @@ class AgentMgr:
 
             try:
                 self._agents[agent_id] = AgentWithRuntime(
-                    runtime=AgentRuntime(agent.config()),
+                    runtime=AgentRuntime(config=agent.config(), resource_mgr=self._resource_manager),
                     agent=agent
                 )
             except Exception as e:
@@ -95,7 +96,7 @@ class AgentMgr:
                     )
                     
                 agent_with_runtime = AgentWithRuntime(
-                    runtime=AgentRuntime(agent.config()),
+                    runtime=AgentRuntime(config=agent.config(), resource_mgr=self._resource_manager),
                     agent=agent
                 )
                 self._agents[agent_id] = agent_with_runtime

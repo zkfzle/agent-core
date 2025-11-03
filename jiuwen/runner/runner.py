@@ -41,7 +41,7 @@ class Runner:
         self._resource_manager = resource_manager
         self._message_queue = LocalMessageQueue()
         self._agent_group_mgr: AgentGroupMgr = AgentGroupMgr()
-        self._agent_mgr: AgentMgr = AgentMgr()
+        self._agent_mgr: AgentMgr = AgentMgr(resource_manager)
 
     async def start(self) -> bool:
         return await self._message_queue.start()

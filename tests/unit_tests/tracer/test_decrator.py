@@ -45,7 +45,7 @@ class MockWorkflow:
         logger.info(f"begin to ainvoke , inputs={inputs}")
         yield inputs
 
-    def workflow_config(self):
+    def config(self):
         return WorkflowConfig(metadata=WorkflowMetadata())
 
 

@@ -28,7 +28,7 @@ def decrate_tool_with_trace(wrapped_tool, base_runtime):
 
 
 def decrate_workflow_with_trace(wrapped_workflow, base_runtime):
-    instance_info = {"class_name": wrapped_workflow.get_workflow_metadata(), "type": "workflow"}
+    instance_info = {"class_name": type(wrapped_workflow.inner).__name__, "type": "workflow", "metadata": wrapped_workflow.get_workflow_metadata()}
     wrapped_workflow.invoke = MethodType(
         async_trace(wrapped_workflow.invoke, base_runtime, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)
@@ -42,6 +42,7 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info):
     @wraps(func)
     def decorator(*args, **kwargs):
         tracer = runtime.tracer()
+        span = None
         try:
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
@@ -65,6 +66,7 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info):
     @wraps(func)
     async def decorator(*args, **kwargs):
         tracer = runtime.tracer()
+        span = None
         try:
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
@@ -88,6 +90,7 @@ def trace_stream(func, runtime, invoke_type: InvokeType, instance_info):
     @wraps(func)
     def decorator(*args, **kwargs):
         tracer = runtime.tracer()
+        span = None
         try:
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
@@ -116,6 +119,7 @@ def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info):
     @wraps(func)
     async def decorator(*args, **kwargs):
         tracer = runtime.tracer()
+        span = None
         try:
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)

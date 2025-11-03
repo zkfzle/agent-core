@@ -331,13 +331,13 @@ class TaskRuntime(StateRuntime):
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseChatModel:
-        return self._inner.resource_manager().model().get_model(model_id)
+        return self._inner.resource_manager().model().get_model(model_id, runtime = self._inner)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
-        return self._inner.resource_manager().workflow().get_workflow(workflow_id)
+        return self._inner.resource_manager().workflow().get_workflow(workflow_id, runtime = self._inner)
 
     def get_tool(self, tool_id: str) -> Tool:
-        return self._inner.resource_manager().tool().get_tool(tool_id, self._inner)
+        return self._inner.resource_manager().tool().get_tool(tool_id, runtime = self._inner)
 
     def stream_iterator(self) -> AsyncIterator[Any]:
         return self._inner.stream_writer_manager().stream_output()

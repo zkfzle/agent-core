@@ -99,4 +99,5 @@ class WrappedWorkflow:
         return await self.inner.sub_invoke(inputs, runtime, config)
 
     def get_workflow_metadata(self):
-        return self.inner.workflow_config().metadata
+        metadata = self.inner.config().metadata if self.inner.config() else {}
+        return dict(metadata)

@@ -48,11 +48,9 @@ class CallbackManager:
 
     def _init_handler(self, handler_map: dict):
         for handler_name, handler in handler_map.items():
-            if handler_name in self._handlers:
-                raise ValueError(f"handler class name exists")
-        self._handlers[handler_name] = handler
-        trigger_events = handler.get_trigger_events()
-        self._trigger_events[handler_name] = trigger_events
+            self._handlers[handler_name] = handler
+            trigger_events = handler.get_trigger_events()
+            self._trigger_events[handler_name] = trigger_events
 
     async def trigger(self, handler_class_name: str, event_name: str, **kwargs):
         if handler_class_name not in self._trigger_events or event_name not in self._trigger_events[

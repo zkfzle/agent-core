@@ -28,12 +28,12 @@ class ComponentExecutable(Executable):
         async for value in self.stream(inputs, WrappedNodeRuntime(runtime), runtime.context()):
             yield value
 
-    async def on_collect(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> Output:
+    async def on_collect(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
         return await self.collect(inputs, WrappedNodeRuntime(runtime), runtime.context())
 
-    async def on_transform(self, inputs: AsyncIterator[Input], runtime: BaseRuntime) -> AsyncIterator[Output]:
+    async def on_transform(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
         if not isinstance(runtime, NodeRuntime):
             raise JiuWenBaseException(-1, "runtime should be NodeRuntime instance")
         async for value in self.transform(inputs, WrappedNodeRuntime(runtime), runtime.context()):
@@ -45,9 +45,8 @@ class ComponentExecutable(Executable):
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Stream is not supported")
 
-    async def collect(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> Output:
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         raise JiuWenBaseException(-1, "Collect is not supported")
 
-    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
-        Output]:
+    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Transform is not supported")

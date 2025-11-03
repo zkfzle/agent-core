@@ -6,6 +6,7 @@ from copy import deepcopy
 from typing import Any, Union, Optional, Callable
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.logging import logger
 from jiuwen.core.runtime.utils import update_dict, get_by_schema
 
 
@@ -146,6 +147,7 @@ class InMemoryCommitState(CommitStateLike):
         else:
             node_updates = self._updates.get(node_id)
             if not node_updates:
+                logger.debug(f"node [{node_id}] outputs has no updates")
                 return
             for update in node_updates:
                 self._state.update(update)

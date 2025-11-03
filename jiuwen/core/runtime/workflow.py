@@ -8,12 +8,12 @@ from typing import Any
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.callback_manager import CallbackManager
 from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.mq_manager import MessageQueueManager
 from jiuwen.core.runtime.resource_manager import ResourceManager, ResourceMgr
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.state import State
 from jiuwen.core.runtime.workflow_state import InMemoryState
 from jiuwen.core.stream.manager import StreamWriterManager
+from jiuwen.core.stream_actor.manager import ActorManager
 from jiuwen.core.tracer.tracer import Tracer
 
 
@@ -39,7 +39,7 @@ class WorkflowRuntime(BaseRuntime):
         self._state = state if state is not None else InMemoryState()
         self._callback_manager = CallbackManager()
         self._stream_writer_manager = None  # type: StreamWriterManager
-        self._queue_manager = None
+        self._actor_manager = None
         self._workflow_id = workflow_id
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
@@ -50,16 +50,16 @@ class WorkflowRuntime(BaseRuntime):
     def set_tracer(self, tracer: Tracer) -> None:
         self._tracer = tracer
 
-    def set_queue_manager(self, queue_manager: MessageQueueManager):
-        if self._queue_manager is not None:
+    def set_actor_manager(self, queue_manager: ActorManager):
+        if self._actor_manager is not None:
             return
-        self._queue_manager = queue_manager
+        self._actor_manager = queue_manager
 
     def set_workflow_id(self, workflow_id):
         self._workflow_id = workflow_id
 
-    def queue_manager(self) -> MessageQueueManager:
-        return self._queue_manager
+    def actor_manager(self) -> ActorManager:
+        return self._actor_manager
 
     def config(self) -> Config:
         return self._config
@@ -141,8 +141,8 @@ class NodeRuntime(BaseRuntime):
     def workflow_nesting_depth(self):
         return self._workflow_nesting_depth
 
-    def queue_manager(self) -> MessageQueueManager:
-        return self._runtime.queue_manager()
+    def actor_manager(self) -> ActorManager:
+        return self._runtime.actor_manager()
 
     def parent(self):
         return self._runtime
@@ -185,11 +185,12 @@ class NodeRuntime(BaseRuntime):
             return None
 
 class SubWorkflowRuntime(NodeRuntime):
-    def __init__(self, runtime: NodeRuntime, workflow_id: str):
+    def __init__(self, runtime: NodeRuntime, workflow_id: str, actor_manager: ActorManager = None):
         super().__init__(runtime=runtime.parent(), node_id=runtime.node_id())
         self._workflow_id = workflow_id
         self._workflow_nesting_depth = runtime.workflow_nesting_depth() + 1
         self._main_workflow_id = runtime.main_workflow_id()
+        self._actor_manager = actor_manager
 
     def workflow_id(self):
         return self._workflow_id
@@ -199,3 +200,6 @@ class SubWorkflowRuntime(NodeRuntime):
 
     def main_workflow_id(self):
         return self._main_workflow_id
+
+    def actor_manager(self) -> ActorManager:
+        return self._actor_manager

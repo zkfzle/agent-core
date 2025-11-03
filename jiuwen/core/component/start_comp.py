@@ -5,6 +5,7 @@ from typing import TypedDict
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.logging import logger
 from jiuwen.core.component.base import WorkflowComponent
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input, Output
@@ -41,6 +42,7 @@ class Start(ComponentExecutable, WorkflowComponent):
                                               reason="conf 'inputs' list item not contain `id`"))
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        logger.debug(f"start component inputs: {inputs}")
         self._validate_inputs(inputs)
         return self._fill_default_values(inputs)
 

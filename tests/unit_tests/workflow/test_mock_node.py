@@ -178,20 +178,20 @@ class CollectCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def collect(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> Output:
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         logger.info(f"===CollectCompNode[{self._node_id}], input stream started")
         result = 0
+        input_generator = inputs.get("value")
         try:
-            async for input in inputs:
+            async for value in input_generator:
                 try:
-                    value = input.get("value")
                     if value is None:
-                        logger.warning(f"===CollectCompNode[{self._node_id}], missing 'value' in input: {input}")
+                        logger.warning(f"===CollectCompNode[{self._node_id}], missing 'value' in input: {value}")
                         continue
                     result += value
-                    logger.info(f"===CollectCompNode[{self._node_id}], processed input: {input}")
+                    logger.info(f"===CollectCompNode[{self._node_id}], processed input: {value}")
                 except Exception as e:
-                    logger.error(f"===CollectCompNode[{self._node_id}], error processing input: {input}, error: {e}")
+                    logger.error(f"===CollectCompNode[{self._node_id}], error processing input: {value}, error: {e}")
                     continue  # 可选：继续处理下一个输入
             return {"value": result}
         except Exception as e:
@@ -204,17 +204,17 @@ class TransformCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def transform(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> AsyncIterator[
+    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[
         Output]:
         logger.debug(f"===TransformCompNode[{self._node_id}], input stream started")
+        input_generator = inputs.get("value")
         try:
-            async for input in inputs:
+            async for value in input_generator:
                 try:
-                    value = input.get("value")
                     logger.debug(f"===TransformCompNode[{self._node_id}], processed input: {value}")
                     yield {"value": value}
                 except Exception as e:
-                    logger.error(f"===TransformCompNode[{self._node_id}], error processing input: {input}, error: {e}")
+                    logger.error(f"===TransformCompNode[{self._node_id}], error processing input: {value}, error: {e}")
                     # 可选：继续处理下一个输入，或重新抛出异常以终止流
                     continue
         except Exception as e:
@@ -227,18 +227,19 @@ class MultiCollectCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def collect(self, inputs: AsyncIterator[Input], runtime: Runtime, context: Context) -> Output:
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         logger.info(f"===CollectCompNode[{self._node_id}], input: {inputs}")
         a_collect = 0
         b_collect = 0
+        input_generator = inputs.get("value")
         try:
-            async for input in inputs:
-                logger.info(f"===CollectCompNode[{self._node_id}], input: {input}")
-                a_value = input.get("value", {}).get("a")
+            async for value in input_generator:
+                logger.info(f"===CollectCompNode[{self._node_id}], input: {value}")
+                a_value = value.get("a")
                 if a_value is not None:
                     a_collect += a_value
 
-                b_value = input.get("value", {}).get("b")
+                b_value = value.get("b")
                 if b_value is not None:
                     b_collect += b_value
         except Exception as e:

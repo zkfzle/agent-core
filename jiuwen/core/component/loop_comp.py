@@ -3,10 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from enum import Enum
-from pydantic import BaseModel, Field
 from typing import Self, Union, Callable, Any, Optional, Dict
 
 from langgraph.constants import END, START
+from pydantic import BaseModel, Field
 
 from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID
 from jiuwen.core.common.exception.exception import JiuWenBaseException
@@ -28,10 +28,10 @@ from jiuwen.core.graph.executable import Output, Input, Executable
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from jiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
+from jiuwen.core.stream_actor.manager import ActorManager
 from jiuwen.core.workflow.base import BaseWorkFlow
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from jiuwen.graph.pregel.graph import PregelGraph
-from jiuwen.graph.visualization.drawable_graph import DrawableGraph
 
 
 class EmptyExecutable(Executable):
@@ -84,7 +84,8 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        loop_runtime = SubWorkflowRuntime(runtime.parent(), workflow_id=self._workflow_config.metadata.id)
+        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True)
+        loop_runtime = SubWorkflowRuntime(runtime.parent(), self._workflow_config.metadata.id, actor_manager)
         self.compiled_graph = self.compile(loop_runtime)
         await self.compiled_graph.invoke(inputs, loop_runtime)
         return None

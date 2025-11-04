@@ -1,6 +1,5 @@
 import pytest
-import asyncio
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, Mock
 
 from jiuwen.core.component.condition.condition import Condition, FuncCondition, AlwaysTrue
 from jiuwen.core.component.condition.array import ArrayCondition
@@ -11,7 +10,6 @@ from jiuwen.core.runtime.workflow_state import CommitState
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.graph.executable import Input
 from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.constants.constant import MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
 
 

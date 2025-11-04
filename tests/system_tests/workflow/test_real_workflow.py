@@ -43,8 +43,7 @@ from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig
-from jiuwen.graph.pregel.graph import PregelGraph
-from tests.unit_tests.workflow.test_mock_node import MockEndNode, MockStartNode
+from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 # 注意：切勿将真实密钥提交到仓库！
 API_BASE = os.getenv("API_BASE", "")

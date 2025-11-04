@@ -7,7 +7,7 @@ from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from jiuwen.core.runtime.config import WorkflowConfig
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowMetadata
-from tests.unit_tests.workflow.test_mock_node import MockStartNode, Node1, MockEndNode
+from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 
 @pytest.mark.skip("skip unit test")

@@ -15,6 +15,7 @@ from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.runner.agent_group import AgentGroup
 
+
 # mock
 class LocalMessageQueue:
     async def start(self):
@@ -26,6 +27,7 @@ class LocalMessageQueue:
 
 DEFAULT_RUNNER_ID = "global"
 
+
 class Runner:
     """
     Runner接口
@@ -34,7 +36,6 @@ class Runner:
     _DEFAULT_AGENT_SESSION_ID = "default_session"
 
     _AGENT_CONVERSATION_ID = "conversation_id"
-
 
     def __init__(self, resource_manager: ResourceMgr, runner_id: str = ""):
         self._runner_id = runner_id
@@ -70,7 +71,6 @@ class Runner:
             topic = agent_group.get_topic()
             await self._message_queue.unsubscribe(topic, agent_group._subscription)
         return agent_group
-
 
     def add_agent(self, agent_id, agent: Union[Agent, AgentProvider]):
         self._agent_mgr.add_agent(agent_id, agent)
@@ -123,10 +123,10 @@ class Runner:
             return
         agent_config: AgentConfig = runtime.get_agent_config()
 
-        if isinstance(tool, Tool):
-            tool_name = tool.name
-        else:
+        if isinstance(tool, str):
             tool_name = tool
+        else:
+            tool_name = tool.name
 
         for agent_tool in agent_config.tools:
             if agent_tool == tool_name:
@@ -169,18 +169,18 @@ class Runner:
 
     def _prepare_workflow(self, workflow: Union[str, Workflow],
                           runtime: Union[Runtime, WorkflowRuntime]) -> tuple[Workflow, WorkflowRuntime]:
-        if isinstance(workflow, Workflow):
-            workflow_key = generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)
-        else:
+        if isinstance(workflow, str):
             workflow_key = workflow
+        else:
+            workflow_key = generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)
 
         self._check_is_agent_workflow(runtime, workflow_key)
 
         workflow_runtime = self._create_workflow_runtime(runtime)
-        if isinstance(workflow, Workflow):
-            workflow_instance = workflow
-        else:
+        if isinstance(workflow, str):
             workflow_instance = self._resource_manager.workflow().get_workflow(workflow_key, workflow_runtime)
+        else:
+            workflow_instance = workflow
         return workflow_instance, workflow_runtime
 
     def _prepare_agent_group(self, agent_group: Union[str, AgentGroup]):
@@ -190,7 +190,7 @@ class Runner:
 
     def _prepare_tool(self, tool: Union[str, Tool], runtime: Runtime = None):
         self._check_is_agent_tool(runtime, tool)
-        if isinstance(tool, Tool):
+        if not isinstance(tool, str):
             return tool
         return self._resource_manager.tool().get_tool(tool, runtime)
 

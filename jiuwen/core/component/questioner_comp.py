@@ -4,6 +4,7 @@
 import json
 import re
 from dataclasses import dataclass, field
+from encodings.punycode import selective_find
 from enum import Enum
 from typing import Any, Optional, List, Dict, Union
 
@@ -123,6 +124,7 @@ class QuestionerOutput(BaseModel):
 class QuestionerState(BaseModel):
     response_num: int = Field(default=0)
     user_response: str = Field(default="")
+    question: str = Field(default="")
     extracted_key_fields: Dict[str, Any] = Field(default_factory=dict)
     status: ExecutionStatus = Field(default=ExecutionStatus.START)
 
@@ -155,6 +157,7 @@ class QuestionerStartState(QuestionerState):
     def from_state(cls, questioner_state: QuestionerState):
         return cls(response_num=questioner_state.response_num,
                    user_response=questioner_state.user_response,
+                   question=questioner_state.question,
                    extracted_key_fields=questioner_state.extracted_key_fields,
                    status=ExecutionStatus.START)
 
@@ -172,6 +175,7 @@ class QuestionerInteractState(QuestionerState):
     def from_state(cls, questioner_state: QuestionerState):
         return cls(response_num=questioner_state.response_num,
                    user_response=questioner_state.user_response,
+                   question=questioner_state.question,
                    extracted_key_fields=questioner_state.extracted_key_fields,
                    status=ExecutionStatus.USER_INTERACT)
 
@@ -188,6 +192,7 @@ class QuestionerEndState(QuestionerState):
     def from_state(cls, questioner_state: QuestionerState):
         return cls(response_num=questioner_state.response_num,
                    user_response=questioner_state.user_response,
+                   question=questioner_state.question,
                    extracted_key_fields=questioner_state.extracted_key_fields,
                    status=ExecutionStatus.END)
 
@@ -293,19 +298,22 @@ class QuestionerDirectReplyHandler:
         if self._is_set_question_content():
             user_fields = questioner_input.model_dump(exclude={'query'})
             output.question = QuestionerUtils.format_template(self._config.question_content, user_fields)
+            self._update_questioner_states_question(output.question)
             self._state = self._state.handle_event(QuestionerEvent.USER_INTERACT_EVENT)
             return QuestionerUtils.format_questioner_output(output)
 
         if self._need_extract_fields():
             is_continue_ask = self._initial_extract_from_chat_history(chat_history, output)
             event = QuestionerEvent.USER_INTERACT_EVENT if is_continue_ask else QuestionerEvent.END_EVENT
+            if is_continue_ask:
+                self._update_questioner_states_question(output.question)
             self._state = self._state.handle_event(event)
         else:
             ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY)
         return QuestionerUtils.format_questioner_output(output)
 
     async def _handle_user_interact_state(self, inputs, runtime: Runtime, context):
-        output = OutputCache()
+        output = OutputCache(question=self._state.question)
         await self._get_latest_human_feedback(runtime)
 
         chat_history = self._get_latest_chat_history(context)
@@ -319,6 +327,8 @@ class QuestionerDirectReplyHandler:
         if self._need_extract_fields():
             is_continue_ask = self._repeat_extract_from_chat_history(chat_history, output)
             event = QuestionerEvent.USER_INTERACT_EVENT if is_continue_ask else QuestionerEvent.END_EVENT
+            if is_continue_ask:
+                self._update_questioner_states_question(output.question)
             self._state = self._state.handle_event(event)
         else:
             ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY)
@@ -327,6 +337,7 @@ class QuestionerDirectReplyHandler:
     def _handle_end_state(self, inputs, runtime, context):
         output = QuestionerOutput(**self._state.extracted_key_fields)
         output.user_response = self._state.user_response
+        output.question = self._state.question
         return output.model_dump(exclude_defaults=True)
 
     def _is_set_question_content(self):
@@ -450,12 +461,15 @@ class QuestionerDirectReplyHandler:
             if v:
                 output.key_fields.update({k: v})
 
-        self._increment_state_of_response_num()
         self._update_state_of_key_fields(extracted_key_fields)
 
     async def _get_latest_human_feedback(self, runtime):
+        self._increment_state_of_response_num()
         for _ in range(self._state.response_num):
             self._query = await runtime.interact("")
+
+    def _update_questioner_states_question(self, question):
+        self._state.question = question
 
 
 class QuestionerExecutable(ComponentExecutable):
@@ -509,8 +523,6 @@ class QuestionerExecutable(ComponentExecutable):
         return self
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        await runtime.trace({"on_invoke_data": "extra trace data"})
-
         state_from_runtime = self._load_state_from_runtime(runtime)
         if state_from_runtime.is_undergoing_interaction():
             self._state = state_from_runtime

@@ -173,6 +173,7 @@ class StatusCode(Enum):
     USER_CONFIG_LOAD_ERROR = (188001, "User config load error, as {error_msg}")
     JSON_LOADS_ERROR = (188002, "Json loads error, as {error_msg}")
     JSON_DUMPS_ERROR = (188003, "Json dumps error, as {error_msg}")
+    URL_INVALID_ERROR = (188004, "Url invalid error, as {error_msg}")
 
     # Runtime 190000 - 199999
     # Runtime - Resource Management 190000 - 190999

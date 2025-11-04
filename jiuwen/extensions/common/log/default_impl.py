@@ -103,6 +103,16 @@ class CallerAwareFormatter(logging.Formatter):
 
 class DefaultLogger(LoggerProtocol):
     """默认日志实现"""
+    _CONTROL_CHAR_MAP = {
+        '\r': '\\r',
+        '\n': '\\n',
+        '\t': '\\t',
+        '\b': '\\b',
+        '\v': '\\v',
+        '\f': '\\f',
+        '\0': '\\0',
+    }
+
     def __init__(self, log_type: str, config: Dict[str, Any]):
         self.log_type = log_type
         self.config = config
@@ -163,8 +173,14 @@ class DefaultLogger(LoggerProtocol):
     def _sanitize_message(self, msg: str) -> str:
         if not isinstance(msg, str):
             return msg
-        # 替换 \r, \n, \r\n 为 空格，防止日志注入
-        return msg.replace('\r\n', ' ').replace('\r', ' ').replace('\n', ' ')
+        result = []
+        for char in msg:
+            code = ord(char)
+            if code < 32 or code == 127:
+                result.append(self._CONTROL_CHAR_MAP.get(char, f'\\x{code:02x}'))
+            else:
+                result.append(char)
+        return ''.join(result)
 
     def debug(self, msg: str, *args, **kwargs) -> None:
         msg = self._sanitize_message(msg)

@@ -37,10 +37,12 @@ def create_chat_agent(agent_config: ChatAgentConfig,
 
 class ChatAgent(Agent):
     def __init__(self, agent_config: ChatAgentConfig):
-        self._config = Config()
-        self._config.set_agent_config(agent_config=agent_config)
-        super().__init__(self._config)
-        self.context_engine = self._create_context_engine()
+        # 创建配置并初始化基类
+        config = Config()
+        config.set_agent_config(agent_config=agent_config)
+        super().__init__(config)
+        
+        # 初始化 LLM Call
         llm_config = agent_config.model
         self._llm_call = LLMCall(
             llm_config.model.model_info.model_name,
@@ -52,6 +54,7 @@ class ChatAgent(Agent):
         )
 
     def _init_model(self, model_config):
+        """初始化模型"""
         model_id = generate_key(
             model_config.model_info.api_key,
             model_config.model_info.api_base,
@@ -71,6 +74,7 @@ class ChatAgent(Agent):
         return self._runtime.get_model(model_id=model_id)
 
     def _create_context_engine(self) -> ContextEngine:
+        """ChatAgent 使用默认配置的 ContextEngine"""
         context_config = ContextEngineConfig()
         return ContextEngine(
             agent_id=self._config.get_agent_config().id,

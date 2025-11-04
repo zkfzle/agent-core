@@ -11,7 +11,6 @@ from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from jiuwen.core.agent.controller.utils import ReActControllerOutput
 from jiuwen.core.agent.task import Task, TaskInput
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
@@ -159,20 +158,20 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
 
         # 第一次大模型返回的结果让调用task
-        mock_react_controller_invoke.return_value = ReActControllerOutput(
-            should_continue = True,
-            llm_output=AIMessage(content = "This is first mock LLM output"),
-            tasks=[task],
+        # 返回格式改为元组: (tasks, llm_output)
+        mock_react_controller_invoke.return_value = (
+            [task],
+            AIMessage(content = "This is first mock LLM output"),
         )
 
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州的天气"})
         print(f"ReActAgent 第一次输出结果：{result}")
 
         # 第二次大模型返回的结果不让调用task
-        mock_react_controller_invoke.return_value = ReActControllerOutput(
-            should_continue=False,
-            llm_output=AIMessage(content="This is second mock LLM output"),
-            tasks=[task],
+        # 返回格式改为元组: (tasks, llm_output)
+        mock_react_controller_invoke.return_value = (
+            [],
+            AIMessage(content="This is second mock LLM output"),
         )
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})

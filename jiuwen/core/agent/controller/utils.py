@@ -3,12 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import copy
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from jiuwen.agent.common.enum import TaskType
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.task import Task, TaskInput
-from jiuwen.core.agent.controller.types import ControllerOutput, ControllerInput
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.format.format_utils import FormatUtils
 from jiuwen.core.utils.llm.messages import BaseMessage, ToolCall, AIMessage, HumanMessage, ToolMessage
@@ -17,7 +16,6 @@ from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.context_engine.engine import ContextEngine
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.common.logging import logger
-from pydantic import Field, ConfigDict
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.hash_util import generate_key
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
@@ -25,38 +23,20 @@ from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.agent.message.message import Message
 
 
-class WorkflowControllerOutput(ControllerOutput):
-    tasks: List[Task] = Field(default_factory=list)
-    messages: Any = Field(default_factory=list)
-
-
-class WorkflowControllerInput(ControllerInput):
-    model_config = ConfigDict(extra='allow')
-
-
-class ReActControllerInput(ControllerInput):
-    model_config = ConfigDict(extra='allow')
-
-
-class ReActControllerOutput(ControllerOutput):
-    should_continue: bool = Field(default=False)
-    llm_output: Optional[AIMessage] = Field(default=None)
-    tasks: List[Task] = Field(default_factory=list)
-
-
-class ReActControllerUtils:
+class MessageHandlerUtils:
 
     @staticmethod
     def format_llm_inputs(
-            inputs,
+            inputs: Any,
             chat_history: List[BaseMessage],
             config: AgentConfig
     ) -> List[BaseMessage]:
-        if isinstance(inputs.query, InteractiveInput):
-            user_fields = copy.deepcopy(inputs.model_dump())
-            user_fields.pop("query")
+        if isinstance(inputs, InteractiveInput):
+            user_fields = {}
+        elif isinstance(inputs, dict):
+            user_fields = copy.deepcopy(inputs)
         else:
-            user_fields = inputs.model_dump()
+            user_fields = {"query": inputs}
 
         system_prompt = (Template(
             name=config.prompt_template_name,
@@ -66,15 +46,10 @@ class ReActControllerUtils:
         return FormatUtils.create_llm_inputs(system_prompt, chat_history)
 
     @staticmethod
-    def parse_llm_output(response: BaseMessage, config: AgentConfig) -> "ReActControllerOutput":
-        tasks = ReActControllerUtils.create_tasks_from_tool_calls(
+    def parse_llm_output(response: BaseMessage, config: AgentConfig) -> List[Task]:
+        """解析LLM输出，返回任务列表"""
+        return MessageHandlerUtils.create_tasks_from_tool_calls(
             response.tool_calls, config
-        )
-        should_continue = len(tasks) > 0
-        return ReActControllerOutput(
-            should_continue=should_continue,
-            llm_output=response,
-            tasks=tasks
         )
 
     @staticmethod
@@ -87,7 +62,7 @@ class ReActControllerUtils:
 
         result = []
         for tool_call in tool_calls:
-            task_type = ReActControllerUtils.determine_task_type(
+            task_type = MessageHandlerUtils.determine_task_type(
                 tool_call.function.name, config
             )
             result.append(Task(
@@ -150,7 +125,7 @@ class ReActControllerUtils:
 
     @staticmethod
     def add_user_message(query: Any, context_engine: ContextEngine, runtime: Runtime):
-        if ReActControllerUtils.should_add_user_message(query, context_engine, runtime):
+        if MessageHandlerUtils.should_add_user_message(query, context_engine, runtime):
             agent_context = context_engine.get_agent_context(runtime.session_id())
             user_message = HumanMessage(content=query)
             agent_context.add_message(user_message)
@@ -180,14 +155,47 @@ class ReActControllerUtils:
         max_rounds = config.constrain.reserved_max_chat_rounds
         return chat_history[-2 * max_rounds:]
 
+    @staticmethod
+    def filter_inputs(schema: dict, user_data: dict) -> dict:
+        """过滤和验证用户输入，根据schema提取所需字段"""
+        if not schema:
+            return {}
+
+        required_fields = {
+            k for k, v in schema.items()
+            if isinstance(v, dict) and v.get("required") is True
+        }
+
+        filtered = {}
+        for k in schema:
+            if k not in user_data:
+                if k in required_fields:
+                    raise KeyError(f"missing required parameter: {k}")
+                continue
+            filtered[k] = user_data[k]
+
+        return filtered
+
+    @staticmethod
+    def add_workflow_message_to_chat_history(message: BaseMessage, workflow_id: str,
+                                             context_engine: ContextEngine, runtime: Runtime):
+        """添加消息到workflow的聊天历史"""
+        workflow_context = context_engine.get_workflow_context(
+            workflow_id=workflow_id,
+            session_id=runtime.session_id()
+        )
+        workflow_context.add_message(message)
+
+
 class ReasonerUtils:
     @staticmethod
-    def get_chat_history(context_engine: ContextEngine, runtime: Runtime, chat_history_max_turn: int) -> List[BaseMessage]:
+    def get_chat_history(context_engine: ContextEngine, runtime: Runtime,
+                         chat_history_max_turn: int) -> List[BaseMessage]:
         """根据最大对话轮数获取历史记录"""
         agent_context = context_engine.get_agent_context(runtime.session_id())
         chat_history = agent_context.get_messages()
         return chat_history[-2 * chat_history_max_turn:]
-    
+
     @staticmethod
     def get_model(model_config: ModelConfig, runtime: Runtime):
         """根据模型配置获取模型实例"""

@@ -148,10 +148,10 @@ class AgentScheduler:
                 result = await self.message_handler.process_message(message)
                 
                 # 检查是否应该停止调度器
-                if not result.should_continue:
+                if result.stop:
                     self._final_result = result.final_result
                     self._running = False
-                    logger.info(f"Scheduler stopping: message handler returned should_continue=False")
+                    logger.info(f"Scheduler stopping: message handler returned stop=True")
                     return
                 
                 # 将生成的任务放入任务队列

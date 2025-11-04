@@ -168,7 +168,7 @@ class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
         # Mock message handler 返回结果
         self.mock_message_handler.process_message = AsyncMock(
             return_value=MessageHandlerResult(
-                should_continue=True,
+                stop=False,
                 tasks=[task],
                 final_result=None
             )
@@ -189,13 +189,13 @@ class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mock_message_handler.process_message.call_count, 1)
     
     async def test_process_messages_should_stop(self):
-        """测试消息处理返回should_continue=False时停止调度器"""
+        """测试消息处理返回stop=True时停止调度器"""
         message = self._create_test_message("msg_1", "Stop")
         
         # Mock message handler 返回停止信号
         self.mock_message_handler.process_message = AsyncMock(
             return_value=MessageHandlerResult(
-                should_continue=False,
+                stop=True,
                 tasks=[],
                 final_result="Final result"
             )
@@ -484,14 +484,14 @@ class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
             call_count['count'] += 1
             if call_count['count'] == 1:
                 return MessageHandlerResult(
-                    should_continue=True,
+                    stop=False,
                     tasks=[workflow_task],
                     final_result=None
                 )
             else:
                 # 结果消息不生成新任务
                 return MessageHandlerResult(
-                    should_continue=True,
+                    stop=False,
                     tasks=[],
                     final_result=None
                 )
@@ -521,7 +521,7 @@ class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
         
         self.mock_message_handler.process_message = AsyncMock(
             return_value=MessageHandlerResult(
-                should_continue=False,
+                stop=True,
                 tasks=[],
                 final_result="Completed"
             )

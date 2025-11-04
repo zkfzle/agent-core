@@ -13,8 +13,8 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.agent.message.message import Message
 from jiuwen.core.stream.base import OutputSchema
-from typing import Any
 from jiuwen.core.runner.runner import Runner
+from typing import Any
 
 
 class TaskHandler:
@@ -63,12 +63,7 @@ class TaskHandler:
         """执行工作流并返回结果"""
         workflow = self._find_workflow(task.input.target_name)
         workflow_runtime = self.runtime.create_workflow_runtime()
-        try:
-            result = await Runner.run_workflow(workflow, inputs=task.input.arguments, runtime=workflow_runtime)
-        except Exception as e:
-            import traceback
-            print(traceback.print_exc())
-            return result
+        result = await Runner.run_workflow(workflow, inputs=task.input.arguments, runtime=workflow_runtime)
         return result
 
     def _prepare_stream_data(self, result: WorkflowOutput) -> list:

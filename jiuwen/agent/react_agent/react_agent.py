@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 import asyncio
-from typing import Dict, Any, AsyncIterator, List
+from typing import Dict, Any, AsyncIterator, List, Union
 
 from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema, PluginSchema
@@ -28,14 +28,16 @@ def create_react_agent_config(agent_id: str,
                               workflows: List[WorkflowSchema],
                               plugins: List[PluginSchema],
                               model: ModelConfig,
-                              prompt_template: List[Dict]):
+                              prompt_template: List[Dict],
+                              tools: List[str]=[]):
     config = ReActAgentConfig(id=agent_id,
                               version=agent_version,
                               description=description,
                               workflows=workflows,
                               plugins=plugins,
                               model=model,
-                              prompt_template=prompt_template)
+                              prompt_template=prompt_template,
+                              tools=tools)
     return config
 
 

@@ -10,6 +10,7 @@ from jiuwen.core.utils.tool.function.function import LocalFunction
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.utils.tool.tool import tool
+from jiuwen.core.runner.runner import Runner, resource_mgr
 
 
 API_BASE = os.getenv("API_BASE", "")
@@ -23,7 +24,13 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
+class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        await Runner.start()
+
+    async def asyncTearDown(self):
+        await Runner.stop()
+
     @staticmethod
     def _create_model():
         return ModelConfig(model_provider=MODEL_PROVIDER,
@@ -143,8 +150,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
-
-    @unittest.skip("skip system test")
+    @unittest.skip("require network")
     async def test_react_agent_invoke_with_real_plugin(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -159,7 +165,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             plugins=tools_schema,
             workflows=[],
             model=model_config,
-            prompt_template=prompt_template
+            prompt_template=prompt_template,
+            tools=["WeatherReporter"]
         )
 
         react_agent: ReActAgent = create_react_agent(
@@ -167,12 +174,46 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             workflows=[],
             tools=[self._create_tool()]
         )
+        # 添加工具到resource_mgr
+        resource_mgr.tool().add_tool("WeatherReporter", self._create_tool())
 
-        result = await react_agent.invoke({"query": "查询杭州的天气"})
+        result = await Runner.run_agent(react_agent, {"query": "查询杭州的天气"})
         print(f"ReActAgent 最终输出结果：{result}")
 
-    @unittest.skip("skip system test")
+    @unittest.skip("require network")
     async def test_react_agent_stream_with_real_plugin(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
+        tools_schema = [self._create_tool_schema()]
+        model_config = self._create_model()
+        prompt_template = self._create_prompt_template()
+
+        react_agent_config = create_react_agent_config(
+            agent_id="react_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=tools_schema,
+            workflows=[],
+            model=model_config,
+            prompt_template=prompt_template,
+            tools=["WeatherReporter"]
+        )
+
+        react_agent: ReActAgent = create_react_agent(
+            agent_config=react_agent_config,
+            workflows=[],
+            tools=[self._create_tool()]
+        )
+        # 添加工具到resource_mgr
+        resource_mgr.tool().add_tool("WeatherReporter", self._create_tool())
+
+        res = Runner.run_agent_streaming(react_agent, {"query": "查询杭州的天气"})
+        async for i in res:
+            print("ReActAgent 输出结果：", i)
+
+    @unittest.skip("skip system test")
+    async def test_react_agent_invoke_with_real_plugin_without_runtime(self):
+        """不传runtime调用"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         tools_schema = [self._create_tool_schema()]
@@ -188,12 +229,44 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             model=model_config,
             prompt_template=prompt_template
         )
+        react_agent_config.tools.append("WeatherReporter")
 
         react_agent: ReActAgent = create_react_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_tool()]
         )
+        resource_mgr.tool().add_tool("WeatherReporter", self._create_tool())
+
+        result = await react_agent.invoke({"query": "查询杭州的天气"})
+        print(f"ReActAgent 最终输出结果：{result}")
+
+    @unittest.skip("skip system test")
+    async def test_react_agent_stream_with_real_plugin_without_runtime(self):
+        """不传runtime调用"""
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
+        tools_schema = [self._create_tool_schema()]
+        model_config = self._create_model()
+        prompt_template = self._create_prompt_template()
+
+        react_agent_config = create_react_agent_config(
+            agent_id="react_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=tools_schema,
+            workflows=[],
+            model=model_config,
+            prompt_template=prompt_template,
+            tools=["WeatherReporter"]
+        )
+
+        react_agent: ReActAgent = create_react_agent(
+            agent_config=react_agent_config,
+            workflows=[],
+            tools=[self._create_tool()]
+        )
+        resource_mgr.tool().add_tool("WeatherReporter", self._create_tool())
 
         res = react_agent.stream({"query": "查询杭州的天气"})
         async for i in res:
@@ -215,7 +288,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             plugins=tools_schema,
             workflows=[],
             model=model_config,
-            prompt_template=prompt_template
+            prompt_template=prompt_template,
+            tools=["add"]
         )
 
         # 使用传统方式创建的LocalFunction对象
@@ -224,8 +298,10 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             workflows=[],
             tools=[self._create_function_tool()]
         )
+        # 添加工具到resource_mgr
+        resource_mgr.tool().add_tool("add", self._create_function_tool())
 
-        result = await react_agent.invoke({"query": "计算1+2"})
+        result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 最终输出结果：{result}")
 
     @unittest.skip("skip system test")
@@ -244,7 +320,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             plugins=tools_schema,
             workflows=[],
             model=model_config,
-            prompt_template=prompt_template
+            prompt_template=prompt_template,
+            tools=["add"]
         )
 
         # 使用tool注解创建的LocalFunction对象
@@ -253,6 +330,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             workflows=[],
             tools=[self._create_function_tool_with_annotation()]
         )
+        resource_mgr.tool().add_tool("add", self._create_function_tool_with_annotation())
 
-        result = await react_agent.invoke({"query": "计算1+2"})
+        result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 使用注解工具最终输出结果：{result}")

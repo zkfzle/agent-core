@@ -15,6 +15,7 @@ from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from jiuwen.core.runner.runner import Runner, resource_mgr
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

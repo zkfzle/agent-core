@@ -169,7 +169,7 @@ class ReActControllerUtils:
     def add_tool_result(message: Message, context_engine: ContextEngine, runtime: Runtime):
         if message:
             agent_context = context_engine.get_agent_context(runtime.session_id())
-            tool_message = ToolMessage(content=str(message.content.task_result.output.get("data", "")),
+            tool_message = ToolMessage(content=str(message.content.task_result.output),
                                        tool_call_id=message.context.task_id)
             agent_context.add_message(tool_message)
 

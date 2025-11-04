@@ -114,6 +114,10 @@ class Runner:
         tool_instance = self._prepare_tool(tool, runtime)
         return await tool_instance.ainvoke(inputs, runtime=runtime)
 
+    def run_tool_sync(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
+        tool_instance = self._prepare_tool(tool, runtime)
+        return tool_instance.invoke(inputs, runtime=runtime)
+
     async def run_tool_streaming(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
         tool_instance = self._prepare_tool(tool, runtime)
         return tool_instance.astream(inputs, runtime=runtime)

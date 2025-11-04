@@ -118,9 +118,10 @@ class ReActMessageHandler(MessageHandler):
         # 调用大模型 reasoning 生成计划
         plan_result = await self._generate_plan_from_llm(message)
         if not plan_result.tasks:
-            error_msg = "Failed to generate plan, no tasks found."
-            logger.error(error_msg)
-            raise JiuWenBaseException(-1, error_msg)
+            msg = "So sorry, I cannot generate a plan."
+            logger.info(msg)
+            final_result = await self._send_final_stream(msg)
+            return MessageHandlerResult(tasks=[], should_continue=False, final_result=final_result)
         
         # 判断规划任务是否为中断任务 恢复中断任务
         workflow_task = self._resolve_workflow_from_tasks(plan_result.tasks)
@@ -213,6 +214,8 @@ class ReActMessageHandler(MessageHandler):
         except Exception as e:
             self.iteration += 1
             logger.error(f"Failed to invoke model, {e}")
+            import traceback
+            logger.info(traceback.format_exc())
             raise JiuWenBaseException(-1, "Failed to invoke model")
 
         self.iteration += 1

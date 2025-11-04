@@ -16,6 +16,8 @@ from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from jiuwen.core.runner.runner import Runner, resource_mgr
+from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -52,7 +54,13 @@ class MockInteractiveTool:
         ]
 
 
-class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
+class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        await Runner.start()
+
+    async def asyncTearDown(self):
+        await Runner.stop()
+
     @staticmethod
     def _create_model():
         return ModelConfig(model_provider=MODEL_PROVIDER,
@@ -74,7 +82,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
                 Param(name="location", description="天气查询的地点，必须为英文", type="string", required=True),
                 Param(name="date", description="天气查询的时间，格式为YYYY-MM-DD", type="string", required=True),
             ],
-            path="http://******",
+            path="http://127.0.0.1:8000/weather",
             headers={},
             method="GET",
             response=[],
@@ -150,7 +158,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
-    @unittest.skip
+    @unittest.skip("require network")
     async def test_react_agent_invoke_with_workflow_interrupt_agent_invoke(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -245,15 +253,16 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             prompt_template=react_agent_prompt_template
         )
 
-        # react_agent要创建，但要打桩下面的逻辑：1. 大模型创建； 2. 大模型输出
         react_agent: ReActAgent = create_react_agent(
             agent_config=react_agent_config,
             workflows=[flow],
             tools=[]
         )
+        # 绑定workflow
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version), flow)
 
-        # 第一次大模型返回的结果要让调用sub_task0
-        result = await react_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
+        result = await Runner.run_agent(react_agent, {"conversation_id": "12345", "query": "今天天气查询"})
         print(f"ReActAgent 第一次输出结果：{result}")
         self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
         self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
@@ -263,14 +272,14 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
         if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
             interactive_input = InteractiveInput()
             interactive_input.update("questioner", "上海")
-            result = await react_agent.invoke({"conversation_id": "12345", "query": interactive_input})
+            result = await Runner.run_agent(react_agent, {"conversation_id": "12345", "query": interactive_input})
             print(f"ReActAgent 第二次输出结果：{result}")
 
             self.assertIsInstance(result, dict, "第二次调用应该返回字典")
             self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
             print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
-    @unittest.skip
+    @unittest.skip("require network")
     async def test_react_agent_invoke_with_workflow_interrupt_with_stream(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -367,16 +376,16 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             prompt_template=react_agent_prompt_template
         )
 
-        # react_agent要创建，但要打桩下面的逻辑：1. 大模型创建； 2. 大模型输出
         react_agent: ReActAgent = create_react_agent(
             agent_config=react_agent_config,
             workflows=[flow],
             tools=[]
         )
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version), flow)
 
-        # 第一次大模型返回的结果要让调用sub_task0
         interaction_output_schema = []
-        async for chunk in react_agent.stream({"conversation_id": "12345", "query": "查询今天天气"}):
+        async for chunk in Runner.run_agent_streaming(react_agent,{"query": "天气查询", "conversation_id": "c123"}):
             print(f"ReActAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -386,5 +395,5 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
-            async for chunk in react_agent.stream({"conversation_id": "12345", "query": user_input}):
+            async for chunk in Runner.run_agent_streaming(react_agent, {"query": user_input, "conversation_id": "c123"}):
                 print(f"ReActAgent 第二次输出结果 >>> {chunk}")

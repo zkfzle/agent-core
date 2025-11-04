@@ -13,8 +13,8 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.agent.message.message import Message
 from jiuwen.core.stream.base import OutputSchema
-from jiuwen.core.runner.runner import Runner
 from typing import Any
+from jiuwen.core.runner.runner import Runner
 
 
 class TaskHandler:
@@ -198,8 +198,8 @@ class TaskHandler:
     def _execute_plugin_task(self, task: Task) -> Message:
         """执行插件任务"""
         try:
-            plugin = self.runtime.get_tool(task.input.target_name)
-            result = plugin.invoke(task.input.arguments)
+            tool_id = task.input.target_name
+            result = Runner.run_tool_sync(tool_id, task.input.arguments, runtime=self.runtime)
             return self._create_message_from_plugin_result(task, result)
         except Exception as e:
             return self._handle_plugin_error(task, e)

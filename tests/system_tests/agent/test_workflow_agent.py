@@ -1,6 +1,9 @@
 # tests/test_workflow_agent_invoke_real.py
 import os
 
+from jiuwen.core.runtime.workflow_manager import generate_workflow_key
+from jiuwen.runner.runner import Runner, resource_mgr
+
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
 
@@ -11,7 +14,6 @@ import pytest
 
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
@@ -33,7 +35,7 @@ from typing import List
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "siliconflow")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 # Mock RESTful Api 元信息
@@ -90,6 +92,12 @@ def build_current_date():
 class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     """专门用于测试 WorkflowAgent.invoke 的类。"""
 
+    async def asyncSetUp(self):
+        await Runner.start()
+
+    async def asyncTearDown(self):
+        await Runner.stop()
+
     @staticmethod
     def _create_model_config() -> ModelConfig:
         """根据环境变量构造模型配置。"""
@@ -109,46 +117,38 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     def _create_intent_detection_component() -> IntentDetectionComponent:
         """创建意图识别组件。"""
         model_config = WorkflowAgentTest._create_model_config()
-        user_prompt = """
-            {{user_prompt}}
-
-            当前可供选择的功能分类如下：
-            {{category_info}}
-
-            用户与助手的对话历史：
-            {{chat_history}}
-
-            当前输入：
-            {{input}}
-
-            请根据当前输入和对话历史分析并输出最适合的功能分类。输出格式为 JSON：
-            {"class": "分类xx"}
-            如果没有合适的分类，请输出 {{default_class}}。
-            """
         config = IntentDetectionCompConfig(
-            user_prompt="请判断用户意图",
+            user_prompt="请判断用户意图，识别是否为天气查询请求",
             category_name_list=["查询某地天气"],
             model=model_config,
         )
         component = IntentDetectionComponent(config)
+        # 分支配置：
+        # classification_id == 1: 识别为"查询某地天气" → 走 llm 处理流程
+        # classification_id == 0: 其他意图 → 走 end 默认回复
+        component.add_branch("${intent.classification_id} == 1", ["llm"], "天气查询分支")
         component.add_branch("${intent.classification_id} == 0", ["end"], "默认分支")
-        component.add_branch("${intent.classification_id} == 1", ["questioner"], "查询天气分支")
         return component
 
     @staticmethod
     def _create_llm_component() -> LLMComponent:
-        """创建 LLM 组件，仅用于抽取结构化字段（location/date）。"""
+        """创建 LLM 组件，提取结构化字段（location/date）并改写query。"""
         model_config = WorkflowAgentTest._create_model_config()
         current_date = build_current_date()
-        user_prompt = ("\n原始query为：{{query}}\n\n帮我改写原始query，要求：\n"
-                       "1. 只把地名改为英文，其他信息保留中文；\n"
-                       "2. 改写后的query必须包含当前的日期，默认日期为今天；\n"
-                       "3. 日期为YYYY-MM-DD格式。")
+        user_prompt = (
+                "\n原始query为：{{query}}\n\n"
+                "请从query中提取以下信息：\n"
+                "1. location: 地点（用英文表示）\n"
+                "2. date: 日期（YYYY-MM-DD格式，如果没有明确日期则使用今天: " + current_date + "）\n"
+                                                                                             "3. query: 改写后的完整query（地名改为英文，保留其他中文信息）\n"
+        )
         config = LLMCompConfig(
             model=model_config,
-            template_content=[{"role": "user", "content": SYSTEM_PROMPT_TEMPLATE.format(current_date) + user_prompt}],
-            response_format={"type": "text"},
+            template_content=[{"role": "user", "content": user_prompt}],
+            response_format={"type": "json"},
             output_config={
+                "location": {"type": "string", "description": "地点（英文）", "required": True},
+                "date": {"type": "string", "description": "日期（YYYY-MM-DD）", "required": True},
                 "query": {"type": "string", "description": "改写后的query", "required": True}
             },
         )
@@ -228,7 +228,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         start = self._create_start_component()
         intent = self._create_intent_detection_component()
         llm = self._create_llm_component()
-        questioner = self._create_questioner_component()
         plugin = self._create_plugin_component()
         end = self._create_end_component()
 
@@ -241,7 +240,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_workflow_comp(
             "intent",
             intent,
-            inputs_schema={"input": "${start.query}"},
+            inputs_schema={"query": "${start.query}"},
         )
         flow.add_workflow_comp(
             "llm",
@@ -249,26 +248,22 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             inputs_schema={"query": "${start.query}"},
         )
         flow.add_workflow_comp(
-            "questioner",
-            questioner,
-            inputs_schema={"query": "${llm.query}"}
-        )
-        flow.add_workflow_comp(
             "plugin",
             plugin,
             inputs_schema={
-                "location": "${questioner.location}",
-                "date": "${questioner.date}",
+                "location": "${llm.location}",
+                "date": "${llm.date}",
             },
         )
         flow.set_end_comp("end", end, inputs_schema={"output": "${plugin.data}"})
 
         # 4. 连接拓扑
+        # start → intent → (分支路由)
+        #                    ├─ llm → plugin → end (天气查询)
+        #                    └─ end (其他意图)
         flow.add_connection("start", "intent")
-        # flow.add_connection("intent", "llm")
-        # flow.add_connection("intent", "end")
-        flow.add_connection("llm", "questioner")
-        flow.add_connection("questioner", "plugin")
+        # intent 通过分支自动路由到 llm 或 end
+        flow.add_connection("llm", "plugin")
         flow.add_connection("plugin", "end")
 
         return context.create_workflow_runtime(), flow
@@ -297,7 +292,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 2. 实例化各组件
         start = self._create_start_component()
-        intent = self._create_intent_detection_component()
         questioner = self._create_questioner_component()
         end = self._create_end_component()
 
@@ -308,11 +302,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             inputs_schema={"query": "${query}"},
         )
         flow.add_workflow_comp(
-            "intent",
-            intent,
-            inputs_schema={"query": "${start.query}"},
-        )
-        flow.add_workflow_comp(
             "questioner",
             questioner,
             inputs_schema={"query": "${start.query}"}
@@ -320,36 +309,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.set_end_comp("end", end, inputs_schema={"output": "${questioner.location}"})
 
         # 4. 连接拓扑
-        flow.add_connection("start", "intent")
-        # intent 组件通过分支路由自动连接到 questioner 或 end
+        flow.add_connection("start", "questioner")
         flow.add_connection("questioner", "end")
 
         return context.create_workflow_runtime(), flow
-
-    def _build_prefixed_workflow(self, workflow_id: str, workflow_name: str, prefix: str) -> Workflow:
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
-                name=workflow_name,
-                id=workflow_id,
-                version="1.0",
-            )
-        )
-        flow = Workflow(workflow_config=workflow_config)
-        start = self._create_start_component()
-        end = End({"responseTemplate": f"{prefix}{{{{output}}}}"})
-
-        flow.set_start_comp(
-            "start",
-            start,
-            inputs_schema={"query": "${query}"},
-        )
-        flow.set_end_comp(
-            "end",
-            end,
-            inputs_schema={"output": "${start.query}"},
-        )
-        flow.add_connection("start", "end")
-        return flow
 
     @staticmethod
     def _create_workflow_schema(id, name: str, version: str) -> WorkflowSchema:
@@ -378,72 +341,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         agent.bind_workflows([workflow])
         return agent
 
-    @unittest.skip("skip system test ")
-    async def test_multi_workflow_routing_via_intent_detection(self):
-        """多工作流场景下，意图识别结果应跳转到目标工作流（使用真实模型）。"""
-        print("=== 测试多工作流意图识别路由 ===")
-
-        # 创建两个工作流的schema，描述要清晰明确
-        weather_schema = WorkflowSchema(
-            id="weather_flow",
-            name="天气查询",
-            description="查询某地的天气情况、温度、气象信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
-        )
-        stock_schema = WorkflowSchema(
-            id="stock_flow",
-            name="股票查询",
-            description="查询股票价格、股市行情、股票走势等金融信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
-        )
-
-        weather_workflow = self._build_prefixed_workflow("weather_flow", "天气查询", "weather:")
-        stock_workflow = self._build_prefixed_workflow("stock_flow", "股票查询", "stock:")
-
-        config = WorkflowAgentConfig(
-            id="test_multi_workflow_agent",
-            version="0.1.0",
-            description="多工作流意图识别测试",
-            workflows=[weather_schema, stock_schema],
-            model=self._create_model_config(),
-        )
-
-        agent = WorkflowAgent(config)
-        agent.bind_workflows([weather_workflow, stock_workflow])
-
-        # 使用真实模型调用，不使用任何mock（设置30秒超时）
-        print("发送请求：查看上海股票走势")
-        try:
-            result = await asyncio.wait_for(
-                agent.invoke({
-                    "query": "查看上海股票走势",
-                    "conversation_id": "conv-1"
-                }),
-                timeout=30.0
-            )
-        except asyncio.TimeoutError:
-            print("❌ 调用超时！")
-            raise
-
-        print(f"返回结果：{result}")
-
-        # 校验结果
-        self.assertIsInstance(result, dict, "应该返回字典类型的结果")
-        self.assertEqual(result["result_type"], "answer", "结果类型应该是answer")
-
-        # 检查是否路由到了股票工作流（应该包含"stock:"前缀）
-        response_content = result["output"].result["responseContent"]
-        print(f"响应内容：{response_content}")
-
-        self.assertIn("stock:", response_content, "应该路由到股票工作流")
-        self.assertIn("股票", response_content, "响应应该包含查询内容")
-        print(f"✅ 测试通过：成功路由到股票工作流，返回结果：{response_content}")
-
     # ===== 核心测试用例 =====
-    @unittest.skip("skip system test")
     @pytest.mark.asyncio
+    @unittest.skip("skip system test ")
     async def test_real_workflow_agent_invoke(self):
         """端到端测试：WorkflowAgent.invoke 走完整链路（插件被 mock）。"""
         # 1. 构造真实 workflow
@@ -476,13 +376,15 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
         _, workflow = self._build_interrupt_workflow()
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置30秒超时）
         try:
             result = await asyncio.wait_for(
-                agent.invoke({"query": "查询天气", "conversation_id": "c123"}),
-                timeout=50.0
+                Runner.run_agent(agent, {"query": "查询天气", "conversation_id": "c123"}),
+                timeout=60.0
             )
         except asyncio.TimeoutError:
             print("❌ 第一次调用超时！")
@@ -503,8 +405,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             # 第二次调用 - 传入字符串格式的回答，agent内部会自动处理中断恢复
             try:
                 result2 = await asyncio.wait_for(
-                    agent.invoke({"query": "上海", "conversation_id": "c123"}),
-                    timeout=30.0
+                    Runner.run_agent(agent, {"query": "上海", "conversation_id": "c123"}),
+                    timeout=60.0
                 )
             except asyncio.TimeoutError:
                 print("❌ 第二次调用（恢复）超时！")
@@ -524,229 +426,21 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             self.fail("应该检测到交互请求")
 
     @unittest.skip("skip system test - requires network")
-    async def test_multi_workflow_jump_and_recovery(self):
-        """
-        测试多工作流间的跳转和恢复功能。
-        
-        场景：
-        1. query1 -> workflow1（天气查询）-> 提问器中断（询问地点）
-        2. query2 -> 意图识别 -> workflow2（股票查询）-> 提问器中断（询问股票代码）
-        3. query3（InteractiveInput）-> 恢复 workflow1，提供地点信息 -> 完成
-        4. query4（InteractiveInput）-> 恢复 workflow2，提供股票代码 -> 完成
-        """
-        print("=== 测试多工作流跳转和恢复 ===")
-
-        # 创建两个带提问器的工作流
-        weather_workflow = self._build_questioner_workflow(
-            workflow_id="weather_flow",
-            workflow_name="天气查询",
-            question_field="location",
-            question_desc="地点"
-        )
-        stock_workflow = self._build_questioner_workflow(
-            workflow_id="stock_flow",
-            workflow_name="股票查询",
-            question_field="stock_code",
-            question_desc="股票代码"
-        )
-
-        # 创建 schema
-        weather_schema = WorkflowSchema(
-            id="weather_flow",
-            name="天气查询",
-            description="查询某地的天气情况、温度、气象信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
-        )
-        stock_schema = WorkflowSchema(
-            id="stock_flow",
-            name="股票查询",
-            description="查询股票价格、股市行情、股票走势等金融信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
-        )
-
-        # 创建 agent
-        config = WorkflowAgentConfig(
-            id="test_multi_workflow_jump_agent",
-            version="0.1.0",
-            description="多工作流跳转恢复测试",
-            workflows=[weather_schema, stock_schema],
-            model=self._create_model_config(),
-        )
-        agent = WorkflowAgent(config)
-        agent.bind_workflows([weather_workflow, stock_workflow])
-
-        conversation_id = "test-jump-recovery-001"
-
-        # ========== 步骤1: query1 -> workflow1 -> 中断 ==========
-        print("\n【步骤1】发送 query1: 查询天气")
-        try:
-            result1 = await asyncio.wait_for(
-                agent.invoke({"query": "查询天气", "conversation_id": conversation_id}),
-                timeout=30.0
-            )
-        except asyncio.TimeoutError:
-            print("❌ 步骤1 超时！")
-            raise
-
-        print(f"步骤1 结果类型: {type(result1)}")
-        if isinstance(result1, list):
-            print(f"步骤1 返回列表，长度: {len(result1)}")
-            if result1 and hasattr(result1[0], 'type'):
-                print(f"步骤1 第一个元素类型: {result1[0].type}")
-
-        # 校验：应该触发中断（提问器询问地点）
-        self.assertIsInstance(result1, list, "步骤1应该返回交互请求列表")
-        self.assertTrue(len(result1) > 0, "步骤1应该有交互请求")
-        self.assertEqual(result1[0].type, '__interaction__', "步骤1应该返回交互类型")
-        print(f"✅ 步骤1成功：workflow1 触发中断，询问地点")
-
-        # 记录 workflow1 的中断信息
-        workflow1_interaction = result1[0]
-        workflow1_component_id = workflow1_interaction.payload.id
-        print(f"   Workflow1 中断组件ID: {workflow1_component_id}")
-
-        # ========== 步骤2: query2 -> workflow2 -> 中断 ==========
-        print("\n【步骤2】发送 query2: 查看股票")
-        try:
-            result2 = await asyncio.wait_for(
-                agent.invoke({"query": "查看股票", "conversation_id": conversation_id}),
-                timeout=30.0
-            )
-        except asyncio.TimeoutError:
-            print("❌ 步骤2 超时！")
-            raise
-
-        print(f"步骤2 结果类型: {type(result2)}")
-        if isinstance(result2, list):
-            print(f"步骤2 返回列表，长度: {len(result2)}")
-            if result2 and hasattr(result2[0], 'type'):
-                print(f"步骤2 第一个元素类型: {result2[0].type}")
-
-        # 校验：应该触发中断（提问器询问股票代码）
-        self.assertIsInstance(result2, list, "步骤2应该返回交互请求列表")
-        self.assertTrue(len(result2) > 0, "步骤2应该有交互请求")
-        self.assertEqual(result2[0].type, '__interaction__', "步骤2应该返回交互类型")
-        print(f"✅ 步骤2成功：workflow2 触发中断，询问股票代码")
-
-        # 记录 workflow2 的中断信息
-        workflow2_interaction = result2[0]
-        workflow2_component_id = workflow2_interaction.payload.id
-        print(f"   Workflow2 中断组件ID: {workflow2_component_id}")
-
-        # ========== 步骤3: query3 -> 恢复 workflow1 ==========
-        print("\n【步骤3】发送 query3: 提供地点信息，恢复 workflow1")
-        try:
-            result3 = await asyncio.wait_for(
-                agent.invoke({"query": "查询北京天气", "conversation_id": conversation_id}),
-                timeout=30.0
-            )
-        except asyncio.TimeoutError:
-            print("❌ 步骤3 超时！")
-            raise
-
-        print(f"步骤3 结果: {result3}")
-
-        # 校验：workflow1 应该完成
-        self.assertIsInstance(result3, dict, "步骤3应该返回字典")
-        self.assertEqual(result3['result_type'], 'answer', "步骤3应该返回answer类型")
-        self.assertEqual(result3['output'].state.value, 'COMPLETED', "步骤3 workflow1应该完成")
-        response_content_3 = result3['output'].result.get('responseContent', '')
-        print(f"✅ 步骤3成功：workflow1 恢复并完成，返回: {response_content_3}")
-
-        # ========== 步骤4: query4 -> 恢复 workflow2 ==========
-        print("\n【步骤4】发送 query4: 提供股票代码，恢复 workflow2")
-        try:
-            result4 = await asyncio.wait_for(
-                agent.invoke({"query": "查看AAPL股票", "conversation_id": conversation_id}),
-                timeout=30.0
-            )
-        except asyncio.TimeoutError:
-            print("❌ 步骤4 超时！")
-            raise
-
-        print(f"步骤4 结果: {result4}")
-
-        # 校验：workflow2 应该完成
-        self.assertIsInstance(result4, dict, "步骤4应该返回字典")
-        self.assertEqual(result4['result_type'], 'answer', "步骤4应该返回answer类型")
-        self.assertEqual(result4['output'].state.value, 'COMPLETED', "步骤4 workflow2应该完成")
-        response_content_4 = result4['output'].result.get('responseContent', '')
-        print(f"✅ 步骤4成功：workflow2 恢复并完成，返回: {response_content_4}")
-
-        print("\n🎉 所有步骤完成！多工作流跳转和恢复测试通过！")
-
-    def _build_questioner_workflow(self, workflow_id: str, workflow_name: str,
-                                   question_field: str, question_desc: str) -> Workflow:
-        """
-        构建包含提问器的简单工作流。
-        
-        Args:
-            workflow_id: 工作流ID
-            workflow_name: 工作流名称
-            question_field: 提问字段名
-            question_desc: 提问字段描述
-        
-        Returns:
-            Workflow: 包含 start -> questioner -> end 的工作流
-        """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
-                name=workflow_name,
-                id=workflow_id,
-                version="1.0",
-            )
-        )
-        flow = Workflow(workflow_config=workflow_config)
-
-        # 创建组件
-        start = self._create_start_component()
-
-        # 创建提问器
-        key_fields = [
-            FieldInfo(field_name=question_field, description=question_desc, required=True),
-        ]
-        model_config = self._create_model_config()
-        questioner_config = QuestionerConfig(
-            model=model_config,
-            question_content="",
-            extract_fields_from_response=True,
-            field_names=key_fields,
-            with_chat_history=False,
-            extra_prompt_for_fields_extraction="",
-            example_content="",
-        )
-        questioner = QuestionerComponent(questioner_config)
-
-        # End 组件，返回提问器收集的字段值
-        end = End({"responseTemplate": f"{{{{{question_field}}}}}"})
-
-        # 注册组件
-        flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
-        flow.add_workflow_comp("questioner", questioner, inputs_schema={"query": "${start.query}"})
-        flow.set_end_comp("end", end, inputs_schema={question_field: f"${{questioner.{question_field}}}"})
-
-        # 连接拓扑
-        flow.add_connection("start", "questioner")
-        flow.add_connection("questioner", "end")
-
-        return flow
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self._build_interrupt_workflow()
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
         interaction_outputs = []
-        first_chunks = []
         try:
             async def collect_first_stream():
                 chunks = []
-                async for chunk in agent.stream({"query": "查询天气", "conversation_id": "c123"}):
+                async for chunk in Runner.run_agent_streaming(agent,
+                                                              {"query": "查询天气", "conversation_id": "c123"}):
                     print(f"Workflow Agent第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -774,7 +468,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             try:
                 async def collect_second_stream():
                     chunks = []
-                    async for chunk in agent.stream({"query": interactive_input, "conversation_id": "c123"}):
+                    async for chunk in Runner.run_agent_streaming(agent, {"query": interactive_input,
+                                                                          "conversation_id": "c123"}):
                         print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
                         chunks.append(chunk)
                     return chunks

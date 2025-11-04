@@ -41,10 +41,6 @@ class BaseRuntime(ABC):
         pass
 
     @abstractmethod
-    def controller_context_manager(self):
-        pass
-
-    @abstractmethod
     def session_id(self) -> str:
         pass
 
@@ -234,9 +230,6 @@ class ProxyRuntime(BaseRuntime):
 
     def callback_manager(self) -> CallbackManager:
         return self._stub.callback_manager()
-
-    def controller_context_manager(self):
-        return self._stub.controller_context_manager()
 
     def resource_manager(self):
         return self._stub.resource_manager()

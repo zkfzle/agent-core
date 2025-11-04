@@ -3,7 +3,7 @@ from typing import Optional, Union
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
-from jiuwen.runner.agent_group import AgentGroup
+from jiuwen.core.runner.agent_group import AgentGroup
 
 AgentGroupProvider = lambda: AgentGroup
 

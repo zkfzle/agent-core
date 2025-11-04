@@ -76,9 +76,6 @@ class WorkflowRuntime(BaseRuntime):
     def callback_manager(self) -> CallbackManager:
         return self._callback_manager
 
-    def controller_context_manager(self):
-        return self._controller_context_manager
-
     def session_id(self) -> str:
         return self._session_id
 
@@ -161,9 +158,6 @@ class NodeRuntime(BaseRuntime):
 
     def callback_manager(self) -> CallbackManager:
         return self._runtime.callback_manager()
-
-    def controller_context_manager(self):
-        return self._runtime.controller_context_manager()
 
     def session_id(self) -> str:
         return self._runtime.session_id()

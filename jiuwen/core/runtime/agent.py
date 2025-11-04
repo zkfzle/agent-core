@@ -47,9 +47,6 @@ class StaticAgentRuntime(BaseRuntime):
     def callback_manager(self) -> CallbackManager:
         pass
 
-    def controller_context_manager(self):
-        pass
-
     def session_id(self) -> str:
         pass
 
@@ -96,9 +93,6 @@ class AgentRuntime(BaseRuntime):
 
     def callback_manager(self) -> CallbackManager:
         return self._callback_manager
-
-    def controller_context_manager(self):
-        pass
 
     def session_id(self) -> str:
         return self._session_id

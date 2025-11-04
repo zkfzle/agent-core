@@ -7,7 +7,7 @@
 """
 import os
 
-from jiuwen.runner.runner import Runner, resource_mgr
+from jiuwen.core.runner.runner import Runner
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"

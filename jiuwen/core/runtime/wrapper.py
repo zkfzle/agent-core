@@ -355,11 +355,6 @@ class TaskRuntime(StateRuntime):
         if isinstance(self._inner, AgentRuntime):
             await self._inner.stream_writer_manager().stream_emitter().end_stream()
 
-    def set_controller_context_manager(self, controller_context_manager: Any):
-        self._controller_context_manager = controller_context_manager
-
-    def controller_context_manager(self) -> Any:
-        return self._controller_context_manager
 
     def tracer(self) -> Tracer:
         return self._inner.tracer()

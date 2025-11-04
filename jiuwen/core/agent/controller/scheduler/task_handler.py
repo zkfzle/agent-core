@@ -13,7 +13,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.agent.message.message import Message
 from jiuwen.core.stream.base import OutputSchema
-from jiuwen.runner.runner import Runner
+from jiuwen.core.runner.runner import Runner
 from typing import Any
 
 

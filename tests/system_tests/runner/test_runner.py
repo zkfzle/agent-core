@@ -9,10 +9,8 @@ from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
 from jiuwen.core.component.start_comp import Start
-from jiuwen.core.runtime.resource_manager import ResourceManager, ResourceMgr
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.wrapper import TaskRuntime
@@ -20,7 +18,7 @@ from jiuwen.core.stream.base import OutputSchema
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.runner.runner import Runner, resource_mgr
+from jiuwen.core.runner.runner import Runner, resource_mgr
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

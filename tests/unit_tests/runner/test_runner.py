@@ -11,7 +11,7 @@ from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.tool import tool
 from jiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowExecutionState
 from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.runner.runner import Runner
+from jiuwen.core.runner.runner import Runner
 from tests.unit_tests.workflow.test_mock_node import MockStartNode, Node1, MockEndNode
 
 

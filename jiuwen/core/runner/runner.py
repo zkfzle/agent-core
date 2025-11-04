@@ -13,7 +13,7 @@ from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.workflow.base import Workflow
-from jiuwen.runner.agent_group import AgentGroup
+from jiuwen.core.runner.agent_group import AgentGroup
 
 # mock
 class LocalMessageQueue:

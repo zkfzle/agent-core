@@ -2,7 +2,7 @@
 import os
 
 from jiuwen.core.runtime.workflow_manager import generate_workflow_key
-from jiuwen.runner.runner import Runner, resource_mgr
+from jiuwen.core.runner.runner import Runner, resource_mgr
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"

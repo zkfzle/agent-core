@@ -6,7 +6,6 @@ from typing import List, Optional, Tuple, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.graph.executable import Input, Output
 from jiuwen.core.tracer.decorator import decrate_tool_with_trace
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool.base import Tool
@@ -85,9 +84,7 @@ class ToolMgr:
 
         try:
             tool = self.find_tool_by_name(tool_id)
-            if not tool or not runtime or not runtime.tracer():
-                return tool
-            return decrate_tool_with_trace(WrappedTool(tool), runtime)
+            return decrate_tool_with_trace(tool, runtime)
         except JiuWenBaseException:
             raise
         except Exception as e:
@@ -127,17 +124,3 @@ class ToolMgr:
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
                                           reason=f"Failed to get tool infos: {str(e)}"))
-
-
-class WrappedTool(Tool):
-    def __init__(self, tool: Tool):
-        self.inner = tool
-
-    def invoke(self, inputs: Input, **kwargs):
-        return self.inner.invoke(inputs, **kwargs)
-
-    async def ainvoke(self, inputs: Input, **kwargs) -> Output:
-        return await self.inner.ainvoke(inputs, **kwargs)
-
-    def get_tool_info(self) -> ToolInfo:
-        return self.inner.get_tool_info()

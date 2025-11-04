@@ -4,9 +4,6 @@ from typing import Dict, List, Any, Union
 from unittest.mock import MagicMock
 
 from jiuwen.core.common.logging import logger
-from jiuwen.core.runtime.model_manager import WrappedBaseChatModel
-from jiuwen.core.runtime.tool_manager import WrappedTool
-from jiuwen.core.runtime.workflow_manager import WrappedWorkflow
 from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.runtime import BaseRuntime
 from jiuwen.core.stream.base import StreamMode, BaseStreamMode
@@ -112,8 +109,7 @@ class TestDecator(unittest.TestCase):
         mock_runtime.tracer.return_value = mock_tracer
         mock_runtime.span.return_value = mock_agent_span
 
-        wrapped_tool = WrappedTool(tool)
-        decrate_tool_with_trace(wrapped_tool, mock_runtime)
+        wrapped_tool = decrate_tool_with_trace(tool, mock_runtime)
         wrapped_tool.invoke({"a": "a"}, context=3)
         for item in results:
             print(item)
@@ -149,7 +145,7 @@ class TestDecator(unittest.TestCase):
         mock_runtime.tracer.return_value = mock_tracer
         mock_runtime.span.return_value = mock_agent_span
 
-        wrapped_workflow = decrate_workflow_with_trace(WrappedWorkflow(workflow), mock_runtime)
+        wrapped_workflow = decrate_workflow_with_trace(workflow, mock_runtime)
 
         asyncio.get_event_loop().run_until_complete(wrapped_workflow.invoke({"a": "a"}, MagicMock(), context=None))
 
@@ -181,7 +177,7 @@ class TestDecator(unittest.TestCase):
         mock_runtime.tracer.return_value = mock_tracer
         mock_runtime.span.return_value = mock_agent_span
 
-        mocked_model = decrate_model_with_trace(WrappedBaseChatModel(model), mock_runtime)
+        mocked_model = decrate_model_with_trace(model, mock_runtime)
 
         mocked_model.invoke("a", "messages")
 

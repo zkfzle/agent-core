@@ -53,9 +53,7 @@ class WorkflowMgr:
                                       StatusCode.RUNTIME_WORKFLOW_GET_FAILED.errmsg.format(
                                           reason="workflow_id is invalid, can not be None or empty"))
         workflow = self.find_workflow_by_id_and_version(workflow_id)
-        if not workflow or not runtime or not runtime.tracer():
-            return workflow
-        return decrate_workflow_with_trace(WrappedWorkflow(workflow), runtime)
+        return decrate_workflow_with_trace(workflow, runtime)
 
     def find_workflow_by_id_and_version(self, workflow_id: str):
         if workflow_id is None:
@@ -114,27 +112,3 @@ class WorkflowMgr:
             raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.code,
                                       StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED.errmsg.format(
                                           reason=f"Failed to get workflow tool infos: {str(e)}"))
-
-
-
-class WrappedWorkflow:
-    def __init__(self, workflow):
-        self.inner = workflow
-
-    async def invoke(self, inputs, runtime, context=None):
-        return await self.inner.invoke(inputs, runtime, context)
-
-    async def stream(self, inputs, runtime, context=None, stream_modes=None):
-        result = self.inner.stream(inputs, runtime, context, stream_modes)
-        async for item in result:
-            yield item
-
-    def get_tool_info(self):
-        return self.inner.get_tool_info()
-
-    async def sub_invoke(self, inputs, runtime, config=None):
-        return await self.inner.sub_invoke(inputs, runtime, config)
-
-    def get_workflow_metadata(self):
-        metadata = self.inner.config().metadata if self.inner.config() else {}
-        return dict(metadata)

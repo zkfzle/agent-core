@@ -117,7 +117,7 @@ class WrappedRuntime(Runtime, ABC):
     def get_tool(self, tool_id: str) -> Tool:
         return self._inner.resource_manager().tool().get_tool(tool_id, self._inner)
 
-    def get_tool_info(self, tool_id: List[str]=None, workflow_id: List[str]=None) -> List[ToolInfo]:
+    def get_tool_info(self, tool_id: List[str] = None, workflow_id: List[str] = None) -> List[ToolInfo]:
         infos = []
         if tool_id is None and workflow_id is None:
             infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
@@ -137,6 +137,7 @@ class WrappedRuntime(Runtime, ABC):
 
     def base(self) -> BaseRuntime:
         return self._inner
+
 
 class StateRuntime(WrappedRuntime, ABC):
 
@@ -179,6 +180,7 @@ class StateRuntime(WrappedRuntime, ABC):
         writer = self.custom_writer()
         if writer:
             await writer.write(data)
+
 
 class RouterRuntime(StateRuntime):
     async def interact(self, value):
@@ -256,7 +258,7 @@ class RouterRuntime(StateRuntime):
     def get_tool(self, tool_id: str) -> Tool:
         pass
 
-    def get_tool_info(self, tool_id: List[str]=None, workflow_id: List[str]=None) -> List[ToolInfo]:
+    def get_tool_info(self, tool_id: List[str] = None, workflow_id: List[str] = None) -> List[ToolInfo]:
         pass
 
     def get_workflow_config(self, workflow_id):
@@ -267,6 +269,7 @@ class RouterRuntime(StateRuntime):
 
     def base(self) -> BaseRuntime:
         pass
+
 
 class WrappedNodeRuntime(StateRuntime):
     def __init__(self, runtime: NodeRuntime):
@@ -332,13 +335,13 @@ class TaskRuntime(StateRuntime):
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseChatModel:
-        return self._inner.resource_manager().model().get_model(model_id, runtime = self._inner)
+        return self._inner.resource_manager().model().get_model(model_id, runtime=self._inner)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
-        return self._inner.resource_manager().workflow().get_workflow(workflow_id, runtime = self._inner)
+        return self._inner.resource_manager().workflow().get_workflow(workflow_id, runtime=self._inner)
 
     def get_tool(self, tool_id: str) -> Tool:
-        return self._inner.resource_manager().tool().get_tool(tool_id, runtime = self._inner)
+        return self._inner.resource_manager().tool().get_tool(tool_id, runtime=self._inner)
 
     def stream_iterator(self) -> AsyncIterator[Any]:
         return self._inner.stream_writer_manager().stream_output()

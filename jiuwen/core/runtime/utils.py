@@ -11,6 +11,32 @@ NESTED_PATH_SPLIT = '.'
 NESTED_PATH_LIST_SPLIT = "["
 
 
+def create_wrapper_class(original_obj, wrapper_name="WrappedObject"):
+    """dynamic generate wrapped class instance for instance"""
+    class WrapperClass:
+        def __init__(self, wrapped_obj):
+            self._wrapped = wrapped_obj
+
+        def __getattr__(self, name):
+            return getattr(self._wrapped, name)
+
+    for attr_name in dir(original_obj):
+        if not attr_name.startswith('_'):
+            attr_value = getattr(original_obj, attr_name)
+            if callable(attr_value):
+                def create_method(method_name):
+                    def wrapped_method(self, *args, **kwargs):
+                        method = getattr(self._wrapped, method_name)
+                        return method(*args, **kwargs)
+
+                    return wrapped_method
+
+                setattr(WrapperClass, attr_name, create_method(attr_name))
+    WrapperClass.__name__ = wrapper_name
+    WrapperClass.__qualname__ = wrapper_name
+
+    return WrapperClass(original_obj)
+
 def update_dict(update: dict, source: dict) -> None:
     """
     update source dict by update dict

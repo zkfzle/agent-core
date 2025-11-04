@@ -4,36 +4,48 @@
 
 from functools import wraps
 from types import MethodType
+
+from jiuwen.core.runtime.utils import create_wrapper_class
 from jiuwen.core.tracer.data import InvokeType
 
 
-def decrate_model_with_trace(wrapped_model, base_runtime):
-    instance_info = {"class_name": type(wrapped_model.inner).__name__, "type": "llm"}
+def decrate_model_with_trace(model, agent_runtime):
+    if not model or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
+        return model
+    wrapped_model = create_wrapper_class(model, "WrappedModel")
+    instance_info = {"class_name": type(model).__name__, "type": "llm"}
     wrapped_model.invoke = MethodType(
-        trace(wrapped_model.invoke, base_runtime, InvokeType.LLM, instance_info), wrapped_model)
+        trace(wrapped_model.invoke, agent_runtime, InvokeType.LLM, instance_info), wrapped_model)
     wrapped_model.ainvoke = MethodType(
-        async_trace(wrapped_model.ainvoke, base_runtime, InvokeType.LLM, instance_info), wrapped_model)
+        async_trace(wrapped_model.ainvoke, agent_runtime, InvokeType.LLM, instance_info), wrapped_model)
     wrapped_model.stream = MethodType(
-        trace_stream(wrapped_model.stream, base_runtime, InvokeType.LLM, instance_info), wrapped_model)
+        trace_stream(wrapped_model.stream, agent_runtime, InvokeType.LLM, instance_info), wrapped_model)
     return wrapped_model
 
 
-def decrate_tool_with_trace(wrapped_tool, base_runtime):
-    instance_info = {"class_name": type(wrapped_tool.inner).__name__, "type": "tool"}
+def decrate_tool_with_trace(tool, agent_runtime):
+    if not tool or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
+        return tool
+    wrapped_tool = create_wrapper_class(tool, "WrappedTool")
+    instance_info = {"class_name": type(tool).__name__, "type": "tool"}
     wrapped_tool.invoke = MethodType(
-        trace(wrapped_tool.invoke, base_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool)
+        trace(wrapped_tool.invoke, agent_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool)
     wrapped_tool.ainvoke = MethodType(
-        async_trace(wrapped_tool.ainvoke, base_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool)
+        async_trace(wrapped_tool.ainvoke, agent_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool)
     return wrapped_tool
 
 
-def decrate_workflow_with_trace(wrapped_workflow, base_runtime):
-    instance_info = {"class_name": type(wrapped_workflow.inner).__name__, "type": "workflow", "metadata": wrapped_workflow.get_workflow_metadata()}
+def decrate_workflow_with_trace(workflow, agent_runtime):
+    if not workflow or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
+        return workflow
+    wrapped_workflow = create_wrapper_class(workflow, "WrappedWorkflow")
+    metadata = wrapped_workflow.config().metadata if wrapped_workflow and wrapped_workflow.config() else {}
+    instance_info = {"class_name": type(workflow).__name__, "type": "workflow", "metadata": dict(metadata)}
     wrapped_workflow.invoke = MethodType(
-        async_trace(wrapped_workflow.invoke, base_runtime, InvokeType.WORKFLOW, instance_info),
+        async_trace(wrapped_workflow.invoke, agent_runtime, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)
     wrapped_workflow.stream = MethodType(
-        async_trace_stream(wrapped_workflow.stream, base_runtime, InvokeType.WORKFLOW, instance_info),
+        async_trace_stream(wrapped_workflow.stream, agent_runtime, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)
     return wrapped_workflow
 

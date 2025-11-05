@@ -118,9 +118,8 @@ class ReActMessageHandler(MessageHandler):
         # 调用大模型 reasoning 生成计划
         plan_result = await self._generate_plan_from_llm(message)
         if not plan_result.tasks:
-            msg = "So sorry, I cannot generate a plan."
-            logger.info(msg)
-            final_result = await self._send_final_stream(msg)
+            logger.info("No task is generated")
+            final_result = await self._send_final_stream(plan_result.llm_output.content)
             return MessageHandlerResult(tasks=[], should_continue=False, final_result=final_result)
         
         # 判断规划任务是否为中断任务 恢复中断任务

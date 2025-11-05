@@ -32,15 +32,11 @@ from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.stream.base import OutputSchema
 from typing import List
 
-# API_BASE = os.getenv("API_BASE", "")
-# API_KEY = os.getenv("API_KEY", "")
-# MODEL_NAME = os.getenv("MODEL_NAME", "")
-# MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-# os.environ.setdefault("LLM_SSL_VERIFY", "false")
-API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
-API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
-MODEL_NAME = "Qwen/Qwen3-32B"
-MODEL_PROVIDER = "siliconflow"
+API_BASE = os.getenv("API_BASE", "")
+API_KEY = os.getenv("API_KEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 
 # Mock RESTful Api 元信息

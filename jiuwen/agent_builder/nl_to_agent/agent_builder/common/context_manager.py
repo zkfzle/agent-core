@@ -1,5 +1,6 @@
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List
@@ -7,7 +8,6 @@ from typing import Dict, Any, Optional, List
 
 @dataclass
 class DialogueMessage:
-    """对话消息类"""
     content: str
     role: str
     timestamp: datetime

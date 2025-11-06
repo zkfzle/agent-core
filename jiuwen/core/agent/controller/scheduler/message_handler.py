@@ -192,7 +192,8 @@ class MessageHandler(ABC):
             model = ModelFactory().get_model(
                 model_provider=self.config.model.model_provider,
                 api_base=self.config.model.model_info.api_base,
-                api_key=self.config.model.model_info.api_key
+                api_key=self.config.model.model_info.api_key,
+                timeout=self.config.model.model_info.timeout
             )
             self.runtime.add_model(model_id=model_id, model=model)
 

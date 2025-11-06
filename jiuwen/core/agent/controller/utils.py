@@ -211,7 +211,8 @@ class ReasonerUtils:
             model = ModelFactory().get_model(
                 model_provider=model_config.model_provider,
                 api_base=model_config.model_info.api_base,
-                api_key=model_config.model_info.api_key
+                api_key=model_config.model_info.api_key,
+                timeout=model_config.model_info.timeout
             )
             runtime.add_model(model_id=model_id, model=model)
 

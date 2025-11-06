@@ -1,7 +1,8 @@
 import asyncio
 import uuid
-from typing import Awaitable
-from jiuwen.core.common.logging import logger
+from typing import Awaitable, AsyncIterator
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 from jiuwen.core.runner.message_queue_base import (
@@ -48,6 +49,21 @@ class SubscriptionInMemory(SubscriptionBase):
             message.message_id = str(uuid.uuid4())
         await self._queue.put(message)
 
+    async def _handle_response(self, message, response):
+        if isinstance(message, InvokeQueueMessage):
+            if not response:
+                raise JiuWenBaseException(StatusCode.ERROR, "Reponse is empty")
+            if isinstance(response, AsyncIterator):
+                raise JiuWenBaseException(StatusCode.ERROR, "InvokeQueueMessage need not AsyncIterator response")
+            message.response.set_result(response)
+
+        if isinstance(message, StreamQueueMessage):
+            if not response:
+                raise JiuWenBaseException(StatusCode.ERROR, "Reponse is empty")
+            if not isinstance(response, AsyncIterator):
+                raise JiuWenBaseException(StatusCode.ERROR, "StreamQueueMessage need AsyncIterator response")
+            message.response.set_result(response)
+
     async def _consume_message(self):
         while self._is_active and self._handler:
             message = await self._queue.get()
@@ -55,11 +71,13 @@ class SubscriptionInMemory(SubscriptionBase):
                 response = self._handler(message.request)
                 if isinstance(response, Awaitable):
                     response = await asyncio.wait_for(response, timeout=self._timeout)
-                if isinstance(message, InvokeQueueMessage) or isinstance(message, StreamQueueMessage):
-                    if response:
-                        message.response.set_result(response)
+                await self._handle_response(message, response)
+            except JiuWenBaseException as e:
+                message.error_code = e.error_code
+                message.error_msg = e.message
             except Exception as e:
-                logger.error(f"Handle message error: {e}")
+                message.error_code = StatusCode.ERROR
+                message.error_msg = str(e)
             finally:
                 self._queue.task_done()
 

@@ -6,20 +6,31 @@ import unittest
 from typing import Any, AsyncIterator
 import asyncio
 
-from jiuwen.core.runner.message_queue_base import StreamQueueMessage, InvokeQueueMessage
+from jiuwen.core.runner.message_queue_base import StreamQueueMessage, InvokeQueueMessage, QueueMessage
 from jiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
+from jiuwen.core.common.exception.status_code import StatusCode
 
 
-class MockMessagehandler_A:
+class MockMessagehandler_stream:
     async def handle_message(self, request: Any) -> AsyncIterator[str]:
         for i in range(1, 10):
-            response = f"MockMessagehandler_A response for msg : {request}, i is {i}"
+            response = f"MockMessagehandler_stream response for msg : {request}, i is {i}"
             yield response
 
 
-class MockMessagehandler_B:
+class MockMessagehandler_invoke:
     async def handle_message(self, request: Any) -> str:
-        return "MockMessagehandler_B response for msg : " + request
+        return "MockMessagehandler_invoke response for msg : " + request
+
+
+async def get_response(response):
+    result = None
+    try:
+        result = await asyncio.wait_for(response, 1)
+    except asyncio.TimeoutError:
+        result = None
+    finally:
+        return result
 
 
 class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
@@ -27,43 +38,72 @@ class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
         mq = MessageQueueInMemory()
         mq.start()
 
-        # topic_a
-        subscription1 =  mq.subscribe("topic_a")
-        subscription1.set_message_handler(MockMessagehandler_A().handle_message)
+        # stream handler
+        subscription1 = mq.subscribe("topic_stream")
+        subscription1.set_message_handler(MockMessagehandler_stream().handle_message)
         subscription1.activate()
-        # topic_b
-        subscription2 =  mq.subscribe("topic_b")
-        subscription2.set_message_handler(MockMessagehandler_B().handle_message)
+        # invoke handler
+        subscription2 = mq.subscribe("topic_invoke")
+        subscription2.set_message_handler(MockMessagehandler_invoke().handle_message)
         subscription2.activate()
 
-        # send to topic_a
+        # <1.1> send stream request to stream handler
         message = StreamQueueMessage()
         message.request = "上海温度多少"
         message.response = asyncio.Future()
-        await mq.produce_message("topic_a", message)
-        response = await message.response
+        await mq.produce_message("topic_stream", message)
+        response = await get_response(message.response)
+        self.assertNotEqual(response, None)
+        self.assertEqual(message.error_code, StatusCode.SUCCESS)
+        self.assertEqual(message.error_msg, "")
         i = 1
         async for ret in response:
-            self.assertEqual(ret, f"MockMessagehandler_A response for msg : 上海温度多少, i is {i}")
+            self.assertEqual(ret, f"MockMessagehandler_stream response for msg : 上海温度多少, i is {i}")
             i += 1
 
-        # send to topic_b
+        # # <1.2> send invoke request to stream handler
         message1 = InvokeQueueMessage()
-        message1.request = "北京温度多少"
-        message1.response = asyncio.Future()
-        await mq.produce_message("topic_b", message1)
-        reponse1 = await message1.response
+        message1.request = "上海温度多少"
+        await mq.produce_message("topic_stream", message1)
+        response = await get_response(message1.response)
+        self.assertEqual(response, None)
+        self.assertEqual(message1.error_code, StatusCode.ERROR)
 
-        message2 = InvokeQueueMessage()
-        message2.request = "北京人口多少"
-        await mq.produce_message("topic_b", message2)
-        reponse2 = await message2.response
+        # <1.3> send publish request to stream handler
+        message2 = QueueMessage()
+        message2.request = "上海温度多少"
+        await mq.produce_message("topic_stream", message2)
+        self.assertEqual(message2.error_code, StatusCode.SUCCESS)
+        self.assertEqual(message2.error_msg, "")
 
-        self.assertEqual(reponse1, "MockMessagehandler_B response for msg : 北京温度多少")
-        self.assertEqual(reponse2, "MockMessagehandler_B response for msg : 北京人口多少")
+        # <2.1> send inkoke request to invkoke handler
+        message3 = InvokeQueueMessage()
+        message3.request = "北京温度多少"
+        message3.response = asyncio.Future()
+        await mq.produce_message("topic_invoke", message3)
+        response = await get_response(message3.response)
+        self.assertNotEqual(response, None)
+        self.assertEqual(response, "MockMessagehandler_invoke response for msg : 北京温度多少")
+        self.assertEqual(message3.error_code, StatusCode.SUCCESS)
+        self.assertEqual(message3.error_msg, "")
+
+        # <2.2> send stream request to invkoke handler
+        message4 = StreamQueueMessage()
+        message4.request = "北京温度多少"
+        await mq.produce_message("topic_invoke", message4)
+        response = await get_response(message4.response)
+        self.assertEqual(response, None)
+        self.assertEqual(message4.error_code, StatusCode.ERROR)
+
+        # <2.3> send publish request to invkoke handler
+        message5 = QueueMessage()
+        message5.request = "北京温度多少"
+        await mq.produce_message("topic_invoke", message5)
+        self.assertEqual(message5.error_code, StatusCode.SUCCESS)
+        self.assertEqual(message5.error_msg, "")
 
         # agnetGroup 2
-        mq.unsubscribe("topic_b")
-        mq.unsubscribe("topic_a")
+        mq.unsubscribe("topic_invoke")
+        mq.unsubscribe("topic_stream")
 
         mq.stop()

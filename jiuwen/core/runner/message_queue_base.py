@@ -2,6 +2,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Callable, Awaitable, AsyncIterator, TypeVar
+from jiuwen.core.common.exception.status_code import StatusCode
 
 Output = TypeVar("Output", covariant=True)
 
@@ -10,6 +11,8 @@ Output = TypeVar("Output", covariant=True)
 class QueueMessage:
     message_id: str = ""
     request: Any = None
+    error_code: StatusCode = StatusCode.SUCCESS
+    error_msg: str = ""
 
 
 @dataclass

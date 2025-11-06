@@ -141,7 +141,8 @@ class Agent(ABC):
         if isinstance(result, OutputSchema):
             payload = result.payload
             if isinstance(payload, dict):
-                return payload
+                if 'output' in payload and isinstance(payload['output'], str):
+                    payload['output'] = payload['output'].strip()
             return payload
 
         return result

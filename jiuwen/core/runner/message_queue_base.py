@@ -1,56 +1,70 @@
-import threading
-from abc import ABC, abstractmethod, ABCMeta
-from typing import Any, Callable, Awaitable
+import asyncio
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Callable, Awaitable, AsyncIterator, TypeVar
 
-from pydantic import BaseModel
-from enum import Enum
-
-
-class QueueMessage(BaseModel):
-    message_id: str
-    request: Any
+Output = TypeVar("Output", covariant=True)
 
 
-class MessageResult(BaseModel):
-    message_id: str
-    request: Any
-    response: Any
+@dataclass
+class QueueMessage:
+    message_id: str = ""
+    request: Any = None
+
+
+@dataclass
+class InvokeQueueMessage(QueueMessage):
+    response: asyncio.Future[Output] = None
+
+    def __post_init__(self):
+        if self.response is None:
+            self.response = asyncio.Future()
+
+
+@dataclass
+class StreamQueueMessage(QueueMessage):
+    response: asyncio.Future[AsyncIterator[Output]] = None
+
+    def __post_init__(self):
+        if self.response is None:
+            self.response = asyncio.Future()
 
 
 AsyncMessageHandle = Callable[[Any], Awaitable[Any]]
 
 
-class MessageQueueType(Enum):
-    MessageQueueInMemory = "message_queue_inmemory"
-    MessageQueueDistributed = "message_queue_distributed"
+class SubscriptionBase(ABC):
+
+    def set_message_handler(self, handler: AsyncMessageHandle):
+        pass
+
+    def activate(self):
+        pass
+
+    def deactivate(self):
+        pass
+
+    def is_active(self):
+        pass
 
 
-singleton_lock = threading.Lock()
-
-
-class SingletonMeta(ABCMeta):
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        with singleton_lock:
-            if cls not in cls._instances:
-                cls._instances[cls] = super(SingletonMeta, cls).__call__(*args, **kwargs)
-            return cls._instances[cls]
-
-
-class MessageQueueBase(ABC, metaclass=SingletonMeta):
+class MessageQueueBase(ABC):
     @abstractmethod
-    async def start(self):
+    def start(self):
         pass
 
     @abstractmethod
-    async def stop(self):
+    def stop(self):
         pass
 
     @abstractmethod
-    async def subscribe(self, topic: str, handler: AsyncMessageHandle):
+    def subscribe(self, topic: str) -> SubscriptionBase:
         pass
 
     @abstractmethod
-    async def unsubscribe(self, topic: str):
+    def unsubscribe(self, topic: str):
+        pass
+
+    @abstractmethod
+    async def produce_message(self, topic: str, message: QueueMessage):
         pass

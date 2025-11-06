@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple, Union
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.runtime.abstract_manager import AbstractManager
 from jiuwen.core.tracer.decorator import decrate_tool_with_trace
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool.base import Tool
@@ -14,37 +15,27 @@ from jiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo
 
 ToolProvider = lambda: Tool
 
-class ToolMgr:
+class ToolMgr(AbstractManager[Tool]):
     def __init__(self) -> None:
-        self._tools: ThreadSafeDict[str, Tool] = ThreadSafeDict()
-        self._tool_providers: ThreadSafeDict[str, ToolProvider] = ThreadSafeDict()
-        self._tool_infos: ThreadSafeDict[str, ToolInfo] = ThreadSafeDict()
-        self._server_tool_infos : ThreadSafeDict[str, List[McpToolInfo]] = ThreadSafeDict()
-        self._server_configs : ThreadSafeDict[str, ToolServerConfig] = ThreadSafeDict()
+        super().__init__()
+        self._tool_infos: dict[str, ToolInfo] = {}
+        self._server_tool_infos : dict[str, List[McpToolInfo]] = {}
+        self._server_configs : dict[str, ToolServerConfig] = {}
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
-        if tool_id is None or tool_id.strip() == "":
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="tool_id is invalid, can not be None or empty"))
-        if tool is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="tool is invalid, can not be None"))
+        self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool")
+        self._validate_resource(tool, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool is invalid, can not be None")
 
-        try:
-            if callable(tool):
-                self._tool_providers[tool_id] = tool
+        # Define validation function for non-callable tools
+        def validate_tool(tool_obj):
+            # Store tool info
+            if hasattr(tool_obj, "get_tool_info"):
+                self._tool_infos[tool_id] = tool_obj.get_tool_info()
             else:
-                self._tools[tool_id] = tool
-                if hasattr(tool, "get_tool_info"):
-                    self._tool_infos[tool_id] = tool.get_tool_info()
-                else:
-                    self._tool_infos[tool_id] = ToolInfo(function=Function())
-        except Exception as e:
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason=f"Failed to add tool: {str(e)}"))
+                self._tool_infos[tool_id] = ToolInfo(function=Function())
+            return tool_obj
+
+        self._add_resource(tool_id, tool, StatusCode.RUNTIME_TOOL_GET_FAILED, validate_tool)
 
     def add_tools(self, tools: List[Tuple[str, Union[Tool, ToolProvider]]]):
         if not tools:
@@ -53,36 +44,23 @@ class ToolMgr:
             self.add_tool(id, tool)
 
     def find_tool_by_name(self, name: str) -> Optional[Tool]:
-        if name is None or name.strip() == "":
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="name is invalid, can not be None or empty"))
+        self._validate_id(name, StatusCode.RUNTIME_TOOL_GET_FAILED, "name")
 
-        try:
-            tool = self._tools.get(name)
-            if tool:
-                return tool
+        # Define function to create tool from provider
+        def create_tool_from_provider(provider):
+            tool = provider()
+            # Store tool info
+            if hasattr(tool, "get_tool_info"):
+                self._tool_infos[name] = tool.get_tool_info()
+            else:
+                self._tool_infos[name] = ToolInfo(function=Function())
+            return tool
 
-            provider = self._tool_providers.get(name)
-            if provider:
-                tool = provider()
-                self._tools[name] = tool
-                if hasattr(tool, "get_tool_info"):
-                    self._tool_infos[name] = tool.get_tool_info()
-                else:
-                    self._tool_infos[name] = ToolInfo(function=Function())
-                return tool
-            return None
-        except Exception as e:
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason=f"Failed to find tool: {str(e)}"))
+        return self._get_resource(name, StatusCode.RUNTIME_TOOL_GET_FAILED, create_tool_from_provider)
 
     def get_tool(self, tool_id: str, runtime=None) -> Optional[Tool]:
-        if tool_id is None or tool_id.strip() == "":
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason="tool_id is invalid, can not be None or empty"))
+        # Validate ID using base class method
+        self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool")
 
         try:
             tool = self.find_tool_by_name(tool_id)
@@ -90,42 +68,33 @@ class ToolMgr:
         except JiuWenBaseException:
             raise
         except Exception as e:
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason=f"Failed to get tool: {str(e)}"))
+            self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "get")
 
     def remove_tool(self, tool_id: str) -> Optional[Tool]:
         if tool_id is None:
             return None
 
         try:
-            tool = self._tools.pop(tool_id, None)
-            self._tool_providers.pop(tool_id, None)
+            tool = self._remove_resource(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED)
             self._tool_infos.pop(tool_id, None)
             return tool
         except Exception as e:
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
-                                          reason=f"Failed to remove tool: {str(e)}"))
+            self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "remove")
 
-    def get_tool_infos(self, tool_id: List[str] = None, *, tool_server_name: str = None) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
+    def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
         try:
-            if not tool_id:
+            if not tool_ids:
                 return [info for info in self._tool_infos.values()]
+
             infos = []
-            for id in tool_id:
-                if id is None or id.strip() == "":
-                    raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
-                                              StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
-                                                  reason="tool_id is invalid, can not be None or empty"))
-                infos.append(self._tool_infos.get(id))
+            for tool_id in tool_ids:
+                self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED, "tool")
+                infos.append(self._tool_infos.get(tool_id))
             return infos
         except JiuWenBaseException:
             raise
         except Exception as e:
-            raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
-                                      StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
-                                          reason=f"Failed to get tool infos: {str(e)}"))
+            self._handle_exception(e, StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED, "get_tool_info")
 
     async def add_tool_servers(self, server_config: Union[ToolServerConfig, List[ToolServerConfig]], *,
                                wait_for_connect: bool = True):

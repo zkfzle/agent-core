@@ -262,3 +262,92 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_runner_agent_resource_management(self):
+        """端到端测试：验证Runner的资源管理功能 - 通过Runner.add_agent添加智能体并执行，包含交互流程。"""
+        print("=== 测试 Runner 资源管理功能 ===")
+        
+        # 创建智能体
+        agent_id = "test_resource_agent"
+        agent = self._create_agent(self.workflow)
+        conversation_id = "c124"
+        
+        try:
+            # 1. 测试添加智能体
+            print(f"Step 1: 通过Runner.add_agent添加智能体，ID: {agent_id}")
+            Runner.add_agent(agent_id=agent_id, agent=agent)
+            print("✅ 智能体添加成功")
+            
+            # 2. 测试通过ID运行智能体 - 第一次调用，获取交互请求
+            print("Step 2: 通过智能体ID运行智能体（第一次调用，获取交互请求）")
+            try:
+                # 第一次调用 - 应该触发中断
+                result = await asyncio.wait_for(
+                    Runner.run_agent(agent_id, {"query": "查询天气", "conversation_id": conversation_id}),
+                    timeout=50.0
+                )
+                print(f"Runner运行智能体结果（第一次调用）>>> {result}")
+                
+                # 校验第一次调用结果：应该返回交互请求
+                self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
+                self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
+                print("✅ 第一次调用校验通过：返回交互请求")
+                
+                # 检查交互请求是否正确
+                interaction_outputs = self._test_interaction_detection(result, "run_agent")
+                if interaction_outputs:
+                    print("检测到交互请求，准备进行第二次调用...")
+                    
+                    # 3. 第二次调用 - 传入字符串格式的回答，完成工作流
+                    print("Step 3: 第二次调用，传入回答")
+                    try:
+                        result2 = await asyncio.wait_for(
+                            Runner.run_agent(agent_id, {"query": "上海", "conversation_id": conversation_id}),
+                            timeout=30.0
+                        )
+                        print(f"Runner运行智能体结果（第二次调用）>>> {result2}")
+                        
+                        # 校验第二次调用结果：应该返回完成状态
+                        self.assertIsInstance(result2, dict, "第二次调用应该返回字典")
+                        self.assertEqual(result2['result_type'], 'answer', "应该返回answer类型")
+                        self.assertEqual(result2['output'].state.value, 'COMPLETED', "工作流应该完成")
+                        self.assertEqual(result2['output'].result['responseContent'], '上海', "应该返回上海")
+                        print("✅ 第二次调用校验通过：工作流完成，返回结果正确")
+                        
+                    except asyncio.TimeoutError:
+                        print("❌ 第二次调用超时！")
+                        raise
+                    except Exception as e:
+                        print(f"❌ 第二次调用时发生错误: {e}")
+                        raise
+                else:
+                    print("未检测到交互请求，测试可能未按预期执行")
+                    self.fail("应该检测到交互请求")
+                    
+                # 4. 测试移除智能体
+                print("Step 4: 移除智能体")
+                removed_agent = Runner.remove_agent(agent_id)
+                self.assertIsNotNone(removed_agent, "移除的智能体不应为None")
+                print("✅ 智能体移除成功")
+                
+                # 5. 测试移除后再次运行应失败
+                print("Step 5: 验证移除后再次运行智能体应失败")
+                with self.assertRaises(Exception):
+                    await Runner.run_agent(agent_id, {"query": "查询天气", "conversation_id": conversation_id})
+                print("✅ 验证通过：移除后的智能体无法运行")
+                
+            except asyncio.TimeoutError:
+                print("❌ 运行智能体超时！")
+                raise
+            except Exception as e:
+                print(f"❌ 运行智能体时发生错误: {e}")
+                raise
+        
+        finally:
+            # 清理资源，确保即使测试失败也移除智能体
+            try:
+                Runner.remove_agent(agent_id)
+            except:
+                pass
+            print("✅ 测试完成，资源清理")

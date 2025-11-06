@@ -372,7 +372,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             interactive_input.update(component_id, "上海")
         return interactive_input
 
-    # @unittest.skip("skip system test - requires network")
+    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")

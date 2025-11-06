@@ -23,7 +23,7 @@ class AgentBuilderExecutor:
     @staticmethod
     def get_context_manager(session_id: str, context_manager_map: dict):
         if session_id not in context_manager_map:
-            context_manager = ContextManager()
+            context_manager = ContextManager(session_id)
             context_manager_map[session_id] = context_manager
             return context_manager
         return context_manager_map[session_id]
@@ -43,10 +43,12 @@ class AgentBuilderExecutor:
         return workflow_builder_map[session_id]
 
     def execute(self):
-        dialog_history = self.context_manager.get_history(self.session_id)
+        self.context_manager.add_user_message(self.query)
+        dialog_history = self.context_manager.get_history()
 
         # 闲聊判断
         intention_type = intention_identifier(self.query, dialog_history, self.llm)
+        self.context_manager.update_latest_message_intent(intention_type)
 
         if intention_type == 'chat':
             return chatbot(self.query, dialog_history, self.llm)

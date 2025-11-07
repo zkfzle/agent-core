@@ -190,11 +190,11 @@ class TaskHandler:
             message=f"Workflow '{workflow_name}' not found in configuration"
         )
 
-    def _execute_plugin_task(self, task: Task) -> Message:
+    async def _execute_plugin_task(self, task: Task) -> Message:
         """执行插件任务"""
         try:
             tool_id = task.input.target_name
-            result = Runner.run_tool_sync(tool_id, task.input.arguments, runtime=self.runtime)
+            result = await Runner.run_tool(tool_id, task.input.arguments, runtime=self.runtime)
             return self._create_message_from_plugin_result(task, result)
         except Exception as e:
             return self._handle_plugin_error(task, e)

@@ -75,11 +75,11 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     @tool(
         name="add",
-        descripton="加法",
+        description="加法",
         params=[
             Param(name="a", description="加数", type="number", required=True),
             Param(name="b", description="被加数", type="number", required=True),
-        ]
+        ],
     )
     def add_function(a, b):
         """加法函数，使用tool注解装饰"""
@@ -271,7 +271,6 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         res = react_agent.stream({"query": "查询杭州的天气"})
         async for i in res:
             print("ReActAgent 输出结果：", i)
-
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_function_plugin(self):

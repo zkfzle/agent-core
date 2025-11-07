@@ -1,4 +1,3 @@
-
 import pytest
 
 from jiuwen.agent.common.enum import ControllerType
@@ -68,11 +67,11 @@ class TestRunner:
     @staticmethod
     @tool(
         name="add",
-        descripton="加法",
+        description="加法",
         params=[
             Param(name="a", description="加数", type="number", required=True),
             Param(name="b", description="被加数", type="number", required=True),
-        ]
+        ],
     )
     def add_function(a, b):
         """加法函数，使用tool注解装饰"""

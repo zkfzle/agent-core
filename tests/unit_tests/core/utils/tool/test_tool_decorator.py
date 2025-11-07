@@ -13,7 +13,7 @@ from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 
 @tool(
     name="local_sub",
-    descripton="local function for sub",
+    description="local function for sub",
     params=[
         Param(name="a", description="first arg", param_type="int", required=True),
         Param(name="b", description="second arg", param_type="int", required=True),

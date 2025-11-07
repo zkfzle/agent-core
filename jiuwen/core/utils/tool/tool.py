@@ -150,11 +150,11 @@ def tool(func: Callable) -> LocalFunction: ...
 
 
 @overload
-def tool(*, name: str = None, descripton: str = None, params: List[Param] = None) -> LocalFunction: ...
+def tool(*, name: str = None, description: str = None, params: List[Param] = None) -> LocalFunction: ...
 
 
 def tool(
-    func: Callable = None, *, name: str = None, descripton: str = None, params: List[Param] = None
+    func: Callable = None, *, name: str = None, description: str = None, params: List[Param] = None
 ) -> LocalFunction:
     if func:
         tmp_params = extract_params(func=func)
@@ -163,7 +163,7 @@ def tool(
     else:
 
         def decorator(func):
-            last_description = descripton or func.__doc__
+            last_description = description or func.__doc__
             last_name = name or func.__name__
             return LocalFunction(name=last_name, description=last_description, params=params, func=func)
 

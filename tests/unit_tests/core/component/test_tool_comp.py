@@ -93,11 +93,11 @@ async def test_tool_comp_in_workflow(mock_get_tool, mock_invoke, mock_tool, mock
 
 @tool(
     name="test_local_function",
-    descripton="测试本地函数",
+    description="测试本地函数",
     params=[
         Param(name="a", description="参数1", param_type="string", required=True),
         Param(name="b", description="参数2", param_type="integer", default_value=789, required=True),
-    ]
+    ],
 )
 def test_local_function(a, b):
     return dict(res=a, info=b)

@@ -50,6 +50,10 @@ class BaseInteraction(ABC, metaclass=ABCMeta):
 
 
 class Checkpointer(ABC):
+    @staticmethod
+    def get_thread_id(runtime: BaseRuntime) -> str:
+        return ":".join([runtime.session_id(), runtime.workflow_id()])
+
     @abstractmethod
     async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
         pass

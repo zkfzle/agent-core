@@ -2,7 +2,6 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.base import SerializerProtocol
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
@@ -25,8 +24,6 @@ class WorkflowStorage(Storage):
             str,
             tuple[str, bytes]
         ] = {}
-
-        self._graph_state = InMemorySaver()
 
     def save(self, runtime: BaseRuntime):
         workflow_id = runtime.workflow_id()
@@ -66,6 +63,3 @@ class WorkflowStorage(Storage):
         self.state_blobs.pop(workflow_id, None)
         self.state_updates_blobs.pop(workflow_id, None)
 
-
-    def graph_checkpointer(self):
-        return self._graph_state

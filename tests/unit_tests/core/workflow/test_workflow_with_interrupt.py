@@ -969,8 +969,8 @@ async def test_simple_interactive_workflow_checkpointer():
                                              'payload': InteractionOutput.model_validate(
                                                  {'id': 'a', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
-    config = {"configurable": {"thread_id": "test_simple_interactive_workflow_checkpointer"}}
-    checkpoint = await default_inmemory_checkpointer.graph_checkpointer(session_id=session_id).aget(config)
+    config = {"configurable": {"thread_id": f"{session_id}:test_simple_interactive_workflow_checkpointer"}}
+    checkpoint = await default_inmemory_checkpointer.graph_checkpointer().aget(config)
     assert checkpoint is not None
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
@@ -982,7 +982,7 @@ async def test_simple_interactive_workflow_checkpointer():
              'type': '__interaction__'})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     assert start_node.runtime == 1
-    checkpoint = await default_inmemory_checkpointer.graph_checkpointer(session_id=session_id).aget(config)
+    checkpoint = await default_inmemory_checkpointer.graph_checkpointer().aget(config)
     assert checkpoint is not None
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
@@ -990,5 +990,5 @@ async def test_simple_interactive_workflow_checkpointer():
         result={'result': "any key"},
         state=WorkflowExecutionState.COMPLETED)
     # checkpoint will be deleted when completed
-    checkpoint = await default_inmemory_checkpointer.graph_checkpointer(session_id=session_id).aget(config)
+    checkpoint = await default_inmemory_checkpointer.graph_checkpointer().aget(config)
     assert checkpoint is None

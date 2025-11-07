@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Union, Self, AsyncIterator, Any, Callable
 
-from langgraph._internal._constants import INTERRUPT
 from langgraph.graph import StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel._loop import PregelLoop
@@ -127,7 +126,7 @@ class PregelGraph(Graph):
         if self.compiledStateGraph is None:
             self._pre_compile()
             self.checkpoint_saver = default_inmemory_checkpointer
-            graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer(runtime.session_id()))
+            graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer())
             self.compiledStateGraph = self.pregel.compile(checkpointer=graph_checkpointer)
             self._graph_checkpointer = graph_checkpointer
         else:
@@ -161,15 +160,15 @@ class CompiledGraph(ExecutableGraph):
 
     async def _invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         is_main = False
-        workflow_id = runtime.workflow_id()
+        thread_id = Checkpointer.get_thread_id(runtime)
         graph_inputs = None if isinstance(inputs, InteractiveInput) else {"source_node_id": []}
 
         if config is None:
             is_main = True
-            config = {"configurable": {"thread_id": workflow_id}, "recursion_limit": MAX_RECURSIVE_LIMIT}
-        if isinstance(inputs, InteractiveInput):
-            await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
-        else:
+            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": MAX_RECURSIVE_LIMIT}
+
+        await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
+        if not isinstance(inputs, InteractiveInput):
             runtime.state().commit_user_inputs(inputs)
 
         result = None

@@ -313,8 +313,8 @@ class QuestionerDirectReplyHandler:
         return QuestionerUtils.format_questioner_output(output)
 
     async def _handle_user_interact_state(self, inputs, runtime: Runtime, context):
-        output = OutputCache(question=self._state.question)
         await self._get_latest_human_feedback(runtime)
+        output = OutputCache(question=self._state.question, user_response=self._query)
 
         chat_history = self._get_latest_chat_history(context)
         user_response = chat_history[-1].content if chat_history else ""

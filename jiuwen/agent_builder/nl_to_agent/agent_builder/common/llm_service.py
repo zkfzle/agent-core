@@ -1,17 +1,15 @@
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import os
 from typing import List, Union, Dict, Any
 
 from jiuwen.agent_builder.nl_to_agent.utils.utils import load_yaml_file
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from jiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, AIMessage
-from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.utils.llm.messages import BaseMessage
+
 
 def get_model_info():
-    # 获取当前文件的绝对路径
     current_file_path = os.path.abspath(__file__)
     target_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_file_path)))
     yaml_file = 'config.yaml'

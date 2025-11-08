@@ -11,7 +11,7 @@ from jiuwen.agent_builder.nl_to_agent.agent_builder.common.resource.resource_ret
 from .intention_detector.intention_detector import IntentionDetector
 from .sop_generator.base import SopGenerator
 from .dl_generator.base import DLGenerator
-from .dl_reflector.base import Reflector
+from .dl_reflector.dl_reflector import Reflector
 from .dl_transformer.base import DLTransformer
 
 
@@ -106,7 +106,7 @@ class WorkflowBuilder:
         dsl = self._dl_transformer.transform_to_dsl(self._dl, self._resource)
         self._reset()
         return dsl
-    
+
     def _generate_and_reflect_dl(self, dl_operation, max_retries: int = 3, *args, **kwargs):
         for _ in range(max_retries):
             generated_dl = dl_operation(*args, **kwargs)

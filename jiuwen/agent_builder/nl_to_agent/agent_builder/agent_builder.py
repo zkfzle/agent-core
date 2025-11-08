@@ -1,7 +1,6 @@
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-# NL2Agent执行类，对应原始的Executor
-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.llm_service import LlmService
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.context_manager import ContextManager
@@ -44,15 +43,6 @@ class AgentBuilderExecutor:
 
     def execute(self):
         self.context_manager.add_user_message(self.query)
-        dialog_history = self.context_manager.get_history()
-
-        # 闲聊判断
-        intention_type = intention_identifier(self.query, dialog_history, self.llm)
-        self.context_manager.update_latest_message_intent(intention_type)
-
-        if intention_type == 'chat':
-            return chatbot(self.query, dialog_history, self.llm)
-
         if self.agent_type == 'llm_agent':
             return self.llm_agent_builder.execute(self.query)
 

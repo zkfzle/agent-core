@@ -1,23 +1,11 @@
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import os
 import yaml
 
 
 def load_yaml_file(file_path):
-    """
-    读取YAML文件并返回其内容
-
-    Args:
-        file_path (str): YAML文件的路径
-
-    Returns:
-        dict: 解析后的YAML数据
-
-    Raises:
-        FileNotFoundError: 当文件不存在时
-        yaml.YAMLError: 当YAML格式错误时
-    """
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"文件不存在: {file_path}")
 

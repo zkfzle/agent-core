@@ -191,7 +191,12 @@ class TaskHandler:
         )
 
     async def _execute_plugin_task(self, task: Task) -> Message:
-        """执行插件任务"""
+        """execute plugin task"""
+        # Compatible with Runtime 1.0 interfaces
+        if result := self.__run_plugin_in_runtime(task):
+            return result
+
+        # Compatible with Runner interfaces
         try:
             tool_id = task.input.target_name
             result = await Runner.run_tool(tool_id, task.input.arguments, runtime=self.runtime)
@@ -229,3 +234,13 @@ class TaskHandler:
             conversation_id=self.runtime.session_id(),
             error_msg="MCP task execution not implemented yet"
         )
+
+    def __run_plugin_in_runtime(self, task):
+        """Temporary interface for backward compatibility with Runtime interface"""
+        tool_id = task.input.target_name
+        plugin = self.runtime.get_tool(tool_id)
+        if plugin is not None:
+            import asyncio
+            result = asyncio.run(plugin.ainvoke(task.input.arguments))
+            return self._create_message_from_plugin_result(task, result)
+        return None

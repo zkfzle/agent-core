@@ -6,6 +6,7 @@ from enum import Enum
 from typing import Self, Union, Callable, Any, Optional, Dict
 
 from langgraph.constants import END, START
+from langgraph.errors import GraphInterrupt
 from pydantic import BaseModel, Field
 
 from jiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID
@@ -301,6 +302,8 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
                                                    callbacks)
             return await loop_component.on_invoke({INPUTS_KEY: {}, CONFIG_KEY: inputs.get(CONFIG_KEY)},
                                                   runtime.base())
+        except GraphInterrupt:
+            raise
         except JiuWenBaseException:
             raise
         except Exception as e:

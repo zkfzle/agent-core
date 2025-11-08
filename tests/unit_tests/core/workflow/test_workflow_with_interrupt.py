@@ -13,7 +13,7 @@ from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.condition.array import ArrayCondition
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.output import OutputCallback
-from jiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
+from jiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
@@ -21,7 +21,7 @@ from jiuwen.core.runtime.interaction.interaction import InteractionOutput
 from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.stream.base import BaseStreamMode, TraceSchema, OutputSchema
-from jiuwen.core.workflow.base import WorkflowConfig, Workflow, WorkflowExecutionState, WorkflowOutput
+from jiuwen.core.workflow.base import WorkflowConfig
 from jiuwen.core.workflow.workflow_config import WorkflowMetadata
 from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from tests.unit_tests.core.workflow.mock_nodes import InteractiveNode4StreamCp, MockStartNode, MockEndNode, Node4Cp, \
@@ -254,6 +254,155 @@ async def test_workflow_with_loop_interactive():
                                  callbacks=[output_callback, intermediate_callback])
 
     flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}"})
+
+    # s->a->(1->2->3)->b->e
+    flow.add_connection("s", "a")
+    flow.add_connection("a", "l")
+    flow.add_connection("l", "b")
+    flow.add_connection("b", "e")
+
+    session_id = uuid.uuid4().hex
+
+    # 每次节点2有两个等待用户输入，索引为：0、1，循环三次，共6个输入
+    res = await flow.invoke({"input_array": [1, 2, 3], "input_number": 1}, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(result={"array_result": [11, 12, 13], "user_var": None},
+                                 state=WorkflowExecutionState.COMPLETED)
+
+    # 重复执行
+    res = await flow.invoke({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': '__interaction__', 'index': 1,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'l.2', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    user_input = InteractiveInput()
+    interaction_id = res.result[0].payload.id
+    user_input.update(interaction_id, {"aa": "any key"})
+
+    res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(result={"array_result": [14, 15], "user_var": None},
+                                 state=WorkflowExecutionState.COMPLETED)
+
+async def test_workflow_with_loop_comp_interactive():
+    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_workflow_with_loop_interactive")))
+    flow.set_start_comp("s", MockStartNode("s"))
+    flow.set_end_comp("e", MockEndNode("e"),
+                      inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
+    flow.add_workflow_comp("a", CommonNode("a"),
+                           inputs_schema={"array": "${input_array}"})
+    flow.add_workflow_comp("b", CommonNode("b"),
+                           inputs_schema={"array_result": "${l.results}", "user_var": "${l.user_var}"})
+
+    # create  loop: (1->2->3)
+    loop_group = LoopGroup()
+    loop_group.add_workflow_comp("1", AddTenNode("1"), inputs_schema={"source": "${l.item}"})
+    loop_group.add_workflow_comp("2", InteractiveNode4Cp("2"),
+                                 inputs_schema={"source": "${l.user_var}"})
+    loop_group.add_workflow_comp("3", SetVariableComponent(
+        {"${l.user_var}": "${2.result}"}))
+    loop_group.start_comp("1")
+    loop_group.end_comp("3")
+    loop_group.add_connection("1", "2")
+    loop_group.add_connection("2", "3")
+
+    loop = LoopComponent(loop_group, output_schema={"results": "${1.result}", "user_var": "${l.user_var}"})
+
+    flow.add_workflow_comp("l", loop, inputs_schema={"input_number": "${input_number}",
+                                                     "loop_type": "array",
+                                                     "loop_array": {
+                                                         "item": "${a.array}"
+                                                     },
+                                                     "intermediate_var": {"user_var": "${input_number}"}})
 
     # s->a->(1->2->3)->b->e
     flow.add_connection("s", "a")

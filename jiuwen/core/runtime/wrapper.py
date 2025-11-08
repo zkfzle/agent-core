@@ -351,11 +351,6 @@ class TaskRuntime(StateRuntime):
             await self._inner.stream_writer_manager().stream_emitter().close()
             await self._inner.checkpointer().post_agent_execute(self._inner)
 
-    async def end_stream(self):
-        if isinstance(self._inner, AgentRuntime):
-            await self._inner.stream_writer_manager().stream_emitter().end_stream()
-
-
     def tracer(self) -> Tracer:
         return self._inner.tracer()
 

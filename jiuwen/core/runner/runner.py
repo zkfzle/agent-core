@@ -1,9 +1,12 @@
+import asyncio
 from typing import Union, Any, List, Optional
 
+from jiuwen.agent.chat_agent import ChatAgent
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.agent import Agent, AgentRuntime
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.logging import logger
 from jiuwen.core.runtime.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from jiuwen.core.runtime.agent_manager import AgentProvider, AgentMgr
 from jiuwen.core.runtime.resource_manager import ResourceMgr
@@ -11,6 +14,7 @@ from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.wrapper import TaskRuntime
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.utils.tool.mcp.base import McpToolInfo
 from jiuwen.core.workflow.base import Workflow
@@ -97,11 +101,34 @@ class Runner:
 
     async def run_agent_streaming(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        try:
-            async for chunk in agent_instance.stream(inputs, agent_runtime):
+        if isinstance(agent_instance, ChatAgent):
+            try:
+                async for chunk in agent_instance.stream(inputs, agent_runtime):
+                    yield chunk
+            finally:
+                await agent_runtime.post_run()
+        else:
+            async def stream_process():
+                try:
+                    await agent_instance.runner_controller_stream(inputs, agent_runtime)
+                finally:
+                    await agent_runtime.post_run()
+
+            task = asyncio.create_task(stream_process())
+            async for chunk in agent_runtime.stream_iterator():
                 yield chunk
-        finally:
-            await agent_runtime.post_run()
+
+            try:
+                await task
+            except Exception as e:
+                logger.error(f"{self.__class__.__name__} stream error.")
+                if UserConfig.is_sensitive():
+                    raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                              f"{self.__class__.__name__} stream error.")
+                else:
+                    raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                              f"{self.__class__.__name__} stream error.") from e
+
 
     async def run_agent_group(self, agent_group: Union[str, AgentGroup], inputs: Any):
         agent_group_instance = self._prepare_agent_group(agent_group)
@@ -123,9 +150,9 @@ class Runner:
         Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
         return
 
-    def _check_is_agent_tool(self, runtime, tool):
+    def _check_is_agent_tool(self, runtime, tool) -> bool:
         if not self._is_called_by_agent(runtime):
-            return
+            return True
         agent_config: AgentConfig = runtime.get_agent_config()
 
         if isinstance(tool, str):
@@ -135,18 +162,18 @@ class Runner:
 
         for agent_tool in agent_config.tools:
             if agent_tool == tool_name:
-                return
-        raise JiuWenBaseException(StatusCode.ERROR.code, StatusCode.ERROR.errmsg)
+                return True
+        return False
 
-    def _check_is_agent_workflow(self, runtime, workflow_key):
+    def _check_is_agent_workflow(self, runtime, workflow_key) -> bool:
         if not self._is_called_by_agent(runtime):
-            return
+            return True
         agent_config: AgentConfig = runtime.get_agent_config()
 
         for workflow_schema in agent_config.workflows:
             if generate_workflow_key(workflow_schema.id, workflow_schema.version) == workflow_key:
-                return
-        raise JiuWenBaseException(StatusCode.ERROR.code, StatusCode.ERROR.errmsg)
+                return True
+        return False
 
     def _is_called_by_agent(self, runtime: Runtime) -> bool:
         return runtime and isinstance(runtime, TaskRuntime)
@@ -179,7 +206,9 @@ class Runner:
         else:
             workflow_key = generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)
 
-        self._check_is_agent_workflow(runtime, workflow_key)
+        if not self._check_is_agent_workflow(runtime, workflow_key):
+            raise JiuWenBaseException(StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code,
+                                      StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.errmsg)
 
         workflow_runtime = self._create_workflow_runtime(runtime)
         if isinstance(workflow, str):
@@ -194,7 +223,9 @@ class Runner:
         return agent_group
 
     def _prepare_tool(self, tool: Union[str, Tool], runtime: Runtime = None):
-        self._check_is_agent_tool(runtime, tool)
+        if not self._check_is_agent_tool(runtime, tool):
+            raise JiuWenBaseException(StatusCode.TOOL_NOT_BOUND_TO_AGENT.code,
+                                      StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg)
         if not isinstance(tool, str):
             return tool
         return self._resource_manager.tool().get_tool(tool, runtime)

@@ -10,6 +10,10 @@ class StatusCode(Enum):
     SUCCESS = (0, "success")
     ERROR = (-1, "error")
 
+    # Runner 1 - 100
+    WORKFLOW_NOT_BOUND_TO_AGENT = (1, "workflow not bound to agent")
+    TOOL_NOT_BOUND_TO_AGENT = (2, "tool not bound to agent")
+
     # Workflow Component  100000 - 109999
 
     # Workflow Component - Component Development:  100000 - 100999

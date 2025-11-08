@@ -3,6 +3,8 @@ import pytest
 from jiuwen.agent.common.enum import ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.runtime.agent import AgentRuntime
 from jiuwen.core.runtime.config import Config
 from jiuwen.core.runtime.wrapper import TaskRuntime
@@ -77,6 +79,19 @@ class TestRunner:
         """加法函数，使用tool注解装饰"""
         return a + b
 
+    @staticmethod
+    @tool(
+        name="multiply",
+        description="乘法",
+        params=[
+            Param(name="a", description="乘数", type="number", required=True),
+            Param(name="b", description="被乘数", type="number", required=True),
+        ],
+    )
+    def multiply_function(a, b):
+        """乘法函数，使用tool注解装饰"""
+        return a * b
+
     async def test_run_workflow(self, runtime):
         workflow_id = "test_workflow"
         name = "test_workflow"
@@ -88,3 +103,20 @@ class TestRunner:
     async def test_run_tool(self, runtime):
         result = await Runner.run_tool(tool=self.add_function, inputs={"a": 1, "b": 2}, runtime=runtime)
         assert result == 3
+
+    async def test_run_workflow_not_bound(self, runtime):
+        workflow_id = "test_workflow_not_bound"
+        name = "test_workflow"
+        version = "1"
+        workflow = self._build_workflow(name, workflow_id, version)
+        with pytest.raises(JiuWenBaseException) as exc_info:
+            await Runner.run_workflow(workflow, inputs={"query": "query workflow"}, runtime=runtime)
+        assert exc_info.value.error_code == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code
+        assert exc_info.value.message == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.errmsg
+
+    async def test_run_tool_not_bound(self, runtime):
+        with pytest.raises(JiuWenBaseException) as exc_info:
+            await Runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, runtime=runtime)
+        assert exc_info.value.error_code == StatusCode.TOOL_NOT_BOUND_TO_AGENT.code
+        assert exc_info.value.message == StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg
+

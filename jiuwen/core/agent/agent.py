@@ -209,8 +209,6 @@ class Agent(ABC):
                     await controller.stop()
                 if runtime is None:
                     await agent_runtime.post_run()
-                else:
-                    await agent_runtime.end_stream()
 
         task = asyncio.create_task(stream_process())
         async for result in agent_runtime.stream_iterator():
@@ -226,6 +224,25 @@ class Agent(ABC):
             else:
                 raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
                                           f"{self.__class__.__name__} stream error.") from e
+
+    async def runner_controller_stream(self, inputs: Dict, runtime: Runtime):
+        """适配runner的接口，待所有agent的使用都完全适配runner后，接口改为controller_stream替换旧接口"""
+        controller = None
+        try:
+            controller = self._create_controller(runtime)
+            await controller.start()
+            await controller.process_inputs(inputs)
+            logger.info("Controller completed, workflow done")
+        except Exception as e:
+            if UserConfig.is_sensitive():
+                logger.info(f"{self.__class__.__name__} stream error.")
+            else:
+                logger.error(f"{self.__class__.__name__} stream error: {e}")
+            raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
+                                      f"{self.__class__.__name__} stream error.")
+        finally:
+            if controller:
+                await controller.stop()
 
     def bind_workflows(self, workflows: List[Workflow]):
         self._runtime.add_workflows(

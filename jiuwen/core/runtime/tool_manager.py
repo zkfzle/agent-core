@@ -10,7 +10,7 @@ from jiuwen.core.tracer.decorator import decrate_tool_with_trace
 from jiuwen.core.utils.llm.messages import ToolInfo, Function
 from jiuwen.core.utils.tool.base import Tool
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
-
+from jiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo
 
 ToolProvider = lambda: Tool
 
@@ -19,6 +19,8 @@ class ToolMgr:
         self._tools: ThreadSafeDict[str, Tool] = ThreadSafeDict()
         self._tool_providers: ThreadSafeDict[str, ToolProvider] = ThreadSafeDict()
         self._tool_infos: ThreadSafeDict[str, ToolInfo] = ThreadSafeDict()
+        self._server_tool_infos : ThreadSafeDict[str, List[McpToolInfo]] = ThreadSafeDict()
+        self._server_configs : ThreadSafeDict[str, ToolServerConfig] = ThreadSafeDict()
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
         if tool_id is None or tool_id.strip() == "":
@@ -106,7 +108,7 @@ class ToolMgr:
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
                                           reason=f"Failed to remove tool: {str(e)}"))
 
-    def get_tool_infos(self, tool_id: List[str]):
+    def get_tool_infos(self, tool_id: List[str] = None, *, tool_server_name: str) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
         try:
             if not tool_id:
                 return [info for info in self._tool_infos.values()]
@@ -124,3 +126,10 @@ class ToolMgr:
             raise JiuWenBaseException(StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
                                       StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
                                           reason=f"Failed to get tool infos: {str(e)}"))
+
+    async def add_tool_servers(self, server_config: Union[ToolServerConfig, List[ToolServerConfig]], *,
+                               wait_for_connect: bool = True):
+        pass
+
+    def remove_tool_server(self, tool_server_name: str):
+        pass

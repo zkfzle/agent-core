@@ -1,4 +1,4 @@
-from typing import Union, Any
+from typing import Union, Any, List, Optional
 
 from jiuwen.agent.config.base import AgentConfig
 from jiuwen.core.agent.agent import Agent, AgentRuntime
@@ -12,6 +12,7 @@ from jiuwen.core.runtime.workflow import WorkflowRuntime
 from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 from jiuwen.core.runtime.wrapper import TaskRuntime
 from jiuwen.core.utils.tool.base import Tool
+from jiuwen.core.utils.tool.mcp.base import McpToolInfo
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.runner.agent_group import AgentGroup
 
@@ -114,13 +115,13 @@ class Runner:
         tool_instance = self._prepare_tool(tool, runtime)
         return await tool_instance.ainvoke(inputs, runtime=runtime)
 
-    def run_tool_sync(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
-        tool_instance = self._prepare_tool(tool, runtime)
-        return tool_instance.invoke(inputs, runtime=runtime)
-
     async def run_tool_streaming(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
         tool_instance = self._prepare_tool(tool, runtime)
         return tool_instance.astream(inputs, runtime=runtime)
+
+    async def list_tools(self, tool_server_name: Union[str, List[str]]) -> Union[
+        Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
+        return
 
     def _check_is_agent_tool(self, runtime, tool):
         if not self._is_called_by_agent(runtime):

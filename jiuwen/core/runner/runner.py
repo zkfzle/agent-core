@@ -3,12 +3,14 @@ from typing import Union, Any, List, Optional
 
 from jiuwen.agent.chat_agent import ChatAgent
 from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.agent import Agent, AgentRuntime
+from jiuwen.core.agent.agent import Agent
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
+from jiuwen.core.runtime.agent import StaticAgentRuntime
 from jiuwen.core.runtime.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from jiuwen.core.runtime.agent_manager import AgentProvider, AgentMgr
+from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from jiuwen.core.runtime.resource_manager import ResourceMgr
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.runtime.workflow import WorkflowRuntime
@@ -129,7 +131,6 @@ class Runner:
                     raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
                                               f"{self.__class__.__name__} stream error.") from e
 
-
     async def run_agent_group(self, agent_group: Union[str, AgentGroup], inputs: Any):
         agent_group_instance = self._prepare_agent_group(agent_group)
         return await agent_group_instance.invoke(inputs)
@@ -149,6 +150,9 @@ class Runner:
     async def list_tools(self, tool_server_name: Union[str, List[str]]) -> Union[
         Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
         return
+
+    async def release(self, session_id: str):
+        await default_inmemory_checkpointer.release(session_id)
 
     def _check_is_agent_tool(self, runtime, tool) -> bool:
         if not self._is_called_by_agent(runtime):
@@ -189,15 +193,14 @@ class Runner:
         return workflow_runtime
 
     async def _prepare_agent(self, agent: Union[str, Agent], inputs: Any):
-        session_id = inputs.pop(self._AGENT_CONVERSATION_ID, self._DEFAULT_AGENT_SESSION_ID)
+        session_id = inputs.get(self._AGENT_CONVERSATION_ID, self._DEFAULT_AGENT_SESSION_ID)
         if isinstance(agent, str):
             agent_with_runtime = self._agent_mgr.get_agent(agent)
-            runtime = await agent_with_runtime.runtime.pre_run(session_id=session_id)
-            return agent_with_runtime.agent, runtime
-
-        agent_runtime = AgentRuntime(agent.config(), self._resource_manager)
-        agent_runtime = await agent_runtime.pre_run(session_id=session_id)
-        return agent, agent_runtime
+            task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs))
+            return agent_with_runtime.agent, task_runtime
+        agent_runtime = StaticAgentRuntime(agent.config(), resource_mgr=self._resource_manager)
+        task_runtime = TaskRuntime(inner=await agent_runtime.create_agent_runtime(session_id, inputs))
+        return agent, task_runtime
 
     def _prepare_workflow(self, workflow: Union[str, Workflow],
                           runtime: Union[Runtime, WorkflowRuntime]) -> tuple[Workflow, WorkflowRuntime]:

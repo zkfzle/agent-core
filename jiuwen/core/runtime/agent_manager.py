@@ -4,13 +4,14 @@ from typing import Optional, Union
 from jiuwen.core.agent.agent import AgentRuntime, Agent
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.runtime.agent import StaticAgentRuntime
 from jiuwen.core.runtime.resource_manager import ResourceMgr
 from jiuwen.core.runtime.abstract_manager import AbstractManager
 
 
 @dataclass
 class AgentWithRuntime:
-    runtime: AgentRuntime
+    runtime: StaticAgentRuntime
     agent: Agent
 
 AgentProvider = lambda: Agent
@@ -32,7 +33,7 @@ class AgentMgr(AbstractManager[AgentWithRuntime]):
                     StatusCode.RUNTIME_AGENT_ADD_FAILED.errmsg.format(reason="Agent must have config method")
                 )
             return AgentWithRuntime(
-                runtime=AgentRuntime(config=agent_obj.config(), resource_mgr=self._resource_manager),
+                runtime=StaticAgentRuntime(config=agent_obj.config(), resource_mgr=self._resource_manager),
                 agent=agent_obj
             )
         

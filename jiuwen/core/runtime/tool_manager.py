@@ -81,7 +81,7 @@ class ToolMgr(AbstractManager[Tool]):
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "remove")
 
-    def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
+    def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
         try:
             if not tool_ids:
                 return [info for info in self._tool_infos.values()]

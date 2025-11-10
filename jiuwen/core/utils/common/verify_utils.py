@@ -54,7 +54,7 @@ class ValidationUtils:
             "string": lambda value: isinstance(value, str),
             "integer": lambda value: isinstance(value, int) and not isinstance(value, bool),
             "boolean": lambda value: isinstance(value, bool),
-            "number": lambda value: isinstance(value, float) and not isinstance(value, bool),
+            "number": lambda value: isinstance(value, (float, int)) and not isinstance(value, bool),
         }
 
         validator = type_validators.get(expected_type)

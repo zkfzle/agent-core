@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.utils.llm.messages import AIMessage, HumanMessage
 import jiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder as wb
 from jiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder import WorkflowBuilder, State
 
@@ -49,7 +50,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -63,7 +64,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -79,7 +80,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -93,7 +94,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -111,7 +112,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -130,7 +131,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -149,7 +150,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -166,7 +167,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -184,7 +185,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -203,7 +204,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -225,15 +226,18 @@ class TestWorkflowBuilder(unittest.TestCase):
             query=wb.GENERATE_DL_FROM_SOP_CONTENT + TRANSFORMED_SOP, resource=None
         )
         self.assertEqual(len(builder._dl_reflector.errors), 0)
-        self.assertEqual(len(builder._dl_generator.reflect_prompts), 6)
-        self.assertIn(GENERATED_DL, builder._dl_generator.reflect_prompts)
-        self.assertIn(wb.MODIFY_DL_CONTENT + ";\n".join(check_errors), builder._dl_generator.reflect_prompts)
+        self.assertEqual(len(builder._dl_generator.reflect_prompts), 2)
+        self.assertIn(AIMessage(content=GENERATED_DL), builder._dl_generator.reflect_prompts)
+        self.assertIn(
+            HumanMessage(content=wb.MODIFY_DL_CONTENT + ";\n".join(check_errors)),
+            builder._dl_generator.reflect_prompts
+        )
 
     def test_generate_dl_success(self):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -254,7 +258,7 @@ class TestWorkflowBuilder(unittest.TestCase):
         with patch.object(wb, 'IntentionDetector', side_effect=lambda llm: self.mock_intention_detector), \
              patch.object(wb, 'SopGenerator', side_effect=lambda llm: self.mock_sop_generator), \
              patch.object(wb, 'ResourceRetriever', side_effect=lambda: self.mock_resource_retriever), \
-             patch.object(wb, 'DLGenerator', side_effect=lambda llm, ctx: self.mock_dl_generator), \
+             patch.object(wb, 'DLGenerator', side_effect=lambda llm: self.mock_dl_generator), \
              patch.object(wb, 'Reflector', side_effect=lambda: self.mock_reflector), \
              patch.object(wb, 'DLTransformer', side_effect=lambda llm, ctx: self.mock_transformer):
             builder = WorkflowBuilder(self.llm, self.context_manager)
@@ -278,9 +282,12 @@ class TestWorkflowBuilder(unittest.TestCase):
             query="query", resource=None, exist_dl=GENERATED_DL, exist_mermaid=MERMAID
         )
         self.assertEqual(len(builder._dl_reflector.errors), 0)
-        self.assertEqual(len(builder._dl_generator.reflect_prompts), 6)
-        self.assertIn(REFINED_DL, builder._dl_generator.reflect_prompts)
-        self.assertIn(wb.MODIFY_DL_CONTENT + ";\n".join(check_errors), builder._dl_generator.reflect_prompts)
+        self.assertEqual(len(builder._dl_generator.reflect_prompts), 2)
+        self.assertIn(AIMessage(content=REFINED_DL), builder._dl_generator.reflect_prompts)
+        self.assertIn(
+            HumanMessage(content=wb.MODIFY_DL_CONTENT + ";\n".join(check_errors)),
+            builder._dl_generator.reflect_prompts
+        )
 
 
 if __name__ == "__main__":

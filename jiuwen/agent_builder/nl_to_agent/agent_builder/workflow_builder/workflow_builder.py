@@ -5,12 +5,13 @@ from enum import Enum
 
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.exception.exception import JiuWenBaseException
+from jiuwen.core.utils.llm.messages import AIMessage, HumanMessage
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.llm_service import LlmService
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.context_manager import ContextManager
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.resource.resource_retrieve import ResourceRetriever
 from .intention_detector.intention_detector import IntentionDetector
 from .sop_generator.sop_generator import SopGenerator
-from .dl_generator.base import DLGenerator
+from .dl_generator.dl_generator import DLGenerator
 from .dl_reflector.dl_reflector import Reflector
 from .dl_transformer.base import DLTransformer
 
@@ -39,7 +40,7 @@ class WorkflowBuilder:
 
         self._intention_detector = IntentionDetector(llm)
         self._sop_generator = SopGenerator(llm)
-        self._dl_generator = DLGenerator(llm, context_manager)
+        self._dl_generator = DLGenerator(llm)
         self._dl_reflector = Reflector()
         self._dl_transformer = DLTransformer(llm, context_manager)
 
@@ -116,10 +117,12 @@ class WorkflowBuilder:
             generated_dl = dl_operation(*args, **kwargs)
             self._dl_reflector.check_format(generated_dl)
             if not self._dl_reflector.errors:
+                self.context_manager.add_assistant_message(generated_dl, intent_label="工作流")
                 return generated_dl
-            self._dl_generator.reflect_prompts.extend(
-                [generated_dl, MODIFY_DL_CONTENT + ";\n".join(self._dl_reflector.errors)]
-            )
+            self._dl_generator.reflect_prompts = [
+                AIMessage(content=generated_dl),
+                HumanMessage(content=MODIFY_DL_CONTENT + ";\n".join(self._dl_reflector.errors)),
+            ]
             self._dl_reflector.errors = []
 
         raise JiuWenBaseException(

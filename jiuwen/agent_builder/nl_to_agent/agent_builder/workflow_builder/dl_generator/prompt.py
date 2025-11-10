@@ -4,5 +4,5 @@
 generate_system_prompt = """
 """
 
-refine_system_prompt = """
+refine_user_prompt = """
 """

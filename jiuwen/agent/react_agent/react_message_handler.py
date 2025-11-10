@@ -181,8 +181,6 @@ class ReActMessageHandler(MessageHandler):
         except Exception as e:
             self.iteration += 1
             logger.error(f"Failed to invoke model, {e}")
-            import traceback
-            logger.info(traceback.format_exc())
             raise JiuWenBaseException(-1, "Failed to invoke model")
 
         self.iteration += 1

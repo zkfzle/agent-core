@@ -32,7 +32,7 @@ class TaskHandler:
             if task.task_type == TaskType.WORKFLOW:
                 return await self._execute_workflow_task(task)
             elif task.task_type == TaskType.PLUGIN:
-                return self._execute_plugin_task(task)
+                return await self._execute_plugin_task(task)
             elif task.task_type == TaskType.MCP:
                 return await self._execute_mcp_task(task)
             else:
@@ -193,7 +193,7 @@ class TaskHandler:
     async def _execute_plugin_task(self, task: Task) -> Message:
         """execute plugin task"""
         # Compatible with Runtime 1.0 interfaces
-        if result := self.__run_plugin_in_runtime(task):
+        if result := await self.__run_plugin_in_runtime(task):
             return result
 
         # Compatible with Runner interfaces
@@ -235,12 +235,11 @@ class TaskHandler:
             error_msg="MCP task execution not implemented yet"
         )
 
-    def __run_plugin_in_runtime(self, task):
+    async def __run_plugin_in_runtime(self, task):
         """Temporary interface for backward compatibility with Runtime interface"""
         tool_id = task.input.target_name
         plugin = self.runtime.get_tool(tool_id)
         if plugin is not None:
-            import asyncio
-            result = asyncio.run(plugin.ainvoke(task.input.arguments))
+            result = await plugin.ainvoke(task.input.arguments)
             return self._create_message_from_plugin_result(task, result)
         return None

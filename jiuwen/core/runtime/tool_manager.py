@@ -108,7 +108,7 @@ class ToolMgr:
                                       StatusCode.RUNTIME_TOOL_GET_FAILED.errmsg.format(
                                           reason=f"Failed to remove tool: {str(e)}"))
 
-    def get_tool_infos(self, tool_id: List[str] = None, *, tool_server_name: str) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
+    def get_tool_infos(self, tool_id: List[str] = None, *, tool_server_name: str = None) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
         try:
             if not tool_id:
                 return [info for info in self._tool_infos.values()]

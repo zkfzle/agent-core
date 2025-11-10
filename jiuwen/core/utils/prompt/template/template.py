@@ -47,7 +47,7 @@ class Template(BaseModel):
 
         for msg in self.content:
             if isinstance(msg, BaseMessage):
-                messages.append(msg)
+                messages.append(copy.deepcopy(msg))
             elif isinstance(msg, dict):
                 message_cls = message_map.get(msg.get("role", ""))
                 if message_cls:
@@ -57,9 +57,8 @@ class Template(BaseModel):
                     error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
                     message=f"Template type must be in str, list[dict] or list[BaseMessage]."
                 )
-        self.content = messages
         self._validate_template_content_assembled()
-        return self.content
+        return messages
 
     def format(self, keywords: dict = None):
         """format prompt"""

@@ -21,6 +21,7 @@ class LLMCall:
                  user_prompt: str | List[BaseMessage] | List[Dict],
                  freeze_system_prompt: bool = False,
                  freeze_user_prompt: bool = True,
+                 llm_call_id: str = "llm_call",
                  ) -> None:
         self._llm = llm
         self._model_name = model_name
@@ -29,6 +30,7 @@ class LLMCall:
         self._freeze_system_prompt = freeze_system_prompt
         self._freeze_user_prompt = freeze_user_prompt
         self._optimizer_callback: Optional[Callable] = None
+        self._llm_call_id = llm_call_id
 
     async def invoke(self,
                      inputs: Dict[str, Any],
@@ -39,7 +41,7 @@ class LLMCall:
         messages = self._format_llm_input(inputs, history)
         response = await self._llm.ainvoke(self._model_name, messages, tools=tools)
         if self._optimizer_callback is not None:
-            await self._optimizer_callback(inputs, response, runtime)
+            await self._optimizer_callback(self._llm_call_id, inputs, response, runtime)
         return response
 
     async def stream(self,
@@ -55,7 +57,7 @@ class LLMCall:
             yield chunk
         response = "".join(message_chunks)
         if self._optimizer_callback is not None:
-            await self._optimizer_callback(inputs, response, runtime)
+            await self._optimizer_callback(self._llm_call_id, inputs, response, runtime)
 
     def set_optimizer_callback(self, callback: Optional[Callable]) -> None:
         self._optimizer_callback = callback

@@ -3,8 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from concurrent.futures import ThreadPoolExecutor
+
+from tqdm import tqdm
 
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -12,6 +14,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.agent_builder.prompt_builder.tune.base import Case, EvaluatedCase, TuneConstant
 from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
+from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
 
 
 class BaseEvaluator(ABC):
@@ -23,7 +26,7 @@ class BaseEvaluator(ABC):
         pass
 
     def batch_evaluate(self,
-                       cases: List[Case],
+                       cases: List[Case] | CaseLoader,
                        predicts: List[Dict[str, Any]],
                        **kwargs
                        ) -> List[EvaluatedCase]:
@@ -42,7 +45,7 @@ class BaseEvaluator(ABC):
             evaluated_cases = executor.map(
                 self.evaluate,
                 cases, predicts)
-            return list(evaluated_cases)
+            return list(tqdm(evaluated_cases, desc=f"evaluate", total=len(cases)))
 
 
 LLM_METRIC_TEMPLATE = Template(content=
@@ -65,12 +68,46 @@ LLM_METRIC_TEMPLATE = Template(content=
 }}
 ```
 
-[问题]：{question}
+[问题]：{{question}}
 
 以下是需要比对的模型回答和标准答案：
 [标准答案]：{{expected_answer}}
 
 [模型回答]：{{model_answer}}
+
+请校验并返回结果：
+"""
+)
+
+
+LLM_METRIC_RETRY_TEMPLATE = Template(content=
+"""
+你是一个答案校验专家，负责修复不规范的评估结果。
+
+## 原始待评估结果评估
+[问题]：{{question}}
+以下是需要比对的模型回答和标准答案：
+[标准答案]：{{expected_answer}}
+[模型回答]：{{model_answer}}
+
+## 格式不规范的评估结果
+但是当前收到了不规范的评估结果，导致无法正确解析成json格式：
+<EVALUATED_RESULT>
+{{nonstandard_evaluated_result}}
+</EVALUATED_RESULT>
+
+## 格式修复
+请修正当前评估结果的格式，推理为什么上面的评估结果没有被json解析出来，修正并返回正确的评估格式，如下
+输出JSON格式：
+```json
+{{
+“result”: true/false,
+"reason": "校验理由"
+}}
+```
+## 要求
+- 生成的json必须被```json```包裹
+- 注意评估结果中是否存在不规范的引号使用，例如双引号与单引号生成错误、引号嵌套等问题
 
 请校验并返回结果：
 """
@@ -104,11 +141,11 @@ class DefaultEvaluator(BaseEvaluator):
         evaluated_case = EvaluatedCase(case=case, answer=predict)
         try:
             response = self._model.invoke(self._model_name, messages).content
-        except JiuWenBaseException:
+        except Exception:
             evaluated_case.reason = "Failed to evaluate case due to model error"
             return evaluated_case
 
-        evaluated_result = TuneUtils.parse_json_from_llm_response(response)
+        evaluated_result = self._extract_evaluate_result(response, case, predict)
         if not evaluated_result:
             evaluated_case.reason = "Failed to evaluate case due to parsing error"
             return evaluated_case
@@ -118,3 +155,21 @@ class DefaultEvaluator(BaseEvaluator):
             evaluated_case.score = 1.0
             return evaluated_case
         return evaluated_case
+
+    def _extract_evaluate_result(self, response: str, case: Case, predict: Dict) -> Optional[Dict[str, Any]]:
+        evaluated_result = TuneUtils.parse_json_from_llm_response(response)
+        if evaluated_result and "result" in evaluated_result and "reason" in evaluated_result:
+            return evaluated_result
+        messages = LLM_METRIC_RETRY_TEMPLATE.format(
+            dict(
+                question=str(case.inputs),
+                expected_answer=str(case.label),
+                model_answer=str(predict),
+                nonstandard_evaluated_result=response
+            ),
+        ).to_messages()
+        try:
+            response = self._model.invoke(self._model_name, messages).content
+        except Exception:
+            return None
+        return TuneUtils.parse_json_from_llm_response(response)

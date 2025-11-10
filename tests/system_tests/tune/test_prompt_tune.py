@@ -214,7 +214,6 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
 
         # 创建agent，测试基线
         agent = self.create_agent(INFORMATION_EXTRACTION_TEMPLATE)
-        predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))
 
         # 创建评估器
         llm = ModelFactory().get_model(
@@ -237,6 +236,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
             model=llm,
             num_examples=1
         ) as optimizer:
+            predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))
             results = evaluator.batch_evaluate(INFORMATION_EXTRACTION_CASES, predicts)
             self.show_result(results)
             optimizer.backward(results)
@@ -253,6 +253,12 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         trainer = self.create_trainer()
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES)
 
+        from jiuwen.agent_builder.prompt_builder.tune.trainer.base import Callbacks, Progress
+        class MyCallbacks(Callbacks):
+            def on_train_epoch_end(self, agent, progress: Progress):
+                print(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")
+
+        trainer.set_callbacks(MyCallbacks())
         score, result = trainer.evaluate(agent, case_loader)
         print(f"[原提示词推理效果]: score={score}")
         self.show_result(result)

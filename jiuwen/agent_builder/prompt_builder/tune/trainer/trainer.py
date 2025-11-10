@@ -1,10 +1,12 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+import random
 from typing import List, Tuple, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 import copy
 
+from tqdm import tqdm
 import asyncio
 
 from jiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
@@ -17,6 +19,9 @@ from jiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase, TuneCon
 from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
 from jiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import BaseEvaluator
 from jiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
+from jiuwen.agent_builder.prompt_builder.tune.trainer.base import Progress, Callbacks
+
+DEFAULT_CANDIDATES_SAMPLE_NUM: int = 6
 
 
 class Trainer:
@@ -34,40 +39,60 @@ class Trainer:
         self._early_stop_score = kwargs.get("early_stop_score", TuneConstant.DEFAULT_EARLY_STOP_SCORE)
         TuneUtils.validate_digital_parameter(self._early_stop_score, "num_parallel",
                                              0.0, 1.0)
+        self._callbacks = Callbacks()
 
     def train(self,
               agent: Agent,
               train_cases: CaseLoader,
+              val_cases: Optional[CaseLoader] = None,
               **kwargs
               ) -> Optional[Agent]:
-        from jiuwen.agent.chat_agent import ChatAgent
-        if not isinstance(agent, ChatAgent):
+        if not self._check_trainable(agent):
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR.code,
                 StatusCode.AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR.errmsg.format(
-                    error_msg=f"trainer only support {type(ChatAgent)} right now"
+                    error_msg=f"trainer only support current Agent right now"
                 )
             )
-        best_score = 0.0
-        num_iterations = kwargs.get('num_iterations', TuneConstant.DEFAULT_ITERATION_NUM)
-        with self._optimizer:
-            score, evaluated_cases = self.evaluate(agent, train_cases)
-        logger.info(f"train iteration: (baseline), score: {score}")
-        self._pre_train(agent)
-        for i in range(1, num_iterations + 1):
-            with self._optimizer as optimizer:
-                optimizer.backward(evaluated_cases)
-                optimizer.update()
-                cur_parameters = copy.deepcopy(agent.get_llm_calls())
-                self._update_agent(agent, optimizer.parameters())
-                score, evaluated_cases = self.evaluate(agent, train_cases)
+        progress: Progress = self._pre_train(agent, **kwargs)
+        if not val_cases:
+            val_cases = train_cases
+        self._callbacks.on_train_begin(agent, progress)
+        progress.val_baseline_score, _ = self.evaluate(agent, val_cases)
+        logger.info(f"val set baseline score: {progress.val_baseline_score}")
+        parameter_searcher = ParameterSearcher(self, case_loader=val_cases)
+        for _ in progress.run_epoch():
+            # get trace of execution
+            self._callbacks.on_train_epoch_begin(agent, progress)
+            with self._optimizer:
+                score, cur_evaluated_cases = self.evaluate(agent, train_cases)
+                logger.info(f"train epoch {progress.current_epoch}, train set score: {score}")
+            cur_parameters = copy.deepcopy(agent.get_llm_calls())
+
+            best_batch_parameters = cur_parameters
+            for _ in progress.run_batch():
+                with self._optimizer as optimizer:
+                    optimizer.backward(cur_evaluated_cases)
+                    optimizer.update()
+                score, cur_batch_parameters, _ = parameter_searcher.search_best(
+                    agent=agent,
+                    base_score=progress.best_score,
+                    base_parameters=cur_parameters,
+                    parameters=[agent.get_llm_calls()],
+                )
+                if score > progress.best_batch_score:
+                    progress.best_batch_score = score
+                    best_batch_parameters = cur_batch_parameters
+            logger.info(f"train epoch {progress.current_epoch}, val set score:: {score}")
+            if progress.best_batch_score > progress.best_score:
+                progress.best_score = progress.best_batch_score
+                self._update_agent(agent, best_batch_parameters)
+            else:
                 self._update_agent(agent, cur_parameters)
-            logger.info(f"train iteration: {i}, score: {score}")
-            if score > best_score:
-                best_score = score
-                self._update_agent(agent, self._optimizer.parameters())
-            if best_score >= self._early_stop_score:
+            self._callbacks.on_train_epoch_end(agent, progress)
+            if progress.best_score >= self._early_stop_score:
                 break
+        self._callbacks.on_train_end(agent, progress)
         return agent
 
     def evaluate(self,
@@ -77,7 +102,7 @@ class Trainer:
         if not cases.get_cases():
             return 0.0, []
         predicts = self.predict(agent, cases)
-        evaluated_cases = self._evaluator.batch_evaluate(cases.get_cases(), predicts)
+        evaluated_cases = self._evaluator.batch_evaluate(cases.get_cases(), predicts, num_parallel=self._num_parallel)
         score = sum(case.score for case in evaluated_cases) / len(evaluated_cases) \
             if evaluated_cases else 0.0
         return score, evaluated_cases
@@ -86,14 +111,32 @@ class Trainer:
                 agent: Agent,
                 cases: CaseLoader
                 ) -> List[Dict]:
-        async def forward_batch(cases: CaseLoader) -> List[Dict]:
-            return [await agent.invoke(case.inputs) for case in cases.get_cases()]
+        def forward(case: Case) -> Dict:
+            try:
+                result = asyncio.run(agent.invoke({**case.inputs, "conversation_id": case.case_id}))
+            except Exception as e:
+                return dict(error=f"Get wrong result due to {str(e)}")
+            return result
+        num_workers = min(self._num_parallel, cases.size())
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            predicts = executor.map(
+                forward, cases.get_cases()
+            )
+            return list(tqdm(predicts, desc="forward", total=cases.size()))
 
-        return asyncio.run(forward_batch(cases))
+    def set_callbacks(self, callbacks: Callbacks):
+        if not isinstance(callbacks, Callbacks):
+            logger.warning(f"callbacks should be a Callbacks object, got {type(callbacks)}")
+            return
+        self._callbacks = callbacks
 
-    def _pre_train(self, agent: Agent):
-        parameters = copy.deepcopy(agent.get_llm_calls())
-        self._optimizer.bind_parameter(parameters)
+    def _pre_train(self, agent: Agent, **kwargs) -> Progress:
+        progress = Progress(
+            max_epoch=kwargs.get('num_iterations', TuneConstant.DEFAULT_ITERATION_NUM)
+        )
+
+        self._optimizer.bind_parameter(agent.get_llm_calls())
+        return progress
 
     def _update_agent(self, agent: Agent, parameters: Dict[str, TextualParameter | LLMCall]):
         agent_parameters = agent.get_llm_calls()
@@ -107,3 +150,66 @@ class Trainer:
             elif isinstance(param, LLMCall):
                 llm_call.update_system_prompt(param.get_system_prompt().content)
                 llm_call.update_user_prompt(param.get_user_prompt().content)
+
+    @staticmethod
+    def _check_trainable(agent: Agent) -> bool:
+        method = getattr(type(agent), "get_llm_calls")
+        if not method:
+            return False
+        owner = method.__qualname__.split('.')[0]
+        return owner != type(agent).__bases__[0].__name__
+
+
+class ParameterSearcher:
+    def __init__(self, trainer: Trainer, case_loader: CaseLoader):
+        self._trainer = trainer
+        self._case_loader = case_loader
+
+    def search_best(self,
+                    agent: Agent,
+                    base_score: float,
+                    base_parameters: Dict[str, LLMCall],
+                    parameters: List[Dict[str, LLMCall]]):
+        candidates = self.generate_candidates([base_parameters, *parameters])
+        candidates.pop(0)
+        candidates = random.sample(candidates,
+                                   k=min(DEFAULT_CANDIDATES_SAMPLE_NUM, len(candidates)))
+        best_score = base_score
+        best_parameters = base_parameters
+        best_cases = None
+        logger.info(f"start searching best parameter group from {len(candidates)} candidates, "
+                    f"current epoch baseline score: {best_score}")
+        for i, candidate in enumerate(candidates):
+            self._trainer._update_agent(agent, candidate)
+            score, evaluated_cases = self._trainer.evaluate(agent, self._case_loader)
+            logger.info(f"finish evaluating candidate {i}, score {score}")
+            if score > best_score:
+                best_score = score
+                best_parameters = candidate
+                best_cases = evaluated_cases
+        return best_score, best_parameters, best_cases
+
+    def generate_candidates(self,
+                            parameters: List[Dict[str, LLMCall]]
+                            ) -> List[Dict[str, LLMCall]]:
+        n_params = len(parameters[0])
+        n_candidates = len(parameters)
+        node_names = list(parameters[0].keys())
+        all_candidates = []
+        def generate_candidates_recursively(i_param: int, candidate: Dict[str, LLMCall]):
+            if i_param == n_params:
+                try:
+                    all_candidates.append(copy.deepcopy(candidate))
+                except Exception as e:
+                    for candidate in candidate.values():
+                        print(type(candidate), candidate)
+                    raise e
+                return
+            for i_cd in range(n_candidates):
+                node_name = node_names[i_param]
+                candidate[node_name] = parameters[i_cd][node_name]
+                generate_candidates_recursively(i_param + 1, candidate)
+                candidate.pop(node_name)
+
+        generate_candidates_recursively(0, dict())
+        return all_candidates

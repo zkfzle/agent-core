@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 from typing import Optional, List, Dict, Any
+import uuid
 
 from pydantic import BaseModel, Field
 
@@ -36,9 +37,10 @@ class TuneConstant:
 
 class Case(BaseModel):
     """definition of case"""
-    inputs: Dict[str, Any] = Field(...)
-    label: Dict[str, Any] = Field(...)
+    inputs: Dict[str, Any] = Field(..., min_length=1)
+    label: Dict[str, Any] = Field(..., min_length=1)
     tools: Optional[List[ToolInfo]] = Field(default=None)
+    case_id: str = Field(default=str(uuid.uuid4()))
 
 
 class EvaluatedCase(BaseModel):
@@ -59,3 +61,7 @@ class EvaluatedCase(BaseModel):
     @property
     def tools(self):
         return self.case.tools
+
+    @property
+    def case_id(self):
+        return self.case.case_id

@@ -4,6 +4,7 @@
 
 from abc import abstractmethod
 from typing import Dict, Optional, Any, List, Callable
+import threading
 
 from pydantic import BaseModel, Field
 
@@ -100,7 +101,7 @@ class BaseOptimizer:
 
     @abstractmethod
     def _backward(self,
-                 evaluated_cases: List[EvaluatedCase] ,
+                 evaluated_cases: List[EvaluatedCase],
                  ):
         pass
 
@@ -108,14 +109,14 @@ class BaseOptimizer:
         return self._parameters
 
     async def trace_callback(self,
-                       input: Dict[str, str],
-                       output: BaseMessage,
-                       runtime: Runtime
-                       ):
+                             llm_call_id: str,
+                             input: Dict[str, str],
+                             output: BaseMessage,
+                             runtime: Runtime
+                             ):
         trace_node = TraceNode(
             case_id=runtime.session_id(),
-            # TODO: get llm call id from runtime
-            llm_call_id="llm_call",
+            llm_call_id=llm_call_id,
             inputs=input,
             outputs=TuneUtils.get_output_string_from_message(output)
         )
@@ -144,12 +145,19 @@ class TextualParameter:
     def __init__(self, llm_call: LLMCall):
         self.llm_call = llm_call
         self.gradients: Dict[str, str] = {}
+        self.description: str = ""
 
     def set_gradient(self, name: str, gradient: str):
         self.gradients[name] = gradient
 
     def get_gradient(self, name: str) -> Optional[str]:
         return self.gradients.get(name)
+
+    def set_description(self, description: str):
+        self.description = description
+
+    def get_description(self) -> str:
+        return self.description
 
 
 class TraceNode(BaseModel):
@@ -164,16 +172,28 @@ class TraceNode(BaseModel):
 class OptimizeHistory:
     def __init__(self):
         self._trajectory: Dict[str, List[TraceNode]] = {}
+        self._lock = threading.Lock()
 
     def add_history(self, case_id: str, node: TraceNode):
-        if case_id not in self._trajectory:
-            self._trajectory[case_id] = []
-        self._trajectory[case_id].append(node)
+        with self._lock:
+            if case_id not in self._trajectory:
+                self._trajectory[case_id] = []
+            self._trajectory[case_id].append(node)
 
     def get_history(self, case_id: str) -> Optional[List[TraceNode]]:
         if case_id not in self._trajectory:
             return None
         return self._trajectory[case_id]
+
+    def get_llm_call_history(self, case_id: str, llm_call_id: str) -> Optional[List[TraceNode]]:
+        trace_node_list = self.get_history(case_id)
+        if not trace_node_list:
+            return None
+        llm_call_trace_node_list = []
+        for node in trace_node_list:
+            if node.llm_call_id == llm_call_id:
+                llm_call_trace_node_list.append(node)
+        return llm_call_trace_node_list
 
     def clear_history(self):
         self._trajectory = {}

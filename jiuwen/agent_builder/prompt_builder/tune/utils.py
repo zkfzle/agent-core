@@ -12,7 +12,7 @@ from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.utils.prompt.template.template import Template
 from jiuwen.core.utils.llm.messages import BaseMessage, AIMessage
-from jiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant
+from jiuwen.agent_builder.prompt_builder.tune.base import Case, EvaluatedCase
 
 
 class TuneUtils:
@@ -86,7 +86,7 @@ class TuneUtils:
         return list_data
 
     @staticmethod
-    def convert_cases_to_examples(cases: List[Case]) -> str:
+    def convert_cases_to_examples(cases: List[Case | EvaluatedCase]) -> str:
         if not cases:
             return ""
         examples_list = [

@@ -183,10 +183,7 @@ class InstructionOptimizer(BaseOptimizer):
                  ):
         """optimize Instruction"""
         for name, param in self._parameters.items():
-            textual_gradient =  self._get_textual_gradient(
-                param.llm_call.get_system_prompt(),
-                param.llm_call.get_user_prompt(),
-            )
+            textual_gradient = self._get_textual_gradient(name, param)
             if not param.llm_call.get_freeze_system_prompt():
                 param.set_gradient("system_prompt", textual_gradient)
             if not param.llm_call.get_freeze_user_prompt():
@@ -196,11 +193,11 @@ class InstructionOptimizer(BaseOptimizer):
     def _update(self):
         for name, param in self._parameters.items():
             if not param.llm_call.get_freeze_system_prompt() and not param.llm_call.get_freeze_user_prompt():
-                return self._optimize_both_system_and_user_prompt(param)
-            if not param.llm_call.get_freeze_system_prompt():
-                return self._optimize_system_or_user_prompt(param, "system_prompt")
-            if not param.llm_call.get_freeze_user_prompt():
-                return self._optimize_system_or_user_prompt(param, "user_prompt")
+                self._optimize_both_system_and_user_prompt(param)
+            elif not param.llm_call.get_freeze_system_prompt():
+                self._optimize_system_or_user_prompt(param, "system_prompt")
+            elif not param.llm_call.get_freeze_user_prompt():
+                self._optimize_system_or_user_prompt(param, "user_prompt")
 
     def _optimize_both_system_and_user_prompt(self, param: TextualParameter):
         optimized_system_prompt, optimized_user_prompt = self._optimize_both_instruction(
@@ -239,9 +236,11 @@ class InstructionOptimizer(BaseOptimizer):
             param.llm_call.update_user_prompt(optimized_prompt)
 
     def _get_textual_gradient(self,
-                              system_prompt: Template,
-                              user_prompt: Template,
+                              name: str,
+                              param: TextualParameter,
                               tools: Optional[list] = None) -> str:
+        system_prompt = param.llm_call.get_system_prompt()
+        user_prompt = param.llm_call.get_user_prompt()
         messages = CREATE_PROMPT_TEXTUAL_GRADIENT_TEMPLATE.format(
             dict(system_prompt=TuneUtils.get_content_string_from_template(system_prompt),
                  user_prompt=TuneUtils.get_content_string_from_template(user_prompt),

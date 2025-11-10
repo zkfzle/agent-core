@@ -1,12 +1,17 @@
 import asyncio
+import os
 from typing import Union, Any, List, Optional
 
 from jiuwen.agent.chat_agent import ChatAgent
 from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.agent import Agent
+from jiuwen.core.agent.agent import Agent, AgentRuntime
+from jiuwen.core.common.configs.env_constant import DISTRIBUTED_MODE
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.common.logging import logger
+from jiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
+from jiuwen.core.runner.drunner.dmessage_queue.message_queue import FakeMQ
+from jiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from jiuwen.core.runtime.agent import StaticAgentRuntime
 from jiuwen.core.runtime.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from jiuwen.core.runtime.agent_manager import AgentProvider, AgentMgr
@@ -51,10 +56,33 @@ class Runner:
         self._agent_group_mgr: AgentGroupMgr = AgentGroupMgr()
         self._agent_mgr: AgentMgr = AgentMgr(resource_manager)
 
+        # Distributed system related components
+        self.system_reply_sub: ReplyTopicSubscription|None = None
+        self._mq = FakeMQ()
+
     async def start(self) -> bool:
+        if os.getenv(DISTRIBUTED_MODE, "true").lower() == "true":
+            # start dmq
+            self._mq.start()
+            # start reply topic sub
+            self.system_reply_sub = ReplyTopicSubscription(self._mq)
+            self._mq.subscribe(self.system_reply_sub.topic, self.system_reply_sub)
+            self.system_reply_sub.activate()
         return await self._message_queue.start()
 
     async def stop(self):
+        logger.info("[Runner] Stopping...")
+        if os.getenv(DISTRIBUTED_MODE, "true").lower() == "true":
+            # 1. 停止所有 adapter
+
+
+            # 2. 停止 ReplyTopicSubscription，清理collector
+            if self.system_reply_sub:
+                await self.system_reply_sub.deactivate()
+            # 3. 停止 MQ
+            if self._mq:
+                await self._mq.stop()
+
         return await self._message_queue.stop()
 
     def message_queue(self):
@@ -78,7 +106,7 @@ class Runner:
             await self._message_queue.unsubscribe(topic, agent_group._subscription)
         return agent_group
 
-    def add_agent(self, agent_id, agent: Union[Agent, AgentProvider]):
+    def add_agent(self, agent_id, agent: Union[Agent, AgentProvider, RemoteAgent]):
         self._agent_mgr.add_agent(agent_id, agent)
 
     def remove_agent(self, agent_id) -> Union[Agent, AgentProvider]:
@@ -96,8 +124,11 @@ class Runner:
 
     async def run_agent(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        res = await agent_instance.invoke(inputs, agent_runtime)
-        await agent_runtime.post_run()
+        if isinstance(agent_instance, RemoteAgent):
+            res = await agent_instance.invoke(inputs)
+        else:
+            res = await agent_instance.invoke(inputs, agent_runtime)
+            await agent_runtime.post_run()
         return res
 
     async def run_agent_streaming(self, agent: Union[str, Agent], inputs: Any):
@@ -108,6 +139,9 @@ class Runner:
                     yield chunk
             finally:
                 await agent_runtime.post_run()
+        elif isinstance(agent_instance, RemoteAgent):
+            async for chunk in agent_instance.stream(inputs):
+                yield chunk
         else:
             async def stream_process():
                 try:
@@ -195,6 +229,11 @@ class Runner:
         session_id = inputs.get(self._AGENT_CONVERSATION_ID, self._DEFAULT_AGENT_SESSION_ID)
         if isinstance(agent, str):
             agent_with_runtime = self._agent_mgr.get_agent(agent)
+            if agent_with_runtime is None:
+                raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
+                                          StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
+            if isinstance(agent_with_runtime, RemoteAgent):
+                return agent_with_runtime, None
             task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs))
             return agent_with_runtime.agent, task_runtime
         agent_runtime = StaticAgentRuntime(agent.config(), resource_mgr=self._resource_manager)

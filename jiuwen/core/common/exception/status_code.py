@@ -127,6 +127,11 @@ class StatusCode(Enum):
     # Multi-Agent Orchestration - Multi-Agent MessageQueue 131091-131099
     MULTI_AGENT_MESSAGE_NOT_PROCESSING = (131091, "Message {} is not currently being processed")
 
+    # Runner 134000 - 134999
+    REMOTE_AGENT_REQUEST_TIMEOUT = (134001, "RemoteAgent {} request timeout")
+    AGENT_NOT_FOUND = (134002, "Agent {} is not found")
+    RUNNER_DISTRIBUTED_MODE_REQUIRED = (134003, "Runner must be initialized with distributed mode enabled. message: {}")
+
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999
     # GraphEngine - Conditional Evaluation 140000 - 140019

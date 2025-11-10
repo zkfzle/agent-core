@@ -49,7 +49,7 @@ class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
 
         # <1.1> send stream request to stream handler
         message = StreamQueueMessage()
-        message.request = "上海温度多少"
+        message.payload = "上海温度多少"
         message.response = asyncio.Future()
         await mq.produce_message("topic_stream", message)
         response = await get_response(message.response)
@@ -63,7 +63,7 @@ class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
 
         # # <1.2> send invoke request to stream handler
         message1 = InvokeQueueMessage()
-        message1.request = "上海温度多少"
+        message1.payload = "上海温度多少"
         await mq.produce_message("topic_stream", message1)
         response = await get_response(message1.response)
         self.assertEqual(response, None)
@@ -71,14 +71,14 @@ class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
 
         # <1.3> send publish request to stream handler
         message2 = QueueMessage()
-        message2.request = "上海温度多少"
+        message2.payload = "上海温度多少"
         await mq.produce_message("topic_stream", message2)
         self.assertEqual(message2.error_code, StatusCode.SUCCESS)
         self.assertEqual(message2.error_msg, "")
 
         # <2.1> send inkoke request to invkoke handler
         message3 = InvokeQueueMessage()
-        message3.request = "北京温度多少"
+        message3.payload = "北京温度多少"
         message3.response = asyncio.Future()
         await mq.produce_message("topic_invoke", message3)
         response = await get_response(message3.response)
@@ -89,7 +89,7 @@ class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
 
         # <2.2> send stream request to invkoke handler
         message4 = StreamQueueMessage()
-        message4.request = "北京温度多少"
+        message4.payload = "北京温度多少"
         await mq.produce_message("topic_invoke", message4)
         response = await get_response(message4.response)
         self.assertEqual(response, None)
@@ -97,7 +97,7 @@ class TestMessageQueue(unittest.IsolatedAsyncioTestCase):
 
         # <2.3> send publish request to invkoke handler
         message5 = QueueMessage()
-        message5.request = "北京温度多少"
+        message5.payload = "北京温度多少"
         await mq.produce_message("topic_invoke", message5)
         self.assertEqual(message5.error_code, StatusCode.SUCCESS)
         self.assertEqual(message5.error_msg, "")

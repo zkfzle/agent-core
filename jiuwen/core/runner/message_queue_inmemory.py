@@ -11,7 +11,7 @@ from jiuwen.core.runner.message_queue_base import (
     QueueMessage,
     InvokeQueueMessage,
     StreamQueueMessage,
-    AsyncMessageHandle,
+    AsyncMessageHandler,
 )
 
 
@@ -25,7 +25,7 @@ class SubscriptionInMemory(SubscriptionBase):
         self._is_active = False
         self._timeout = 20.0
 
-    def set_message_handler(self, handler: AsyncMessageHandle):
+    def set_message_handler(self, handler: AsyncMessageHandler):
         self._handler = handler
 
     def activate(self):
@@ -68,7 +68,7 @@ class SubscriptionInMemory(SubscriptionBase):
         while self._is_active and self._handler:
             message = await self._queue.get()
             try:
-                response = self._handler(message.request)
+                response = self._handler(message.payload)
                 if isinstance(response, Awaitable):
                     response = await asyncio.wait_for(response, timeout=self._timeout)
                 await self._handle_response(message, response)

@@ -10,8 +10,8 @@ Output = TypeVar("Output", covariant=True)
 @dataclass
 class QueueMessage:
     message_id: str = ""
-    request: Any = None
-    error_code: StatusCode = StatusCode.SUCCESS
+    payload: Any = None
+    error_code: StatusCode | int = StatusCode.SUCCESS
     error_msg: str = ""
 
 
@@ -33,12 +33,12 @@ class StreamQueueMessage(QueueMessage):
             self.response = asyncio.Future()
 
 
-AsyncMessageHandle = Callable[[Any], Awaitable[Any]]
+AsyncMessageHandler = Callable[[Any], Awaitable[Any]]
 
 
 class SubscriptionBase(ABC):
 
-    def set_message_handler(self, handler: AsyncMessageHandle):
+    def set_message_handler(self, handler: AsyncMessageHandler):
         pass
 
     def activate(self):

@@ -6,6 +6,7 @@ import re
 import socket
 from struct import unpack
 from socket import inet_aton
+from typing import Optional
 from urllib.parse import urlparse
 
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -29,6 +30,24 @@ class UrlUtils:
         if UrlUtils._is_inner_ipaddress(ip_address):
             ExceptionUtils.raise_exception(StatusCode.URL_INVALID_ERROR, f"illegal ip address")
 
+    @staticmethod
+    def get_global_proxy_url() -> Optional[str]:
+        """get global proxy url"""
+        global_proxy_url = os.getenv("GLOBAL_PROXY_URL")
+        if global_proxy_url:
+            return global_proxy_url.strip()
+        return global_proxy_url
+
+    @staticmethod
+    def get_global_proxies() -> Optional[dict]:
+        """get global proxies"""
+        global_proxy_url = UrlUtils.get_global_proxy_url()
+        if global_proxy_url:
+            return {
+                "http": global_proxy_url,
+                "https": global_proxy_url,
+            }
+        return None
 
     @staticmethod
     def _is_inner_ipaddress(ip):

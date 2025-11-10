@@ -5,7 +5,12 @@ from inspect import ismethod, isfunction, isclass
 from typing import Any, get_args, get_type_hints, get_origin, Literal, List, Optional, Union
 
 with contextlib.redirect_stdout(io.StringIO()):
-    from mermaid import Direction, Mermaid
+    try:
+        from mermaid import Direction, Mermaid
+        from mermaid.flowchart import FlowChart, Link, LinkShape, Node, LinkHead
+        _MERMAID_AVAILABLE = True
+    except ModuleNotFoundError:
+        _MERMAID_AVAILABLE = False
 
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
@@ -14,7 +19,6 @@ from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.graph.visualization.drawable_edge import DrawableEdge
 from jiuwen.graph.visualization.drawable_graph import DrawableGraph
 from jiuwen.graph.visualization.drawable_subgraph_node import DrawableSubgraphNode
-from mermaid.flowchart import FlowChart, Link, LinkShape, Node, LinkHead
 from jiuwen.graph.visualization.drawable_node import DrawableNode
 
 
@@ -125,182 +129,201 @@ class Drawable:
         """get drawable graph"""
         return self._graph
 
-class _MermaidDiagram:
-    class _NodeIdGenerator:
-        _prefix = "node"
+if not _MERMAID_AVAILABLE:
+    class _MermaidDiagram:
+        def __init__(self):
+            self._raise()
+
+        def _raise(self):
+            raise ImportError("Mermaid package is not installed. Please install it by `pip install mermaid`.")
+
+        def to_mermaid(self, *args, **kwargs):
+            self._raise()
+
+        def to_mermaid_png(self, *args, **kwargs):
+            self._raise()
+
+        def to_mermaid_svg(self, *args, **kwargs):
+            self._raise()
+
+else:
+
+    class _MermaidDiagram:
+        class _NodeIdGenerator:
+            _prefix = "node"
+
+            def __init__(self):
+                self._node_id = 0
+
+            def next(self):
+                self._node_id += 1
+                return  "_".join([self._prefix, str(self._node_id)])
+
+        class _LinkIdGenerator:
+            _prefix = "link"
+
+            def __init__(self):
+                self._node_id = 0
+
+            def next(self):
+                self._node_id += 1
+                return  "_".join([self._prefix, str(self._node_id)])
+
+        @dataclass
+        class _SubGraphNode:
+            node: Node
+            subgraph_links: Optional[List[Link]] = None
+            subgraph_start_nodes: Optional[List[Node]] = None
+            subgraph_end_nodes: Optional[List[Node]] = None
+            subgraph_break_nodes: Optional[List[Node]] = None
+
+        class _ExtendLink(Link):
+            def __init__(
+                    self,
+                    origin: Node,
+                    end: Node,
+                    shape: Union[str, LinkShape] = "normal",
+                    head_left: Union[str, LinkHead] = "none",
+                    head_right: Union[str, LinkHead] = "arrow",
+                    message: str = "",
+                    id_: str = "",
+                    properties: Optional[dict] = None,
+            ) -> None:
+                super().__init__(origin, end, shape, head_left, head_right, message)
+                self.id_ = id_
+                self.properties = properties
+
+            def __str__(self) -> str:
+                tag = "" if not self.id_ else "".join([self.id_, "@"])
+                properties_str = ""
+                if self.properties:
+                    properties_str = "".join(["\n", tag,
+                                              "{" + ", ".join(f"{k}: {v}" for k, v in self.properties.items()) + "}"])
+                element: list[str] = [
+                    self.origin.id_,
+                    " ",
+                    tag,
+                    self.head_left,
+                    self.shape,
+                    self.head_right,
+                    self.message,
+                    " ",
+                    self.end.id_,
+                    properties_str
+                ]
+                return "".join(element)
 
         def __init__(self):
-            self._node_id = 0
-
-        def next(self):
-            self._node_id += 1
-            return  "_".join([self._prefix, str(self._node_id)])
-
-    class _LinkIdGenerator:
-        _prefix = "link"
-
-        def __init__(self):
-            self._node_id = 0
-
-        def next(self):
-            self._node_id += 1
-            return  "_".join([self._prefix, str(self._node_id)])
-
-    @dataclass
-    class _SubGraphNode:
-        node: Node
-        subgraph_links: Optional[List[Link]] = None
-        subgraph_start_nodes: Optional[List[Node]] = None
-        subgraph_end_nodes: Optional[List[Node]] = None
-        subgraph_break_nodes: Optional[List[Node]] = None
-
-    class _ExtendLink(Link):
-        def __init__(
-                self,
-                origin: Node,
-                end: Node,
-                shape: Union[str, LinkShape] = "normal",
-                head_left: Union[str, LinkHead] = "none",
-                head_right: Union[str, LinkHead] = "arrow",
-                message: str = "",
-                id_: str = "",
-                properties: Optional[dict] = None,
-        ) -> None:
-            super().__init__(origin, end, shape, head_left, head_right, message)
-            self.id_ = id_
-            self.properties = properties
-
-        def __str__(self) -> str:
-            tag = "" if not self.id_ else "".join([self.id_, "@"])
-            properties_str = ""
-            if self.properties:
-                properties_str = "".join(["\n", tag,
-                                          "{" + ", ".join(f"{k}: {v}" for k, v in self.properties.items()) + "}"])
-            element: list[str] = [
-                self.origin.id_,
-                " ",
-                tag,
-                self.head_left,
-                self.shape,
-                self.head_right,
-                self.message,
-                " ",
-                self.end.id_,
-                properties_str
-            ]
-            return "".join(element)
-
-    def __init__(self):
-        self._node_id_generator = self._NodeIdGenerator()
-        self._link_id_generator = self._LinkIdGenerator()
+            self._node_id_generator = self._NodeIdGenerator()
+            self._link_id_generator = self._LinkIdGenerator()
 
 
-    def to_mermaid(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False,
-                   enable_animation = False) -> str:
-        """convert graph to Mermaid syntax"""
-        mermaid_nodes = {}
-        subgraph_mermaid_nodes = {}
-        for node in graph.nodes.values():
-            if expand_subgraph and isinstance(node, DrawableSubgraphNode):
-                subgraph_mermaid_nodes[node.id] = self._gen_mermaid_node(
-                    expand_subgraph=expand_subgraph \
-                        if isinstance(expand_subgraph, bool) or expand_subgraph <= 0 else expand_subgraph - 1,
-                    node=node, enable_animation=enable_animation)
-            else:
-                shape = "normal"
-                if node in graph.start_nodes or node in graph.end_nodes:
-                    shape = "round-edge"
-                mermaid_nodes[node.id] = Node(id_=self._node_id_generator.next(), content=node.id, shape=shape)
+        def to_mermaid(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False,
+                       enable_animation = False) -> str:
+            """convert graph to Mermaid syntax"""
+            mermaid_nodes = {}
+            subgraph_mermaid_nodes = {}
+            for node in graph.nodes.values():
+                if expand_subgraph and isinstance(node, DrawableSubgraphNode):
+                    subgraph_mermaid_nodes[node.id] = self._gen_mermaid_node(
+                        expand_subgraph=expand_subgraph \
+                            if isinstance(expand_subgraph, bool) or expand_subgraph <= 0 else expand_subgraph - 1,
+                        node=node, enable_animation=enable_animation)
+                else:
+                    shape = "normal"
+                    if node in graph.start_nodes or node in graph.end_nodes:
+                        shape = "round-edge"
+                    mermaid_nodes[node.id] = Node(id_=self._node_id_generator.next(), content=node.id, shape=shape)
 
-        links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes, enable_animation)
-        nodes = [node for node in mermaid_nodes.values()] + [node.node for node in subgraph_mermaid_nodes.values()]
-        chart = FlowChart(title, nodes, links)
-        return chart.script
+            links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes, enable_animation)
+            nodes = [node for node in mermaid_nodes.values()] + [node.node for node in subgraph_mermaid_nodes.values()]
+            chart = FlowChart(title, nodes, links)
+            return chart.script
 
-    def to_mermaid_png(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> bytes:
-        """convert self._graph to Mermaid syntax and render it as png"""
-        return Mermaid(self.to_mermaid(graph=graph, title=title,
-                                       expand_subgraph=expand_subgraph)).img_response.content
+        def to_mermaid_png(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> bytes:
+            """convert self._graph to Mermaid syntax and render it as png"""
+            return Mermaid(self.to_mermaid(graph=graph, title=title,
+                                           expand_subgraph=expand_subgraph)).img_response.content
 
-    def to_mermaid_svg(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> bytes:
-        """convert self._graph to Mermaid syntax and render it as svg"""
-        return Mermaid(self.to_mermaid(graph=graph, title=title,
-                                       expand_subgraph=expand_subgraph, enable_animation=True)).svg_response.content
+        def to_mermaid_svg(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> bytes:
+            """convert self._graph to Mermaid syntax and render it as svg"""
+            return Mermaid(self.to_mermaid(graph=graph, title=title,
+                                           expand_subgraph=expand_subgraph, enable_animation=True)).svg_response.content
 
-    def _gen_mermaid_node(self, expand_subgraph: int | bool, node: DrawableSubgraphNode,
-                          enable_animation: bool) -> _SubGraphNode:
-        mermaid_nodes = {}
-        subgraph_mermaid_nodes = {}
-        graph = node.subgraph
-        for sub_node in graph.nodes.values():
-            if expand_subgraph and isinstance(sub_node, DrawableSubgraphNode):
-                subgraph_mermaid_nodes[sub_node.id] = self._gen_mermaid_node(
-                    expand_subgraph=expand_subgraph \
-                        if isinstance(expand_subgraph, bool) or expand_subgraph <= 0 else expand_subgraph - 1,
-                    node=sub_node, enable_animation=enable_animation)
-            else:
-                shape = "normal"
-                if sub_node in graph.start_nodes or sub_node in graph.end_nodes:
-                    shape = "round-edge"
-                mermaid_nodes[sub_node.id] = Node(id_=self._node_id_generator.next(), content=sub_node.id, shape=shape)
+        def _gen_mermaid_node(self, expand_subgraph: int | bool, node: DrawableSubgraphNode,
+                              enable_animation: bool) -> _SubGraphNode:
+            mermaid_nodes = {}
+            subgraph_mermaid_nodes = {}
+            graph = node.subgraph
+            for sub_node in graph.nodes.values():
+                if expand_subgraph and isinstance(sub_node, DrawableSubgraphNode):
+                    subgraph_mermaid_nodes[sub_node.id] = self._gen_mermaid_node(
+                        expand_subgraph=expand_subgraph \
+                            if isinstance(expand_subgraph, bool) or expand_subgraph <= 0 else expand_subgraph - 1,
+                        node=sub_node, enable_animation=enable_animation)
+                else:
+                    shape = "normal"
+                    if sub_node in graph.start_nodes or sub_node in graph.end_nodes:
+                        shape = "round-edge"
+                    mermaid_nodes[sub_node.id] = Node(id_=self._node_id_generator.next(), content=sub_node.id, shape=shape)
 
-        links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes, enable_animation)
-        subgraph_start_nodes = [mermaid_nodes[start_node.id]
-                                if start_node.id in mermaid_nodes
-                                else subgraph_mermaid_nodes[start_node.id].node for start_node in graph.start_nodes]
-        subgraph_end_nodes = [mermaid_nodes[end_node.id]
-                                if end_node.id in mermaid_nodes
-                                else subgraph_mermaid_nodes[end_node.id].node for end_node in graph.end_nodes]
-        subgraph_break_nodes = [mermaid_nodes[break_node.id]
-                                if break_node.id in mermaid_nodes
-                                else subgraph_mermaid_nodes[break_node.id].node for break_node in graph.break_nodes]
-        sub_nodes = ([sub_node for sub_node in mermaid_nodes.values()] +
-                     [sub_node.node for sub_node in subgraph_mermaid_nodes.values()])
-        subgraph_node = self._SubGraphNode(node=Node(id_=self._node_id_generator.next(), content=node.id,
-                                                        sub_nodes=sub_nodes, direction=Direction.TOP_TO_BOTTOM),
-                                              subgraph_links=links,
-                                              subgraph_start_nodes=subgraph_start_nodes,
-                                              subgraph_end_nodes=subgraph_end_nodes,
-                                              subgraph_break_nodes=subgraph_break_nodes)
-        return subgraph_node
+            links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes, enable_animation)
+            subgraph_start_nodes = [mermaid_nodes[start_node.id]
+                                    if start_node.id in mermaid_nodes
+                                    else subgraph_mermaid_nodes[start_node.id].node for start_node in graph.start_nodes]
+            subgraph_end_nodes = [mermaid_nodes[end_node.id]
+                                    if end_node.id in mermaid_nodes
+                                    else subgraph_mermaid_nodes[end_node.id].node for end_node in graph.end_nodes]
+            subgraph_break_nodes = [mermaid_nodes[break_node.id]
+                                    if break_node.id in mermaid_nodes
+                                    else subgraph_mermaid_nodes[break_node.id].node for break_node in graph.break_nodes]
+            sub_nodes = ([sub_node for sub_node in mermaid_nodes.values()] +
+                         [sub_node.node for sub_node in subgraph_mermaid_nodes.values()])
+            subgraph_node = self._SubGraphNode(node=Node(id_=self._node_id_generator.next(), content=node.id,
+                                                            sub_nodes=sub_nodes, direction=Direction.TOP_TO_BOTTOM),
+                                                  subgraph_links=links,
+                                                  subgraph_start_nodes=subgraph_start_nodes,
+                                                  subgraph_end_nodes=subgraph_end_nodes,
+                                                  subgraph_break_nodes=subgraph_break_nodes)
+            return subgraph_node
 
-    def _gen_mermaid_links(self, graph: DrawableGraph, mermaid_nodes: dict, subgraph_mermaid_nodes: dict,
-                           enable_animation: bool) -> List[Link]:
-        links = []
-        link_cls = self._ExtendLink
-        for edge in graph.edges:
-            shape = LinkShape.NORMAL
-            message = ""
-            link_extend_args = {}
-            if edge.conditional:
-                shape = LinkShape.DOTTED
-            if edge.streaming:
-                shape = LinkShape.THICK
-                if enable_animation:
-                    link_extend_args["id_"] = self._link_id_generator.next()
-                    link_extend_args["properties"] = {"animate": "true"}
-            if edge.conditional and edge.data:
-                message = f"\"{edge.data}\""
-            if edge.source in mermaid_nodes and edge.target in mermaid_nodes:
-                links.append(link_cls(mermaid_nodes[edge.source], mermaid_nodes[edge.target], shape=shape,
-                                      message=message, **link_extend_args))
-            elif edge.source in mermaid_nodes and edge.target in subgraph_mermaid_nodes:
-                for node in subgraph_mermaid_nodes[edge.target].subgraph_start_nodes:
-                    links.append(link_cls(mermaid_nodes[edge.source], node, shape=shape, message=message,
-                                          **link_extend_args))
-            elif edge.source in subgraph_mermaid_nodes and edge.target in mermaid_nodes:
-                for node in subgraph_mermaid_nodes[edge.source].subgraph_end_nodes:
-                    links.append(link_cls(node, mermaid_nodes[edge.target], shape=shape, message=message,
-                                          **link_extend_args))
-                for node in subgraph_mermaid_nodes[edge.source].subgraph_break_nodes:
-                    links.append(link_cls(node, mermaid_nodes[edge.target], shape=shape, message=message,
-                                          **link_extend_args))
-            elif edge.source in subgraph_mermaid_nodes and edge.target in subgraph_mermaid_nodes:
-                for node_source in subgraph_mermaid_nodes[edge.source].subgraph_end_nodes:
-                    for node_target in subgraph_mermaid_nodes[edge.target].subgraph_start_nodes:
-                        links.append(link_cls(node_source, node_target, shape=shape, message=message,
+        def _gen_mermaid_links(self, graph: DrawableGraph, mermaid_nodes: dict, subgraph_mermaid_nodes: dict,
+                               enable_animation: bool) -> List[Link]:
+            links = []
+            link_cls = self._ExtendLink
+            for edge in graph.edges:
+                shape = LinkShape.NORMAL
+                message = ""
+                link_extend_args = {}
+                if edge.conditional:
+                    shape = LinkShape.DOTTED
+                if edge.streaming:
+                    shape = LinkShape.THICK
+                    if enable_animation:
+                        link_extend_args["id_"] = self._link_id_generator.next()
+                        link_extend_args["properties"] = {"animate": "true"}
+                if edge.conditional and edge.data:
+                    message = f"\"{edge.data}\""
+                if edge.source in mermaid_nodes and edge.target in mermaid_nodes:
+                    links.append(link_cls(mermaid_nodes[edge.source], mermaid_nodes[edge.target], shape=shape,
+                                          message=message, **link_extend_args))
+                elif edge.source in mermaid_nodes and edge.target in subgraph_mermaid_nodes:
+                    for node in subgraph_mermaid_nodes[edge.target].subgraph_start_nodes:
+                        links.append(link_cls(mermaid_nodes[edge.source], node, shape=shape, message=message,
                                               **link_extend_args))
+                elif edge.source in subgraph_mermaid_nodes and edge.target in mermaid_nodes:
+                    for node in subgraph_mermaid_nodes[edge.source].subgraph_end_nodes:
+                        links.append(link_cls(node, mermaid_nodes[edge.target], shape=shape, message=message,
+                                              **link_extend_args))
+                    for node in subgraph_mermaid_nodes[edge.source].subgraph_break_nodes:
+                        links.append(link_cls(node, mermaid_nodes[edge.target], shape=shape, message=message,
+                                              **link_extend_args))
+                elif edge.source in subgraph_mermaid_nodes and edge.target in subgraph_mermaid_nodes:
+                    for node_source in subgraph_mermaid_nodes[edge.source].subgraph_end_nodes:
+                        for node_target in subgraph_mermaid_nodes[edge.target].subgraph_start_nodes:
+                            links.append(link_cls(node_source, node_target, shape=shape, message=message,
+                                                  **link_extend_args))
 
-        for node in subgraph_mermaid_nodes.values():
-            links += node.subgraph_links
-        return links
+            for node in subgraph_mermaid_nodes.values():
+                links += node.subgraph_links
+            return links

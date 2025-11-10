@@ -322,15 +322,22 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             stream_outputs_transformer: Transformer = None,
             response_mode: str = None
     ) -> Self:
-        comp_ability = None
         wait_for_all = False
-        if response_mode is not None:
-            if "streaming" == response_mode:
-                comp_ability = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
+        if response_mode is not None and "streaming" == response_mode:
+            comp_ability = [ComponentAbility.STREAM]
+            self._is_streaming = True
+            if stream_inputs_schema is not None or stream_inputs_transformer is not None:
+                comp_ability.append(ComponentAbility.TRANSFORM)
+                if isinstance(component, End):
+                    component.set_mix()
+            wait_for_all = True
+        else:
+            comp_ability = [ComponentAbility.INVOKE]
+            if stream_inputs_schema is not None or stream_inputs_transformer is not None:
+                comp_ability.append(ComponentAbility.COLLECT)
+                if isinstance(component, End):
+                    component.set_mix()
                 wait_for_all = True
-                self._is_streaming = True
-            else:
-                comp_ability = [ComponentAbility.INVOKE]
         self.add_workflow_comp(end_comp_id, component, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
                                comp_ability=comp_ability,
                                outputs_schema=outputs_schema,
@@ -393,8 +400,11 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             output = WorkflowOutput(result=[chunk for chunk in chunks],
                                     state=WorkflowExecutionState.INPUT_REQUIRED)
         else:
-            output = WorkflowOutput(result=runtime.state().get_outputs(self._end_comp_id),
-                                    state=WorkflowExecutionState.COMPLETED)
+            if self._is_streaming:
+                result = chunks
+            else:
+                result = runtime.state().get_outputs(self._end_comp_id)
+            output = WorkflowOutput(result=result, state=WorkflowExecutionState.COMPLETED)
         logger.info("end to invoke, results=%s", output)
         return output
 

@@ -85,6 +85,33 @@ async def test_multi_stream_workflow():
         assert chunk is not None
         print(chunk.model_dump_json(indent=4))
 
+async def test_batch_multi_stream_workflow():
+    def create_component_workflow_with_template() -> Workflow:
+        workflow = Workflow()
+        workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
+        workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
+        workflow.add_workflow_comp("b", Producer(), inputs_schema={"array": "${start.array}"})
+        workflow.add_workflow_comp("c", Producer(), inputs_schema={"array": "${start.array}"})
+        workflow.add_workflow_comp("batch", Producer(), inputs_schema={"array": "${start.array}"})
+        end = End(EndConfig(responseTemplate="a: {{a}}; c: {{c}}; batch: {{batch}}; b: {{b}}"))
+        workflow.set_end_comp("end", end,
+                              inputs_schema={"batch": "${batch.output}"},
+                              stream_inputs_schema={"a": "${a.output}", "b": "${b.output}", "c": "${c.output}"})
+
+        workflow.add_connection("start", "a")
+        workflow.add_connection("start", "b")
+        workflow.add_connection("start", "c")
+        workflow.add_connection("start", "batch")
+        workflow.add_stream_connection("a", "end")
+        workflow.add_stream_connection("b", "end")
+        workflow.add_stream_connection("c", "end")
+        workflow.add_connection("batch", "end")
+        return workflow
+    wf = create_component_workflow_with_template()
+
+    res = await wf.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime())
+
+    print(res.model_dump_json(indent=4))
 
 def create_component_stream_workflow_with_template() -> Workflow:
     workflow = Workflow()

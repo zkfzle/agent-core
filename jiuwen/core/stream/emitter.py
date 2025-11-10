@@ -55,7 +55,7 @@ class AsyncStreamQueue:
             stream_item = await asyncio.wait_for(self._stream_queue.get(),
                                                  timeout)
             self._stream_queue.task_done()
-            logger.debug(f"Receiving stream data success, timeout: {timeout}")
+            logger.debug(f"Receiving stream data success, stream frame: {stream_item}")
             return stream_item
         except asyncio.TimeoutError:
             logger.debug(

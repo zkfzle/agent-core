@@ -30,7 +30,6 @@ class ActorManager:
 
         consumer_dict = _build_reverse_graph(self._stream_edges)
         for consumer_id, producer_ids in consumer_dict.items():
-            print(consumer_id)
             consumer_stream_ability = [ability for ability in workflow_spec.comp_configs[consumer_id].abilities if
                                        ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
             self._streams[consumer_id] = StreamActor(consumer_id, graph.get_node(consumer_id),

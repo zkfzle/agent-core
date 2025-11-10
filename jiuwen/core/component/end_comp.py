@@ -29,6 +29,8 @@ class End(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.conf = conf
         self.template = None
+        self._batch_template = None
+        self._mix = False
         if conf is not None and conf.get("responseTemplate") is not None:
             template = conf["responseTemplate"]
             if not isinstance(template, str):
@@ -38,17 +40,20 @@ class End(ComponentExecutable, WorkflowComponent):
             if template != "":
                 self.template = TemplateProcessor(template)
 
+    def set_mix(self):
+        self._mix = True
+
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        if self.template:
-            answer = self.template.render(inputs)
-            output = {}
+        if self.template is not None:
+            return await self._render(inputs)
         else:
             answer = ""
             output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
-        return {
-            "responseContent": answer,
-            "output": output
-        }
+            logger.debug(f"end component invoke method output: {output}")
+            return {
+                "responseContent": answer,
+                "output": output
+            }
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
@@ -82,6 +87,47 @@ class End(ComponentExecutable, WorkflowComponent):
                         yield dict(output={format_path(path): frame})
                 else:
                     yield dict(output={format_path(path): value})
+
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        logger.debug(f"end component collect method inputs: {inputs}")
+        if self.template is not None:
+            return await self._render(inputs)
+        else:
+            chunks = []
+            for (path, value) in extract_leaf_nodes(inputs):
+                if isinstance(value, AsyncGenerator):
+                    async for frame in value:
+                        chunks.append({format_path(path): frame})
+                else:
+                    chunks.append({format_path(path): value})
+            logger.debug(f"collect chunks: {chunks}")
+            return {
+                "responseContent": "",
+                "collect_output": chunks
+            }
+
+    async def _render(self, inputs: Input):
+        if self._batch_template is None:
+            processor = TemplateBatchProcessor(self.template, inputs)
+            self._batch_template = processor
+        if self._mix:
+            async with self._batch_template.condition:
+                try:
+                    await asyncio.wait_for(self._batch_template.condition.wait(),
+                                           timeout=0.2)  # TODO: set timeout by config
+                except asyncio.TimeoutError as e:
+                    logger.error(f"render template stream timeout, {e}")
+                    return None
+            self._batch_template = None
+            return None
+        else:
+            answer = await self._batch_template.render(inputs)
+            async with self._batch_template.condition:
+                self._batch_template.condition.notify_all()
+            return {
+                "responseContent": answer,
+                "output": {}
+            }
 
 
 class TemplateProcessor:
@@ -162,3 +208,22 @@ class TemplateProcessor:
 
     def is_finished(self) -> bool:
         return self.current_position >= len(self.segments)
+
+
+class TemplateBatchProcessor:
+    def __init__(self, template: TemplateProcessor, inputs: dict):
+        self._template = template
+        self._inputs = inputs if inputs is not None else {}
+        self.condition = asyncio.Condition()
+
+    async def render(self, inputs: dict) -> str:
+        if inputs is None:
+            inputs = self._inputs
+        else:
+            inputs = self._inputs | inputs
+        generator = self._template.render_stream(inputs)
+        answer = ""
+        async for frame in generator:
+            logger.debug(f"rendering collect frame: {frame}")
+            answer += str(frame)
+        return answer

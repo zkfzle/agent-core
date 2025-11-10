@@ -216,9 +216,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             logger.error(f"failed to call node {self._node_id}, error: {e}")
             error = JiuWenBaseException(e.error_code, "failed to stream, caused by " + e.message)
         except BaseException as e:
-            logger.warn(f"failed to call node {self._node_id}, unknown error: {e}")
+            logger.warning(f"failed to call node {self._node_id}, unknown error: {e}")
         finally:
             self._stream_done.set_result(error if error else True)
+            logger.debug(f"node [{self._node_id}] stream call finished")
 
     def _stream_abilities(self) -> list[Literal[ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]:
         component_ability = self._node_config.abilities if self._node_config else None

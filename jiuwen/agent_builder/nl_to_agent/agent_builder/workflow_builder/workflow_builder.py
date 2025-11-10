@@ -9,13 +9,14 @@ from jiuwen.agent_builder.nl_to_agent.agent_builder.common.llm_service import Ll
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.context_manager import ContextManager
 from jiuwen.agent_builder.nl_to_agent.agent_builder.common.resource.resource_retrieve import ResourceRetriever
 from .intention_detector.intention_detector import IntentionDetector
-from .sop_generator.base import SopGenerator
+from .sop_generator.sop_generator import SopGenerator
 from .dl_generator.base import DLGenerator
 from .dl_reflector.dl_reflector import Reflector
 from .dl_transformer.base import DLTransformer
 
 
 WORKFLOW_REQUEST_CONTENT = "请提供您想要的工作流程描述，以便我为您生成相应的流程图，如果不清楚可以回复不清楚，我将为您规划流程。"
+SOP_RESPONSE_CONTENT = "SOP内容如下：\n"
 GENERATE_DL_FROM_SOP_CONTENT = "请根据以下SOP内容生成对应的流程定义语言（DL）描述：\n"
 MODIFY_DL_CONTENT = "请根据以下错误信息修正流程定义语言（DL）：\n"
 
@@ -37,7 +38,7 @@ class WorkflowBuilder:
         self._resource = None
 
         self._intention_detector = IntentionDetector(llm)
-        self._sop_generator = SopGenerator(llm, context_manager)
+        self._sop_generator = SopGenerator(llm)
         self._dl_generator = DLGenerator(llm, context_manager)
         self._dl_reflector = Reflector()
         self._dl_transformer = DLTransformer(llm, context_manager)
@@ -61,6 +62,7 @@ class WorkflowBuilder:
             return WORKFLOW_REQUEST_CONTENT
 
         sop_content = self._sop_generator.transform(query)
+        self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content, intent_label='工作流')
         self._resource = ResourceRetriever().retrieve(query)
         self._dl = self._generate_and_reflect_dl(
             dl_operation=self._dl_generator.generate,
@@ -75,11 +77,13 @@ class WorkflowBuilder:
         messages = self.context_manager.get_filtered_messages(intent='工作流')
         if self._intention_detector.detect_initial_instruction(messages):
             sop_content = self._sop_generator.transform(query)
+            self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content, intent_label='工作流')
             self._resource = ResourceRetriever().retrieve(query)
         else:
             dialog_history_query = '\n'.join(f'{msg.role}: {msg.content}' for msg in messages)
             self._resource = ResourceRetriever().retrieve(dialog_history_query)
             sop_content = self._sop_generator.generate(dialog_history_query, self._resource)
+            self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content, intent_label='工作流')
 
         self._dl = self._generate_and_reflect_dl(
             dl_operation=self._dl_generator.generate,

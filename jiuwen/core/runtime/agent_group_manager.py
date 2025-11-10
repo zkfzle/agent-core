@@ -1,12 +1,29 @@
+from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.runtime.abstract_manager import AbstractManager
 from jiuwen.core.runner.agent_group import AgentGroup
 
-AgentGroupProvider = lambda: AgentGroup
+class AgentGroupProvider(ABC):
+    def __init__(self):
+        self._subscription = None
 
+    @abstractmethod
+    def get_topic(self):
+        pass
+
+    def set_subscription(self, subscription):
+        self._subscription = subscription
+
+    def __call__(self):
+        agent_group = self.create()
+        agent_group.set_subscription(self._subscription)
+        return agent_group
+
+    @abstractmethod
+    def create(self) -> AgentGroup:
+        pass
 
 class AgentGroupMgr(AbstractManager[AgentGroup]):
     def __init__(self):

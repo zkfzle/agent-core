@@ -1,7 +1,8 @@
+from abc import ABC
 from dataclasses import dataclass
 from typing import Optional, Union
 
-from jiuwen.core.agent.agent import AgentRuntime, Agent
+from jiuwen.core.agent.agent import Agent
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.runtime.agent import StaticAgentRuntime
@@ -59,7 +60,7 @@ class AgentMgr(AbstractManager[AgentWithRuntime]):
                     )
                 )
             return AgentWithRuntime(
-                runtime=AgentRuntime(config=agent.config(), resource_mgr=self._resource_manager),
+                runtime=StaticAgentRuntime(config=agent.config(), resource_mgr=self._resource_manager),
                 agent=agent
             )
         

@@ -67,10 +67,9 @@ class Runner:
             subscription = await self._message_queue.subscribe(topic)
             agent_group.set_subscription(subscription)
         else:
-            agent_group_instance = self._agent_group_mgr.get_agent_group(agent_group_id)
-            topic = agent_group_instance.get_topic()
+            topic = agent_group.get_topic()
             subscription = await self._message_queue.subscribe(topic)
-            agent_group_instance.set_subscription(subscription)
+            agent_group.set_subscription(subscription)
 
     async def remove_agent_group(self, agent_group_id: str) -> Union[AgentGroup, AgentGroupProvider]:
         agent_group = self._agent_group_mgr.remove_agent_group(agent_group_id)

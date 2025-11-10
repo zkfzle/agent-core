@@ -356,3 +356,6 @@ class IntentDetectionComponent(WorkflowComponent):
         if isinstance(target, str):
             target = [target]
         self._router.add_branch(condition, target, branch_id=branch_id)
+
+    def router(self) -> BranchRouter:
+        return self._router

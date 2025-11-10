@@ -10,12 +10,17 @@ from jiuwen.core.common.exception.status_code import StatusCode
 from jiuwen.core.component.branch_comp import BranchComponent
 from jiuwen.core.component.branch_router import BranchRouter
 from jiuwen.core.component.condition.number import NumberCondition
+from jiuwen.core.component.intent_detection_comp import IntentDetectionCompConfig, IntentDetectionComponent
+from jiuwen.core.component.llm_comp import LLMCompConfig, LLMComponent
 from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from jiuwen.core.component.loop_callback.output import OutputCallback
 from jiuwen.core.component.loop_comp import AdvancedLoopComponent, LoopGroup, LoopComponent
 from jiuwen.core.component.set_variable_comp import SetVariableComponent
+from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from jiuwen.core.component.workflow_comp import SubWorkflowComponent
 from jiuwen.core.runtime.runtime import BaseRuntime
+from jiuwen.core.utils.tool.param import Param
+from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from jiuwen.core.workflow.base import Workflow
 from jiuwen.core.workflow.workflow_config import ComponentAbility
 from jiuwen.graph.visualization.drawable import Drawable
@@ -647,3 +652,90 @@ class WorkflowTest(unittest.TestCase):
             \tnode_3 --> node_4
             """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow", enable_animation=True), mermaid_script)
+
+    @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
+    def test_visualize_simple_workflow_intent(self):
+        # flow: start → intent → (分支路由)
+        #                    ├─ llm → plugin → end (天气查询)
+        #                    └─ end (其他意图)
+        flow = Workflow()
+        flow.set_start_comp("start", MockStartNode("start"), inputs_schema={"a": "${a}"})
+        config = IntentDetectionCompConfig(
+            user_prompt="请判断用户意图，识别是否为天气查询请求",
+            category_name_list=["查询某地天气"]
+        )
+
+        intent = IntentDetectionComponent(config)
+        # 分支配置：
+        # classification_id == 1: 识别为"查询某地天气" → 走 llm 处理流程
+        # classification_id == 0: 其他意图 → 走 end 默认回复
+        intent.add_branch("${intent.classification_id} == 1", ["llm"], "天气查询分支")
+        intent.add_branch("${intent.classification_id} == 0", ["end"], "默认分支")
+        flow.add_workflow_comp(
+            "intent",
+            intent,
+            inputs_schema={"query": "${start.query}"},
+        )
+
+        config = LLMCompConfig(
+            template_content=[{"role": "user", "content": ""}],
+            response_format={"type": "json"},
+            output_config={
+                "location": {"type": "string", "description": "地点（英文）", "required": True},
+                "date": {"type": "string", "description": "日期（YYYY-MM-DD）", "required": True},
+                "query": {"type": "string", "description": "改写后的query", "required": True}
+            },
+        )
+        llm = LLMComponent(config)
+        flow.add_workflow_comp(
+            "llm",
+            llm,
+            inputs_schema={"query": "${start.query}"},
+        )
+
+        tool_config = ToolComponentConfig()
+        weather_tool = RestfulApi(
+            name="WeatherReporter",
+            description="天气查询插件",
+            params=[
+                Param(name="location", description="地点", type="string", required=True),
+                Param(name="date", description="日期", type="string", required=True),
+            ],
+            path="http://127.0.0.1:9000/weather",
+            headers={},
+            method="GET",
+            response=[],
+        )
+        plugin = ToolComponent(tool_config).bind_tool(weather_tool)
+        flow.add_workflow_comp(
+            "plugin",
+            plugin,
+            inputs_schema={
+                "location": "${llm.location}",
+                "date": "${llm.date}",
+            },
+        )
+        flow.set_end_comp("end", MockEndNode("end"), inputs_schema={"output": "${plugin.data}"})
+
+        flow.add_connection("start", "intent")
+        # intent 通过分支自动路由到 llm 或 end
+        flow.add_connection("llm", "plugin")
+        flow.add_connection("plugin", "end")
+
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("start")
+            \tnode_2["intent"]
+            \tnode_3["llm"]
+            \tnode_4["plugin"]
+            \tnode_5("end")
+            \tnode_2 -.->|"${intent.classification_id} == 1"| node_3
+            \tnode_2 -.->|"${intent.classification_id} == 0"| node_5
+            \tnode_1 --> node_2
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            """).lstrip()
+        self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)

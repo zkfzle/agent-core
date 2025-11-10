@@ -49,6 +49,7 @@ class Drawable:
         from jiuwen.core.component.loop_comp import LoopComponent, AdvancedLoopComponent
         from jiuwen.core.component.workflow_comp import SubWorkflowComponent
         from jiuwen.core.component.branch_comp import BranchComponent
+        from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent
         if isinstance(component, LoopComponent) or isinstance(component, AdvancedLoopComponent):
             subgraph = component.loop_group.drawable.get_graph()\
                 if isinstance(component, LoopComponent) else component.body.drawable.get_graph()
@@ -58,7 +59,7 @@ class Drawable:
         elif isinstance(component, SubWorkflowComponent):
             self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id,
                                                               subgraph=component.sub_workflow.drawable.get_graph())
-        elif isinstance(component, BranchComponent):
+        elif isinstance(component, BranchComponent) or isinstance(component, IntentDetectionComponent):
             self._graph.nodes[node_id] = DrawableNode(node_id)
             self.add_edge(source=node_id, conditional=True, data=component.router())
         else:

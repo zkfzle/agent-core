@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from typing import Optional, Union
 
 from openjiuwen.core.agent.agent import Agent
-from openjiuwen.core.common.configs.env_constant import DISTRIBUTED_MODE
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
+from openjiuwen.core.runner.runner_config import get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
 from openjiuwen.core.runtime.resource_manager import ResourceMgr
 from openjiuwen.core.runtime.abstract_manager import AbstractManager
@@ -33,7 +33,7 @@ class AgentMgr(AbstractManager[AgentWithRuntime]):
         # Define validation function for non-callable agents
         def validate_agent(agent_obj):
             if isinstance(agent, RemoteAgent):
-                if os.getenv(DISTRIBUTED_MODE, "true").lower() == "true":
+                if get_runner_config().distributed_mode:
                     return agent
                 raise JiuWenBaseException(
                     StatusCode.RUNTIME_AGENT_ADD_FAILED.code,

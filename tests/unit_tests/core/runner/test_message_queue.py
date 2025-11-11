@@ -1,6 +1,6 @@
-#!/usr/bin/python3.11
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import pytest
 from typing import Any, AsyncIterator
@@ -8,7 +8,6 @@ import asyncio
 
 from openjiuwen.core.runner.message_queue_base import StreamQueueMessage, InvokeQueueMessage, QueueMessage, MessageQueueBase
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
-from openjiuwen.core.runner.message_queue_pulsar import MessageQueuePulsar
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 
@@ -113,9 +112,4 @@ class TestMessageQueue:
     async def test_messagequeue_inmemory(self):
         mq = MessageQueueInMemory()
         await self.messagequeue_common(mq)
-
-    @pytest.mark.skip("require pulsar")
-    async def test_messagequeue_pulsar(self):
-        PULSAR_URL = "pulsar://127.0.0.1:6650"
-        mq = MessageQueuePulsar(PULSAR_URL)
-        await self.messagequeue_common(mq)
+

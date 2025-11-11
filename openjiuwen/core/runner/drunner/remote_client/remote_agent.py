@@ -1,12 +1,15 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import asyncio
-from typing import Optional
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.drunner.remote_client.mq_remote_clent import MqRemoteClient
 from openjiuwen.core.runner.drunner.remote_client.remote_client import RemoteClient
 from openjiuwen.core.runner.drunner.remote_client.remote_client_config import RemoteClientConfig, ProtocolEnum
-from openjiuwen.core.runner.drunner.common.constants import AGENT_TOPIC_TEMPLATE
+from openjiuwen.core.runner.runner_config import get_runner_config
 
 
 class RemoteAgent:
@@ -17,7 +20,8 @@ class RemoteAgent:
         self.version = version
         self.description = description
         # Use template if topic not provided
-        self.topic = topic or AGENT_TOPIC_TEMPLATE.format(agent_id=agent_id, version=self.version)
+        self.topic = topic or get_runner_config().agent_topic_template().format(agent_id=agent_id,
+                                                                                version=self.version)
         self.protocol = protocol
         self.config = RemoteClientConfig(id=agent_id, protocol=protocol, topic=self.topic, **(config or {}))
         self.client = self._create_client()
@@ -32,9 +36,14 @@ class RemoteAgent:
             await self.client.start()
             return await self.client.invoke(inputs, timeout=timeout)
         except asyncio.CancelledError as e:
-            # Runner stop导致client取消
-            raise JiuWenBaseException(StatusCode.RUNNER_DISTRIBUTED_MODE_REQUIRED.code,
-                                      StatusCode.RUNNER_DISTRIBUTED_MODE_REQUIRED.errmsg.format(str(e)))
+            # 外部设置了超时取消调用
+            raise JiuWenBaseException(StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.code,
+                                      StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.errmsg.format(
+                                          f"agent_id:{self.agent_id}"))
+        except TimeoutError as e:
+            raise JiuWenBaseException(StatusCode.REMOTE_AGENT_REQUEST_TIMEOUT.code,
+                                      StatusCode.REMOTE_AGENT_REQUEST_TIMEOUT.errmsg.format(
+                                          self.agent_id))
 
     async def stream(self, inputs: dict, timeout: float = None):
         try:
@@ -43,5 +52,10 @@ class RemoteAgent:
                 yield chunk
         except asyncio.CancelledError as e:
             # Runner stop导致client取消
-            raise JiuWenBaseException(StatusCode.RUNNER_DISTRIBUTED_MODE_REQUIRED.code,
-                                      StatusCode.RUNNER_DISTRIBUTED_MODE_REQUIRED.errmsg.format(str(e)))
+            raise JiuWenBaseException(StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.code,
+                                      StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.errmsg.format(
+                                          f"agent_id:{self.agent_id}"))
+        except TimeoutError as e:
+            raise JiuWenBaseException(StatusCode.REMOTE_AGENT_REQUEST_TIMEOUT.code,
+                                      StatusCode.REMOTE_AGENT_REQUEST_TIMEOUT.errmsg.format(
+                                          self.agent_id))

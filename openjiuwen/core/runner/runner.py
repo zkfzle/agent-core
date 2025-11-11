@@ -1,17 +1,22 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import asyncio
 import os
 from typing import Union, Any, List, Optional
 
 from openjiuwen.agent.chat_agent import ChatAgent
 from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.agent import Agent, AgentRuntime
-from openjiuwen.core.common.configs.env_constant import DISTRIBUTED_MODE
+from openjiuwen.core.agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
-from openjiuwen.core.runner.drunner.dmessage_queue.message_queue import FakeMQ
+from openjiuwen.core.runner.drunner.dmessage_queue.message_queue_factory import MessageQueueFactory
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
+from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
+    get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
 from openjiuwen.core.runtime.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runtime.agent_manager import AgentProvider, AgentMgr
@@ -49,44 +54,57 @@ class Runner:
 
     _AGENT_CONVERSATION_ID = "conversation_id"
 
-    def __init__(self, resource_manager: ResourceMgr, runner_id: str = ""):
+    def __init__(self, resource_manager: ResourceMgr, runner_id: str = "", config: RunnerConfig = None):
         self._runner_id = runner_id
         self._resource_manager = resource_manager
         self._message_queue = LocalMessageQueue()
         self._agent_group_mgr: AgentGroupMgr = AgentGroupMgr()
         self._agent_mgr: AgentMgr = AgentMgr(resource_manager)
-
+        if config is not None:
+            set_runner_config(config)
+        else:
+            set_runner_config(DEFAULT_RUNNER_CONFIG)
         # Distributed system related components
-        self.system_reply_sub: ReplyTopicSubscription|None = None
-        self._mq = FakeMQ()
+        self.system_reply_sub: ReplyTopicSubscription | None = None
+        self._distribute_message_queue = None
+
+    def set_config(self, config: RunnerConfig):
+        set_runner_config(config)
+
+    def get_config(self):
+        return get_runner_config()
 
     async def start(self) -> bool:
-        if os.getenv(DISTRIBUTED_MODE, "true").lower() == "true":
+        if get_runner_config().distributed_mode:
             # start dmq
-            self._mq.start()
+            self._distribute_message_queue = MessageQueueFactory.create(get_runner_config().distributed_config.message_queue_config)
+            self._distribute_message_queue.start()
             # start reply topic sub
-            self.system_reply_sub = ReplyTopicSubscription(self._mq)
-            self._mq.subscribe(self.system_reply_sub.topic, self.system_reply_sub)
+            self.system_reply_sub = ReplyTopicSubscription(self._distribute_message_queue)
             self.system_reply_sub.activate()
         return await self._message_queue.start()
 
     async def stop(self):
         logger.info("[Runner] Stopping...")
-        if os.getenv(DISTRIBUTED_MODE, "true").lower() == "true":
+        if get_runner_config().distributed_mode:
             # 1. 停止所有 adapter
-
 
             # 2. 停止 ReplyTopicSubscription，清理collector
             if self.system_reply_sub:
                 await self.system_reply_sub.deactivate()
+                self.system_reply_sub = None
             # 3. 停止 MQ
-            if self._mq:
-                await self._mq.stop()
+            if self._distribute_message_queue:
+                await self._distribute_message_queue.stop()
+                self._distribute_message_queue = None
 
         return await self._message_queue.stop()
 
     def message_queue(self):
         return self._message_queue
+
+    def distribute_message_queue(self):
+        return self._distribute_message_queue
 
     async def add_agent_group(self, agent_group_id: str, agent_group: Union[AgentGroup, AgentGroupProvider]):
         self._agent_group_mgr.add_agent_group(agent_group_id, agent_group)
@@ -107,6 +125,7 @@ class Runner:
         return agent_group
 
     def add_agent(self, agent_id, agent: Union[Agent, AgentProvider, RemoteAgent]):
+
         self._agent_mgr.add_agent(agent_id, agent)
 
     def remove_agent(self, agent_id) -> Union[Agent, AgentProvider]:
@@ -233,6 +252,9 @@ class Runner:
                 raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
                                           StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
             if isinstance(agent_with_runtime, RemoteAgent):
+                # remote agent不加runtime，保留input中的sessionId
+                if self._AGENT_CONVERSATION_ID not in inputs:
+                    inputs[self._AGENT_CONVERSATION_ID] = session_id
                 return agent_with_runtime, None
             task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs))
             return agent_with_runtime.agent, task_runtime
@@ -273,4 +295,4 @@ class Runner:
 
 
 resource_mgr = ResourceMgr()
-Runner = Runner(resource_mgr, runner_id=DEFAULT_RUNNER_ID)
+Runner = Runner(resource_mgr, runner_id=DEFAULT_RUNNER_ID, config=DEFAULT_RUNNER_CONFIG)

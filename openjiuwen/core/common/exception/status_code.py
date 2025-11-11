@@ -130,7 +130,13 @@ class StatusCode(Enum):
     # Runner 134000 - 134999
     REMOTE_AGENT_REQUEST_TIMEOUT = (134001, "RemoteAgent {} request timeout")
     AGENT_NOT_FOUND = (134002, "Agent {} is not found")
-    RUNNER_DISTRIBUTED_MODE_REQUIRED = (134003, "Runner must be initialized with distributed mode enabled. message: {}")
+    RUNNER_DISTRIBUTED_MODE_REQUIRED = (134003, "Runner must be initialized with distributed_mode enabled. message: {}")
+    RUNNER_STOPPED = (134004, "Runner not running: {}")
+    REMOTE_AGENT_REQUEST_CANCELLED = (134005, "Remote agent request cancelled: {}")
+    REMOTE_AGENT_PROCESS_ERROR = (134006, "Remote agent process error. code: {error_code}, message: {error_msg}")
+    # Runner Dmq 134100 - 134199
+    MESSAGE_QUEUE_NOT_RUNNING = (134101, "Message queue is not running: {}")
+    MESSAGE_QUEUE_INIT_ERROR = (134102, "Message queue init error: {}")
 
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999

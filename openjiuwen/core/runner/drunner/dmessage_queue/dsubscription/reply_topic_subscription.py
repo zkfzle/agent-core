@@ -1,17 +1,17 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import asyncio
-import socket
-import uuid
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Optional
 
 from openjiuwen.core.runner.drunner.dmessage_queue.message import DmqResponseMessage
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.response_collector import ResponseCollector
-from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.subscription import DSubscription
-from openjiuwen.core.runner.drunner.dmessage_queue.message_queue import FakeMQ
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runner.drunner.common.constants import AGENT_TOPIC_TEMPLATE, REPLY_TOPIC_TEMPLATE
-
-MAX_COLLECTORS = 10000  # 系统最多允许的collector数
+from openjiuwen.core.runner.message_queue_base import MessageQueueBase, SubscriptionBase
+from openjiuwen.core.runner.runner_config import get_runner_config
+from openjiuwen.core.utils.common import ip_utils
 
 
 @dataclass(frozen=True)
@@ -21,44 +21,32 @@ class CollectorKey:
     request_id: Optional[str] = None
 
 
-class ReplyTopicSubscription(DSubscription):
+class ReplyTopicSubscription():
     """负责监听 reply_topic 并分发响应到对应 ResponseCollector"""
 
-    def __init__(self, mq: Optional[FakeMQ] = None, topic: str = None):
-        super().__init__(mq, topic)
-        # TOD   O: Get IP
-        self.topic = topic or REPLY_TOPIC_TEMPLATE.format(instance_id=self._get_local_ip())
+    def __init__(self, mq: Optional[MessageQueueBase] = None, topic: str = None):
+        self._is_active = None
+        self.mq = mq
+        self.topic = topic or get_runner_config().reply_topic_template().format(instance_id=ip_utils.get_local_ip())
         self.collectors: dict[CollectorKey, ResponseCollector] = {}
+        self.subscription: Optional[SubscriptionBase] = None
 
     def activate(self):
         """初始化"""
-        super().set_message_handler(self.on_message)
-        super().activate()
+        self.subscription = self.mq.subscribe(self.topic)
+        self.subscription.set_message_handler(self.on_message)
+        self.subscription.activate()
+        self._is_active = True
+
         logger.info(f"[ReplyTopicSubscription] activated topic={self.topic}")
 
     async def deactivate(self):
         """清理所有 collectors"""
-        if not self._active:
-            return
-
-        logger.info(f"[ReplyTopicSubscription] Stopping subscription")
-        super().deactivate()
-
-        # 清理所有 collectors
+        self._is_active = False
+        if self.subscription:
+            await self.mq.unsubscribe(self.topic)
         await self.unregister_collector()
         logger.info(f"[ReplyTopicSubscription] Stopped")
-
-    def _get_local_ip(self) -> str:
-        """获取本地可用 IPv4 地址（非 127.0.0.1）"""
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-        except Exception:
-            ip = "127.0.0.1"
-        finally:
-            s.close()
-        return ip
 
     def _make_key(self, sender_id: str, message_id: str, request_id: Optional[str] = None) -> CollectorKey:
         """构造 collector 唯一键"""
@@ -77,18 +65,18 @@ class ReplyTopicSubscription(DSubscription):
             logger.info(f"[ReplyTopicSubscription] No collector for {key}, discard message")
 
     async def register_collector(self, message_id: str, remote_id: str, request_id: Optional[str] = None,
-                                 ttl: float = 30.0) -> ResponseCollector:
+                                 ttl: float = None) -> ResponseCollector:
         """注册 collector，用于等待对应返回"""
         if not self.is_active():
             raise asyncio.CancelledError(f"ReplyTopicSubscription was cancelled")
-        if len(self.collectors) >= MAX_COLLECTORS:
-            raise RuntimeError(f"[ReplyTopicSubscription] Too many collectors ({MAX_COLLECTORS})")
+        if len(self.collectors) >= get_runner_config().distributed_config.max_request_concurrency:
+            raise RuntimeError(f"[ReplyTopicSubscription] Too many collectors ({get_runner_config().distributed_config.max_request_concurrency})")
 
         key = self._make_key(remote_id, message_id, request_id)
         if key in self.collectors:
             raise RuntimeError(f"[ReplyTopicSubscription] Collector already exists for {key}")
 
-        collector = ResponseCollector(message_id, remote_id, ttl)
+        collector = ResponseCollector(message_id=message_id, receiver_id=remote_id, ttl=ttl)
         self.collectors[key] = collector
         logger.info(f"[ReplyTopicSubscription] register collector for {key}")
         return collector
@@ -100,7 +88,7 @@ class ReplyTopicSubscription(DSubscription):
             request_id: Optional[str] = None,
     ):
         """
-        按 message_id / receiver_id / request_id / 全部 清理
+        按 message_id + receiver_id + request_id 清理
         - 若全为 None，则表示清理全部 collector
         """
         logger.info(
@@ -117,8 +105,8 @@ class ReplyTopicSubscription(DSubscription):
                     message_id is None and receiver_id is None and request_id is None
             ) or (
                     (message_id and key.message_id == message_id)
-                    or (receiver_id and key.sender_id == receiver_id)
-                    or (request_id and key.request_id == request_id)
+                    and (receiver_id and key.sender_id == receiver_id)
+                    and (request_id and key.request_id == request_id)
             ):
                 keys_to_remove.append(key)
 
@@ -145,3 +133,6 @@ class ReplyTopicSubscription(DSubscription):
             await asyncio.gather(*tasks, return_exceptions=True)
 
         logger.info(f"[ReplyTopicSub] unregistered {len(keys_to_remove)} collectors")
+
+    def is_active(self):
+        return self._is_active

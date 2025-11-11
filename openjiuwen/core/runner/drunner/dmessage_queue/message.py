@@ -1,10 +1,13 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from enum import Enum
 from typing import Optional
 
 from openjiuwen.core.runner.message_queue_base import QueueMessage
 
 from dataclasses import dataclass
-import time
 
 
 class DMessageType(str, Enum):
@@ -21,7 +24,11 @@ class ResultType(str, Enum):
 
 
 @dataclass
-class DmqRequestMessage(QueueMessage):
+class DmqMessage(QueueMessage):
+    pass
+
+@dataclass
+class DmqRequestMessage(DmqMessage):
     """分布式请求消息"""
     type: str = DMessageType.INPUT
     reply_topic: str = ""
@@ -33,7 +40,7 @@ class DmqRequestMessage(QueueMessage):
 
 
 @dataclass
-class DmqResponseMessage(QueueMessage):
+class DmqResponseMessage(DmqMessage):
     """分布式响应消息"""
     type: str = DMessageType.OUTPUT
     result_type: ResultType = ResultType.MESSAGE

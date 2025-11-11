@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 import pytest
 import asyncio
 
@@ -6,6 +10,8 @@ import pytest_asyncio
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.response_collector import ResponseCollector
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
 from openjiuwen.core.runner.drunner.dmessage_queue.message import DmqResponseMessage, DMessageType
+from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner_config import RunnerConfig, DistributedConfig, MessageQueueConfig
 
 
 @pytest_asyncio.fixture
@@ -20,6 +26,17 @@ async def reply_sub():
 
 @pytest.mark.asyncio
 class TestReplyTopicSubscription:
+    def setup_method(self):
+        fake_mq = RunnerConfig(
+            distributed_mode=True,
+            distributed_config=DistributedConfig(
+                request_timeout=5.0,
+                message_queue_config=MessageQueueConfig(
+                    type="fake",
+                )
+            )
+        )
+        Runner.set_config(fake_mq)
     async def test_normal_message_reception(self, reply_sub):
         """测试正常注册并接收消息流程"""
         message_id = "test_msg_123"

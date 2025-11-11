@@ -628,10 +628,14 @@ dependencies = [
     { name = "mcp" },
     { name = "mermaid-py" },
     { name = "openai" },
-    { name = "pulsar-client" },
     { name = "pydantic" },
     { name = "python-dateutil" },
     { name = "sqlalchemy" },
+]
+
+[package.optional-dependencies]
+pulsar = [
+    { name = "pulsar-client" },
 ]
 
 [package.dev-dependencies]
@@ -653,11 +657,12 @@ requires-dist = [
     { name = "mcp", specifier = "==1.12.2" },
     { name = "mermaid-py", specifier = "==0.8.0" },
     { name = "openai", specifier = "==1.108.0" },
-    { name = "pulsar-client", specifier = "==3.5.0" },
+    { name = "pulsar-client", marker = "extra == 'pulsar'", specifier = "==3.5.0" },
     { name = "pydantic", specifier = "==2.11.5" },
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
     { name = "sqlalchemy", specifier = "==2.0.41" },
 ]
+provides-extras = ["pulsar"]
 
 [package.metadata.requires-dev]
 dev = [

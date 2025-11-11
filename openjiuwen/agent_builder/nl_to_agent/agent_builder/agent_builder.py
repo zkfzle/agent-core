@@ -22,7 +22,7 @@ class AgentBuilderExecutor:
     @staticmethod
     def get_context_manager(session_id: str, context_manager_map: dict):
         if session_id not in context_manager_map:
-            context_manager = ContextManager(session_id)
+            context_manager = ContextManager()
             context_manager_map[session_id] = context_manager
             return context_manager
         return context_manager_map[session_id]

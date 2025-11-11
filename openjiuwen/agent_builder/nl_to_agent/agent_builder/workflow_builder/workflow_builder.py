@@ -57,13 +57,13 @@ class WorkflowBuilder:
         )
 
     def _handle_initial(self, query: str):
-        messages = self.context_manager.get_filtered_messages(intent='工作流')
-        if not self._intention_detector.detect_initial_instruction(messages):
+        dialog_history = self.context_manager.get_history()
+        if not self._intention_detector.detect_initial_instruction(dialog_history):
             self._state = State.PROCESS_REQUEST
             return WORKFLOW_REQUEST_CONTENT
 
         sop_content = self._sop_generator.transform(query)
-        self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content, intent_label='工作流')
+        self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
         self._resource = ResourceRetriever().retrieve(query)
         self._dl = self._generate_and_reflect_dl(
             dl_operation=self._dl_generator.generate,
@@ -75,16 +75,16 @@ class WorkflowBuilder:
         return mermaid_code
 
     def _handle_process_request(self, query: str):
-        messages = self.context_manager.get_filtered_messages(intent='工作流')
-        if self._intention_detector.detect_initial_instruction(messages):
+        dialog_history = self.context_manager.get_history()
+        if self._intention_detector.detect_initial_instruction(dialog_history):
             sop_content = self._sop_generator.transform(query)
-            self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content, intent_label='工作流')
+            self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
             self._resource = ResourceRetriever().retrieve(query)
         else:
-            dialog_history_query = '\n'.join(f'{msg.role}: {msg.content}' for msg in messages)
+            dialog_history_query = '\n'.join(f'{msg.role}: {msg.content}' for msg in dialog_history)
             self._resource = ResourceRetriever().retrieve(dialog_history_query)
             sop_content = self._sop_generator.generate(dialog_history_query, self._resource)
-            self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content, intent_label='工作流')
+            self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
 
         self._dl = self._generate_and_reflect_dl(
             dl_operation=self._dl_generator.generate,
@@ -96,8 +96,8 @@ class WorkflowBuilder:
         return mermaid_code
 
     def _handle_process_confirm(self, query: str):
-        messages = self.context_manager.get_filtered_messages(intent='工作流')
-        if self._intention_detector.detect_refine_intent(messages):
+        dialog_history = self.context_manager.get_history()
+        if self._intention_detector.detect_refine_intent(dialog_history):
             self._dl = self._generate_and_reflect_dl(
                 dl_operation=self._dl_generator.refine,
                 query=query,
@@ -117,7 +117,7 @@ class WorkflowBuilder:
             generated_dl = dl_operation(*args, **kwargs)
             self._dl_reflector.check_format(generated_dl)
             if not self._dl_reflector.errors:
-                self.context_manager.add_assistant_message(generated_dl, intent_label="工作流")
+                self.context_manager.add_assistant_message(generated_dl)
                 return generated_dl
             self._dl_generator.reflect_prompts = [
                 AIMessage(content=generated_dl),

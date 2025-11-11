@@ -23,7 +23,7 @@ class TestWorkflowBuilder(unittest.TestCase):
     def setUp(self):
         self.llm = MagicMock(name="llm")
         self.context_manager = MagicMock(name="context_manager")
-        self.context_manager.get_filtered_messages.return_value = []
+        self.context_manager.get_history.return_value = []
 
         self.mock_intention_detector = MagicMock(name="IntentionDetector")
 

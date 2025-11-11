@@ -2,12 +2,13 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
 import json
-from typing import Optional
+from typing import Optional, List, Dict
 
 from .models import Workflow, Position, NodeType
 from .converter_utils import ConverterUtils
 from .converters import StartConverter, EndConverter, LLMConverter, IntentDetectionConverter, QuestionerConverter, \
                         CodeConverter, PluginConverter, OutputConverter, BranchConverter
+from .simpleir_to_mermaid import SimpleIrToMermaid
 
 
 class DLTransformer:
@@ -23,8 +24,9 @@ class DLTransformer:
         NodeType.Branch.dl_type: BranchConverter,
     }
 
-    def transform_to_mermaid(self, dl_content: str) -> str:
-        pass
+    def transform_to_mermaid(self, dl_content: List[Dict]) -> str:
+        mermaid_result = SimpleIrToMermaid.transform_to_mermaid(dl_content)
+        return mermaid_result
 
     def transform_to_dsl(self, dl_content: str, resource: Optional[dict] = None) -> str:
         nodes = json.loads(dl_content)

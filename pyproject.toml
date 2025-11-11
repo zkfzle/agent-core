@@ -13,7 +13,8 @@ dependencies = [
     "sqlalchemy==2.0.41",
     "openai==1.108.0",
     "cacheout==0.16.0",
-    "mermaid-py==0.8.0"
+    "mermaid-py==0.8.0",
+    "pulsar-client==3.5.0",
 ]
 
 [tool.uv]

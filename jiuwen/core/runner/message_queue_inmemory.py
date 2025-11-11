@@ -1,9 +1,10 @@
 import asyncio
 import uuid
 from typing import Awaitable, AsyncIterator
+
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.common.exception.status_code import StatusCode
-
+from jiuwen.core.common.logging import logger
 from jiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 from jiuwen.core.runner.message_queue_base import (
     MessageQueueBase,
@@ -33,12 +34,17 @@ class SubscriptionInMemory(SubscriptionBase):
             self._is_active = True
             self._consume_task = asyncio.create_task(self._consume_message())
 
-    def deactivate(self):
+    async def deactivate(self):
         if self._is_active:
             self._is_active = False
             if self._consume_task:
                 self._consume_task.cancel()
-                self._consume_task = None
+                try:
+                    await self._consume_task
+                except asyncio.CancelledError:
+                    pass
+                finally:
+                    self._consume_task = None
             self._queue = asyncio.Queue(maxsize=self._queue_max_size)
 
     def is_active(self):
@@ -52,16 +58,16 @@ class SubscriptionInMemory(SubscriptionBase):
     async def _handle_response(self, message, response):
         if isinstance(message, InvokeQueueMessage):
             if not response:
-                raise JiuWenBaseException(StatusCode.ERROR, "Reponse is empty")
+                raise JiuWenBaseException(StatusCode.ERROR.code, "Reponse is empty")
             if isinstance(response, AsyncIterator):
-                raise JiuWenBaseException(StatusCode.ERROR, "InvokeQueueMessage need not AsyncIterator response")
+                raise JiuWenBaseException(StatusCode.ERROR.code, "InvokeQueueMessage need not AsyncIterator response")
             message.response.set_result(response)
 
         if isinstance(message, StreamQueueMessage):
             if not response:
-                raise JiuWenBaseException(StatusCode.ERROR, "Reponse is empty")
+                raise JiuWenBaseException(StatusCode.ERROR.code, "Reponse is empty")
             if not isinstance(response, AsyncIterator):
-                raise JiuWenBaseException(StatusCode.ERROR, "StreamQueueMessage need AsyncIterator response")
+                raise JiuWenBaseException(StatusCode.ERROR.code, "StreamQueueMessage need AsyncIterator response")
             message.response.set_result(response)
 
     async def _consume_message(self):
@@ -76,7 +82,7 @@ class SubscriptionInMemory(SubscriptionBase):
                 message.error_code = e.error_code
                 message.error_msg = e.message
             except Exception as e:
-                message.error_code = StatusCode.ERROR
+                message.error_code = StatusCode.ERROR.code
                 message.error_msg = str(e)
             finally:
                 self._queue.task_done()
@@ -95,12 +101,17 @@ class MessageQueueInMemory(MessageQueueBase):
             self._is_running = True
             self._consume_task = asyncio.create_task(self._consume_message())
 
-    def stop(self):
+    async def stop(self):
         if self._is_running:
             self._is_running = False
             if self._consume_task:
                 self._consume_task.cancel()
-                self._consume_task = None
+                try:
+                    await self._consume_task
+                except asyncio.CancelledError:
+                    pass
+                finally:
+                    self._consume_task = None
             self._queue = asyncio.Queue(maxsize=self._queue_max_size)
 
     def subscribe(self, topic: str) -> SubscriptionInMemory:
@@ -110,9 +121,9 @@ class MessageQueueInMemory(MessageQueueBase):
         self._subscribers[topic] = subscription
         return subscription
 
-    def unsubscribe(self, topic):
+    async def unsubscribe(self, topic):
         if topic in self._subscribers:
-            self._subscribers[topic].deactivate()
+            await self._subscribers[topic].deactivate()
             del self._subscribers[topic]
 
     async def produce_message(self, topic: str, message: QueueMessage):

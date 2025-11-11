@@ -11,7 +11,7 @@ Output = TypeVar("Output", covariant=True)
 class QueueMessage:
     message_id: str = ""
     payload: Any = None
-    error_code: StatusCode | int = StatusCode.SUCCESS
+    error_code: int = StatusCode.SUCCESS.code
     error_msg: str = ""
 
 
@@ -44,7 +44,7 @@ class SubscriptionBase(ABC):
     def activate(self):
         pass
 
-    def deactivate(self):
+    async def deactivate(self):
         pass
 
     def is_active(self):
@@ -57,7 +57,7 @@ class MessageQueueBase(ABC):
         pass
 
     @abstractmethod
-    def stop(self):
+    async def stop(self):
         pass
 
     @abstractmethod
@@ -65,7 +65,7 @@ class MessageQueueBase(ABC):
         pass
 
     @abstractmethod
-    def unsubscribe(self, topic: str):
+    async def unsubscribe(self, topic: str):
         pass
 
     @abstractmethod

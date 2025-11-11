@@ -112,7 +112,7 @@ class ReActMessageHandler(MessageHandler):
         await self._write_message_stream_data(message)
 
         # 添加工具调用结果到历史
-        if message.content.stream_data[0].type == "plugin_final":
+        if message.content.stream_data[0].type in ("plugin_final", "workflow_final"):
             MessageHandlerUtils.add_tool_result(message, self.context_engine, self.runtime)
 
         # 清除workflow的中断状态（如果有）- 使用基类状态管理

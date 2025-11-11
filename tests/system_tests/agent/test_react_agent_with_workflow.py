@@ -15,7 +15,8 @@ from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.param import Param
 from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.runner.runner import Runner, resource_mgr
+from jiuwen.core.runner.runner import resource_mgr
+from jiuwen.core.runtime.workflow_manager import generate_workflow_key
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -211,6 +212,35 @@ class ReActAgentWorkflowTest(unittest.IsolatedAsyncioTestCase):
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
+    @unittest.skip("requires network")
+    async def test_react_agent_with_workflow_stream(self):
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
+        tools_schema = [self._create_tool_schema()]
+        model_config = self._create_model_config()
+        prompt_template = self._create_prompt_template()
+
+        react_agent_config = create_react_agent_config(
+            agent_id="react_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=tools_schema,
+            workflows=[self._create_workflow_schema()],
+            model=model_config,
+            prompt_template=prompt_template
+        )
+        workflow = self._create_workflow()
+        react_agent: ReActAgent = create_react_agent(
+            agent_config=react_agent_config,
+            workflows=[workflow],
+            tools=[self._create_tool()]
+        )
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        result = react_agent.stream({"query": "今天上海天气晴朗"})
+        async for i in result:
+            print("ReActAgent 输出结果：", i)
+
     @unittest.skip("skip system test require llm")
     async def test_react_agent_with_workflow(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -233,5 +263,5 @@ class ReActAgentWorkflowTest(unittest.IsolatedAsyncioTestCase):
             workflows=[self._create_workflow()],
             tools=[self._create_tool()]
         )
-        result = await react_agent.invoke({"query": "今天上海天气晴朗，温度适宜，请生成一段文本"})
+        result = await react_agent.invoke({"query": "今天上海天气晴朗"})
         print(f"ReActAgent 最终输出结果：{result.get('output')}")

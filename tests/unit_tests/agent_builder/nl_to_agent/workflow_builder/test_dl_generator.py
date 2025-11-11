@@ -18,15 +18,17 @@ class TestDLGenrator(unittest.TestCase):
         self.llm.chat.return_value = LLM_CHAT_DL_RESULT
         self.resource = {"plugins": [{"name": "mock_plugin"}]}
 
-        with patch.object(DLGenerator,
-                          'load_components_schema_from_yaml',
-                          return_value=("mock_components_info", "mock_schema_info")):
+        with patch.object(
+            DLGenerator,
+            'load_schema_and_examples',
+            return_value=("mock_components_info", "mock_schema_info", "mock_examples")
+        ):
             self.dl_generator = DLGenerator(self.llm)
 
     def test_update_prompt(self):
-        dg.generate_system_prompt = "{{components}}\n{{schema}}\n{{plugins}}"
+        dg.generate_system_prompt = "{{components}}\n{{schema}}\n{{plugins}}\n{{examples}}"
         prompt = self.dl_generator._update_prompt(self.resource)
-        self.assertEqual(prompt, "mock_components_info\nmock_schema_info\n[{\'name\': \'mock_plugin\'}]")
+        self.assertEqual(prompt, "mock_components_info\nmock_schema_info\n[{\'name\': \'mock_plugin\'}]\nmock_examples")
 
     def test_execute(self):
         self.dl_generator._execute("test_query", "test_system_prompt")

@@ -6,7 +6,7 @@ components: |
   - **提问器**("type": "Questioner")：通过与用户对话的方式完成预配置参数的提取。
   - **代码**("type": "Code")：执行自定义python代码逻辑，无法完成主观任务。
   - **插件**("type": "Plugin")：集成预置或自定义的第三方插件，完成特定功能。
-  - **消息**("type": "Message")：在工作流执行过程中输出指定消息内容，例如"正在执行中"等状态暂时或安抚语。
+  - **输出**("type": "Output")：在工作流执行过程中输出指定内容，例如"正在执行中"等状态暂时或安抚语。
   - **选择器**("type": "Branch")：根据条件判断，决定工作流的执行路径。
 start: |
   开始节点：工作流的起始节点，支持多个输出
@@ -46,7 +46,7 @@ llm: |
         "system_prompt": "## 人设\n你是一个xxx。\n\n## 任务描述\nxxx",
         "user_prompt": "{{query}}"
       }
-    }
+    },
     "next": "node_end"
   }
 intent_detection: |
@@ -122,24 +122,24 @@ plugin: |
     "type": "Plugin",
     "description": "调用OCR",
     "parameters": {
-      "inputs": [{"name": "image_file", "value": "${node_start.input_file}"}]],
+      "inputs": [{"name": "image_file", "value": "${node_start.input_file}"}],
       "outputs": [{"name": "text", "description": "文本识别结果"}],
       "configs": {"tool_id": "mock_ocr", "tool_name": "ocr"}
     },
     "next": "node_llm"
   }
-message: |
-  消息节点：配置template定义输入的内容形式，
+output: |
+  输出节点：配置template定义输出的内容形式，
   限制：
   1. template中使用双括号形式{{}}引用输入参数 
   2. 需要使用inputs中的所有参数，不能遗漏，支持零到多个输入参数
-  3. 没有输出参数，禁止其他节点引用消息节点的输出
+  3. 没有输出参数，禁止其他节点引用输出节点的输出
   {
-    "id": "node_message",
-    "type": "Message",
+    "id": "node_output",
+    "type": "Output",
     "description": "输出大模型回答",
     "parameters": {
-      "inputs": [{"name": "content", "value": "${node_llm.output}"}]],
+      "inputs": [{"name": "content", "value": "${node_llm.output}"}],
       "configs": {"template": "{{content}}"}
     },
     "next": "node_end"
@@ -154,7 +154,7 @@ branch: |
   {
     "id": "node_branch",
     "type": "Branch",
-    "description": "条件判断"
+    "description": "条件判断",
     "parameters": {
       "conditions": [
         {

@@ -15,10 +15,10 @@ class Siliconflow(BaseModel, BaseChatModel):
     _request_model: RequestChatModel = None
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int = 3, timeout: int = 60, **kwargs):
-        super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
+                 api_key: str, api_base: str, max_retries: int = 3, timeout: int = 60, **kwargs):
+        super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout)
         self._request_model = RequestChatModel(api_key=api_key, api_base=api_base,
-                                               max_retrie=max_retrie, timeout=timeout)
+                                               max_retries=max_retries, timeout=timeout)
         self._should_close_session = True
 
     async def close(self):

@@ -13,10 +13,10 @@ from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChun
 
 
 class BaseChatModel:
-    def __init__(self, api_key:str, api_base:str, max_retrie: int=3, timeout: int=60, **kwargs):
+    def __init__(self, api_key:str, api_base:str, max_retries: int=3, timeout: int=60, **kwargs):
         self.api_key = api_key
         self.api_base = api_base
-        self.max_retrie = max_retrie
+        self.max_retries = max_retries
         self.timeout = timeout
 
     def invoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],

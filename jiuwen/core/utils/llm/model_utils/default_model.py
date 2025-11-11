@@ -24,8 +24,8 @@ class RequestChatModel(BaseChatModel):
     sync_client: Session = Session()
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
-        super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
+                 api_key: str, api_base: str, max_retries: int=3, timeout: int=60, **kwargs):
+        super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout)
         self._stream_state = {
             'current_tool_call_id': '',
             'current_tool_name': '',
@@ -331,8 +331,8 @@ class OpenAIChatModel(BaseChatModel):
     """OpenAI 专用聊天模型实现，使用官方 openai 库"""
 
     def __init__(self,
-                 api_key: str, api_base: str, max_retrie: int=3, timeout: int=60, **kwargs):
-        super().__init__(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
+                 api_key: str, api_base: str, max_retries: int=3, timeout: int=60, **kwargs):
+        super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout)
 
     def model_provider(self) -> str:
         return "openai"

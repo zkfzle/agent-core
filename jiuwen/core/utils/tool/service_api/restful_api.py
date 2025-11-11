@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
+import asyncio
 import json
 from typing import List
 
@@ -132,6 +132,36 @@ class RestfulApi(Tool):
                      request_arg=request_params.request_arg,
                      query_params_in_inputs=request_params.query_params_in_inputs)
             )
+        except (aiohttp.ClientTimeout, asyncio.TimeoutError):
+            return {
+                constant.ERR_CODE: StatusCode.PLUGIN_REQUEST_TIMEOUT_ERROR.code,
+                constant.ERR_MESSAGE: StatusCode.PLUGIN_REQUEST_TIMEOUT_ERROR.errmsg,
+                constant.RESTFUL_DATA: ""
+            }
+        except aiohttp.ClientConnectorError:
+            return {
+                constant.ERR_CODE: StatusCode.PLUGIN_PROXY_CONNECT_ERROR.code,
+                constant.ERR_MESSAGE: StatusCode.PLUGIN_PROXY_CONNECT_ERROR.errmsg,
+                constant.RESTFUL_DATA: ""
+            }
+        except aiohttp.ClientResponseError as e:
+            return {
+                constant.ERR_CODE: StatusCode.PLUGIN_RESPONSE_HTTP_CODE_ERROR.code,
+                constant.ERR_MESSAGE: f"Plugin response code: {e.status} error.",
+                constant.RESTFUL_DATA: ""
+            }
+        except aiohttp.ClientError:
+            return {
+                constant.ERR_CODE: StatusCode.PLUGIN_PROXY_CONNECT_ERROR.code,
+                constant.ERR_MESSAGE: StatusCode.PLUGIN_PROXY_CONNECT_ERROR.errmsg,
+                constant.RESTFUL_DATA: ""
+            }
+        except JiuWenBaseException as error:
+            return {
+                constant.ERR_CODE: error.error_code,
+                constant.ERR_MESSAGE: error.message,
+                constant.RESTFUL_DATA: ""
+            }
         except Exception:
             return {
                 constant.ERR_CODE: StatusCode.PLUGIN_UNEXPECTED_ERROR.code,

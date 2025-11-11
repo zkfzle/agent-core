@@ -124,6 +124,9 @@ class SchemaGenerator:
             if field_config.get("type") == "array" and "items" in field_config:
                 properties[field_name]["items"] = field_config["items"]
 
+            if field_config.get("type") == "object" and "properties" in field_config:
+                properties[field_name]["properties"] = field_config["properties"]
+
             if field_config.get("required", True):
                 required.append(field_name)
 

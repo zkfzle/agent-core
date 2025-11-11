@@ -272,12 +272,23 @@ class IntentDetectionExecutable(ComponentExecutable):
         else:
             logger.info(f"[%s] intent detection llm_inputs: %s", self._runtime.executable_id(), llm_inputs)
         llm_output_content = ""
+
+        if UserConfig.is_sensitive():
+            logger.info("Invoke llm for intent detection")
+        else:
+            logger.info(f"Invoke llm for intent detection, inputs = {llm_inputs}")
+
         try:
             llm_output = self._llm.invoke(model_name=self._config.model.model_info.model_name, messages=llm_inputs)
             llm_output_content = llm_output.content
         except Exception as e:
             ExceptionUtils.raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR,
                                            "Failed to invoke llm and get result", e)
+        if UserConfig.is_sensitive():
+            logger.info("Success to invoke llm for intent detection")
+        else:
+            logger.info(f"Success to invoke llm for intent detection, outputs = {llm_output_content}")
+
 
         return llm_output_content
 

@@ -11,6 +11,7 @@ from typing import Any, Optional, List, Dict, Union
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
 from jiuwen.core.common.exception.status_code import StatusCode
+from jiuwen.core.common.logging import logger
 from jiuwen.core.utils.common.verify_utils import ExceptionUtils
 from jiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
@@ -18,6 +19,7 @@ from jiuwen.core.context_engine.base import Context
 from jiuwen.core.runtime.base import ComponentExecutable
 from jiuwen.core.runtime.runtime import Runtime
 from jiuwen.core.graph.executable import Executable, Input, Output
+from jiuwen.core.utils.config.user_config import UserConfig
 from jiuwen.core.utils.llm.base import BaseChatModel
 from jiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
@@ -394,12 +396,23 @@ class QuestionerDirectReplyHandler:
 
     def _invoke_llm_for_extraction(self, llm_inputs: List[BaseMessage]):
         response = ""
+
+        if UserConfig.is_sensitive():
+            logger.info("Invoke llm for extraction")
+        else:
+            logger.info(f"Invoke llm for extraction, inputs = {llm_inputs}")
+
         try:
             response = self._model.invoke(
                 model_name=self._config.model.model_info.model_name, messages=llm_inputs).content
         except Exception as e:
             ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_INVOKE_LLM_ERROR,
                                            "Failed to invoke llm for extraction", e)
+
+        if UserConfig.is_sensitive():
+            logger.info("Success to invoke llm for extraction")
+        else:
+            logger.info(f"Success to invoke llm for extraction, outputs = {response}")
 
         result = dict()
         try:

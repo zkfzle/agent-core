@@ -3,6 +3,7 @@ import os
 import unittest
 from datetime import datetime
 from typing import List
+from unittest.mock import patch, AsyncMock
 
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
@@ -19,6 +20,8 @@ from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
+from mcp import StdioServerParameters
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -351,3 +354,247 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             except:
                 pass
             print("✅ 测试完成，资源清理")
+
+    async def test_mcp_tools_sse(self):
+        """
+        端到端测试 MCP-SSE 工具生命周期：
+        连接 → 拉取工具 → 调用工具 → 移除服务器
+        全程仅 mock SseClient 四个公共方法，断言调用参数。
+        """
+        # -------------------- 预置数据 --------------------
+        mock_tools = [
+            McpToolInfo(
+                name="browser_navigate",
+                description="Navigate to a URL",
+                schema={
+                    "type": "object",
+                    "properties": {"url": {"type": "string", "description": "The URL to navigate to"}},
+                    "required": ["url"],
+                },
+            ),
+            McpToolInfo(
+                name="browser_extract_text",
+                description="Extract text from the current page",
+                schema={
+                    "type": "object",
+                    "properties": {"selector": {"type": "string", "description": "CSS selector for the element"}},
+                    "required": ["selector"],
+                },
+            ),
+        ]
+        mock_tool_result = "Successfully navigated to example.com and extracted title: Example Domain"
+        test_inputs = {"url": "https://example.com"}
+
+        # -------------------- mock 配置 --------------------
+        with patch("openjiuwen.core.utils.tool.mcp.base.SseClient.connect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.utils.tool.mcp.base.SseClient.disconnect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.utils.tool.mcp.base.SseClient.list_tools", AsyncMock(return_value=mock_tools)), \
+                patch.object(SseClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
+            # -------------------- 服务器配置 --------------------
+            mcp_server_config = ToolServerConfig(
+                server_name="browser-use-server",
+                params="http://127.0.0.1:8930/sse",
+                client_type="sse",
+            )
+
+            # -------------------- 添加到管理器 --------------------
+            tool_mgr = resource_mgr.tool()
+            ok_list = await tool_mgr.add_tool_servers([mcp_server_config])
+            assert ok_list == [True]
+
+            # -------------------- 工具列表校验 --------------------
+            server_tools = tool_mgr.get_tool_infos(tool_server_name="browser-use-server")
+            assert len(server_tools) == 2
+            assert server_tools[0].name == "browser_navigate"
+
+            # -------------------- Runner 拉取工具 --------------------
+            tools = await Runner.list_tools("browser-use-server")
+            assert len(tools) == 2
+            first_tool = tools[0]
+            tool_id = f"browser-use-server.{first_tool.name}"
+
+            # -------------------- 调用工具 --------------------
+            result = await Runner.run_tool(tool_id, test_inputs)
+
+            # -------------------- 实例级调用断言 --------------------
+            mock_call_tool.assert_awaited_once_with(
+                tool_name="browser_navigate",
+                arguments=test_inputs,
+            )
+
+            # -------------------- 结果校验 --------------------
+            assert result and "error" not in str(result).lower()
+            if isinstance(result, dict) and "result" in result:
+                assert result["result"] == mock_tool_result
+
+            # -------------------- 移除服务器 --------------------
+            await tool_mgr.remove_tool_server("browser-use-server")
+            empty_tools = tool_mgr.get_tool_infos(tool_server_name="browser-use-server")
+            assert empty_tools == None
+
+            return True
+
+    async def test_mcp_tools_stdio(self):
+        """
+        端到端测试 MCP-stdio 工具生命周期：
+        连接 → 拉取工具 → 调用工具 → 移除服务器
+        全程仅 mock StdioClient 四个公共方法，断言调用参数。
+        """
+        # -------------------- 预置数据 --------------------
+        mock_tools = [
+            McpToolInfo(
+                name="doubter",
+                description="Doubter tool via stdio",
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "history": {"type": "string", "description": "Agent action history"}
+                    },
+                    "required": ["history"],
+                },
+            ),
+            McpToolInfo(
+                name="checker",
+                description="Checker tool via stdio",
+                schema={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "URL to check"}
+                    },
+                    "required": ["url"],
+                },
+            ),
+        ]
+        mock_tool_result = "score: 0.85, decision: ACCEPT, review: actions verified"
+        test_inputs = {"history": "agent navigated to example.com and extracted title"}
+
+        # -------------------- mock 配置 --------------------
+        with patch("openjiuwen.core.utils.tool.mcp.base.StdioClient.connect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.utils.tool.mcp.base.StdioClient.disconnect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.utils.tool.mcp.base.StdioClient.list_tools", AsyncMock(return_value=mock_tools)), \
+                patch.object(StdioClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
+            # -------------------- 服务器配置 --------------------
+            # 参数内容可以是任意占位符，真实值不会被用到
+            mcp_server_config = ToolServerConfig(
+                server_name="doubter-mcp-server",
+                params=StdioServerParameters(command="python", args=["dummy.py"]),
+                client_type="stdio",
+            )
+
+            # -------------------- 添加到管理器 --------------------
+            tool_mgr = resource_mgr.tool()
+            ok_list = await tool_mgr.add_tool_servers([mcp_server_config])
+            assert ok_list == [True]
+
+            # -------------------- 工具列表校验 --------------------
+            server_tools = tool_mgr.get_tool_infos(tool_server_name="doubter-mcp-server")
+            assert len(server_tools) == 2
+            assert server_tools[0].name == "doubter"
+
+            # -------------------- Runner 拉取工具 --------------------
+            tools = await Runner.list_tools("doubter-mcp-server")
+            assert len(tools) == 2
+            first_tool = tools[0]
+            tool_id = f"doubter-mcp-server.{first_tool.name}"
+
+            # -------------------- 调用工具 --------------------
+            result = await Runner.run_tool(tool_id, test_inputs)
+
+            # -------------------- 实例级调用断言 --------------------
+            mock_call_tool.assert_awaited_once_with(
+                tool_name="doubter",
+                arguments=test_inputs,
+            )
+
+            # -------------------- 结果校验 --------------------
+            assert result and "error" not in str(result).lower()
+            if isinstance(result, dict) and "result" in result:
+                assert result["result"] == mock_tool_result
+
+            # -------------------- 移除服务器 --------------------
+            await tool_mgr.remove_tool_server("doubter-mcp-server")
+            empty_tools = tool_mgr.get_tool_infos(tool_server_name="doubter-mcp-server")
+            assert empty_tools == None
+
+            return True
+
+    async def test_mcp_tools_playwright(self):
+        """
+        端到端测试 MCP-Playwright 工具生命周期：
+        连接 → 拉取工具 → 调用工具 → 移除服务器
+        全程仅 mock PlaywrightClient 四个公共方法，断言调用参数。
+        """
+        # -------------------- 预置数据 --------------------
+        mock_tools = [
+            McpToolInfo(
+                name="browser_navigate",
+                description="Navigate to a URL via Playwright",
+                schema={
+                    "type": "object",
+                    "properties": {"url": {"type": "string", "description": "The URL to navigate to"}},
+                    "required": ["url"],
+                },
+            ),
+            McpToolInfo(
+                name="browser_click",
+                description="Click an element via Playwright",
+                schema={
+                    "type": "object",
+                    "properties": {"selector": {"type": "string", "description": "CSS selector"}},
+                    "required": ["selector"],
+                },
+            ),
+        ]
+        mock_tool_result = "Navigated to https://example.com and clicked button"
+        test_inputs = {"url": "https://example.com"}
+
+        # -------------------- mock 配置 --------------------
+        with patch("openjiuwen.core.utils.tool.mcp.base.PlaywrightClient.connect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.utils.tool.mcp.base.PlaywrightClient.disconnect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.utils.tool.mcp.base.PlaywrightClient.list_tools",
+                      AsyncMock(return_value=mock_tools)), \
+                patch.object(PlaywrightClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
+            # -------------------- 服务器配置 --------------------
+            # 可以是 URL 或 StdioServerParameters，PlaywrightClient 内部自动识别
+            mcp_server_config = ToolServerConfig(
+                server_name="playwright-mcp-server",
+                params="http://127.0.0.1:8931/sse",  # 实际不会发起网络，仅占位
+                client_type="playwright",
+            )
+
+            # -------------------- 添加到管理器 --------------------
+            tool_mgr = resource_mgr.tool()
+            ok_list = await tool_mgr.add_tool_servers([mcp_server_config])
+            assert ok_list == [True]
+
+            # -------------------- 工具列表校验 --------------------
+            server_tools = tool_mgr.get_tool_infos(tool_server_name="playwright-mcp-server")
+            assert len(server_tools) == 2
+            assert server_tools[0].name == "browser_navigate"
+
+            # -------------------- Runner 拉取工具 --------------------
+            tools = await Runner.list_tools("playwright-mcp-server")
+            assert len(tools) == 2
+            first_tool = tools[0]
+            tool_id = f"playwright-mcp-server.{first_tool.name}"
+
+            # -------------------- 调用工具 --------------------
+            result = await Runner.run_tool(tool_id, test_inputs)
+
+            # -------------------- 实例级调用断言 --------------------
+            mock_call_tool.assert_awaited_once_with(
+                tool_name="browser_navigate",
+                arguments=test_inputs,
+            )
+
+            # -------------------- 结果校验 --------------------
+            assert result and "error" not in str(result).lower()
+            if isinstance(result, dict) and "result" in result:
+                assert result["result"] == mock_tool_result
+
+            # -------------------- 移除服务器 --------------------
+            await tool_mgr.remove_tool_server("playwright-mcp-server")
+            empty_tools = tool_mgr.get_tool_infos(tool_server_name="playwright-mcp-server")
+            assert empty_tools == None
+
+            return True

@@ -201,7 +201,13 @@ class Runner:
 
     async def list_tools(self, tool_server_name: Union[str, List[str]]) -> Union[
         Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
-        return
+        if not tool_server_name:
+            return None
+        tool_mgr = self._resource_manager.tool()
+        single = isinstance(tool_server_name, str)
+        names = [tool_server_name] if single else tool_server_name
+        results = [tool_mgr.get_tool_infos(tool_server_name=n) for n in names]
+        return results[0] if single else results
 
     async def release(self, session_id: str):
         await default_inmemory_checkpointer.release(session_id)

@@ -222,14 +222,20 @@ class BaseWorkFlow:
         source_stream_map = self._workflow_spec.stream_edges
         target_stream_map = self._source_to_target_map(source_stream_map)
 
+        user_provided_abilities = {}
+        for comp_id, comp_conf in conf.items():
+            user_provided_abilities[comp_id] = len(comp_conf.abilities) > 0
+
         for source in source_stream_map:
-            if source in target_map:
-                self._add_ability(conf, source, ComponentAbility.STREAM)
-            if source in target_stream_map:
-                self._add_ability(conf, source, ComponentAbility.TRANSFORM)
+            if not user_provided_abilities[source]:
+                if source in target_map:
+                    self._add_ability(conf, source, ComponentAbility.STREAM)
+                if source in target_stream_map:
+                    self._add_ability(conf, source, ComponentAbility.TRANSFORM)
         for target in target_stream_map:
-            if target in source_map:
-                self._add_ability(conf, target, ComponentAbility.COLLECT)
+            if not user_provided_abilities[target]:
+                if target in source_map:
+                    self._add_ability(conf, target, ComponentAbility.COLLECT)
 
     @staticmethod
     def _add_ability(conf: dict[str, NodeSpec], comp: str, ability: ComponentAbility):

@@ -269,3 +269,320 @@ class Agent(ABC):
 
     def copy(self) -> "Agent":
         raise NotImplementedError("")
+
+
+# ===== 新架构：BaseAgent 和 ControllerAgent =====
+
+class BaseAgent(ABC):
+    """基础 Agent - 极简接口定义（新架构）
+    
+    Linus 设计原则：
+    1. 数据结构优先 - BaseAgent 统一持有所有核心组件
+    2. 消除特殊情况 - 子类不需要重写配置方法
+    3. 向后兼容 - 保留 config() 方法
+    
+    核心思想：
+    - BaseAgent 持有一切：config, runtime, context_engine, tools, workflows
+    - 子类只需消费，不需管理
+    - 配置方法自动同步到 runtime
+    """
+
+    def __init__(self, agent_config):
+        """初始化 Agent
+        
+        Args:
+            agent_config: Agent 配置
+        """
+        from jiuwen.core.runtime.config import Config
+        
+        # 1. 创建 Config 包装器（向后兼容）
+        self._config_wrapper = Config()
+        self._config_wrapper.set_agent_config(agent_config)
+        self._agent_config = agent_config
+        self._config = self._config_wrapper  # 统一接口
+        
+        # 2. 创建 Runtime
+        self._runtime = AgentRuntime(config=self._config)
+        
+        # 3. 创建 ContextEngine
+        self._context_engine = self._create_context_engine()
+        
+        # 4. 统一持有 tools 和 workflows（消除子类重复）
+        self._tools: List[Tool] = []
+        self._workflows: List[Workflow] = []
+
+    def config(self) -> Config:
+        """获取 Config 包装器 - 向后兼容的方法接口
+        
+        Returns:
+            Config 实例（包含 get_agent_config() 方法）
+        """
+        return self._config_wrapper
+    
+    @property
+    def tools(self) -> List[Tool]:
+        """获取工具列表 - 子类只读访问"""
+        return self._tools
+    
+    @property
+    def workflows(self) -> List[Workflow]:
+        """获取工作流列表 - 子类只读访问"""
+        return self._workflows
+    
+    @property
+    def context_engine(self) -> ContextEngine:
+        """获取 Context Engine - 统一公共接口"""
+        return self._context_engine
+    
+    def _create_context_engine(self) -> ContextEngine:
+        """创建 ContextEngine - 内部方法，在基类初始化时调用"""
+        context_config = ContextEngineConfig(
+            conversation_history_length=self._agent_config.constrain.reserved_max_chat_rounds * 2
+            if hasattr(self._agent_config, 'constrain') and hasattr(self._agent_config.constrain, 'reserved_max_chat_rounds')
+            else 20  # 默认值
+        )
+        return ContextEngine(
+            agent_id=self._agent_config.id,
+            config=context_config,
+            model=None
+        )
+
+    @abstractmethod
+    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+        """同步调用入口 - 抽象方法
+        
+        子类必须实现此方法
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} 必须实现 invoke() 方法"
+        )
+
+    @abstractmethod
+    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+        """流式调用入口 - 抽象方法
+        
+        子类必须实现此方法
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} 必须实现 stream() 方法"
+        )
+
+    # ===== 动态配置接口（方案A：向后兼容） =====
+    
+    def add_prompt(self, prompt_template: List[Dict]) -> None:
+        """添加 Prompt 模板
+        
+        Args:
+            prompt_template: Prompt 模板列表，每个元素是 dict，如 {"role": "system", "content": "..."}
+        
+        注意：
+        - 此方法仅更新配置，不影响已创建的 runtime
+        - 子类如需同步 runtime，应重写此方法
+        """
+        # 检查配置是否有 prompt_template 字段
+        if hasattr(self._agent_config, 'prompt_template'):
+            # 追加模式：保留原有 prompt，添加新 prompt
+            self._agent_config.prompt_template.extend(prompt_template)
+        else:
+            logger.warning(
+                f"{self._agent_config.__class__.__name__} 没有 prompt_template 字段，"
+                "add_prompt 操作被忽略"
+            )
+
+    def add_tools(self, tools: List[Tool]) -> None:
+        """添加工具（同时更新 config、runtime、self._tools）
+        
+        Args:
+            tools: 工具实例列表（RestfulApi 或 LocalFunction）
+        
+        Linus 思想：
+        - 一个方法做完所有同步，消除子类重复
+        - 数据只有一份拷贝，BaseAgent 统一管理
+        """
+        from jiuwen.agent.common.schema import PluginSchema
+        
+        for tool in tools:
+            # 1. 添加工具名到 config.tools
+            if tool.name not in self._agent_config.tools:
+                self._agent_config.tools.append(tool.name)
+            
+            # 2. 生成 PluginSchema（如果配置支持）
+            if hasattr(self._agent_config, 'plugins'):
+                # 检查是否已存在
+                existing_names = {p.name for p in self._agent_config.plugins}
+                if tool.name not in existing_names:
+                    plugin_schema = self._tool_to_plugin_schema(tool)
+                    self._agent_config.plugins.append(plugin_schema)
+            
+            # 3. 添加到 self._tools（避免重复）
+            existing_tool_names = {t.name for t in self._tools}
+            if tool.name not in existing_tool_names:
+                self._tools.append(tool)
+            
+            # 4. 同步到 runtime（自动注册）
+            self._runtime.add_tools([(tool.name, tool)])
+
+    def add_workflows(self, workflows: List[Workflow]) -> None:
+        """添加工作流（同时更新 config、runtime、self._workflows）
+        
+        Args:
+            workflows: 工作流实例列表
+        
+        Linus 思想：
+        - 一个方法做完所有同步，消除子类重复
+        - 数据只有一份拷贝，BaseAgent 统一管理
+        """
+        from jiuwen.agent.common.schema import WorkflowSchema
+        
+        for workflow in workflows:
+            # 生成 WorkflowSchema
+            workflow_config = workflow.config()
+            workflow_key = f"{workflow_config.metadata.id}_{workflow_config.metadata.version}"
+            
+            # 检查是否已存在
+            existing_keys = {
+                f"{w.id}_{w.version}" for w in self._agent_config.workflows
+            }
+            if workflow_key not in existing_keys:
+                # 1. 更新 config.workflows
+                workflow_schema = WorkflowSchema(
+                    id=workflow_config.metadata.id,
+                    name=workflow_config.metadata.name,
+                    version=workflow_config.metadata.version,
+                    description=workflow_config.metadata.description,
+                    inputs={}
+                )
+                self._agent_config.workflows.append(workflow_schema)
+                
+                # 2. 添加到 self._workflows
+                self._workflows.append(workflow)
+                
+                # 3. 同步到 runtime（自动注册）
+                self._runtime.add_workflows([(workflow_key, workflow)])
+
+    def add_plugins(self, plugins: List) -> None:
+        """添加插件 Schema
+        
+        Args:
+            plugins: PluginSchema 列表
+        
+        注意：
+        - 此方法仅更新配置中的 plugins 字段
+        - 子类如需同步 runtime，应重写此方法
+        """
+        if hasattr(self._agent_config, 'plugins'):
+            # 检查重复
+            existing_names = {p.name for p in self._agent_config.plugins}
+            for plugin in plugins:
+                if plugin.name not in existing_names:
+                    self._agent_config.plugins.append(plugin)
+                    existing_names.add(plugin.name)
+        else:
+            logger.warning(
+                f"{self._agent_config.__class__.__name__} 没有 plugins 字段，"
+                "add_plugins 操作被忽略"
+            )
+
+    def _tool_to_plugin_schema(self, tool: Tool):
+        """将 Tool 实例转换为 PluginSchema
+        
+        这是内部方法，用于自动生成 plugin schema
+        """
+        from jiuwen.agent.common.schema import PluginSchema
+        
+        # 从 tool.params 生成 inputs
+        inputs = {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+        
+        if hasattr(tool, 'params') and tool.params:
+            for param in tool.params:
+                prop = {
+                    "type": param.type,
+                    "description": param.description
+                }
+                inputs["properties"][param.name] = prop
+                if param.required:
+                    inputs["required"].append(param.name)
+        
+        return PluginSchema(
+            id=tool.name,
+            name=tool.name,
+            description=tool.description if hasattr(tool, 'description') else "",
+            inputs=inputs
+        )
+
+
+class ControllerAgent(BaseAgent):
+    """持有 Controller 的 Agent（新架构）
+    
+    Linus 设计原则：
+    1. "好品味" - 通过继承层次消除条件判断
+    2. 单一职责 - 只负责 controller 的持有和委托
+    3. 消除特殊情况 - 统一委托给 controller，没有分支
+    
+    核心思想：
+    - 只做一件事：持有 controller 并委托
+    - 没有业务逻辑，纯粹的委托层
+    - 子类可以重写 _create_controller() 来定制 controller
+    """
+
+    def __init__(self, agent_config, controller=None):
+        """初始化 ControllerAgent
+        
+        Args:
+            agent_config: Agent 配置
+            controller: 可选的 Controller（如果不提供，子类应该在 invoke/stream 时创建）
+        """
+        super().__init__(agent_config)
+        self.controller = controller
+        
+        # 如果传入了 controller，确保 controller 有 agent 引用
+        if self.controller:
+            self.controller.agent = self
+
+    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+        """同步调用 - 完全委托给 controller
+        
+        Args:
+            inputs: 输入数据
+            runtime: Runtime 实例
+        
+        Returns:
+            执行结果
+        """
+        if not self.controller:
+            raise RuntimeError(
+                f"{self.__class__.__name__} 没有 controller，"
+                "子类应该在调用前创建 controller"
+            )
+        
+        # 完全委托给 controller
+        return await self.controller.invoke(inputs, runtime)
+
+    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+        """流式调用 - 完全委托给 controller
+        
+        Args:
+            inputs: 输入数据
+            runtime: Runtime 实例
+        
+        Yields:
+            流式输出
+        """
+        if not self.controller:
+            raise RuntimeError(
+                f"{self.__class__.__name__} 没有 controller，"
+                "子类应该在调用前创建 controller"
+            )
+        
+        # 完全委托给 controller
+        async def stream_process():
+            await self.controller.invoke(inputs, runtime)
+
+        task = asyncio.create_task(stream_process())
+        async for result in runtime.stream_iterator():
+            yield result
+        await task

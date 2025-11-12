@@ -15,6 +15,7 @@ from jiuwen.core.agent.message.message import MessageType
 from jiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
 from jiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
 from jiuwen.core.agent.controller.utils import MessageHandlerUtils
+from jiuwen.agent.utils import MessageUtils
 
 
 class WorkflowMessageHandler(MessageHandler):
@@ -158,7 +159,7 @@ class WorkflowMessageHandler(MessageHandler):
 
         # 添加消息到聊天历史
         user_message = HumanMessage(content=query_text)
-        MessageHandlerUtils.add_workflow_message_to_chat_history(
+        MessageUtils.add_workflow_message(
             user_message, workflow.id, self.context_engine, self.runtime
         )
         if UserConfig.is_sensitive():

@@ -9,7 +9,7 @@ import pytest
 from jiuwen.agent.common.enum import TaskType, ControllerType
 from jiuwen.agent.common.schema import WorkflowSchema
 from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from jiuwen.core.agent.task import Task, TaskInput
 from jiuwen.core.component.common.configs.model_config import ModelConfig

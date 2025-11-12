@@ -1,15 +1,18 @@
-#!/usr/bin/python3.10
+#!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+"""
+ReAct Agent - 极简版（无中断、无Controller）
+"""
 
 from jiuwen.agent.react_agent.react_agent import (
-    create_react_agent_config,
+    ReActAgent,
     create_react_agent,
-    ReActAgent
+    create_react_agent_config
 )
 
 __all__ = [
-    "create_react_agent_config",
+    "ReActAgent",
     "create_react_agent",
-    "ReActAgent"
+    "create_react_agent_config"
 ]

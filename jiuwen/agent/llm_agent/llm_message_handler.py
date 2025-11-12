@@ -8,6 +8,7 @@ from jiuwen.core.common.logging import logger
 from jiuwen.core.common.exception.exception import JiuWenBaseException
 from jiuwen.core.agent.message.message import MessageType
 from jiuwen.core.agent.controller.utils import MessageHandlerUtils
+from jiuwen.agent.utils import MessageUtils
 from jiuwen.core.utils.config.user_config import UserConfig
 
 
@@ -75,7 +76,7 @@ class ReActMessageHandler(MessageHandler):
             return MessageHandlerResult(tasks=[], stop=True)
 
         # 添加user_message到对话历史
-        MessageHandlerUtils.add_user_message(message.get_display_content(), self.context_engine, self.runtime)
+        MessageUtils.add_user_message(message.get_display_content(), self.context_engine, self.runtime)
 
         # 调用大模型 reasoning 生成计划
         tasks, llm_output = await self._generate_plan_from_llm(message)
@@ -156,7 +157,7 @@ class ReActMessageHandler(MessageHandler):
         logger.info(f"ReAct iteration {self.iteration + 1}")
         inputs = message.get_display_content()
         tools = self.runtime.get_tool_info()
-        chat_history = MessageHandlerUtils.get_chat_history(self.context_engine, self.runtime, self.config)
+        chat_history = MessageUtils.get_chat_history(self.context_engine, self.runtime, self.config)
         llm_inputs = MessageHandlerUtils.format_llm_inputs(inputs, chat_history, self.config)
         if UserConfig.is_sensitive():
             logger.info(f"React llm inputs")
@@ -173,7 +174,7 @@ class ReActMessageHandler(MessageHandler):
 
             tasks = MessageHandlerUtils.parse_llm_output(llm_output, self.config)
             # 大模型输出信息添加到CE对话历史中
-            MessageHandlerUtils.add_ai_message(llm_output, self.context_engine, self.runtime)
+            MessageUtils.add_ai_message(llm_output, self.context_engine, self.runtime)
             if UserConfig.is_sensitive():
                 logger.info(f"React llm output")
             else:

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 
 from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
-from jiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.component.end_comp import End
 from jiuwen.core.component.start_comp import Start
@@ -171,7 +171,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
                 version="1.0",
                 description="天气查询"
             ),
-            workflow_inputs_schema = WorkflowInputsSchema(
+            workflow_inputs_schema=WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
@@ -292,7 +292,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
                 version="1.0",
                 description="天气查询"
             ),
-            workflow_inputs_schema = WorkflowInputsSchema(
+            workflow_inputs_schema=WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
@@ -365,7 +365,6 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             }
         )
 
-
         react_agent_config = create_react_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
@@ -385,7 +384,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version), flow)
 
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(react_agent,{"query": "天气查询", "conversation_id": "c123"}):
+        async for chunk in Runner.run_agent_streaming(react_agent, {"query": "天气查询", "conversation_id": "c123"}):
             print(f"ReActAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -395,5 +394,6 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
-            async for chunk in Runner.run_agent_streaming(react_agent, {"query": user_input, "conversation_id": "c123"}):
+            async for chunk in Runner.run_agent_streaming(react_agent,
+                                                          {"query": user_input, "conversation_id": "c123"}):
                 print(f"ReActAgent 第二次输出结果 >>> {chunk}")

@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from jiuwen.agent.common.schema import PluginSchema
-from jiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from jiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
 from jiuwen.core.component.common.configs.model_config import ModelConfig
 from jiuwen.core.utils.llm.base import BaseModelInfo
 from jiuwen.core.utils.tool.function.function import LocalFunction

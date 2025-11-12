@@ -364,7 +364,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # -------------------- 预置数据 --------------------
         mock_tools = [
             McpToolInfo(
-                name="browser_navigate",
+                name="browser-use-server.browser_navigate",
                 description="Navigate to a URL",
                 schema={
                     "type": "object",
@@ -373,7 +373,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 },
             ),
             McpToolInfo(
-                name="browser_extract_text",
+                name="browser-use-server.browser_extract_text",
                 description="Extract text from the current page",
                 schema={
                     "type": "object",
@@ -405,20 +405,20 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # -------------------- 工具列表校验 --------------------
             server_tools = tool_mgr.get_tool_infos(tool_server_name="browser-use-server")
             assert len(server_tools) == 2
-            assert server_tools[0].name == "browser_navigate"
+            assert server_tools[0].name == "browser-use-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
             tools = await Runner.list_tools("browser-use-server")
             assert len(tools) == 2
             first_tool = tools[0]
-            tool_id = f"browser-use-server.{first_tool.name}"
+            tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
             result = await Runner.run_tool(tool_id, test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
-                tool_name="browser_navigate",
+                tool_name="browser-use-server.browser_navigate",
                 arguments=test_inputs,
             )
 
@@ -443,7 +443,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # -------------------- 预置数据 --------------------
         mock_tools = [
             McpToolInfo(
-                name="doubter",
+                name="doubter-mcp-server.doubter",
                 description="Doubter tool via stdio",
                 schema={
                     "type": "object",
@@ -454,7 +454,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 },
             ),
             McpToolInfo(
-                name="checker",
+                name="doubter-mcp-server.checker",
                 description="Checker tool via stdio",
                 schema={
                     "type": "object",
@@ -489,20 +489,20 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # -------------------- 工具列表校验 --------------------
             server_tools = tool_mgr.get_tool_infos(tool_server_name="doubter-mcp-server")
             assert len(server_tools) == 2
-            assert server_tools[0].name == "doubter"
+            assert server_tools[0].name == "doubter-mcp-server.doubter"
 
             # -------------------- Runner 拉取工具 --------------------
             tools = await Runner.list_tools("doubter-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
-            tool_id = f"doubter-mcp-server.{first_tool.name}"
+            tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
             result = await Runner.run_tool(tool_id, test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
-                tool_name="doubter",
+                tool_name="doubter-mcp-server.doubter",
                 arguments=test_inputs,
             )
 
@@ -527,7 +527,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # -------------------- 预置数据 --------------------
         mock_tools = [
             McpToolInfo(
-                name="browser_navigate",
+                name="playwright-mcp-server.browser_navigate",
                 description="Navigate to a URL via Playwright",
                 schema={
                     "type": "object",
@@ -536,7 +536,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 },
             ),
             McpToolInfo(
-                name="browser_click",
+                name="playwright-mcp-server.browser_click",
                 description="Click an element via Playwright",
                 schema={
                     "type": "object",
@@ -570,20 +570,20 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # -------------------- 工具列表校验 --------------------
             server_tools = tool_mgr.get_tool_infos(tool_server_name="playwright-mcp-server")
             assert len(server_tools) == 2
-            assert server_tools[0].name == "browser_navigate"
+            assert server_tools[0].name == "playwright-mcp-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
             tools = await Runner.list_tools("playwright-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
-            tool_id = f"playwright-mcp-server.{first_tool.name}"
+            tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
             result = await Runner.run_tool(tool_id, test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
-                tool_name="browser_navigate",
+                tool_name="playwright-mcp-server.browser_navigate",
                 arguments=test_inputs,
             )
 

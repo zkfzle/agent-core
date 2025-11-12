@@ -142,7 +142,7 @@ class ToolMgr(AbstractManager[Tool]):
             self._server_tool_infos[config.server_name] = tools
 
             for tool_info in tools:
-                tool_id = f"{config.server_name}.{tool_info.name}"
+                tool_id = tool_info.name
                 mcp_tool = MCPTool(
                     mcp_client=client,
                     tool_name=tool_info.name,
@@ -157,11 +157,11 @@ class ToolMgr(AbstractManager[Tool]):
 
     def _create_client(self, config: ToolServerConfig) -> McpToolClient:
         if config.client_type == "sse":
-            return SseClient(config.params)
+            return SseClient(config.params, config.server_name)
         elif config.client_type == "stdio":
-            return StdioClient(config.params)
+            return StdioClient(config.params, config.server_name)
         elif config.client_type == "playwright":
-            return PlaywrightClient(config.params)
+            return PlaywrightClient(config.params, config.server_name)
         else:
             raise ValueError(f"Unsupported MCP client type: {config.client_type}")
 

@@ -50,8 +50,9 @@ class McpToolClient(ABC):
 class SseClient(McpToolClient):
     """SSE (Server-Sent Events) transport based MCP client"""
 
-    def __init__(self, server_path: str):
+    def __init__(self, server_path: str, name: str):
         super().__init__(server_path)
+        self._name = name
         self._client = None
         self._session = None
         self._read = None
@@ -103,7 +104,7 @@ class SseClient(McpToolClient):
             tools_response = await self._session.list_tools()
             tools_list = [
                 McpToolInfo(
-                    name=tool.name,
+                    name=f"{self._name}.{tool.name}",
                     description=getattr(tool, "description", ""),
                     schema=getattr(tool, "inputSchema", {})
                 )
@@ -146,8 +147,9 @@ class SseClient(McpToolClient):
 class StdioClient(McpToolClient):
     """Stdio transport based MCP client"""
 
-    def __init__(self, server_path: str):
+    def __init__(self, server_path: str, name: str):
         super().__init__(server_path)
+        self._name = name
         self._client = None
         self._session = None
         self._read = None
@@ -200,7 +202,7 @@ class StdioClient(McpToolClient):
             tools_response = await self._session.list_tools()
             tools_list = [
                 McpToolInfo(
-                    name=tool.name,
+                    name=f"{self._name}.{tool.name}",
                     description=getattr(tool, "description", ""),
                     schema=getattr(tool, "inputSchema", {})
                 )
@@ -243,8 +245,9 @@ class StdioClient(McpToolClient):
 class PlaywrightClient(McpToolClient):
     """Playwright browser session based MCP client"""
 
-    def __init__(self, server_path: str):
+    def __init__(self, server_path: str, name: str):
         super().__init__(server_path)
+        self._name = name
         self._client = None
         self._session = None
         self._read = None
@@ -302,7 +305,7 @@ class PlaywrightClient(McpToolClient):
             tools_response = await self._session.list_tools()
             tools_list = [
                 McpToolInfo(
-                    name=tool.name,
+                    name=f"{self._name}.{tool.name}",
                     description=getattr(tool, "description", ""),
                     schema=getattr(tool, "inputSchema", {})
                 )

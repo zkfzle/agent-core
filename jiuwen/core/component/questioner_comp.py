@@ -4,7 +4,6 @@
 import json
 import re
 from dataclasses import dataclass, field
-from encodings.punycode import selective_find
 from enum import Enum
 from typing import Any, Optional, List, Dict, Union
 

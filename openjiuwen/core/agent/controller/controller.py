@@ -80,12 +80,6 @@ class Controller:
 
 class BaseController(ABC):
     """基于消息队列的 Controller
-
-    设计思想（Linus 风格）：
-    - 使用 MessageQueueInMemory 实现发布-订阅
-    - invoke() 发布消息到队列
-    - handle_message() 由队列自动调用（订阅者）
-    - 解耦生产者和消费者
     """
 
     def __init__(self):

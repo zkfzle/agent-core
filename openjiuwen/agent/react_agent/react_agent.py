@@ -11,28 +11,16 @@ from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
-from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage, ToolMessage, BaseMessage
+from openjiuwen.core.utils.llm.messages import AIMessage, ToolMessage
 from openjiuwen.agent.utils import MessageUtils
 
 
 class ReActAgent(BaseAgent):
     """ReAct Agent - 极简实现（无中断、无Controller）
-    
-    核心设计：
-    - 继承 BaseAgent，所有配置由 BaseAgent 统一管理
-    - ReAct 循环：用户输入 → LLM reasoning → 执行工具 → 继续循环直到完成
-    - 没有 Controller、MessageHandler 等中间层
-    
-    Linus 思想：
-    - 子类只需实现业务逻辑（invoke/stream）
-    - 不需要管理配置、runtime、tools、workflows（BaseAgent 搞定）
     """
 
     def __init__(

@@ -275,16 +275,6 @@ class Agent(ABC):
 
 class BaseAgent(ABC):
     """基础 Agent - 极简接口定义（新架构）
-    
-    Linus 设计原则：
-    1. 数据结构优先 - BaseAgent 统一持有所有核心组件
-    2. 消除特殊情况 - 子类不需要重写配置方法
-    3. 向后兼容 - 保留 config() 方法
-    
-    核心思想：
-    - BaseAgent 持有一切：config, runtime, context_engine, tools, workflows
-    - 子类只需消费，不需管理
-    - 配置方法自动同步到 runtime
     """
 
     def __init__(self, agent_config):
@@ -391,13 +381,6 @@ class BaseAgent(ABC):
 
     def add_tools(self, tools: List[Tool]) -> None:
         """添加工具（同时更新 config、runtime、self._tools）
-        
-        Args:
-            tools: 工具实例列表（RestfulApi 或 LocalFunction）
-        
-        Linus 思想：
-        - 一个方法做完所有同步，消除子类重复
-        - 数据只有一份拷贝，BaseAgent 统一管理
         """
         from openjiuwen.agent.common.schema import PluginSchema
         
@@ -427,10 +410,6 @@ class BaseAgent(ABC):
         
         Args:
             workflows: 工作流实例列表
-        
-        Linus 思想：
-        - 一个方法做完所有同步，消除子类重复
-        - 数据只有一份拷贝，BaseAgent 统一管理
         """
         from openjiuwen.agent.common.schema import WorkflowSchema
         
@@ -517,16 +496,6 @@ class BaseAgent(ABC):
 
 class ControllerAgent(BaseAgent):
     """持有 Controller 的 Agent（新架构）
-    
-    Linus 设计原则：
-    1. "好品味" - 通过继承层次消除条件判断
-    2. 单一职责 - 只负责 controller 的持有和委托
-    3. 消除特殊情况 - 统一委托给 controller，没有分支
-    
-    核心思想：
-    - 只做一件事：持有 controller 并委托
-    - 没有业务逻辑，纯粹的委托层
-    - 子类可以重写 _create_controller() 来定制 controller
     """
 
     def __init__(self, agent_config, controller=None):

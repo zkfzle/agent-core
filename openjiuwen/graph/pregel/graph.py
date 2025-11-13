@@ -65,6 +65,9 @@ class PregelGraph(Graph):
             raise JiuWenBaseException(StatusCode.GRAPH_SET_END_NODE_FAILED.code,
                                       StatusCode.GRAPH_SET_END_NODE_FAILED.errmsg.format(
                                           detail="node_id is invalid, can not be None"))
+        vertex = self.nodes.get(node_id)
+        if vertex:
+            vertex.is_end_node = True
         self.pregel.set_finish_point(node_id)
         return self
 

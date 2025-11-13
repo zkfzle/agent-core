@@ -86,12 +86,30 @@ def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str =
 
 def get_value_by_nested_path(nested_key: str, source: dict) -> Optional[Any]:
     result = root_to_path(nested_key, source)
-    if result[1] is None or (not hasattr(result[1], '__contains__')) or (not hasattr(result[1], '__getitem__')):
+    if result[1] is None:
         return None
-    if result[0] not in result[1]:
-        return None
-    return result[1][result[0]]
+    container, key = result[1], result[0]
+    try:
+        if isinstance(container, list):
+            index = int(key)
+            if index < 0:
+                if abs(index) <= len(container):
+                    return container[index]
+                else:
+                    return None
+            else:
+                if index < len(container):
+                    return container[index]
+                else:
+                    return None
+        elif hasattr(container, '__getitem__'):
+            return container[key]
 
+        else:
+            return None
+
+    except (ValueError, TypeError, KeyError, IndexError):
+        return None
 
 def split_nested_path(nested_key: str) -> list:
     '''

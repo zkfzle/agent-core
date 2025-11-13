@@ -33,6 +33,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         # if stream_call is available, call should wait for it
         self._stream_done = asyncio.Future()
         self._stream_called = False
+        self.is_end_node = False
 
     def init(self, runtime: BaseRuntime) -> bool:
         self._runtime = NodeRuntime(runtime, self._node_id)
@@ -98,7 +99,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         output_transformer = self._node_config.io_config.outputs_transformer if self._node_config else None
         if output_transformer is None:
             output_schema = self._node_config.io_config.outputs_schema if self._node_config else None
-            results = get_by_schema(output_schema, results) if output_schema else results
+            if output_schema:
+                results = get_by_schema(output_schema, results)
+                if (not self.is_end_node) and results and isinstance(results, dict):
+                    results = {key: value for key, value in results.items() if value is not None}
         else:
             results = output_transformer(results)
         self._runtime.state().set_outputs(results)

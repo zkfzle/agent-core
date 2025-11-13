@@ -78,6 +78,8 @@ class TestRuntime:
         assert get_by_schema({"result": ["abc", "cde"]}, data=source) == {"result": ["abc", "cde"]}
         assert get_by_schema({"result": {"abc": "cde", "result": "${1}"}}, data=source) == {
             "result": {"abc": "cde", "result": None}}
+        source1 = {'a': {'b': ['cc', 'dd', 'ee']}}
+        assert get_by_schema({"result": "${a.b[1]}"}, data=source1) == {"result": 'dd'}
 
         assert get_by_schema({"result": ["${abc}", "cde"]}, data=source) == {"result": [None, "cde"]}
         assert get_by_schema({"result": {"abc": "cde", "result": "${a}"}}, data=source) == {

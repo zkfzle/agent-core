@@ -197,7 +197,7 @@ class MessageHandler(ABC):
             )
             self.runtime.add_model(model_id=model_id, model=model)
 
-        return model
+        return self.runtime.get_model(model_id=model_id)
 
     @staticmethod
     def extract_component_id_from_stream_data(stream_data: List) -> Optional[str]:

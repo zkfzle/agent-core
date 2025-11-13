@@ -9,12 +9,13 @@ from openjiuwen.core.agent.agent import Agent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.llm_call.base import LLMCall
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.agent_builder.prompt_builder.tune.base import Case, TuneConstant, EvaluatedCase
-from openjiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer
+from openjiuwen.agent_builder.tune.base import Case, TuneConstant, EvaluatedCase
+from openjiuwen.agent_builder.tune.utils import TuneUtils
+from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer
 
 
 EXAMPLE_SELECTION_TEMPLATE = Template(content="""作为提示词优化专家,我的任务是帮助代理高效且成功地完成任务。
@@ -42,14 +43,17 @@ EXAMPLE_SELECTION_TEMPLATE = Template(content="""作为提示词优化专家,我
 
 class ExampleOptimizer(BaseOptimizer):
     def __init__(self,
-                 model: BaseChatModel,
-                 model_name: str,
+                 model_config: ModelConfig,
                  parameters: Optional[Dict[str, LLMCall]] = None,
                  num_examples: int = TuneConstant.DEFAULT_EXAMPLE_NUM,
                  ):
         super().__init__(parameters)
-        self._model = model
-        self._model_name = model_name
+        self._model = ModelFactory().get_model(
+            model_provider=model_config.model_provider,
+            api_key=model_config.model_info.api_key,
+            api_base=model_config.model_info.api_base
+        )
+        self._model_name = model_config.model_info.model_name
         if num_examples < TuneConstant.MIN_EXAMPLE_NUM or num_examples > TuneConstant.MAX_EXAMPLE_NUM:
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR.code,

@@ -8,13 +8,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tqdm import tqdm
 
-from openjiuwen.core.utils.llm.base import BaseChatModel
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.agent_builder.prompt_builder.tune.base import Case, EvaluatedCase, TuneConstant
-from openjiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
-from openjiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase, TuneConstant
+from openjiuwen.agent_builder.tune.utils import TuneUtils
+from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
 
 
 class BaseEvaluator(ABC):
@@ -116,13 +117,16 @@ LLM_METRIC_RETRY_TEMPLATE = Template(content=
 
 class DefaultEvaluator(BaseEvaluator):
     def __init__(self,
-                 model: BaseChatModel,
-                 model_name: str,
+                 model_config: ModelConfig,
                  metric: str = "",
                  ):
         super().__init__()
-        self._model = model
-        self._model_name = model_name
+        self._model = ModelFactory().get_model(
+            model_provider=model_config.model_provider,
+            api_key=model_config.model_info.api_key,
+            api_base=model_config.model_info.api_base
+        )
+        self._model_name = model_config.model_info.model_name
         self._metric_template = LLM_METRIC_TEMPLATE.format(
             dict(user_metrics=metric)
         )

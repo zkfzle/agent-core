@@ -9,30 +9,27 @@ import copy
 from typing import List, Dict, Optional
 
 from openjiuwen.core.utils.llm_call.base import LLMCall
-from openjiuwen.core.utils.llm.base import BaseChatModel
-from openjiuwen.agent_builder.prompt_builder.tune.base import TuneConstant, EvaluatedCase
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.instruction_optimizer import InstructionOptimizer
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.example_optimizer import ExampleOptimizer
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.agent_builder.tune.base import TuneConstant, EvaluatedCase
+from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer
+from openjiuwen.agent_builder.tune.optimizer.instruction_optimizer import InstructionOptimizer
+from openjiuwen.agent_builder.tune.optimizer.example_optimizer import ExampleOptimizer
 
 
 class JointOptimizer(BaseOptimizer):
     def __init__(
             self,
-            model: BaseChatModel,
-            model_name: str,
+            model_config: ModelConfig,
             parameters: Optional[Dict[str, LLMCall]] = None,
             num_examples: int = TuneConstant.DEFAULT_EXAMPLE_NUM,
             ):
         self._instruction_optimizer = InstructionOptimizer(
-            model, model_name, copy.deepcopy(parameters)
+            model_config, copy.deepcopy(parameters)
         )
         self._example_optimizer = ExampleOptimizer(
-            model, model_name, copy.deepcopy(parameters), num_examples
+            model_config, copy.deepcopy(parameters), num_examples
         )
         super().__init__(parameters)
-        self._model = model,
-        self._model_name = model_name,
         self._is_optimize_instruction: bool = True
 
     def bind_parameter(self, parameters: Dict[str, LLMCall]):

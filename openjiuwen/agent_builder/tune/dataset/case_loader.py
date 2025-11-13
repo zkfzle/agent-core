@@ -7,7 +7,7 @@ import random
 import copy
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.agent_builder.prompt_builder.tune.base import Case
+from openjiuwen.agent_builder.tune.base import Case
 
 
 CASE_ID_PREFIX: str = "case_"

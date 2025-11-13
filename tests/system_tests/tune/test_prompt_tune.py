@@ -6,18 +6,18 @@ import unittest
 import asyncio
 
 from openjiuwen.agent.chat_agent import create_chat_agent_config, create_chat_agent
-from openjiuwen.agent.config.base import LLMCallConfig, ModelConfig
+from openjiuwen.agent.config.base import LLMCallConfig
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.function.function import LocalFunction, Param
 
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.joint_optimizer import JointOptimizer
-from openjiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import DefaultEvaluator
+from openjiuwen.agent_builder.tune.optimizer.joint_optimizer import JointOptimizer
+from openjiuwen.agent_builder.tune.evaluator.evaluator import DefaultEvaluator
 from openjiuwen.core.utils.llm.messages import UsageMetadata
-from openjiuwen.agent_builder.prompt_builder.tune.base import Case
-from openjiuwen.agent_builder.prompt_builder.tune.trainer.trainer import Trainer
-from openjiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
+from openjiuwen.agent_builder.tune.base import Case
+from openjiuwen.agent_builder.tune.trainer.trainer import Trainer
+from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
 from openjiuwen.core.utils.llm.messages import ToolCall, FunctionInfo
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
 API_BASE = os.getenv("API_BASE", "")
@@ -176,21 +176,22 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
 
     def create_trainer(self):
         # 1. define optimizer
-        llm = ModelFactory().get_model(
+        config = ModelConfig(
             model_provider=MODEL_PROVIDER,
-            api_key=API_KEY,
-            api_base=API_BASE,
+            model_info=BaseModelInfo(
+                api_base=API_BASE,
+                api_key=API_KEY,
+                model=MODEL_NAME
+            )
         )
         optimizer = JointOptimizer(
-            model_name=MODEL_NAME,
-            model=llm,
+            model_config=config,
             num_examples=0
         )
 
         # 2. define evaluator
         evaluator = DefaultEvaluator(
-            model=llm,
-            model_name=MODEL_NAME,
+            model_config=config,
             metric="1. 如果是非工具调用，两个回答需要一致，包括数量和名字。注意：但可以忽略对引号格式问题以及tool_calls字段"
                    "2. 如果是工具调用，则只需要关注tool_calls字段中插件名称和插件参数是否一致，无需关注文本内容"
         )
@@ -216,15 +217,17 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         agent = self.create_agent(INFORMATION_EXTRACTION_TEMPLATE)
 
         # 创建评估器
-        llm = ModelFactory().get_model(
+        config = ModelConfig(
             model_provider=MODEL_PROVIDER,
-            api_key=API_KEY,
-            api_base=API_BASE,
+            model_info=BaseModelInfo(
+                api_base=API_BASE,
+                api_key=API_KEY,
+                model=MODEL_NAME
+            )
         )
 
         evaluator = DefaultEvaluator(
-            model=llm,
-            model_name=MODEL_NAME,
+            model_config=config,
             metric="1. 如果是非工具调用，两个回答需要一致，包括数量和名字。注意：但可以忽略对引号格式问题以及tool_calls字段"
                    "2. 如果是工具调用，则只需要关注tool_calls字段中插件名称和插件参数是否一致，无需关注文本内容"
         )
@@ -232,8 +235,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         # 创建优化器，执行优化
         with JointOptimizer(
             parameters=agent.get_llm_calls(),
-            model_name=MODEL_NAME,
-            model=llm,
+            model_config=config,
             num_examples=1
         ) as optimizer:
             predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))
@@ -253,7 +255,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         trainer = self.create_trainer()
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES)
 
-        from openjiuwen.agent_builder.prompt_builder.tune.trainer.base import Callbacks, Progress
+        from openjiuwen.agent_builder.tune.trainer.base import Callbacks, Progress
         class MyCallbacks(Callbacks):
             def on_train_epoch_end(self, agent, progress: Progress):
                 print(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")

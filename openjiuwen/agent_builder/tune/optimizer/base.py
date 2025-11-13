@@ -14,8 +14,8 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo
 from openjiuwen.core.utils.llm_call.base import LLMCall
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
-from openjiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase
+from openjiuwen.agent_builder.tune.utils import TuneUtils
+from openjiuwen.agent_builder.tune.base import EvaluatedCase
 
 
 class BaseOptimizer:

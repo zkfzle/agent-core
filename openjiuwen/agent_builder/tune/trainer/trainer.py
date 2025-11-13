@@ -9,17 +9,17 @@ import copy
 from tqdm import tqdm
 import asyncio
 
-from openjiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
+from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.core.agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm_call.base import LLMCall
-from openjiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase, TuneConstant, Case
-from openjiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
-from openjiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import BaseEvaluator
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
-from openjiuwen.agent_builder.prompt_builder.tune.trainer.base import Progress, Callbacks
+from openjiuwen.agent_builder.tune.base import EvaluatedCase, TuneConstant, Case
+from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
+from openjiuwen.agent_builder.tune.evaluator.evaluator import BaseEvaluator
+from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
+from openjiuwen.agent_builder.tune.trainer.base import Progress, Callbacks
 
 DEFAULT_CANDIDATES_SAMPLE_NUM: int = 6
 

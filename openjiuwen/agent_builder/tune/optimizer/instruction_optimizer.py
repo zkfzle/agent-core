@@ -6,13 +6,14 @@ prompt optimization evaluators
 import re
 from typing import List, Optional, Dict
 
-from openjiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
+from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.core.utils.llm_call.base import LLMCall
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.prompt.assemble.assembler import Assembler
-from openjiuwen.agent_builder.prompt_builder.tune.base import EvaluatedCase
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
+from openjiuwen.agent_builder.tune.base import EvaluatedCase
+from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
 
 PROMPT_INSTRUCTION_OPTIMIZE_TEMPLATE = Template(content="""
 你是一位提示词优化专家，你的任务是根据提供的信息对提示词进行优化。具体信息如下:
@@ -169,13 +170,16 @@ PLACEHOLDER_RESTORE_TEMPLATE = Template(content="""
 
 class InstructionOptimizer(BaseOptimizer):
     def __init__(self,
-                 model: BaseChatModel,
-                 model_name: str,
+                 model_config: ModelConfig,
                  parameters: Optional[Dict[str, LLMCall]] = None,
                  **kwargs):
         super().__init__(parameters)
-        self._model = model
-        self._model_name = model_name
+        self._model = ModelFactory().get_model(
+            model_provider=model_config.model_provider,
+            api_key=model_config.model_info.api_key,
+            api_base=model_config.model_info.api_base
+        )
+        self._model_name = model_config.model_info.model_name
         self._bad_cases_string: str = ""
 
     def _backward(self,

@@ -14,12 +14,12 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.utils.llm.base import BaseChatModel
 from openjiuwen.core.utils.llm_call.base import LLMCall
 from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo
-from openjiuwen.agent_builder.prompt_builder.tune.base import Case, EvaluatedCase
-from openjiuwen.agent_builder.prompt_builder.tune.utils import TuneUtils
-import openjiuwen.agent_builder.prompt_builder.tune.optimizer.adopt.utils as ADOPT
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.base import TextualParameter
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.base import BaseOptimizer
-from openjiuwen.agent_builder.prompt_builder.tune.optimizer.instruction_optimizer import InstructionOptimizer
+from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase
+from openjiuwen.agent_builder.tune.utils import TuneUtils
+import openjiuwen.agent_builder.tune.optimizer.adopt.utils as ADOPT
+from openjiuwen.agent_builder.tune.optimizer.base import TextualParameter
+from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer
+from openjiuwen.agent_builder.tune.optimizer.instruction_optimizer import InstructionOptimizer
 
 
 DEFAULT_BAD_CASES_SAMPLE_NUM: int = 5

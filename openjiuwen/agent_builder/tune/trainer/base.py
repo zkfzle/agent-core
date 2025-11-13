@@ -5,7 +5,7 @@ from typing import Generator
 from pydantic import BaseModel, Field
 
 from openjiuwen.core.agent.agent import Agent
-from openjiuwen.agent_builder.prompt_builder.tune.base import TuneConstant
+from openjiuwen.agent_builder.tune.base import TuneConstant
 
 
 class Progress(BaseModel):

@@ -25,7 +25,7 @@ class TuneConstant:
     MIN_ITERATION_NUM: int = 1
     MAX_ITERATION_NUM: int = 20
     MIN_PARALLEL_NUM: int = 1
-    MAX_PARALLEL_NUM: int = 10
+    MAX_PARALLEL_NUM: int = 20
     MIN_EXAMPLE_NUM: int = 0
     MAX_EXAMPLE_NUM: int = 20
 
@@ -47,7 +47,7 @@ class EvaluatedCase(BaseModel):
     """definition of evaluated case"""
     case: Case = Field(...)
     answer: Dict[str, Any] = Field(default=None)
-    score: float = Field(default=0.0)
+    score: float = Field(default=0.0, ge=0.0, le=1.0)
     reason: str = Field(default="")
 
     @property

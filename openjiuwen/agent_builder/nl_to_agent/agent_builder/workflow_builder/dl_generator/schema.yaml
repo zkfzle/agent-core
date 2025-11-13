@@ -43,7 +43,7 @@ llm: |
       "inputs": [{"name": "query", "value": "${node_start.query}"}],
       "outputs": [{"name": "output", "description": "大模型输出"}],
       "configs": {
-        "system_prompt": "## 人设\n你是一个xxx。\n\n## 任务描述\nxxx",
+        "system_prompt": "## 人设\\n你是一个xxx。\\n\\n## 任务描述\\nxxx",
         "user_prompt": "{{query}}"
       }
     },
@@ -110,7 +110,7 @@ code: |
     "parameters": {
       "inputs": [{"name": "height", "value": "${node_questioner.height}"}, {"name": "weight", "value": "${node_questioner.weight}"}],
       "outputs": [{"name": "bmi", "description": "计算的BMI结果"}],
-      "configs": {"code": "def main(args: dict):\n    \"\"\"运行代码会调用此函数\n    :param args: 输入固定为args字典类型，kv为输入参数键值对在args.params中\n    :return: 输出参数为字典类型，kv为输出参数键值对\n    \"\"\"\n    params = args.get('params')\n    h = params.get('height')\n    w = params.get('weight')\n    bmi = w / h / h\n    result = {'bmi': bmi}\n    return result "}
+      "configs": {"code": "def main(args: dict):\\n    '''运行代码会调用此函数\\n    :param args: 输入固定为args字典类型，kv为输入参数键值对在args.params中\\n    :return: 输出参数为字典类型，kv为输出参数键值对\\n    '''\\n    params = args.get('params')\\n    h = params.get('height')\\n    w = params.get('weight')\\n    bmi = w / h / h\\n    result = {'bmi': bmi}\\n    return result"}
     },
     "next": "node_llm"
   }

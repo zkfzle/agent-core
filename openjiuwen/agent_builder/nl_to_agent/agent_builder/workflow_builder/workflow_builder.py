@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+import re
 from enum import Enum
 
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -13,7 +14,7 @@ from .intention_detector.intention_detector import IntentionDetector
 from .sop_generator.sop_generator import SopGenerator
 from .dl_generator.dl_generator import DLGenerator
 from .dl_reflector.dl_reflector import Reflector
-from .dl_transformer.base import DLTransformer
+from .dl_transformer.dl_transformer import DLTransformer
 
 
 WORKFLOW_REQUEST_CONTENT = "请提供您想要的工作流程描述，以便我为您生成相应的流程图，如果不清楚可以回复不清楚，我将为您规划流程。"
@@ -42,7 +43,14 @@ class WorkflowBuilder:
         self._sop_generator = SopGenerator(llm)
         self._dl_generator = DLGenerator(llm)
         self._dl_reflector = Reflector()
-        self._dl_transformer = DLTransformer(llm, context_manager)
+        self._dl_transformer = DLTransformer()
+
+    @staticmethod
+    def extract_json(dl: str):
+        pattern = r'```(?:json)?\s*([\s\S]*?)\s*```'
+        matches = re.findall(pattern, dl)
+        extracted_content = matches[0]
+        return extracted_content
 
     def execute(self, query: str):
         if self._state == State.INITIAL:
@@ -115,6 +123,7 @@ class WorkflowBuilder:
     def _generate_and_reflect_dl(self, dl_operation, max_retries: int = 3, *args, **kwargs):
         for _ in range(max_retries):
             generated_dl = dl_operation(*args, **kwargs)
+            generated_dl = self.extract_json(generated_dl)
             self._dl_reflector.check_format(generated_dl)
             if not self._dl_reflector.errors:
                 self.context_manager.add_assistant_message(generated_dl)
@@ -123,7 +132,7 @@ class WorkflowBuilder:
                 AIMessage(content=generated_dl),
                 HumanMessage(content=MODIFY_DL_CONTENT + ";\n".join(self._dl_reflector.errors)),
             ]
-            self._dl_reflector.errors = []
+            self._dl_reflector.reset()
 
         raise JiuWenBaseException(
             StatusCode.NL2AGENT_WORKFLOW_DL_GENERATION_ERROR.code,

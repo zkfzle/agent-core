@@ -14,7 +14,7 @@ def extract_placeholder_content(input_str: str) -> tuple[bool, list[str]]:
 
 class Reflector:
     def __init__(self):
-        self.available_node_types = ['Start', 'End', 'Message', 'LLM', 'Questioner',
+        self.available_node_types = ['Start', 'End', 'Output', 'LLM', 'Questioner',
                                      'Plugin', 'Code', 'Branch', 'IntentDetection']
         self.available_node_outputs = set()  # 已验证节点的输出变量，可以作为后续节点的输入引用
         self.node_ids = []
@@ -25,7 +25,7 @@ class Reflector:
         self.check_functions = {
             'Start': self._check_start_node,
             'End': self._check_end_node,
-            'Message': self._check_message_node,
+            'Output': self._check_output_node,
             'LLM': self._check_llm_node,
             'Questioner': self._check_questioner_node,
             'Plugin': self._check_plugin_node,
@@ -98,7 +98,7 @@ class Reflector:
         if 'template' not in configs_keys:
             self.errors.append(f"{node_content['id']}节点, 类型为{node_content['type']}, 'parameters'中的'configs'字典中缺失'template'属性")
 
-    def _check_message_node(self, node_content: dict):
+    def _check_output_node(self, node_content: dict):
         self._check_next_missing(node_content)
         self._check_inputs_list(node_content)
         configs_format_has_error = self._check_configs_format(node_content)

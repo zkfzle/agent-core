@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+from .base import BaseConverter
+from ..models import InputsField, OutputsField
+from ..converter_utils import ConverterUtils
+
+
+class QuestionerConverter(BaseConverter):
+    def _convert_specific_config(self):
+        llmParam = ConverterUtils.convert_llm_param(self.node_data["parameters"]["configs"]["prompt"], "")
+        self.node.data.inputs = InputsField(
+            inputParameters=self._convert_input_variables(self.node_data["parameters"]["inputs"]),
+            llmParam=llmParam,
+            systemPrompt=llmParam["systemPrompt"]
+        )
+        outputs = self._convert_outputs_field(self.node_data["parameters"]["outputs"])
+        self.node.data.outputs = outputs
+        self.node.data.outputs.required=[key for key in outputs.properties.keys()]

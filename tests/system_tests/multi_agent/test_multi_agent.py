@@ -2,17 +2,17 @@ import os
 from typing import Any, Dict, AsyncIterator
 import unittest
 
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from jiuwen.core.common.logging import logger
-from jiuwen.core.multi_agent.runner.standalone_runner import StandaloneRunner
-from jiuwen.core.multi_agent.stream.stream_handler import StreamHandler
-from jiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
-from jiuwen.core.stream.base import StreamData, StreamCode
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.multi_agent.runner.standalone_runner import StandaloneRunner
+from openjiuwen.core.multi_agent.stream.stream_handler import StreamHandler
+from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.stream.base import StreamData, StreamCode
 
-from jiuwen.core.agent.agent import Agent
-from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.runtime.interaction.base import AgentInterrupt
+from openjiuwen.core.agent.agent import Agent
+from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.core.runtime.interaction.base import AgentInterrupt
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

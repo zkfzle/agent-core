@@ -19,30 +19,30 @@ import os
 import unittest
 from unittest.mock import patch
 
-from jiuwen.core.runtime.wrapper import TaskRuntime
-from jiuwen.core.component.branch_comp import BranchComponent
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.intent_detection_comp import (
+from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.component.branch_comp import BranchComponent
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.intent_detection_comp import (
     IntentDetectionComponent,
     IntentDetectionCompConfig,
 )
-from jiuwen.core.component.llm_comp import LLMCompConfig, LLMComponent
-from jiuwen.core.component.questioner_comp import (
+from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMComponent
+from openjiuwen.core.component.questioner_comp import (
     FieldInfo,
     QuestionerComponent,
     QuestionerConfig,
 )
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.stream.base import CustomSchema
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.stream.base import CustomSchema
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.prompt.template.template import Template
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 # 注意：切勿将真实密钥提交到仓库！

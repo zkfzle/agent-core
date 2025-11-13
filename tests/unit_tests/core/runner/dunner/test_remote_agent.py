@@ -2,12 +2,12 @@ import pytest
 import asyncio
 import logging
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
-from jiuwen.core.runner.drunner.server_adapter.agent_adapter import MqAgentAdapter
-from jiuwen.core.runner.runner import Runner
-from jiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
+from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import MqAgentAdapter
+from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.common.logging import logger
 
 
 @pytest.mark.asyncio

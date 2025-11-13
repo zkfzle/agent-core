@@ -7,19 +7,19 @@ from typing import Any, Union, List, Dict, AsyncIterator
 import pytest
 from unittest.mock import Mock
 
-from jiuwen.agent.common.enum import ControllerType
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.context_engine.config import ContextEngineConfig
-from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolInfo
-from jiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata
+from openjiuwen.agent.common.enum import ControllerType
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.context_engine.config import ContextEngineConfig
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolInfo
+from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -27,18 +27,18 @@ fake_base.logger = Mock()
 fake_exception_module = types.ModuleType("base")
 fake_exception_module.JiuWenBaseException = Mock()
 
-sys.modules["jiuwen.core.common.logging.base"] = fake_base
-sys.modules["jiuwen.core.common.exception.base"] = fake_exception_module
+sys.modules["openjiuwen.core.common.logging.base"] = fake_base
+sys.modules["openjiuwen.core.common.exception.base"] = fake_exception_module
 
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 from unittest.mock import patch, AsyncMock
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
-from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
-from jiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from jiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
+from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
+from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
 
 USER_FIELDS = "userFields"
 
@@ -84,7 +84,7 @@ class FakeModel(BaseChatModel):
 
 
 @patch(
-    "jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
+    "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
     autospec=True,
 )
 class TestLLMExecutableInvoke:
@@ -320,7 +320,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from jiuwen.agent.workflow_agent import WorkflowAgent
+        from openjiuwen.agent.workflow_agent import WorkflowAgent
         workflow_id = flow.config().metadata.id
         workflow_name = flow.config().metadata.name
         workflow_version = flow.config().metadata.version
@@ -628,7 +628,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from jiuwen.agent.workflow_agent import WorkflowAgent
+        from openjiuwen.agent.workflow_agent import WorkflowAgent
         workflow_id = flow.config().metadata.id
         workflow_name = flow.config().metadata.name
         workflow_version = flow.config().metadata.version

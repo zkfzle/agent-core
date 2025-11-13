@@ -33,12 +33,12 @@ from unittest.mock import patch
 
 import pytest
 
-from jiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
-from jiuwen.core.utils.llm.messages import AIMessage, ToolCall, FunctionInfo, UsageMetadata
-from jiuwen.core.utils.tool.function.function import LocalFunction
-from jiuwen.core.utils.tool.param import Param
+from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
+from openjiuwen.core.utils.llm.messages import AIMessage, ToolCall, FunctionInfo, UsageMetadata
+from openjiuwen.core.utils.tool.function.function import LocalFunction
+from openjiuwen.core.utils.tool.param import Param
 
 
 class MockLLMModel(BaseChatModel):
@@ -204,7 +204,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
         mock_llm.set_responses(all_llm_responses)
         
         # ==================== 使用 Patch Mock LLM ====================
-        with patch('jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
             
             # ==================== 创建工具 ====================

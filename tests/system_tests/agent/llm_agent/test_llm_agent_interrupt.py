@@ -3,21 +3,21 @@ import unittest
 from datetime import datetime
 from typing import List
 
-from jiuwen.agent.common.schema import PluginSchema, WorkflowSchema
-from jiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.base import OutputSchema
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from jiuwen.core.runner.runner import Runner, resource_mgr
-from jiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
+from openjiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

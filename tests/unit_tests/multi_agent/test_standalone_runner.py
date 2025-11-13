@@ -1,12 +1,12 @@
 import unittest
 from unittest.mock import Mock, AsyncMock
 
-from jiuwen.core.multi_agent.runner.standalone_runner import StandaloneRunner
-from jiuwen.core.multi_agent.runner.agent_message_queue import AgentMessageQueue
-from jiuwen.core.multi_agent.member_instance_manager import MemberInstanceManager
-from jiuwen.core.multi_agent.runner.agent_run_space import AgentRunSpace
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.multi_agent.runner.standalone_runner import StandaloneRunner
+from openjiuwen.core.multi_agent.runner.agent_message_queue import AgentMessageQueue
+from openjiuwen.core.multi_agent.member_instance_manager import MemberInstanceManager
+from openjiuwen.core.multi_agent.runner.agent_run_space import AgentRunSpace
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class TestStandaloneRunner(unittest.IsolatedAsyncioTestCase):

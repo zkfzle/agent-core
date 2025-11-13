@@ -3,16 +3,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from jiuwen.core.common.logging import logger
-from jiuwen.core.context_engine.base import Context
-from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.stream.base import StreamMode, BaseStreamMode
-from jiuwen.core.tracer.decorator import decrate_tool_with_trace, decrate_workflow_with_trace, decrate_model_with_trace
-from jiuwen.core.utils.llm.base import BaseChatModel
-from jiuwen.core.utils.llm.messages import ToolInfo
-from jiuwen.core.utils.tool.base import Tool
-from jiuwen.core.utils.tool.constant import Input, Output
-from jiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
+from openjiuwen.core.tracer.decorator import decrate_tool_with_trace, decrate_workflow_with_trace, decrate_model_with_trace
+from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.tool.base import Tool
+from openjiuwen.core.utils.tool.constant import Input, Output
+from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 
 pytestmark = pytest.mark.asyncio
 

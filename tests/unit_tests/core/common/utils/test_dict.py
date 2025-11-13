@@ -1,6 +1,6 @@
 import json
 
-from jiuwen.core.utils.common.dict_utils import extract_leaf_nodes, rebuild_dict_from_paths, \
+from openjiuwen.core.utils.common.dict_utils import extract_leaf_nodes, rebuild_dict_from_paths, \
     rebuild_dict, format_path
 
 

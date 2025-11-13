@@ -3,9 +3,9 @@ import asyncio
 
 import pytest_asyncio
 
-from jiuwen.core.runner.drunner.dmessage_queue.dsubscription.response_collector import ResponseCollector
-from jiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
-from jiuwen.core.runner.drunner.dmessage_queue.message import DmqResponseMessage, DMessageType
+from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.response_collector import ResponseCollector
+from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
+from openjiuwen.core.runner.drunner.dmessage_queue.message import DmqResponseMessage, DMessageType
 
 
 @pytest_asyncio.fixture

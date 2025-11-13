@@ -5,12 +5,12 @@ from unittest.mock import Mock
 
 import pytest
 
-from jiuwen.core.component.condition.array import ArrayCondition
-from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from jiuwen.core.component.loop_callback.output import OutputCallback
-from jiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
-from jiuwen.core.component.set_variable_comp import SetVariableComponent
-from jiuwen.core.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.component.condition.array import ArrayCondition
+from openjiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.component.loop_callback.output import OutputCallback
+from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
+from openjiuwen.core.component.set_variable_comp import SetVariableComponent
+from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode
 
 fake_base = types.ModuleType("base")
@@ -19,15 +19,15 @@ fake_base.logger = Mock()
 fake_exception_module = types.ModuleType("base")
 fake_exception_module.JiuWenBaseException = Mock()
 
-sys.modules["jiuwen.core.common.logging.base"] = fake_base
-sys.modules["jiuwen.core.common.exception.base"] = fake_exception_module
+sys.modules["openjiuwen.core.common.logging.base"] = fake_base
+sys.modules["openjiuwen.core.common.exception.base"] = fake_exception_module
 
 from tests.unit_tests.core.tracer.mock_node_with_tracer import StreamNodeWithTracer
-from jiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import logger
 
-from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.stream.base import CustomSchema, OutputSchema, TraceSchema
+from openjiuwen.core.runtime.workflow import WorkflowRuntime
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.stream.base import CustomSchema, OutputSchema, TraceSchema
 
 pytestmark = pytest.mark.asyncio
 

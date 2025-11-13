@@ -2,14 +2,14 @@ import asyncio
 
 import pytest
 
-from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.agent import AgentRuntime
-from jiuwen.core.runtime.config import Config
-from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.runtime.wrapper import TaskRuntime
-from jiuwen.core.common.logging import logger
-from jiuwen.core.stream.base import CustomSchema
-from jiuwen.core.workflow.base import Workflow
+from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.core.agent.agent import AgentRuntime
+from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.stream.base import CustomSchema
+from openjiuwen.core.workflow.base import Workflow
 from tests.unit_tests.core.tracer.mock_node_with_tracer import StreamNodeWithTracer
 from tests.unit_tests.core.tracer.test_workflow_tracer import record_tracer_info
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode

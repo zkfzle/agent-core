@@ -2,18 +2,18 @@ from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
-from jiuwen.core.context_engine.config import ContextEngineConfig
-from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
-from jiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.utils.tool.tool import tool
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
+from openjiuwen.core.context_engine.config import ContextEngineConfig
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
+from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.utils.tool.tool import tool
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 
@@ -50,8 +50,8 @@ def mock_tool():
 
 
 @patch('requests.request')
-@patch('jiuwen.core.utils.tool.service_api.restful_api.RestfulApi._async_request')
-@patch('jiuwen.core.component.tool_comp.ToolExecutable.get_tool')
+@patch('openjiuwen.core.utils.tool.service_api.restful_api.RestfulApi._async_request')
+@patch('openjiuwen.core.component.tool_comp.ToolExecutable.get_tool')
 @pytest.mark.asyncio
 async def test_tool_comp_invoke(mock_get_tool, mock_async_request, mock_request, mock_tool, mock_tool_config, mock_tool_input, fake_ctx):
     mock_get_tool.return_value = mock_tool
@@ -69,8 +69,8 @@ async def test_tool_comp_invoke(mock_get_tool, mock_async_request, mock_request,
     assert res.get('error_code') == 0
 
 
-@patch('jiuwen.core.component.tool_comp.ToolExecutable.invoke')
-@patch('jiuwen.core.component.tool_comp.ToolExecutable.get_tool')
+@patch('openjiuwen.core.component.tool_comp.ToolExecutable.invoke')
+@patch('openjiuwen.core.component.tool_comp.ToolExecutable.get_tool')
 @pytest.mark.asyncio
 async def test_tool_comp_in_workflow(mock_get_tool, mock_invoke, mock_tool, mock_tool_config, fake_ctx):
     mock_get_tool.return_value = mock_tool

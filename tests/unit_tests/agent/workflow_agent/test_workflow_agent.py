@@ -1,12 +1,12 @@
 import pytest
 
-from jiuwen.agent.common.enum import ControllerType
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from jiuwen.core.runtime.config import WorkflowConfig
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowMetadata
+from openjiuwen.agent.common.enum import ControllerType
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.runtime.config import WorkflowConfig
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 

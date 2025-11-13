@@ -1,8 +1,8 @@
 # tests/test_workflow_agent_invoke_real.py
 import os
 
-from jiuwen.core.runtime.workflow_manager import generate_workflow_key
-from jiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -12,24 +12,24 @@ from datetime import datetime
 import unittest
 import pytest
 
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.core.runtime.wrapper import TaskRuntime
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.base import OutputSchema
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.stream.base import OutputSchema
 from typing import List
 
 API_BASE = os.getenv("API_BASE", "")
@@ -327,7 +327,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。"""
-        from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+        from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
         workflow_id = workflow.config().metadata.id
         workflow_name = workflow.config().metadata.name
         workflow_version = workflow.config().metadata.version

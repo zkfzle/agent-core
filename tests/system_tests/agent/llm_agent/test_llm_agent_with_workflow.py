@@ -2,19 +2,19 @@ import os
 import unittest
 from datetime import datetime
 
-from jiuwen.agent.common.schema import PluginSchema
-from jiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from jiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.agent.common.schema import PluginSchema
+from openjiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

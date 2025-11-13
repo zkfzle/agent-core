@@ -8,14 +8,14 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from dataclasses import dataclass
 from typing import Optional, List
 
-from jiuwen.agent.config.base import AgentConfig
-from jiuwen.agent.common.enum import TaskType
-from jiuwen.core.agent.controller.scheduler.agent_scheduler import AgentScheduler
-from jiuwen.core.agent.controller.scheduler.message_handler import MessageHandler, MessageHandlerResult
-from jiuwen.core.agent.controller.scheduler.task_handler import TaskHandler
-from jiuwen.core.agent.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
-from jiuwen.core.agent.task.task import Task, TaskInput, TaskResult
-from jiuwen.core.common.logging import logger
+from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.agent.common.enum import TaskType
+from openjiuwen.core.agent.controller.scheduler.agent_scheduler import AgentScheduler
+from openjiuwen.core.agent.controller.scheduler.message_handler import MessageHandler, MessageHandlerResult
+from openjiuwen.core.agent.controller.scheduler.task_handler import TaskHandler
+from openjiuwen.core.agent.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
+from openjiuwen.core.agent.task.task import Task, TaskInput, TaskResult
+from openjiuwen.core.common.logging import logger
 
 
 class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
@@ -87,7 +87,7 @@ class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
         await self.scheduler.start()
         
         # 第二次启动应该被忽略（通过日志warning提示）
-        with patch('jiuwen.core.agent.controller.scheduler.agent_scheduler.logger') as mock_logger:
+        with patch('openjiuwen.core.agent.controller.scheduler.agent_scheduler.logger') as mock_logger:
             await self.scheduler.start()
             mock_logger.warning.assert_called_once()
         
@@ -128,7 +128,7 @@ class TestAgentScheduler(unittest.IsolatedAsyncioTestCase):
         await scheduler.schedule_message(self._create_test_message("msg2", "text2"))
         
         # 第三个消息应该被丢弃（通过日志error提示）
-        with patch('jiuwen.core.agent.controller.scheduler.agent_scheduler.logger') as mock_logger:
+        with patch('openjiuwen.core.agent.controller.scheduler.agent_scheduler.logger') as mock_logger:
             # 使用非阻塞方式尝试添加消息
             try:
                 scheduler.message_queue.put_nowait(self._create_test_message("msg3", "text3"))

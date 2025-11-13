@@ -1,6 +1,6 @@
-from jiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
-from jiuwen.core.runtime.state import ReadableStateLike
-from jiuwen.core.runtime.utils import update_dict, get_by_schema, root_to_index
+from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
+from openjiuwen.core.runtime.state import ReadableStateLike
+from openjiuwen.core.runtime.utils import update_dict, get_by_schema, root_to_index
 
 
 class TestRuntime:

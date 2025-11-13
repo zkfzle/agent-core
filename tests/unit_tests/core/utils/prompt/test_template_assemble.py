@@ -1,11 +1,11 @@
 import pytest
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.utils.llm.messages import HumanMessage, AIMessage, ToolCall, FunctionInfo, ToolMessage
-from jiuwen.core.utils.prompt.assemble.variables.variable import Variable
-from jiuwen.core.utils.prompt.template.template import Assembler
-from jiuwen.core.utils.prompt.assemble.variables.textable import TextableVariable
-from jiuwen.core.utils.prompt.index.template_store.template_store import Template
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage, ToolCall, FunctionInfo, ToolMessage
+from openjiuwen.core.utils.prompt.assemble.variables.variable import Variable
+from openjiuwen.core.utils.prompt.template.template import Assembler
+from openjiuwen.core.utils.prompt.assemble.variables.textable import TextableVariable
+from openjiuwen.core.utils.prompt.index.template_store.template_store import Template
 
 class TestPromptAssemble:
     def assertEqual(self, left, right):

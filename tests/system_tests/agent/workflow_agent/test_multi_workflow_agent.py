@@ -7,7 +7,7 @@
 """
 import os
 
-from jiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import Runner
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -16,16 +16,16 @@ import asyncio
 from datetime import datetime
 import unittest
 
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

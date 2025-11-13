@@ -6,10 +6,10 @@ import pytest
 from typing import Any, AsyncIterator
 import asyncio
 
-from jiuwen.core.runner.message_queue_base import StreamQueueMessage, InvokeQueueMessage, QueueMessage, MessageQueueBase
-from jiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
-from jiuwen.core.runner.message_queue_pulsar import MessageQueuePulsar
-from jiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.runner.message_queue_base import StreamQueueMessage, InvokeQueueMessage, QueueMessage, MessageQueueBase
+from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
+from openjiuwen.core.runner.message_queue_pulsar import MessageQueuePulsar
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class MockMessagehandler_stream:

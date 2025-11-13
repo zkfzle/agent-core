@@ -6,24 +6,24 @@ from unittest.mock import Mock
 
 import pytest
 
-from jiuwen.core.common.constants.constant import INTERACTION
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.component.branch_comp import BranchComponent
-from jiuwen.core.component.condition.array import ArrayCondition
-from jiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from jiuwen.core.component.loop_callback.output import OutputCallback
-from jiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
-from jiuwen.core.component.set_variable_comp import SetVariableComponent
-from jiuwen.core.component.workflow_comp import SubWorkflowComponent
-from jiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
-from jiuwen.core.runtime.interaction.interaction import InteractionOutput
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.stream.base import BaseStreamMode, TraceSchema, OutputSchema
-from jiuwen.core.workflow.base import WorkflowConfig
-from jiuwen.core.workflow.workflow_config import WorkflowMetadata
-from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.component.branch_comp import BranchComponent
+from openjiuwen.core.component.condition.array import ArrayCondition
+from openjiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.component.loop_callback.output import OutputCallback
+from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
+from openjiuwen.core.component.set_variable_comp import SetVariableComponent
+from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.runtime.workflow import WorkflowRuntime
+from openjiuwen.core.stream.base import BaseStreamMode, TraceSchema, OutputSchema
+from openjiuwen.core.workflow.base import WorkflowConfig
+from openjiuwen.core.workflow.workflow_config import WorkflowMetadata
+from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from tests.unit_tests.core.workflow.mock_nodes import InteractiveNode4StreamCp, MockStartNode, MockEndNode, Node4Cp, \
     MockStartNode4Cp, InteractiveNode4Cp, AddTenNode4Cp, CommonNode, AddTenNode
 
@@ -33,8 +33,8 @@ fake_base.logger = Mock()
 fake_exception_module = types.ModuleType("base")
 fake_exception_module.JiuWenBaseException = Mock()
 
-sys.modules["jiuwen.core.common.logging.base"] = fake_base
-sys.modules["jiuwen.core.common.exception.base"] = fake_exception_module
+sys.modules["openjiuwen.core.common.logging.base"] = fake_base
+sys.modules["openjiuwen.core.common.exception.base"] = fake_exception_module
 pytestmark = pytest.mark.asyncio
 
 

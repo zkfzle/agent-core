@@ -1,11 +1,11 @@
 import pytest
 
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.loop_comp import LoopGroup, LoopComponent
-from jiuwen.core.component.set_variable_comp import SetVariableComponent
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.workflow.base import Workflow
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.loop_comp import LoopGroup, LoopComponent
+from openjiuwen.core.component.set_variable_comp import SetVariableComponent
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.runtime.workflow import WorkflowRuntime
+from openjiuwen.core.workflow.base import Workflow
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode
 
 pytestmark = pytest.mark.asyncio

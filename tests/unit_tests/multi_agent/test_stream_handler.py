@@ -1,6 +1,6 @@
 import unittest
 
-from jiuwen.core.multi_agent.stream.stream_handler import StreamHandler
+from openjiuwen.core.multi_agent.stream.stream_handler import StreamHandler
 
 DEFAULT_STREAM_FRAME_TIMEOUT = 300
 STREAM_END_FRAME = "end_of_stream_frame"

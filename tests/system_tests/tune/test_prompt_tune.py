@@ -5,19 +5,19 @@ import os
 import unittest
 import asyncio
 
-from jiuwen.agent.chat_agent import create_chat_agent_config, create_chat_agent
-from jiuwen.agent.config.base import LLMCallConfig, ModelConfig
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.tool.function.function import LocalFunction, Param
+from openjiuwen.agent.chat_agent import create_chat_agent_config, create_chat_agent
+from openjiuwen.agent.config.base import LLMCallConfig, ModelConfig
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.tool.function.function import LocalFunction, Param
 
-from jiuwen.agent_builder.prompt_builder.tune.optimizer.joint_optimizer import JointOptimizer
-from jiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import DefaultEvaluator
-from jiuwen.core.utils.llm.messages import UsageMetadata
-from jiuwen.agent_builder.prompt_builder.tune.base import Case
-from jiuwen.agent_builder.prompt_builder.tune.trainer.trainer import Trainer
-from jiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
-from jiuwen.core.utils.llm.messages import ToolCall, FunctionInfo
-from jiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.agent_builder.prompt_builder.tune.optimizer.joint_optimizer import JointOptimizer
+from openjiuwen.agent_builder.prompt_builder.tune.evaluator.evaluator import DefaultEvaluator
+from openjiuwen.core.utils.llm.messages import UsageMetadata
+from openjiuwen.agent_builder.prompt_builder.tune.base import Case
+from openjiuwen.agent_builder.prompt_builder.tune.trainer.trainer import Trainer
+from openjiuwen.agent_builder.prompt_builder.tune.dataset.case_loader import CaseLoader
+from openjiuwen.core.utils.llm.messages import ToolCall, FunctionInfo
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 
 
 API_BASE = os.getenv("API_BASE", "")
@@ -253,7 +253,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         trainer = self.create_trainer()
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES)
 
-        from jiuwen.agent_builder.prompt_builder.tune.trainer.base import Callbacks, Progress
+        from openjiuwen.agent_builder.prompt_builder.tune.trainer.base import Callbacks, Progress
         class MyCallbacks(Callbacks):
             def on_train_epoch_end(self, agent, progress: Progress):
                 print(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")

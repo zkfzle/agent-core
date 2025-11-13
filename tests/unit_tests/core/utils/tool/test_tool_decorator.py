@@ -6,9 +6,9 @@ import unittest
 from typing import Annotated, Any, List, Dict
 from pydantic import Field, BaseModel
 
-from jiuwen.core.utils.tool.tool import tool
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
+from openjiuwen.core.utils.tool.tool import tool
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 
 
 @tool(

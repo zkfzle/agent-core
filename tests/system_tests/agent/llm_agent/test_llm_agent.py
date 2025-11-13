@@ -2,15 +2,15 @@ import os
 import unittest
 from datetime import datetime
 
-from jiuwen.agent.common.schema import PluginSchema
-from jiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.tool.function.function import LocalFunction
-from jiuwen.core.utils.tool.param import Param
-from jiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from jiuwen.core.utils.tool.tool import tool
-from jiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.agent.common.schema import PluginSchema
+from openjiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.tool.function.function import LocalFunction
+from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.utils.tool.tool import tool
+from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 
 API_BASE = os.getenv("API_BASE", "")

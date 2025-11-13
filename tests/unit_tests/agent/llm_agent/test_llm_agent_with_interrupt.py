@@ -6,22 +6,22 @@ from unittest.mock import patch
 
 import pytest
 
-from jiuwen.agent.common.enum import TaskType, ControllerType
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
-from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from jiuwen.core.agent.task import Task, TaskInput
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.stream.base import OutputSchema
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.llm.messages import AIMessage
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.agent.common.enum import TaskType, ControllerType
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.agent.task import Task, TaskInput
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.llm.messages import AIMessage
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -60,10 +60,10 @@ class TestReActAgentInterrupt:  # ① 关键改动
     # Todo: 临时关闭
     @unittest.skip("skip system test")
     @pytest.mark.asyncio
-    @patch("jiuwen.core.agent.controller.react_controller.ReActController.invoke")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
-    @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.agent.controller.react_controller.ReActController.invoke")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_react_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_llm_inputs,
                                                                 mock_extraction, mock_react_controller_invoke):
         mock_get_model.return_value = MockLLMModel()

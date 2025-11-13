@@ -4,11 +4,11 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.utils.llm.messages import AIMessage, HumanMessage
-import jiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder as wb
-from jiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder import WorkflowBuilder, State
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.utils.llm.messages import AIMessage, HumanMessage
+import openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder as wb
+from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder import WorkflowBuilder, State
 
 
 TRANSFORMED_SOP = "transformed_sop"

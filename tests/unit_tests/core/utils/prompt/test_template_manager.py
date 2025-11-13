@@ -1,10 +1,10 @@
 import os
 
-from jiuwen.core.common.exception.exception import JiuWenBaseException
-from jiuwen.core.common.exception.status_code import StatusCode
-from jiuwen.core.utils.llm.messages import HumanMessage
-from jiuwen.core.utils.prompt.index.template_store.template_store import Template
-from jiuwen.core.utils.prompt.template.template_manager import TemplateManager
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.utils.llm.messages import HumanMessage
+from openjiuwen.core.utils.prompt.index.template_store.template_store import Template
+from openjiuwen.core.utils.prompt.template.template_manager import TemplateManager
 
 
 class TestTemplateManager:

@@ -4,21 +4,21 @@ import unittest
 from datetime import datetime
 from typing import List
 
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from jiuwen.core.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.runtime.runtime import BaseRuntime
-from jiuwen.core.runtime.workflow_manager import generate_workflow_key
-from jiuwen.core.runtime.wrapper import TaskRuntime
-from jiuwen.core.stream.base import OutputSchema
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from jiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -191,7 +191,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。"""
-        from jiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+        from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
         workflow_id = workflow.config().metadata.id
         workflow_name = workflow.config().metadata.name
         workflow_version = workflow.config().metadata.version

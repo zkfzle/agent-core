@@ -6,24 +6,24 @@ import sys
 import types
 from unittest.mock import Mock, AsyncMock, patch
 
-from jiuwen.core.component.branch_router import BranchRouter
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionCompConfig, \
+from openjiuwen.core.component.branch_router import BranchRouter
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.intent_detection_comp import IntentDetectionExecutable, IntentDetectionCompConfig, \
     IntentDetectionComponent
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.context_engine.config import ContextEngineConfig
-from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
-from jiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.workflow.base import Workflow
-from jiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.context_engine.config import ContextEngineConfig
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
+from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
 
-sys.modules["jiuwen.core.common.logging.base"] = fake_base
+sys.modules["openjiuwen.core.common.logging.base"] = fake_base
 
 
 # ------------------------------------------------
@@ -61,7 +61,7 @@ def fake_config(fake_model_config) -> IntentDetectionCompConfig:
 
 class TestIntentDetectionExecutableInvoke:
     @patch(
-        "jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
+        "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
         autospec=True,
     )
     @pytest.mark.asyncio

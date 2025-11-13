@@ -6,18 +6,18 @@ import unittest
 from unittest.mock import MagicMock
 import os
 
-from jiuwen.agent.common.schema import WorkflowSchema
-from jiuwen.agent.config.base import AgentConfig
-from jiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
-from jiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
-from jiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
-from jiuwen.core.agent.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
-from jiuwen.core.agent.task.task import TaskInput
-from jiuwen.core.common.logging import logger
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
+from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
+from openjiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
+from openjiuwen.core.agent.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
+from openjiuwen.core.agent.task.task import TaskInput
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.utils.llm.base import BaseModelInfo
 
 
 API_BASE = os.getenv("API_BASE", "")

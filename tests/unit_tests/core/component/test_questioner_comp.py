@@ -6,24 +6,24 @@ from unittest.mock import patch
 
 import pytest
 
-from jiuwen.core.context_engine.config import ContextEngineConfig
-from jiuwen.core.context_engine.engine import ContextEngine
-from jiuwen.core.runtime.interaction.interaction import InteractionOutput
-from jiuwen.core.runtime.runtime import Runtime
-from jiuwen.core.runtime.wrapper import TaskRuntime
-from jiuwen.core.common.constants.constant import INTERACTION
-from jiuwen.core.component.common.configs.model_config import ModelConfig
-from jiuwen.core.component.end_comp import End
-from jiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
-from jiuwen.core.component.start_comp import Start
-from jiuwen.core.graph.executable import Input
-from jiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from jiuwen.core.runtime.workflow import WorkflowRuntime
-from jiuwen.core.stream.base import TraceSchema, OutputSchema
-from jiuwen.core.utils.llm.base import BaseModelInfo
-from jiuwen.core.utils.prompt.template.template import Template
-from jiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-from jiuwen.core.workflow.workflow_config import WorkflowConfig
+from openjiuwen.core.context_engine.config import ContextEngineConfig
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.graph.executable import Input
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.runtime.workflow import WorkflowRuntime
+from openjiuwen.core.stream.base import TraceSchema, OutputSchema
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.prompt.template.template import Template
+from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 
 class MockLLMModel:
     pass
@@ -53,10 +53,10 @@ class TestQuestionComp:
     def _create_context(session_id):
         return TaskRuntime(trace_id=session_id)
 
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
-    @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     def test_invoke_questioner_component_in_workflow_initial_ask(self, mock_get_model, mock_init_prompt,
                                                                  mock_llm_inputs,
                                                                  mock_extraction):
@@ -109,9 +109,9 @@ class TestQuestionComp:
             result={'output': {}, 'responseContent': "hangzhou | today"},
             state=WorkflowExecutionState.COMPLETED)
 
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
-    @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     def test_invoke_questioner_component_in_workflow_repeat_ask(self, mock_get_model, mock_llm_inputs,
                                                                 mock_extraction):
         """
@@ -176,10 +176,10 @@ class TestQuestionComp:
                                                                   flow)  # workflow实例、session id保持一致
         assert final_result.result.get("responseContent") == "hangzhou | today"
 
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
-    @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     def test_stream_questioner_component_in_workflow_initial_ask_with_tracer(self, mock_get_model, mock_init_prompt,
                                                                              mock_llm_inputs, mock_extraction):
         '''
@@ -251,9 +251,9 @@ class TestQuestionComp:
 
 class TestQuestionerStream:
     @pytest.mark.asyncio
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("jiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
-    @patch("jiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_invoke_questioner_component_in_workflow_repeat_ask_with_stream_writer_and_context_engine(
             self,
             mock_get_model,

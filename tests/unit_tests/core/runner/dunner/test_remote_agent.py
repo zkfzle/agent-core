@@ -20,8 +20,8 @@ from openjiuwen.core.runner.runner_config import RunnerConfig, DistributedConfig
 class TestRunnerIntegration:
     def setup_method(self):
         # 保存原始方法
-        self.original_handle_invoke = MqAgentAdapter.handle_invoke
-        self.original_handle_stream = MqAgentAdapter.handle_stream
+        self.original_handle_invoke = MqAgentAdapter._handle_invoke
+        self.original_handle_stream = MqAgentAdapter._handle_stream
 
         # 替换为自定义方法
         async def mock_handle_invoke(self, inputs):
@@ -31,8 +31,8 @@ class TestRunnerIntegration:
             for i in range(3):
                 yield {"MOCK_STREAM": f"chunk_{i}"}
 
-        MqAgentAdapter.handle_invoke = mock_handle_invoke
-        MqAgentAdapter.handle_stream = mock_handle_stream
+        MqAgentAdapter._handle_invoke = mock_handle_invoke
+        MqAgentAdapter._handle_stream = mock_handle_stream
 
         fake_mq = RunnerConfig(
             distributed_mode=True,
@@ -47,8 +47,8 @@ class TestRunnerIntegration:
 
     def teardown_method(self):
         # 恢复原始方法
-        MqAgentAdapter.handle_invoke = self.original_handle_invoke
-        MqAgentAdapter.handle_stream = self.original_handle_stream
+        MqAgentAdapter._handle_invoke = self.original_handle_invoke
+        MqAgentAdapter._handle_stream = self.original_handle_stream
         Runner.set_config(DEFAULT_RUNNER_CONFIG)
 
     async def test_agent_normal_lifecycle(self):
@@ -62,18 +62,18 @@ class TestRunnerIntegration:
         try:
             # 模拟client发请求
             client = RemoteAgent(agent_id="weather-agent")
-            Runner.add_agent(agent_id="weather-agent", agent=client)
+            Runner.add_agent(agent_id="remote-weather-agent", agent=client)
 
             # 1. 测试批式请求
             logger.info("=== Testing batch invoke ===")
-            response = await Runner.run_agent("weather-agent", {"city": "London"})
+            response = await Runner.run_agent("remote-weather-agent", {"city": "London"})
             logger.info(f"Batch response: {response}")
             assert response is not None
 
             # 2. 测试流式响应
             logger.info("=== Testing stream response ===")
             chunks = []
-            async for chunk in Runner.run_agent_streaming("weather-agent", {"city": "Paris"}):
+            async for chunk in Runner.run_agent_streaming("remote-weather-agent", {"city": "Paris"}):
                 logger.info(f"Stream chunk received: {chunk}")
                 chunks.append(chunk)
 
@@ -82,11 +82,11 @@ class TestRunnerIntegration:
 
             # 3. 测试删除agent
             logger.info("=== Testing agent removal ===")
-            Runner.remove_agent("weather-agent")
+            Runner.remove_agent("remote-weather-agent")
 
             # 4. 验证删除后调用抛出异常
             with pytest.raises(JiuWenBaseException) as e:
-                await Runner.run_agent("weather-agent", {"city": "London"})
+                await Runner.run_agent("remote-weather-agent", {"city": "London"})
             assert e.value.error_code == StatusCode.AGENT_NOT_FOUND.code
 
         except Exception as e:
@@ -176,7 +176,7 @@ class TestRunnerIntegration:
         """测试agenta dapter返回异常时错误信息正确传递给客户端"""
         print("=== Test 4: Adapter error propagation ===")
         await Runner.start()
-        original_handler = MqAgentAdapter.handle_invoke
+        original_handler = MqAgentAdapter._handle_invoke
 
         # 模拟adapter抛出异常
         async def error_handler(self, inputs):
@@ -184,7 +184,7 @@ class TestRunnerIntegration:
                 error_code=111,
                 message="ADAPTER_ERROR")
 
-        MqAgentAdapter.handle_invoke = error_handler
+        MqAgentAdapter._handle_invoke = error_handler
         weather_adapter = MqAgentAdapter(agent_id="weather-agent")
         weather_adapter.start()
 
@@ -200,7 +200,7 @@ class TestRunnerIntegration:
             assert "code: 111, message: ADAPTER_ERROR" in e.value.message
         finally:
             # 恢复原始handler
-            MqAgentAdapter.handle_invoke = original_handler
+            MqAgentAdapter._handle_invoke = original_handler
             await weather_adapter.stop()
             await Runner.stop()
 
@@ -280,14 +280,14 @@ class TestRunnerIntegration:
         await Runner.start()
 
         # 保存原始方法
-        original_handle_stream = MqAgentAdapter.handle_stream
+        original_handle_stream = MqAgentAdapter._handle_stream
 
         # 模拟流式响应
         async def mock_handle_stream(self, inputs):
             for i in range(5):
                 yield {"stream_chunk": i, "data": f"chunk_{i}_for_{inputs.get('city', 'unknown')}"}
 
-        MqAgentAdapter.handle_stream = mock_handle_stream
+        MqAgentAdapter._handle_stream = mock_handle_stream
 
         streaming_adapter = MqAgentAdapter(agent_id="streaming-agent")
         streaming_adapter.start()
@@ -354,6 +354,6 @@ class TestRunnerIntegration:
                     assert "stream_chunk" in chunk and "data" in chunk
         finally:
             # 恢复原始方法
-            MqAgentAdapter.handle_stream = original_handle_stream
+            MqAgentAdapter._handle_stream = original_handle_stream
             await streaming_adapter.stop()
             await Runner.stop()

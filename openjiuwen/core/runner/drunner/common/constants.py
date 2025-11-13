@@ -1,0 +1,1 @@
+AGENT_ADAPTER = "agent_adapter_"

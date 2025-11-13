@@ -12,9 +12,11 @@ from openjiuwen.core.agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.runner.drunner.common.constants import AGENT_ADAPTER
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
 from openjiuwen.core.runner.drunner.dmessage_queue.message_queue_factory import MessageQueueFactory
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
+from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import MqAgentAdapter
 from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
     get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
@@ -125,10 +127,18 @@ class Runner:
         return agent_group
 
     def add_agent(self, agent_id, agent: Union[Agent, AgentProvider, RemoteAgent]):
-
+        if get_runner_config().distributed_mode:
+            if not isinstance(agent, RemoteAgent):
+                mqAgentAdapter = MqAgentAdapter(agent_id)
+                mqAgentAdapter.start()
+                self._agent_mgr.add_agent(AGENT_ADAPTER + agent_id, mqAgentAdapter)
         self._agent_mgr.add_agent(agent_id, agent)
 
     def remove_agent(self, agent_id) -> Union[Agent, AgentProvider]:
+        if get_runner_config().distributed_mode:
+           adapter = self._agent_mgr.remove_agent(AGENT_ADAPTER + agent_id)
+           if adapter is not None:
+                adapter.stop()
         return self._agent_mgr.remove_agent(agent_id)
 
     async def run_workflow(self, workflow: Union[str, Workflow], inputs: Any,

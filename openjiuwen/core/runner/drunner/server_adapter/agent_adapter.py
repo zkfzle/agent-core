@@ -5,7 +5,6 @@
 from typing import Any, AsyncIterator
 
 from openjiuwen.core.runner.drunner.server_adapter.mq_server_adapter import MqServerAdapter
-from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runner.runner_config import get_runner_config
 
 
@@ -20,8 +19,8 @@ class MqAgentAdapter:
         self.server = MqServerAdapter(
             adapter_id=agent_id,
             topic=self.topic,
-            invoke_handler=self.handle_invoke,
-            stream_handler=self.handle_stream
+            invoke_handler=self._handle_invoke,
+            stream_handler=self._handle_stream
         )
 
     def start(self):
@@ -30,10 +29,13 @@ class MqAgentAdapter:
     async def stop(self):
         await self.server.stop()
 
-    async def handle_invoke(self, inputs: dict) -> Any:
-        return Runner.run_agent(self.agent_id, inputs)
+    async def _handle_invoke(self, inputs: dict) -> Any:
+        from openjiuwen.core.runner.runner import Runner
+        agent_result = await Runner.run_agent(self.agent_id, inputs)
+        return agent_result
 
-    async def handle_stream(self, inputs: dict) -> AsyncIterator[Any]:
+    async def _handle_stream(self, inputs: dict) -> AsyncIterator[Any]:
+        from openjiuwen.core.runner.runner import Runner
         async for item in Runner.run_agent_streaming(self.agent_id, inputs):
             yield item
 

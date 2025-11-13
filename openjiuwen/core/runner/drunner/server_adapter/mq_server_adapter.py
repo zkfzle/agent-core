@@ -10,10 +10,10 @@ from typing import Dict, Any, Callable, AsyncIterator, Optional
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+
 from openjiuwen.core.runner.drunner.server_adapter.mq_message_utils import build_stream_response, build_final_response, \
     build_batch_response, build_error_response
 from openjiuwen.core.runner.message_queue_base import MessageQueueBase, SubscriptionBase
-from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runner.drunner.dmessage_queue.message import DmqRequestMessage, DMessageType
 
 
@@ -33,6 +33,7 @@ class MqServerAdapter:
             invoke_handler: Callable[[dict], Any],
             stream_handler: Callable[[dict], AsyncIterator[Any]],
     ):
+        from openjiuwen.core.runner.runner import Runner
         self.adapter_id = adapter_id
         self.topic = topic
         self.invoke_handler = invoke_handler

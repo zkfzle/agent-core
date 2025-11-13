@@ -83,7 +83,7 @@ class StreamProcessor:
                 ended_sources.add(source_id)
                 for path, queues in self.processor_queues.items():
                     path = extract_origin_key(path)
-                    if path.startswith(f"{source_id}."):
+                    if path == source_id or path.startswith(f"{source_id}."):
                         for queue in queues:
                             await queue.put(EndFrame(source_id))
             else:

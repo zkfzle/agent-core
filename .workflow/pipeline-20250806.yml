@@ -5,8 +5,8 @@ triggers:
   trigger: auto
   pr:
     branches:
-      precise:
-        - develop
+      include:
+        - (develop|release\/0\.3\.0)
 stages:
   - name: stage-c019e95c
     displayName: 单元测试

@@ -186,6 +186,8 @@ class StatusCode(Enum):
     AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR = (170040, "Do trainer's train error: {error_msg}")
     # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
     # Optimization Toolchain - AgentRL 172000 - 172999
+    # Optimization Toolchain - Prompt Builder 173000 - 173999
+    AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR = (173000, "Register Meta-template failed: {error_msg}")
 
     # Common Capabilities 180000 - 189999
     # Common Capabilities - Prompt Template 180000 - 180999

@@ -79,11 +79,14 @@ class Producer(ComponentExecutable, WorkflowComponent):
 
 
 async def test_multi_stream_workflow():
-    workflow = create_component_stream_workflow_with_template()
+    wf = create_component_stream_workflow_with_template()
 
-    async for chunk in workflow.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+    async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
         print(chunk.model_dump_json(indent=4))
+
+    res = await wf.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime())
+    print(res.model_dump_json(indent=4))
 
 async def test_batch_multi_stream_workflow():
     def create_component_workflow_with_template() -> Workflow:
@@ -110,8 +113,11 @@ async def test_batch_multi_stream_workflow():
     wf = create_component_workflow_with_template()
 
     res = await wf.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime())
-
     print(res.model_dump_json(indent=4))
+
+    async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        assert chunk is not None
+        print(chunk.model_dump_json(indent=4))
 
 def create_component_stream_workflow_with_template() -> Workflow:
     workflow = Workflow()

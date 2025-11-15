@@ -110,15 +110,15 @@ class End(ComponentExecutable, WorkflowComponent):
         if self._batch_template is None:
             processor = TemplateBatchProcessor(self.template, inputs)
             self._batch_template = processor
-        if self._mix:
-            async with self._batch_template.condition:
-                try:
-                    await asyncio.wait_for(self._batch_template.condition.wait(),
-                                           timeout=0.2)  # TODO: set timeout by config
-                except asyncio.TimeoutError as e:
-                    logger.error(f"render template stream timeout, {e}")
-                    return None
-            self._batch_template = None
+            if self._mix:
+                async with self._batch_template.condition:
+                    try:
+                        await asyncio.wait_for(self._batch_template.condition.wait(),
+                                               timeout=0.2)  # TODO: set timeout by config
+                    except asyncio.TimeoutError as e:
+                        logger.error(f"render template stream timeout, {e}")
+                        return None
+                self._batch_template = None
             return None
         else:
             answer = await self._batch_template.render(inputs)
@@ -132,53 +132,68 @@ class End(ComponentExecutable, WorkflowComponent):
 
 class TemplateProcessor:
     def __init__(self, template: str):
-        self.template = template
+        self._template = template
         response_list = TemplateUtils.render_template_to_list(template)
-        self.segments = response_list
-        self.variables_positions: set[int] = set()
-        self.current_position = 0
+        self._segments = response_list
+        self._variables_positions: set[int] = set()
+        self._current_position = 0
         for pos, res in enumerate(response_list):
             if res.startswith("{{") and res.endswith("}}"):
-                self.variables_positions.add(pos)
-                self.segments[pos] = res[2:-2]
+                self._variables_positions.add(pos)
+                self._segments[pos] = res[2:-2]
 
-        self.lock = asyncio.Lock()
-        self.condition = asyncio.Condition()
+        self._lock = asyncio.Lock()
+        self._condition = asyncio.Condition()
+        self._count = 0
 
     def current_position(self) -> int:
-        return self.current_position
+        return self._current_position
 
     def get_current_segment(self) -> str:
-        return self._get_segment(self.current_position)
+        return self._get_segment(self._current_position)
 
     def _get_segment(self, pos: int) -> str:
-        if pos >= len(self.segments):
+        if pos >= len(self._segments):
             return ""
-        return self.segments[pos]
+        return self._segments[pos]
 
     def should_render(self) -> bool:
-        return self.current_position in self.variables_positions
+        return self._current_position in self._variables_positions
 
     def advance_position(self) -> int:
-        self.current_position += 1
-        return self.current_position
+        self._current_position += 1
+        return self._current_position
 
     def render(self, inputs: dict) -> str:
-        return TemplateUtils.render_template(self.template, inputs)
+        return TemplateUtils.render_template(self._template, inputs)
+
+    def reset(self):
+        if self._current_position != 0:
+            self._current_position = 0
 
     async def render_stream(self, inputs: dict) -> AsyncGenerator:
+        self._count += 1
+        try:
+            async for frame in self._render_stream(inputs):
+                yield frame
+        finally:
+            self._count -= 1
+            if self._count == 0:
+                self.reset()
+
+    async def _render_stream(self, inputs: dict) -> AsyncGenerator:
         should_wait = False
         while True:
             if should_wait:
-                async with self.condition:
+                async with self._condition:
                     try:
-                        await asyncio.wait_for(self.condition.wait(), timeout=0.2)  # TODO: set timeout by config
+                        await asyncio.wait_for(self._condition.wait(), timeout=0.2)  # TODO: set timeout by config
                     except asyncio.TimeoutError as e:
                         logger.error(f"render template stream timeout, {e}")
                         self.advance_position()
                 should_wait = False
                 logger.debug("previous segment has been finished")
-            async with self.lock:
+            async with self._lock:
                 if self.is_finished():
                     break
 
@@ -202,12 +217,12 @@ class TemplateProcessor:
                 else:
                     yield value
                 self.advance_position()
-                async with self.condition:
-                    self.condition.notify_all()
+                async with self._condition:
+                    self._condition.notify_all()
                 logger.debug(f"current segment [{segment}] has been finished")
 
     def is_finished(self) -> bool:
-        return self.current_position >= len(self.segments)
+        return self._current_position >= len(self._segments)
 
 
 class TemplateBatchProcessor:

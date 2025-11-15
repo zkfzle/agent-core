@@ -120,7 +120,8 @@ async def test_batch_multi_stream_workflow():
         print(chunk.model_dump_json(indent=4))
 
 def create_component_stream_workflow_with_template() -> Workflow:
-    workflow = Workflow()
+    config = WorkflowConfig(stream_timeout=0.5)
+    workflow = Workflow(config)
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
     workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
     workflow.add_workflow_comp("b", Producer(), inputs_schema={"array": "${start.array}"})

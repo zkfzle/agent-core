@@ -119,15 +119,15 @@ class End(ComponentExecutable, WorkflowComponent):
                         logger.error(f"render template stream timeout, {e}")
                         return None
                 self._batch_template = None
-            return None
-        else:
-            answer = await self._batch_template.render(inputs)
-            async with self._batch_template.condition:
-                self._batch_template.condition.notify_all()
-            return {
-                "responseContent": answer,
-                "output": {}
-            }
+                return None
+        answer = await self._batch_template.render(inputs)
+        async with self._batch_template.condition:
+            self._batch_template.condition.notify_all()
+        self._batch_template = None
+        return {
+            "responseContent": answer,
+            "output": {}
+        }
 
 
 class TemplateProcessor:

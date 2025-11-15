@@ -972,6 +972,9 @@ async def test_simple_interactive_workflow_checkpointer():
     config = {"configurable": {"thread_id": f"{session_id}:test_simple_interactive_workflow_checkpointer"}}
     checkpoint = await default_inmemory_checkpointer.graph_checkpointer().aget(config)
     assert checkpoint is not None
+    first_time_workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
+    assert first_time_workflow_store is not None
+
     user_input = InteractiveInput()
     interaction_id = res.result[0].payload.id
     user_input.update(interaction_id, {"aa": "any key"})
@@ -984,6 +987,9 @@ async def test_simple_interactive_workflow_checkpointer():
     assert start_node.runtime == 1
     checkpoint = await default_inmemory_checkpointer.graph_checkpointer().aget(config)
     assert checkpoint is not None
+    workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
+    assert workflow_store is not None
+    assert workflow_store is first_time_workflow_store
 
     res = await flow.invoke(user_input, WorkflowRuntime(session_id=session_id))
     assert res == WorkflowOutput(
@@ -992,3 +998,5 @@ async def test_simple_interactive_workflow_checkpointer():
     # checkpoint will be deleted when completed
     checkpoint = await default_inmemory_checkpointer.graph_checkpointer().aget(config)
     assert checkpoint is None
+    workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
+    assert workflow_store is None

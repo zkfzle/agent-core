@@ -21,11 +21,11 @@ class InMemoryCheckpointer(Checkpointer):
         self._graph_state = InMemorySaver()
 
     async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
+        self._workflow_stores.setdefault(runtime.session_id(), WorkflowStorage())
         if isinstance(inputs, InteractiveInput):
             workflow_store = self._workflow_stores.get(runtime.session_id())
             workflow_store.recover(runtime, inputs)
-        else:
-            self._workflow_stores[runtime.session_id()] = WorkflowStorage()
+
 
     async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
         workflow_store = self._workflow_stores.get(runtime.session_id())
@@ -36,7 +36,7 @@ class InMemoryCheckpointer(Checkpointer):
         if result.get(INTERRUPT) is None:
             await self._graph_state.adelete_thread(Checkpointer.get_thread_id(runtime))
             workflow_store.clear(runtime.workflow_id())
-            if not isinstance(runtime.config(), AgentConfig):
+            if runtime.config().get_agent_config() is None:
                 self._workflow_stores.pop(runtime.session_id(), None)
         else:
             workflow_store.save(runtime)

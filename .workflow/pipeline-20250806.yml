@@ -21,9 +21,9 @@ stages:
         commands:
           - '# Python单元测试默认命令'
           - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
-          - uv sync --group dev --all-extras
+          - uv sync --all-extras
           - uv run pytest
-          - /usr/local/python3.11/bin/uv sync --group dev
+          - /usr/local/python3.11/bin/uv sync --all-extras
           - /usr/local/python3.11/bin/uv run pytest
         report:
           path: report

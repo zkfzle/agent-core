@@ -454,7 +454,7 @@ class QuestionerDirectReplyHandler:
         self._state.response_num += 1
 
     def _exceed_max_response(self):
-        return self._state.response_num > self._config.max_response
+        return self._state.response_num >= self._config.max_response
 
     def _check_if_continue_ask(self, output: OutputCache):
         is_continue_ask = False

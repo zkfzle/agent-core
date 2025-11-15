@@ -48,6 +48,7 @@ class StatusCode(Enum):
     QUESTIONER_COMPONENT_INIT_STATE_ERROR = (101073, "Questioner component init state error.")
     QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response.")
     QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
+    QUESTIONER_COMPONENT_PARSE_LLM_RESPONSE_ERROR = (101076, "Questioner component parse llm response error, as {error_msg}.")
 
     ## BranchComponent  101100 - 101119
     BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")

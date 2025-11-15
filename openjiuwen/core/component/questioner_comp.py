@@ -418,9 +418,14 @@ class QuestionerDirectReplyHandler:
             cleaned = re.sub(r'^\s*```json\s*|\s*```\s*$', '', response.strip(), flags=re.IGNORECASE)
             cleaned = re.sub(r"^\s*'''json\s*|\s*'''\s*$", '', cleaned, flags=re.IGNORECASE)
             result = json.loads(cleaned, strict=False)
-            result = {k: v for k, v in result.items() if QuestionerUtils.is_valid_value(v)}
         except json.JSONDecodeError as _:
+            logger.error(f"Failed to parse json from llm response")
             return result
+
+        if not isinstance(result, dict):
+            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_PARSE_LLM_RESPONSE_ERROR,
+                                           "Failed to parse json from llm response")
+        result = {k: v for k, v in result.items() if QuestionerUtils.is_valid_value(v)}
         return result
 
     def _filter_non_extracted_key_fields(self) -> List[FieldInfo]:

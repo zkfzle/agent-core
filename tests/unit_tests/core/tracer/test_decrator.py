@@ -2,6 +2,7 @@ from typing import Dict, List, Any, Union
 from unittest.mock import MagicMock
 
 import pytest
+from pyexpat.errors import messages
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.base import Context
@@ -9,7 +10,7 @@ from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
 from openjiuwen.core.tracer.decorator import decrate_tool_with_trace, decrate_workflow_with_trace, decrate_model_with_trace
 from openjiuwen.core.utils.llm.base import BaseChatModel
-from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.llm.messages import ToolInfo, BaseMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.constant import Input, Output
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
@@ -179,14 +180,14 @@ class TestDecator:
 
         mocked_model = decrate_model_with_trace(model, mock_runtime)
 
-        mocked_model.invoke("a", "messages")
+        mocked_model.invoke("a", [BaseMessage(role="aa")])
 
         for item in results:
             print(item)
         assert len(results) == 2
 
         results.clear()
-        for item in mocked_model.stream("a", "messages"):
+        for item in mocked_model.stream("a", [BaseMessage(role="aa")]):
             print(item)
 
         for item in results:
@@ -194,7 +195,7 @@ class TestDecator:
         assert len(results) == 2
 
         results.clear()
-        await mocked_model.ainvoke("a", "messages")
+        await mocked_model.ainvoke("a", [BaseMessage(role="aa")])
 
         for item in results:
             print(item)

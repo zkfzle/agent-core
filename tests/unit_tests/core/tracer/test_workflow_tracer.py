@@ -306,7 +306,7 @@ class TestTraceWorkflow:
             payload.get("parentInvokeId")
             payload.get("parentNodeId")
             if payload.get("invokeId") == "start":
-                assert payload.get("parentInvokeId") == None, f"start node parent_invoke_id should be None"
+                assert payload.get("parentInvokeId") != None, f"start node parent_invoke_id should not be None"
                 assert payload.get("parentNodeId") == "", f"a node parent_node_id should be ''"
             elif payload.get("invokeId") == "a":
                 assert payload.get("parentInvokeId") == "start", f"a node parent_invoke_id should be start"

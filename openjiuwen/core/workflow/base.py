@@ -34,6 +34,7 @@ from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.stream_actor.base import StreamGraph
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.tracer.tracer import Tracer
+from openjiuwen.core.tracer.workflow_tracer import workflow_trace_inputs, workflow_trace_outputs
 from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
@@ -422,12 +423,17 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
         self._validate_and_init_runtime(runtime, stream_modes, context)
+        # workflow start tracer info
+        await workflow_trace_inputs(runtime, inputs)
         compiled_graph = self.compile(runtime)
 
         async def stream_process():
             try:
                 await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, runtime)
             finally:
+                # workflow end tracer info
+                outputs = runtime.state().get_outputs(self._end_comp_id)
+                await workflow_trace_outputs(runtime, outputs)
                 await runtime.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(stream_process())

@@ -37,7 +37,7 @@ def create_wrapper_class(original_obj, wrapper_name="WrappedObject"):
 
     return WrapperClass(original_obj)
 
-def update_dict(update: dict, source: dict) -> None:
+def update_dict(update: dict, source: dict, ignore_delete: bool = False) -> None:
     """
     update source dict by update dict
     Note: source is unnested structure, update is nested structure
@@ -48,14 +48,13 @@ def update_dict(update: dict, source: dict) -> None:
     removed = []
     for key, value in update.items():
         current_key, current = root_to_path(key, source, create_if_absent=True)
-        if value is None:
+        if value is None and not ignore_delete:
             removed.append((current_key, current))
         else:
             update_by_key(current_key, value, current)
-
-    for key, value in removed:
-        delete_by_key(key, value)
-
+    if not ignore_delete:
+        for key, value in removed:
+            delete_by_key(key, value)
 
 def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None, is_root: bool = True) -> Any:
     if nested_path is not None and len(nested_path) > 0:
@@ -175,7 +174,7 @@ def update_by_key(key: Union[str, int], new_value: Any, source: dict) -> None:
         source[key] = expand_nested_structure(new_value)
         return
     if isinstance(source[key], dict) and isinstance(new_value, dict):
-        update_dict(new_value, source[key])
+        update_dict(new_value, source[key], ignore_delete=True)
     else:
         source[key] = expand_nested_structure(new_value)
 

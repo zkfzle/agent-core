@@ -97,6 +97,10 @@ class Agent(ABC):
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> Iterator[Any]:
         pass
 
+    async def forward(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+        """Agent's forward method, invoke the agent with inputs."""
+        return await self.invoke(inputs, runtime)
+
     def _create_context_engine(self) -> ContextEngine:
         """创建 ContextEngine - 内部方法，在基类初始化时调用"""
         context_config = ContextEngineConfig(

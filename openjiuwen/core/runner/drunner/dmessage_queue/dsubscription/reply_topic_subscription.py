@@ -16,7 +16,7 @@ from openjiuwen.core.utils.common import ip_utils
 
 @dataclass(frozen=True)
 class CollectorKey:
-    sender_id: str
+    remote_id: str
     message_id: str
     request_id: Optional[str] = None
 
@@ -27,7 +27,8 @@ class ReplyTopicSubscription():
     def __init__(self, mq: Optional[MessageQueueBase] = None, topic: str = None):
         self._is_active = None
         self.mq = mq
-        self.topic = topic or get_runner_config().reply_topic_template().format(instance_id=ip_utils.get_local_ip())
+        self.topic = topic or get_runner_config().reply_topic_template().format(
+            instance_id=get_runner_config().instance_id)
         self.collectors: dict[CollectorKey, ResponseCollector] = {}
         self.subscription: Optional[SubscriptionBase] = None
 
@@ -70,7 +71,8 @@ class ReplyTopicSubscription():
         if not self.is_active():
             raise asyncio.CancelledError(f"ReplyTopicSubscription was cancelled")
         if len(self.collectors) >= get_runner_config().distributed_config.max_request_concurrency:
-            raise RuntimeError(f"[ReplyTopicSubscription] Too many collectors ({get_runner_config().distributed_config.max_request_concurrency})")
+            raise RuntimeError(
+                f"[ReplyTopicSubscription] Too many collectors ({get_runner_config().distributed_config.max_request_concurrency})")
 
         key = self._make_key(remote_id, message_id, request_id)
         if key in self.collectors:
@@ -84,16 +86,16 @@ class ReplyTopicSubscription():
     async def unregister_collector(
             self,
             message_id: Optional[str] = None,
-            receiver_id: Optional[str] = None,
+            remote_id: Optional[str] = None,
             request_id: Optional[str] = None,
     ):
         """
-        按 message_id + receiver_id + request_id 清理
+        按 message_id + remote_id + request_id 清理
         - 若全为 None，则表示清理全部 collector
         """
         logger.info(
-            f"[ReplyTopicSubscription] unregister_collector message_id: {message_id}, receiver_id: {receiver_id}, "
-            f"receiver_id:{receiver_id}")
+            f"[ReplyTopicSubscription] unregister_collector message_id: {message_id}, remote_id: {remote_id}, "
+            f"request_id:{request_id}")
 
         if not self.collectors:
             return
@@ -102,24 +104,24 @@ class ReplyTopicSubscription():
         keys_to_remove = []
         for key, collector in self.collectors.items():
             if (
-                    message_id is None and receiver_id is None and request_id is None
+                    message_id is None and remote_id is None and request_id is None
             ) or (
-                    (message_id and key.message_id == message_id)
-                    and (receiver_id and key.sender_id == receiver_id)
-                    and (request_id and key.request_id == request_id)
+                    (message_id is None or key.message_id == message_id)
+                    and (remote_id is None or key.remote_id == remote_id)
+                    and (request_id is None or key.request_id == request_id)
             ):
                 keys_to_remove.append(key)
 
         if not keys_to_remove:
             logger.info(
                 f"[ReplyTopicSub] No matching collectors for message_id={message_id}, "
-                f"receiver_id={receiver_id}, request_id={request_id}"
+                f"remote_id={remote_id}, request_id={request_id}, collectors={self.collectors}"
             )
             return
 
         logger.info(
             f"[ReplyTopicSub] unregistering {len(keys_to_remove)} collectors "
-            f"(msg_id={message_id}, recv_id={receiver_id}, req_id={request_id})"
+            f"(msg_id={message_id}, recv_id={remote_id}, req_id={request_id})"
         )
 
         tasks = []

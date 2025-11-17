@@ -23,11 +23,9 @@ class ResultType(str, Enum):
     ERROR = "ERROR"
 
 
-@dataclass
 class DmqMessage(QueueMessage):
     pass
 
-@dataclass
 class DmqRequestMessage(DmqMessage):
     """分布式请求消息"""
     type: str = DMessageType.INPUT
@@ -39,7 +37,6 @@ class DmqRequestMessage(DmqMessage):
     expire_at: Optional[float] = None
 
 
-@dataclass
 class DmqResponseMessage(DmqMessage):
     """分布式响应消息"""
     type: str = DMessageType.OUTPUT

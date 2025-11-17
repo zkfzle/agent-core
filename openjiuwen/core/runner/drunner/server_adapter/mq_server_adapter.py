@@ -54,10 +54,12 @@ class MqServerAdapter:
 
     async def _handle_message(self, message: DmqRequestMessage) -> None:
         msg_id = message.message_id
+        logger.info(f"[{self.adapter_id}] Received message {msg_id}")
 
         # 已过期的消息直接丢弃
         if message.expire_at and message.expire_at < time.time():
-            logger.warning(f"[{self.adapter_id}] Ignoring expired message {msg_id}")
+            logger.warning(f"[{self.adapter_id}] Ignoring expired message {msg_id}, "
+                           f"expire_at: {message.expire_at}, current_time: {time.time()}")
             return
 
         # 被动取消
@@ -84,6 +86,7 @@ class MqServerAdapter:
                     self._loop.time() + delay,
                     lambda: self._timeout_cancel(msg_id)
                 )
+        logger.info(f"[{self.adapter_id}] Submitted task message_id={msg_id}")
 
     async def _process_message(self, message: DmqRequestMessage):
         try:
@@ -121,7 +124,7 @@ class MqServerAdapter:
         except Exception as e:
             # Runner.run返回了不可预期的异常，需要返回给客户端
             logger.exception(f"[{self.adapter_id}] Unexpected error: {e}")
-            err = JiuWenBaseException(StatusCode.RUNNER_STOPPED.code, str(e))
+            err = JiuWenBaseException(StatusCode.ERROR.code, str(e))
             resp = build_error_response(message, self.adapter_id, err)
             await self.mq.produce_message(message.reply_topic, resp)
 

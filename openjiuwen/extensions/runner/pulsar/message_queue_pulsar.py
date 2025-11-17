@@ -4,7 +4,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Dict
+from typing import Optional, Dict, OrderedDict
 import pulsar
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -67,6 +67,7 @@ class PulsarSubscription(SubscriptionBase):
                 msg = await loop.run_in_executor(
                     self._executor, lambda: self._consumer.receive(timeout_millis=1000)
                 )
+                logger.info(f"[PulsarSubscription] Received message, topic={self._topic}, message_id={msg.message_id}")
                 data = msg.data()
                 payload = deserialize_message(data)
                 if self._handler:
@@ -75,18 +76,20 @@ class PulsarSubscription(SubscriptionBase):
             except pulsar.Timeout:
                 continue
             except Exception as e:
-                logger.warning(f"[PulsarSubscription] receive error: {e}")
+                logger.exception(f"[PulsarSubscription] receive error: {e}")
 
 
 class MessageQueuePulsar(MessageQueueBase):
     """Pulsar MQ 封装"""
+    MAX_PRODUCERS = 10000
+    DEFAULT_SUBSCRIPTION_NAME = "default"
 
     def __init__(self, pulsar_config: PulsarConfig):
         self._url = pulsar_config.url
         self._max_workers = pulsar_config.max_workers or 8
         self._client: Optional[pulsar.Client] = None
         self._executor: Optional[ThreadPoolExecutor] = None
-        self._producers: Dict[str, pulsar.Producer] = {}
+        self._producers: OrderedDict[str, pulsar.Producer] = OrderedDict()
         self._subs: Dict[str, PulsarSubscription] = {}
         self._is_running = False
         self._lock = asyncio.Lock()
@@ -103,8 +106,15 @@ class MessageQueuePulsar(MessageQueueBase):
         if not self._is_running:
             return
         self._is_running = False
-        for sub in self._subs.values():
-            await sub.deactivate()
+        logger.info(f"[MessageQueuePulsar] closing {len(self._subs)} subscriptions")
+        for topic in list(self._subs.keys()):
+            await self.unsubscribe(topic)
+
+        logger.info(f"[MessageQueuePulsar] closing {len(self._producers)} producers")
+        for pd in self._producers.values():
+            pd.close()
+        self._producers.clear()
+
         self._executor.shutdown(wait=True)
         self._client.close()
         logger.info(f"[MessageQueuePulsar] stopped")
@@ -115,7 +125,8 @@ class MessageQueuePulsar(MessageQueueBase):
                                       StatusCode.MESSAGE_QUEUE_NOT_RUNNING.errmsg.format(f"subscribe {topic} failed"))
         if topic in self._subs:
             return self._subs[topic]
-        consumer = self._client.subscribe(topic, subscription_name=f"default-{topic}")
+        consumer = self._client.subscribe(topic, subscription_name=self.DEFAULT_SUBSCRIPTION_NAME,
+                                          consumer_type=pulsar.ConsumerType.KeyShared)
         # 整个pulsar所有操作复用同一个线程池
         sub = PulsarSubscription(topic, consumer, self._executor)
         self._subs[topic] = sub
@@ -131,22 +142,56 @@ class MessageQueuePulsar(MessageQueueBase):
     async def produce_message(self, topic: str, message: QueueMessage):
         if not self._is_running:
             raise JiuWenBaseException(StatusCode.MESSAGE_QUEUE_NOT_RUNNING.code,
-                                      "MQ stopped, cannot send message")
+                                      StatusCode.MESSAGE_QUEUE_NOT_RUNNING.errmsg.format(
+                                          f"produce message to {topic} failed"))
+        # Get or create producer
+        producer = await self._get_or_create_producer(topic)
+        # Serialize and send
         content = serialize_message(message)
-        if topic not in self._producers:
-            async with self._lock:
-                if topic not in self._producers:
-                    loop = asyncio.get_running_loop()
-                    producer = await loop.run_in_executor(
-                        self._executor,
-                        lambda: self._client.create_producer(topic)
-                    )
-                    self._producers[topic] = producer
-                producer = self._producers[topic]
-        else:
-            producer = self._producers[topic]
 
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(self._executor,
-                                   lambda: producer.send(content=content, partition_key=message.message_id))
-        logger.debug(f"[MessageQueuePulsar] sent message to topic={topic}, id={message.message_id}")
+
+        logger.info(f"[MessageQueuePulsar] Sending message to topic={topic}, message_id={message.message_id}")
+
+        await loop.run_in_executor(
+            self._executor,
+            lambda: producer.send(
+                content,
+                partition_key=message.message_id
+            )
+        )
+
+        logger.info(
+            f"[MessageQueuePulsar] Message sent successfully: topic={topic}, message_id={message.message_id}"
+        )
+
+    async def _get_or_create_producer(self, topic: str) -> pulsar.Producer:
+        producer = self._producers.get(topic)
+        if producer:
+            # LRU move
+            self._producers.move_to_end(topic)
+            return producer
+
+        async with self._lock:
+            # Double-check inside lock
+            producer = self._producers.get(topic)
+            if producer:
+                self._producers.move_to_end(topic)
+                return producer
+
+            # LRU eviction if too many
+            if len(self._producers) >= self.MAX_PRODUCERS:
+                old_topic, old_producer = self._producers.popitem(last=False)
+                old_producer.close()
+                logger.debug(f"[MessageQueuePulsar] LRU producer evicted: {old_topic}")
+
+            logger.info(f"[MessageQueuePulsar] Creating new producer for topic={topic}")
+
+            loop = asyncio.get_running_loop()
+            producer = await loop.run_in_executor(
+                self._executor,
+                lambda: self._client.create_producer(topic)
+            )
+
+            self._producers[topic] = producer
+            return producer

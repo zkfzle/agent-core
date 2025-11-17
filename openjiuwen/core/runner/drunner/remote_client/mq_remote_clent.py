@@ -63,7 +63,7 @@ class MqRemoteClient(RemoteClient):
         # Register response collector
         collector = await self.system_reply_sub.register_collector(message_id=message_id, remote_id=self.remote_id,
                                                                    ttl=timeout)
-        logger.info(f"[MqRemoteClient] Register collector with message_id: {message_id}")
+        logger.info(f"[MqRemoteClient] Register collector with message_id: {message_id}, remote_id: {self.remote_id}")
 
         # Build request message
         request_msg = DmqRequestMessage(
@@ -74,10 +74,10 @@ class MqRemoteClient(RemoteClient):
             receiver_id=self.remote_id,
             enable_stream=False,
             payload=input,
-            expire_at=time.time() + timeout,
+            expire_at=time.time() + timeout if timeout else None,
         )
         # Send message
-        logger.info(f"[MqRemoteClient] Publishing to topic: {self.topic}")
+        logger.info(f"[MqRemoteClient] Publishing to topic: {self.topic}, reply_topic: {self.reply_topic}")
         await self.mq.produce_message(self.topic, request_msg)
 
         try:
@@ -116,7 +116,7 @@ class MqRemoteClient(RemoteClient):
             receiver_id=self.remote_id,
             enable_stream=True,
             payload=inputs,
-            expire_at=time.time() + timeout,
+            expire_at=time.time() + timeout if timeout else None,
         )
 
         logger.info(f"[MQRemoteClient] Publishing to topic: {self.topic}")

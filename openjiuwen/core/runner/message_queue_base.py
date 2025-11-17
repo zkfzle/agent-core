@@ -4,35 +4,39 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Any, Callable, Awaitable, AsyncIterator, TypeVar
+from typing import Any, Callable, Awaitable, TypeVar, Optional
+from pydantic import BaseModel, Field
+
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 Output = TypeVar("Output", covariant=True)
 
 
-@dataclass
-class QueueMessage:
+class QueueMessage(BaseModel):
     message_id: str = ""
     payload: Any = None
     error_code: int = StatusCode.SUCCESS.code
     error_msg: str = ""
 
+    model_config = {
+        "arbitrary_types_allowed": True
+    }
 
-@dataclass
+
 class InvokeQueueMessage(QueueMessage):
-    response: asyncio.Future[Output] = None
+    response: Optional[asyncio.Future[Output]] = Field(default=None, exclude=True)
 
-    def __post_init__(self):
+    def __init__(self, **data):
+        super().__init__(**data)
         if self.response is None:
             self.response = asyncio.Future()
 
 
-@dataclass
 class StreamQueueMessage(QueueMessage):
-    response: asyncio.Future[AsyncIterator[Output]] = None
+    response: Optional[asyncio.Future[Output]] = Field(default=None, exclude=True)
 
-    def __post_init__(self):
+    def __init__(self, **data):
+        super().__init__(**data)
         if self.response is None:
             self.response = asyncio.Future()
 

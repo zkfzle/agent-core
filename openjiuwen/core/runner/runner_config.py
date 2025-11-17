@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
@@ -53,6 +53,7 @@ class RunnerConfig:
     distributed_mode: bool = True
     distributed_config: Optional[DistributedConfig] = field(default_factory=DistributedConfig)
     env_prefix: str = ""
+    instance_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def agent_topic_template(self) -> str:
         """获取带环境前缀的agent topic模板"""
@@ -70,7 +71,7 @@ DEFAULT_RUNNER_CONFIG = RunnerConfig(
         message_queue_config=MessageQueueConfig(
             type=MessageQueueType.FAKE,
         )
-    )
+    ),
 )
 
 _global_config: Optional[RunnerConfig] = None

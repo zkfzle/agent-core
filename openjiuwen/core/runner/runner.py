@@ -89,8 +89,6 @@ class Runner:
     async def stop(self):
         logger.info("[Runner] Stopping...")
         if get_runner_config().distributed_mode:
-            # 1. 停止所有 adapter
-
             # 2. 停止 ReplyTopicSubscription，清理collector
             if self.system_reply_sub:
                 await self.system_reply_sub.deactivate()

@@ -75,8 +75,10 @@ class TestRunnerIntegration:
             response = await Runner.run_agent("remote-workflow-agent", {"query": "London"})
             print(f"response: {response}")
             assert response['result_type'] == 'answer'
-            assert response['output'].result == {'result': 'London'}
-            assert response['output'].state.name == 'COMPLETED'
+            assert response['result_type'] == 'answer'
+            # 反序列化之后dict中的类型丢失，只能按dict匹配
+            assert response['output']["result"] == {'result': 'London'}
+            assert response['output']["state"] == 'COMPLETED'
 
         finally:
             Runner.remove_agent("remote-workflow-agent")

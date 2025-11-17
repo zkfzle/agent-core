@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import asyncio
+from typing import AsyncGenerator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -45,7 +46,7 @@ class RemoteAgent:
                                       StatusCode.REMOTE_AGENT_REQUEST_TIMEOUT.errmsg.format(
                                           self.agent_id))
 
-    async def stream(self, inputs: dict, timeout: float = None):
+    async def stream(self, inputs: dict, timeout: float = None) -> AsyncGenerator:
         try:
             await self.client.start()
             async for chunk in self.client.stream(inputs, timeout=timeout):

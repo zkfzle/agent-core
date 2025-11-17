@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.runner.drunner.dmessage_queue.message_serializer import serialize_message, deserialize_message
 from openjiuwen.core.runner.message_queue_base import SubscriptionBase, AsyncMessageHandler, QueueMessage, \
     MessageQueueBase
 
@@ -44,10 +45,24 @@ class FakeSubscription(SubscriptionBase):
             self._task = None  # Clean reference
 
     async def _consume_loop(self):
-        while self._active:
-            msg = await self._queue.get()
-            if self._handler:
-                await self._handler(msg)
+        try:
+            while self._active:
+                try:
+                    raw = await asyncio.wait_for(self._queue.get(), timeout=0.2)
+                except asyncio.TimeoutError:
+                    continue
+
+                if not self._active:
+                    break
+
+                payload = deserialize_message(raw)
+                if self._handler:
+                    await self._handler(payload)
+
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.exception(f"[FakeSubscription] consume_loop error: {e}")
 
     async def push(self, msg):
         if self._active:
@@ -69,7 +84,13 @@ class FakeMQ(MessageQueueBase):
         logger.info("[FakeMQ] started")
 
     async def stop(self):
+        """Stop MQ & deactivate all subscriptions."""
         self._is_running = False
+
+        topics = list(self._topics.keys())
+        for t in topics:
+            await self.unsubscribe(t)
+
         logger.info("[FakeMQ] stopped")
 
     def subscribe(self, topic: str) -> FakeSubscription:
@@ -89,8 +110,10 @@ class FakeMQ(MessageQueueBase):
             logger.info(f"[FakeMQ] unsubscribed topic={topic}")
 
     async def produce_message(self, topic: str, message: QueueMessage):
+        data = serialize_message(message)
+
         async with self._lock:
             subs = list(self._topics.get(topic, []))
 
         for sub in subs:
-            asyncio.create_task(sub.push(message))
+            asyncio.create_task(sub.push(data))

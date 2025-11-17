@@ -21,6 +21,7 @@ class StatusCode(Enum):
     INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")
     INTERACTIVE_UPDATE_FAILED = (100001, "raw_inputs existed, update is invalid")
     COMPONENT_NOT_EXECUTABLE_ERROR = (100002, "workflow component should implement Executable")
+    CONTROLLER_INTERRUPTED_ERROR = (100003, "controller interrupted error")
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 
@@ -32,6 +33,7 @@ class StatusCode(Enum):
     LLM_COMPONENT_JSON_SCHEMA_OUTPUT_ERROR = (101004, "Failed to output json schema, as {error_msg}.")
     LLM_COMPONENT_INIT_LLM_ERROR = (101005, "Failed to init llm, as {error_msg}.")
     LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
+    PROMPT_JSON_SCHEMA_ERROR = (101007, "Invalid json schema, root cause = {error_msg}.")
 
     ## IntentDetectionComponent 101050 - 101069
     INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050,
@@ -75,6 +77,14 @@ class StatusCode(Enum):
     TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
     TOOL_COMPONENT_CHECK_PARAM_ERROR = (102002, "Tool component check parameter error, as {error_msg}.")
 
+    ## StartComponent  102100 - 102119
+    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (102100,
+                                                    "start component: global variable(s) defined with no value assigned:  {variable_name}")
+    WORKFLOW_START_CREATE_VALUE = (102101, "start component create error:  {reason}")
+
+    ## EndComponent  102120 - 102149
+    WORKFLOW_END_CREATE_VALUE = (102120, "end component create error: {reason}")
+
     # Workflow 110000 - 119999
     # Workflow - Orchestration And Execution 110000 - 110999
     GRAPH_SET_START_NODE_FAILED = (110001, "Graph create error, caused by start node set failed, detail: {detail}")
@@ -98,6 +108,9 @@ class StatusCode(Enum):
     # Agent Orchestration - ReAct Agent Orchestration And Execution 120000 - 120999
     # Agent Orchestration - Workflow Agent Orchestration And Execution 121000 - 121999
     # Agent Orchestration - Custom Agent Interface 122000 - 122999
+    # Agent Controller 123000 - 123999
+    INVOKE_LLM_FAILED = (123000, "Failed to call model")
+    AGENT_SUB_TASK_TYPE_ERROR = (123032, "SubTask type {msg} is not supported")
 
     # Multi-Agent Orchestration 130000 - 139999
     # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999
@@ -152,6 +165,8 @@ class StatusCode(Enum):
     # ContextEngine - Context Structured Storage and Retrieval 150000 - 150999
     # ContextEngine - Context Dynamic Assembly  151000 - 151999
     # ContextEngine - Context Asynchronous Processing 152000 - 152999
+    # ContextEngine - Context Common 153000 - 153999
+    CONTEXT_ENGINE_MESSAGE_PROCESS_ERROR = (153000, "Message process error: {error_msg}")
 
     # Development Toolchain 160000 - 169999
     # Development Toolchain - Prompt Generation 160000 - 160999
@@ -235,13 +250,9 @@ class StatusCode(Enum):
     STREAM_FRAME_TIMEOUT_FAILED = (193003, "stream frame is timeout ({timeout}s), no stream output")
     # Runtime - Config 194000 - 194999
     # Runtime - callback 195000 - 195999
+    # Runtime - Stream Actor 196000 - 196099
+    WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (196000, "Message queue manager error: {error_msg}")
 
-    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (101501,
-                                                    "start component: global variable(s) defined with no value assigned:  {variable_name}")
-    WORKFLOW_START_CREATE_VALUE = (101502, "start component create error:  {reason}")
-    WORKFLOW_END_CREATE_VALUE = (101511, "end component create error: {reason}")
-
-    WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (101771, "Message queue manager error: {error_msg}")
 
     PROMPT_ASSEMBLER_VARIABLE_INIT_ERROR = (102050, "Wrong arguments for initializing the variable")
     PROMPT_ASSEMBLER_INIT_ERROR = (102051, "Wrong arguments for initializing the assembler")
@@ -252,18 +263,10 @@ class StatusCode(Enum):
     PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR = (
         102053,
         "Errors occur when formatting the template content due to wrong format")
-    PROMPT_JSON_SCHEMA_ERROR = (102056, "Invalid json schema, root cause = {error_msg}.")
-
     PROMPT_TEMPLATE_DUPLICATED_ERROR = (102101, "Template duplicated")
     PROMPT_TEMPLATE_NOT_FOUND_ERROR = (102102, "Template not found")
     PROMPT_TEMPLATE_INCORRECT_ERROR = (102103, "Template data incorrect")
 
-    INVOKE_LLM_FAILED = (103004, "Failed to call model")
-    CONTROLLER_INTERRUPTED_ERROR = (10312, "controller interrupted error")
-
-    AGENT_SUB_TASK_TYPE_ERROR = (103032, "SubTask type {msg} is not supported")
-
-    CONTEXT_ENGINE_MESSAGE_PROCESS_ERROR = (106000, "Message process error: {error_msg}")
 
     @property
     def code(self):

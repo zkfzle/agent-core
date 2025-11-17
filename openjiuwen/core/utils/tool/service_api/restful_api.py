@@ -78,48 +78,9 @@ class RestfulApi(Tool):
 
     def invoke(self, inputs: Input, **kwargs) -> Output:
         """invoke api"""
-        request_params = RequestParams(self, inputs, **kwargs)
-        request_params.prepare_params()
-        UrlUtils.check_url_is_valid(request_params.ip_address_url)
-        ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
-        verify = ssl_cert if ssl_verify else False
-        session = requests.Session()
-        adapter = SslUtils.create_ssl_adapter(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
-        if adapter is not None:
-            session.mount("https://", adapter)
-        try:
-            response = session.request(
-                self.method, request_params.ip_address_url, headers=request_params.headers,
-                verify=verify, stream=False, allow_redirects=False, params=request_params.query_params_in_inputs,
-                timeout=constant.REQUEST_TIMEOUT,
-                **request_params.request_arg
-            )
-            response_data = _data_of(response)
-            return response_data
-        except (requests.exceptions.ReadTimeout, requests.exceptions.Timeout):
-            return {
-                constant.ERR_CODE: StatusCode.PLUGIN_REQUEST_TIMEOUT_ERROR.code,
-                constant.ERR_MESSAGE: "plugin request time out",
-                constant.RESTFUL_DATA: ""
-            }
-        except requests.exceptions.ProxyError:
-            return {
-                constant.ERR_CODE: StatusCode.PLUGIN_PROXY_CONNECT_ERROR.code,
-                constant.ERR_MESSAGE: StatusCode.PLUGIN_PROXY_CONNECT_ERROR.errmsg,
-                constant.RESTFUL_DATA: ""
-            }
-        except JiuWenBaseException as error:
-            return {
-                constant.ERR_CODE: error.error_code,
-                constant.ERR_MESSAGE: error.message,
-                constant.RESTFUL_DATA: ""
-            }
-        except Exception:
-            return {
-                constant.ERR_CODE: StatusCode.PLUGIN_UNEXPECTED_ERROR.code,
-                constant.ERR_MESSAGE: "plugin request unknown error",
-                constant.RESTFUL_DATA: ""
-            }
+        raise JiuWenBaseException(
+            error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message="restful api only support ainvoke"
+        )
 
     async def ainvoke(self, inputs: Input, **kwargs) -> Output:
         """async invoke api"""
@@ -127,10 +88,11 @@ class RestfulApi(Tool):
         try:
             request_params.prepare_params()
             return await self._async_request(
-                dict(ip_address_url=request_params.ip_address_url,
-                     headers=request_params.headers,
-                     request_arg=request_params.request_arg,
-                     query_params_in_inputs=request_params.query_params_in_inputs)
+                dict(
+                    ip_address_url=request_params.ip_address_url,
+                    headers=request_params.headers,
+                    request_arg=request_params.request_arg,
+                )
             )
         except (aiohttp.ClientTimeout, asyncio.TimeoutError):
             return {
@@ -172,24 +134,29 @@ class RestfulApi(Tool):
     async def _async_request(self, request_args: dict):
         ip_address_url = request_args.get('ip_address_url')
         UrlUtils.check_url_is_valid(ip_address_url)
-        query_params_in_inputs = request_args.get('query_params_in_inputs')
         request_arg = request_args.get('request_arg')
         ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
                 async with session.request(
-                        self.method, ip_address_url, headers=request_args.get("headers"),
-                        allow_redirects=False, timeout=timeout_aiohttp,
-                        params=query_params_in_inputs, **request_arg
+                    self.method,
+                    ip_address_url,
+                    headers=request_args.get("headers"),
+                    allow_redirects=False,
+                    timeout=timeout_aiohttp,
+                    **request_arg,
                 ) as response:
                     response_data = await _data_of_async_request(response)
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.request(
-                    self.method, ip_address_url, headers=request_args.get("headers"),
-                    allow_redirects=False, timeout=timeout_aiohttp,
-                    params=query_params_in_inputs, **request_arg
+                    self.method,
+                    ip_address_url,
+                    headers=request_args.get("headers"),
+                    allow_redirects=False,
+                    timeout=timeout_aiohttp,
+                    **request_arg,
                 ) as response:
                     response_data = await _data_of_async_request(response)
         return response_data
@@ -218,11 +185,6 @@ class RequestParams:
     def prepare_params(self):
         """prepare params"""
         restful_api = self.restful_api
-        if restful_api.method not in constant.HTTP_METHOD:
-            raise JiuWenBaseException(
-                error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code,
-                message="the http method is not supported"
-            )
         url = restful_api.path
         headers = restful_api.headers if isinstance(restful_api.headers, dict) else {}
         headers.update(self.header_params_in_inputs)
@@ -230,6 +192,14 @@ class RequestParams:
         self.ip_address_url = url
         self.headers = headers
         self.request_arg = request_arg
+        if restful_api.method in ["GET", "DELETE"]:
+            self.request_arg["params"] = self.query_params_in_inputs
+        elif restful_api.method in ["POST", "PUT"]:
+            self.request_arg["data"] = self.query_params_in_inputs
+        else:
+            raise JiuWenBaseException(
+                error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message="the http method is not supported"
+            )
 
 
 def _data_of(response):

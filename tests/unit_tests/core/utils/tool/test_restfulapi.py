@@ -10,6 +10,7 @@ import pytest
 from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
 
 class TestRestFulApi:
@@ -32,7 +33,7 @@ class TestRestFulApi:
         self.mocked_functions.stop()
 
     @patch('requests.sessions.Session.request')
-    def test_invoke(self, mock_request):
+    def test_ainvoke(self, mock_request):
         mock_data = RestfulApi(
             name="test",
             description="test",
@@ -45,11 +46,29 @@ class TestRestFulApi:
         mock_request.return_value = dict()
         try:
             os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
-            mock_data.invoke({})
+            mock_data.ainvoke({})
             del os.environ["RESTFUL_SSL_CERT"]
         except Exception as e:
             pass
         self.assertEqual(mock_data.headers, {})
+
+    @patch("requests.sessions.Session.request")
+    def test_invoke(self, mock_request):
+        mock_data = RestfulApi(
+            name="test",
+            description="test",
+            params=[],
+            path="http://127.0.0.1:8000",
+            headers={},
+            method="GET",
+            response=[],
+        )
+        mock_request.return_value = dict()
+        os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
+        with pytest.raises(JiuWenBaseException) as e:
+            mock_data.invoke({})
+        assert "[182000] restful api only support ainvoke\t" == str(e.value)
+        del os.environ["RESTFUL_SSL_CERT"]
 
     def test_get_tool_info(self):
         mock_data = RestfulApi(

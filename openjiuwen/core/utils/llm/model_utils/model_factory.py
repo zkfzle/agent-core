@@ -77,7 +77,7 @@ class ModelFactory(metaclass=Singleton):
         self.model_map.update(model_dict)
 
     def get_model(self, model_provider: str, api_key: str, api_base: str,
-                  max_retrie: int=3, timeout: int=60) -> BaseChatModel:
+                  max_retries: int=3, timeout: int=60, **kwargs) -> BaseChatModel:
         model_cls = self.model_map.get(model_provider.lower())
         if not model_cls:
             available_models = ", ".join(self.model_map.keys())
@@ -85,4 +85,5 @@ class ModelFactory(metaclass=Singleton):
                 raise ValueError("Unavailable model provider.")
             else:
                 raise ValueError(f"Unavailable model provider: {model_provider}. Available models: {available_models}")
-        return model_cls(api_key=api_key, api_base=api_base, max_retrie=max_retrie, timeout=timeout)
+        kwargs = kwargs or dict(temperature=0.95, top_p=0.1)
+        return model_cls(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout, **kwargs)

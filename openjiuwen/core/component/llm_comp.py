@@ -18,7 +18,7 @@ from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.config.user_config import UserConfig
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -263,10 +263,13 @@ class LLMExecutable(ComponentExecutable):
                                                "Failed to initialize llm if needed", e)
 
     def _create_llm_instance(self):
-        return ModelFactory().get_model(model_provider=self._config.model.model_provider,
-                                        api_base=self._config.model.model_info.api_base,
-                                        api_key=self._config.model.model_info.api_key,
-                                        timeout=self._config.model.model_info.timeout)
+        if isinstance(self._config.model.model_info, BaseModelInfo):
+            kwargs = self._config.model.model_info.model_dump(exclude={'model_name', 'streaming'})
+            return ModelFactory().get_model(model_provider=self._config.model.model_provider, **kwargs)
+        else:
+            return ModelFactory().get_model(model_provider=self._config.model.model_provider,
+                                            api_base=self._config.model.model_info.api_base,
+                                            api_key=self._config.model.model_info.api_key)
 
     def _build_user_prompt_content(self, inputs: dict) -> list[dict]:
         template_content_list = self._config.template_content

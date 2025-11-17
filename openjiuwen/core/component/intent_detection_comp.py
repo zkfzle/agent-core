@@ -21,7 +21,7 @@ from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -197,9 +197,13 @@ class IntentDetectionExecutable(ComponentExecutable):
         self._runtime = runtime
 
     def _create_llm_instance(self):
-        return ModelFactory().get_model(model_provider=self._config.model.model_provider,
-                                        api_base=self._config.model.model_info.api_base,
-                                        api_key=self._config.model.model_info.api_key)
+        if isinstance(self._config.model.model_info, BaseModelInfo):
+            kwargs = self._config.model.model_info.model_dump(exclude={'model_name', 'streaming'})
+            return ModelFactory().get_model(model_provider=self._config.model.model_provider, **kwargs)
+        else:
+            return ModelFactory().get_model(model_provider=self._config.model.model_provider,
+                                            api_base=self._config.model.model_info.api_base,
+                                            api_key=self._config.model.model_info.api_key)
 
     def _initialize_if_needed(self):
         if not self._initialized:

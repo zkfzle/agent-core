@@ -6,7 +6,7 @@ import asyncio
 import json
 from abc import abstractmethod
 from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, AIMessage
 from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
@@ -18,6 +18,7 @@ class BaseChatModel:
         self.api_base = api_base
         self.max_retries = max_retries
         self.timeout = timeout
+        self.kwargs = kwargs
 
     def invoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
@@ -163,7 +164,8 @@ class BaseModelInfo(BaseModel):
     temperature: float = Field(default=0.95)
     top_p: float = Field(default=0.1)
     streaming: bool = Field(default=False, alias="stream")
-    timeout: float = Field(default=60.0)
+    timeout: int = Field(default=60)
+    model_config = ConfigDict(extra='allow')
 
     @field_validator('model_name', mode='before')
     @classmethod
@@ -171,7 +173,3 @@ class BaseModelInfo(BaseModel):
         if not v and 'model' in values.data:
             return values.data['model']
         return v
-
-    class Config:
-        populate_by_name = True
-        extra = "forbid"

@@ -53,9 +53,7 @@ class ReActAgent(BaseAgent):
         if self._llm is None:
             self._llm = ModelFactory().get_model(
                 model_provider=self._agent_config.model.model_provider,
-                api_base=self._agent_config.model.model_info.api_base,
-                api_key=self._agent_config.model.model_info.api_key,
-                timeout=self._agent_config.model.model_info.timeout
+                **self._agent_config.model.model_info.model_dump(exclude=['model_name', 'streaming'])
             )
         return self._llm
 

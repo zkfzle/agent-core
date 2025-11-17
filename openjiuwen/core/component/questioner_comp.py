@@ -19,7 +19,7 @@ from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.utils.config.user_config import UserConfig
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -560,9 +560,13 @@ class QuestionerExecutable(ComponentExecutable):
         return invoke_result
 
     def _create_llm_instance(self) -> BaseChatModel:
-        return ModelFactory().get_model(model_provider=self._config.model.model_provider,
-                                        api_base=self._config.model.model_info.api_base,
-                                        api_key=self._config.model.model_info.api_key)
+        if isinstance(self._config.model.model_info, BaseModelInfo):
+            kwargs = self._config.model.model_info.model_dump(exclude={'model_name', 'streaming'})
+            return ModelFactory().get_model(model_provider=self._config.model.model_provider, **kwargs)
+        else:
+            return ModelFactory().get_model(model_provider=self._config.model.model_provider,
+                                            api_base=self._config.model.model_info.api_base,
+                                            api_key=self._config.model.model_info.api_key)
 
     def _init_prompt(self) -> Template:
         return Template(content=self._default_config.prompt_template)

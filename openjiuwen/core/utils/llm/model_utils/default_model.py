@@ -10,6 +10,7 @@ from pydantic import ConfigDict
 from requests import Session
 import openai
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.common.ssl_utils import SslUtils
 from openjiuwen.core.utils.common.url_utils import UrlUtils
 from openjiuwen.core.utils.config.user_config import UserConfig
@@ -25,7 +26,7 @@ class RequestChatModel(BaseChatModel):
 
     def __init__(self,
                  api_key: str, api_base: str, max_retries: int=3, timeout: int=60, **kwargs):
-        super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout)
+        super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout, **kwargs)
         self._stream_state = {
             'current_tool_call_id': '',
             'current_tool_name': '',
@@ -52,8 +53,7 @@ class RequestChatModel(BaseChatModel):
                 top_p: float = 0.1, **kwargs: Any) -> AIMessage:
         UrlUtils.check_url_is_valid(self.api_base)
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
-                                      messages=messages, tools=tools, **kwargs)
+        params = self._request_params(model_name=model_name, messages=messages, tools=tools, **self.kwargs)
 
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         verify = ssl_cert if ssl_verify else False
@@ -79,8 +79,7 @@ class RequestChatModel(BaseChatModel):
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
         UrlUtils.check_url_is_valid(self.api_base)
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
-                                      messages=messages, tools=tools, **kwargs)
+        params = self._request_params(model_name=model_name, messages=messages, tools=tools, **self.kwargs)
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         
         connector = None
@@ -111,8 +110,7 @@ class RequestChatModel(BaseChatModel):
         self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p,
-                                      messages=messages, tools=tools, **kwargs)
+        params = self._request_params(model_name=model_name, messages=messages, tools=tools, **self.kwargs)
         params["stream"] = True
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         verify = ssl_cert if ssl_verify else False
@@ -146,7 +144,7 @@ class RequestChatModel(BaseChatModel):
         self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
-        params = self._request_params(model_name=model_name, temperature=temperature, top_p=top_p, messages=messages, tools=tools, **kwargs)
+        params = self._request_params(model_name=model_name, messages=messages, tools=tools, **self.kwargs)
         params["stream"] = True
 
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
@@ -218,6 +216,11 @@ class RequestChatModel(BaseChatModel):
 
         if tools:
             params["tools"] = tools
+
+        if UserConfig.is_sensitive():
+            logger.info("Before request chat model, request params is ready.")
+        else:
+            logger.info(f"Before request chat model, request params is ready. params: {params}")
 
         return params
 

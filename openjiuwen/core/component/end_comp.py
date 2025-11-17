@@ -44,16 +44,14 @@ class End(ComponentExecutable, WorkflowComponent):
         self._mix = True
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        if inputs is None:
-            raise JiuWenBaseException(
-                StatusCode.WORKFLOW_END_CREATE_VALUE.code,
-                message=StatusCode.WORKFLOW_END_CREATE_VALUE.errmsg.format(
-                    reason="inputs cannot be None"))
         if self.template is not None:
             return await self._render(inputs)
         else:
             answer = ""
-            output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
+            if inputs is not None:
+                output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
+            else:
+                output = ""
             logger.debug(f"end component invoke method output: {output}")
             return {
                 "responseContent": answer,
@@ -62,11 +60,6 @@ class End(ComponentExecutable, WorkflowComponent):
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
-        if inputs is None:
-            raise JiuWenBaseException(
-                StatusCode.WORKFLOW_END_CREATE_VALUE.code,
-                message=StatusCode.WORKFLOW_END_CREATE_VALUE.errmsg.format(
-                    reason="inputs cannot be None"))
         try:
             if self.template is not None:
                 generator = self.template.render_stream(inputs)
@@ -74,6 +67,8 @@ class End(ComponentExecutable, WorkflowComponent):
                     logger.debug(f"rendering stream frame: {frame}")
                     yield dict(answer=frame)
             else:
+                if inputs is None:
+                    return
                 for key, value in inputs.items():
                     yield dict(output={key: value})
 

@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Intent Detection Controller - Intent detection and task management"""
 
+import asyncio
 from abc import abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -14,6 +15,97 @@ from openjiuwen.core.agent.task.task import Task, TaskStatus
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+
+
+@dataclass
+class RunningTaskInfo:
+    """Running task information"""
+    task: Task
+    asyncio_task: asyncio.Task
+    target_id: str
+    start_time: float
+
+
+class TaskQueue:
+    """Task queue - Manages running tasks
+    
+    Design reference: MessageQueueInMemory
+    - Lightweight memory management
+    - conversation_id as key
+    - Support cancellation mechanism
+    """
+    
+    def __init__(self):
+        # conversation_id -> RunningTaskInfo
+        self._running_tasks: Dict[str, RunningTaskInfo] = {}
+        self._lock = asyncio.Lock()
+    
+    async def register_task(
+        self,
+        conversation_id: str,
+        task: Task,
+        asyncio_task: asyncio.Task,
+        target_id: str
+    ):
+        """Register running task"""
+        async with self._lock:
+            self._running_tasks[conversation_id] = RunningTaskInfo(
+                task=task,
+                asyncio_task=asyncio_task,
+                target_id=target_id,
+                start_time=asyncio.get_event_loop().time()
+            )
+            logger.info(
+                f"TaskQueue: Registered task for {conversation_id}, "
+                f"target={target_id}"
+            )
+    
+    async def cancel_running_task(self, conversation_id: str) -> bool:
+        """Cancel running task
+        
+        Returns:
+            bool: Whether cancellation was successful
+        """
+        async with self._lock:
+            info = self._running_tasks.get(conversation_id)
+            if not info:
+                return False
+            
+            # Cancel asyncio.Task
+            if not info.asyncio_task.done():
+                logger.info(
+                    f"TaskQueue: Cancelling task for {conversation_id}, "
+                    f"target={info.target_id}"
+                )
+                info.asyncio_task.cancel()
+                
+                # Wait for cancellation to complete
+                try:
+                    await info.asyncio_task
+                except asyncio.CancelledError:
+                    logger.info("TaskQueue: Task cancelled successfully")
+                except Exception as e:
+                    logger.warning(f"TaskQueue: Cancel error: {e}")
+                
+                return True
+            return False
+    
+    async def unregister_task(self, conversation_id: str):
+        """Unregister task"""
+        async with self._lock:
+            if conversation_id in self._running_tasks:
+                del self._running_tasks[conversation_id]
+                logger.info(
+                    f"TaskQueue: Unregistered task for {conversation_id}"
+                )
+    
+    def find_task(self, conversation_id: str) -> Optional[RunningTaskInfo]:
+        """Find running task"""
+        return self._running_tasks.get(conversation_id)
+    
+    def has_running_task(self, conversation_id: str) -> bool:
+        """Check if has running task"""
+        return conversation_id in self._running_tasks
 
 
 class IntentType(Enum):
@@ -56,6 +148,9 @@ class IntentDetectionController(BaseController):
             runtime: Agent-level Runtime (AgentRuntime)
         """
         super().__init__(config, context_engine, runtime)
+        
+        # Initialize task queue for managing running tasks
+        self.task_queue = TaskQueue()
 
     async def handle_message(self, message: Message, runtime: Runtime) -> Dict:
         """Standard message processing flow: Intent detection -> Route processing

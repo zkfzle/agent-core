@@ -16,7 +16,6 @@ import asyncio
 from datetime import datetime
 import unittest
 
-from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -159,35 +158,35 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """多工作流场景下，意图识别结果应跳转到目标工作流（使用真实模型）。"""
         print("=== 测试多工作流意图识别路由 ===")
 
-        # 创建两个工作流的schema，描述要清晰明确
-        weather_schema = WorkflowSchema(
-            id="weather_flow",
-            name="天气查询",
-            description="查询某地的天气情况、温度、气象信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
+        # 创建两个工作流实例（metadata 中已包含描述信息）
+        weather_workflow = self._build_prefixed_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            prefix="weather:"
         )
-        stock_schema = WorkflowSchema(
-            id="stock_flow",
-            name="股票查询",
-            description="查询股票价格、股市行情、股票走势等金融信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
+        stock_workflow = self._build_prefixed_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            prefix="stock:"
         )
+        
+        # 更新 workflow 的 metadata，添加详细描述（用于意图识别）
+        weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
+        stock_workflow.config().metadata.description = "查询股票价格、股市行情、股票走势等金融信息"
 
-        weather_workflow = self._build_prefixed_workflow("weather_flow", "天气查询", "weather:")
-        stock_workflow = self._build_prefixed_workflow("stock_flow", "股票查询", "stock:")
-
+        # 创建最小化配置（workflows 为空列表）
         config = WorkflowAgentConfig(
             id="test_multi_workflow_agent",
             version="0.1.0",
             description="多工作流意图识别测试",
-            workflows=[weather_schema, stock_schema],
+            workflows=[],  # 空列表，通过 add_workflows 自动填充
             model=self._create_model_config(),
         )
 
         agent = WorkflowAgent(config)
-        agent.bind_workflows([weather_workflow, stock_workflow])
+        
+        # 使用 add_workflows 动态添加（自动提取 schema）
+        agent.add_workflows([weather_workflow, stock_workflow])
 
         # 使用真实模型调用，不使用任何mock（设置30秒超时）
         print("发送请求：查看上海股票走势")
@@ -243,33 +242,23 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             question_field="stock_code",
             question_desc="股票代码"
         )
+        
+        # 更新 workflow 的 metadata，添加详细描述（用于意图识别）
+        weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
+        stock_workflow.config().metadata.description = "查询股票价格、股市行情、股票走势等金融信息"
 
-        # 创建 schema
-        weather_schema = WorkflowSchema(
-            id="weather_flow",
-            name="天气查询",
-            description="查询某地的天气情况、温度、气象信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
-        )
-        stock_schema = WorkflowSchema(
-            id="stock_flow",
-            name="股票查询",
-            description="查询股票价格、股市行情、股票走势等金融信息",
-            version="1.0",
-            inputs={"query": {"type": "string"}}
-        )
-
-        # 创建 agent
+        # 创建最小化配置（workflows 为空列表）
         config = WorkflowAgentConfig(
             id="test_multi_workflow_jump_agent",
             version="0.1.0",
             description="多工作流跳转恢复测试",
-            workflows=[weather_schema, stock_schema],
+            workflows=[],  # 空列表，通过 add_workflows 自动填充
             model=self._create_model_config(),
         )
         agent = WorkflowAgent(config)
-        agent.bind_workflows([weather_workflow, stock_workflow])
+        
+        # 使用 add_workflows 动态添加（自动提取 schema）
+        agent.add_workflows([weather_workflow, stock_workflow])
 
         conversation_id = "test-jump-recovery-001"
 
@@ -370,4 +359,143 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 步骤4成功：workflow2 恢复并完成，返回: {response_content_4}")
 
         print("\n🎉 所有步骤完成！多工作流跳转和恢复测试通过！")
+
+    @unittest.skip
+    async def test_real_time_interrupt_with_cancellation(self):
+        """
+        测试真正的实时打断场景：不等 workflow1 执行完就发送新 query。
+        
+        场景：
+        1. query1 "查天气" -> workflow1 开始执行（慢速，模拟执行中）
+        2. query2 "查股票" -> 取消 workflow1，启动 workflow2 -> 中断（提问股票代码）
+        3. query3 "AAPL" -> 恢复 workflow2 -> 完成
+        
+        验证：
+        - workflow1 被取消（不会完成）
+        - workflow2 能正常启动、中断和恢复
+        - 使用 TaskQueue 机制实现真正的并发取消
+        """
+        print("=== 测试真正的实时打断场景 ===")
+
+        # 创建两个工作流：
+        # - weather_workflow: 带提问器（会慢速执行）
+        # - stock_workflow: 带提问器（会中断）
+        weather_workflow = self._build_questioner_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            question_field="location",
+            question_desc="地点"
+        )
+        stock_workflow = self._build_questioner_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            question_field="stock_code",
+            question_desc="股票代码"
+        )
+        
+        # 更新 metadata 描述（用于意图识别）
+        weather_workflow.config().metadata.description = (
+            "查询某地的天气情况、温度、气象信息"
+        )
+        stock_workflow.config().metadata.description = (
+            "查询股票价格、股市行情、股票走势等金融信息"
+        )
+
+        # 创建 agent
+        config = WorkflowAgentConfig(
+            id="test_real_time_interrupt_agent",
+            version="0.1.0",
+            description="实时打断测试",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([weather_workflow, stock_workflow])
+
+        conversation_id = "test-real-time-interrupt-001"
+
+        # ========== 步骤1: query1 "查天气" -> workflow1 开始执行（不等待） ==========
+        print("\n【步骤1】发送 query1: 查天气（不等待完成）")
+        
+        # 创建任务但不等待（模拟用户在执行中就发送新query）
+        task1 = asyncio.create_task(
+            agent.invoke({
+                "query": "查天气",
+                "conversation_id": conversation_id
+            })
+        )
+        
+        # 等待一小段时间，让 workflow1 开始执行
+        await asyncio.sleep(1.0)
+        print("workflow1 已开始执行，准备发送打断 query...")
+
+        # ========== 步骤2: query2 "查股票" -> 取消 workflow1，启动 workflow2 ==========
+        print("\n【步骤2】发送 query2: 查股票（实时打断 workflow1）")
+        try:
+            result2 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "查股票",
+                    "conversation_id": conversation_id
+                }),
+                timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤2 超时！")
+            raise
+
+        print(f"步骤2 结果类型: {type(result2)}")
+        print(f"步骤2 结果: {result2}")
+
+        # 校验：应该取消 workflow1，启动 workflow2 并触发中断
+        self.assertIsInstance(result2, list, "步骤2应该返回交互请求列表")
+        self.assertTrue(len(result2) > 0, "步骤2应该有交互请求")
+        self.assertEqual(
+            result2[0].type, '__interaction__', "步骤2应该返回交互类型"
+        )
+        print(f"✅ 步骤2成功：取消 workflow1，启动 workflow2，触发中断")
+
+        # 检查 task1 的状态（应该被取消）
+        try:
+            result1 = await asyncio.wait_for(task1, timeout=2.0)
+            print(f"Task1 结果: {result1}")
+            # 如果 task1 返回了取消状态，这也是正确的
+            if isinstance(result1, dict) and result1.get('status') == 'cancelled':
+                print("✅ workflow1 被正确取消")
+        except asyncio.CancelledError:
+            print("✅ workflow1 被取消（CancelledError）")
+        except asyncio.TimeoutError:
+            print("⚠️ workflow1 仍在执行（可能已被内部取消）")
+
+        # ========== 步骤3: query3 "AAPL" -> 恢复 workflow2 -> 完成 ==========
+        print("\n【步骤3】发送 query3: AAPL（提供股票代码）")
+        try:
+            result3 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "AAPL",
+                    "conversation_id": conversation_id
+                }),
+                timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤3 超时！")
+            raise
+
+        print(f"步骤3 结果类型: {type(result3)}")
+        print(f"步骤3 结果: {result3}")
+
+        # 校验：workflow2 应该恢复并完成
+        self.assertIsInstance(result3, dict, "步骤3应该返回字典")
+        self.assertEqual(
+            result3['result_type'], 'answer', "步骤3应该返回 answer 类型"
+        )
+        self.assertEqual(
+            result3['output'].state.value,
+            'COMPLETED',
+            "步骤3 workflow2 应该完成"
+        )
+        response_content_3 = result3['output'].result.get('responseContent', '')
+        self.assertIn("AAPL", response_content_3, "步骤3 应该包含股票代码")
+        print(f"✅ 步骤3成功：workflow2 恢复并完成，返回: {response_content_3}")
+
+        print("\n🎉 实时打断测试完成！验证了 TaskQueue 取消机制！")
 

@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Workflow Controller - Workflow-specific execution logic"""
 
+import asyncio
 from typing import Dict, Optional
 
 from openjiuwen.agent.common.enum import TaskStatus, TaskType
@@ -61,6 +62,8 @@ class WorkflowController(IntentDetectionController):
             context_engine,
             None  # runtime is dynamically passed when used
         )
+        
+        # task_queue is now initialized in IntentDetectionController base class
 
     async def intent_detection(
             self,
@@ -73,7 +76,8 @@ class WorkflowController(IntentDetectionController):
         1. Get available workflows
         2. Single workflow: Use directly; Multiple workflows: LLM recognition
         3. Check for interrupted tasks
-        4. Return Intent (ExecNewTask or ResumeTask)
+        4. Check if user wants to switch workflow (if detected workflow != interrupted workflow)
+        5. Return Intent (ExecNewTask or ResumeTask)
         
         Args:
             message: Message object
@@ -87,35 +91,48 @@ class WorkflowController(IntentDetectionController):
         if not workflows:
             raise ValueError("No workflows configured for agent")
 
-        # 1. Select workflow
+        # 1. Select workflow based on user's current query
         if len(workflows) == 1:
             # Single workflow: Use directly
-            workflow = workflows[0]
-            logger.info(f"Single workflow mode: using {workflow.name}")
+            detected_workflow = workflows[0]
+            logger.info(f"Single workflow mode: using {detected_workflow.name}")
         else:
             # Multiple workflows: LLM recognition
-            workflow = await self._detect_workflow_via_llm(message, runtime)
-            logger.info(f"Multi workflow mode: detected {workflow.name}")
+            detected_workflow = await self._detect_workflow_via_llm(
+                message, runtime
+            )
+            logger.info(
+                f"Multi workflow mode: detected {detected_workflow.name}"
+            )
 
-        # 2. Check interruption state
-        interrupted_task = self._find_interrupted_task(workflow, runtime)
+        # 2. Check if detected workflow has an interrupted task
+        interrupted_task = self._find_interrupted_task(
+            detected_workflow, runtime
+        )
 
         if interrupted_task:
-            # Resume task
-            logger.info(f"Found interrupted task for workflow {workflow.name}")
+            # Found interrupted task for this workflow: Resume
+            logger.info(
+                f"Found interrupted task for workflow "
+                f"{detected_workflow.name}, resuming"
+            )
             return Intent(
                 intent_type=IntentType.ResumeTask,
                 task=interrupted_task,
-                workflow=workflow
+                workflow=detected_workflow
             )
         else:
-            # New task
-            logger.info(f"Creating new task for workflow {workflow.name}")
-            new_task = self._create_new_task(message, workflow)
+            # No interrupted task for this workflow: Create new task
+            # Note: Other workflows' interrupted states are preserved
+            logger.info(
+                f"No interrupted task for workflow {detected_workflow.name}, "
+                f"creating new task"
+            )
+            new_task = self._create_new_task(message, detected_workflow)
             return Intent(
                 intent_type=IntentType.ExecNewTask,
                 task=new_task,
-                workflow=workflow
+                workflow=detected_workflow
             )
 
     async def exec_task(
@@ -139,9 +156,37 @@ class WorkflowController(IntentDetectionController):
             dict: Execution result
         """
         workflow_id = task.input.target_id
+        conversation_id = runtime.session_id()
 
         try:
-            # Update task status to running
+            # 1. Check if there's a running task for this conversation
+            if self.task_queue.has_running_task(conversation_id):
+                # Cancel old task
+                cancelled = await self.task_queue.cancel_running_task(
+                    conversation_id
+                )
+                if cancelled:
+                    logger.info(
+                        f"Cancelled previous running task for "
+                        f"conversation: {conversation_id}"
+                    )
+                    # Clear old task's interrupted state
+                    old_info = self.task_queue.find_task(conversation_id)
+                    if old_info:
+                        # Create a temporary task object for cleanup
+                        temp_task = Task(
+                            task_id=old_info.task.task_id,
+                            task_type=old_info.task.task_type,
+                            status=TaskStatus.CANCELLED,
+                            input=TaskInput(
+                                target_id=old_info.target_id,
+                                target_name="",
+                                arguments={}
+                            )
+                        )
+                        self._clear_interrupted_state(temp_task, runtime)
+            
+            # 2. Prepare execution (existing code)
             task.status = TaskStatus.RUNNING
 
             # Get workflow object (from controller's agent)
@@ -155,21 +200,45 @@ class WorkflowController(IntentDetectionController):
             # Prepare input parameters
             inputs = task.input.arguments
 
-            # If resuming task, parameters should already be InteractiveInput (set in _handle_resume)
+            # If resuming task, parameters should already be InteractiveInput
             if task.status == TaskStatus.INTERRUPTED:
-                logger.info(f"Resuming workflow: {workflow_id}, inputs type={type(inputs)}")
-                # Parameters should already be InteractiveInput, use directly
+                logger.info(
+                    f"Resuming workflow: {workflow_id}, "
+                    f"inputs type={type(inputs)}"
+                )
             else:
                 logger.info(f"Starting workflow: {workflow_id}")
 
-            # Execute workflow
-            result = await Runner.run_workflow(
-                workflow,
-                inputs=inputs,
-                runtime=workflow_runtime
+            # 3. Create asyncio.Task (non-blocking)
+            workflow_task = asyncio.create_task(
+                Runner.run_workflow(
+                    workflow,
+                    inputs=inputs,
+                    runtime=workflow_runtime
+                )
             )
+            
+            # 4. Register task to queue
+            await self.task_queue.register_task(
+                conversation_id, task, workflow_task, target_id=workflow_id
+            )
+            
+            # 5. Wait for task completion (may be cancelled)
+            try:
+                result = await workflow_task
+            except asyncio.CancelledError:
+                logger.info(f"Workflow cancelled: {workflow_id}")
+                task.status = TaskStatus.CANCELLED
+                return {
+                    "status": "cancelled",
+                    "task_id": task.task_id,
+                    "workflow_id": workflow_id
+                }
+            finally:
+                # 6. Unregister task
+                await self.task_queue.unregister_task(conversation_id)
 
-            # Check if interrupted
+            # 7. Process result (existing code)
             is_interrupted = self._is_workflow_interrupted(result)
             result_state = "NO STATE"
             if hasattr(result, 'state'):
@@ -185,7 +254,9 @@ class WorkflowController(IntentDetectionController):
                 task.status = TaskStatus.INTERRUPTED
                 
                 # Extract interaction list from result
-                interaction_data = result.result if hasattr(result, 'result') else None
+                interaction_data = (
+                    result.result if hasattr(result, 'result') else None
+                )
                 await self.interrupt_task(task, runtime, interaction_data)
 
                 # Return interruption response (interaction request)
@@ -202,10 +273,23 @@ class WorkflowController(IntentDetectionController):
                 payload = {"output": result, "result_type": "answer"}
                 return payload
 
+        except asyncio.CancelledError:
+            # Task was cancelled
+            logger.info(f"Task cancelled during execution: {workflow_id}")
+            task.status = TaskStatus.CANCELLED
+            await self.task_queue.unregister_task(conversation_id)
+            return {
+                "status": "cancelled",
+                "task_id": task.task_id,
+                "workflow_id": workflow_id
+            }
         except Exception as e:
             # Execution failed
-            logger.error(f"Workflow execution failed: {workflow_id}, error: {e}")
+            logger.error(
+                f"Workflow execution failed: {workflow_id}, error: {e}"
+            )
             task.status = TaskStatus.FAILED
+            await self.task_queue.unregister_task(conversation_id)
             raise
 
     async def interrupt_task(

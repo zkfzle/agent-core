@@ -44,6 +44,11 @@ class End(ComponentExecutable, WorkflowComponent):
         self._mix = True
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        if inputs is None:
+            raise JiuWenBaseException(
+                StatusCode.WORKFLOW_END_CREATE_VALUE.code,
+                message=StatusCode.WORKFLOW_END_CREATE_VALUE.errmsg.format(
+                    reason="inputs cannot be None"))
         if self.template is not None:
             return await self._render(inputs)
         else:
@@ -57,6 +62,11 @@ class End(ComponentExecutable, WorkflowComponent):
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
+        if inputs is None:
+            raise JiuWenBaseException(
+                StatusCode.WORKFLOW_END_CREATE_VALUE.code,
+                message=StatusCode.WORKFLOW_END_CREATE_VALUE.errmsg.format(
+                    reason="inputs cannot be None"))
         try:
             if self.template is not None:
                 generator = self.template.render_stream(inputs)

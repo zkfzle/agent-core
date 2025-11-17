@@ -22,13 +22,19 @@ from openjiuwen.core.runner.message_queue_base import (
 
 class SubscriptionInMemory(SubscriptionBase):
 
-    def __init__(self, max_size=10000):
+    def __init__(self, max_size=10000, timeout=120.0):
+        """Initialize in-memory subscription
+
+        Args:
+            max_size: Maximum queue size
+            timeout: Timeout duration (seconds)
+        """
         self._queue_max_size = max_size
         self._queue = asyncio.Queue(maxsize=self._queue_max_size)
         self._consume_task = None
         self._handler = None
         self._is_active = False
-        self._timeout = 20.0
+        self._timeout = timeout
 
     def set_message_handler(self, handler: AsyncMessageHandler):
         self._handler = handler
@@ -85,9 +91,17 @@ class SubscriptionInMemory(SubscriptionBase):
             except JiuWenBaseException as e:
                 message.error_code = e.error_code
                 message.error_msg = e.message
+                # Set Future exception so caller knows about failure immediately
+                if isinstance(message, (InvokeQueueMessage, StreamQueueMessage)):
+                    if not message.response.done():
+                        message.response.set_exception(e)
             except Exception as e:
                 message.error_code = StatusCode.ERROR.code
                 message.error_msg = str(e)
+                # Set Future exception so caller knows about failure immediately
+                if isinstance(message, (InvokeQueueMessage, StreamQueueMessage)):
+                    if not message.response.done():
+                        message.response.set_exception(e)
             finally:
                 self._queue.task_done()
 

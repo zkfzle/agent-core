@@ -3,9 +3,8 @@ from typing import Dict, List, Any, AsyncIterator
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.workflow_agent.workflow_message_handler import WorkflowMessageHandler
-from openjiuwen.core.agent.agent import Agent
-from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.agent.agent import ControllerAgent
+from openjiuwen.agent.workflow_agent.workflow_controller import WorkflowController
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
 
 
@@ -23,31 +22,56 @@ def create_workflow_agent_config(agent_id: str,
 def create_workflow_agent(agent_config: WorkflowAgentConfig,
                           workflows: List[Workflow] = None):
     agent = WorkflowAgent(agent_config)
-    agent.bind_workflows(workflows)
+    if workflows:
+        agent.bind_workflows(workflows)
     return agent
 
 
-class WorkflowAgent(Agent):
-    """工作流模式的Agent - 执行预定义的工作流"""
+class WorkflowAgent(ControllerAgent):
+    """Workflow-based Agent - Executes predefined workflows with multi-workflow controller
     
-    def __init__(self, agent_config: WorkflowAgentConfig):
-        # 验证 controller_type
-        if agent_config.controller_type != ControllerType.WorkflowController:
-            raise NotImplementedError(f"WorkflowAgent requires WorkflowController, got {agent_config.controller_type}")
+    Implemented using ControllerAgent
+    """
 
-        # 创建配置并初始化基类
-        config = Config()
-        config.set_agent_config(agent_config=agent_config)
-        super().__init__(config)
-        
-        # 设置消息处理器
-        self.set_message_handler(WorkflowMessageHandler)
+    def __init__(self, agent_config: WorkflowAgentConfig):
+        # Validate controller_type
+        if agent_config.controller_type != ControllerType.WorkflowController:
+            raise NotImplementedError(
+                f"WorkflowAgent requires WorkflowController, "
+                f"got {agent_config.controller_type}"
+            )
+
+        super().__init__(agent_config, controller=None)
+
+        self.controller = WorkflowController(
+            config=agent_config,
+            context_engine=self.context_engine,
+            runtime=self._runtime
+        )
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """同步调用 - 使用基类的通用实现"""
-        return await self.controller_invoke(inputs, runtime)
+        """Synchronous invocation - Delegate to controller
+        
+        Args:
+            inputs: Input data, including query and conversation_id
+            runtime: Runtime context (optional)
+            
+        Returns:
+            Execution result
+        """
+        # Fully delegate to ControllerAgent implementation
+        return await super().invoke(inputs, runtime)
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """流式调用 - 使用基类的通用实现"""
-        async for result in self.controller_stream(inputs, runtime):
+        """Streaming invocation - Delegate to controller
+        
+        Args:
+            inputs: Input data, including query and conversation_id
+            runtime: Runtime context (optional)
+            
+        Yields:
+            Streaming output
+        """
+        # Fully delegate to ControllerAgent implementation
+        async for result in super().stream(inputs, runtime):
             yield result

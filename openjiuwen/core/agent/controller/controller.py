@@ -8,8 +8,13 @@ from typing import Dict, Optional
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
-from openjiuwen.core.agent.controller.scheduler import MessageHandler, AgentScheduler, TaskHandler
+from openjiuwen.core.agent.controller.scheduler import (
+    AgentScheduler,
+    MessageHandler,
+    TaskHandler
+)
 from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
@@ -17,147 +22,185 @@ from openjiuwen.core.runtime.runtime import Runtime
 
 
 class Controller:
-    """控制器"""
+    """Controller
+    
+    Responsible for coordinating MessageHandler, TaskHandler and AgentScheduler
+    Handles message flow and task scheduling
+    """
 
-    def __init__(self, config: AgentConfig, context_engine: ContextEngine,
-                 runtime: Runtime, message_handler: MessageHandler):
+    def __init__(
+            self,
+            config: AgentConfig,
+            context_engine: ContextEngine,
+            runtime: Runtime,
+            message_handler: MessageHandler
+    ):
         self._config = config
         self._context_engine = context_engine
         self._runtime = runtime
         self._agent_handler = None
 
-        # 统一组件初始化
+        # Unified component initialization
         self._scheduler = AgentScheduler(config)
         self._reasoner = AgentReasoner(config, context_engine, runtime)
         self._task_handler = TaskHandler(config, context_engine, runtime)
 
-        # 直接使用传入的MessageHandler（包含自己的状态管理）
+        # Directly use the passed MessageHandler (contains its own state management)
         self._message_handler = message_handler
 
-        # 设置组件引用
+        # Set component references
         self._scheduler.set_handlers(self._message_handler, self._task_handler)
         self._message_handler.set_reasoner(self._reasoner)
 
     async def start(self):
-        """启动控制器 - 启动调度器"""
+        """Start controller - Start scheduler"""
         await self._scheduler.start()
 
     async def stop(self):
-        """停止控制器 - 停止调度器"""
+        """Stop controller - Stop scheduler"""
         await self._scheduler.stop()
 
     async def receive_message(self, message: Message):
-        """接收消息 - 外部系统调用此接口，统一消息入口"""
-        # 所有外部消息都统一放到AgentScheduler的消息队列中进行统一调度
+        """Receive message - External systems call this interface, unified message entry"""
+        # All external messages are uniformly placed in AgentScheduler's message queue for unified scheduling
         await self._scheduler.schedule_message(message)
 
     async def run_until_complete(self):
-        """等待调度器运行完成，返回最终结果"""
+        """Wait for scheduler to complete and return final result"""
         return await self._scheduler.run_until_complete()
 
     async def process_inputs(self, inputs: dict):
-        """处理输入并等待完成 - 统一的调用入口
+        """Process inputs and wait for completion - Unified invocation entry
         
         Args:
-            inputs: 输入字典，包含 query 和 conversation_id
+            inputs: Input dictionary, contains query and conversation_id
             
         Returns:
-            最终结果（从 MessageHandler 的 final_result 返回）
+            dict: Final result (returned from MessageHandler's final_result)
         """
-        # 1. 创建消息
+        # 1. Create message
         session_id = inputs.get("conversation_id", "default_session")
         message = Message.create_user_message(
             content=inputs.get("query", ""),
             conversation_id=session_id
         )
 
-        # 2. 发送消息到调度器
+        # 2. Send message to scheduler
         await self._scheduler.schedule_message(message)
 
-        # 3. 等待调度器完成并返回结果
+        # 3. Wait for scheduler to complete and return result
         return await self._scheduler.run_until_complete()
 
 
 class BaseController(ABC):
-    """基于消息队列的 Controller
+    """Message queue based Controller
     """
 
-    def __init__(self):
-        self.agent = None  # 反向引用，由 Agent 设置
-
-        # 创建消息队列
+    def __init__(
+            self,
+            config: AgentConfig,
+            context_engine: ContextEngine,
+            runtime: Runtime
+    ):
+        """Initialize BaseController
+        
+        Args:
+            config: Agent configuration
+            context_engine: Context engine
+            runtime: Agent-level Runtime (AgentRuntime)
+        """
+        # Hold core dependencies (consistent with Controller)
+        self._config = config
+        self._context_engine = context_engine
+        self._runtime = runtime
+        
+        # Create message queue
         self.msg_queue = MessageQueueInMemory()
         self.msg_queue.start()
 
-        # 订阅主题
+        # Subscribe to topic
         self.topic = "controller_messages"
         subscription = self.msg_queue.subscribe(self.topic)
         subscription.set_message_handler(self._handle_message_wrapper)
         subscription.activate()
 
     async def invoke(self, inputs: Dict, runtime: Runtime) -> Dict:
-        """同步调用入口
+        """Synchronous invocation entry
 
-        流程：
-        1. 创建消息
-        2. 发布消息到队列（produce_message）
-        3. 等待处理结果
+        Process:
+        1. Create message
+        2. Publish message to queue (produce_message)
+        3. Wait for processing result
         """
-        # 1. 创建消息
+        # 1. Create message
         message = self.create_message(inputs)
 
-        # 2. 创建队列消息并发布
+        # 2. Create queue message and publish
         queue_message = InvokeQueueMessage()
-        queue_message.request = {"message": message, "runtime": runtime}
+        queue_message.payload = {"message": message, "runtime": runtime}
         queue_message.response = asyncio.Future()
 
-        # 3. 发布到消息队列
+        # 3. Publish to message queue
         await self.msg_queue.produce_message(self.topic, queue_message)
 
-        # 4. 等待结果
+        # 4. Wait for result
         result = await queue_message.response
 
         return result if result is not None else {"output": "processed"}
 
     async def _handle_message_wrapper(self, request: Dict) -> Dict:
-        """消息处理包装器 - 由消息队列自动调用
+        """Message processing wrapper - Automatically called by message queue
 
         Args:
-            request: 包含 message 和 runtime 的字典
+            request: Dictionary containing message and runtime
+            
         Returns:
-            处理结果
+            dict: Processing result
         """
         message = request["message"]
         runtime = request["runtime"]
-        return await self.handle_message(message, runtime)
+        try:
+            result = await self.handle_message(message, runtime)
+            result_type = type(result)
+            has_result = result is not None
+            logger.info(
+                f"BaseController: handle_message returned: "
+                f"{result_type}, {has_result}"
+            )
+            return result
+        except Exception as e:
+            error_msg = f"BaseController: handle_message raised exception: {e}"
+            logger.error(error_msg, exc_info=True)
+            raise
 
-    # ===== 抽象方法（开发者必须实现）=====
+    # ===== Abstract methods (developers must implement) =====
     @abstractmethod
     async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
-        """处理消息的核心方法（必须实现）
+        """Core method for message processing (must be implemented)
 
         Args:
-            message: 消息对象
-            runtime: 运行时上下文
+            message: Message object
+            runtime: Runtime context
         Returns:
-            Optional[Dict]: 处理结果
+            Optional[Dict]: Processing result
 
-        开发者在这里实现所有业务逻辑：
-        - 根据 message.msg_type 分发处理
-        - 执行任务（同步或异步）
-        - 管理状态
-        - 处理中断
-        - 如果需要多轮处理，在这个方法内部循环
+        Developers implement all business logic here:
+        - Dispatch processing based on message.msg_type
+        - Execute tasks (synchronously or asynchronously)
+        - Manage state
+        - Handle interruptions
+        - If multi-round processing is needed, loop inside this method
         """
         pass
 
-    # ===== 扩展方法（开发者可选择性重写）=====
+    # ===== Extension methods (developers can optionally override) =====
     def create_message(self, inputs: Dict) -> Message:
-        """创建消息对象（可重写）
+        """Create message object (can be overridden)
 
-        默认：从 inputs 中提取 content 和 metadata，创建用户输入消息
+        Default: Extract content/query and metadata from inputs, create user input message
         """
-        content = inputs.get("content", "")
+        # Support both content and query field names (backward compatible)
+        content = inputs.get("content") or inputs.get("query", "")
         conversation_id = inputs.get("conversation_id", "default_session")
 
         return Message.create_user_message(
@@ -166,6 +209,6 @@ class BaseController(ABC):
         )
 
     def stop(self):
-        """停止 controller - 清理资源"""
+        """Stop controller - Clean up resources"""
         self.msg_queue.unsubscribe(self.topic)
         self.msg_queue.stop()

@@ -4,26 +4,31 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Any, Iterator, Dict, List, Union, AsyncIterator, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Iterator, List, Union
 
-from openjiuwen.agent.common.schema import WorkflowSchema
+from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
+from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.resource_manager import ResourceMgr
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
-from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.wrapper import WrappedRuntime, StaticWrappedRuntime, TaskRuntime
+from openjiuwen.core.runtime.wrapper import (
+    StaticWrappedRuntime,
+    TaskRuntime,
+    WrappedRuntime
+)
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.config.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.runtime.config import Config
 
 if TYPE_CHECKING:
     from openjiuwen.core.agent.controller.controller import Controller
@@ -62,31 +67,31 @@ class Agent(ABC):
     """
 
     def __init__(self, config: Config) -> None:
-        # 所有核心属性统一在基类初始化
+        # All core attributes initialized uniformly in base class
         self._config = config
         self._runtime = AgentRuntime(config=config)
         self._context_engine = self._create_context_engine()
         self._message_handler_class = None
 
     def config(self) -> Config:
-        """获取 Agent 配置"""
+        """Get Agent configuration"""
         return self._config
 
     @property
     def context_engine(self) -> ContextEngine:
-        """获取 Context Engine - 统一公共接口"""
+        """Get Context Engine - Unified public interface"""
         return self._context_engine
 
     def set_message_handler(self, message_handler_class):
-        """设置 MessageHandler 类 - 子类在构造函数中调用此方法注入具体实现
+        """Set MessageHandler class - Subclasses call this method in constructor to inject concrete implementation
         
         Args:
-            message_handler_class: MessageHandler 的类（不是实例）
+            message_handler_class: MessageHandler class (not instance)
         """
         self._message_handler_class = message_handler_class
 
     def get_message_handler(self):
-        """获取当前的 MessageHandler 类"""
+        """Get current MessageHandler class"""
         return self._message_handler_class
 
     @abstractmethod
@@ -102,9 +107,11 @@ class Agent(ABC):
         return await self.invoke(inputs, runtime)
 
     def _create_context_engine(self) -> ContextEngine:
-        """创建 ContextEngine - 内部方法，在基类初始化时调用"""
+        """Create ContextEngine - Internal method, called during base class initialization"""
+        agent_config = self._config.get_agent_config()
+        max_rounds = agent_config.constrain.reserved_max_chat_rounds
         context_config = ContextEngineConfig(
-            conversation_history_length=self._config.get_agent_config().constrain.reserved_max_chat_rounds * 2
+            conversation_history_length=max_rounds * 2
         )
         return ContextEngine(
             agent_id=self._config.get_agent_config().id,
@@ -113,13 +120,13 @@ class Agent(ABC):
         )
 
     def _create_controller(self, runtime: Runtime) -> "Controller":
-        """创建 Controller 实例"""
+        """Create Controller instance"""
         from openjiuwen.core.agent.controller.controller import Controller
         
         if self._message_handler_class is None:
             return None
 
-        # 实例化 MessageHandler
+        # Instantiate MessageHandler
         message_handler = self._message_handler_class(
             self._config.get_agent_config(),
             self._context_engine,
@@ -135,7 +142,7 @@ class Agent(ABC):
 
     @staticmethod
     def unwrap_result(result):
-        """解包 OutputSchema 结果 - 子类可直接调用的公共方法"""
+        """Unwrap OutputSchema result - Public method that subclasses can call directly"""
         if isinstance(result, list):
             if not result:
                 return result
@@ -155,7 +162,7 @@ class Agent(ABC):
         return result
 
     async def controller_invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """基于 Controller 的同步调用 - 子类可直接调用的公共方法"""
+        """Controller-based synchronous invocation - Public method that subclasses can call directly"""
         session_id = inputs.pop("conversation_id", "default_session")
 
         if runtime is None:
@@ -189,7 +196,7 @@ class Agent(ABC):
                 await controller.stop()
 
     async def controller_stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """基于 Controller 的流式调用 - 子类可直接调用的公共方法"""
+        """Controller-based streaming invocation - Public method that subclasses can call directly"""
         session_id = inputs.pop("conversation_id", "default_session")
 
         if runtime is None:
@@ -233,7 +240,7 @@ class Agent(ABC):
                                           f"{self.__class__.__name__} stream error.") from e
 
     async def runner_controller_stream(self, inputs: Dict, runtime: Runtime):
-        """适配runner的接口，待所有agent的使用都完全适配runner后，接口改为controller_stream替换旧接口"""
+        """Interface adapted for runner, will be replaced with controller_stream after all agents fully adapt to runner"""
         controller = None
         try:
             controller = self._create_controller(runtime)
@@ -252,19 +259,44 @@ class Agent(ABC):
                 await controller.stop()
 
     def bind_workflows(self, workflows: List[Workflow]):
-        self._runtime.add_workflows(
-            [(generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow) for
-             workflow in
-             workflows])
+        """Bind workflows to Agent
+        
+        Args:
+            workflows: List of workflow instances
+        """
+        workflow_items = [
+            (generate_workflow_key(
+                workflow.config().metadata.id,
+                workflow.config().metadata.version
+            ), workflow)
+            for workflow in workflows
+        ]
+        self._runtime.add_workflows(workflow_items)
+
         for workflow in workflows:
-            self._config.get_agent_config().workflows.append(WorkflowSchema(id=workflow.config().metadata.id,
-                                                         name=workflow.config().metadata.name,
-                                                         version=workflow.config().metadata.version,
-                                                         description=workflow.config().metadata.description))
+            metadata = workflow.config().metadata
+            workflow_schema = WorkflowSchema(
+                id=metadata.id,
+                name=metadata.name,
+                version=metadata.version,
+                description=metadata.description
+            )
+            self._config.get_agent_config().workflows.append(workflow_schema)
 
     def bind_tools(self, tools: List[Tool]):
-        self._runtime.add_tools(
-            [(tool.name, tool) for tool in tools if (isinstance(tool, RestfulApi) or isinstance(tool, LocalFunction))])
+        """Bind tools to Agent
+        
+        Args:
+            tools: List of tool instances
+        """
+        # Filter only supported tool types
+        tool_items = [
+            (tool.name, tool)
+            for tool in tools
+            if isinstance(tool, (RestfulApi, LocalFunction))
+        ]
+        self._runtime.add_tools(tool_items)
+
         for tool in tools:
             self._config.get_agent_config().tools.append(tool.name)
 
@@ -278,62 +310,65 @@ class Agent(ABC):
 # ===== 新架构：BaseAgent 和 ControllerAgent =====
 
 class BaseAgent(ABC):
-    """基础 Agent - 极简接口定义（新架构）
+    """Base Agent - Minimal interface definition (new architecture)
     """
 
     def __init__(self, agent_config):
-        """初始化 Agent
+        """Initialize Agent
         
         Args:
-            agent_config: Agent 配置
+            agent_config: Agent configuration
         """
-        from openjiuwen.core.runtime.config import Config
-        
-        # 1. 创建 Config 包装器（向后兼容）
+        # 1. Create Config wrapper (backward compatible)
         self._config_wrapper = Config()
         self._config_wrapper.set_agent_config(agent_config)
         self._agent_config = agent_config
-        self._config = self._config_wrapper  # 统一接口
+        self._config = self._config_wrapper  # Unified interface
         
-        # 2. 创建 Runtime
+        # 2. Create Runtime
         self._runtime = AgentRuntime(config=self._config)
         
-        # 3. 创建 ContextEngine
+        # 3. Create ContextEngine
         self._context_engine = self._create_context_engine()
         
-        # 4. 统一持有 tools 和 workflows（消除子类重复）
+        # 4. Uniformly hold tools and workflows (eliminate subclass duplication)
         self._tools: List[Tool] = []
         self._workflows: List[Workflow] = []
 
     def config(self) -> Config:
-        """获取 Config 包装器 - 向后兼容的方法接口
+        """Get Config wrapper - Backward compatible method interface
         
         Returns:
-            Config 实例（包含 get_agent_config() 方法）
+            Config instance (contains get_agent_config() method)
         """
         return self._config_wrapper
     
     @property
     def tools(self) -> List[Tool]:
-        """获取工具列表 - 子类只读访问"""
+        """Get tools list - Read-only access for subclasses"""
         return self._tools
     
     @property
     def workflows(self) -> List[Workflow]:
-        """获取工作流列表 - 子类只读访问"""
+        """Get workflows list - Read-only access for subclasses"""
         return self._workflows
     
     @property
     def context_engine(self) -> ContextEngine:
-        """获取 Context Engine - 统一公共接口"""
+        """Get Context Engine - Unified public interface"""
         return self._context_engine
     
     def _create_context_engine(self) -> ContextEngine:
-        """创建 ContextEngine - 内部方法，在基类初始化时调用"""
+        """Create ContextEngine - Internal method, called during base class initialization"""
+        # Get max conversation rounds configuration
+        if (hasattr(self._agent_config, 'constrain') and
+                hasattr(self._agent_config.constrain, 'reserved_max_chat_rounds')):
+            max_rounds = self._agent_config.constrain.reserved_max_chat_rounds
+        else:
+            max_rounds = 10  # Default value
+
         context_config = ContextEngineConfig(
-            conversation_history_length=self._agent_config.constrain.reserved_max_chat_rounds * 2
-            if hasattr(self._agent_config, 'constrain') and hasattr(self._agent_config.constrain, 'reserved_max_chat_rounds')
-            else 20  # 默认值
+            conversation_history_length=max_rounds * 2
         )
         return ContextEngine(
             agent_id=self._agent_config.id,
@@ -343,91 +378,105 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """同步调用入口 - 抽象方法
+        """Synchronous invocation entry point - Abstract method
         
-        子类必须实现此方法
+        Subclasses must implement this method
         """
         raise NotImplementedError(
-            f"{self.__class__.__name__} 必须实现 invoke() 方法"
+            f"{self.__class__.__name__} must implement invoke() method"
         )
 
     @abstractmethod
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """流式调用入口 - 抽象方法
+        """Streaming invocation entry point - Abstract method
         
-        子类必须实现此方法
+        Subclasses must implement this method
         """
         raise NotImplementedError(
-            f"{self.__class__.__name__} 必须实现 stream() 方法"
+            f"{self.__class__.__name__} must implement stream() method"
         )
 
-    # ===== 动态配置接口（方案A：向后兼容） =====
+    # ===== Dynamic configuration interface (Plan A: Backward compatible) =====
     
     def add_prompt(self, prompt_template: List[Dict]) -> None:
-        """添加 Prompt 模板
+        """Add Prompt template
         
         Args:
-            prompt_template: Prompt 模板列表，每个元素是 dict，如 {"role": "system", "content": "..."}
+            prompt_template: Prompt template list, format like
+                [{"role": "system", "content": "..."}]
         
-        注意：
-        - 此方法仅更新配置，不影响已创建的 runtime
-        - 子类如需同步 runtime，应重写此方法
+        Note:
+        - This method only updates configuration, does not affect already created runtime
+        - Subclasses should override this method if they need to sync runtime
         """
-        # 检查配置是否有 prompt_template 字段
+        # Check if configuration has prompt_template field
         if hasattr(self._agent_config, 'prompt_template'):
-            # 追加模式：保留原有 prompt，添加新 prompt
+            # Append mode: Keep original prompt, add new prompt
             self._agent_config.prompt_template.extend(prompt_template)
         else:
+            config_class_name = self._agent_config.__class__.__name__
             logger.warning(
-                f"{self._agent_config.__class__.__name__} 没有 prompt_template 字段，"
-                "add_prompt 操作被忽略"
+                f"{config_class_name} has no prompt_template field, "
+                "add_prompt operation ignored"
             )
 
     def add_tools(self, tools: List[Tool]) -> None:
-        """添加工具（同时更新 config、runtime、self._tools）
-        """
-        from openjiuwen.agent.common.schema import PluginSchema
+        """Add tools (update config, runtime, and self._tools simultaneously)
         
+        Args:
+            tools: List of tool instances
+        """
+
         for tool in tools:
-            # 1. 添加工具名到 config.tools
+            # 1. Add tool name to config.tools
             if tool.name not in self._agent_config.tools:
                 self._agent_config.tools.append(tool.name)
-            
-            # 2. 生成 PluginSchema（如果配置支持）
+
+            # 2. Generate PluginSchema (if configuration supports)
             if hasattr(self._agent_config, 'plugins'):
-                # 检查是否已存在
-                existing_names = {p.name for p in self._agent_config.plugins}
-                if tool.name not in existing_names:
+                # Check if already exists
+                existing_plugin_names = {
+                    p.name for p in self._agent_config.plugins
+                }
+                if tool.name not in existing_plugin_names:
                     plugin_schema = self._tool_to_plugin_schema(tool)
                     self._agent_config.plugins.append(plugin_schema)
-            
-            # 3. 添加到 self._tools（避免重复）
+
+            # 3. Add to self._tools (avoid duplication)
             existing_tool_names = {t.name for t in self._tools}
             if tool.name not in existing_tool_names:
                 self._tools.append(tool)
-            
-            # 4. 同步到 runtime（自动注册）
+
+            # 4. Sync to runtime (auto register)
             self._runtime.add_tools([(tool.name, tool)])
 
     def add_workflows(self, workflows: List[Workflow]) -> None:
-        """添加工作流（同时更新 config、runtime、self._workflows）
+        """Add workflows (update config, runtime, and self._workflows simultaneously)
         
         Args:
-            workflows: 工作流实例列表
+            workflows: List of workflow instances
         """
-        from openjiuwen.agent.common.schema import WorkflowSchema
-        
+        logger.info(f"BaseAgent.add_workflows called with {len(workflows)} workflows")
+
         for workflow in workflows:
-            # 生成 WorkflowSchema
+            # Generate WorkflowSchema
             workflow_config = workflow.config()
-            workflow_key = f"{workflow_config.metadata.id}_{workflow_config.metadata.version}"
-            
-            # 检查是否已存在
+            workflow_key = generate_workflow_key(
+                workflow_config.metadata.id,
+                workflow_config.metadata.version
+            )
+
+            # Check if already exists
             existing_keys = {
-                f"{w.id}_{w.version}" for w in self._agent_config.workflows
+                generate_workflow_key(w.id, w.version)
+                for w in self._agent_config.workflows
             }
+            logger.info(
+                f"Workflow {workflow_key}: existing_keys={existing_keys}, exists={workflow_key in existing_keys}")
+
+            # Even if schema exists, still need to add workflow instance
             if workflow_key not in existing_keys:
-                # 1. 更新 config.workflows
+                # 1. Update config.workflows
                 workflow_schema = WorkflowSchema(
                     id=workflow_config.metadata.id,
                     name=workflow_config.metadata.name,
@@ -436,50 +485,73 @@ class BaseAgent(ABC):
                     inputs={}
                 )
                 self._agent_config.workflows.append(workflow_schema)
-                
-                # 2. 添加到 self._workflows
-                self._workflows.append(workflow)
-                
-                # 3. 同步到 runtime（自动注册）
-                self._runtime.add_workflows([(workflow_key, workflow)])
 
-    def add_plugins(self, plugins: List) -> None:
-        """添加插件 Schema
+            # 2. Add to self._workflows (if not exists)
+            if workflow not in self._workflows:
+                self._workflows.append(workflow)
+
+            # 3. Sync to runtime (auto register)
+            self._runtime.add_workflows([(workflow_key, workflow)])
+
+            # 4. Also add to global Runner.resource_mgr (for cross-runtime access)
+            try:
+                from openjiuwen.core.runner.runner import resource_mgr
+                logger.info(f"Adding workflow {workflow_key} to global resource_mgr")
+                resource_mgr.workflow().add_workflow(workflow_key, workflow)
+                logger.info(f"Successfully added workflow {workflow_key} to global resource_mgr")
+            except Exception as e:
+                logger.error(f"Failed to add workflow to global resource_mgr: {e}")
+
+    def bind_workflows(self, workflows: List[Workflow]) -> None:
+        """Bind workflows - Backward compatible alias method
         
         Args:
-            plugins: PluginSchema 列表
+            workflows: List of workflow instances
+        """
+        self.add_workflows(workflows)
+
+    def add_plugins(self, plugins: List) -> None:
+        """Add plugin Schema
         
-        注意：
-        - 此方法仅更新配置中的 plugins 字段
-        - 子类如需同步 runtime，应重写此方法
+        Args:
+            plugins: PluginSchema list
+        
+        Note:
+        - This method only updates plugins field in configuration
+        - Subclasses should override this method if they need to sync runtime
         """
         if hasattr(self._agent_config, 'plugins'):
-            # 检查重复
+            # Check duplication
             existing_names = {p.name for p in self._agent_config.plugins}
             for plugin in plugins:
                 if plugin.name not in existing_names:
                     self._agent_config.plugins.append(plugin)
                     existing_names.add(plugin.name)
         else:
+            config_class_name = self._agent_config.__class__.__name__
             logger.warning(
-                f"{self._agent_config.__class__.__name__} 没有 plugins 字段，"
-                "add_plugins 操作被忽略"
+                f"{config_class_name} has no plugins field, "
+                "add_plugins operation ignored"
             )
 
     def _tool_to_plugin_schema(self, tool: Tool):
-        """将 Tool 实例转换为 PluginSchema
+        """Convert Tool instance to PluginSchema
         
-        这是内部方法，用于自动生成 plugin schema
+        This is an internal method for automatically generating plugin schema
+        
+        Args:
+            tool: Tool instance
+            
+        Returns:
+            PluginSchema: Plugin schema object
         """
-        from openjiuwen.agent.common.schema import PluginSchema
-        
-        # 从 tool.params 生成 inputs
+        # Generate inputs from tool.params
         inputs = {
             "type": "object",
             "properties": {},
             "required": []
         }
-        
+
         if hasattr(tool, 'params') and tool.params:
             for param in tool.params:
                 prop = {
@@ -489,73 +561,101 @@ class BaseAgent(ABC):
                 inputs["properties"][param.name] = prop
                 if param.required:
                     inputs["required"].append(param.name)
-        
+
+        tool_description = ""
+        if hasattr(tool, 'description'):
+            tool_description = tool.description
+
         return PluginSchema(
             id=tool.name,
             name=tool.name,
-            description=tool.description if hasattr(tool, 'description') else "",
+            description=tool_description,
             inputs=inputs
         )
 
 
 class ControllerAgent(BaseAgent):
-    """持有 Controller 的 Agent（新架构）
+    """Agent that holds Controller (new architecture)
     """
 
     def __init__(self, agent_config, controller=None):
-        """初始化 ControllerAgent
+        """Initialize ControllerAgent
         
         Args:
-            agent_config: Agent 配置
-            controller: 可选的 Controller（如果不提供，子类应该在 invoke/stream 时创建）
+            agent_config: Agent configuration
+            controller: Optional Controller (if not provided, subclass should create it before invoke/stream)
         """
         super().__init__(agent_config)
         self.controller = controller
-        
-        # 如果传入了 controller，确保 controller 有 agent 引用
-        if self.controller:
-            self.controller.agent = self
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """同步调用 - 完全委托给 controller
+        """Synchronous invocation - Fully delegate to controller
         
         Args:
-            inputs: 输入数据
-            runtime: Runtime 实例
+            inputs: Input data
+            runtime: Runtime instance (if None, auto create)
         
         Returns:
-            执行结果
+            Execution result
         """
         if not self.controller:
             raise RuntimeError(
-                f"{self.__class__.__name__} 没有 controller，"
-                "子类应该在调用前创建 controller"
+                f"{self.__class__.__name__} has no controller, "
+                "subclass should create controller before invocation"
             )
-        
-        # 完全委托给 controller
-        return await self.controller.invoke(inputs, runtime)
+
+        # If runtime not provided, create one
+        session_id = inputs.get("conversation_id", "default_session")
+        if runtime is None:
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        else:
+            agent_runtime = runtime
+
+        try:
+            # Fully delegate to controller
+            result = await self.controller.invoke(inputs, agent_runtime)
+            if runtime is None:
+                await agent_runtime.post_run()
+
+            return result
+        except Exception as e:
+            await agent_runtime.post_run()
+            raise
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """流式调用 - 完全委托给 controller
+        """Streaming invocation - Fully delegate to controller
         
         Args:
-            inputs: 输入数据
-            runtime: Runtime 实例
+            inputs: Input data
+            runtime: Runtime instance (if None, auto create)
         
         Yields:
-            流式输出
+            Streaming output
         """
         if not self.controller:
             raise RuntimeError(
-                f"{self.__class__.__name__} 没有 controller，"
-                "子类应该在调用前创建 controller"
+                f"{self.__class__.__name__} has no controller, "
+                "subclass should create controller before invocation"
             )
-        
-        # 完全委托给 controller
+
+        # If runtime not provided, create one
+        session_id = inputs.get("conversation_id", "default_session")
+        if runtime is None:
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+            need_cleanup = True
+        else:
+            agent_runtime = runtime
+            need_cleanup = False
+
+        # Fully delegate to controller
         async def stream_process():
-            await self.controller.invoke(inputs, runtime)
+            try:
+                await self.controller.invoke(inputs, agent_runtime)
+            finally:
+                if need_cleanup:
+                    await agent_runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        async for result in runtime.stream_iterator():
+        async for result in agent_runtime.stream_iterator():
             yield result
         await task

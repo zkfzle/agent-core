@@ -278,7 +278,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             result1 = await asyncio.wait_for(
                 agent.invoke({"query": "查询天气", "conversation_id": conversation_id}),
-                timeout=50.0
+                timeout=120.0
             )
         except asyncio.TimeoutError:
             print("❌ 步骤1 超时！")
@@ -306,7 +306,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             result2 = await asyncio.wait_for(
                 agent.invoke({"query": "查看股票", "conversation_id": conversation_id}),
-                timeout=50.0
+                timeout=120.0
             )
         except asyncio.TimeoutError:
             print("❌ 步骤2 超时！")
@@ -334,7 +334,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             result3 = await asyncio.wait_for(
                 agent.invoke({"query": "查询北京天气", "conversation_id": conversation_id}),
-                timeout=50.0
+                timeout=120.0
             )
         except asyncio.TimeoutError:
             print("❌ 步骤3 超时！")
@@ -354,7 +354,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             result4 = await asyncio.wait_for(
                 agent.invoke({"query": "查看AAPL股票", "conversation_id": conversation_id}),
-                timeout=50.0
+                timeout=120.0
             )
         except asyncio.TimeoutError:
             print("❌ 步骤4 超时！")

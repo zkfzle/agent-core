@@ -51,7 +51,7 @@ class End(ComponentExecutable, WorkflowComponent):
             if inputs is not None:
                 output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
             else:
-                output = ""
+                output = None
             logger.debug(f"end component invoke method output: {output}")
             return {
                 "responseContent": answer,

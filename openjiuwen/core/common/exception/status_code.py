@@ -188,7 +188,20 @@ class StatusCode(Enum):
     # Optimization Toolchain - AgentRL 172000 - 172999
 
     # Common Capabilities 180000 - 189999
-    # Common Capabilities - Prompt Population 180000 - 180999
+    # Common Capabilities - Prompt Template 180000 - 180999
+    PROMPT_ASSEMBLER_INIT_ERROR = (180000, "Wrong arguments for initializing the assembler")
+    PROMPT_ASSEMBLER_VARIABLE_INIT_ERROR = (180001, "Wrong arguments for initializing the variable")
+    PROMPT_ASSEMBLER_INPUT_KEY_ERROR = (
+        180002,
+        "Missing or unexpected key-value pairs passed in as arguments for the assembler or variable when updating"
+    )
+    PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR = (
+        180003,
+        "Errors occur when formatting the template content due to wrong format")
+    PROMPT_TEMPLATE_DUPLICATED_ERROR = (180004, "Template duplicated")
+    PROMPT_TEMPLATE_NOT_FOUND_ERROR = (180005, "Template not found")
+    PROMPT_TEMPLATE_INCORRECT_ERROR = (180006, "Template data incorrect")
+
     # Common Capabilities - Model API 181000 - 181999
     # Common Capabilities - Tool Definition and Execution 182000 - 182999
     PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
@@ -252,20 +265,6 @@ class StatusCode(Enum):
     # Runtime - callback 195000 - 195999
     # Runtime - Stream Actor 196000 - 196099
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (196000, "Message queue manager error: {error_msg}")
-
-
-    PROMPT_ASSEMBLER_VARIABLE_INIT_ERROR = (102050, "Wrong arguments for initializing the variable")
-    PROMPT_ASSEMBLER_INIT_ERROR = (102051, "Wrong arguments for initializing the assembler")
-    PROMPT_ASSEMBLER_INPUT_KEY_ERROR = (
-        102052,
-        "Missing or unexpected key-value pairs passed in as arguments for the assembler or variable when updating"
-    )
-    PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR = (
-        102053,
-        "Errors occur when formatting the template content due to wrong format")
-    PROMPT_TEMPLATE_DUPLICATED_ERROR = (102101, "Template duplicated")
-    PROMPT_TEMPLATE_NOT_FOUND_ERROR = (102102, "Template not found")
-    PROMPT_TEMPLATE_INCORRECT_ERROR = (102103, "Template data incorrect")
 
 
     @property

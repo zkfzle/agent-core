@@ -29,8 +29,8 @@ def define_llm(model_info: dict):
 
 
 class LlmService:
-    def __init__(self):
-        self.model_info = get_model_info()
+    def __init__(self, model_info: dict):
+        self.model_info = model_info if model_info else get_model_info()
         self.llm = define_llm(self.model_info)
 
     def chat(self, messages: Union[List[BaseMessage], List[Dict], str], method: str = 'invoke', **kwargs: Any):

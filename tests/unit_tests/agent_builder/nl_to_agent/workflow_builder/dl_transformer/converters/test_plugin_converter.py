@@ -4,8 +4,8 @@
 import unittest
 import json
 
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.converters.plugin_converter import PluginConverter
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.converter_utils import ConverterUtils
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converters.plugin_converter import PluginConverter
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converter_utils import ConverterUtils
 
 
 class TestPluginConverter(unittest.TestCase):

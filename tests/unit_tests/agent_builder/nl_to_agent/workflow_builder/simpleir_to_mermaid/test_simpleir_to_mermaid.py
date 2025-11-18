@@ -4,7 +4,7 @@
 import unittest
 from unittest.mock import patch
 
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.simpleir_to_mermaid import SimpleIrToMermaid
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.simpleir_to_mermaid import SimpleIrToMermaid
 
 
 class TestSimpleIrToMermaid(unittest.TestCase):
@@ -114,7 +114,7 @@ class TestSimpleIrToMermaid(unittest.TestCase):
             ]
         }
 
-        with patch('openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.simpleir_to_mermaid.Counter') as mock_counter:
+        with patch('openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.simpleir_to_mermaid.Counter') as mock_counter:
             mock_counter.return_value = {"1": 2}
 
             result = SimpleIrToMermaid._trans_to_mermaid(data)
@@ -133,7 +133,7 @@ class TestSimpleIrToMermaid(unittest.TestCase):
             ]
         }
 
-        with patch('openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.simpleir_to_mermaid.Counter') as mock_counter:
+        with patch('openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.simpleir_to_mermaid.Counter') as mock_counter:
             mock_counter.return_value = {"1": 2}
 
             result = SimpleIrToMermaid._trans_to_mermaid(data)
@@ -210,7 +210,7 @@ class TestSimpleIrToMermaid(unittest.TestCase):
         edges = SimpleIrToMermaid._edge_transform(nodes)
         self.assertEqual(edges, [])
 
-    @patch('openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.simpleir_to_mermaid.re.search')
+    @patch('openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.simpleir_to_mermaid.re.search')
     def test_trans_to_mermaid_regex_failure(self, mock_search):
         mock_search.return_value = None
 
@@ -223,7 +223,7 @@ class TestSimpleIrToMermaid(unittest.TestCase):
             ]
         }
 
-        with patch('openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.simpleir_to_mermaid.Counter') as mock_counter:
+        with patch('openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.simpleir_to_mermaid.Counter') as mock_counter:
             mock_counter.return_value = {"1": 2}
 
             result = SimpleIrToMermaid._trans_to_mermaid(data)
@@ -243,6 +243,7 @@ class TestSimpleIrToMermaid(unittest.TestCase):
 
         result = SimpleIrToMermaid._trans_to_mermaid(data)
         self.assertIn("1 --> 2", result)
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

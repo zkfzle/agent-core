@@ -5,8 +5,8 @@ import unittest
 from unittest.mock import MagicMock, Mock
 
 from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
-import openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.sop_generator.sop_generator as sg
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.sop_generator.sop_generator import SopGenerator
+import openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator as sg
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator import SopGenerator
 
 
 LLM_CHAT_SOP_RESULT = "sop_result"

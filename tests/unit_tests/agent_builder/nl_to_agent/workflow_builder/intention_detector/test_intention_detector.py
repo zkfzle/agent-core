@@ -8,7 +8,7 @@ import json
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.utils.llm.messages import SystemMessage
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.intention_detector.intention_detector import \
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.intention_detector import \
     IntentionDetector
 
 
@@ -178,7 +178,7 @@ class TestIntentionDetector(unittest.TestCase):
         self.assertFalse(result)
 
     @patch(
-        'openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.intention_detector.intention_detector.INITIAL_INTENTION_PROMPT',
+        'openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.intention_detector.INITIAL_INTENTION_PROMPT',
         '{{dialog_history}}')
     def test_prompt_template_usage_initial(self):
         self.mock_model.chat.return_value = '{"provide_process": true}'
@@ -192,7 +192,7 @@ class TestIntentionDetector(unittest.TestCase):
         self.assertIn("用户：测试", system_message.content)
 
     @patch(
-        'openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.intention_detector.intention_detector.REFINE_INTENTION_PROMPT',
+        'openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.intention_detector.REFINE_INTENTION_PROMPT',
         '{{mermaid_code}}\n{{dialog_history}}')
     def test_prompt_template_usage_refine(self):
         self.mock_model.chat.return_value = '{"need_refined": true}'

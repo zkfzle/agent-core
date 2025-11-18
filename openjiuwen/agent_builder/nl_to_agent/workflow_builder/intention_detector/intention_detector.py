@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.utils.llm.messages import SystemMessage
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.intention_detector.intention_prompt import \
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.intention_prompt import \
     REFINE_INTENTION_PROMPT, INITIAL_INTENTION_PROMPT
 
 

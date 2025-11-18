@@ -2,19 +2,19 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.common.llm_service import LlmService
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.common.context_manager import ContextManager
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.llm_agent_builder.llm_agent_builder import LlmAgentBuilder
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.workflow_builder import WorkflowBuilder
+from openjiuwen.agent_builder.nl_to_agent.common.llm_service import LlmService
+from openjiuwen.agent_builder.nl_to_agent.common.context_manager import ContextManager
+from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.llm_agent_builder import LlmAgentBuilder
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.workflow_builder import WorkflowBuilder
 
 
 class AgentBuilderExecutor:
     def __init__(self, query: str, session_id: str, agent_type: str, context_manager_map: dict,
-                 llm_agent_builder_map: dict, workflow_builder_map: dict):
+                 llm_agent_builder_map: dict, workflow_builder_map: dict, model_info: dict = None):
         self.query = query
         self.session_id = session_id
         self.agent_type = agent_type
-        self.llm = LlmService()
+        self.llm = LlmService(model_info)
         self.context_manager = self.get_context_manager(session_id, context_manager_map)
         self.llm_agent_builder = self.get_llm_agent_builder(session_id, llm_agent_builder_map)
         self.workflow_builder = self.get_workflow_builder(session_id, workflow_builder_map)

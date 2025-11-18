@@ -5,8 +5,8 @@ import unittest
 from unittest.mock import MagicMock, Mock, patch
 
 from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage, AIMessage
-import openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_generator.dl_generator as dg
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_generator.dl_generator import DLGenerator
+import openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_generator.dl_generator as dg
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_generator.dl_generator import DLGenerator
 
 
 LLM_CHAT_DL_RESULT = "dl_result"

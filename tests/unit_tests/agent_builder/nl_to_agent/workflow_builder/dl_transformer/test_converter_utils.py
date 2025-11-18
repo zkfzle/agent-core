@@ -7,8 +7,8 @@ from typing import Optional, List
 from enum import Enum
 from dataclasses import dataclass
 
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.converter_utils import ConverterUtils
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_transformer.models import SourceType
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converter_utils import ConverterUtils
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.models import SourceType
 
 
 class TestConverterUtils(unittest.TestCase):

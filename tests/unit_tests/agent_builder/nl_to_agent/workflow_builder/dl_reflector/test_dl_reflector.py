@@ -3,8 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
 import unittest
 import json
-from unittest.mock import patch
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.workflow_builder.dl_reflector.dl_reflector import Reflector, \
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_reflector.dl_reflector import Reflector, \
     extract_placeholder_content
 
 

@@ -4,7 +4,7 @@
 import unittest
 from datetime import datetime, timezone
 
-from openjiuwen.agent_builder.nl_to_agent.agent_builder.common.context_manager import ContextManager, DialogueMessage
+from openjiuwen.agent_builder.nl_to_agent.common.context_manager import ContextManager, DialogueMessage
 
 
 class TestContextManager(unittest.TestCase):

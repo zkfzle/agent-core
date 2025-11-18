@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, List, Any
 
-from ..converter_utils import ConverterUtils
-from ..models import NodeType, SourceType, Node, Edge, Position, InputVariable, OutputsField
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converter_utils import ConverterUtils
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.models import NodeType, SourceType, Node, Edge, Position, InputVariable, OutputsField
 
 
 class BaseConverter(ABC):

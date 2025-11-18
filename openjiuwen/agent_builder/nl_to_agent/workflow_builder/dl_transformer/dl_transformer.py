@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
-from typing import Optional, List, Dict
+from typing import Optional
 
-from .models import Workflow, Position, NodeType
-from .converter_utils import ConverterUtils
-from .converters import StartConverter, EndConverter, LLMConverter, IntentDetectionConverter, QuestionerConverter, \
-                        CodeConverter, PluginConverter, OutputConverter, BranchConverter
-from .simpleir_to_mermaid import SimpleIrToMermaid
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.models import Workflow, Position, NodeType
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converter_utils import ConverterUtils
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converters import StartConverter, EndConverter, LLMConverter, IntentDetectionConverter, QuestionerConverter, CodeConverter, PluginConverter, OutputConverter, BranchConverter
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.simpleir_to_mermaid import SimpleIrToMermaid
 
 
 class DLTransformer:
@@ -24,8 +23,9 @@ class DLTransformer:
         NodeType.Branch.dl_type: BranchConverter,
     }
 
-    def transform_to_mermaid(self, dl_content: List[Dict]) -> str:
-        mermaid_result = SimpleIrToMermaid.transform_to_mermaid(dl_content)
+    def transform_to_mermaid(self, dl_content: str) -> str:
+        nodes = json.loads(dl_content)
+        mermaid_result = SimpleIrToMermaid.transform_to_mermaid(nodes)
         return mermaid_result
 
     def transform_to_dsl(self, dl_content: str, resource: Optional[dict] = None) -> str:

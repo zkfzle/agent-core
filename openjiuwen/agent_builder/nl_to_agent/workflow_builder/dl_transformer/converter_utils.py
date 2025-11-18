@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import re
 import uuid
 from typing import Optional, Tuple, Any
 from enum import Enum
 from dataclasses import asdict, is_dataclass
 
-from .models import SourceType
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.models import SourceType
 
 class ConverterUtils:
     LLM_MODEL_CONFIG = {

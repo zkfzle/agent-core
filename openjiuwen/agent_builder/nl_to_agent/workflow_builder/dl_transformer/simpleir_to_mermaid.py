@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import re
 from typing import List, Dict
 from collections import Counter
@@ -64,6 +64,7 @@ class SimpleIrToMermaid:
 
         return "\n".join(lines)
 
-    def transform_to_mermaid(self, json_data: List[Dict]) -> str:
-        edges = self._edge_transform(json_data)
-        return self._trans_to_mermaid({"nodes": json_data, "edges": edges})
+    @staticmethod
+    def transform_to_mermaid(json_data: List[Dict]) -> str:
+        edges = SimpleIrToMermaid._edge_transform(json_data)
+        return SimpleIrToMermaid._trans_to_mermaid({"nodes": json_data, "edges": edges})

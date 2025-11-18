@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 REFINE_INTENTION_PROMPT = """
 ## 角色
 你是Mermaid代码意图匹配评估专家，专门分析用户意图与现有代码的匹配程度。

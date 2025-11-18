@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import re
 from enum import Enum
 
@@ -10,11 +10,11 @@ from openjiuwen.core.utils.llm.messages import AIMessage, HumanMessage
 from openjiuwen.agent_builder.nl_to_agent.common.llm_service import LlmService
 from openjiuwen.agent_builder.nl_to_agent.common.context_manager import ContextManager
 from openjiuwen.agent_builder.nl_to_agent.common.resource.resource_retrieve import ResourceRetriever
-from .intention_detector.intention_detector import IntentionDetector
-from .sop_generator.sop_generator import SopGenerator
-from .dl_generator.dl_generator import DLGenerator
-from .dl_reflector.dl_reflector import Reflector
-from .dl_transformer.dl_transformer import DLTransformer
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.intention_detector import IntentionDetector
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator import SopGenerator
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_generator.dl_generator import DLGenerator
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_reflector.dl_reflector import Reflector
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.dl_transformer import DLTransformer
 
 
 WORKFLOW_REQUEST_CONTENT = "请提供您想要的工作流程描述，以便我为您生成相应的流程图，如果不清楚可以回复不清楚，我将为您规划流程。"
@@ -78,9 +78,9 @@ class WorkflowBuilder:
             query=GENERATE_DL_FROM_SOP_CONTENT + sop_content,
             resource=self._resource
         )
-        mermaid_code = self._dl_transformer.transform_to_mermaid(self._dl)
+        self._mermaid_code = self._dl_transformer.transform_to_mermaid(self._dl)
         self._state = State.PROCESS_CONFIRM
-        return mermaid_code
+        return self._mermaid_code
 
     def _handle_process_request(self, query: str):
         dialog_history = self.context_manager.get_history()
@@ -89,7 +89,7 @@ class WorkflowBuilder:
             self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
             self._resource = ResourceRetriever().retrieve(query)
         else:
-            dialog_history_query = '\n'.join(f'{msg.role}: {msg.content}' for msg in dialog_history)
+            dialog_history_query = '\n'.join(f'{msg["role"]}: {msg["content"]}' for msg in dialog_history)
             self._resource = ResourceRetriever().retrieve(dialog_history_query)
             sop_content = self._sop_generator.generate(dialog_history_query, self._resource)
             self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
@@ -99,13 +99,13 @@ class WorkflowBuilder:
             query=GENERATE_DL_FROM_SOP_CONTENT + sop_content,
             resource=self._resource
         )
-        mermaid_code = self._dl_transformer.transform_to_mermaid(self._dl)
+        self._mermaid_code = self._dl_transformer.transform_to_mermaid(self._dl)
         self._state = State.PROCESS_CONFIRM
-        return mermaid_code
+        return self._mermaid_code
 
     def _handle_process_confirm(self, query: str):
         dialog_history = self.context_manager.get_history()
-        if self._intention_detector.detect_refine_intent(dialog_history):
+        if self._intention_detector.detect_refine_intent(dialog_history, self._mermaid_code):
             self._dl = self._generate_and_reflect_dl(
                 dl_operation=self._dl_generator.refine,
                 query=query,
@@ -113,8 +113,8 @@ class WorkflowBuilder:
                 exist_dl=self._dl,
                 exist_mermaid=self._mermaid_code
             )
-            mermaid_code = self._dl_transformer.transform_to_mermaid(self._dl)
-            return mermaid_code
+            self._mermaid_code = self._dl_transformer.transform_to_mermaid(self._dl)
+            return self._mermaid_code
 
         dsl = self._dl_transformer.transform_to_dsl(self._dl, self._resource)
         self._reset()

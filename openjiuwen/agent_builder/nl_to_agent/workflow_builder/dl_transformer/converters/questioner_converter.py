@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
-from .base import BaseConverter
-from ..models import InputsField, OutputsField
-from ..converter_utils import ConverterUtils
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converters.base import BaseConverter
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.models import InputsField
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_transformer.converter_utils import ConverterUtils
 
 
 class QuestionerConverter(BaseConverter):

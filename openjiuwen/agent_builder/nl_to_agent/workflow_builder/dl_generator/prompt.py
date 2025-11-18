@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 generate_system_prompt = """## 人设
 你是一名工作流大师，你可以基于给定的任务描述思考并创建由节点连接组成的具体流程图。
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Dict, List
 
 from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
-from .prompt import transform_system_prompt, generate_system_prompt
+from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.prompt import transform_system_prompt, generate_system_prompt
 
 
 SOP_GENERATE_PROMPT = "请根据以下对话历史设计工作流程：\n"

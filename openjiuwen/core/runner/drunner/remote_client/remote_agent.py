@@ -37,7 +37,7 @@ class RemoteAgent:
             await self.client.start()
             return await self.client.invoke(inputs, timeout=timeout)
         except asyncio.CancelledError as e:
-            # 外部设置了超时取消调用
+            # Timeout cancellation call set externally
             raise JiuWenBaseException(StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.code,
                                       StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.errmsg.format(
                                           f"agent_id:{self.agent_id}"))
@@ -52,7 +52,7 @@ class RemoteAgent:
             async for chunk in self.client.stream(inputs, timeout=timeout):
                 yield chunk
         except asyncio.CancelledError as e:
-            # Runner stop导致client取消
+            # Runner stop causes client cancellation
             raise JiuWenBaseException(StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.code,
                                       StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.errmsg.format(
                                           f"agent_id:{self.agent_id}"))

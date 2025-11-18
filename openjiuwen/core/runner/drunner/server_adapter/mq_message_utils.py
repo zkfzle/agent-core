@@ -18,7 +18,7 @@ def build_stream_response(message, sender_id, payload, seq, last=False):
 
 
 def build_final_response(message, sender_id, seq):
-    return build_stream_response(message, sender_id, "", seq, last=True)
+    return build_stream_response(message, sender_id, {}, seq, last=True)
 
 
 def build_batch_response(message, sender_id, result):

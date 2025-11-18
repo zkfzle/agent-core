@@ -47,7 +47,7 @@ class MqRemoteClient(RemoteClient):
         logger.debug(f"[MqRemoteClient] init success topic: {self.topic}, reply_topic: {self.reply_topic}")
 
     async def stop(self):
-        # ReplyTopic handle all collector unregistration
+        # ReplyTopic handles all collector unregistration
         self._started = False
         logger.info(f"[MqRemoteClient] Stopped client for {self.remote_id}")
 
@@ -85,7 +85,7 @@ class MqRemoteClient(RemoteClient):
             response = await collector.result()
             return response
         except asyncio.CancelledError:
-            # 流被取消时发送 STOP 消息
+            # Send STOP message when stream is cancelled
             logger.info(f"[MQRemoteClient] Stream {message_id} cancelled, sending STOP")
             await self._send_stop_message(message_id)
             raise
@@ -139,10 +139,11 @@ class MqRemoteClient(RemoteClient):
             await self.system_reply_sub.unregister_collector(message_id, self.remote_id)
 
     async def _send_stop_message(self, message_id: str):
-        """发送 STOP 消息 message里带了过期时间，超时就不用发stop消息了，只有提前close的时候发"""
+        """Send STOP message, message contains expiration time, no need to send STOP on timeout, only when closed early"""
         try:
             stop_msg = DmqRequestMessage(
                 type=DMessageType.STOP,
+                payload={},
                 message_id=message_id,
                 sender_id=self.reply_topic,
                 receiver_id=self.remote_id,

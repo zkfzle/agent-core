@@ -24,7 +24,7 @@ class MessageTask:
 
 
 class MqServerAdapter:
-    """负责处理 MQ 请求的 Server Adapter"""
+    """Server Adapter responsible for handling MQ requests"""
 
     def __init__(
             self,
@@ -54,30 +54,30 @@ class MqServerAdapter:
 
     async def _handle_message(self, message: DmqRequestMessage) -> None:
         msg_id = message.message_id
-        logger.info(f"[{self.adapter_id}] Received message {msg_id}")
+        logger.info(f"[{self.adapter_id}] Received message {msg_id}, message_type={message.type}")
 
-        # 已过期的消息直接丢弃
+        # Discard expired messages directly
         if message.expire_at and message.expire_at < time.time():
             logger.warning(f"[{self.adapter_id}] Ignoring expired message {msg_id}, "
                            f"expire_at: {message.expire_at}, current_time: {time.time()}")
             return
 
-        # 被动取消
+        # Passive cancellation
         if message.type == DMessageType.STOP:
             await self._cancel_task(msg_id, inner_cancel=False)
             return
 
-        # 重复消息
+        # Duplicate message
         if msg_id in self._running_tasks:
             logger.warning(f"[{self.adapter_id}] Duplicate msg_id {msg_id}, replacing old task")
             await self._cancel_task(msg_id, inner_cancel=True)
 
-        # 启动执行任务
+        # Start execution task
         task = asyncio.create_task(self._process_message(message))
         self._running_tasks[msg_id] = MessageTask(message, task)
         task.add_done_callback(lambda t: self._cleanup_task(msg_id, t))
 
-        # 定时超时取消
+        # Scheduled timeout cancellation
         if message.expire_at:
             when = message.expire_at
             delay = when - time.time()
@@ -106,23 +106,23 @@ class MqServerAdapter:
 
 
         except asyncio.CancelledError:
-            # 取消异常只有server内部因为adapter stop取消需要发error code给客户端
+            # Cancellation exception only needs to send error code to client when cancelled internally by adapter stop
             logger.info(f"[{self.adapter_id}] Task {message.message_id} cancelled")
             raise
 
         except JiuWenBaseException as e:
-            # runner、mq都先于adapter关闭
+            # runner and mq both close before adapter
             if (e.error_code == StatusCode.RUNNER_STOPPED.code
                     or e.error_code == StatusCode.MESSAGE_QUEUE_NOT_RUNNING.code):
                 logger.info(f"[{self.adapter_id}] Task {message.message_id} cancelled")
                 raise
-            # Runner.run的执行异常，需要返回给客户端
+            # Runner.run execution exception needs to be returned to client
             logger.warning(f"[{self.adapter_id}] adapter run error msg: {message.message_id}: {e}")
             resp = build_error_response(message, self.adapter_id, e)
             await self.mq.produce_message(message.reply_topic, resp)
 
         except Exception as e:
-            # Runner.run返回了不可预期的异常，需要返回给客户端
+            # Runner.run returned unexpected exception, needs to be returned to client
             logger.exception(f"[{self.adapter_id}] Unexpected error: {e}")
             err = JiuWenBaseException(StatusCode.ERROR.code, str(e))
             resp = build_error_response(message, self.adapter_id, err)
@@ -140,17 +140,22 @@ class MqServerAdapter:
     async def _cancel_task(self, msg_id: str, *, inner_cancel: bool):
         msg_task = self._running_tasks.get(msg_id)
         if not msg_task:
+            logger.info(f"[{self.adapter_id}] No task found for msg_id {msg_id} during cancellation")
             return
         message, task = msg_task.message, msg_task.task
 
+        logger.info(f"[{self.adapter_id}] Cancelling task {msg_id}")
         task.cancel()
         try:
             await task
         except asyncio.CancelledError:
+            logger.info(f"[{self.adapter_id}] Task {msg_id} successfully cancelled")
             pass
         finally:
             self._running_tasks.pop(msg_id, None)
+            logger.info(f"[{self.adapter_id}] Removed task {msg_id} from running tasks")
             if inner_cancel:
+                logger.info(f"[{self.adapter_id}] Sending cancellation error response for task {msg_id}")
                 try:
                     err = JiuWenBaseException(
                         StatusCode.RUNNER_STOPPED.code,
@@ -158,8 +163,9 @@ class MqServerAdapter:
                     )
                     resp = build_error_response(message, self.adapter_id, err)
                     await self.mq.produce_message(message.reply_topic, resp)
+                    logger.info(f"[{self.adapter_id}] Sent cancellation error response for task {msg_id}")
                 except Exception as e:
-                    logger.warning(f"[{self.adapter_id}] Failed to send cancel error: {e}")
+                    logger.warning(f"[{self.adapter_id}] Failed to send cancel error for task {msg_id}: {e}")
 
     def _cleanup_task(self, msg_id: str, task: asyncio.Task):
         """任务结束清理"""
@@ -186,6 +192,3 @@ class MqServerAdapter:
             return_exceptions=True,
         )
         logger.info(f"[{self.adapter_id}] Adapter stopped")
-
-    def get_running_tasks_count(self) -> int:
-        return len(self._running_tasks)

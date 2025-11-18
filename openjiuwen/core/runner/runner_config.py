@@ -20,14 +20,14 @@ class PulsarConfig:
 
 @dataclass
 class MessageQueueConfig:
-    """消息队列配置"""
+    """Message Queue Configuration"""
     type: str = MessageQueueType.PULSAR
     pulsar_config: Optional[PulsarConfig] = None
 
 
 @dataclass
 class DistributedConfig:
-    """分布式配置"""
+    """Distributed Configuration"""
     request_timeout: float = 30.0
     max_request_concurrency: int = 10000
     message_queue_config: MessageQueueConfig = field(default_factory=MessageQueueConfig)
@@ -35,13 +35,13 @@ class DistributedConfig:
     reply_topic_template = "openjiuwen.reply.runner.{instance_id}"
 
     def get_agent_topic_template(self, env_prefix: str = "") -> str:
-        """获取带环境前缀的agent topic模板"""
+        """Get agent topic template with environment prefix"""
         if env_prefix:
             return f"{env_prefix}.{self.agent_topic_template}"
         return self.agent_topic_template
 
     def get_reply_topic_template(self, env_prefix: str = "") -> str:
-        """获取带环境前缀的reply topic模板"""
+        """Get reply topic template with environment prefix"""
         if env_prefix:
             return f"{env_prefix}.{self.reply_topic_template}"
         return self.reply_topic_template
@@ -49,18 +49,18 @@ class DistributedConfig:
 
 @dataclass
 class RunnerConfig:
-    """Runner 全局配置"""
+    """Runner Global Configuration"""
     distributed_mode: bool = True
     distributed_config: Optional[DistributedConfig] = field(default_factory=DistributedConfig)
     env_prefix: str = ""
     instance_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def agent_topic_template(self) -> str:
-        """获取带环境前缀的agent topic模板"""
+        """Get agent topic template with environment prefix"""
         return self.distributed_config.get_agent_topic_template(self.env_prefix)
 
     def reply_topic_template(self) -> str:
-        """获取带环境前缀的reply topic模板"""
+        """Get reply topic template with environment prefix"""
         return self.distributed_config.get_reply_topic_template(self.env_prefix)
 
 

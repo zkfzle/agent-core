@@ -1,12 +1,8 @@
-import os
-import time
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import pytest
-
-
-import uuid
-import socket
-
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
@@ -67,18 +63,16 @@ class TestRunnerIntegration:
             )
             agent = WorkflowAgent(workflow_config)
             agent.bind_workflows([workflow1])
-            resource_mgr.workflow().add_workflow(id+"_"+version,workflow1)
+            resource_mgr.workflow().add_workflow(id + "_" + version, workflow1)
             Runner.add_agent("workflow-agent", agent)
-            # 模拟client发请求
+            # Simulate client sending request
             client = RemoteAgent(agent_id="workflow-agent")
             Runner.add_agent(agent_id="remote-workflow-agent", agent=client)
             response = await Runner.run_agent("remote-workflow-agent", {"query": "London"})
             print(f"response: {response}")
             assert response['result_type'] == 'answer'
-            assert response['result_type'] == 'answer'
-            # 反序列化之后dict中的类型丢失，只能按dict匹配
-            assert response['output']["result"] == {'result': 'London'}
-            assert response['output']["state"] == 'COMPLETED'
+            assert response['output'].result == {'result': 'London'}
+            assert response['output'].state.name == 'COMPLETED'
 
         finally:
             Runner.remove_agent("remote-workflow-agent")

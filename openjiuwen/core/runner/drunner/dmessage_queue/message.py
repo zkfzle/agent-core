@@ -3,11 +3,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union, Any
 
 from openjiuwen.core.runner.message_queue_base import QueueMessage
-
-from dataclasses import dataclass
 
 
 class DMessageType(str, Enum):
@@ -26,8 +24,9 @@ class ResultType(str, Enum):
 class DmqMessage(QueueMessage):
     pass
 
+
 class DmqRequestMessage(DmqMessage):
-    """分布式请求消息"""
+    """Distributed request message"""
     type: str = DMessageType.INPUT
     reply_topic: str = ""
     request_id: str = ""
@@ -38,8 +37,9 @@ class DmqRequestMessage(DmqMessage):
 
 
 class DmqResponseMessage(DmqMessage):
-    """分布式响应消息"""
+    """Distributed response message"""
     type: str = DMessageType.OUTPUT
+    payload: Union[Any, list]
     result_type: ResultType = ResultType.MESSAGE
     request_id: str = ""
     sender_id: str = ""

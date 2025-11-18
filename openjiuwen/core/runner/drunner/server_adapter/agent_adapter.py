@@ -8,7 +8,7 @@ from openjiuwen.core.runner.drunner.server_adapter.mq_server_adapter import MqSe
 from openjiuwen.core.runner.runner_config import get_runner_config
 
 
-class MqAgentAdapter:
+class AgentAdapter:
     """AgentAdapter"""
 
     def __init__(self, agent_id: str, version: str = ""):

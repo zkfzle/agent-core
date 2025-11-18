@@ -18,11 +18,11 @@ MAX_QUEUE_SIZE = 10000
 
 
 class CancelReason(str, Enum):
-    """取消原因：用于区分唤醒后的异常类型"""
-    RUNNER_STOPPED = "runner_stopped"  # Runner/Adapter 主动停止（应抛 RUNNER_STOPPED）
-    TTL_EXPIRE = "ttl_expire"  # TTL 到期（应抛 TimeoutError）
-    QUEUE_FULL = "queue_full"  # 队列满（应该抛 CancelledError）
-    FINISH = "finish"  # 正常接受完不需要唤醒
+    """Cancellation reason: used to distinguish exception types after awakening"""
+    RUNNER_STOPPED = "runner_stopped"  # Runner/Adapter actively stopped (should throw RUNNER_STOPPED)
+    TTL_EXPIRE = "ttl_expire"  # TTL expired (should throw TimeoutError)
+    QUEUE_FULL = "queue_full"  # Queue full (should throw CancelledError)
+    FINISH = "finish"  # Normal completion, no need to wake up
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,7 @@ class CancelEvent:
 
 
 class ResponseCollector:
-    """负责收集指定 request 的响应，并支持取消和超时"""
+    """Responsible for collecting responses for specified requests, and supports cancellation and timeout"""
 
     def __init__(self, message_id: str, receiver_id: str, request_id: str = None, ttl: float = None):
         self.message_id = message_id
@@ -57,21 +57,21 @@ class ResponseCollector:
         return not (self._cancelled or self._expired)
 
     async def _expire_after_ttl(self):
-        """TTL 到期自动标记过期"""
+        """Automatically mark as expired when TTL expires"""
         try:
             await asyncio.sleep(self.ttl)
             if not self._cancelled:
                 self._expired = True
                 await self._cleanup_queue()
                 logger.warning(f"[Collector:{self.message_id}] expired after {self.ttl:.1f}s")
-                # 唤醒阻塞的的等待请求
+                # Wake up blocked waiting requests
                 self._wake_waiters(CancelEvent(CancelReason.TTL_EXPIRE))
         except asyncio.CancelledError:
-            # 被主动关闭，不记录为过期
+            # Actively closed, not recorded as expired
             return
 
     async def put_message(self, msg: DmqResponseMessage):
-        """从replyTopic接收消息"""
+        """Receive message from replyTopic"""
         if not self.is_active():
             logger.warning(f"[Collector:{self.message_id}] inactive, discard message")
             return
@@ -106,7 +106,7 @@ class ResponseCollector:
             await self.close(reason=CancelReason.FINISH)
 
     async def stream(self, timeout: Optional[float] = None):
-        """流式获取结果"""
+        """Stream results"""
         timeout = timeout or self.ttl
         try:
             while True:
@@ -114,7 +114,7 @@ class ResponseCollector:
                 logger.debug(f"[Collector:{self.message_id}] stream get message {msg}")
                 await self.check_message(msg)
                 if msg.last_chunk:
-                    # 最后一条是mq空标记，不返回
+                    # Last message is MQ empty marker, do not return
                     break
                 yield msg.payload
         except asyncio.TimeoutError:
@@ -130,23 +130,23 @@ class ResponseCollector:
         if isinstance(msg, CancelEvent):
             logging.info(f"[Collector:{self.message_id}] rev CancelEvent stream cancelled by {msg.reason}")
             if msg.reason == CancelReason.TTL_EXPIRE:
-                # TTL 到期 → 抛 TimeoutError
+                # TTL expired → throw TimeoutError
                 raise TimeoutError(f"Collector({self.message_id}) timeout")
             elif msg.reason == CancelReason.QUEUE_FULL:
-                # 返回消息队列满了但是没来取 客户端应该不要了
+                # Message queue full but not retrieved, client probably doesn't need it
                 raise asyncio.CancelledError(f"Collector({self.message_id}) queue full")
             else:
                 raise JiuWenBaseException(StatusCode.RUNNER_STOPPED.code,
                                           StatusCode.RUNNER_STOPPED.errmsg.format(
                                               "Collector({self.message_id}) was cancelled"))
         if msg.result_type == ResultType.ERROR:
-            # 远端的错误码封装到错误消息里
+            # Remote error codes encapsulated in error message
             raise JiuWenBaseException(StatusCode.REMOTE_AGENT_PROCESS_ERROR.code,
                                       StatusCode.REMOTE_AGENT_PROCESS_ERROR.errmsg.format(
                                           error_code=msg.error_code, error_msg=msg.error_msg))
 
     async def close(self, reason: CancelReason = CancelReason.RUNNER_STOPPED):
-        """主动取消（包括队列满、系统关闭）"""
+        """Active cancellation (including queue full, system shutdown)"""
         if self._cancelled:
             return
 

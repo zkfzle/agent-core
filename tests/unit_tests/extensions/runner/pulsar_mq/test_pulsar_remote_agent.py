@@ -9,7 +9,7 @@ import asyncio
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
-from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import MqAgentAdapter
+from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner_config import RunnerConfig, DistributedConfig, MessageQueueConfig, PulsarConfig, \
@@ -20,11 +20,11 @@ from openjiuwen.core.runner.runner_config import RunnerConfig, DistributedConfig
 @pytest.mark.skip(reason="Requires real Pulsar uv sync --extra pulsar")
 class TestRunnerIntegration:
     def setup_method(self):
-        # 保存原始方法
-        self.original_handle_invoke = MqAgentAdapter._handle_invoke
-        self.original_handle_stream = MqAgentAdapter._handle_stream
+        # Save original methods
+        self.original_handle_invoke = AgentAdapter._handle_invoke
+        self.original_handle_stream = AgentAdapter._handle_stream
 
-        # 替换为自定义方法
+        # Replace with custom methods
         async def mock_handle_invoke(self, inputs):
             return {"MOCK_INVOKE": "CUSTOM_RESPONSE"}
 
@@ -32,13 +32,13 @@ class TestRunnerIntegration:
             for i in range(3):
                 yield {"MOCK_STREAM": f"chunk_{i}"}
 
-        MqAgentAdapter._handle_invoke = mock_handle_invoke
-        MqAgentAdapter._handle_stream = mock_handle_stream
+        AgentAdapter._handle_invoke = mock_handle_invoke
+        AgentAdapter._handle_stream = mock_handle_stream
 
         pulsar_mq = RunnerConfig(
             distributed_mode=True,
             distributed_config=DistributedConfig(
-                request_timeout=5.0,
+                request_timeout=10.0,
                 message_queue_config=MessageQueueConfig(
                     type="pulsar",
                     pulsar_config=PulsarConfig(
@@ -51,30 +51,30 @@ class TestRunnerIntegration:
         Runner.set_config(pulsar_mq)
 
     def teardown_method(self):
-        # 恢复原始方法
-        MqAgentAdapter._handle_invoke = self.original_handle_invoke
-        MqAgentAdapter._handle_stream = self.original_handle_stream
+        # Restore original methods
+        AgentAdapter._handle_invoke = self.original_handle_invoke
+        AgentAdapter._handle_stream = self.original_handle_stream
         Runner.set_config(DEFAULT_RUNNER_CONFIG)
 
     async def test_agent_normal_lifecycle(self):
-        """测试agent的正常生命周期：创建、调用、删除"""
+        """Test normal agent lifecycle: creation, invocation, deletion"""
         print("=== Test 0: Agent lifecycle ===")
         await Runner.start()
-        weather_adapter = MqAgentAdapter(agent_id="weather-agent")
+        weather_adapter = AgentAdapter(agent_id="weather-agent")
         weather_adapter.start()
 
         try:
-            # 模拟client发请求
+            # Simulate client sending request
             client = RemoteAgent(agent_id="weather-agent")
             Runner.add_agent(agent_id="remote-weather-agent", agent=client)
 
-            # 1. 测试批式请求
+            # 1. Test batch request
             logger.info("=== Testing batch invoke ===")
             response = await Runner.run_agent("remote-weather-agent", {"city": "London"})
             logger.info(f"Batch response: {response}")
             assert response is not None
 
-            # 2. 测试流式响应
+            # 2. Test streaming response
             logger.info("=== Testing stream response ===")
             chunks = []
             async for chunk in Runner.run_agent_streaming("remote-weather-agent", {"city": "Paris"}):
@@ -84,11 +84,11 @@ class TestRunnerIntegration:
             assert len(chunks) > 0
             logger.info(f"Received {len(chunks)} chunks")
 
-            # 3. 测试删除agent
+            # 3. Test agent removal
             logger.info("=== Testing agent removal ===")
             Runner.remove_agent("weather-agent")
 
-            # 4. 验证删除后调用抛出异常
+            # 4. Verify exception is thrown after deletion
             with pytest.raises(JiuWenBaseException) as e:
                 await Runner.run_agent("weather-agent", {"city": "London"})
             assert e.value.error_code == StatusCode.AGENT_NOT_FOUND.code
@@ -97,12 +97,12 @@ class TestRunnerIntegration:
             logger.exception(f"Test failed with error: {e}")
             raise
         finally:
-            # 确保清理资源
+            # Ensure resource cleanup
             await weather_adapter.stop()
             await Runner.stop()
 
     async def test_agent_request_cancellation(self):
-        """测试请求取消（触发 CancelledError）发送消息到一个不存在的agent"""
+        """Test request cancellation (triggering CancelledError) by sending message to a non-existent agent"""
         print("=== Test 1: Manual task cancellation ===")
         await Runner.start()
 
@@ -111,18 +111,18 @@ class TestRunnerIntegration:
             Runner.add_agent(agent_id="weather-agent2", agent=client)
 
             async def long_running_request():
-                """一个长时间运行的请求"""
+                """A long-running request"""
                 return await Runner.run_agent("weather-agent2", {"city": "London"})
 
-            # 创建任务
+            # Create task
             task = asyncio.create_task(long_running_request())
 
-            # 等待一小段时间后取消
+            # Wait a short time then cancel
             await asyncio.sleep(0.1)
 
             task.cancel()
 
-            # 验证任务被取消
+            # Verify task is cancelled
             with pytest.raises(JiuWenBaseException) as e:
                 await task
             assert e.value.error_code == StatusCode.REMOTE_AGENT_REQUEST_CANCELLED.code
@@ -130,7 +130,7 @@ class TestRunnerIntegration:
             await Runner.stop()
 
     async def test_agent_request_timeout(self):
-        """测试请求超时（触发 TimeoutError）发送消息到一个不存在的agent"""
+        """Test request timeout (triggering TimeoutError) by sending message to a non-existent agent"""
         print("=== Test 2: Request timeout ===")
         await Runner.start()
         try:
@@ -145,7 +145,7 @@ class TestRunnerIntegration:
             await Runner.stop()
 
     async def test_agent_runner_shutdown_cancels_clients(self):
-        """验证 Runner 提前关闭时，未完成的 client 调用会收到 CancelledError"""
+        """Verify that unfinished client calls receive CancelledError when Runner is closed early"""
         print("=== Test 3: Runner shutdown cancels clients ===")
         await Runner.start()
 
@@ -158,11 +158,11 @@ class TestRunnerIntegration:
 
             task = asyncio.create_task(long_running_request())
 
-            # Runner 提前关闭
+            # Runner closed early
             await asyncio.sleep(0.1)
             await Runner.stop()
 
-            # 验证：client 侧收到 CancelledError
+            # Verify: client side receives CancelledError
             with pytest.raises(JiuWenBaseException) as e:
                 await task
             # 如果关闭太快，请求发的时候reply已经是close则会收到cancel异常，如果collector已经创建被取消则报错runner stop
@@ -173,39 +173,39 @@ class TestRunnerIntegration:
             pass
 
     async def test_agent_adapter_exception_propagation(self):
-        """测试agenta dapter返回异常时错误信息正确传递给客户端"""
+        """Test that error information is correctly passed to the client when agent adapter returns an exception"""
         print("=== Test 4: Adapter error propagation ===")
         await Runner.start()
-        original_handler = MqAgentAdapter._handle_invoke
+        original_handler = AgentAdapter._handle_invoke
 
-        # 模拟adapter抛出异常
+        # Simulate adapter throwing exception
         async def error_handler(self, inputs):
             raise JiuWenBaseException(
                 error_code=111,
                 message="ADAPTER_ERROR")
 
-        MqAgentAdapter._handle_invoke = error_handler
-        weather_adapter = MqAgentAdapter(agent_id="weather-agent")
+        AgentAdapter._handle_invoke = error_handler
+        weather_adapter = AgentAdapter(agent_id="weather-agent")
         weather_adapter.start()
 
         try:
             client = RemoteAgent(agent_id="weather-agent")
             Runner.add_agent(agent_id="weather-agent", agent=client)
 
-            # 验证客户端收到包含错误码和消息的异常
+            # Verify client receives exception containing error code and message
             with pytest.raises(JiuWenBaseException) as e:
                 await Runner.run_agent("weather-agent", {"city": "London"})
 
             assert e.value.error_code == StatusCode.REMOTE_AGENT_PROCESS_ERROR.code
             assert "code: 111, message: ADAPTER_ERROR" in e.value.message
         finally:
-            # 恢复原始handler
-            MqAgentAdapter.handle_invoke = original_handler
+            # Restore original handler
+            AgentAdapter.handle_invoke = original_handler
             await weather_adapter.stop()
             await Runner.stop()
 
     async def test_agent_call_without_runner_start_should_raise_exception(self):
-        """验证 Runner没有start应该报错"""
+        """Verify that Runner should report an error if not started"""
         print("=== Test 5: Runner not started ===")
         try:
             client = RemoteAgent(agent_id="slow-agent")
@@ -223,11 +223,11 @@ class TestRunnerIntegration:
 
     @pytest.mark.skip(reason="Skip performance tests")
     async def test_concurrent_vs_sequential_performance_comparison(self):
-        """对比并发调用和顺序调用的性能差异"""
+        """Compare performance differences between concurrent and sequential calls"""
         print("=== Test 6: Performance Comparison ===")
         await Runner.start()
-        # 创建adapter和client
-        weather_adapter = MqAgentAdapter(agent_id="perf-agent")
+        # Create adapter and client
+        weather_adapter = AgentAdapter(agent_id="perf-agent")
         weather_adapter.start()
 
         try:
@@ -237,7 +237,7 @@ class TestRunnerIntegration:
             # 测试数据
             test_data = [{"city": f"City_{i}"} for i in range(10)]
 
-            # 1. 顺序调用测试
+            # 1. Sequential call test
             print("Testing sequential calls...")
             start_time = time.time()
             sequential_results = []
@@ -246,7 +246,7 @@ class TestRunnerIntegration:
                 sequential_results.append(result)
             sequential_time = time.time() - start_time
 
-            # 2. 并发调用测试 - 使用较小的并发批次
+            # 2. Concurrent call test - Using smaller concurrent batches
             print("Testing concurrent calls...")
             start_time = time.time()
             concurrent_results = await asyncio.gather(
@@ -254,15 +254,15 @@ class TestRunnerIntegration:
             )
             concurrent_time = time.time() - start_time
 
-            # 性能对比分析
+            # Performance comparison analysis
             print(f"Sequential calls: {sequential_time:.3f}s for {len(test_data)} requests")
             print(f"Concurrent calls: {concurrent_time:.3f}s for {len(test_data)} requests")
-            # 验证结果正确性
+            # Verify result correctness
             assert len(sequential_results) == len(test_data)
             assert len(concurrent_results) == len(test_data)
             assert sequential_results == concurrent_results
 
-            # 如果并发确实比顺序快，记录性能提升
+            # If concurrent is indeed faster than sequential, record performance improvement
             if concurrent_time < sequential_time:
                 print(f"✓ Concurrent is {sequential_time / concurrent_time:.2f}x faster than sequential")
             else:
@@ -275,21 +275,21 @@ class TestRunnerIntegration:
 
     @pytest.mark.skip(reason="Skip performance tests")
     async def test_concurrent_streaming(self):
-        """测试流式调用10次,每个调用返回5个chunk,并发和顺序调用的性能对比"""
+        """Test streaming calls 10 times, each call returns 5 chunks, performance comparison between concurrent and sequential calls"""
         print("=== Test 9: Concurrent Streaming vs Regular Calls ===")
         await Runner.start()
 
-        # 保存原始方法
-        original_handle_stream = MqAgentAdapter._handle_stream
+        # Save original method
+        original_handle_stream = AgentAdapter._handle_stream
 
-        # 模拟流式响应
+        # Simulate streaming response
         async def mock_handle_stream(self, inputs):
             for i in range(5):
                 yield {"stream_chunk": i, "data": f"chunk_{i}_for_{inputs.get('city', 'unknown')}"}
 
-        MqAgentAdapter._handle_stream = mock_handle_stream
+        AgentAdapter._handle_stream = mock_handle_stream
 
-        streaming_adapter = MqAgentAdapter(agent_id="streaming-agent")
+        streaming_adapter = AgentAdapter(agent_id="streaming-agent")
         streaming_adapter.start()
 
         try:
@@ -299,7 +299,7 @@ class TestRunnerIntegration:
             # 测试数据
             test_data = [{"city": f"StreamCity_{i}"} for i in range(10)]
 
-            # 1. 顺序流式调用测试
+            # 1. Sequential streaming call test
             print("Testing sequential streaming calls...")
             start_time = time.time()
             sequential_chunks = []
@@ -310,7 +310,7 @@ class TestRunnerIntegration:
                     chunk_count += 1
             sequential_time = time.time() - start_time
 
-            # 2. 并发流式调用测试
+            # 2. Concurrent streaming call test
             print("Testing concurrent streaming calls...")
 
             start_time = time.time()
@@ -329,31 +329,31 @@ class TestRunnerIntegration:
             concurrent_results = await asyncio.gather(*concurrent_tasks)
             concurrent_time = time.time() - start_time
 
-            # 计算结果
+            # Calculate results
             total_sequential_chunks = len(sequential_chunks)
             total_concurrent_chunks = sum(len(result) for result in concurrent_results)
 
-            # 性能对比
+            # Performance comparison
             print(
                 f"Sequential streaming: {sequential_time:.3f}s for {len(test_data)} requests, {total_sequential_chunks} chunks")
             print(
                 f"Concurrent streaming: {concurrent_time:.3f}s for {len(test_data)} requests, {total_concurrent_chunks} chunks")
             print(f"Performance improvement: {sequential_time / concurrent_time:.2f}x faster")
 
-            # 验证结果正确性
-            assert total_sequential_chunks == len(test_data) * 5  # 每个请求5个chunk
+            # Verify result correctness
+            assert total_sequential_chunks == len(test_data) * 5  # Each request has 5 chunks
             assert total_concurrent_chunks == len(test_data) * 5
 
-            # 并发应该显著快于顺序调用
+            # Concurrent should be significantly faster than sequential calls
             assert sequential_time > concurrent_time, f"Sequential should be slower than concurrent"
 
-            # 验证流内容正确性
+            # Verify stream content correctness
             for result in concurrent_results:
                 assert len(result) == 5, "Each streaming call should return 5 chunks"
                 for chunk in result:
                     assert "stream_chunk" in chunk and "data" in chunk
         finally:
-            # 恢复原始方法
-            MqAgentAdapter.handle_stream = original_handle_stream
+            # Restore original method
+            AgentAdapter.handle_stream = original_handle_stream
             await streaming_adapter.stop()
             await Runner.stop()

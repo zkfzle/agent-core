@@ -67,9 +67,12 @@ class PulsarSubscription(SubscriptionBase):
                 msg = await loop.run_in_executor(
                     self._executor, lambda: self._consumer.receive(timeout_millis=1000)
                 )
-                logger.info(f"[PulsarSubscription] Received message, topic={self._topic}, message_id={msg.message_id}")
+
                 data = msg.data()
                 payload = deserialize_message(data)
+                logger.info(
+                    f"[PulsarSubscription] Received message, topic={self._topic}, message_id={payload.message_id}, "
+                    f"type:{payload.type}")
                 if self._handler:
                     await self._handler(payload)
                 await loop.run_in_executor(self._executor, lambda: self._consumer.acknowledge(msg))
@@ -80,7 +83,7 @@ class PulsarSubscription(SubscriptionBase):
 
 
 class MessageQueuePulsar(MessageQueueBase):
-    """Pulsar MQ 封装"""
+    """Pulsar MQ Wrapper"""
     MAX_PRODUCERS = 10000
     DEFAULT_SUBSCRIPTION_NAME = "default"
 
@@ -127,7 +130,7 @@ class MessageQueuePulsar(MessageQueueBase):
             return self._subs[topic]
         consumer = self._client.subscribe(topic, subscription_name=self.DEFAULT_SUBSCRIPTION_NAME,
                                           consumer_type=pulsar.ConsumerType.KeyShared)
-        # 整个pulsar所有操作复用同一个线程池
+        # All Pulsar operations reuse the same thread pool
         sub = PulsarSubscription(topic, consumer, self._executor)
         self._subs[topic] = sub
         logger.info(f"[MessageQueuePulsar] Create new subscription, topic={topic}")
@@ -151,7 +154,8 @@ class MessageQueuePulsar(MessageQueueBase):
 
         loop = asyncio.get_running_loop()
 
-        logger.info(f"[MessageQueuePulsar] Sending message to topic={topic}, message_id={message.message_id}")
+        logger.info(
+            f"[MessageQueuePulsar] Sending message to topic={topic}, message_id={message.message_id}")
 
         await loop.run_in_executor(
             self._executor,

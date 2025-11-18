@@ -22,7 +22,7 @@ class CollectorKey:
 
 
 class ReplyTopicSubscription():
-    """负责监听 reply_topic 并分发响应到对应 ResponseCollector"""
+    """Responsible for listening to reply_topic and distributing responses to corresponding ResponseCollectors"""
 
     def __init__(self, mq: Optional[MessageQueueBase] = None, topic: str = None):
         self._is_active = None
@@ -33,7 +33,7 @@ class ReplyTopicSubscription():
         self.subscription: Optional[SubscriptionBase] = None
 
     def activate(self):
-        """初始化"""
+        """Initialize"""
         self.subscription = self.mq.subscribe(self.topic)
         self.subscription.set_message_handler(self.on_message)
         self.subscription.activate()
@@ -42,7 +42,7 @@ class ReplyTopicSubscription():
         logger.info(f"[ReplyTopicSubscription] activated topic={self.topic}")
 
     async def deactivate(self):
-        """清理所有 collectors"""
+        """Clean up all collectors"""
         self._is_active = False
         if self.subscription:
             await self.mq.unsubscribe(self.topic)
@@ -50,12 +50,12 @@ class ReplyTopicSubscription():
         logger.info(f"[ReplyTopicSubscription] Stopped")
 
     def _make_key(self, sender_id: str, message_id: str, request_id: Optional[str] = None) -> CollectorKey:
-        """构造 collector 唯一键"""
+        """Construct unique key for collector"""
         request_id = request_id or None
         return CollectorKey(sender_id, message_id, request_id)
 
     async def on_message(self, msg: DmqResponseMessage):
-        """消息分发给对应的 ResponseCollector"""
+        """Distribute message to corresponding ResponseCollector"""
         key = self._make_key(msg.sender_id, msg.message_id, msg.request_id)
         logger.info(f"[ReplyTopicSubscription] receive message key={key}")
 
@@ -90,8 +90,8 @@ class ReplyTopicSubscription():
             request_id: Optional[str] = None,
     ):
         """
-        按 message_id + remote_id + request_id 清理
-        - 若全为 None，则表示清理全部 collector
+        Clean up by message_id + remote_id + request_id
+        - If all are None, it means cleaning up all collectors
         """
         logger.info(
             f"[ReplyTopicSubscription] unregister_collector message_id: {message_id}, remote_id: {remote_id}, "
@@ -100,7 +100,7 @@ class ReplyTopicSubscription():
         if not self.collectors:
             return
 
-        # 过滤目标
+        # Filter targets
         keys_to_remove = []
         for key, collector in self.collectors.items():
             if (
@@ -130,7 +130,7 @@ class ReplyTopicSubscription():
             if collector:
                 tasks.append(collector.close())
 
-        # 并发关闭
+        # Close concurrently
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 

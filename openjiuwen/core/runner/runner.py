@@ -16,7 +16,7 @@ from openjiuwen.core.runner.drunner.common.constants import AGENT_ADAPTER
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
 from openjiuwen.core.runner.drunner.dmessage_queue.message_queue_factory import MessageQueueFactory
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
-from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import MqAgentAdapter
+from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
     get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
@@ -49,7 +49,7 @@ DEFAULT_RUNNER_ID = "global"
 
 class Runner:
     """
-    Runner接口
+    Runner
     """
 
     _DEFAULT_AGENT_SESSION_ID = "default_session"
@@ -89,11 +89,11 @@ class Runner:
     async def stop(self):
         logger.info("[Runner] Stopping...")
         if get_runner_config().distributed_mode:
-            # 2. 停止 ReplyTopicSubscription，清理collector
+            # 2. Stop ReplyTopicSubscription, clean up collector
             if self.system_reply_sub:
                 await self.system_reply_sub.deactivate()
                 self.system_reply_sub = None
-            # 3. 停止 MQ
+            # 3. Stop MQ
             if self._distribute_message_queue:
                 await self._distribute_message_queue.stop()
                 self._distribute_message_queue = None
@@ -127,7 +127,7 @@ class Runner:
     def add_agent(self, agent_id, agent: Union[Agent, AgentProvider, RemoteAgent]):
         if get_runner_config().distributed_mode:
             if not isinstance(agent, RemoteAgent):
-                mqAgentAdapter = MqAgentAdapter(agent_id)
+                mqAgentAdapter = AgentAdapter(agent_id)
                 mqAgentAdapter.start()
                 self._agent_mgr.add_agent(AGENT_ADAPTER + agent_id, mqAgentAdapter)
         self._agent_mgr.add_agent(agent_id, agent)
@@ -249,7 +249,7 @@ class Runner:
         return runtime and isinstance(runtime, TaskRuntime)
 
     def _create_workflow_runtime(self, runtime):
-        # workflow的runtime的转换
+        # Convert workflow runtime
         if not runtime:
             workflow_runtime = WorkflowRuntime()
         elif isinstance(runtime, TaskRuntime):
@@ -266,7 +266,7 @@ class Runner:
                 raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
                                           StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
             if isinstance(agent_with_runtime, RemoteAgent):
-                # remote agent不加runtime，保留input中的sessionId
+                # Remote agent does not add runtime, keep sessionId in input
                 if self._AGENT_CONVERSATION_ID not in inputs:
                     inputs[self._AGENT_CONVERSATION_ID] = session_id
                 return agent_with_runtime, None

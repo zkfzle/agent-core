@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import unittest
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
@@ -97,6 +97,12 @@ class TestMetaTemplateBuilder(unittest.TestCase):
         meta_template = TemplateManager().get(META_TEMPLATE_NAME_PREFIX + "custom_general")
         self.assertEqual(meta_template.content, template.content)
         TemplateManager().delete(META_TEMPLATE_NAME_PREFIX + "custom_general")
+
+        # register invalid type template
+        template = ("this is a invalid tuple meta template", )
+        with self.assertRaises(JiuWenBaseException) as context:
+            MetaTemplateBuilder.register_meta_template("custom_general", template)
+        self.assertEqual(context.exception.error_code, StatusCode.AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR.code)
 
     def test_build_with_default_meta_template(self):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")

@@ -120,7 +120,7 @@ async def test_batch_multi_stream_workflow():
         print(chunk.model_dump_json(indent=4))
 
 def create_component_stream_workflow_with_template() -> Workflow:
-    config = WorkflowConfig(stream_timeout=0.5)
+    config = WorkflowConfig(stream_timeout=5)
     workflow = Workflow(config)
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
     workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
@@ -143,6 +143,28 @@ def create_component_stream_workflow_with_template() -> Workflow:
     workflow.add_connection("batch", "end")
     return workflow
 
+def create_component_stream_workflow_without_template() -> Workflow:
+    config = WorkflowConfig(stream_timeout=5)
+    workflow = Workflow(config)
+    workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
+    workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
+    workflow.add_workflow_comp("b", Producer(), inputs_schema={"array": "${start.array}"})
+    workflow.add_workflow_comp("c", Producer(), inputs_schema={"array": "${start.array}"})
+    workflow.add_workflow_comp("batch", Producer(), inputs_schema={"array": "${start.array}"})
+    workflow.set_end_comp("end", End(),
+                          inputs_schema={"batch": "${batch.output}"},
+                          stream_inputs_schema={"a": "${a.output}", "b": "${b.output}", "c": "${c.output}"},
+                          response_mode="streaming")
+
+    workflow.add_connection("start", "a")
+    workflow.add_connection("start", "b")
+    workflow.add_connection("start", "c")
+    workflow.add_connection("start", "batch")
+    workflow.add_stream_connection("a", "end")
+    workflow.add_stream_connection("b", "end")
+    workflow.add_stream_connection("c", "end")
+    workflow.add_connection("batch", "end")
+    return workflow
 
 async def test_stream_component_in_sub_workflow_with_invoke():
     def create_component_invoke_workflow_without_template() -> Workflow:
@@ -195,6 +217,42 @@ async def test_stream_component_in_sub_workflow_with_stream():
 
     wf.add_connection("main_start", "workflow")
     wf.add_connection("workflow", "main_end")
+
+    async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        assert chunk is not None
+        print(chunk.model_dump_json(indent=4))
+
+# Test the ability of workflow components to stream between components
+async def test_stream_component_in_sub_workflow_with_substream():
+    wf = Workflow(workflow_config=WorkflowConfig(stream_timeout=10))
+    wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
+    wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_without_template()),
+                         inputs_schema={"inputs": "${main_start.array}"})
+    end = End()
+    wf.set_end_comp("main_end", end,
+                    stream_inputs_schema={"sub_workflow": "${workflow.output}"},
+                    response_mode="streaming")
+
+    wf.add_connection("main_start", "workflow")
+    wf.add_stream_connection("workflow", "main_end")
+
+    async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        assert chunk is not None
+        print(chunk.model_dump_json(indent=4))
+
+# Test the ability of workflow components to stream between components with templates
+async def test_stream_component_in_sub_workflow_with_substream_template():
+    wf = Workflow(workflow_config=WorkflowConfig(stream_timeout=10))
+    wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
+    wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_with_template()),
+                         inputs_schema={"inputs": "${main_start.array}"})
+    end = End()
+    wf.set_end_comp("main_end", end,
+                    stream_inputs_schema={"sub_workflow": "${workflow.answer}"},
+                    response_mode="streaming")
+
+    wf.add_connection("main_start", "workflow")
+    wf.add_stream_connection("workflow", "main_end")
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None

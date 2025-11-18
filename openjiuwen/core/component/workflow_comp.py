@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+from typing import AsyncIterator
+
 from openjiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -25,6 +27,10 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY))
+
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        async for value in self._sub_workflow.sub_stream(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY)):
+            yield value
 
     def graph_invoker(self) -> bool:
         return True

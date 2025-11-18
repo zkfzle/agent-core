@@ -362,17 +362,14 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
     async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         logger.info(f"begin to sub_invoke, inputs: {inputs}")
-        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True)
-        sub_workflow_runtime = SubWorkflowRuntime(runtime,
-                                                  workflow_id=self._workflow_config.metadata.id,
-                                                  actor_manager=actor_manager)
+        actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
 
         compiled_graph = self.compile(sub_workflow_runtime)
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
         if self._is_streaming:
             messages = []
             while True:
-                frame = await actor_manager.sub_workflow_stream().receive()
+                frame = await actor_manager.sub_workflow_stream().receive(self._workflow_config.stream_timeout)
                 if frame is None:
                     logger.warning("no frame received")
                     continue
@@ -391,6 +388,28 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         results = node_runtime.state().get_outputs(output_key)
         logger.info(f"end to sub_invoke, result: {results}")
         return results
+
+    async def sub_stream(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> AsyncIterator[Output]:
+        logger.info(f"begin to sub_stream, input: {inputs}")
+        actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
+        
+        compiled_graph = self.compile(sub_workflow_runtime)
+        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+        if self._is_streaming:
+            frame_count = 0
+            stream_timeout = self._workflow_config.stream_timeout
+            while True:
+                logger.debug(f"waiting for frame {frame_count} with timeout {stream_timeout}")
+                frame = await actor_manager.sub_workflow_stream().receive(stream_timeout)
+                if frame is None:
+                    logger.warning("no frame received")
+                    continue
+                if frame == StreamEmitter.END_FRAME:
+                    logger.info(f"received end frame of sub_stream after {frame_count} frames")
+                    break
+                frame_count += 1
+                logger.debug(f"yielding frame {frame_count}: {frame}")
+                yield frame
 
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
         logger.info(f"begin to invoke, input: {inputs}")
@@ -467,6 +486,24 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             tracer = Tracer()
             tracer.init(runtime.stream_writer_manager(), runtime.callback_manager())
             runtime.set_tracer(tracer)
+
+    def _prepare_sub_workflow_runtime(self, runtime: BaseRuntime):
+        """
+        Prepare common components for sub workflow execution.
+        
+        Args:
+            runtime: The base runtime
+            
+        Returns:
+            tuple: (actor_manager, sub_workflow_runtime)
+        """
+        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True)
+        sub_workflow_runtime = SubWorkflowRuntime(
+            runtime,
+            workflow_id=self._workflow_config.metadata.id,
+            actor_manager=actor_manager
+        )
+        return actor_manager, sub_workflow_runtime
 
     def _convert_to_component(self, executable: Executable) -> WorkflowComponent:
         pass

@@ -127,6 +127,8 @@ class StatusCode(Enum):
     # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999
     # Multi-Agent Orchestration - Single Runtime 131000 - 131999
     # Multi-Agent Orchestration - AgentGroup 132000 - 132999
+    AGENT_GROUP_ADD_FAILED = (132000, "failed to add agent, reason: {reason}")
+
     # Multi-Agent Orchestration - Multi-Agent Debug 133000 - 133999
     # Multi-Agent Orchestration - Distribution Runtime 134000 - 134999
     # Multi-Agent Orchestration - Multi-Agent Runner 131000-131030

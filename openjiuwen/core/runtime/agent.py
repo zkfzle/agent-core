@@ -10,6 +10,7 @@ from openjiuwen.core.runtime.callback_manager import CallbackManager
 from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.runtime.interaction.agent_checkpointer import default_agent_inmemory_checkpointer
 from openjiuwen.core.runtime.resource_manager import ResourceMgr, ResourceManager
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.state import State, InMemoryCommitState
@@ -20,11 +21,32 @@ from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.tracer.tracer import Tracer
 
 
+def _resolve_agent_checkpointer(config: Config | None, override: Checkpointer | None = None) -> Checkpointer:
+    """
+        In the pure Agent scenario (without workflow), it automatically switches to simple checkpointe
+        Other scenarios continue to use the original version of langgraph.
+    """
+    if override is not None:
+        return override
+
+    if config is None:
+        return default_inmemory_checkpointer
+
+    agent_cfg = config.get_agent_config()
+    if agent_cfg is None:
+        return default_inmemory_checkpointer
+
+    if not agent_cfg.workflows:
+        return default_agent_inmemory_checkpointer
+
+    return default_inmemory_checkpointer
+
+
 class StaticAgentRuntime(BaseRuntime):
     def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
         self._config = config if config is not None else Config()
         self._resource_manager = ResourceMgr() if resource_mgr is None else resource_mgr
-        self._checkpointer = default_inmemory_checkpointer
+        self._checkpointer = _resolve_agent_checkpointer(self._config)
 
     def config(self) -> Config:
         return self._config
@@ -60,9 +82,13 @@ class StaticAgentRuntime(BaseRuntime):
 
 
 class AgentRuntime(BaseRuntime):
-    def __init__(self, session_id: str, config: Config = None, resource_manager: ResourceManager = None,
-                 checkpointer: Checkpointer = default_inmemory_checkpointer,
-                 context: Context = None):
+    def __init__(
+            self,
+            session_id: str,
+            config: Config = None,
+            resource_manager: ResourceManager = None,
+            checkpointer: Checkpointer | None = None,
+            context: Context = None):
         self._session_id = session_id
         self._config = config
         self._resource_manager = resource_manager if resource_manager is not None else ResourceMgr()
@@ -73,7 +99,7 @@ class AgentRuntime(BaseRuntime):
         tracer = Tracer()
         tracer.init(self._stream_writer_manager, self._callback_manager)
         self._tracer = tracer
-        self._checkpointer = checkpointer
+        self._checkpointer = _resolve_agent_checkpointer(self._config, checkpointer)
         self._agent_span = self._tracer.tracer_agent_span_manager.create_agent_span() if self._tracer else None
 
     def config(self) -> Config:

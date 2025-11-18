@@ -19,6 +19,8 @@ from openjiuwen.core.utils.llm.base import BaseChatModel
 from openjiuwen.core.utils.llm.messages import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.tool.base import Tool
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
 
 class StaticWrappedRuntime(Runtime, ABC):
@@ -272,9 +274,11 @@ class RouterRuntime(StateRuntime):
 
 
 class WrappedNodeRuntime(StateRuntime):
-    def __init__(self, runtime: NodeRuntime):
+
+    def __init__(self, runtime: NodeRuntime, stream_mode: bool = False):
         super().__init__(runtime)
         self._interaction = None
+        self._stream_mode = stream_mode
 
     async def trace(self, data: dict):
         await trace(self._inner, data)
@@ -283,6 +287,11 @@ class WrappedNodeRuntime(StateRuntime):
         await trace_error(self._inner, error)
 
     async def interact(self, value):
+        if self._stream_mode:
+            raise JiuWenBaseException(
+                StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.code,
+                StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.errmsg,
+            )
         if self._interaction is None:
             self._interaction = WorkflowInteraction(self._inner)
         return await self._interaction.wait_user_inputs(value)

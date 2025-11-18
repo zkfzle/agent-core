@@ -24,8 +24,20 @@ from openjiuwen.core.stream.base import BaseStreamMode, TraceSchema, OutputSchem
 from openjiuwen.core.workflow.base import WorkflowConfig
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-from tests.unit_tests.core.workflow.mock_nodes import InteractiveNode4StreamCp, MockStartNode, MockEndNode, Node4Cp, \
-    MockStartNode4Cp, InteractiveNode4Cp, AddTenNode4Cp, CommonNode, AddTenNode
+from tests.unit_tests.core.workflow.mock_nodes import (
+    InteractiveNode4StreamCp,
+    MockStartNode,
+    MockEndNode,
+    Node4Cp,
+    MockStartNode4Cp,
+    InteractiveNode4Cp,
+    AddTenNode4Cp,
+    CommonNode,
+    AddTenNode,
+    MockStreamNode,
+    InteractiveNode4Collect,
+)
+from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -607,6 +619,40 @@ async def test_simple_stream_interactive_workflow():
             result = res.payload[1]
     assert result == {"aa": "any key"}
     assert start_node.runtime == 1
+
+
+async def test_collect_node_interactive_workflow():
+    """
+    graph : start->a->b->end
+    """
+    flow = Workflow()
+    flow.set_start_comp(
+        "start", MockStartNode("start"), inputs_schema={"a": "${inputs.a}", "b": "${inputs.b}", "c": 1, "d": [1, 2, 3]}
+    )
+    flow.add_workflow_comp(
+        "a",
+        MockStreamNode(),
+        inputs_schema={"aa": "${start.a}", "ac": "${start.c}"},
+        wait_for_all=True,
+        comp_ability=[ComponentAbility.STREAM],
+    )
+    flow.add_workflow_comp(
+        "b",
+        InteractiveNode4Collect("b"),
+        inputs_schema={"aa": "${a.aa}", "ac": "${a.ac}"},
+        stream_inputs_schema={"aa": "${a.aa}", "ac": "${a.ac}"},
+        wait_for_all=True,
+        comp_ability=[ComponentAbility.COLLECT],
+    )
+    flow.set_end_comp("end", MockEndNode("end"), inputs_schema={"result": "${b.aa}"})
+    flow.add_connection("start", "a")
+    flow.add_stream_connection("a", "b")
+    flow.add_connection("b", "end")
+    session_id = uuid.uuid4().hex
+    with pytest.raises(JiuWenBaseException) as e:
+        res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
+    assert e.value.error_code == StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.code
+    assert e.value.message == "failed to stream, caused by " + StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.errmsg
 
 
 async def test_simple_concurrent_interactive_workflow():

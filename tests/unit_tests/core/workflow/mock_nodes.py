@@ -160,6 +160,16 @@ class InteractiveNode4StreamCp(MockNodeBase):
         return result
 
 
+class InteractiveNode4Collect(MockNodeBase):
+    def __init__(self, node_id: str):
+        super().__init__(node_id)
+
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        result = await runtime.interact("Please enter any key")
+        print(result)
+        return result
+
+
 class StreamCompNode(MockNodeBase):
     def __init__(self, node_id: str):
         super().__init__(node_id)

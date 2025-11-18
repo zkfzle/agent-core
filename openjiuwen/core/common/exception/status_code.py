@@ -22,6 +22,7 @@ class StatusCode(Enum):
     INTERACTIVE_UPDATE_FAILED = (100001, "raw_inputs existed, update is invalid")
     COMPONENT_NOT_EXECUTABLE_ERROR = (100002, "workflow component should implement Executable")
     CONTROLLER_INTERRUPTED_ERROR = (100003, "controller interrupted error")
+    INTERACTIVE_NOT_SUPPORT_STREAM_ERROR = (100004, "Not support interact on stream mode")
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 
@@ -102,7 +103,6 @@ class StatusCode(Enum):
     DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH = (110024, "Invalid value of argument 'expand_subgraph', "\
                                               "expected a boolean or a non-negative integer")
 
-
     # Workflow - Exception Handling 111000 - 111999
     # Agent Orchestration 120000 - 129999
     # Agent Orchestration - ReAct Agent Orchestration And Execution 120000 - 120999
@@ -159,7 +159,6 @@ class StatusCode(Enum):
     EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
     ARRAY_CONDITION_ERROR = (140002, "Array condition error")
     NUMBER_CONDITION_ERROR = (140003, "Number condition error")
-
 
     # ContextEngine 150000 - 159999
     # ContextEngine - Context Structured Storage and Retrieval 150000 - 150999
@@ -237,10 +236,10 @@ class StatusCode(Enum):
     RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add agent group, reason: {reason}")
     RUNTIME_AGENT_GROUP_GET_FAILED = (190041, "failed to get agent group, reason: {reason}")
     RUNTIME_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove agent group, reason: {reason}")
-    
+
     # Runtime - Resource Management - Workflow Additional
     RUNTIME_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
-    
+
     # Runtime - Resource Management - Agent 190050 - 190059
     RUNTIME_AGENT_ADD_FAILED = (190050, "failed to add agent, reason: {reason}")
     RUNTIME_AGENT_GET_FAILED = (190051, "failed to get agent, reason: {reason}")
@@ -268,7 +267,6 @@ class StatusCode(Enum):
     # Runtime - callback 195000 - 195999
     # Runtime - Stream Actor 196000 - 196099
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (196000, "Message queue manager error: {error_msg}")
-
 
     @property
     def code(self):

@@ -28,6 +28,7 @@ class LlmAgentBuilder:
         self._agent_config_info = None
         self._resource = {}
 
+        self._retriever = ResourceRetriever(llm)
         self._clarifier = Clarifier(llm)
         self._generator = Generator(llm)
         self._transformer = Transformer()
@@ -70,7 +71,7 @@ class LlmAgentBuilder:
         return dsl
     
     def _update_resource(self, query):
-        resource = ResourceRetriever.retrieve(query)
+        resource = self._retriever.retrieve(query)
         for key, value in resource.items():
             if key not in self._resource:
                 self._resource.update({key: value})

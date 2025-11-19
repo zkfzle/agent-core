@@ -40,6 +40,7 @@ class WorkflowBuilder:
         self._resource = None
 
         self._intention_detector = IntentionDetector(llm)
+        self._retriever = ResourceRetriever(llm)
         self._sop_generator = SopGenerator(llm)
         self._dl_generator = DLGenerator(llm)
         self._dl_reflector = Reflector()
@@ -72,7 +73,7 @@ class WorkflowBuilder:
 
         sop_content = self._sop_generator.transform(query)
         self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
-        self._resource = ResourceRetriever().retrieve(query)
+        self._resource = self._retriever.retrieve(query)
         self._dl = self._generate_and_reflect_dl(
             dl_operation=self._dl_generator.generate,
             query=GENERATE_DL_FROM_SOP_CONTENT + sop_content,
@@ -87,10 +88,10 @@ class WorkflowBuilder:
         if self._intention_detector.detect_initial_instruction(dialog_history):
             sop_content = self._sop_generator.transform(query)
             self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
-            self._resource = ResourceRetriever().retrieve(query)
+            self._resource = self._retriever.retrieve(query)
         else:
             dialog_history_query = '\n'.join(f'{msg["role"]}: {msg["content"]}' for msg in dialog_history)
-            self._resource = ResourceRetriever().retrieve(dialog_history_query)
+            self._resource = self._retriever.retrieve(dialog_history_query)
             sop_content = self._sop_generator.generate(dialog_history_query, self._resource)
             self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
 

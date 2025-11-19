@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import unittest
 from unittest.mock import MagicMock, patch
 
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.llm.messages import AIMessage, HumanMessage
 import openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.llm_agent_builder as lb
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.llm_agent_builder import LlmAgentBuilder, State
 
@@ -32,10 +31,11 @@ class TestLlmAgentBuilder(unittest.TestCase):
         self.mock_transformer = MagicMock(name="Transformer")
         self.mock_transformer.transform_to_dsl.return_value = DSL
 
-        self.mock_resource = {"mock_plugin": [{"resource_id": "1"}]}
+        self.mock_resource_retriever = MagicMock(name="ResourceRetriever")
+        self.mock_resource_retriever.retrieve.return_value = {"mock_plugin": [{"resource_id": "1"}]}
 
     def test_init_builder(self):
-        with patch.object(lb.ResourceRetriever, "retrieve", return_value=self.mock_resource), \
+        with patch.object(lb, "ResourceRetriever", return_value=self.mock_resource_retriever), \
              patch.object(lb, 'Clarifier', return_value=self.mock_clarifier), \
              patch.object(lb, 'Generator', return_value=self.mock_generator), \
              patch.object(lb, 'Transformer', return_value=self.mock_transformer):
@@ -46,7 +46,7 @@ class TestLlmAgentBuilder(unittest.TestCase):
         self.assertEqual(builder._resource, {})
 
     def test_invalid_state(self):
-        with patch.object(lb.ResourceRetriever, "retrieve", return_value=self.mock_resource), \
+        with patch.object(lb, "ResourceRetriever", return_value=self.mock_resource_retriever), \
              patch.object(lb, 'Clarifier', return_value=self.mock_clarifier), \
              patch.object(lb, 'Generator', return_value=self.mock_generator), \
              patch.object(lb, 'Transformer', return_value=self.mock_transformer):
@@ -59,7 +59,7 @@ class TestLlmAgentBuilder(unittest.TestCase):
         self.assertIn("未知的LLM Agent构建阶段", str(cm.exception))
 
     def test_update_resource(self):
-        with patch.object(lb.ResourceRetriever, "retrieve", return_value=self.mock_resource), \
+        with patch.object(lb, "ResourceRetriever", return_value=self.mock_resource_retriever), \
              patch.object(lb, 'Clarifier', return_value=self.mock_clarifier), \
              patch.object(lb, 'Generator', return_value=self.mock_generator), \
              patch.object(lb, 'Transformer', return_value=self.mock_transformer):
@@ -71,7 +71,7 @@ class TestLlmAgentBuilder(unittest.TestCase):
             self.assertEqual(builder._resource, {"mock_plugin": [{"resource_id": "1"}]})
 
     def test_initial(self):
-        with patch.object(lb.ResourceRetriever, "retrieve", return_value=self.mock_resource), \
+        with patch.object(lb, "ResourceRetriever", return_value=self.mock_resource_retriever), \
              patch.object(lb, 'Clarifier', return_value=self.mock_clarifier), \
              patch.object(lb, 'Generator', return_value=self.mock_generator), \
              patch.object(lb, 'Transformer', return_value=self.mock_transformer):
@@ -84,7 +84,7 @@ class TestLlmAgentBuilder(unittest.TestCase):
         self.assertEqual(builder._resource, {"mock_plugin": [{"resource_id": "1"}]})
 
     def test_construct(self):
-        with patch.object(lb.ResourceRetriever, "retrieve", return_value=self.mock_resource), \
+        with patch.object(lb, "ResourceRetriever", return_value=self.mock_resource_retriever), \
              patch.object(lb, 'Clarifier', return_value=self.mock_clarifier), \
              patch.object(lb, 'Generator', return_value=self.mock_generator), \
              patch.object(lb, 'Transformer', return_value=self.mock_transformer):

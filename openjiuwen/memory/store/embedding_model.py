@@ -4,7 +4,6 @@
 from typing import List
 import torch
 from transformers import AutoModel, AutoTokenizer
-from openjiuwen.core.memory.config.config import ModelConfig
 import torch.nn.functional as F
 
 class EmbeddingModel:

@@ -6,11 +6,10 @@ from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.engine.memory_engine_base import MemoryEngineBase
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
 
-logger = get_logger()
 
 
 def new(

@@ -5,7 +5,7 @@
 from abc import abstractmethod, ABC
 from typing import Any
 
-from ..mem_unit.memory_unit import BaseMemoryUnit
+from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit
 
 
 class BaseMemoryManager(ABC):

@@ -5,12 +5,11 @@ from ..mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, Use
 from openjiuwen.core.memory.generation.categorizer import Categorizer
 from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
 from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
-from ..memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from ..config.config import Config
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
-logger = get_logger()
 category_to_class = {
     "user_profile": MemoryType.USER_PROFILE
 }

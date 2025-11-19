@@ -2,12 +2,11 @@ import json
 from enum import Enum
 from typing import List
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.prompt.conflict_resolution import (
     CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER)
 
-logger = get_logger()
 
 
 class ConflictType(Enum):

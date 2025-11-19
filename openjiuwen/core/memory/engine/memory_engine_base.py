@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from datetime import datetime
+from typing import Any, Tuple
 from sqlalchemy import Engine
-from openjiuwen.core.memory.messages.messages import SeqMessage
-from openjiuwen.core.memory.config.config import Config
+from openjiuwen.core.memory.config.config import Config, MemoryConfig
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.utils.llm.messages import BaseMessage
 
 
 class MemoryEngineBase(ABC):
@@ -22,7 +23,7 @@ class MemoryEngineBase(ABC):
         pass
     
     @abstractmethod
-    def set_app_config(self, app_id: str, config_key: str, config_value: Any):
+    def set_app_config(self, app_id: str, config: MemoryConfig):
         pass
 
     @abstractmethod
@@ -30,7 +31,8 @@ class MemoryEngineBase(ABC):
         self,
         user_id: str,
         app_id: str,
-        messages: list[SeqMessage],
+        messages: list[BaseMessage],
+        timestamp: datetime,
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
@@ -42,7 +44,8 @@ class MemoryEngineBase(ABC):
         self,
         user_id: str,
         app_id: str,
-        messages: list[SeqMessage],
+        messages: list[BaseMessage],
+        timestamp: datetime,
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
@@ -50,11 +53,11 @@ class MemoryEngineBase(ABC):
         pass
     
     @abstractmethod
-    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[SeqMessage]:
+    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[Tuple[BaseMessage, datetime]]:
         pass
     
     @abstractmethod
-    def get_message_by_id(self, msg_id: str) -> SeqMessage:
+    def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
         pass
     
     @abstractmethod
@@ -92,4 +95,12 @@ class MemoryEngineBase(ABC):
     
     @abstractmethod
     def get_user_profile_by_topics(self, user_id: str, app_id: str, topics: list[str]) -> dict[str, str]:
+        pass
+
+    @abstractmethod
+    def update_user_variable(self, user_id: str, app_id: str, name: str, value: str):
+        pass
+
+    @abstractmethod
+    def delete_user_variable(self, user_id: str, app_id: str, name: str):
         pass

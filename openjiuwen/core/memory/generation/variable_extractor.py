@@ -17,9 +17,7 @@ from openjiuwen.core.memory.prompt.variable_extractor import (
     EXTRACT_VARIABLES_SYS_zh_CN
 )
 
-from openjiuwen.core.memory.memory_logging import get_logger
-logger = get_logger()
-
+from openjiuwen.core.common.logging import logger
 
 class ComprehensionExtractor:
     def __init__(self):

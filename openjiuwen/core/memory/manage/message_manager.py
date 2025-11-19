@@ -3,11 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from datetime import datetime, timezone
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
-from ..manage.data_id_manager import DataIdManager
-from ..messages.messages import SeqMessage
+from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
+from openjiuwen.core.utils.llm.messages import BaseMessage
 
 
 ## DB-Based Message Management
@@ -18,7 +18,7 @@ class MessageManager:
         self.data_id = data_id_manager
 
     def add(self, user_id: str = None, app_id: str = None, content: str = None,
-            role: str = None, session_id: str = None) -> str:
+            role: str = None, session_id: str = None, timestamp: datetime = None) -> str:
         message_id = str(self.data_id.generate_next_id())
         if user_id is None:
             raise ValueError('Must provide user_id')
@@ -26,7 +26,7 @@ class MessageManager:
             raise ValueError('Must provide app_id')
         if content is None:
             raise ValueError('Must provide content')
-        time = datetime.now(timezone.utc)
+        time = datetime.now(timezone.utc) if not timestamp else timestamp
         data = {
             'message_id': message_id,
             'user_id': user_id or '',
@@ -40,7 +40,7 @@ class MessageManager:
         return message_id
 
     def get(self, user_id: str = None, app_id: str = None, session_id: str = None,
-            message_len: int = 10) -> List[SeqMessage]:
+            message_len: int = 10) -> list[Tuple[BaseMessage, datetime]]:
         filters: Dict[str, Any] = {}
         if user_id is not None:
             filters['user_id'] = user_id
@@ -51,10 +51,10 @@ class MessageManager:
         if message_len <= 0:
             raise ValueError('message_len Must bigger than zero')
         messages = self.sql_db.get_with_sort(table=self.message_table, filters=filters, limit=message_len)
-        return [SeqMessage(**message) for message in messages]
+        return [(BaseMessage(**message), message['timestamp']) for message in messages]
 
-    def get_by_id(self, msg_id: str) -> List[SeqMessage]:
+    def get_by_id(self, msg_id: str) -> list[Tuple[BaseMessage, datetime]]:
         filters: Dict[str, Any] = {}
-        filters['message_id'] = msg_id
+        filters['message_id'] = [msg_id]
         messages = self.sql_db.condition_get(table=self.message_table, conditions=filters)
-        return [SeqMessage(**message) for message in messages]
+        return [(BaseMessage(**message), message['timestamp']) for message in messages]

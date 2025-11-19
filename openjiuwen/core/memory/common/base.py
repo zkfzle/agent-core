@@ -4,10 +4,7 @@
 
 from typing import Optional
 
-from openjiuwen.core.memory.memory_logging import get_logger
 from openjiuwen.core.memory.store.base_semantic_store import SearchHit
-
-logger = get_logger()
 
 
 def generate_idx_name(usr_id: str, app_id: str, agent_id: Optional[str] = None, mem_type: Optional[str] = None):

@@ -9,13 +9,12 @@ import re
 import faiss
 import numpy as np
 
-from openjiuwen.core.memory.config.config import ModelConfig, Config
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.common.base import generate_idx_name
 from openjiuwen.memory.store.faiss_semantic_utils import SearchType, TimeUtil
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore, SearchHit
 from openjiuwen.memory.store.embedding_model import EmbeddingModel
-logger = get_logger()
+
 
 def match_index_name(match_list: List[str], cur_index: str) -> bool:
     cur_parts = re.split(r'\^', cur_index)

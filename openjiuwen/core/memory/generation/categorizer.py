@@ -2,11 +2,10 @@ import json
 from typing import List
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.prompt.categorizer import CATEGORIZATION_PROMPT
 
-logger = get_logger()
 
 
 class Categorizer:

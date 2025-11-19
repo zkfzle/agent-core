@@ -123,7 +123,7 @@ class UserProfileManager(BaseMemoryManager):
 
     def list_user_profile(self, user_id: str, app_id: str, profile_type: Optional[str] = None,
                           mem_type=MemoryType.USER_PROFILE) -> List[UserProfileUnit]:
-        datas = data = self.mem_store.get_all(user_id=user_id, app_id=app_id, mem_type=mem_type.value)
+        datas = self.mem_store.get_all(user_id=user_id, app_id=app_id, mem_type=mem_type.value)
         new_datas = []
         if profile_type is not None:
             for data in datas:

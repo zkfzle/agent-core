@@ -22,5 +22,5 @@ class DataIdManager:
         with self.lock:
             ret = self.next_id
             self.next_id += 1
-            self.kv_store.set(DataIdManager.ID_KEY, self.next_id)
+            self.kv_store.set(DataIdManager.ID_KEY, str(self.next_id))
             return ret

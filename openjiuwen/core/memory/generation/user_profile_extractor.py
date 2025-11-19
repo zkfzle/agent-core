@@ -2,12 +2,10 @@ import json
 from typing import List, Dict
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.generation.categorizer import Categorizer
 from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_EXTRACTOR_PROMPT
-
-logger = get_logger()
 
 
 def _get_message(user_define: Dict[str, str] = None) -> str:

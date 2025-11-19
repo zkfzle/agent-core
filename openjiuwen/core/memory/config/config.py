@@ -4,6 +4,10 @@
 
 from pydantic import BaseModel, Field
 
+class MemoryConfig(BaseModel):
+    mem_variables: dict[str, str] = Field(default_factory=dict)
+    enable_long_term_mem: bool = Field(default=False)
+
 class RealtimeConfig(BaseModel):
     window_size: int = 5
     user_profile_custom_define: dict[str, str] = {}

@@ -7,10 +7,9 @@ import struct
 from typing import Any
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.common.read_write_lock import ReadWriteLock
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
 
-logger = get_logger()
 
 class UserMemStore:
 

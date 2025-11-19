@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any
+from datetime import datetime
+from typing import Any, Tuple
 from sqlalchemy.engine import Engine
 
 from openjiuwen.core.memory.manage.write_manager import WriteManager
@@ -7,14 +8,13 @@ from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
-from openjiuwen.core.memory.messages.messages import SeqMessage
 from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.engine.memory_engine_base import MemoryEngineBase
-from openjiuwen.core.memory.config.config import Config
+from openjiuwen.core.memory.config.config import Config, MemoryConfig
 from openjiuwen.core.memory.config.config_manager import ConfigManger
 from openjiuwen.core.memory.generation.generation import Generator
-from openjiuwen.core.memory.memory_logging import get_logger
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
@@ -22,8 +22,6 @@ from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.memory.store.message import create_tables
-
-logger = get_logger()
 
 
 def _check_user_and_app_id(user_id: str, app_id: str, context="Operation"):
@@ -68,24 +66,22 @@ class MemoryEngine(MemoryEngineBase):
         self.generator = Generator(self.search_manager)
         self.write_manager = WriteManager(managers, user_mem_store)
         
-    def set_app_config(self, app_id: str, config_key: str, config_value: Any):
+    def set_app_config(self, app_id: str, config: MemoryConfig):
         if app_id is None or app_id.strip() == "":
             logger.warning("set_app_config failed: app_id is empty.")
             return False
-        if config_key is None or config_key.strip() == "":
-            logger.warning("set_app_config failed: config_key is empty.")
+        if config is None:
+            logger.warning("set_app_config failed: config is empty.")
             return False
-        if config_value is None:
-            logger.warning("set_app_config failed: config_value is None.")
-            return False
-        self.config_manager.set_app_config(app_id, config_key, config_value)
+        self.config_manager.set_app_config(app_id, config)
         return True
     
     def add_conversation_messages(
         self,
         user_id: str,
         app_id: str,
-        messages: list[SeqMessage],
+        messages: list[BaseMessage],
+        timestamp: datetime = None,
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
@@ -114,6 +110,7 @@ class MemoryEngine(MemoryEngineBase):
                 role=msg.role,
                 content=msg.content,
                 session_id=session_id,
+                timestamp=timestamp
             )
         all_memory: list[BaseMemoryUnit] = self.generator.gen_all_memory(
             app_id=app_id,
@@ -133,18 +130,19 @@ class MemoryEngine(MemoryEngineBase):
         self,
         user_id: str,
         app_id: str,
-        messages: list[SeqMessage],
+        messages: list[BaseMessage],
+        timestamp: datetime = None,
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
     ) -> str:
         loop = asyncio.get_event_loop()
         message_mem_id = await loop.run_in_executor(None, self.add_conversation_messages,
-                                                   user_id, app_id, messages,
+                                                   user_id, app_id, messages, timestamp,
                                                    request_config, session_id, llm)
         return message_mem_id
     
-    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[SeqMessage]:
+    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[Tuple[BaseMessage, datetime]]:
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         return self.message_manager.get(
@@ -153,7 +151,7 @@ class MemoryEngine(MemoryEngineBase):
             session_id=session_id
         )
     
-    def get_message_by_id(self, msg_id: str) -> SeqMessage:
+    def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         return self.message_manager.get_by_id(msg_id)[0]
@@ -187,7 +185,19 @@ class MemoryEngine(MemoryEngineBase):
         if not name or name.strip() == "":
             raise ValueError("Query Variable failed: variable name is empty.")
         return self.search_manager.get_user_variable(user_id, app_id, name)
-    
+
+    def update_user_variable(self, user_id: str, app_id: str, name: str, value: str):
+        if not self.variable_manager:
+            raise ValueError("Variable Manager is not initialized")
+        self.variable_manager.update_user_variable(user_id=user_id, app_id=app_id, var_name=name, var_mem=value)
+        return True
+
+    def delete_user_variable(self, user_id: str, app_id: str, name: str):
+        if not self.variable_manager:
+            raise ValueError("Variable Manager is not initialized")
+        self.variable_manager.delete_user_variable(user_id=user_id, app_id=app_id, var_name=name)
+        return True
+
     def search_user_mem(self, user_id: str, app_id: str, query: str, num: int, threshold: float = 0.3) \
             -> list[dict[str, Any]]:
         _check_user_and_app_id(user_id, app_id, "Search User Memory")

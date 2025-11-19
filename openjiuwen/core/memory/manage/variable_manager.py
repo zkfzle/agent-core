@@ -5,12 +5,10 @@
 from re import escape
 from typing import Any, Optional
 
-from .base_memory_manager import BaseMemoryManager
-from ..memory_logging import get_logger
-from ..mem_unit.memory_unit import VariableUnit
-from ..store.base_kv_store import BaseKVStore
-
-logger = get_logger()
+from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.mem_unit.memory_unit import VariableUnit
+from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 
 
 class VariableManager(BaseMemoryManager):

@@ -14,6 +14,6 @@ CONFLICT_RESOLUTION_USER = """
  - 同类子集→某一条旧消息是新消息的子集，新消息event=ADD，仅这条旧消息event=DELETE，其他旧消息event=NONE；\n
  - 信息冲突→冲突涉及的旧消息event=DELETE，新消息event=ADD，其他旧消息event=NONE；\n
  - 无关联→新消息event=ADD，所有旧消息 event=NONE。\n
-3. 输出格式：保持输入 JSON 列表格式，仅修改 text 和 event 字段。\n
+3. 输出格式：保持输入 JSON 列表格式, 不要有任何额外的Markdown格式（如 ```json``` ）或解释性文字，仅修改 text 和 event 字段。\n
 输入：{output_format}\n
 """

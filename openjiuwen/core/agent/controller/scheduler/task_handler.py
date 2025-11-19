@@ -6,7 +6,7 @@ from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.agent.common.enum import TaskType, TaskStatus
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.core.agent.task.task import Task, TaskResult
-from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException

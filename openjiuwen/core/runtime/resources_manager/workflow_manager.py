@@ -2,14 +2,13 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import List, Tuple, TypeVar, Optional, Union
+from typing import List, Tuple, TypeVar, Optional, Union, Callable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.abstract_manager import AbstractManager
+from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_workflow_with_trace
 from openjiuwen.core.utils.tool.schema import ToolInfo
-from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema
 
 Workflow = TypeVar("Workflow", contravariant=True)
 
@@ -17,7 +16,7 @@ Workflow = TypeVar("Workflow", contravariant=True)
 def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:
     return f"{workflow_id}_{workflow_version}"
 
-WorkflowProvider = lambda: Workflow
+WorkflowProvider = Callable[[], Workflow]
 
 class WorkflowMgr(AbstractManager[Workflow]):
     def __init__(self):

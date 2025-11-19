@@ -1,7 +1,7 @@
 # tests/test_workflow_agent_invoke_real.py
 import os
 
-from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 os.environ["LLM_SSL_VERIFY"] = "false"

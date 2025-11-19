@@ -17,7 +17,7 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
-from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1
+from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, CommonNode
 
 pytestmark = pytest.mark.asyncio
 
@@ -152,3 +152,21 @@ class TestBranchComponent:
         await self.runtime_with_expression("length(${start.input}) == 0", [])
         await self.runtime_with_expression("length(${start.input}) == 0", '')
         await self.runtime_with_expression("length(${start.input}) == 0", ())
+
+    # async def test_branch_condition(self):
+    #     workflow = Workflow()
+    #     workflow.set_start_comp("start", Start(), inputs_schema={"input3": "${data3}", "input4": "${data4}"})
+    #
+    #     branch_comp = BranchComponent()
+    #     branch_comp.add_branch(condition="(${start.input5}) || (${start.input4.k})", target=["end"])
+    #     branch_comp.add_branch(condition="${start.input4.k3}", target=["end"])
+    #     workflow.add_workflow_comp("branch_component", branch_comp)
+    #
+    #     workflow.add_workflow_comp("print_inputs", CommonNode("print_inputs"), inputs_schema={"data": "${start}"})
+    #     workflow.set_end_comp("end", End(), inputs_schema={"end_out": "${print_inputs}"})
+    #
+    #     workflow.add_connection("start", "branch_component")
+    #     workflow.add_connection("print_inputs", "end")
+    #
+    #     inputs = {"data4": {"k2": {"k": "v"}, "k3": {"k": True, "arr": [1]}}}
+    #     print(await workflow.invoke(inputs, WorkflowRuntime()))

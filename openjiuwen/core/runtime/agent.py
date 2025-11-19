@@ -6,12 +6,12 @@ from typing import Any
 
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.agent_state import StateCollection
-from openjiuwen.core.runtime.callback_manager import CallbackManager
+from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.interaction.agent_checkpointer import default_agent_inmemory_checkpointer
-from openjiuwen.core.runtime.resource_manager import ResourceMgr, ResourceManager
+from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr, ResourceManager
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.state import State, InMemoryCommitState
 from openjiuwen.core.runtime.workflow import WorkflowRuntime

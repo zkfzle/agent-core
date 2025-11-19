@@ -13,7 +13,7 @@ from openjiuwen.core.component.intent_detection_comp import IntentDetectionCompo
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo

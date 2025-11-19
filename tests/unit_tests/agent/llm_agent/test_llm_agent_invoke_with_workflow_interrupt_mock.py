@@ -34,12 +34,12 @@
 import os
 import unittest
 from datetime import datetime
-from typing import List, Any, Union, AsyncIterator, Dict, Iterator
-from unittest.mock import patch, AsyncMock, Mock
+from typing import List, Any, AsyncIterator, Dict, Iterator
+from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
+from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
@@ -53,7 +53,7 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMet
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 
 
 def build_current_date():

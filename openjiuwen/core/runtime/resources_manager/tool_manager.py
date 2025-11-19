@@ -2,11 +2,11 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Callable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.abstract_manager import AbstractManager
+from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace
 from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.tool.base import Tool
@@ -21,7 +21,7 @@ from openjiuwen.core.utils.tool.mcp.base import (
 )
 from openjiuwen.core.common.logging import logger
 
-ToolProvider = lambda: Tool
+ToolProvider = Callable[[], Tool]
 
 class ToolMgr(AbstractManager[Tool]):
     def __init__(self) -> None:

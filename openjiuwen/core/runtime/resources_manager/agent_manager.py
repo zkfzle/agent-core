@@ -1,18 +1,15 @@
-import os
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Callable
 
-from openjiuwen.agent.react_agent import ReActAgent
 from openjiuwen.core.agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runner.drunner.common.constants import AGENT_ADAPTER
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.runner_config import get_runner_config
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
-from openjiuwen.core.runtime.resource_manager import ResourceMgr
-from openjiuwen.core.runtime.abstract_manager import AbstractManager
+from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
+from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 
 
 @dataclass
@@ -21,7 +18,7 @@ class AgentWithRuntime:
     agent: Agent
 
 
-AgentProvider = lambda: Agent
+AgentProvider = Callable[[], Agent]
 
 
 class AgentMgr(AbstractManager[AgentWithRuntime]):

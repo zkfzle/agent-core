@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.abstract_manager import AbstractManager
+from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.runner.agent_group import AgentGroup
 
 class AgentGroupProvider(ABC):

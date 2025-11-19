@@ -5,10 +5,10 @@
 from abc import ABC, abstractmethod
 from typing import TypeVar
 
-from openjiuwen.core.runtime.tool_manager import ToolMgr
-from openjiuwen.core.runtime.workflow_manager import WorkflowMgr
-from openjiuwen.core.runtime.prompt_manager import PromptMgr
-from openjiuwen.core.runtime.model_manager import ModelMgr
+from openjiuwen.core.runtime.resources_manager.tool_manager import ToolMgr
+from openjiuwen.core.runtime.resources_manager.workflow_manager import WorkflowMgr
+from openjiuwen.core.runtime.resources_manager.prompt_manager import PromptMgr
+from openjiuwen.core.runtime.resources_manager.model_manager import ModelMgr
 
 Workflow = TypeVar("Workflow", contravariant=True)
 

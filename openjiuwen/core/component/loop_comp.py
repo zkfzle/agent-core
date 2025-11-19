@@ -85,7 +85,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True)
+        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, runtime=runtime)
         loop_runtime = SubWorkflowRuntime(runtime.parent(), self._workflow_config.metadata.id, actor_manager)
         self.compiled_graph = self.compile(loop_runtime)
         await self.compiled_graph.invoke(inputs, loop_runtime)

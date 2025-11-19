@@ -22,7 +22,7 @@ class TimeoutAsyncIteratorWrapper:
         try:
             return await asyncio.wait_for(
                 self._aiter.__anext__(),
-                timeout=self._timeout
+                timeout=self._timeout if self._timeout and self._timeout > 0 else None
             )
         except StopAsyncIteration:
             raise

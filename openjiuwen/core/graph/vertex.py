@@ -14,6 +14,7 @@ from openjiuwen.core.graph.atomic_node import AsyncAtomicNode
 from openjiuwen.core.graph.executable import Executable, Output
 from openjiuwen.core.graph.graph_state import GraphState
 from openjiuwen.core.graph.timeout_async_interator_wrapper import TimeoutAsyncIteratorWrapper
+from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.utils import get_by_schema
 from openjiuwen.core.runtime.workflow import NodeRuntime
@@ -29,7 +30,6 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         self._executable = executable
         self._runtime: NodeRuntime = None
         self._stream_called_timeout = 10
-        self._stream_frame_timeout = 10
         # if stream_call is available, call should wait for it
         self._stream_done = asyncio.Future()
         self._stream_called = False
@@ -37,9 +37,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
     def init(self, runtime: BaseRuntime) -> bool:
         self._runtime = NodeRuntime(runtime, self._node_id)
-        self._stream_frame_timeout = self._runtime.config().get_workflow_config(
-            self._runtime.workflow_id()).stream_timeout
-        self._stream_called_timeout = self._stream_frame_timeout
+        self._stream_called_timeout = runtime.config().get_env(COMP_STREAM_CALL_TIMEOUT_KEY)
         self._node_config = self._runtime.node_config()
         return True
 
@@ -166,7 +164,6 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
     async def __trace_inputs__(self, inputs: Optional[dict]) -> None:
         if self._executable.skip_trace():
             return
-        # TODO tool info
         await trace_inputs(self._runtime, inputs)
 
         if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
@@ -193,7 +190,8 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         # wait only when stream_call called
         if self._stream_called:
             try:
-                result = await asyncio.wait_for(self._stream_done, timeout=self._stream_called_timeout)
+                result = await asyncio.wait_for(self._stream_done,
+                                                timeout=self._stream_called_timeout if self._stream_called_timeout and self._stream_called_timeout > 0 else None)
                 if isinstance(result, Exception):
                     raise result
             except asyncio.TimeoutError:

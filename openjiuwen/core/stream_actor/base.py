@@ -35,9 +35,10 @@ class StreamGraph:
 
 
 class StreamActor:
-    def __init__(self, node_id: str, vertex: StreamConsumer, abilities: list[ComponentAbility], sources: list[str]):
+    def __init__(self, node_id: str, vertex: StreamConsumer, abilities: list[ComponentAbility], sources: list[str],
+                 stream_generator_timeout: float = 1):
         self._processors: dict[ComponentAbility, StreamProcessor] = {
-            ability: StreamProcessor(node_id, sources)
+            ability: StreamProcessor(node_id, sources, stream_generator_timeout=stream_generator_timeout)
             for ability in abilities
         }
         self._task = None
@@ -67,11 +68,12 @@ class StreamActor:
 
 
 class StreamProcessor:
-    def __init__(self, node_id: str, sources: list[str]):
+    def __init__(self, node_id: str, sources: list[str], stream_generator_timeout: float = 1):
         self.node_id = node_id
         self.queue = asyncio.Queue()
         self.processor_queues: dict[str, list[asyncio.Queue]] = {}
         self.sources = set(sources)
+        self._timeout = stream_generator_timeout if stream_generator_timeout > 0 else None
 
     async def run(self):
         logger.info(f"stream processor started for {self.node_id}")
@@ -123,9 +125,9 @@ class StreamProcessor:
 
         async def generator():
             while True:
-                message = await asyncio.wait_for(queue.get(), timeout=1)  # TODO: config timeout
+                message = await asyncio.wait_for(queue.get(), timeout=self._timeout)
                 if message is None:
-                    logger.warning(f"stream processor finished for {self.node_id}, message timeout")
+                    logger.warning(f"stream processor finished for {self.node_id}, message timeout {self._timeout}")
                     break
                 if isinstance(message, EndFrame):
                     logger.debug(f"EndFrame received: {message}, k_path: {k_path}, r_path: {r_path}")

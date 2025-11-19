@@ -7,6 +7,9 @@ from typing import TypedDict, Any, Optional
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STREAM_INPUT_GEN_TIMEOUT_KEY, \
+    END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY, END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_STREAM_TIMEOUT, \
+    WORKFLOW_INVOKE_TIMEOUT
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 
 
@@ -30,27 +33,42 @@ class Config(ABC):
         self._env: dict = {}
         self._workflow_configs: dict[str, WorkflowConfig] = {}
         self._agent_config: AgentConfig = None
+        self._load_envs_()
 
-    def set_envs(self, envs: dict[str, str]) -> None:
+    def set_envs(self, envs: dict[str, Any]) -> None:
         """
         set environment variables
         :param envs: envs
         """
+        if not isinstance(envs, dict):
+            return
         self._env.update(envs)
 
-    def get_env(self, key: str) -> Any:
+    def get_env(self, key: str, default: Any = None) -> Optional[Any]:
         """
         get environment variable by given key
         :param key: environment variable key
+        :default key: environment variable default key
         :return: environment variable value
         """
         if key in self._env:
             return self._env[key]
         else:
-            return None
+            return default
 
-    def __load_envs__(self) -> None:
-        pass
+    def _load_envs_(self) -> None:
+        self._load_builtin_configs_()
+
+    def _load_builtin_configs_(self):
+        builtin_configs = {
+            COMP_STREAM_CALL_TIMEOUT_KEY: -1,
+            STREAM_INPUT_GEN_TIMEOUT_KEY: -1,
+            END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY: 5,
+            END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY: 5,
+            WORKFLOW_STREAM_TIMEOUT: 60,
+            WORKFLOW_INVOKE_TIMEOUT: 60,
+        }
+        self.set_envs(builtin_configs)
 
     def get_workflow_config(self, workflow_id):
         if workflow_id is None:

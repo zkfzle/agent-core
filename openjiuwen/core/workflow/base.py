@@ -22,6 +22,7 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
+from openjiuwen.core.runtime.constants import WORKFLOW_INVOKE_TIMEOUT, WORKFLOW_STREAM_TIMEOUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from openjiuwen.core.runtime.state import Transformer
@@ -369,7 +370,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if self._is_streaming:
             messages = []
             while True:
-                frame = await actor_manager.sub_workflow_stream().receive(self._workflow_config.stream_timeout)
+                frame = await actor_manager.sub_workflow_stream().receive(runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT))
                 if frame is None:
                     logger.warning("no frame received")
                     continue
@@ -397,7 +398,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
         if self._is_streaming:
             frame_count = 0
-            stream_timeout = self._workflow_config.stream_timeout
+            stream_timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
             while True:
                 logger.debug(f"waiting for frame {frame_count} with timeout {stream_timeout}")
                 frame = await actor_manager.sub_workflow_stream().receive(stream_timeout)
@@ -412,27 +413,31 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 yield frame
 
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
-        logger.info(f"begin to invoke, input: {inputs}")
-        chunks = []
-        async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
-            chunks.append(chunk)
+        async def _invoke_task():
+            logger.info(f"begin to invoke, input: {inputs}")
+            chunks = []
+            async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
+                chunks.append(chunk)
 
-        is_interaction = False
-        for chunk in chunks:
-            if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
-                is_interaction = True
-                break
-        if is_interaction:
-            output = WorkflowOutput(result=[chunk for chunk in chunks],
-                                    state=WorkflowExecutionState.INPUT_REQUIRED)
-        else:
-            if self._is_streaming:
-                result = chunks
+            is_interaction = False
+            for chunk in chunks:
+                if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
+                    is_interaction = True
+                    break
+            if is_interaction:
+                output = WorkflowOutput(result=[chunk for chunk in chunks],
+                                        state=WorkflowExecutionState.INPUT_REQUIRED)
             else:
-                result = runtime.state().get_outputs(self._end_comp_id)
-            output = WorkflowOutput(result=result, state=WorkflowExecutionState.COMPLETED)
-        logger.info("end to invoke, results=%s", output)
-        return output
+                if self._is_streaming:
+                    result = chunks
+                else:
+                    result = runtime.state().get_outputs(self._end_comp_id)
+                output = WorkflowOutput(result=result, state=WorkflowExecutionState.COMPLETED)
+            logger.info("end to invoke, results=%s", output)
+            return output
+
+        invoke_timeout = runtime.config().get_env(WORKFLOW_INVOKE_TIMEOUT)
+        return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
 
     async def stream(
             self,
@@ -444,9 +449,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         self._validate_and_init_runtime(runtime, stream_modes, context)
         # workflow start tracer info
         await workflow_trace_inputs(runtime, inputs)
-        compiled_graph = self.compile(runtime)
-
         async def stream_process():
+            compiled_graph = self.compile(runtime)
             try:
                 await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, runtime)
             finally:
@@ -455,9 +459,12 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 await workflow_trace_outputs(runtime, outputs)
                 await runtime.stream_writer_manager().stream_emitter().close()
 
-        task = asyncio.create_task(stream_process())
+        timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
+        task = asyncio.create_task(
+            self._execute_with_timeout(stream_process, timeout, StatusCode.WORKFLOW_STREAM_TIMEOUT))
+
         interaction_chuck_list = []
-        async for chunk in runtime.stream_writer_manager().stream_output(self._workflow_config.stream_timeout):
+        async for chunk in runtime.stream_writer_manager().stream_output(timeout):
             yield chunk
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 interaction_chuck_list.append(chunk)
@@ -474,12 +481,18 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         except Exception as e:
             raise e
 
+    async def _execute_with_timeout(self, task, timeout, status_code):
+        try:
+            return await asyncio.wait_for(task(), timeout=timeout if (timeout and timeout > 0) else None)
+        except asyncio.TimeoutError:
+            raise JiuWenBaseException(status_code.code, status_code.errmsg.format(timeout=timeout))
+
     def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
         if isinstance(runtime, WorkflowRuntime):
             runtime.set_workflow_id(self._workflow_config.metadata.id)
             if context:
                 runtime._context = context
-        mq_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=False)
+        mq_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=False, runtime=runtime)
         runtime.set_actor_manager(mq_manager)
         runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
         if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
@@ -497,7 +510,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         Returns:
             tuple: (actor_manager, sub_workflow_runtime)
         """
-        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True)
+        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, runtime=runtime)
         sub_workflow_runtime = SubWorkflowRuntime(
             runtime,
             workflow_id=self._workflow_config.metadata.id,

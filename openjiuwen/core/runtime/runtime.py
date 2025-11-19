@@ -193,6 +193,10 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
+    def get_env(self, key) -> Optional[Any]:
+        pass
+
+    @abstractmethod
     def base(self) -> BaseRuntime:
         pass
 

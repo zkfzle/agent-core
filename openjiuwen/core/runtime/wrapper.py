@@ -5,7 +5,6 @@
 from abc import ABC
 from typing import Union, Any, Optional, List, Tuple, AsyncIterator
 
-from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.runtime.agent import AgentRuntime
 from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
@@ -136,6 +135,9 @@ class WrappedRuntime(Runtime, ABC):
 
     def get_agent_config(self):
         return self._inner.config().get_agent_config()
+
+    def get_env(self, key) -> Optional[Any]:
+        return self._inner.config().get_env(key)
 
     def base(self) -> BaseRuntime:
         return self._inner
@@ -269,6 +271,9 @@ class RouterRuntime(StateRuntime):
     def get_agent_config(self):
         pass
 
+    def get_env(self, key) -> Optional[Any]:
+        pass
+
     def base(self) -> BaseRuntime:
         pass
 
@@ -319,6 +324,9 @@ class WrappedNodeRuntime(StateRuntime):
 
     def get_agent_config(self):
         return self._inner.config().get_agent_config()
+
+    def get_env(self, key) -> Optional[Any]:
+        return self._inner.config().get_env(key)
 
 
 class TaskRuntime(StateRuntime):

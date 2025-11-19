@@ -14,6 +14,12 @@ class StatusCode(Enum):
     WORKFLOW_NOT_BOUND_TO_AGENT = (1, "workflow not bound to agent")
     TOOL_NOT_BOUND_TO_AGENT = (2, "tool not bound to agent")
 
+
+    # Workflow 101 - 200
+    WORKFLOW_INVOKE_TIMEOUT=(101, "workflow invoke exceeded {timeout}s")
+    WORKFLOW_STREAM_TIMEOUT=(102, "workflow stream exceeded {timeout}s")
+
+
     # Workflow Component  100000 - 109999
 
     # Workflow Component - Component Development:  100000 - 100999

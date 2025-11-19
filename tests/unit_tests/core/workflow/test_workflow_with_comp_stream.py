@@ -14,6 +14,8 @@ from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
+from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_INVOKE_TIMEOUT, \
+    WORKFLOW_STREAM_TIMEOUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
@@ -49,22 +51,25 @@ class MockStreamNode(ComponentExecutable, WorkflowComponent):
 
 async def test_no_stream_called():
     with pytest.raises(JiuWenBaseException) as error:
-        config = WorkflowConfig(stream_timeout=0.2)
+        config = WorkflowConfig()
         flow = Workflow(config)
         flow.set_start_comp("start", Start())
         flow.set_end_comp("end", End(), inputs_schema={}, response_mode="streaming")
         flow.add_workflow_comp("stream", MockStreamNode(), inputs_schema={})
         flow.add_connection("start", "stream")
         flow.add_stream_connection("stream", "end")
+        runtime = WorkflowRuntime()
+        runtime.config().set_envs({WORKFLOW_INVOKE_TIMEOUT:0.2})
+        await flow.invoke({"a": "生成markdown回复"}, runtime)
 
-        await flow.invoke({"a": "生成markdown回复"}, WorkflowRuntime())
-
-    assert error.value.error_code == StatusCode.STREAM_FRAME_TIMEOUT_FAILED.code
+    assert error.value.error_code == StatusCode.WORKFLOW_INVOKE_TIMEOUT.code
     with pytest.raises(JiuWenBaseException) as error:
-        async for chunk in flow.stream({"a": "生成markdown回复"}, WorkflowRuntime(),
+        runtime = WorkflowRuntime()
+        runtime.config().set_envs({WORKFLOW_STREAM_TIMEOUT:0.2})
+        async for chunk in flow.stream({"a": "生成markdown回复"}, runtime,
                                        stream_modes=[BaseStreamMode.OUTPUT]):
             print(chunk)
-    assert error.value.error_code == StatusCode.STREAM_FRAME_TIMEOUT_FAILED.code
+    assert error.value.error_code == StatusCode.WORKFLOW_STREAM_TIMEOUT.code
 
 
 class Producer(ComponentExecutable, WorkflowComponent):
@@ -267,8 +272,7 @@ class Interaction(WorkflowComponent, ComponentExecutable):
 
 async def test_interaction_with_stream():
     def create_workflow() -> Workflow:
-        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_stream"),
-                                                     stream_timeout=0.5))
+        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_stream")))
         wf.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
         wf.add_workflow_comp("interaction", Interaction())
         wf.add_workflow_comp("stream", Producer(), inputs_schema={"array": "${start.array}"})
@@ -293,8 +297,9 @@ async def test_interaction_with_stream():
         print(chunk.model_dump_json(indent=4))
 
     logger.debug("human in the loop...")
-
-    async for chunk in wf2.stream(InteractiveInput({"inputs": [1, 2, 3]}), WorkflowRuntime(session_id="123"),
+    runtime = WorkflowRuntime(session_id="123")
+    runtime.config().set_envs({END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY:1})
+    async for chunk in wf2.stream(InteractiveInput({"inputs": [1, 2, 3]}), runtime,
                                   stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
         print(chunk.model_dump_json(indent=4))
@@ -312,8 +317,7 @@ async def test_interaction_with_exception():
                     yield dict(output=i)
 
     def create_workflow_with_exception() -> Workflow:
-        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_exception"),
-                                                     stream_timeout=0.5))
+        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_exception")))
         wf.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
         wf.add_workflow_comp("exception", ExceptionComp())
         end = End(EndConfig(responseTemplate="a: {{a}}; batch: {{batch}}"))
@@ -335,7 +339,7 @@ async def test_interaction_with_exception():
         logger.error(e)
     run_times += 1
     logger.debug("human in the loop...")
-
-    res = await wf2.invoke(InteractiveInput({"inputs": [1, 2, 3]}), WorkflowRuntime(session_id="123"))
-
+    runtime = WorkflowRuntime(session_id="123")
+    runtime.config().set_envs({END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY:1})
+    res = await wf2.invoke(InteractiveInput({"inputs": [1, 2, 3]}), runtime)
     print(res.model_dump_json(indent=4))

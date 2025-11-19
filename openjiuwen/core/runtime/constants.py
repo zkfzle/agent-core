@@ -1,0 +1,13 @@
+
+WORKFLOW_INVOKE_TIMEOUT = "_invoke_timeout"
+WORKFLOW_STREAM_TIMEOUT = "_stream_timeout"
+
+# transform/collect stream call timeout
+COMP_STREAM_CALL_TIMEOUT_KEY = "_comp_stream_call_timeout"
+
+# stream inputs' generator timeout
+STREAM_INPUT_GEN_TIMEOUT_KEY = "_stream_input_generator_timeout"
+
+# End Component template config environments field
+END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY = "_end_comp_template_render_position_timeout"
+END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY = "_end_comp_template_branch_render_timeout"

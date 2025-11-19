@@ -7,6 +7,7 @@ from typing import Dict, Any
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.runtime.constants import STREAM_INPUT_GEN_TIMEOUT_KEY
 from openjiuwen.core.runtime.state import Transformer
 from openjiuwen.core.runtime.utils import get_by_schema
 from openjiuwen.core.stream.emitter import AsyncStreamQueue
@@ -23,7 +24,7 @@ class StreamTransform:
 
 
 class ActorManager:
-    def __init__(self, workflow_spec: WorkflowSpec, graph: StreamGraph, sub_graph: bool):
+    def __init__(self, workflow_spec: WorkflowSpec, graph: StreamGraph, sub_graph: bool, runtime):
         self._stream_edges = workflow_spec.stream_edges
         self._streams: Dict[str, StreamActor] = {}
         self._streams_transform = StreamTransform()
@@ -33,7 +34,9 @@ class ActorManager:
             consumer_stream_ability = [ability for ability in workflow_spec.comp_configs[consumer_id].abilities if
                                        ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
             self._streams[consumer_id] = StreamActor(consumer_id, graph.get_node(consumer_id),
-                                                     consumer_stream_ability, producer_ids)
+                                                     consumer_stream_ability, producer_ids,
+                                                     stream_generator_timeout=runtime.config().get_env(
+                                                         STREAM_INPUT_GEN_TIMEOUT_KEY))
 
         self._sub_graph = sub_graph
         self._sub_workflow_stream = AsyncStreamQueue(maxsize=10 * 1024) if sub_graph else None

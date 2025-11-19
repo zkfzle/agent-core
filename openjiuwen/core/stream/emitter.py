@@ -46,8 +46,6 @@ class AsyncStreamQueue:
                 continue
 
     async def receive(self, timeout: float = 0.2) -> Optional[Any]:
-        if timeout <= 0:
-            timeout = 0.001
         if self._closed:
             raise RuntimeError("StreamQueue is already closed")
 

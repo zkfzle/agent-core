@@ -194,7 +194,6 @@ class ExampleOptimizer(BaseOptimizer):
             )
         return [eval_case.case for eval_case in error_cases]
 
-    @staticmethod
-    def _extract_selected_examples_from_response(response: str, error_cases: List[Case]) -> List[Case]:
+    def _extract_selected_examples_from_response(self, response: str, error_cases: List[Case]) -> List[Case]:
         best_example_list = TuneUtils.parse_list_from_llm_response(response)
-        return [error_cases[index] for index in best_example_list]
+        return [error_cases[index] for index in best_example_list[:self._num_examples]]

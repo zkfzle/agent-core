@@ -126,7 +126,7 @@ class AdoptOptimizer(BaseOptimizer):
             reflection = self._model.invoke(self._model_name, messages).content
             return "\n\n".join([differences, reflection])
 
-        num_workers = min(DEFAULT_PARALLEL_NUM, len(self._bad_cases))
+        num_workers = max(min(DEFAULT_PARALLEL_NUM, len(self._bad_cases)), 1)
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             analyzed_differences = executor.map(
                 differential_analysis, self._bad_cases)
@@ -136,7 +136,7 @@ class AdoptOptimizer(BaseOptimizer):
         def optimize_each_llm_call(node_name: str, param: TextualParameter) -> Tuple[str, str, str]:
             return self._generate_textual_gradient_for_llm_calls(node_name, param, global_gradient)
 
-        num_workers = min(DEFAULT_PARALLEL_NUM, len(self._bad_cases))
+        num_workers = max(min(DEFAULT_PARALLEL_NUM, len(self._bad_cases)), 1)
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             partial_gradients = executor.map(
                 optimize_each_llm_call, list(self._parameters.keys()), list(self._parameters.values()))
@@ -169,7 +169,7 @@ class AdoptOptimizer(BaseOptimizer):
             )
             return node_case
 
-        num_workers = min(DEFAULT_PARALLEL_NUM, len(self._bad_cases))
+        num_workers = max(min(DEFAULT_PARALLEL_NUM, len(self._bad_cases)), 1)
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             node_cases = [
                 case

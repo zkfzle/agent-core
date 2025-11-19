@@ -22,7 +22,8 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.runtime.constants import WORKFLOW_INVOKE_TIMEOUT, WORKFLOW_STREAM_TIMEOUT
+from openjiuwen.core.runtime.constants import WORKFLOW_INVOKE_TIMEOUT, WORKFLOW_STREAM_TIMEOUT, \
+    WORKFLOW_STREAM_FRAME_TIMEOUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from openjiuwen.core.runtime.state import Transformer
@@ -370,7 +371,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if self._is_streaming:
             messages = []
             while True:
-                frame = await actor_manager.sub_workflow_stream().receive(runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT))
+                frame = await actor_manager.sub_workflow_stream().receive(
+                    runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT))
                 if frame is None:
                     logger.warning("no frame received")
                     continue
@@ -393,7 +395,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     async def sub_stream(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> AsyncIterator[Output]:
         logger.info(f"begin to sub_stream, input: {inputs}")
         actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
-        
+
         compiled_graph = self.compile(sub_workflow_runtime)
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
         if self._is_streaming:
@@ -449,6 +451,14 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         self._validate_and_init_runtime(runtime, stream_modes, context)
         # workflow start tracer info
         await workflow_trace_inputs(runtime, inputs)
+        timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
+        frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
+        frame_timeout = min(frame_timeout, self._workflow_config.stream_timeout) \
+            if frame_timeout and frame_timeout > 0 else self._workflow_config.stream_timeout
+        if timeout is not None and 0 < timeout <= frame_timeout:
+            frame_timeout = timeout
+        runtime.config().set_envs({WORKFLOW_STREAM_FRAME_TIMEOUT: frame_timeout})
+
         async def stream_process():
             compiled_graph = self.compile(runtime)
             try:
@@ -459,12 +469,11 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 await workflow_trace_outputs(runtime, outputs)
                 await runtime.stream_writer_manager().stream_emitter().close()
 
-        timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
         task = asyncio.create_task(
             self._execute_with_timeout(stream_process, timeout, StatusCode.WORKFLOW_STREAM_TIMEOUT))
 
         interaction_chuck_list = []
-        async for chunk in runtime.stream_writer_manager().stream_output(timeout):
+        async for chunk in runtime.stream_writer_manager().stream_output(frame_timeout):
             yield chunk
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 interaction_chuck_list.append(chunk)

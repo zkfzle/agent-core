@@ -1,6 +1,7 @@
 
 WORKFLOW_INVOKE_TIMEOUT = "_invoke_timeout"
 WORKFLOW_STREAM_TIMEOUT = "_stream_timeout"
+WORKFLOW_STREAM_FRAME_TIMEOUT = "_stream_frame_timeout"
 
 # transform/collect stream call timeout
 COMP_STREAM_CALL_TIMEOUT_KEY = "_comp_stream_call_timeout"

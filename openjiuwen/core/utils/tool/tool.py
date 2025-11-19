@@ -15,7 +15,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 def extract_basic_info(param_annotation):
-    """提取annotation类型的描述、默认值、required"""
+    """Extract description, default value, required from annotation type"""
     description = None
     default_value = Parameter.empty
     required = True
@@ -38,7 +38,7 @@ def extract_basic_info(param_annotation):
 
 
 def extract_model_fields(param_annotation):
-    """提取BaseModel类型"""
+    """Extract BaseModel type"""
     params = []
     for field_name, field_info in param_annotation.model_fields.items():
         name = field_name
@@ -119,7 +119,7 @@ def extract_params(func: Callable):
         if annotation is Parameter.empty:
             continue
 
-        # Annotated提取description, default_value, required
+        # Extract description, default_value, required from Annotated
         description, default_value, required = extract_basic_info(annotation)
         if default_value is Parameter.empty:
             default_value = param.default if param.default is not Parameter.empty else None
@@ -129,7 +129,7 @@ def extract_params(func: Callable):
         else:
             required = False
 
-        # Annotated 提取type
+        # Extract type from Annotated
         param_type, inner_params = extract_type(annotation)
 
         params.append(

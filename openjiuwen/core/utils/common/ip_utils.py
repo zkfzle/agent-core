@@ -6,7 +6,7 @@ import socket
 
 
 def get_local_ip() -> str:
-    """获取本地可用 IPv4 地址（非 127.0.0.1）"""
+    """Get local available IPv4 address (excluding 127.0.0.1)"""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))

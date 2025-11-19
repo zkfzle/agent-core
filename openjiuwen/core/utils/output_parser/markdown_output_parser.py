@@ -14,7 +14,7 @@ from openjiuwen.core.common.logging import logger
 
 
 class MarkdownElementType:
-    """Markdown元素类型常量"""
+    """Markdown element type constants"""
     HEADER = "header"
     CODE_BLOCK = "code_block"
     INLINE_CODE = "inline_code"
@@ -27,19 +27,19 @@ class MarkdownElementType:
 
 @dataclass
 class MarkdownElement:
-    """单个Markdown元素"""
-    type: str  # 元素类型
-    content: Dict[str, Any]  # 元素内容
-    start_pos: int  # 在原文中的起始位置
-    end_pos: int  # 在原文中的结束位置
-    raw: str  # 原始文本
+    """Single Markdown element"""
+    type: str  # Element type
+    content: Dict[str, Any]  # Element content
+    start_pos: int  # Start position in original text
+    end_pos: int  # End position in original text
+    raw: str  # Raw text
 
 
 @dataclass
 class MarkdownContent:
-    """Markdown内容的结构化表示"""
+    """Structured representation of Markdown content"""
     raw_content: str = ""
-    elements: List[MarkdownElement] = None  # 按原文顺序的所有元素
+    elements: List[MarkdownElement] = None  # All elements in original order
     headers: List[Dict[str, str]] = None
     code_blocks: List[Dict[str, str]] = None
     links: List[Dict[str, str]] = None
@@ -158,7 +158,7 @@ class MarkdownOutputParser(BaseOutputParser):
     def _extract_all_elements(self, text: str, markdown_content: MarkdownContent):
         elements = []
 
-        # 提取标题
+        # Extract headers
         for match in re.finditer(r'^(#{1,6})\s+(.+)$', text, re.MULTILINE):
             level = len(match.group(1))
             title = match.group(2).strip()
@@ -170,7 +170,7 @@ class MarkdownOutputParser(BaseOutputParser):
                 raw=match.group(0)
             ))
 
-        # 提取代码块
+        # Extract code blocks
         for match in re.finditer(r'```(\w*)\n(.*?)\n```', text, re.DOTALL):
             language = match.group(1) or "text"
             code = match.group(2)
@@ -238,7 +238,7 @@ class MarkdownOutputParser(BaseOutputParser):
                 table_lines.append(line)
             else:
                 if table_lines:
-                    # 表格结束
+                    # Table end
                     table_content = '\n'.join(table_lines)
                     elements.append(MarkdownElement(
                         type=MarkdownElementType.TABLE,

@@ -25,7 +25,7 @@ class ExceptionUtils:
 
     @staticmethod
     def format_validation_error(e: ValidationError) -> str:
-        return "\n".join([f"{'.'.join(map(str, err.get('loc', [])))}: {err.get('msg', '未知错误')}"
+        return "\n".join([f"{'.'.join(map(str, err.get('loc', [])))}: {err.get('msg', 'Unknown error')}"
                           for err in e.errors()
                           ])
 
@@ -102,7 +102,7 @@ class ValidationUtils:
 
     @staticmethod
     def validate_outputs_config(outputs_config: Any) -> None:
-        """验证输出配置参数"""
+        """Validate output config parameters"""
         if not outputs_config:
             ValidationUtils.raise_invalid_params_error("outputs config must not be empty")
         if not isinstance(outputs_config, dict):
@@ -260,7 +260,7 @@ class TemplateUtils:
 class SafeTemplate(string.Template):
     delimiter = '{{'
     pattern = r'''
-    \{\{             # 起始分隔符: {{
-    (?P<identifier>\w+)  # 变量名: 字母、数字或下划线
-    }}               # 结束分隔符: }}
+    \{\{             # Start delimiter: {{
+    (?P<identifier>\w+)  # Variable name: letters, digits or underscore
+    }}               # End delimiter: }}
     '''

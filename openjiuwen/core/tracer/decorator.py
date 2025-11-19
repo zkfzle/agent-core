@@ -9,7 +9,7 @@ from openjiuwen.core.runtime.utils import create_wrapper_class
 from openjiuwen.core.tracer.data import InvokeType
 
 
-def decrate_model_with_trace(model, agent_runtime):
+def decorate_model_with_trace(model, agent_runtime):
     if not model or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
         return model
     wrapped_model = create_wrapper_class(model, "WrappedModel")
@@ -27,7 +27,7 @@ def decrate_model_with_trace(model, agent_runtime):
     return wrapped_model
 
 
-def decrate_tool_with_trace(tool, agent_runtime):
+def decorate_tool_with_trace(tool, agent_runtime):
     if not tool or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
         return tool
     wrapped_tool = create_wrapper_class(tool, "WrappedTool")
@@ -39,7 +39,7 @@ def decrate_tool_with_trace(tool, agent_runtime):
     return wrapped_tool
 
 
-def decrate_workflow_with_trace(workflow, agent_runtime):
+def decorate_workflow_with_trace(workflow, agent_runtime):
     if not workflow or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
         return workflow
     wrapped_workflow = create_wrapper_class(workflow, "WrappedWorkflow")

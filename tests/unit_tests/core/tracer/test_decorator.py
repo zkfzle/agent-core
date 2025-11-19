@@ -9,7 +9,7 @@ from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
-from openjiuwen.core.tracer.decorator import decrate_tool_with_trace, decrate_workflow_with_trace, decrate_model_with_trace
+from openjiuwen.core.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, decorate_model_with_trace
 from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import ToolInfo, BaseMessage
 from openjiuwen.core.utils.tool.base import Tool
@@ -114,7 +114,7 @@ class MockTracer:
 
 
 class TestDecator:
-    async def test_decrate_tool(self):
+    async def test_decorate_tool(self):
         tool = MockTool()
         results = []
 
@@ -138,7 +138,7 @@ class TestDecator:
         mock_runtime.tracer.return_value = mock_tracer
         mock_runtime.span.return_value = mock_agent_span
 
-        wrapped_tool = decrate_tool_with_trace(tool, mock_runtime)
+        wrapped_tool = decorate_tool_with_trace(tool, mock_runtime)
         wrapped_tool.invoke({"a": "a"}, context=3)
         for item in results:
             print(item)
@@ -152,7 +152,7 @@ class TestDecator:
         assert len(results) == 2
         assert results[0][2].get("instance_info", {}).get("class_name", "") == "mock tool"
 
-    async def test_decrate_workflow(self):
+    async def test_decorate_workflow(self):
         workflow = MockWorkflow()
 
         results = []
@@ -177,7 +177,7 @@ class TestDecator:
         mock_runtime.tracer.return_value = mock_tracer
         mock_runtime.span.return_value = mock_agent_span
 
-        wrapped_workflow = decrate_workflow_with_trace(workflow, mock_runtime)
+        wrapped_workflow = decorate_workflow_with_trace(workflow, mock_runtime)
 
         await wrapped_workflow.invoke({"a": "a"}, MagicMock(), context=None)
 
@@ -186,7 +186,7 @@ class TestDecator:
         assert len(results) == 2
         assert results[0][2].get("instance_info", {}).get("class_name", "") == "weather"
 
-    async def test_decrate_model(self):
+    async def test_decorate_model(self):
         model = MagicMock(LLMExecutable)
         model._llm = MockModel()
         model._config = model._llm._config
@@ -213,7 +213,7 @@ class TestDecator:
         mock_runtime.tracer.return_value = mock_tracer
         mock_runtime.span.return_value = mock_agent_span
 
-        mocked_model = decrate_model_with_trace(model, mock_runtime)
+        mocked_model = decorate_model_with_trace(model, mock_runtime)
 
         mocked_model.invoke("a", [BaseMessage(role="aa")])
 

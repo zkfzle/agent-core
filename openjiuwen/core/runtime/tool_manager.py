@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Union
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.abstract_manager import AbstractManager
-from openjiuwen.core.tracer.decorator import decrate_tool_with_trace
+from openjiuwen.core.tracer.decorator import decorate_tool_with_trace
 from openjiuwen.core.utils.llm.messages import ToolInfo, Function
 from openjiuwen.core.utils.tool.base import Tool, MCPTool
 from openjiuwen.core.utils.tool.mcp.base import (
@@ -72,7 +72,7 @@ class ToolMgr(AbstractManager[Tool]):
 
         try:
             tool = self.find_tool_by_name(tool_id)
-            return decrate_tool_with_trace(tool, runtime)
+            return decorate_tool_with_trace(tool, runtime)
         except JiuWenBaseException:
             raise
         except Exception as e:

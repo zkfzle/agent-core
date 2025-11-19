@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.tracer.decorator import decrate_model_with_trace
+from openjiuwen.core.tracer.decorator import decorate_model_with_trace
 from openjiuwen.core.utils.llm.base import BaseChatModel
 from openjiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
@@ -46,4 +46,4 @@ class ModelMgr:
                                       StatusCode.RUNTIME_MODEL_GET_FAILED.errmsg.format(
                                           reason="model_id is invalid, can not be None"))
         model = self._models.get(model_id)
-        return decrate_model_with_trace(model, runtime)
+        return decorate_model_with_trace(model, runtime)

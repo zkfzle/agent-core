@@ -7,7 +7,7 @@ from typing import List, Tuple, TypeVar, Optional, Union
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.abstract_manager import AbstractManager
-from openjiuwen.core.tracer.decorator import decrate_workflow_with_trace
+from openjiuwen.core.tracer.decorator import decorate_workflow_with_trace
 from openjiuwen.core.utils.llm.messages import ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema
 
@@ -48,7 +48,7 @@ class WorkflowMgr(AbstractManager[Workflow]):
         
         try:
             workflow = self.find_workflow_by_id_and_version(workflow_id)
-            return decrate_workflow_with_trace(workflow, runtime)
+            return decorate_workflow_with_trace(workflow, runtime)
         except JiuWenBaseException:
             raise
         except Exception as e:

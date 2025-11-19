@@ -2,14 +2,15 @@ from typing import Dict, List, Any, Union
 from unittest.mock import MagicMock
 
 import pytest
-from pyexpat.errors import messages
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
 from openjiuwen.core.tracer.decorator import decrate_tool_with_trace, decrate_workflow_with_trace, decrate_model_with_trace
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import ToolInfo, BaseMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.constant import Input, Output
@@ -18,6 +19,10 @@ from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowC
 pytestmark = pytest.mark.asyncio
 
 class MockTool(Tool):
+    def __init__(self):
+        super().__init__()
+        self.name = "mock tool"
+
     async def ainvoke(self, inputs: Input, **kwargs) -> Output:
         logger.info(inputs)
         logger.info(f"begin to ainvoke , inputs={inputs}")
@@ -45,7 +50,11 @@ class MockWorkflow:
         yield inputs
 
     def config(self):
-        return WorkflowConfig(metadata=WorkflowMetadata())
+        return WorkflowConfig(metadata=WorkflowMetadata(
+            name="weather",
+            id="test_weather_agent",
+            version="1.0",
+        ))
 
 
 class MockModel(BaseChatModel):
@@ -54,6 +63,25 @@ class MockModel(BaseChatModel):
         self.api_base = 'api_base'
         self.max_retrie = 'max_retrie'
         self.timeout = 2
+        model_config = ModelConfig(model_provider="siliconflow",
+                                   model_info=BaseModelInfo(
+                                       model="Qwen/Qwen3-32B",
+                                       api_base="sk",
+                                       api_key="http://",
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30
+                                   ))
+        self._config = LLMCompConfig(
+            model=model_config,
+            template_content=[{"role": "user", "content": "hello"}],
+            response_format={"type": "json"},
+            output_config={
+                "location": {"type": "string", "description": "地点（英文）", "required": True},
+                "date": {"type": "string", "description": "日期（YYYY-MM-DD）", "required": True},
+                "query": {"type": "string", "description": "改写后的query", "required": True}
+            },
+        )
         super().__init__("api_key", "")
 
     def _invoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
@@ -115,15 +143,18 @@ class TestDecator:
         for item in results:
             print(item)
         assert len(results) == 2
+        assert results[0][2].get("instance_info", {}).get("class_name", "") == "mock tool"
 
         results.clear()
         await wrapped_tool.ainvoke({"a": "a"}, context=3)
         for item in results:
             print(item)
         assert len(results) == 2
+        assert results[0][2].get("instance_info", {}).get("class_name", "") == "mock tool"
 
     async def test_decrate_workflow(self):
         workflow = MockWorkflow()
+
         results = []
 
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):
@@ -153,9 +184,13 @@ class TestDecator:
         for item in results:
             print(item)
         assert len(results) == 2
+        assert results[0][2].get("instance_info", {}).get("class_name", "") == "weather"
 
     async def test_decrate_model(self):
-        model = MockModel()
+        model = MagicMock(LLMExecutable)
+        model._llm = MockModel()
+        model._config = model._llm._config
+        model.ainvoke = model._llm.ainvoke
         results = []
 
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):
@@ -185,6 +220,7 @@ class TestDecator:
         for item in results:
             print(item)
         assert len(results) == 2
+        assert results[0][2].get("instance_info", {}).get("class_name", "") == "Qwen/Qwen3-32B"
 
         results.clear()
         for item in mocked_model.stream("a", [BaseMessage(role="aa")]):
@@ -193,6 +229,7 @@ class TestDecator:
         for item in results:
             print(item)
         assert len(results) == 2
+        assert results[0][2].get("instance_info", {}).get("class_name", "") == "Qwen/Qwen3-32B"
 
         results.clear()
         await mocked_model.ainvoke("a", [BaseMessage(role="aa")])
@@ -200,3 +237,4 @@ class TestDecator:
         for item in results:
             print(item)
         assert len(results) == 2
+        assert results[0][2].get("instance_info", {}).get("class_name", "") == "Qwen/Qwen3-32B"

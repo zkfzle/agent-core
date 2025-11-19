@@ -13,7 +13,11 @@ def decrate_model_with_trace(model, agent_runtime):
     if not model or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
         return model
     wrapped_model = create_wrapper_class(model, "WrappedModel")
-    instance_info = {"class_name": type(model).__name__, "type": "llm"}
+    try:
+        model_name = model._config.model.model_info.model_name
+    except Exception:
+        model_name = type(model).__name__
+    instance_info = {"class_name": model_name, "type": "llm"}
     wrapped_model.invoke = MethodType(
         trace(wrapped_model.invoke, agent_runtime, InvokeType.LLM, instance_info, index = 2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.ainvoke = MethodType(
@@ -27,7 +31,7 @@ def decrate_tool_with_trace(tool, agent_runtime):
     if not tool or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
         return tool
     wrapped_tool = create_wrapper_class(tool, "WrappedTool")
-    instance_info = {"class_name": type(tool).__name__, "type": "tool"}
+    instance_info = {"class_name": tool.name if hasattr(tool, "name") else type(tool).__name__, "type": "tool"}
     wrapped_tool.invoke = MethodType(
         trace(wrapped_tool.invoke, agent_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool)
     wrapped_tool.ainvoke = MethodType(
@@ -40,7 +44,11 @@ def decrate_workflow_with_trace(workflow, agent_runtime):
         return workflow
     wrapped_workflow = create_wrapper_class(workflow, "WrappedWorkflow")
     metadata = wrapped_workflow.config().metadata if wrapped_workflow and wrapped_workflow.config() else {}
-    instance_info = {"class_name": type(workflow).__name__, "type": "workflow", "metadata": dict(metadata)}
+    try:
+        workflow_name = workflow.config().metadata.name
+    except Exception:
+        workflow_name = type(workflow).__name__
+    instance_info = {"class_name": workflow_name, "type": "workflow", "metadata": dict(metadata)}
     wrapped_workflow.invoke = MethodType(
         async_trace(wrapped_workflow.invoke, agent_runtime, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)

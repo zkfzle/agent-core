@@ -372,7 +372,7 @@ class LLMExecutable(ComponentExecutable):
             logger.info("[%s] model inputs", self._runtime.executable_id())
         else:
             logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
-        llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name, messages=model_inputs)  # 如果 invoke 是异步接口，要加 await
+        llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name, messages=model_inputs)  # Add await if invoke is async
         llm_output_content = llm_output.content
         yield self._create_output(llm_output_content)
 

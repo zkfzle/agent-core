@@ -43,13 +43,13 @@ QUESTIONER_SYSTEM_TEMPLATE = """\
   3. 通过用户提供的对话历史以及当前输入中提取 {{required_name}}，不要追问任何其他信息。
   4. 参数收集完成后，将收集到的信息通过 JSON 的方式展示给用户。
 
-## 指定参数
+## Specified Parameters
 {{required_params_list}}
 
-## 约束
+## Constraints
 {{extra_info}}
 
-## 示例
+## Examples
 {{example}}
 """
 
@@ -106,7 +106,7 @@ class QuestionerDefaultConfig:
 
 
 class QuestionerInput(BaseModel):
-    model_config = ConfigDict(extra='allow')   # 允许任意额外字段
+    model_config = ConfigDict(extra='allow')   # Allow any extra fields
     query: Union[str, None] = Field(default="")
 
 
@@ -119,7 +119,7 @@ class OutputCache(BaseModel):
 class QuestionerOutput(BaseModel):
     user_response: str = Field(default="")
     question: str = Field(default="")
-    model_config = ConfigDict(extra='allow')  # 允许任意额外字段
+    model_config = ConfigDict(extra='allow')  # Allow any extra fields
 
 
 class QuestionerState(BaseModel):

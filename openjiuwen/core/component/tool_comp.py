@@ -28,7 +28,7 @@ class ToolComponentConfig(ComponentConfig):
 
 
 class ToolComponentInput(BaseModel):
-    model_config = ConfigDict(extra='allow')   # 允许任意额外字段
+    model_config = ConfigDict(extra='allow')   # Allow any extra fields
 
 
 class ToolComponentOutput(BaseModel):

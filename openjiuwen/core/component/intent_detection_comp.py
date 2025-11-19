@@ -127,7 +127,7 @@ class IntentDetectionDefaultConfig:
 
 class IntentDetectionInput(BaseModel):
     query: str
-    model_config = ConfigDict(extra='allow')   # 允许任意额外字段
+    model_config = ConfigDict(extra='allow')   # Allow any extra fields
 
 
 class IntentDetectionOutput(BaseModel):
@@ -167,8 +167,8 @@ class IntentDetectionExecutable(ComponentExecutable):
             return input_str
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        """invoke IntentDetection节点"""
-        # 提取上下文数据
+        """Invoke IntentDetection node"""
+        # Extract context data
         self._set_runtime(runtime)
         self._router.set_runtime(runtime)
         self._initialize_if_needed()
@@ -229,12 +229,12 @@ class IntentDetectionExecutable(ComponentExecutable):
             CHAT_HISTORY: ""
         })
 
-        # 处理历史记录
+        # Process chat history
         if self._config.enable_history:
             chat_history_str = self._format_chat_history(chat_history)
             current_inputs.update({CHAT_HISTORY: chat_history_str})
 
-        # 处理当前输入
+        # Process current input
         if self._default_config.enable_input:
             try:
                 intent_detection_input = IntentDetectionInput.model_validate(inputs)

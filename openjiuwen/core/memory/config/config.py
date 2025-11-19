@@ -31,5 +31,5 @@ class Config(BaseModel):
     enable_long_term_mem: bool | None = False # generate long-term memory or not
     enable_session_summary: bool | None = False # generate session summary or not
     realtime_process_config: RealtimeConfig = Field(default_factory=RealtimeConfig)
-    vector_store_dir: str
-    kv_store_dir: str
+    vector_store_dir: str = ""
+    kv_store_dir: str = ""

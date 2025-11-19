@@ -6,7 +6,7 @@ from threading import Lock
 from typing import Any, Dict, Optional
 from pydantic import BaseModel
 
-from config import Config
+from .config import Config
 
 
 class ConfigManger:

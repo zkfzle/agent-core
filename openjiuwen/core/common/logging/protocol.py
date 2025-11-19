@@ -8,60 +8,60 @@ import logging
 
 @runtime_checkable
 class LoggerProtocol(Protocol):
-    """日志记录器协议，定义所有日志实现必须提供的方法"""
+    """Logger protocol defining methods all logger implementations must provide"""
 
     def debug(self, msg: str, *args, **kwargs) -> None:
-        """记录调试级别日志"""
+        """Log debug level message"""
         ...
 
     def info(self, msg: str, *args, **kwargs) -> None:
-        """记录信息级别日志"""
+        """Log info level message"""
         ...
 
     def warning(self, msg: str, *args, **kwargs) -> None:
-        """记录警告级别日志"""
+        """Log warning level message"""
         ...
 
     def error(self, msg: str, *args, **kwargs) -> None:
-        """记录错误级别日志"""
+        """Log error level message"""
         ...
 
     def critical(self, msg: str, *args, **kwargs) -> None:
-        """记录严重级别日志"""
+        """Log critical level message"""
         ...
 
     def exception(self, msg: str, *args, **kwargs) -> None:
-        """记录异常信息（包含堆栈跟踪）"""
+        """Log exception with stack trace"""
         ...
 
     def log(self, level: int, msg: str, *args, **kwargs) -> None:
-        """通用日志记录方法"""
+        """Generic log method"""
         ...
 
     def setLevel(self, level: int) -> None:
-        """设置日志级别"""
+        """Set log level"""
         ...
 
     def addHandler(self, handler: logging.Handler) -> None:
-        """添加日志处理器"""
+        """Add log handler"""
         ...
 
     def removeHandler(self, handler: logging.Handler) -> None:
-        """移除日志处理器"""
+        """Remove log handler"""
         ...
 
     def addFilter(self, filter) -> None:
-        """添加过滤器"""
+        """Add filter"""
         ...
 
     def removeFilter(self, filter) -> None:
-        """移除过滤器"""
+        """Remove filter"""
         ...
 
     def get_config(self) -> Dict[str, Any]:
-        """获取日志配置"""
+        """Get logger config"""
         ...
 
     def reconfigure(self, config: Dict[str, Any]) -> None:
-        """重新配置日志记录器"""
+        """Reconfigure logger"""
         ... 

@@ -64,7 +64,7 @@ class LogManager:
 
     @classmethod
     def get_logger(cls, log_type: str) -> LoggerProtocol:
-        """获取日志器，如果不存在则创建默认日志器"""
+        """Get logger, create default logger if not exists"""
         if not cls._initialized:
             cls.initialize()
 

@@ -160,6 +160,7 @@ class StatusCode(Enum):
     ARRAY_CONDITION_ERROR = (140002, "Array condition error")
     NUMBER_CONDITION_ERROR = (140003, "Number condition error")
 
+
     # ContextEngine 150000 - 159999
     # ContextEngine - Context Structured Storage and Retrieval 150000 - 150999
     # ContextEngine - Context Dynamic Assembly  151000 - 151999
@@ -236,10 +237,10 @@ class StatusCode(Enum):
     RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add agent group, reason: {reason}")
     RUNTIME_AGENT_GROUP_GET_FAILED = (190041, "failed to get agent group, reason: {reason}")
     RUNTIME_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove agent group, reason: {reason}")
-
+    
     # Runtime - Resource Management - Workflow Additional
     RUNTIME_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
-
+    
     # Runtime - Resource Management - Agent 190050 - 190059
     RUNTIME_AGENT_ADD_FAILED = (190050, "failed to add agent, reason: {reason}")
     RUNTIME_AGENT_GET_FAILED = (190051, "failed to get agent, reason: {reason}")
@@ -267,6 +268,12 @@ class StatusCode(Enum):
     # Runtime - callback 195000 - 195999
     # Runtime - Stream Actor 196000 - 196099
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (196000, "Message queue manager error: {error_msg}")
+
+    # Runtime - Component Executable 196100 - 196199
+    RUNTIME_COMPONENT_INVALID_RUNTIME_TYPE = (196100, "runtime should be NodeRuntime instance")
+    RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' method is not implemented. Please implement the '{method}' method in your component class '{class_name}'.")
+    RUNTIME_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
+
 
     @property
     def code(self):

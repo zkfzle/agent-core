@@ -19,7 +19,7 @@ from openjiuwen.core.runtime.utils import get_by_schema
 from openjiuwen.core.runtime.workflow import NodeRuntime
 from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream_actor.base import StreamConsumer
-from openjiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs
+from openjiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs, trace_error
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
 
@@ -119,26 +119,31 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         return await queue_manager.consume(self._node_id, ability, inputs_schema)
 
     async def _post_stream(self, results_iter: AsyncIterator) -> None:
-        queue_manager = self._runtime.actor_manager()
-        output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
-        output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config else None
-        end_stream_index = 0
-        timeout_results_iter = TimeoutAsyncIteratorWrapper(results_iter, timeout=self._stream_called_timeout,
-                                                           raise_on_timeout=True)
-        is_end_node = isinstance(self._executable, End)
-        is_sub_graph = self._runtime.parent_id() != ''
-        async for chunk in timeout_results_iter:
-            if output_transformer is None:
-                message = queue_manager.stream_transform.get_by_default_transformer(chunk, output_schema) \
-                    if output_schema else chunk
+        try:
+            queue_manager = self._runtime.actor_manager()
+            output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
+            output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config else None
+            end_stream_index = 0
+            timeout_results_iter = TimeoutAsyncIteratorWrapper(results_iter, timeout=self._stream_called_timeout,
+                                                               raise_on_timeout=True)
+            is_end_node = isinstance(self._executable, End)
+            is_sub_graph = self._runtime.parent_id() != ''
+            async for chunk in timeout_results_iter:
+                if output_transformer is None:
+                    message = queue_manager.stream_transform.get_by_default_transformer(chunk, output_schema) \
+                        if output_schema else chunk
+                else:
+                    message = queue_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
+                await self._process_chunk(message, is_end_node, end_stream_index, is_sub_graph)
+                end_stream_index += 1
+            if is_end_node and is_sub_graph:
+                await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
             else:
-                message = queue_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
-            await self._process_chunk(message, is_end_node, end_stream_index, is_sub_graph)
-            end_stream_index += 1
-        if is_end_node and is_sub_graph:
-            await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
-        else:
-            await queue_manager.end_message(self._node_id)
+                await queue_manager.end_message(self._node_id)
+        except Exception as e:
+            if self._runtime.tracer() is not None:
+                await self.__trace_error__(e)
+            raise e
 
     async def _process_chunk(self, message, is_end_node: bool, end_stream_index: int, is_sub_graph: bool):
         if is_end_node and not is_sub_graph:
@@ -239,3 +244,8 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         if self._executable.skip_trace():
             return
         await trace_outputs(self._runtime, outputs)
+
+    async def __trace_error__(self, error: Exception) -> None:
+        if self._executable.skip_trace():
+            return
+        await trace_error(self._runtime, error)

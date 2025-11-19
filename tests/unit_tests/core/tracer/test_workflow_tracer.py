@@ -1,17 +1,21 @@
 import json
 import sys
 import types
-from unittest.mock import Mock
+from operator import index
+from unittest.mock import Mock, AsyncMock
 
 import pytest
 
 from openjiuwen.core.component.condition.array import ArrayCondition
+from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.component.loop_callback.output import OutputCallback
 from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
 from openjiuwen.core.component.set_variable_comp import SetVariableComponent
+from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
-from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode
+from openjiuwen.core.workflow.workflow_config import ComponentAbility
+from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -27,11 +31,13 @@ from openjiuwen.core.common.logging import logger
 
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.stream.base import CustomSchema, OutputSchema, TraceSchema
+from openjiuwen.core.stream.base import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
 
 pytestmark = pytest.mark.asyncio
 
 switcher = False
+
+
 def record_tracer_info(tracer_chunks, file_path):
     if not switcher:
         return
@@ -105,7 +111,6 @@ class TestTraceWorkflow:
             elif isinstance(chunk, TraceSchema):
                 print(f"stream chunk: {chunk}")
                 tracer_chunks.append(chunk)
-
 
         record_tracer_info(tracer_chunks, "test_seq_exec_stream_workflow_with_tracer.json")
 
@@ -478,3 +483,41 @@ class TestTraceWorkflow:
                     assert payload.get("loopIndex") == loop_index, f"3 node loopIndex should be {loop_index}"
                     loop_index += 1
         record_tracer_info(tracer_chunks, "test_workflow_stream_with_loop_with_tracer.json")
+
+    async def test_workflow_strean_with_node_exception_with_tracer(self):
+        flow = Workflow()
+        start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
+        flow.set_start_comp("start", start,
+                            inputs_schema={
+                                "query": "${a}",
+                                "response_node": "${response_mode}",
+                                "d": "${a}"})
+
+        flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
+                               comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+
+        end = End({"responseTemplate": "hello:{{end_input}}"})
+
+        async def failing_stream(*args, **kwargs):
+            raise RuntimeError("mocked stream error")
+            yield
+
+        end.stream = failing_stream
+
+        flow.set_end_comp("end", end,
+                          inputs_schema={"end_input": "${start.d}"}, response_mode="streaming")
+        flow.add_connection("start", "a")
+        flow.add_stream_connection("a", "end")
+
+        results = []
+        with pytest.raises(RuntimeError, match="mocked stream error"):
+            async for chunk in flow.stream({"a": 1, "b": "haha"}, WorkflowRuntime(),
+                                           stream_modes=[BaseStreamMode.TRACE]):
+                logger.info("stream chunk: {%s}", chunk)
+                results.append(chunk)
+
+        assert len(results) == 7
+        end_error_chunk = results[5]
+        assert end_error_chunk.payload["invokeId"] == 'end' and end_error_chunk.payload["status"] == 'error' and \
+               end_error_chunk.payload["error"] == {
+                   'error_code': -1, 'message': 'RuntimeError'}

@@ -28,6 +28,7 @@ from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.common.security.user_config import UserConfig
+from openjiuwen.core.stream.base import BaseStreamMode
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
@@ -78,7 +79,8 @@ class Runner:
     async def start(self) -> bool:
         if get_runner_config().distributed_mode:
             # start dmq
-            self._distribute_message_queue = MessageQueueFactory.create(get_runner_config().distributed_config.message_queue_config)
+            self._distribute_message_queue = MessageQueueFactory.create(
+                get_runner_config().distributed_config.message_queue_config)
             self._distribute_message_queue.start()
             # start reply topic sub
             self.system_reply_sub = ReplyTopicSubscription(self._distribute_message_queue)
@@ -133,8 +135,8 @@ class Runner:
 
     def remove_agent(self, agent_id) -> Union[Agent, AgentProvider]:
         if get_runner_config().distributed_mode:
-           adapter = self._agent_mgr.remove_agent(AGENT_ADAPTER + agent_id)
-           if adapter is not None:
+            adapter = self._agent_mgr.remove_agent(AGENT_ADAPTER + agent_id)
+            if adapter is not None:
                 adapter.stop()
         return self._agent_mgr.remove_agent(agent_id)
 
@@ -144,9 +146,10 @@ class Runner:
         return await workflow_instance.invoke(inputs, runtime=workflow_runtime)
 
     async def run_workflow_streaming(self, workflow: Union[str, Workflow], inputs: Any,
-                                     *, runtime: Union[Runtime, WorkflowRuntime] = None):
+                                     *, runtime: Union[Runtime, WorkflowRuntime] = None,
+                                     stream_modes: list[BaseStreamMode] = None):
         workflow_instance, workflow_runtime = self._prepare_workflow(workflow, runtime)
-        return workflow_instance.stream(inputs, runtime=workflow_runtime)
+        return workflow_instance.stream(inputs, runtime=workflow_runtime, stream_modes=stream_modes)
 
     async def run_agent(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)

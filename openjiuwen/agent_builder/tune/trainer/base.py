@@ -18,7 +18,7 @@ class Progress(BaseModel):
     best_batch_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
     def run_epoch(self) -> Generator:
-        for epoch in range(1, self.max_epoch):
+        for epoch in range(1, self.max_epoch + 1):
             self.current_epoch = epoch
             yield epoch
 

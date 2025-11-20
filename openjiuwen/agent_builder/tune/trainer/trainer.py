@@ -37,7 +37,7 @@ class Trainer:
         TuneUtils.validate_digital_parameter(self._num_parallel, "num_parallel",
                                              TuneConstant.MIN_PARALLEL_NUM, TuneConstant.MAX_PARALLEL_NUM)
         self._early_stop_score = kwargs.get("early_stop_score", TuneConstant.DEFAULT_EARLY_STOP_SCORE)
-        TuneUtils.validate_digital_parameter(self._early_stop_score, "num_parallel",
+        TuneUtils.validate_digital_parameter(self._early_stop_score, "early_stop_score",
                                              0.0, 1.0)
         self._callbacks = Callbacks()
 
@@ -131,8 +131,11 @@ class Trainer:
         self._callbacks = callbacks
 
     def _pre_train(self, agent: Agent, **kwargs) -> Progress:
+        max_epoch = kwargs.get('num_iterations', TuneConstant.DEFAULT_ITERATION_NUM)
+        TuneUtils.validate_digital_parameter(max_epoch, "num_iterations",
+                                             TuneConstant.MIN_ITERATION_NUM, TuneConstant.MAX_ITERATION_NUM)
         progress = Progress(
-            max_epoch=kwargs.get('num_iterations', TuneConstant.DEFAULT_ITERATION_NUM)
+            max_epoch=max_epoch
         )
 
         self._optimizer.bind_parameter(agent.get_llm_calls())

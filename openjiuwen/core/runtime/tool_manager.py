@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.mcp.base import (
     ToolServerConfig,
@@ -41,7 +41,7 @@ class ToolMgr(AbstractManager[Tool]):
             if hasattr(tool_obj, "get_tool_info"):
                 self._tool_infos[tool_id] = tool_obj.get_tool_info()
             else:
-                self._tool_infos[tool_id] = ToolInfo(function=Function())
+                self._tool_infos[tool_id] = ToolInfo()
             return tool_obj
 
         self._add_resource(tool_id, tool, StatusCode.RUNTIME_TOOL_GET_FAILED, validate_tool)
@@ -62,7 +62,7 @@ class ToolMgr(AbstractManager[Tool]):
             if hasattr(tool, "get_tool_info"):
                 self._tool_infos[name] = tool.get_tool_info()
             else:
-                self._tool_infos[name] = ToolInfo(function=Function())
+                self._tool_infos[name] = ToolInfo()
             return tool
 
         return self._get_resource(name, StatusCode.RUNTIME_TOOL_GET_FAILED, create_tool_from_provider)

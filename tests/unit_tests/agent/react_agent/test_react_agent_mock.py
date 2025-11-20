@@ -36,7 +36,8 @@ import pytest
 from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
-from openjiuwen.core.utils.llm.messages import AIMessage, ToolCall, FunctionInfo, UsageMetadata
+from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
 
@@ -180,10 +181,8 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
                         id='mock_tool_call_1',
                         index=0,
                         type='function',
-                        function=FunctionInfo(
-                            name='add',
-                            arguments='{"a": 1, "b": 2}'
-                        )
+                        name='add',
+                        arguments='{"a": 1, "b": 2}'
                     )
                 ],
                 usage_metadata=UsageMetadata(

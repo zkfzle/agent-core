@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.ssl_utils import SslUtils
 from openjiuwen.core.common.security.url_utils import UrlUtils
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.tool import constant
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.constant import Input, Output
@@ -38,8 +38,7 @@ class RestfulApi(Tool):
 
     def get_tool_info(self) -> ToolInfo:
         tool_info_dict = Param.format_functions(self)
-        func = Function(**tool_info_dict)
-        tool_info = ToolInfo(function=func)
+        tool_info = ToolInfo(**tool_info_dict)
         return tool_info
 
     def format_input_with_default_when_required(self, inputs: dict):

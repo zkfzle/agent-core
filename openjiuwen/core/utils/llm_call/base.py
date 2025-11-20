@@ -7,8 +7,8 @@ from typing import Dict, Any, Optional, List, Callable, AsyncIterator
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, SystemMessage
-
+from openjiuwen.core.utils.llm.messages import BaseMessage, SystemMessage
+from openjiuwen.core.utils.tool.schema import ToolInfo
 
 DEFAULT_USER_PROMPT: str = "{{query}}"
 

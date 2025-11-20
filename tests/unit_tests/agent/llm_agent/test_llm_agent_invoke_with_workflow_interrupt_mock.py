@@ -47,7 +47,8 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
-from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolCall, FunctionInfo, UsageMetadata
+from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
@@ -199,10 +200,8 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                         id='mock_tool_call_1',
                         index=0,
                         type='function',
-                        function=FunctionInfo(
-                            name='questioner_weather_workflow',
-                            arguments='{"query": "今天天气查询"}'
-                        )
+                        name='questioner_weather_workflow',
+                        arguments='{"query": "今天天气查询"}'
                     )
                 ],
                 usage_metadata=UsageMetadata(
@@ -221,10 +220,8 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                         id='mock_tool_call_2',
                         index=0,
                         type='function',
-                        function=FunctionInfo(
-                            name='questioner_weather_workflow',
-                            arguments='{"query": "上海"}'
-                        )
+                        name='questioner_weather_workflow',
+                        arguments='{"query": "上海"}'
                     )
                 ],
                 usage_metadata=UsageMetadata(

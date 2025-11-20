@@ -13,7 +13,8 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm_call.base import LLMCall
-from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo
+from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase
 from openjiuwen.agent_builder.tune.utils import TuneUtils
 import openjiuwen.agent_builder.tune.optimizer.adopt.utils as ADOPT

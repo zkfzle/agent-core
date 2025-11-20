@@ -120,10 +120,9 @@ class ReActAgent(BaseAgent):
             工具执行结果
         """
         # 解析工具名称和参数
-        tool_name = tool_call.function.name
+        tool_name = tool_call.name
         try:
-            tool_args = json.loads(tool_call.function.arguments) if isinstance(tool_call.function.arguments,
-                                                                               str) else tool_call.function.arguments
+            tool_args = json.loads(tool_call.arguments) if isinstance(tool_call.arguments, str) else tool_call.arguments
         except (json.JSONDecodeError, AttributeError):
             tool_args = {}
 
@@ -193,7 +192,7 @@ class ReActAgent(BaseAgent):
 
                 # 2.3 执行工具调用（工具结果已在 _execute_tool_call 中添加到历史）
                 for tool_call in llm_output.tool_calls:
-                    tool_name = tool_call.function.name
+                    tool_name = tool_call.name
                     logger.info(f"Executing tool: {tool_name}")
                     result = await self._execute_tool_call(tool_call, runtime)
                     logger.info(f"Tool {tool_name} completed with result: {result}")

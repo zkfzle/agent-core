@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
+from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -82,13 +82,12 @@ class TestRestFulApi:
         )
         res = mock_data.get_tool_info()
         too_info = ToolInfo(
-            function=Function(
-                name='test', description='test',
-                parameters=Parameters(
-                    type='object',
-                    properties={'test': {'description': 'test', 'type': 'string'}},
-                    required=['test']
-                )
+            name='test',
+            description='test',
+            parameters=Parameters(
+                type='object',
+                properties={'test': {'description': 'test', 'type': 'string'}},
+                required=['test']
             )
         )
         self.assertEqual(res, too_info)

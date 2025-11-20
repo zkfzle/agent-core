@@ -46,8 +46,8 @@ class AIMessageChunk(AIMessage, BaseMessageChunk):
                         last.id = last.id or incoming.id
                         last.type = last.type or incoming.type
                         last.index = last.index if last.index is not None else incoming.index
-                        last.function.name = (last.function.name or "") + (incoming.function.name or "")
-                        last.function.arguments = (last.function.arguments or "") + (incoming.function.arguments or "")
+                        last.name = (last.name or "") + (incoming.name or "")
+                        last.arguments = (last.arguments or "") + (incoming.arguments or "")
                         continue
                 # otherwise, push as a new tool_call
                 merged_tool_calls.append(incoming)

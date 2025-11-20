@@ -13,7 +13,7 @@ from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.stream.writer import StreamWriter
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.tool.base import Tool
 

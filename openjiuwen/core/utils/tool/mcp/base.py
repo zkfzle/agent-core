@@ -4,7 +4,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
+from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.utils.tool.constant import Input, Output
 from openjiuwen.core.common.logging import logger
 
@@ -66,8 +66,8 @@ class MCPTool(Tool):
         """Get tool information"""
         # If we haven't cached the tool info, create it
         if self._tool_info is None:
-            # Create a Function object with the tool information
-            function = Function(
+            # Create and cache ToolInfo
+            self._tool_info = ToolInfo(
                 name=self.tool_name,
                 description=f"MCP tool from {self.server_name}",
                 parameters=Parameters(
@@ -75,12 +75,6 @@ class MCPTool(Tool):
                     properties={},
                     required=[]
                 )
-            )
-
-            # Create and cache ToolInfo
-            self._tool_info = ToolInfo(
-                type="function",
-                function=function
             )
 
         return self._tool_info

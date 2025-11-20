@@ -31,7 +31,7 @@ class TuneUtils:
         messages_content = []
         for message in case.messages:
             if isinstance(message, AIMessage) and message.tool_calls:
-                content = "".join(json.dumps(tool_call.function.model_dump()) for tool_call in message.tool_calls)
+                content = "".join(json.dumps(tool_call.model_dump()) for tool_call in message.tool_calls)
             else:
                 content = message.content
             messages_content.append(f"[{message.role}]: {content}")
@@ -43,7 +43,8 @@ class TuneUtils:
     @staticmethod
     def get_output_string_from_message(message: BaseMessage):
         if isinstance(message, AIMessage) and message.tool_calls:
-            return "".join("".join(json.dumps(tool_call.function.model_dump()) for tool_call in message.tool_calls))
+            return "".join("".join(json.dumps(tool_call.model_dump(include={"name", "arguments"}))
+                                   for tool_call in message.tool_calls))
         return message.content
 
     @staticmethod

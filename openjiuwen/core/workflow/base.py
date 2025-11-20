@@ -37,7 +37,7 @@ from openjiuwen.core.stream_actor.base import StreamGraph
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.tracer.tracer import Tracer
 from openjiuwen.core.tracer.workflow_tracer import workflow_trace_inputs, workflow_trace_outputs
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
+from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
 from openjiuwen.graph.pregel.graph import PregelGraph
@@ -294,12 +294,11 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             properties=inputs_schema.properties,
             required=inputs_schema.required
         )
-        function = Function(
+        return ToolInfo(
             name=self._workflow_config.metadata.name,
-            parameters=parameters,
             description=self._workflow_config.metadata.description,
+            parameters=parameters,
         )
-        return ToolInfo(function=function)
 
     def set_start_comp(
             self,

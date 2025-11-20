@@ -8,7 +8,7 @@ from pydantic import Field, BaseModel
 
 from openjiuwen.core.utils.tool.tool import tool
 from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function, Parameters
+from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 
 
 @tool(
@@ -61,17 +61,15 @@ class TestToolDecorator:
         # get_tool_info
         sub_res = sub.get_tool_info()
         sub_too_info = ToolInfo(
-            function=Function(
-                name="local_sub",
-                description="local function for sub",
-                parameters=Parameters(
-                    type="object",
-                    properties={
-                        "a": {"description": "first arg", "type": "integer"},
-                        "b": {"description": "second arg", "type": "integer"},
-                    },
-                    required=["a", "b"],
-                ),
+            name="local_sub",
+            description="local function for sub",
+            parameters=Parameters(
+                type="object",
+                properties={
+                    "a": {"description": "first arg", "type": "integer"},
+                    "b": {"description": "second arg", "type": "integer"},
+                },
+                required=["a", "b"],
             )
         )
         self.assertEqual(sub_res, sub_too_info)
@@ -107,41 +105,39 @@ class TestToolDecorator:
         # get_tool_info
         summarize_res = summarize.get_tool_info()
         summarize_tool_info = ToolInfo(
-            function=Function(
-                name="summarize",
-                description="汇总商品信息",
-                parameters=Parameters(
-                    type="object",
-                    properties={
-                        "title": {"description": "汇总标题", "type": "string"},
-                        "products": {
-                            "description": "商品列表",
-                            "type": "array",
-                            "items": {
-                                "name": {"description": "商品名称", "type": "string"},
-                                "required": ["name", "is_season", "color", "note"],
-                                "sales": {"description": "销量", "type": "integer"},
-                                "price": {"description": "价格必须大于0", "type": "number"},
-                                "is_season": {"description": "是否当季", "type": "boolean"},
-                                "color": {
-                                    "description": "颜色",
-                                    "type": "array",
-                                    "items": {"description": "颜色", "type": "string"},
-                                },
-                                "note": {
-                                    "description": "备注",
-                                    "type": "object",
-                                    "properties": {
-                                        "key": {"description": "", "type": "string"},
-                                        "required": ["key", "value"],
-                                        "value": {"description": "", "type": "integer"},
-                                    },
+            name="summarize",
+            description="汇总商品信息",
+            parameters=Parameters(
+                type="object",
+                properties={
+                    "title": {"description": "汇总标题", "type": "string"},
+                    "products": {
+                        "description": "商品列表",
+                        "type": "array",
+                        "items": {
+                            "name": {"description": "商品名称", "type": "string"},
+                            "required": ["name", "is_season", "color", "note"],
+                            "sales": {"description": "销量", "type": "integer"},
+                            "price": {"description": "价格必须大于0", "type": "number"},
+                            "is_season": {"description": "是否当季", "type": "boolean"},
+                            "color": {
+                                "description": "颜色",
+                                "type": "array",
+                                "items": {"description": "颜色", "type": "string"},
+                            },
+                            "note": {
+                                "description": "备注",
+                                "type": "object",
+                                "properties": {
+                                    "key": {"description": "", "type": "string"},
+                                    "required": ["key", "value"],
+                                    "value": {"description": "", "type": "integer"},
                                 },
                             },
                         },
                     },
-                    required=["title", "products"],
-                ),
+                },
+                required=["title", "products"],
             )
         )
         self.assertEqual(summarize_res, summarize_tool_info)

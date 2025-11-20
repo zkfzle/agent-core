@@ -2,38 +2,10 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Union, Dict, List, Optional, Any
+from typing import Union, Dict, List, Optional
 from pydantic import BaseModel
 
-
-class Parameters(BaseModel):
-    type: str = "object"
-    properties: Dict[str, Any] = {}
-    required: List[str]
-
-
-class Function(BaseModel):
-    name: str = ''
-    description: str = ''
-    parameters: Optional[Parameters] = None
-
-
-class ToolInfo(BaseModel):
-    type: str = "function"
-    function: Function
-
-
-class FunctionInfo(BaseModel):
-    name: str
-    arguments: str
-
-
-class ToolCall(BaseModel):
-    args: Dict[str, Any] = {}
-    id: Optional[str]
-    index: int = 0
-    type: str
-    function: FunctionInfo
+from openjiuwen.core.utils.tool.schema import ToolCall
 
 
 class BaseMessage(BaseModel):

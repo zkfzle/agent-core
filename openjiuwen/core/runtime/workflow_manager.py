@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_workflow_with_trace
-from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema
 
 Workflow = TypeVar("Workflow", contravariant=True)

@@ -7,7 +7,7 @@ from typing import List, Optional, Generator, Literal
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.prompt.template.template_manager import TemplateManager
 from openjiuwen.core.component.common.configs.model_config import ModelConfig

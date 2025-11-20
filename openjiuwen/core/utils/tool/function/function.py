@@ -4,7 +4,7 @@
 import inspect
 from typing import Callable, List
 
-from openjiuwen.core.utils.llm.messages import ToolInfo, Function
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.constant import Input, Output
 from openjiuwen.core.utils.tool.param import Param
@@ -37,6 +37,5 @@ class LocalFunction(Tool):
 
     def get_tool_info(self) -> ToolInfo:
         tool_info_dict = Param.format_functions(self)
-        func = Function(**tool_info_dict)
-        tool_info = ToolInfo(function=func)
+        tool_info = ToolInfo(**tool_info_dict)
         return tool_info

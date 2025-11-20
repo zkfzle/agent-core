@@ -16,7 +16,7 @@ from openjiuwen.core.utils.llm.messages import UsageMetadata
 from openjiuwen.agent_builder.tune.base import Case
 from openjiuwen.agent_builder.tune.trainer.trainer import Trainer
 from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
-from openjiuwen.core.utils.llm.messages import ToolCall, FunctionInfo
+from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
@@ -91,27 +91,27 @@ INFORMATION_EXTRACTION_CASES = [
 TOOL_CALL_CASES = [
     Case(inputs=dict(query="请帮我打开空调"),
         label=dict(output="", tool_calls=[
-            ToolCall(args={}, id="", index=0, type='function', function=FunctionInfo(name="ac_open", arguments="{}"))],
+            ToolCall(id="", index=0, type='function', name="ac_open", arguments="{}")],
                         usage_metadata=UsageMetadata(finish_reason="tool_calls")),
     ),
     Case(inputs=dict(query="请帮我关闭空调"),
          label=dict(output="", tool_calls=[
-             ToolCall(args={}, id="", index=0, type='function', function=FunctionInfo(name="ac_close", arguments="{}"))],
+             ToolCall(id="", index=0, type='function', name="ac_close", arguments="{}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          ),
     Case(inputs=dict(query="天气太热了，开一下空调"),
          label=dict(output="", tool_calls=[
-             ToolCall(args={}, id="", index=0, type='function', function=FunctionInfo(name="ac_open", arguments="{}"))],
+             ToolCall(id="", index=0, type='function', name="ac_open", arguments="{}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          ),
     Case(inputs=dict(query="有点冷，先帮我关窗，再调整到21度"),
          label=dict(output="", tool_calls=[
-             ToolCall(args={}, id="", index=0, type='function', function=FunctionInfo(name="ac_control", arguments="{\"temperature\":21}"))],
+             ToolCall(id="", index=0, type='function', name="ac_control", arguments="{\"temperature\":21}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          ),
     Case(inputs=dict(query="有点热，先帮我开窗，再调整到29度"),
          label=dict(output="", tool_calls=[
-             ToolCall(args={}, id="", index=0, type='function', function=FunctionInfo(name="ac_control", arguments="{\"temperature\":29}"))],
+             ToolCall(id="", index=0, type='function', name="ac_control", arguments="{\"temperature\":29}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          )
 ]

@@ -15,7 +15,8 @@ from openjiuwen.core.common.security.ssl_utils import SslUtils
 from openjiuwen.core.common.security.url_utils import UrlUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
+from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 
 
@@ -256,16 +257,11 @@ class RequestChatModel(BaseModelClient):
             tool_calls = []
             if (self._stream_state['current_tool_name'] and
                     self._stream_state['current_tool_args']):
-                function = FunctionInfo(
+                tool_call = ToolCall(
+                    id=self._stream_state['current_tool_call_id'],
+                    type="function_call",
                     name=self._stream_state['current_tool_name'],
                     arguments=self._stream_state['current_tool_args']
-                )
-                tool_call = ToolCall(
-                    args={"name": self._stream_state['current_tool_name'],
-                          "arguments": self._stream_state['current_tool_args']},
-                    id=self._stream_state['current_tool_call_id'],
-                    function=function,
-                    type="function_call"
                 )
                 tool_calls.append(tool_call)
 
@@ -450,10 +446,8 @@ class OpenAIChatModel(BaseModelClient):
                 tool_call = ToolCall(
                     id=getattr(tc, 'id', '') or "",
                     type="function",
-                    function=FunctionInfo(
-                        name=function_name,
-                        arguments=function_arguments
-                    )
+                    name=function_name,
+                    arguments=function_arguments
                 )
                 tool_calls.append(tool_call)
 
@@ -488,10 +482,8 @@ class OpenAIChatModel(BaseModelClient):
                     tool_call = ToolCall(
                         id=getattr(tc_delta, 'id', '') or "",
                         type="function",
-                        function=FunctionInfo(
-                            name=function_name,
-                            arguments=function_arguments
-                        )
+                        name=function_name,
+                        arguments=function_arguments
                     )
                     tool_calls.append(tool_call)
 

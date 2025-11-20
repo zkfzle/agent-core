@@ -10,7 +10,8 @@ from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.security.json_utils import JsonUtils
-from openjiuwen.core.utils.llm.messages import BaseMessage, ToolCall, AIMessage, HumanMessage, ToolMessage
+from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
+from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.context_engine.engine import ContextEngine
@@ -74,7 +75,7 @@ class MessageHandlerUtils:
 
         result = []
         for tool_call in tool_calls:
-            tool_name = tool_call.function.name
+            tool_name = tool_call.name
             for workflow in config.workflows:
                 if workflow.name == tool_name:
                     task_type = TaskType.WORKFLOW
@@ -84,7 +85,7 @@ class MessageHandlerUtils:
                         input=TaskInput(
                             target_id=target_id,
                             target_name=tool_name,
-                            arguments=JsonUtils.safe_json_loads(tool_call.function.arguments)
+                            arguments=JsonUtils.safe_json_loads(tool_call.arguments)
                         ),
                         task_type=task_type
                     ))
@@ -96,7 +97,7 @@ class MessageHandlerUtils:
                         task_id=tool_call.id,
                         input=TaskInput(
                             target_name=tool_name,
-                            arguments=JsonUtils.safe_json_loads(tool_call.function.arguments)
+                            arguments=JsonUtils.safe_json_loads(tool_call.arguments)
                         ),
                         task_type=task_type
                     ))

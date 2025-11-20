@@ -8,7 +8,8 @@ from abc import abstractmethod
 from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
-from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, AIMessage
+from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 
@@ -25,23 +26,23 @@ class BaseModelClient:
                top_p:float = 0.1, **kwargs: Any):
         try:
             return self._invoke(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
+                                tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs)
         except NotImplementedError:
             return asyncio.run(self.ainvoke(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
-                                temperature=temperature, top_p=top_p, **kwargs))
+                                            tools=self._convert_tool_info_format(tools),
+                                            temperature=temperature, top_p=top_p, **kwargs))
 
     async def ainvoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
                top_p:float=0.1, **kwargs: Any):
         try:
             return await self._ainvoke(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
-                                temperature=temperature, top_p=top_p, **kwargs)
+                                       tools=self._convert_tool_info_format(tools),
+                                       temperature=temperature, top_p=top_p, **kwargs)
         except NotImplementedError:
             return self._invoke(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
+                                tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs)
 
     def stream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
@@ -49,13 +50,13 @@ class BaseModelClient:
                top_p:float = 0.1, **kwargs: Any):
         try:
             for chunk in self._stream(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
+                                tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
         except NotImplementedError:
             async def async_gen_wrapper():
                 async for chunk in self._astream(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
+                                tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                     yield chunk
 
@@ -77,12 +78,12 @@ class BaseModelClient:
                top_p:float = 0.1, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
         try:
             async for chunk in self._astream(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
+                                tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
         except NotImplementedError:
             for chunk in self._stream(model_name=model_name, messages=self._cover_messages_format(messages),
-                                tools=self._cover_tool_format(tools),
+                                tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
 
@@ -111,14 +112,14 @@ class BaseModelClient:
     def model_provider(self):
         pass
 
-    def _cover_tool_format(self, tools: Union[List[ToolInfo], List[Dict]]):
+    def _convert_tool_info_format(self, tools: Union[List[ToolInfo], List[Dict]]):
         if not tools:
             return []
 
         if all(isinstance(item, Dict) for item in tools):
             return tools
         else:
-            return [json.loads(tool.model_dump_json()) for tool in tools]
+            return [tool.to_dict() for tool in tools]
 
     def clean_tools(self, tools):
         """

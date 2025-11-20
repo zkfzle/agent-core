@@ -4,7 +4,7 @@
 
 from abc import abstractmethod
 
-from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.tool.constant import Input, Output
 
 

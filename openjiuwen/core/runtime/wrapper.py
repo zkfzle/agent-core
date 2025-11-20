@@ -15,7 +15,7 @@ from openjiuwen.core.stream.writer import StreamWriter
 from openjiuwen.core.tracer.tracer import Tracer
 from openjiuwen.core.tracer.workflow_tracer import trace, trace_error
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import ToolInfo
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.common.exception.status_code import StatusCode

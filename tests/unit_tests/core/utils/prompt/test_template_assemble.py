@@ -1,7 +1,8 @@
 import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage, ToolCall, FunctionInfo, ToolMessage
+from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage, ToolMessage
+from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.utils.prompt.assemble.variables.variable import Variable
 from openjiuwen.core.utils.prompt.template.template import Assembler
 from openjiuwen.core.utils.prompt.assemble.variables.textable import TextableVariable
@@ -137,7 +138,8 @@ class TestPromptAssemble:
                 content="",
                 tool_calls=[
                     ToolCall(type="test",
-                             function=FunctionInfo(name="func", arguments="x"),
+                             name="func",
+                             arguments="x",
                              id="test")]),
             ToolMessage(tool_call_id="test", content=[])
         ])

@@ -16,7 +16,8 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolInfo
+from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage
+from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata

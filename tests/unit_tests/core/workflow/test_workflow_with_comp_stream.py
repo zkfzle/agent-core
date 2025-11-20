@@ -152,7 +152,7 @@ async def test_batch_multi_stream_workflow():
     assert chunks == expect_chunks
 
 def create_component_stream_workflow_with_template() -> Workflow:
-    config = WorkflowConfig(stream_timeout=5)
+    config = WorkflowConfig()
     workflow = Workflow(config)
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
     workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
@@ -176,7 +176,7 @@ def create_component_stream_workflow_with_template() -> Workflow:
     return workflow
 
 def create_component_stream_workflow_without_template() -> Workflow:
-    config = WorkflowConfig(stream_timeout=5)
+    config = WorkflowConfig()
     workflow = Workflow(config)
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
     workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
@@ -321,7 +321,7 @@ async def test_stream_component_in_sub_workflow_with_stream_collect():
 
 # Test the ability of workflow components to stream between components
 async def test_stream_component_in_sub_workflow_with_substream():
-    wf = Workflow(workflow_config=WorkflowConfig(stream_timeout=10))
+    wf = Workflow(workflow_config=WorkflowConfig())
     wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
     wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_without_template()),
                          inputs_schema={"inputs": "${main_start.array}"})
@@ -355,7 +355,7 @@ async def test_stream_component_in_sub_workflow_with_substream():
 
 # Test the ability of workflow components to stream between components with templates
 async def test_stream_component_in_sub_workflow_with_substream_template():
-    wf = Workflow(workflow_config=WorkflowConfig(stream_timeout=10))
+    wf = Workflow(workflow_config=WorkflowConfig())
     wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
     wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_with_template()),
                          inputs_schema={"inputs": "${main_start.array}"})

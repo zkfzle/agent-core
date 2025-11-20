@@ -43,7 +43,6 @@ class WorkflowInputsSchema(BaseModel):
 
 class WorkflowConfig(BaseModel):
     metadata: Optional[WorkflowMetadata] = Field(default_factory=WorkflowMetadata)
-    stream_timeout: float = Field(default=0, gt=0)
     spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
     workflow_inputs_schema: Optional[WorkflowInputsSchema] = Field(default_factory=WorkflowInputsSchema)
     workflow_max_nesting_depth: int = Field(default=5, ge=0, le=10)

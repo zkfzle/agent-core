@@ -456,8 +456,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         await workflow_trace_inputs(runtime, inputs)
         timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
         frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
-        frame_timeout = min(frame_timeout, self._workflow_config.stream_timeout) \
-            if frame_timeout and frame_timeout > 0 else self._workflow_config.stream_timeout
         if timeout is not None and 0 < timeout <= frame_timeout:
             frame_timeout = timeout
         runtime.config().set_envs({WORKFLOW_STREAM_FRAME_TIMEOUT: frame_timeout})

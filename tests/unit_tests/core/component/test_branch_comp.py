@@ -42,7 +42,7 @@ class MockSubWorkflowComponent(WorkflowComponent, ComponentExecutable):
         return SUB_WORKFLOW_COMPONENT
 
     def sub_workflow(self) -> Workflow:
-        flow = Workflow(workflow_config=WorkflowConfig(stream_timeout=10))
+        flow = Workflow(workflow_config=WorkflowConfig())
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={"a": "${a}",
                                            "b": "${b}",

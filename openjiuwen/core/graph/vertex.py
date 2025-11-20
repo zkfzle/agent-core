@@ -13,7 +13,7 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.graph.atomic_node import AsyncAtomicNode
 from openjiuwen.core.graph.executable import Executable, Output
 from openjiuwen.core.graph.graph_state import GraphState
-from openjiuwen.core.graph.timeout_async_interator_wrapper import TimeoutAsyncIteratorWrapper
+from openjiuwen.core.graph.timeout_async_iterator_wrapper import TimeoutAsyncIteratorWrapper
 from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.utils import get_by_schema

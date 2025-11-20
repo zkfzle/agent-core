@@ -58,14 +58,14 @@ class TestSOPGenrator(unittest.TestCase):
 
     def test_generate_without_resource(self):
         self.sop_generator._execute = Mock()
-        query = "test_query"
+        dialog_history = [{"role": "user", "content": "test_query"}]
         system_prompt = sg.generate_system_prompt.replace("{{resource_info}}", "无可用工具/资源/外部接口。")
-        self.sop_generator.generate(query, None)
-        self.sop_generator._execute.assert_called_with(sg.SOP_GENERATE_PROMPT + query, system_prompt)
+        self.sop_generator.generate(dialog_history, None)
+        self.sop_generator._execute.assert_called_with(sg.SOP_GENERATE_PROMPT + "user: test_query", system_prompt)
 
     def test_generate_with_resource(self):
         self.sop_generator._execute = Mock()
-        query = "test_query"
+        dialog_history = [{"role": "user", "content": "test_query"}]
         resource = {
             "plugin": [
                 {"name": "test_plugin_1", "description": "test_plugin_desc_1"},
@@ -75,8 +75,8 @@ class TestSOPGenrator(unittest.TestCase):
         system_prompt = sg.generate_system_prompt.replace(
             "{{resource_info}}", "plugin:\n- test_plugin_1: test_plugin_desc_1\n- test_plugin_2: test_plugin_desc_2"
         )
-        self.sop_generator.generate(query, resource)
-        self.sop_generator._execute.assert_called_with(sg.SOP_GENERATE_PROMPT + query, system_prompt)
+        self.sop_generator.generate(dialog_history, resource)
+        self.sop_generator._execute.assert_called_with(sg.SOP_GENERATE_PROMPT + "user: test_query", system_prompt)
 
 
 if __name__ == "__main__":

@@ -17,10 +17,11 @@ class SopGenerator:
     def transform(self, query: str) -> str:
         return self._execute(query, transform_system_prompt)
 
-    def generate(self, query, resource: Dict[str, List[dict]]) -> str:
-        query = SOP_GENERATE_PROMPT + query
+    def generate(self, dialog_history, resource: Dict[str, List[dict]]) -> str:
+        dialog_history_query = "\n".join(f"{msg['role']}: {msg['content']}" for msg in dialog_history)
+        dialog_history_query = SOP_GENERATE_PROMPT + dialog_history_query
         system_prompt = generate_system_prompt.replace("{{resource_info}}", self._format_resource_info(resource))
-        return self._execute(query, system_prompt)
+        return self._execute(dialog_history_query, system_prompt)
 
     def _execute(self, query: str, system_prompt: str) -> str:
         prompts = [SystemMessage(content=system_prompt), HumanMessage(content=query)]

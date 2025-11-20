@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.agent_builder.nl_to_agent.common.llm_service import LlmService
 from openjiuwen.agent_builder.nl_to_agent.common.context_manager import ContextManager
-from openjiuwen.agent_builder.nl_to_agent.common.resource.resource_retrieve import ResourceRetriever
+from openjiuwen.agent_builder.nl_to_agent.common.resource.resource_retriever import ResourceRetriever
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.clarifier.clarifier import Clarifier
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.generator.generator import Generator
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.transformer.transformer import Transformer
@@ -46,32 +46,32 @@ class LlmAgentBuilder:
 
     def execute(self, query: str):
         if self._state == State.INITIAL:
-            return self._handle_initial(query)
+            return self._handle_initial()
         elif self._state == State.CONSTRUCT:
-            return self._handle_construct(query)
+            return self._handle_construct()
         raise JiuWenBaseException(
             StatusCode.NL2AGENT_LLM_AGENT_STATE_ERROR.code,
             StatusCode.NL2AGENT_LLM_AGENT_STATE_ERROR.errmsg.format(error_msg=f"未知的LLM Agent构建阶段：{self._state}")
         )
 
-    def _handle_initial(self, query):
-        self._update_resource(query)
+    def _handle_initial(self):
         dialog_history = self.context_manager.get_history()
+        self._update_resource(dialog_history)
         self._agent_config_info = self._clarifier.clarify(dialog_history, resource=self._resource)
         self.context_manager.add_assistant_message(self._agent_config_info)
         self._state = State.CONSTRUCT
         return self._agent_config_info
 
-    def _handle_construct(self, query):
-        self._update_resource(query)
+    def _handle_construct(self):
         dialog_history = self.context_manager.get_history()
+        self._update_resource(dialog_history)
         constructor_output = self._generator.generate(dialog_history, self._agent_config_info, resource=self._resource)
         dsl = self._transformer.transform_to_dsl(constructor_output)
         self._reset()
         return dsl
     
-    def _update_resource(self, query):
-        resource = self._retriever.retrieve(query)
+    def _update_resource(self, dialog_history):
+        resource = self._retriever.retrieve(dialog_history)
         for key, value in resource.items():
             if key not in self._resource:
                 self._resource.update({key: value})

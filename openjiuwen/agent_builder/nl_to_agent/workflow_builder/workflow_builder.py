@@ -9,7 +9,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.utils.llm.messages import AIMessage, HumanMessage
 from openjiuwen.agent_builder.nl_to_agent.common.llm_service import LlmService
 from openjiuwen.agent_builder.nl_to_agent.common.context_manager import ContextManager
-from openjiuwen.agent_builder.nl_to_agent.common.resource.resource_retrieve import ResourceRetriever
+from openjiuwen.agent_builder.nl_to_agent.common.resource.resource_retriever import ResourceRetriever
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.intention_detector import IntentionDetector
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator import SopGenerator
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_generator.dl_generator import DLGenerator
@@ -73,7 +73,7 @@ class WorkflowBuilder:
 
         sop_content = self._sop_generator.transform(query)
         self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
-        self._resource = self._retriever.retrieve(query)
+        self._resource = self._retriever.retrieve(dialog_history)
         self._dl = self._generate_and_reflect_dl(
             dl_operation=self._dl_generator.generate,
             query=GENERATE_DL_FROM_SOP_CONTENT + sop_content,
@@ -88,11 +88,10 @@ class WorkflowBuilder:
         if self._intention_detector.detect_initial_instruction(dialog_history):
             sop_content = self._sop_generator.transform(query)
             self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
-            self._resource = self._retriever.retrieve(query)
+            self._resource = self._retriever.retrieve(dialog_history)
         else:
-            dialog_history_query = '\n'.join(f'{msg["role"]}: {msg["content"]}' for msg in dialog_history)
-            self._resource = self._retriever.retrieve(dialog_history_query)
-            sop_content = self._sop_generator.generate(dialog_history_query, self._resource)
+            self._resource = self._retriever.retrieve(dialog_history)
+            sop_content = self._sop_generator.generate(dialog_history, self._resource)
             self.context_manager.add_assistant_message(SOP_RESPONSE_CONTENT + sop_content)
 
         self._dl = self._generate_and_reflect_dl(

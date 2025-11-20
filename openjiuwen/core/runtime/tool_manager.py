@@ -9,7 +9,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace
 from openjiuwen.core.utils.llm.messages import ToolInfo, Function
-from openjiuwen.core.utils.tool.base import Tool, MCPTool
+from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.mcp.base import (
     ToolServerConfig,
     McpToolInfo,
@@ -17,6 +17,7 @@ from openjiuwen.core.utils.tool.mcp.base import (
     SseClient,
     StdioClient,
     PlaywrightClient,
+    MCPTool
 )
 from openjiuwen.core.common.logging import logger
 

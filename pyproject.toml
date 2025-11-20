@@ -14,11 +14,10 @@ dependencies = [
     "openai==1.108.0",
     "cacheout==0.16.0",
     "mermaid-py==0.8.0",
-    "numpy==1.26.4",
-    "torch==2.1.0",
-    "faiss-cpu==1.7.4",
+    "numpy==2.1.0",
+    "torch==2.4.1",
+    "faiss-cpu==1.8.0",
     "transformers==4.57.1",
-    "plyvel==1.5.0",
 ]
 
 [tool.uv]

@@ -1,11 +1,12 @@
 import json
 import sys
 import types
-from operator import index
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock
 
 import pytest
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.condition.array import ArrayCondition
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
@@ -510,11 +511,13 @@ class TestTraceWorkflow:
         flow.add_stream_connection("a", "end")
 
         results = []
-        with pytest.raises(RuntimeError, match="mocked stream error"):
+        with pytest.raises(JiuWenBaseException) as e:
             async for chunk in flow.stream({"a": 1, "b": "haha"}, WorkflowRuntime(),
                                            stream_modes=[BaseStreamMode.TRACE]):
                 logger.info("stream chunk: {%s}", chunk)
                 results.append(chunk)
+        assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+        assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=RuntimeError("mocked stream error"))
 
         assert len(results) == 7
         end_error_chunk = results[5]

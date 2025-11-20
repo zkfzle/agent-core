@@ -56,17 +56,17 @@ async def test_simple_workflow():
     """
     flow, mock_node, mock_start = create_simple_workflow()
     session_id = uuid.uuid4().hex
-    try:
+    with pytest.raises(JiuWenBaseException) as e:
         await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        assert str(e) == 'value < 20'
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=RuntimeError('value < 20'))
     assert mock_start.runtime == 1
     assert mock_node.runtime == 1
     flow2, mock_node2, mock_start2 = create_simple_workflow()
-    try:
+    with pytest.raises(JiuWenBaseException) as e:
         await flow2.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        assert str(e) == 'value < 20'
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=RuntimeError('value < 20'))
     assert mock_start2.runtime == 0
     assert mock_node2.runtime == 1
 
@@ -133,18 +133,20 @@ async def test_workflow_comp():
     flow.add_connection("start", "a")
     flow.add_connection("a", "end")
     session_id = uuid.uuid4().hex
-    try:
+    with pytest.raises(JiuWenBaseException) as e:
         await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        assert str(e) == 'value < 20'
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=RuntimeError('value < 20'))
+
     assert mock_start.runtime == 1
     assert mock_node.runtime == 1
 
     await asyncio.sleep(0.1)
-    try:
+    with pytest.raises(JiuWenBaseException) as e:
         await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        assert str(e) == 'value < 20'
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+            error=RuntimeError('value < 20'))
     assert mock_start.runtime == 1
     assert mock_node.runtime == 2
 
@@ -186,56 +188,45 @@ async def test_workflow_with_loop():
     flow.add_connection("b", "e")
 
     session_id = uuid.uuid4().hex
-    try:
-        expect_e = Exception()
-        result = await flow.invoke({"input_array": [1, 2, 3], "input_number": 1},
+    with pytest.raises(JiuWenBaseException) as e:
+        await flow.invoke({"input_array": [1, 2, 3], "input_number": 1},
                                    WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        expect_e = e
-    assert str(expect_e) == "inner error: 1"
-    try:
-        expect_e = Exception()
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+        error=RuntimeError('inner error: 1'))
+    with pytest.raises(JiuWenBaseException) as e:
         result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        expect_e = e
-    assert str(expect_e) == "inner error: 11"
-    try:
-        expect_e = Exception()
-        result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        expect_e = e
-    assert str(expect_e) == "inner error: 21"
-    try:
-        expect_e = Exception()
-        result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-        assert result == WorkflowOutput(result={"array_result": [11, 12, 13], "user_var": 31},
-                                        state=WorkflowExecutionState.COMPLETED)
-    except Exception as e:
-        assert True
-        expect_e = e
-    assert str(expect_e) == ""
 
-    try:
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+        error=RuntimeError('inner error: 11'))
+    with pytest.raises(JiuWenBaseException) as e:
+        result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+        error=RuntimeError('inner error: 21'))
+
+    result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
+    assert result == WorkflowOutput(result={"array_result": [11, 12, 13], "user_var": 31},
+                                        state=WorkflowExecutionState.COMPLETED)
+
+
+    with pytest.raises(JiuWenBaseException) as e:
         expect_e = Exception()
         result = await flow.invoke({"input_array": [4, 5], "input_number": 2}, WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        expect_e = e
-    assert str(expect_e) == "inner error: 2"
-    try:
-        expect_e = Exception()
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+            error=RuntimeError('inner error: 2'))
+
+    with pytest.raises(JiuWenBaseException) as e:
         result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-    except Exception as e:
-        expect_e = e
-    assert str(expect_e) == "inner error: 12"
-    try:
-        expect_e = Exception()
-        result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
-        assert result == WorkflowOutput(result={"array_result": [14, 15], "user_var": 22},
+    assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+            error=RuntimeError('inner error: 12'))
+
+    result = await flow.invoke(InteractiveInput(), WorkflowRuntime(session_id=session_id))
+    assert result == WorkflowOutput(result={"array_result": [14, 15], "user_var": 22},
                                         state=WorkflowExecutionState.COMPLETED)
-    except Exception as e:
-        assert True
-        expect_e = e
-    assert str(expect_e) == ""
 
 
 async def test_workflow_with_loop_interactive():

@@ -16,6 +16,7 @@ class StatusCode(Enum):
 
 
     # Workflow 101 - 200
+    WORKFLOW_EXECUTE_INNER_ERROR = (100, "workflow execute inner error : {error}")
     WORKFLOW_INVOKE_TIMEOUT=(101, "workflow invoke exceeded {timeout}s")
     WORKFLOW_STREAM_TIMEOUT=(102, "workflow stream exceeded {timeout}s")
 

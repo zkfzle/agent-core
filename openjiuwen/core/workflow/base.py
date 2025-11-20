@@ -477,24 +477,39 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             yield chunk
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 interaction_chuck_list.append(chunk)
-
-        results = runtime.state().get_outputs(self._end_comp_id)
-        if results:
-            yield OutputSchema(type="workflow_final", index=0, payload=results)
-            self._add_messages_to_context(inputs, results, context)
-        elif interaction_chuck_list:
-            self._add_messages_to_context(inputs, interaction_chuck_list, context)
-
         try:
             await task
-        except Exception as e:
+            results = runtime.state().get_outputs(self._end_comp_id)
+            self._add_messages_to_context(inputs, interaction_chuck_list, context)
+            if results:
+                self._add_messages_to_context(inputs, results, context)
+                yield OutputSchema(type="workflow_final", index=0, payload=results)
+            elif interaction_chuck_list:
+                self._add_messages_to_context(inputs, interaction_chuck_list, context)
+        except JiuWenBaseException as e:
             raise e
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
+                                      StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
 
-    async def _execute_with_timeout(self, task, timeout, status_code):
+
+    async def _execute_with_timeout(self, func, timeout, status_code):
+        task = asyncio.create_task(func())
         try:
-            return await asyncio.wait_for(task(), timeout=timeout if (timeout and timeout > 0) else None)
+            return await asyncio.wait_for(task, timeout=timeout if (timeout and timeout > 0) else None)
         except asyncio.TimeoutError:
             raise JiuWenBaseException(status_code.code, status_code.errmsg.format(timeout=timeout))
+        except JiuWenBaseException as e:
+            raise e
+        except Exception as e:
+            if task.done() and not task.cancelled():
+                if isinstance(task.exception(), JiuWenBaseException):
+                    raise task.exception()
+                else:
+                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code, StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=task.exception()))
+            else:
+                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code, StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
+
 
     def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
         if isinstance(runtime, WorkflowRuntime):

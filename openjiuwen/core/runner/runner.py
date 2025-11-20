@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import asyncio
-import os
 from typing import Union, Any, List, Optional
 
 from openjiuwen.agent.chat_agent import ChatAgent
@@ -28,7 +27,7 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.wrapper import TaskRuntime
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow

@@ -9,7 +9,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.agent.message.message import MessageType
 from openjiuwen.core.agent.controller.utils import MessageHandlerUtils
 from openjiuwen.agent.utils import MessageUtils
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 
 
 class ReActMessageHandler(MessageHandler):

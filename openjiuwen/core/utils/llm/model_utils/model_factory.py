@@ -6,7 +6,7 @@ import importlib
 import os
 from typing import Dict, Type
 
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.llm.base import BaseChatModel
 from openjiuwen.core.utils.llm.model_utils.singleton import Singleton
 from openjiuwen.core.common.logging import logger

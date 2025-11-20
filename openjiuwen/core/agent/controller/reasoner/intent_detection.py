@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 import json
-import re
 import secrets
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
@@ -16,7 +15,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from typing import List, Union
 

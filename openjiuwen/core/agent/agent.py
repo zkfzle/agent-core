@@ -13,7 +13,6 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
-from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.resource_manager import ResourceMgr
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
@@ -23,7 +22,7 @@ from openjiuwen.core.runtime.wrapper import (
     WrappedRuntime
 )
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi

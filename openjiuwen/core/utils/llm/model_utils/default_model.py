@@ -11,9 +11,9 @@ from requests import Session
 import openai
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.common.ssl_utils import SslUtils
-from openjiuwen.core.utils.common.url_utils import UrlUtils
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.ssl_utils import SslUtils
+from openjiuwen.core.common.security.url_utils import UrlUtils
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.llm.base import BaseChatModel
 from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk

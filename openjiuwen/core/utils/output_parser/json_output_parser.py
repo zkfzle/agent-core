@@ -7,7 +7,7 @@ import re
 import asyncio
 from typing import Any, Iterator, Optional, Union, Dict
 
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.output_parser.base import BaseOutputParser
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk

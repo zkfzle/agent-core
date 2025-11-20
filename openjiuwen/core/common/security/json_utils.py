@@ -5,7 +5,7 @@ import json
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.common.verify_utils import ExceptionUtils
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 
 
 class JsonUtils:

@@ -11,7 +11,7 @@ from logging.handlers import RotatingFileHandler
 
 from openjiuwen.core.common.logging.protocol import LoggerProtocol
 from openjiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
-from openjiuwen.core.utils.config.path_checker import is_sensitive_path
+from openjiuwen.core.common.security.path_checker import is_sensitive_path
 
 
 class SafeRotatingFileHandler(RotatingFileHandler):

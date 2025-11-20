@@ -10,7 +10,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.utils.common.verify_utils import ExceptionUtils
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 
 
 class UrlUtils:

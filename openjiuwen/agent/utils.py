@@ -12,7 +12,7 @@ from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMess
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.agent.config.base import AgentConfig
 
 

@@ -8,7 +8,7 @@ from typing import Any
 from openjiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
 import copy
 
-from openjiuwen.core.utils.config.path_checker import is_sensitive_path
+from openjiuwen.core.common.security.path_checker import is_sensitive_path
 
 CRITICAL = 50
 FATAL = CRITICAL

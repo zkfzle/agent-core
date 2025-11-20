@@ -2,7 +2,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
-from typing import AsyncIterator, TypedDict, Union, AsyncGenerator
+import re
+import string
+from typing import AsyncIterator, TypedDict, Union, AsyncGenerator, Any
 
 from openjiuwen.core.common.constants.constant import END_NODE_STREAM
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -18,8 +20,7 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.utils import get_value_by_nested_path
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.common.dict_utils import extract_leaf_nodes, format_path
-from openjiuwen.core.utils.common.verify_utils import TemplateUtils
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 
 STREAM_CACHE_KEY = "_stream_cache_key"
 
@@ -271,3 +272,22 @@ class TemplateBatchProcessor:
             logger.debug(f"rendering collect frame: {frame}")
             answer += str(frame.get("data"))
         return answer
+
+
+class TemplateUtils:
+
+    @staticmethod
+    def render_template(template: str, inputs: dict) -> str:
+
+        if not isinstance(template, str):
+            raise TypeError("template must be a string")
+        if not isinstance(inputs, dict):
+            raise TypeError("inputs must be a dict")
+
+        template = template.replace("{{","$").replace("}}","")
+        t = string.Template(template)
+        return t.safe_substitute(**inputs)
+
+    @staticmethod
+    def render_template_to_list(template: str) -> list[str | Any]:
+        return list(filter(None, re.split(r'(\{\{[^}]+\}\})', template)))

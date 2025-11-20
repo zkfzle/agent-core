@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.common.verify_utils import ExceptionUtils
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.component.base import WorkflowComponent, ComponentConfig
 from openjiuwen.core.component.branch_router import BranchRouter
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -25,7 +25,7 @@ from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 
 
 LUI = "llm"

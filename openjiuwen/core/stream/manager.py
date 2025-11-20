@@ -8,7 +8,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
 from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream.writer import StreamWriter, OutputStreamWriter, TraceStreamWriter, CustomStreamWriter
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 
 
 class StreamWriterManager:

@@ -10,7 +10,7 @@ from openjiuwen.core.runtime.workflow_manager import generate_workflow_key
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.config.user_config import UserConfig
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.runner.runner import Runner

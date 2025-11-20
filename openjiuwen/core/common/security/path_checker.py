@@ -31,7 +31,7 @@ class PathChecker:
         self._sensitive_paths.clear()
 
         try:
-            from openjiuwen.core.utils.config.user_config import UserConfig
+            from openjiuwen.core.common.security.user_config import UserConfig
             sensitive_paths = UserConfig.get_sensitive_paths()
         except (ImportError, Exception):
             sensitive_paths = [

@@ -517,10 +517,20 @@ class TestTraceWorkflow:
                 logger.info("stream chunk: {%s}", chunk)
                 results.append(chunk)
         assert e.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
-        assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="end", ability="stream", error=RuntimeError("mocked stream error"))
+        assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="end", ability="stream",
+                                                                                   error=RuntimeError(
+                                                                                       "mocked stream error"))
 
-        assert len(results) == 7
-        end_error_chunk = results[5]
+        assert len(results) == 8
+        # for 'a' node with stream output, tracer finish frame with empty output
+        a_finish_chunk = results[4]
+        assert a_finish_chunk.payload["invokeId"] == 'a' and a_finish_chunk.payload["status"] == 'finish' and \
+               a_finish_chunk.payload["outputs"] == None
+        # for 'end' node, tracer frame with error info
+        end_error_chunk = results[6]
         assert end_error_chunk.payload["invokeId"] == 'end' and end_error_chunk.payload["status"] == 'error' and \
                end_error_chunk.payload["error"] == {
-                   'error_code': -1, 'message': 'RuntimeError'}
+                   'error_code': StatusCode.COMPONENT_EXECUTE_ERROR.code,
+                   'message': StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="end", ability="stream",
+                                                                               error=RuntimeError(
+                                                                                   "mocked stream error"))}

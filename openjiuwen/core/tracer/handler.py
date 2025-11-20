@@ -11,6 +11,7 @@ from typing import Any
 from dateutil.tz import tzlocal
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.resources_manager.callback_manager import BaseHandler, trigger_event
 from openjiuwen.core.stream.manager import StreamWriterManager
@@ -106,9 +107,14 @@ class TraceAgentHandler(TraceBaseHandler):
 
     def _update_error_trace_data(self, span: TraceAgentSpan, error, **kwargs):
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)
+        if isinstance(error, JiuWenBaseException):
+            error_info = {"error_code": error.error_code, "message": error.message}
+        else:
+            error_info = {"error_code": StatusCode.ERROR.code,
+                          "message": type(error).__name__}
         update_data = {
             "end_time": end_time,
-            "error": {"error_code": -1, "message": type(error).__name__},
+            "error": error_info,
             "elapsed_time": self._get_elapsed_time(span.start_time, end_time)
         }
         self._span_manager.update_span(span, update_data)
@@ -277,7 +283,9 @@ class TraceWorkflowHandler(TraceBaseHandler):
             if isinstance(exception, JiuWenBaseException):
                 span.error = {"error_code": exception.error_code, "message": exception.message}
             else:
-                span.error = {"error_code": -1, "message": type(exception).__name__}
+                span.error = {"error_code": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
+                              "message": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+                                  error=type(exception).__name__)}
             if on_invoke_data:
                 span.on_invoke_data.append(on_invoke_data)
             update_data = {

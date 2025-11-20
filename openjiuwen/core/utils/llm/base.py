@@ -12,7 +12,7 @@ from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, AIMessage
 from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 
-class BaseChatModel:
+class BaseModelClient:
     def __init__(self, api_key:str, api_base:str, max_retries: int=3, timeout: int=60, **kwargs):
         self.api_key = api_key
         self.api_base = api_base
@@ -89,23 +89,23 @@ class BaseChatModel:
     @abstractmethod
     def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,  temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
-        raise NotImplementedError("BaseChatModel _invoke not implemented")
+        raise NotImplementedError("BaseModelClient _invoke not implemented")
 
     @abstractmethod
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AIMessage:
-        raise NotImplementedError("BaseChatModel _ainvoke not implemented")
+        raise NotImplementedError("BaseModelClient _ainvoke not implemented")
 
     @abstractmethod
     def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
-        raise NotImplementedError("BaseChatModel _stream not implemented")
+        raise NotImplementedError("BaseModelClient _stream not implemented")
 
     @abstractmethod
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
-        raise NotImplementedError("BaseChatModel _astream not implemented")
+        raise NotImplementedError("BaseModelClient _astream not implemented")
 
     @abstractmethod
     def model_provider(self):

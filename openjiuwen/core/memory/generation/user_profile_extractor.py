@@ -1,6 +1,6 @@
 import json
 from typing import List, Dict
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.memory.memory_logging import get_logger
 from openjiuwen.core.memory.config.config import Config
@@ -66,7 +66,7 @@ class UserProfileExtractor:
     def GetUserProfile(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config,
         user_define: Dict[str, str] = None,
         retries: int = 3
@@ -93,7 +93,7 @@ class UserProfileExtractor:
     async def aGetUserProfile(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config,
         user_define: Dict[str, str] = None,
         retries: int = 3

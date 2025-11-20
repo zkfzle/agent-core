@@ -18,7 +18,7 @@
 
 ## Mock 策略
 
-- 使用 `MockLLMModel` 类继承 `BaseChatModel`，实现所有必要的方法
+- 使用 `MockLLMModel` 类继承 `BaseModelClient`，实现所有必要的方法
 - 预定义 5 次 LLM 调用的返回值（按调用顺序）
 - 通过 `patch` ModelFactory.get_model 来注入 mock 实例
 - 所有组件（ReAct Agent 和 Questioner）共享同一个 mock LLM 实例
@@ -46,7 +46,7 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, ToolCall, FunctionInfo, UsageMetadata
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
@@ -61,7 +61,7 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class MockLLMModel(BaseChatModel):
+class MockLLMModel(BaseModelClient):
     """Mock 大模型，返回预定义的响应"""
     
     def __init__(self, api_key: str, api_base: str, **kwargs):

@@ -5,11 +5,11 @@ from openjiuwen.core.memory.messages.messages import SeqMessage
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.store.base_vector_store import BaseVectorStore
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 
 
 class MemoryEngineBase(ABC):
-    def __init__(self, config: Config, llm_base: BaseChatModel = None):
+    def __init__(self, config: Config, llm_base: BaseModelClient = None):
         pass
     
     @abstractmethod
@@ -33,7 +33,7 @@ class MemoryEngineBase(ABC):
         messages: SeqMessage,
         request_config: dict[str, Any] = None,
         session_id: str = None,
-        llm: BaseChatModel = None
+        llm: BaseModelClient = None
     ) -> str:
         pass
     
@@ -45,7 +45,7 @@ class MemoryEngineBase(ABC):
         messages: SeqMessage,
         request_config: dict[str, Any] = None,
         session_id: str = None,
-        llm: BaseChatModel = None
+        llm: BaseModelClient = None
     ) -> str:
         pass
     

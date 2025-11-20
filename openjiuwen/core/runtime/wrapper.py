@@ -14,7 +14,7 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.stream.writer import StreamWriter
 from openjiuwen.core.tracer.tracer import Tracer
 from openjiuwen.core.tracer.workflow_tracer import trace, trace_error
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.tool.base import Tool
@@ -79,16 +79,16 @@ class WrappedRuntime(Runtime, ABC):
     def get_prompt(self, template_id: str) -> Template:
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
-    def add_model(self, model_id: str, model: BaseChatModel):
+    def add_model(self, model_id: str, model: BaseModelClient):
         self._inner.resource_manager().model().add_model(model_id, model)
 
-    def add_models(self, models: List[Tuple[str, BaseChatModel]]):
+    def add_models(self, models: List[Tuple[str, BaseModelClient]]):
         self._inner.resource_manager().model().add_models(models)
 
     def remove_model(self, model_id: str):
         self._inner.resource_manager().model().remove_model(model_id)
 
-    def get_model(self, model_id: str) -> BaseChatModel:
+    def get_model(self, model_id: str) -> BaseModelClient:
         return self._inner.resource_manager().model().get_model(model_id, self._inner)
 
     def add_workflow(self, workflow_id: str, workflow: Workflow):
@@ -226,16 +226,16 @@ class RouterRuntime(StateRuntime):
     def get_prompt(self, template_id: str) -> Template:
         pass
 
-    def add_model(self, model_id: str, model: BaseChatModel):
+    def add_model(self, model_id: str, model: BaseModelClient):
         pass
 
-    def add_models(self, models: List[Tuple[str, BaseChatModel]]):
+    def add_models(self, models: List[Tuple[str, BaseModelClient]]):
         pass
 
     def remove_model(self, model_id: str):
         pass
 
-    def get_model(self, model_id: str) -> BaseChatModel:
+    def get_model(self, model_id: str) -> BaseModelClient:
         pass
 
     def add_workflow(self, workflow_id: str, workflow: Workflow):
@@ -304,7 +304,7 @@ class WrappedNodeRuntime(StateRuntime):
     def get_prompt(self, template_id: str) -> Template:
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
-    def get_model(self, model_id: str) -> BaseChatModel:
+    def get_model(self, model_id: str) -> BaseModelClient:
         return self._inner.resource_manager().model().get_model(model_id)
 
     def get_workflow(self, workflow_id: str) -> Workflow:
@@ -351,7 +351,7 @@ class TaskRuntime(StateRuntime):
     def get_prompt(self, template_id: str) -> Template:
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
-    def get_model(self, model_id: str) -> BaseChatModel:
+    def get_model(self, model_id: str) -> BaseModelClient:
         return self._inner.resource_manager().model().get_model(model_id, runtime=self._inner)
 
     def get_workflow(self, workflow_id: str) -> Workflow:

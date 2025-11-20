@@ -5,13 +5,13 @@
 from typing import List, Dict, Any, Iterator, AsyncIterator
 from pydantic import BaseModel
 
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 from openjiuwen.core.utils.llm.model_utils.default_model import OpenAIChatModel
 
 
-class OpenAILLM(BaseModel, BaseChatModel):
+class OpenAILLM(BaseModel, BaseModelClient):
     _openai_model: OpenAIChatModel = None
 
     def __init__(self,

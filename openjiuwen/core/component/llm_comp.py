@@ -18,7 +18,7 @@ from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
+from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -359,7 +359,7 @@ class LLMExecutable(ComponentExecutable):
         super().__init__()
         self._validate_config(component_config)
         self._config: LLMCompConfig = component_config
-        self._llm: Union[BaseChatModel, None] = None
+        self._llm: Union[BaseModelClient, None] = None
         self._initialized: bool = False
         self._runtime = None
         self._context = None

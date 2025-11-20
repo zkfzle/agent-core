@@ -1,7 +1,7 @@
 import json
 from enum import Enum
 from typing import List
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.memory.memory_logging import get_logger
 from openjiuwen.core.memory.config.config import Config
 from .conflict_resolution_prompt import CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER
@@ -44,7 +44,7 @@ class ConflictResolution:
     def check_conflict(
         old_messages: List[str],
         new_message: str,
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config,
         retries: int = 3
     ) -> list[dict]:
@@ -54,7 +54,7 @@ class ConflictResolution:
         Args:
             old_messages (List[str]): List of old messages.
             new_message (str): The new message to check against old messages.
-            base_chat_model (BaseChatModel): The chat model to use for processing.
+            base_chat_model (BaseModelClient): The chat model to use for processing.
             config (Config): Configuration for the chat model.
             retries (int, optional): Number of retries for the operation. Defaults to 3.
         
@@ -78,7 +78,7 @@ class ConflictResolution:
     async def acheck_conflict(
         old_messages: List[str],
         new_message: str,
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config,
         retries: int = 3
     ) -> list[dict]:

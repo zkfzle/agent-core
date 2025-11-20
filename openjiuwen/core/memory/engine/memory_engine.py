@@ -19,7 +19,7 @@ from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.manage.message_manager import MessageManager
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 logger = get_logger()
@@ -32,7 +32,7 @@ def _check_user_and_app_id(user_id: str, app_id: str, context="Operation"):
         raise ValueError(f"{context} failed: app_id is empty.")
     
 class MemoryEngine(MemoryEngineBase):
-    def __init__(self, config: Config, llm_base: BaseChatModel = None):
+    def __init__(self, config: Config, llm_base: BaseModelClient = None):
         self.config_manager = ConfigManger(config)
         self.llm_base = llm_base
         self.user_profile_manager: UserProfileManager = None
@@ -84,7 +84,7 @@ class MemoryEngine(MemoryEngineBase):
         messages: SeqMessage,
         request_config: dict[str, Any] = None,
         session_id: str = None,
-        llm: BaseChatModel = None
+        llm: BaseModelClient = None
     ) -> str:
         llm = llm if llm else self.llm_base
         if not self.message_manager:
@@ -126,7 +126,7 @@ class MemoryEngine(MemoryEngineBase):
         messages: SeqMessage,
         request_config: dict[str, Any] = None,
         session_id: str = None,
-        llm: BaseChatModel = None
+        llm: BaseModelClient = None
     ) -> str:
         loop = asyncio.get_event_loop()
         message_mem_id = await loop.run_in_executor(None, self.add_conversation_message,

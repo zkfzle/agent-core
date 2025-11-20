@@ -10,7 +10,7 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, decorate_model_with_trace
-from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
+from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import ToolInfo, BaseMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.constant import Input, Output
@@ -57,7 +57,7 @@ class MockWorkflow:
         ))
 
 
-class MockModel(BaseChatModel):
+class MockModel(BaseModelClient):
     def __init__(self):
         self.api_key = 'api_key'
         self.api_base = 'api_base'

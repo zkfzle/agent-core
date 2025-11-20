@@ -1,6 +1,6 @@
 import json
 from typing import Any
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.generation.memory_info import (
@@ -29,7 +29,7 @@ class ComprehensionExtractor:
     def extract(
         message: list[BaseMessage],
         history_summary: BaseMessage,
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config
     ) -> list[ExtractedData]:
         """Extract variables from the given message using LLM.
@@ -37,7 +37,7 @@ class ComprehensionExtractor:
         Args:
             message (list[BaseMessage]): The current message to extract variables from.
             history_summary (BaseMessage): The summary of historical messages.
-            base_chat_model (BaseChatModel): The chat model to use for extraction.
+            base_chat_model (BaseModelClient): The chat model to use for extraction.
             config (Config): Configuration for the extraction process.
         
         Returns:

@@ -8,7 +8,7 @@ from typing import List, Any, Dict, Iterator, AsyncIterator
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.prompt.template.template_manager import TemplateManager
 from openjiuwen.core.utils.llm.base import BaseModelInfo
@@ -18,7 +18,7 @@ from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder impor
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
 
-class MockLLMModel(BaseChatModel):
+class MockLLMModel(BaseModelClient):
     """Mock 大模型，返回预定义的响应"""
 
     def __init__(self, api_key: str, api_base: str, **kwargs):

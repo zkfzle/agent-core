@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm_call.base import LLMCall
 from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase
@@ -29,15 +29,15 @@ DEFAULT_PARALLEL_NUM: int = 8
 
 class AdoptOptimizer(BaseOptimizer):
     def __init__(self,
-                 model: BaseChatModel,
+                 model: BaseModelClient,
                  model_name: str,
                  parameters: Optional[Dict[str, LLMCall]] = None,
                  **kwargs
                  ):
         super().__init__(parameters)
         self._model_name = model_name
-        class ModelWithRetry(BaseChatModel):
-            def __init__(self, model: BaseChatModel):
+        class ModelWithRetry(BaseModelClient):
+            def __init__(self, model: BaseModelClient):
                 self._model = model
 
             def invoke(self, model_name:str, messages: List[BaseMessage],
@@ -244,7 +244,7 @@ class AdoptOptimizer(BaseOptimizer):
 
 class PartialOptimizer(InstructionOptimizer):
     def __init__(self,
-                 model: BaseChatModel,
+                 model: BaseModelClient,
                  model_name: str,
                  parameters: Optional[Dict[str, LLMCall]] = None,
                  **kwargs):

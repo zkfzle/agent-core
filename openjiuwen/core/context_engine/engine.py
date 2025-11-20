@@ -4,7 +4,7 @@
 
 from typing import Optional
 
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from openjiuwen.core.context_engine.base import ContextOwner
 from openjiuwen.core.context_engine.context import AgentContext, WorkflowContext
@@ -15,12 +15,12 @@ class ContextEngine:
     def __init__(self,
                  agent_id: str,
                  config: ContextEngineConfig = None,
-                 model: Optional[BaseChatModel] = None,
+                 model: Optional[BaseModelClient] = None,
                  ):
         self._agent_id = agent_id
         self._config = config
         self._context_accessor: ContextAccessor = ContextAccessor(config)
-        self._llm: Optional[BaseChatModel] = model
+        self._llm: Optional[BaseModelClient] = model
 
     def get_agent_context(self, session_id: str) -> AgentContext:
         context_owner = ContextOwner(agent_id=self._agent_id, session_id=session_id)

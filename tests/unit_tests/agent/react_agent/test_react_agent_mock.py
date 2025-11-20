@@ -35,13 +35,13 @@ import pytest
 
 from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage, ToolCall, FunctionInfo, UsageMetadata
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
 
 
-class MockLLMModel(BaseChatModel):
+class MockLLMModel(BaseModelClient):
     """Mock 大模型，返回预定义的响应"""
     
     def __init__(self, api_key: str, api_base: str, **kwargs):

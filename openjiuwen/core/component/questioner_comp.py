@@ -19,7 +19,7 @@ from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
+from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -267,7 +267,7 @@ class QuestionerDirectReplyHandler:
         self._config = config
         return self
 
-    def model(self, model: BaseChatModel):
+    def model(self, model: BaseModelClient):
         self._model = model
         return self
 
@@ -559,7 +559,7 @@ class QuestionerExecutable(ComponentExecutable):
 
         return invoke_result
 
-    def _create_llm_instance(self) -> BaseChatModel:
+    def _create_llm_instance(self) -> BaseModelClient:
         if isinstance(self._config.model.model_info, BaseModelInfo):
             kwargs = self._config.model.model_info.model_dump(exclude={'model_name', 'streaming'})
             return ModelFactory().get_model(model_provider=self._config.model.model_provider, **kwargs)

@@ -8,14 +8,14 @@ from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.memory_logging import get_logger
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 
 logger = get_logger()
 
 
 def new(
     config: Config,
-    llm_base: BaseChatModel | None = None,
+    llm_base: BaseModelClient | None = None,
     semantic_recall_instance: BaseSemanticStore | None = None,
     kv_store_instance: BaseKVStore | None = None,
     db_engine_instance: Engine | None = None
@@ -38,7 +38,7 @@ _memengine_singleton_lock = threading.Lock()
 _kv_db_instance: Optional[BaseKVStore] = None
 _semantic_recall_instance: Optional[BaseSemanticStore] = None
 _db_engine_instance: Optional[Engine] = None
-_llm_base: Optional[BaseChatModel] = None
+_llm_base: Optional[BaseModelClient] = None
 
 def register_kv_db(kv_db_instance: BaseKVStore):
     global _kv_db_instance
@@ -61,12 +61,12 @@ def register_relation_db(db_engine_instance: Engine):
     else:
         logger.error("db engine instance must be subclass of Engine")
 
-def register_llm(llm_base: BaseChatModel):
+def register_llm(llm_base: BaseModelClient):
     global _llm_base
-    if issubclass(llm_base.__class__, BaseChatModel):
+    if issubclass(llm_base.__class__, BaseModelClient):
         _llm_base = llm_base
     else:
-        logger.error("llm base must be subclass of BaseChatModel")
+        logger.error("llm base must be subclass of BaseModelClient")
 
 def get_memengine_instance(config: Config) -> MemoryEngineBase | None:
     global _memengine_singleton_instance

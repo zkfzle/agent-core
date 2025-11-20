@@ -7,7 +7,7 @@ from openjiuwen.core.memory.generation.user_profile_extractor import UserProfile
 from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
 from ..memory_logging import get_logger
 from ..config.config import Config
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 logger = get_logger()
@@ -20,7 +20,7 @@ def _generate_extract(
     config: Config,
     history_messages: list[BaseMessage],
     messages: list[BaseMessage],
-    base_chat_model: BaseChatModel
+    base_chat_model: BaseModelClient
 ) -> list[ExtractedData]:
     history_summary = ""
     for msg in history_messages:
@@ -37,7 +37,7 @@ def _generate_user_profile(
     config: Config,
     history_messages: list[BaseMessage],
     messages: list[BaseMessage],
-    base_chat_model: BaseChatModel,
+    base_chat_model: BaseModelClient,
     user_define: dict[str, str] = None
 ) -> dict[str, str]:
     return UserProfileExtractor.GetUserProfile(
@@ -161,7 +161,7 @@ class Generator:
         messages: list[BaseMessage],
         history_messages: list[BaseMessage],
         config: Config,
-        base_chat_model: BaseChatModel
+        base_chat_model: BaseModelClient
     ) -> list[VariableUnit]:
         """Generate extracted variable memory units based on input"""
         extracted_data = _generate_extract(
@@ -188,7 +188,7 @@ class Generator:
         messages: list[BaseMessage],
         history_messages: list[BaseMessage],
         config: Config,
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         message_mem_id: str,
         user_define: dict[str, str] = None
     ) -> list[UserProfileUnit]:
@@ -235,7 +235,7 @@ class Generator:
                                    user_id: str,
                                    app_id: str,
                                    config: Config,
-                                   base_chat_model: BaseChatModel,
+                                   base_chat_model: BaseModelClient,
                                    message_mem_id: str,
                                    user_define: dict[str, str] = None
                                    ) -> list[BaseMemoryUnit]:

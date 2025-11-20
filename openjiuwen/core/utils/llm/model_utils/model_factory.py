@@ -7,7 +7,7 @@ import os
 from typing import Dict, Type
 
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.model_utils.singleton import Singleton
 from openjiuwen.core.common.logging import logger
 
@@ -15,7 +15,7 @@ from openjiuwen.core.common.logging import logger
 class ModelFactory(metaclass=Singleton):
 
     def __init__(self):
-        self.model_map: Dict[str, Type[BaseChatModel]] = {}
+        self.model_map: Dict[str, Type[BaseModelClient]] = {}
         self._initialize_models()
 
     def _initialize_models(self):
@@ -26,7 +26,7 @@ class ModelFactory(metaclass=Singleton):
         self._load_model_dir(core_model_dir)
 
     @staticmethod
-    def _load_models(model_dir: str) -> Dict[str, Type[BaseChatModel]]:
+    def _load_models(model_dir: str) -> Dict[str, Type[BaseModelClient]]:
         model_dict = {}
         if not os.path.exists(model_dir):
             if UserConfig.is_sensitive():
@@ -52,7 +52,7 @@ class ModelFactory(metaclass=Singleton):
                     spec.loader.exec_module(module)
 
                     for name, obj in module.__dict__.items():
-                        if (isinstance(obj, type) and issubclass(obj, BaseChatModel) and obj != BaseChatModel):
+                        if (isinstance(obj, type) and issubclass(obj, BaseModelClient) and obj != BaseModelClient):
                             model_dict[module_name] = obj
                             if UserConfig.is_sensitive():
                                 logger.info(f"Loaded model")
@@ -77,7 +77,7 @@ class ModelFactory(metaclass=Singleton):
         self.model_map.update(model_dict)
 
     def get_model(self, model_provider: str, api_key: str, api_base: str,
-                  max_retries: int=3, timeout: int=60, **kwargs) -> BaseChatModel:
+                  max_retries: int=3, timeout: int=60, **kwargs) -> BaseModelClient:
         model_cls = self.model_map.get(model_provider.lower())
         if not model_cls:
             available_models = ", ".join(self.model_map.keys())

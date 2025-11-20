@@ -21,7 +21,7 @@ from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.utils.llm.base import BaseChatModel, BaseModelInfo
+from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -141,7 +141,7 @@ class IntentDetectionExecutable(ComponentExecutable):
     def __init__(self, component_config: IntentDetectionCompConfig):
         super().__init__()
         self._runtime: Union[Runtime, None] = None
-        self._llm: Union[BaseChatModel, None] = None
+        self._llm: Union[BaseModelClient, None] = None
         self._initialized: bool = False
         self._config = component_config
         self._init_default_config_category_list(component_config)

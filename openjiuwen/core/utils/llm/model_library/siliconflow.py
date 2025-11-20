@@ -5,13 +5,13 @@
 from typing import List, Dict, Any, Iterator, AsyncIterator
 from pydantic import BaseModel
 
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 from openjiuwen.core.utils.llm.model_utils.default_model import RequestChatModel
 
 
-class Siliconflow(BaseModel, BaseChatModel):
+class Siliconflow(BaseModel, BaseModelClient):
     _request_model: RequestChatModel = None
 
     def __init__(self,

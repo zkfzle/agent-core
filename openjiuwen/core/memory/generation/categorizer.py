@@ -1,6 +1,6 @@
 import json
 from typing import List
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.memory.memory_logging import get_logger
 from openjiuwen.core.memory.config.config import Config
@@ -49,7 +49,7 @@ class Categorizer:
     def GetCategories(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config,
         retries: int = 3
     ) -> List[str]:
@@ -74,7 +74,7 @@ class Categorizer:
     async def aGetCategories(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
-        base_chat_model: BaseChatModel,
+        base_chat_model: BaseModelClient,
         config: Config,
         retries: int = 3
     ) -> List[str]:

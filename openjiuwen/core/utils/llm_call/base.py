@@ -6,7 +6,7 @@ from typing import Dict, Any, Optional, List, Callable, AsyncIterator
 
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.llm.base import BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage, ToolInfo, SystemMessage
 
 
@@ -16,7 +16,7 @@ DEFAULT_USER_PROMPT: str = "{{query}}"
 class LLMCall:
     def __init__(self,
                  model_name: str,
-                 llm: BaseChatModel,
+                 llm: BaseModelClient,
                  system_prompt: str | List[BaseMessage] | List[Dict],
                  user_prompt: str | List[BaseMessage] | List[Dict],
                  freeze_system_prompt: bool = False,

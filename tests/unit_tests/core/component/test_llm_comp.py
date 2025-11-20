@@ -38,7 +38,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
 from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseChatModel
+from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
 
 USER_FIELDS = "userFields"
 
@@ -69,7 +69,7 @@ def fake_model_config() -> ModelConfig:
         ),
     )
 
-class FakeModel(BaseChatModel):
+class FakeModel(BaseModelClient):
     def __init__(self, api_key, api_base):
         super().__init__(api_key=api_key, api_base=api_base)
 

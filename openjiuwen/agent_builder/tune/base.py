@@ -18,7 +18,7 @@ class TuneConstant:
     DEFAULT_ITERATION_NUM: int = 3
     DEFAULT_MAX_SAMPLED_EXAMPLE_NUM: int = 10
     DEFAULT_PARALLEL_NUM: int = 1
-    DEFAULT_MAX_NUM_SAMPLE_ERROR_CASES: int = 20,
+    DEFAULT_MAX_NUM_SAMPLE_ERROR_CASES: int = 20
     DEFAULT_EARLY_STOP_SCORE: int = 1.0
 
     """optimizer parameters threshold constant"""

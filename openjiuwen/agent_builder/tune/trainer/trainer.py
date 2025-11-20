@@ -59,6 +59,11 @@ class Trainer:
             val_cases = train_cases
         self._callbacks.on_train_begin(agent, progress)
         progress.val_baseline_score, _ = self.evaluate(agent, val_cases)
+        progress.best_score = progress.val_baseline_score
+        if progress.best_score >= self._early_stop_score:
+            logger.info(f"val set score {progress.best_score} already exceed target score {self._early_stop_score}, "
+                        f"skip optimization")
+            return agent
         logger.info(f"val set baseline score: {progress.val_baseline_score}")
         parameter_searcher = ParameterSearcher(self, case_loader=val_cases)
         for _ in progress.run_epoch():

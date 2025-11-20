@@ -142,9 +142,19 @@ class ExampleOptimizer(BaseOptimizer):
             remaining_examples = [ex for ex in dataset if ex not in sampled_examples]
             sampled_examples.extend(random.sample(remaining_examples, num_remaining_examples))
         else:
-            sampled_examples.extend(random.sample(dataset, num_examples))
+            sampled_examples = random.sample(sampled_examples, num_examples)
 
         return [eval_case.case for eval_case in sampled_examples]
+
+    def _fill_missing_example(self,
+                              selected_examples: List[Case],
+                              evaluated_cases: List[EvaluatedCase],
+                              ):
+        num_to_select = min(self._num_examples, len(evaluated_cases))
+        num_examples_to_fill = num_to_select - len(selected_examples)
+        remaining_cases = [case.case for case in evaluated_cases
+                           if case.case_id not in [case.case_id for case in selected_examples]]
+        return selected_examples + random.sample(remaining_cases, num_examples_to_fill)
 
     def _select_best_examples(self,
                               system_prompt: Template,
@@ -152,8 +162,9 @@ class ExampleOptimizer(BaseOptimizer):
                               evaluated_cases: List[EvaluatedCase],
                               ) -> List[Case]:
         """select best examples"""
-        num_selected_examples = min(len(self._bad_cases), self._num_examples)
-        pre_selected_examples = self._sample_examples_from_cases(evaluated_cases, num_selected_examples)
+        pre_selected_examples = self._sample_examples_from_cases(evaluated_cases)
+        if len(pre_selected_examples) <= self._num_examples:
+            return pre_selected_examples
         examples_string = "\n".join(
             f"index: {i}\n"
             f"question: {example.inputs}\n"
@@ -164,35 +175,45 @@ class ExampleOptimizer(BaseOptimizer):
         messages = EXAMPLE_SELECTION_TEMPLATE.format(
             dict(task_description=TuneUtils.get_content_string_from_template(system_prompt) + "\n" +
                                   TuneUtils.get_content_string_from_template(user_prompt),
-                 num_examples=num_selected_examples,
+                 num_examples=self._num_examples,
                  examples=examples_string)
         ).to_messages()
 
         try:
             response = self._model.invoke(self._model_name, messages).content
-            return self._extract_selected_examples_from_response(response, pre_selected_examples)
+            selected_examples = self._extract_selected_examples_from_response(response, pre_selected_examples)
+            if len(selected_examples) < self._num_examples:
+                selected_examples = self._fill_missing_example(
+                    selected_examples,
+                    evaluated_cases,
+                )
+            return selected_examples
 
         except Exception as e:
             logger.warning(f"Error occur while selecting best examples: {e}")
-            return []
+            return self._sample_example(self._num_examples, evaluated_cases)
 
     def _sample_examples_from_cases(self,
                                     evaluated_cases: List[EvaluatedCase],
-                                    num_examples: int
                                     ) -> List[Case]:
-        if num_examples >= len(evaluated_cases):
+        if self._num_examples >= len(evaluated_cases):
             return [eval_case.case for eval_case in evaluated_cases]
 
         error_cases = self._bad_cases
-        if len(error_cases) >= num_examples:
-            return [eval_case.case for eval_case in error_cases]
-
-        if len(error_cases) > TuneConstant.DEFAULT_MAX_NUM_SAMPLE_ERROR_CASES:
-            error_cases = random.sample(
+        examples = [eval_case.case for eval_case in error_cases]
+        if len(examples) > TuneConstant.DEFAULT_MAX_NUM_SAMPLE_ERROR_CASES:
+            examples = random.sample(
                 error_cases,
                 TuneConstant.DEFAULT_MAX_NUM_SAMPLE_ERROR_CASES
             )
-        return [eval_case.case for eval_case in error_cases]
+            return examples
+
+        if len(examples) < min(self._num_examples, len(evaluated_cases)):
+            examples = self._fill_missing_example(
+                examples,
+                evaluated_cases,
+            )
+        return examples
 
     def _extract_selected_examples_from_response(self, response: str, error_cases: List[Case]) -> List[Case]:
         best_example_list = TuneUtils.parse_list_from_llm_response(response)

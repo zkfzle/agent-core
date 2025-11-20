@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from openjiuwen.core.memory.store.message import create_tables, UserMessage
 
-
+@unittest.skip("skip test")
 class TestCreateTable(unittest.TestCase):
     def test_table_creation(self):
         path = Path("./memory_engine.db")

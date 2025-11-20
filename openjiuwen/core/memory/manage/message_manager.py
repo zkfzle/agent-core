@@ -5,7 +5,7 @@
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 
-from ....memory.store.sql_db_store import SqlDbStore
+from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from ..manage.data_id_manager import DataIdManager
 from ..messages.messages import SeqMessage
 

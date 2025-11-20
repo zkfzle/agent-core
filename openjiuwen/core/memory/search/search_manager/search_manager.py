@@ -8,7 +8,7 @@ from ...manage.base_memory_manager import BaseMemoryManager
 from ...manage.user_profile_manager import UserProfileManager
 from ...manage.variable_manager import VariableManager
 from ...mem_unit.memory_unit import MemoryType
-from memory.store.user_mem_store import UserMemStore
+from openjiuwen.memory.store.user_mem_store import UserMemStore
 
 
 class SearchManager:

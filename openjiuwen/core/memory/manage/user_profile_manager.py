@@ -6,7 +6,6 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 
-from examples.interact.weather_assistant_interact import user_input
 from ..store.base_semantic_store import BaseSemanticStore
 from ..common.base import parse_memory_hit_infos
 from ..manage.base_memory_manager import BaseMemoryManager
@@ -134,7 +133,7 @@ class UserProfileManager(BaseMemoryManager):
                     new_datas.append(data)
         else:
             new_datas = datas
-        new_datas.sort(key=lambda x: (x['mem'], x['time']), reverse=True)
+        new_datas.sort(key=lambda x: (x['mem'], x['timestamp']), reverse=True)
         return new_datas
 
     def _recall_by_vector(self, query: str, user_id: str, app_id: str, top_k: int = 5,

@@ -4,7 +4,7 @@ from sqlalchemy import Engine
 from openjiuwen.core.memory.messages.messages import SeqMessage
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
-from openjiuwen.core.memory.store.base_vector_store import BaseVectorStore
+from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
 
 
@@ -15,7 +15,7 @@ class MemoryEngineBase(ABC):
     @abstractmethod
     def init_mem_store(
         self,
-        vector_db_instance: BaseVectorStore,
+        vector_db_instance: BaseSemanticStore,
         db_engine_instance: Engine,
         kv_db_instance: BaseKVStore
     ):

@@ -199,5 +199,11 @@ class MemoryEngine(MemoryEngineBase):
         return self.search_manager.list_user_mem(user_id=user_id, app_id=app_id, nums=num, pages=page)
     
     def get_user_profile_by_topics(self, user_id: str, app_id: str, topics: list[str]) -> dict[str, str]:
-        logger.info("get_user_profile_by_topics is not implemented yet.")
-        return {}
+        result = {}
+        for topic in topics:
+            user_profile_mem_topic = []
+            res = self.search_manager.list_user_profile(user_id=user_id, app_id=app_id, profile_type=topic)
+            for item in res:
+                user_profile_mem_topic.append(item["mem"])
+            result[topic] = "\n".join(user_profile_mem_topic)
+        return result

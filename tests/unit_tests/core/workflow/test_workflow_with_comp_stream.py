@@ -4,6 +4,7 @@ from typing import AsyncIterator
 
 import pytest
 
+from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -19,7 +20,7 @@ from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
+from openjiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowChunk
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
@@ -79,19 +80,39 @@ class Producer(ComponentExecutable, WorkflowComponent):
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"producer inputs: {inputs}")
         for v in inputs.get("array"):
-            logger.info(f"send stream frame {v}")
+            logger.debug(f"send stream frame {v}")
             yield {"output": v}
 
 
 async def test_multi_stream_workflow():
     wf = create_component_stream_workflow_with_template()
+    chunks = []
+    expect_chunks = [
+        OutputSchema(type='end node stream', index=0, payload={'answer': 'a: '}),
+        OutputSchema(type='end node stream', index=1, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=2, payload={'answer': 2}),
+        OutputSchema(type='end node stream', index=3, payload={'answer': 3}),
+        OutputSchema(type='end node stream', index=4, payload={'answer': '; c: '}),
+        OutputSchema(type='end node stream', index=5, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=6, payload={'answer': 2}),
+        OutputSchema(type='end node stream', index=7, payload={'answer': 3}),
+        OutputSchema(type='end node stream', index=8, payload={'answer': '; batch: '}),
+        OutputSchema(type='end node stream', index=9, payload={'answer': [1, 2, 3]}),
+        OutputSchema(type='end node stream', index=10, payload={'answer': '; b: '}),
+        OutputSchema(type='end node stream', index=11, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=12, payload={'answer': 2}),
+        OutputSchema(type='end node stream', index=13, payload={'answer': 3})]
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        chunks.append(chunk)
+    assert chunks == expect_chunks
+
 
     res = await wf.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime())
-    print(res.model_dump_json(indent=4))
+    print(res)
+    assert res.result == expect_chunks
 
 async def test_batch_multi_stream_workflow():
     def create_component_workflow_with_template() -> Workflow:
@@ -118,11 +139,17 @@ async def test_batch_multi_stream_workflow():
     wf = create_component_workflow_with_template()
 
     res = await wf.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime())
-    print(res.model_dump_json(indent=4))
+    print(res)
+    assert res.result == {'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123', 'output': {}}
+
+    chunks = []
+    expect_chunks = [OutputSchema(type='workflow_final', index=0, payload={'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123', 'output': {}})]
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        chunks.append(chunk)
+    assert chunks == expect_chunks
 
 def create_component_stream_workflow_with_template() -> Workflow:
     config = WorkflowConfig(stream_timeout=5)
@@ -204,13 +231,56 @@ async def test_stream_component_in_sub_workflow_with_invoke():
 
     wf.add_connection("main_start", "workflow")
     wf.add_connection("workflow", "main_end")
+    chunks = []
+    expect_chunks = [
+        OutputSchema(type='end node stream', index=0, payload={'answer': 'sub_workflow: '}),
+        OutputSchema(type='end node stream', index=1, payload={'answer': [1, 2, 3]})]
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
-
+        print(chunk)
+        chunks.append(chunk)
+    assert expect_chunks == chunks
 
 async def test_stream_component_in_sub_workflow_with_stream():
+    wf = Workflow()
+    wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
+    wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_with_template()),
+                         inputs_schema={"inputs": "${main_start.array}"})
+    end = End(EndConfig(responseTemplate="sub_workflow: {{sub_workflow}}"))
+    wf.set_end_comp("main_end", end,
+                    stream_inputs_schema={"sub_workflow": "${workflow.answer}"},
+                    response_mode="streaming")
+
+    wf.add_connection("main_start", "workflow")
+    wf.add_stream_connection("workflow", "main_end")
+
+    chunks = []
+    expect_chunks = [
+        OutputSchema(type='end node stream', index=0, payload={'answer': 'sub_workflow: '}),
+        OutputSchema(type='end node stream', index=1, payload={'answer': 'a: '}),
+        OutputSchema(type='end node stream', index=2, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=3, payload={'answer': 2}),
+        OutputSchema(type='end node stream', index=4, payload={'answer': 3}),
+        OutputSchema(type='end node stream', index=5, payload={'answer': '; c: '}),
+        OutputSchema(type='end node stream', index=6, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=7, payload={'answer': 2}),
+        OutputSchema(type='end node stream', index=8, payload={'answer': 3}),
+        OutputSchema(type='end node stream', index=9, payload={'answer': '; batch: '}),
+        OutputSchema(type='end node stream', index=10, payload={'answer': [1, 2, 3]}),
+        OutputSchema(type='end node stream', index=11, payload={'answer': '; b: '}),
+        OutputSchema(type='end node stream', index=12, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=13, payload={'answer': 2}),
+        OutputSchema(type='end node stream', index=14, payload={'answer': 3})]
+
+    async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        assert chunk is not None
+        print(chunk)
+        chunks.append(chunk)
+    assert chunks == expect_chunks
+
+
+async def test_stream_component_in_sub_workflow_with_stream_collect():
     wf = Workflow()
     wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
     wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_with_template()),
@@ -223,9 +293,31 @@ async def test_stream_component_in_sub_workflow_with_stream():
     wf.add_connection("main_start", "workflow")
     wf.add_connection("workflow", "main_end")
 
+    chunks = []
+    expect_chunks = [
+        OutputSchema(type='end node stream', index=0, payload={'answer': 'sub_workflow: '}),
+        OutputSchema(type='end node stream', index=1, payload={'answer': [
+            {'answer': 'a: '},
+            {'answer': 1},
+            {'answer': 2},
+            {'answer': 3},
+            {'answer': '; c: '},
+            {'answer': 1},
+            {'answer': 2},
+            {'answer': 3},
+            {'answer': '; batch: '},
+            {'answer': [1, 2, 3]},
+            {'answer': '; b: '},
+            {'answer': 1},
+            {'answer': 2},
+            {'answer': 3}]})]
+
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        chunks.append(chunk)
+    assert expect_chunks == chunks
+
 
 # Test the ability of workflow components to stream between components
 async def test_stream_component_in_sub_workflow_with_substream():
@@ -240,10 +332,26 @@ async def test_stream_component_in_sub_workflow_with_substream():
 
     wf.add_connection("main_start", "workflow")
     wf.add_stream_connection("workflow", "main_end")
-
+    chunks = []
+    expect_chunks = [
+         {'output': {'sub_workflow': {'a': 1}}},
+         {'output': {'sub_workflow': {'a': 2}}},
+         {'output': {'sub_workflow': {'a': 3}}},
+         {'output': {'sub_workflow': {'b': 1}}},
+         {'output': {'sub_workflow': {'b': 2}}},
+         {'output': {'sub_workflow': {'b': 3}}},
+         {'output': {'sub_workflow': {'c': 1}}},
+         {'output': {'sub_workflow': {'c': 2}}},
+         {'output': {'sub_workflow': {'c': 3}}},
+         {'output': {'sub_workflow': {'batch': [1, 2, 3]}}}
+    ]
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        chunks.append(chunk.payload)
+    assert len(chunks) == len(expect_chunks)
+    for chunk in chunks:
+        assert chunk in expect_chunks
 
 # Test the ability of workflow components to stream between components with templates
 async def test_stream_component_in_sub_workflow_with_substream_template():
@@ -259,9 +367,30 @@ async def test_stream_component_in_sub_workflow_with_substream_template():
     wf.add_connection("main_start", "workflow")
     wf.add_stream_connection("workflow", "main_end")
 
+    chunks = []
+    expect_chunks = [
+        OutputSchema(type='end node stream', index=0, payload={'output': {'sub_workflow': 'a: '}}),
+        OutputSchema(type='end node stream', index=1, payload={'output': {'sub_workflow': 1}}),
+        OutputSchema(type='end node stream', index=2, payload={'output': {'sub_workflow': 2}}),
+        OutputSchema(type='end node stream', index=3, payload={'output': {'sub_workflow': 3}}),
+        OutputSchema(type='end node stream', index=4, payload={'output': {'sub_workflow': '; c: '}}),
+        OutputSchema(type='end node stream', index=5, payload={'output': {'sub_workflow': 1}}),
+        OutputSchema(type='end node stream', index=6, payload={'output': {'sub_workflow': 2}}),
+        OutputSchema(type='end node stream', index=7, payload={'output': {'sub_workflow': 3}}),
+        OutputSchema(type='end node stream', index=8, payload={'output': {'sub_workflow': '; batch: '}}),
+        OutputSchema(type='end node stream', index=9, payload={'output': {'sub_workflow': [1, 2, 3]}}),
+        OutputSchema(type='end node stream', index=10, payload={'output': {'sub_workflow': '; b: '}}),
+        OutputSchema(type='end node stream', index=11, payload={'output': {'sub_workflow': 1}}),
+        OutputSchema(type='end node stream', index=12, payload={'output': {'sub_workflow': 2}}),
+        OutputSchema(type='end node stream', index=13, payload={'output': {'sub_workflow': 3}})]
+
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        chunks.append(chunk)
+
+    print(chunks)
+    assert expect_chunks == chunks
 
 
 class Interaction(WorkflowComponent, ComponentExecutable):
@@ -290,19 +419,29 @@ async def test_interaction_with_stream():
 
     wf1 = create_workflow()
     wf2 = create_workflow()
-
+    chunks = []
+    interaction = False
     async for chunk in wf1.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(session_id="123"),
                                   stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        if chunk.type == INTERACTION:
+            interaction = True
+    assert interaction
 
     logger.debug("human in the loop...")
     runtime = WorkflowRuntime(session_id="123")
-    runtime.config().set_envs({END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY:1})
+    actual_chunks = []
+    expect_chunks = [OutputSchema(type='end node stream', index=0, payload={'answer': 'a: '}),
+                     OutputSchema(type='end node stream', index=1, payload={'answer': '; batch: '}),
+                     OutputSchema(type='end node stream', index=2, payload={'answer': {'inputs': [1, 2, 3]}})]
+
     async for chunk in wf2.stream(InteractiveInput({"inputs": [1, 2, 3]}), runtime,
                                   stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
-        print(chunk.model_dump_json(indent=4))
+        print(chunk)
+        actual_chunks.append(chunk)
+    assert actual_chunks == expect_chunks
 
 
 async def test_interaction_with_exception():
@@ -334,7 +473,7 @@ async def test_interaction_with_exception():
 
     try:
         res = await wf1.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime(session_id="123"))
-        print(res.model_dump_json(indent=4))
+        print(res)
     except Exception as e:
         logger.error(e)
     run_times += 1
@@ -342,4 +481,20 @@ async def test_interaction_with_exception():
     runtime = WorkflowRuntime(session_id="123")
     runtime.config().set_envs({END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY:1})
     res = await wf2.invoke(InteractiveInput({"inputs": [1, 2, 3]}), runtime)
-    print(res.model_dump_json(indent=4))
+
+    expect_result = [
+              OutputSchema(type='end node stream', index=0, payload={'answer': 'a: '}),
+              OutputSchema(type='end node stream', index=1, payload={'answer': 0}),
+              OutputSchema(type='end node stream', index=2, payload={'answer': 1}),
+              OutputSchema(type='end node stream', index=3, payload={'answer': 2}),
+              OutputSchema(type='end node stream', index=4, payload={'answer': 3}),
+              OutputSchema(type='end node stream', index=5, payload={'answer': 4}),
+              OutputSchema(type='end node stream', index=6, payload={'answer': 5}),
+              OutputSchema(type='end node stream', index=7, payload={'answer': 6}),
+              OutputSchema(type='end node stream', index=8, payload={'answer': 7}),
+              OutputSchema(type='end node stream', index=9, payload={'answer': 8}),
+              OutputSchema(type='end node stream', index=10, payload={'answer': 9}),
+              OutputSchema(type='end node stream', index=11, payload={'answer': '; batch: '})
+    ]
+
+    assert res.result == expect_result

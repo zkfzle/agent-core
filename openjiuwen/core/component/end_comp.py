@@ -4,6 +4,7 @@
 import asyncio
 from typing import AsyncIterator, TypedDict, Union, AsyncGenerator
 
+from openjiuwen.core.common.constants.constant import END_NODE_STREAM
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -15,6 +16,7 @@ from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.utils import get_value_by_nested_path
+from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.common.dict_utils import extract_leaf_nodes, format_path
 from openjiuwen.core.utils.common.verify_utils import TemplateUtils
 from openjiuwen.core.utils.config.user_config import UserConfig
@@ -68,10 +70,12 @@ class End(ComponentExecutable, WorkflowComponent):
             return
         try:
             if self.template is not None:
-                generator = self.template.render_stream(inputs, runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
+                generator = self.template.render_stream(inputs,
+                                                        runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
                 async for frame in generator:
                     logger.debug(f"rendering stream frame: {frame}")
-                    yield dict(answer=frame)
+                    yield OutputSchema(type=END_NODE_STREAM, index=frame.get("index"),
+                                       payload=dict(answer=frame.get("data")))
             else:
                 for key, value in inputs.items():
                     yield dict(output={key: value})
@@ -85,10 +89,12 @@ class End(ComponentExecutable, WorkflowComponent):
     async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component transform method inputs: {inputs}")
         if self.template is not None:
-            generator = self.template.render_stream(inputs, runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
+            generator = self.template.render_stream(inputs,
+                                                    runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
             async for frame in generator:
                 logger.debug(f"rendering transform frame: {frame}")
-                yield dict(answer=frame)
+                yield OutputSchema(type=END_NODE_STREAM, index=frame.get("index"),
+                                   payload=dict(answer=frame.get("data")))
         else:
             for (path, value) in extract_leaf_nodes(inputs):
                 if isinstance(value, AsyncGenerator):
@@ -153,6 +159,7 @@ class TemplateProcessor:
         self._lock = asyncio.Lock()
         self._condition = asyncio.Condition()
         self._count = 0
+        self._chunk_index = 0
 
     def current_position(self) -> int:
         return self._current_position
@@ -186,6 +193,7 @@ class TemplateProcessor:
     def reset(self):
         if self._current_position != 0:
             self._current_position = 0
+        self._chunk_index = 0
 
     async def render_stream(self, inputs: dict, timeout: float=0.2) -> AsyncGenerator:
         self._count += 1
@@ -217,7 +225,8 @@ class TemplateProcessor:
 
                 segment = self.get_current_segment()
                 if not self.should_render():
-                    yield segment
+                    yield {"data": segment, "index": self._chunk_index}
+                    self._chunk_index += 1
                     self.advance_position()
                     continue
 
@@ -231,9 +240,11 @@ class TemplateProcessor:
                     logger.debug(f"current segment generator [{segment}] is generator")
                     async for frame in value:
                         logger.debug(f"rendering generator frame: {frame}")
-                        yield frame
+                        yield {"data": frame, "index": self._chunk_index}
+                        self._chunk_index += 1
                 else:
-                    yield value
+                    yield {"data": value, "index": self._chunk_index}
+                    self._chunk_index += 1
                 self.advance_position()
                 async with self._condition:
                     self._condition.notify_all()
@@ -258,5 +269,5 @@ class TemplateBatchProcessor:
         answer = ""
         async for frame in generator:
             logger.debug(f"rendering collect frame: {frame}")
-            answer += str(frame)
+            answer += str(frame.get("data"))
         return answer

@@ -9,7 +9,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STREAM_INPUT_GEN_TIMEOUT_KEY, \
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY, END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_STREAM_TIMEOUT, \
-    WORKFLOW_INVOKE_TIMEOUT
+    WORKFLOW_INVOKE_TIMEOUT, WORKFLOW_STREAM_FRAME_TIMEOUT
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 
 
@@ -67,6 +67,7 @@ class Config(ABC):
             END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY: 5,
             WORKFLOW_STREAM_TIMEOUT: 60,
             WORKFLOW_INVOKE_TIMEOUT: 60,
+            WORKFLOW_STREAM_FRAME_TIMEOUT: -1
         }
         self.set_envs(builtin_configs)
 

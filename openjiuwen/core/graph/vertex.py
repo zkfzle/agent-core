@@ -18,6 +18,7 @@ from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.utils import get_by_schema
 from openjiuwen.core.runtime.workflow import NodeRuntime
+from openjiuwen.core.stream.base import StreamSchemas, OutputSchema
 from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream_actor.base import StreamConsumer
 from openjiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs, trace_error
@@ -86,7 +87,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         inputs_transformer = self._node_config.io_config.inputs_transformer if self._node_config else None
         if inputs_transformer is None:
             inputs_schema = self._node_config.io_config.inputs_schema if self._node_config else None
-            inputs = self._runtime.state().get_inputs(inputs_schema)
+            inputs = self._runtime.state().get_inputs(inputs_schema) if inputs_schema is not None else None
         else:
             inputs = self._runtime.state().get_inputs_by_transformer(inputs_transformer)
         if self._runtime.tracer() is not None:
@@ -145,14 +146,18 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
     async def _process_chunk(self, message, is_end_node: bool, end_stream_index: int, is_sub_graph: bool):
         if is_end_node and not is_sub_graph:
-            message_stream_data = {
-                "type": END_NODE_STREAM,
-                "index": ++end_stream_index,
-                "payload": message
-            }
+            if isinstance(message, StreamSchemas):
+                message_stream_data = message
+            else:
+                message_stream_data = {
+                    "type": END_NODE_STREAM,
+                    "index": ++end_stream_index,
+                    "payload": message
+                }
             await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)
         elif is_end_node and is_sub_graph:
-            await self._runtime.actor_manager().sub_workflow_stream().send(message)
+            await self._runtime.actor_manager().sub_workflow_stream().send(
+                message.payload if isinstance(message, OutputSchema) else message)
         else:
             logger.debug(f"sending message: {message}")
             await self._runtime.actor_manager().produce(self._node_id, message)

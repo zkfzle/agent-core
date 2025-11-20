@@ -3,7 +3,6 @@ from typing import AsyncIterator
 import pytest
 
 from openjiuwen.core.common.constants.constant import END_NODE_STREAM
-from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
@@ -131,15 +130,18 @@ async def test_end_transform():
     flow.add_stream_connection("n", "e")
     result = flow.stream(inputs={"user_inputs": {"query": "你好", "content": "杭州"}}, runtime=WorkflowRuntime(),
                          stream_modes=[BaseStreamMode.OUTPUT])
-    expect_result = [
-        OutputSchema(type=END_NODE_STREAM, index=0, payload={'answer': '渲染结果:'})]
+    expect_result = [OutputSchema(type='end node stream', index=0, payload={'answer': '渲染结果:'}),
+                     OutputSchema(type='end node stream', index=1, payload={'answer': '你好'}),
+                     OutputSchema(type='end node stream', index=2, payload={'answer': ','}),
+                     OutputSchema(type='end node stream', index=3, payload={'answer': '杭州'})]
 
     streams = []
     async for stream in result:
         print(stream)
         streams.append(stream)
+    print(streams)
 
-    assert streams[:1] == expect_result
+    assert expect_result == streams
 
 
 async def test_simple_output_schema_workflow():
@@ -176,7 +178,7 @@ async def test_end_stream_workflow():
                             "d": "${a}"})
 
     flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
-                                   comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+                           comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
 
     flow.set_end_comp("end", End({"responseTemplate": "hello:{{end_input}}"}),
                       inputs_schema={"end_input": "${start.d}"}, response_mode="streaming")
@@ -184,10 +186,15 @@ async def test_end_stream_workflow():
     flow.add_stream_connection("a", "end")
 
     index = 0
-    async for chunk in flow.stream({"a": 1, "b": "haha"},
-                                   WorkflowRuntime()):
-        logger.info("stream chunk: {%s}", chunk)
+    actual_chunks = []
+    expect_chunks = [OutputSchema(type='end node stream', index=0, payload={'answer': 'hello:'}),
+                     OutputSchema(type='end node stream', index=1, payload={'answer': 1})]
+    async for chunk in flow.stream({"a": 1, "b": "haha"}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        actual_chunks.append(chunk)
         index += 1
+
+    print(actual_chunks)
+    assert expect_chunks == actual_chunks
 
 
 async def test_end_batch_stream_workflow():
@@ -209,8 +216,33 @@ async def test_end_batch_stream_workflow():
     flow.add_connection("start", "a")
     flow.add_stream_connection("a", "end")
 
-    index = 0
+    expect_results = [
+        OutputSchema(type='end node stream', index=0, payload={'answer': 'hello:'}),
+        OutputSchema(type='end node stream', index=1, payload={'answer': 1}),
+        OutputSchema(type='end node stream', index=2, payload={'answer': 2})]
+
+    real_result = []
     async for chunk in flow.stream({"a": 1, "b": "haha"},
-                                   WorkflowRuntime()):
-        logger.info("stream chunk: {%s}", chunk)
-        index += 1
+                                   WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        real_result.append(chunk)
+
+    print(real_result)
+    assert expect_results == real_result
+
+
+class MockStreamNode(WorkflowComponent, ComponentExecutable):
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        yield inputs
+
+
+async def test_end_no_streaming_no_template():
+    workflow = Workflow()
+    workflow.set_start_comp("start", Start(), inputs_schema={"a": "${user_input.a}", "b": "${user_input.b}"})
+    workflow.set_end_comp("end", End(), stream_inputs_schema={'a': '${stream.a}', 'b': '${stream.b}'})
+    workflow.add_workflow_comp("stream", MockStreamNode(), inputs_schema={"a": "${start.a}", "b": "${start.b}"})
+    workflow.add_connection("start", "stream")
+    workflow.add_stream_connection("stream", "end")
+
+    user_input = {'user_input': {'a': 1, 'b': 2}}
+    result = await workflow.invoke(user_input, WorkflowRuntime())
+    assert result.result == {'responseContent': '', 'collect_output': [{'a': 1}, {'b': 2}], 'output': None}

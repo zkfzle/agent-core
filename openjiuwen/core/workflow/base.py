@@ -401,6 +401,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if self._is_streaming:
             frame_count = 0
             stream_timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
+            index = 2
             while True:
                 logger.debug(f"waiting for frame {frame_count} with timeout {stream_timeout}")
                 frame = await actor_manager.sub_workflow_stream().receive(stream_timeout)
@@ -408,8 +409,10 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     logger.warning("no frame received")
                     continue
                 if frame == StreamEmitter.END_FRAME:
-                    logger.info(f"received end frame of sub_stream after {frame_count} frames")
-                    break
+                    index -= 1
+                    logger.debug(f"received end frame of sub_stream after {frame_count} frames")
+                    if index == 0:
+                       break
                 frame_count += 1
                 logger.debug(f"yielding frame {frame_count}: {frame}")
                 yield frame

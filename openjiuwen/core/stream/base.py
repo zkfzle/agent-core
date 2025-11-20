@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from pydantic import BaseModel
 
@@ -48,6 +48,7 @@ class CustomSchema(BaseModel):
         arbitrary_types_allowed = True
         extra = "allow"
 
+StreamSchemas = Union[OutputSchema, CustomSchema, TraceSchema]
 
 class StreamDataMsg(Enum):
     """

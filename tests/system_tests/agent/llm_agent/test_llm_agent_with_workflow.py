@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from openjiuwen.agent.common.schema import PluginSchema
-from openjiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.end_comp import End
@@ -218,7 +218,7 @@ class ReActAgentWorkflowTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model_config()
         prompt_template = self._create_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -227,10 +227,10 @@ class ReActAgentWorkflowTest(unittest.IsolatedAsyncioTestCase):
             model=model_config,
             prompt_template=prompt_template
         )
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[self._create_workflow()],
             tools=[self._create_tool()]
         )
         result = await react_agent.invoke({"query": "今天上海天气晴朗，温度适宜，请生成一段文本"})
-        print(f"ReActAgent 最终输出结果：{result.get('output')}")
+        print(f"ReActLLMAgent 最终输出结果：{result.get('output')}")

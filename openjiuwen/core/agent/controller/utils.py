@@ -74,17 +74,33 @@ class MessageHandlerUtils:
 
         result = []
         for tool_call in tool_calls:
-            task_type = MessageHandlerUtils.determine_task_type(
-                tool_call.function.name, config
-            )
-            result.append(Task(
-                task_id=tool_call.id,
-                input=TaskInput(
-                    target_name=tool_call.function.name,
-                    arguments=JsonUtils.safe_json_loads(tool_call.function.arguments)
-                ),
-                task_type=task_type
-            ))
+            tool_name = tool_call.function.name
+            for workflow in config.workflows:
+                if workflow.name == tool_name:
+                    task_type = TaskType.WORKFLOW
+                    target_id = f"{workflow.id}_{workflow.version}"
+                    result.append(Task(
+                        task_id=tool_call.id,
+                        input=TaskInput(
+                            target_id=target_id,
+                            target_name=tool_name,
+                            arguments=JsonUtils.safe_json_loads(tool_call.function.arguments)
+                        ),
+                        task_type=task_type
+                    ))
+                    break
+            for plugin in config.plugins:
+                if plugin.name == tool_name:
+                    task_type = TaskType.PLUGIN
+                    result.append(Task(
+                        task_id=tool_call.id,
+                        input=TaskInput(
+                            target_name=tool_name,
+                            arguments=JsonUtils.safe_json_loads(tool_call.function.arguments)
+                        ),
+                        task_type=task_type
+                    ))
+                    break
         return result
 
     @staticmethod

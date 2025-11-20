@@ -9,7 +9,7 @@ import pytest
 from openjiuwen.agent.common.enum import TaskType, ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -140,7 +140,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             )
         )
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -151,7 +151,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
 
         # react_agent要创建，但要打桩下面的逻辑：1. 大模型创建； 2. 大模型输出
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[flow],
             tools=[]
@@ -165,7 +165,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
 
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州的天气"})
-        print(f"ReActAgent 第一次输出结果：{result}")
+        print(f"ReActLLMAgent 第一次输出结果：{result}")
 
         # 第二次大模型返回的结果不让调用task
         # 返回格式改为元组: (tasks, llm_output)
@@ -175,7 +175,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
-            print(f"ReActAgent 第二次输出结果：{result}")
+            print(f"ReActLLMAgent 第二次输出结果：{result}")
 
     @unittest.skip("skip system test")
     async def test_real_react_agent_invoke_with_workflow_interrupt(self):
@@ -261,7 +261,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             )
         )
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -272,7 +272,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
 
         # react_agent要创建，但要打桩下面的逻辑：1. 大模型创建； 2. 大模型输出
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[flow],
             tools=[]
@@ -280,12 +280,12 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
         # 第一次大模型返回的结果要让调用task
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
-        print(f"ReActAgent 第一次输出结果：{result}")
+        print(f"ReActLLMAgent 第一次输出结果：{result}")
 
         # 第二次大模型返回的结果不让调用task
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
-            print(f"ReActAgent 第二次输出结果：{result}")
+            print(f"ReActLLMAgent 第二次输出结果：{result}")
 
 
     @unittest.skip("skip system test")

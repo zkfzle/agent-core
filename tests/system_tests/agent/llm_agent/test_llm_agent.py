@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from openjiuwen.agent.common.schema import PluginSchema
-from openjiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.function.function import LocalFunction
@@ -24,7 +24,7 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
+class ReActLLMAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         await Runner.start()
 
@@ -88,7 +88,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def _create_function_tool_with_annotation():
         # 直接返回被tool注解装饰后的函数，它已经是一个LocalFunction对象
-        return ReActAgentTest.add_function
+        return ReActLLMAgentTest.add_function
 
     @staticmethod
     def _create_function_tool_schema():
@@ -158,7 +158,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model()
         prompt_template = self._create_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -169,7 +169,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             tools=["WeatherReporter"]
         )
 
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_tool()]
@@ -178,7 +178,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         resource_mgr.tool().add_tool("WeatherReporter", self._create_tool())
 
         result = await Runner.run_agent(react_agent, {"query": "查询杭州的天气"})
-        print(f"ReActAgent 最终输出结果：{result}")
+        print(f"ReActLLMAgent 最终输出结果：{result}")
 
     @unittest.skip("require network")
     async def test_react_agent_stream_with_real_plugin(self):
@@ -188,7 +188,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model()
         prompt_template = self._create_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -199,7 +199,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             tools=["WeatherReporter"]
         )
 
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_tool()]
@@ -209,7 +209,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
 
         res = Runner.run_agent_streaming(react_agent, {"query": "查询杭州的天气"})
         async for i in res:
-            print("ReActAgent 输出结果：", i)
+            print("ReActLLMAgent 输出结果：", i)
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_plugin_without_runtime(self):
@@ -220,7 +220,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model()
         prompt_template = self._create_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -231,7 +231,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         )
         react_agent_config.tools.append("WeatherReporter")
 
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_tool()]
@@ -239,7 +239,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         resource_mgr.tool().add_tool("WeatherReporter", self._create_tool())
 
         result = await react_agent.invoke({"query": "查询杭州的天气"})
-        print(f"ReActAgent 最终输出结果：{result}")
+        print(f"ReActLLMAgent 最终输出结果：{result}")
 
     @unittest.skip("skip system test")
     async def test_react_agent_stream_with_real_plugin_without_runtime(self):
@@ -250,7 +250,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model()
         prompt_template = self._create_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -261,7 +261,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             tools=["WeatherReporter"]
         )
 
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_tool()]
@@ -270,7 +270,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
 
         res = react_agent.stream({"query": "查询杭州的天气"})
         async for i in res:
-            print("ReActAgent 输出结果：", i)
+            print("ReActLLMAgent 输出结果：", i)
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_real_function_plugin(self):
@@ -280,7 +280,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model()
         prompt_template = self._create_function_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_1234",
             agent_version="0.0.2",
             description="AI计算助手",
@@ -292,7 +292,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         # 使用传统方式创建的LocalFunction对象
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_function_tool()]
@@ -301,7 +301,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         resource_mgr.tool().add_tool("add", self._create_function_tool())
 
         result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
-        print(f"ReActAgent 最终输出结果：{result}")
+        print(f"ReActLLMAgent 最终输出结果：{result}")
 
     @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_annotated_function_plugin(self):
@@ -312,7 +312,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model()
         prompt_template = self._create_function_prompt_template()
 
-        react_agent_config = create_react_agent_config(
+        react_agent_config = create_react_llm_agent_config(
             agent_id="react_agent_1235",
             agent_version="0.0.3",
             description="AI计算助手（使用注解）",
@@ -324,7 +324,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         # 使用tool注解创建的LocalFunction对象
-        react_agent: ReActAgent = create_react_agent(
+        react_agent: ReActLLMAgent = create_react_llm_agent(
             agent_config=react_agent_config,
             workflows=[],
             tools=[self._create_function_tool_with_annotation()]
@@ -332,4 +332,4 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         resource_mgr.tool().add_tool("add", self._create_function_tool_with_annotation())
 
         result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
-        print(f"ReActAgent 使用注解工具最终输出结果：{result}")
+        print(f"ReActLLMAgent 使用注解工具最终输出结果：{result}")

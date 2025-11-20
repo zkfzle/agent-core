@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 
 from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
-from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
+from openjiuwen.agent.llm_agent.llm_controller_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
@@ -54,7 +54,7 @@ class MockInteractiveTool:
         ]
 
 
-class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
+class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         await Runner.start()
 
@@ -158,11 +158,11 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
-    @unittest.skip("require network")
-    async def test_react_agent_invoke_with_workflow_interrupt_agent_invoke(self):
+    def _setup_test_environment_and_agent(self):
+        """Setup common test environment and create LLMAgent instance with workflow"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
-        react_agent_prompt_template = self._create_prompt_template()
+        llm_agent_prompt_template = self._create_prompt_template()
 
         questioner_workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
@@ -243,149 +243,55 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             }
         )
 
-        react_agent_config = create_react_llm_agent_config(
-            agent_id="react_agent_123",
+        llm_agent_config = create_llm_agent_config(
+            agent_id="llm_agent_123",
             agent_version="0.0.1",
             description="AI助手",
             plugins=[],
-            workflows=[workflow_schema],
+            workflows=[],
             model=model_config,
-            prompt_template=react_agent_prompt_template
+            prompt_template=llm_agent_prompt_template
         )
 
-        react_agent: ReActLLMAgent = create_react_llm_agent(
-            agent_config=react_agent_config,
-            workflows=[flow],
+        llm_agent: LLMAgent = create_llm_agent(
+            agent_config=llm_agent_config,
+            workflows=[],
             tools=[]
         )
-        # 绑定workflow
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version), flow)
 
-        result = await Runner.run_agent(react_agent, {"conversation_id": "12345", "query": "今天天气查询"})
-        print(f"ReActLLMAgent 第一次输出结果：{result}")
+        # 动态绑定workflow
+        llm_agent.add_workflows([flow])
+            
+        return llm_agent
+        
+    @unittest.skip("requires network")
+    async def test_llm_agent_with_workflow_interrupt_agent_invoke(self):
+        llm_agent = self._setup_test_environment_and_agent()
+
+        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "今天天气查询"})
+        print(f"LLMAgent 第一次输出结果：{result}")
         self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
         self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
         print(f"✅ 第一次调用校验通过：返回交互请求")
 
-        # 第二次大模型返回的结果不让调用sub_task
+        # 第二次大模型恢复上次中断workflow
         if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
             interactive_input = InteractiveInput()
             interactive_input.update("questioner", "上海")
-            result = await Runner.run_agent(react_agent, {"conversation_id": "12345", "query": interactive_input})
-            print(f"ReActLLMAgent 第二次输出结果：{result}")
+            result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
+            print(f"LLMAgent 第二次输出结果：{result}")
 
             self.assertIsInstance(result, dict, "第二次调用应该返回字典")
             self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
             print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
     @unittest.skip("require network")
-    async def test_react_agent_invoke_with_workflow_interrupt_with_stream(self):
-        os.environ.setdefault("LLM_SSL_VERIFY", "false")
-        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
-        react_agent_prompt_template = self._create_prompt_template()
-
-        questioner_workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
-                name="questioner_weather_workflow",
-                id="questioner_weather_workflow",
-                version="1.0",
-                description="天气查询"
-            ),
-            workflow_inputs_schema=WorkflowInputsSchema(
-                type="object",
-                properties={
-                    "query": {
-                        "type": "string",
-                        "description": "用户输入",
-                        "required": True
-                    }
-                },
-                required=['query']
-            )
-
-        )
-
-        flow = Workflow(workflow_config=questioner_workflow_config)
-
-        key_fields = [
-            FieldInfo(field_name="location", description="地点", required=True),
-            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
-        ]
-
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
-        end_component = End({"responseTemplate": "{{location}} | {{time}}"})
-
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
-                                   model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30  # 添加超时设置
-                                   ))
-        questioner_config = QuestionerConfig(
-            model=model_config,
-            question_content="",
-            extract_fields_from_response=True,
-            field_names=key_fields,
-            with_chat_history=False
-        )
-        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
-
-        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
-        flow.set_end_comp("e", end_component,
-                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
-        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
-
-        flow.add_connection("s", "questioner")
-        flow.add_connection("questioner", "e")
-
-        workflow_schema = WorkflowSchema(
-            id=flow.config().metadata.id,
-            name=flow.config().metadata.name,
-            version=flow.config().metadata.version,
-            description="追问器工作流",
-            inputs={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "用户输入",
-                        "required": True
-                    }
-                }
-            }
-        )
-
-        react_agent_config = create_react_llm_agent_config(
-            agent_id="react_agent_123",
-            agent_version="0.0.1",
-            description="AI助手",
-            plugins=[],
-            workflows=[workflow_schema],
-            model=model_config,
-            prompt_template=react_agent_prompt_template
-        )
-
-        react_agent: ReActLLMAgent = create_react_llm_agent(
-            agent_config=react_agent_config,
-            workflows=[flow],
-            tools=[]
-        )
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version), flow)
+    async def test_llm_agent_with_workflow_interrupt_with_stream(self):
+        llm_agent = self._setup_test_environment_and_agent()
 
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(react_agent, {"query": "天气查询", "conversation_id": "c123"}):
-            print(f"ReActLLMAgent 第一次输出结果 >>> {chunk}")
+        async for chunk in llm_agent.stream({"query": "天气查询", "conversation_id": "c123"}):
+            print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
 
@@ -394,6 +300,29 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
-            async for chunk in Runner.run_agent_streaming(react_agent,
-                                                          {"query": user_input, "conversation_id": "c123"}):
-                print(f"ReActLLMAgent 第二次输出结果 >>> {chunk}")
+            async for chunk in llm_agent.stream({"query": user_input, "conversation_id": "c123"}):
+                print(f"LLMAgent 第二次输出结果 >>> {chunk}")
+
+    @unittest.skip("require network")
+    async def test_llm_agent_with_workflow_interrupt_agent_invoke_multi_rounds(self):
+        llm_agent = self._setup_test_environment_and_agent()
+
+        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "今天天气查询"})
+        print(f"LLMAgent 第一次输出结果：{result}")
+        self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
+        self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
+        print(f"✅ 第一次调用校验通过：返回交互请求")
+
+        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "随机森林算法是什么"})
+        print(f"LLMAgent 第二次输出结果：{result}")
+        self.assertIsInstance(result, dict, "第二次调用应该返回字典")
+        self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
+        print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
+
+        interactive_input = InteractiveInput()
+        interactive_input.update("questioner", "上海")
+        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
+        print(f"LLMAgent 第三次输出结果：{result}")
+        self.assertIsInstance(result, dict, "第三次调用应该返回字典")
+        self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
+        print(f"✅ 第三次调用校验通过：恢复中断工作流完成，返回结果正确")

@@ -5,7 +5,7 @@
 import os
 import pytest
 
-from openjiuwen.agent.llm_agent.llm_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.stream.base import OutputSchema, TraceSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo

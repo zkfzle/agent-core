@@ -14,7 +14,7 @@ from openjiuwen.core.runtime.runtime import Runtime, Workflow
 from openjiuwen.core.utils.tool.base import Tool
 
 
-def create_react_agent_config(agent_id: str,
+def create_react_llm_agent_config(agent_id: str,
                               agent_version: str,
                               description: str,
                               workflows: List[WorkflowSchema],
@@ -33,36 +33,36 @@ def create_react_agent_config(agent_id: str,
     return config
 
 
-def create_react_agent(agent_config: ReActAgentConfig,
+def create_react_llm_agent(agent_config: ReActAgentConfig,
                        workflows: List[Workflow] = None,
                        tools: List[Tool] = None):
-    agent = ReActAgent(agent_config)
+    agent = ReActLLMAgent(agent_config)
     agent.bind_workflows(workflows)
     agent.bind_tools(tools or [])
     return agent
 
 
-class ReActAgent(Agent):
-    """ReAct模式的Agent - 使用LLM reasoning生成执行计划"""
+class ReActLLMAgent(Agent):
+    """ReAct mode Agent - uses LLM reasoning to generate execution plans"""
     
     def __init__(self, agent_config: ReActAgentConfig):
-        # 验证 controller_type
+        # Validate controller_type
         if agent_config.controller_type != ControllerType.ReActController:
             raise NotImplementedError(f"ReActAgent requires ReActController, got {agent_config.controller_type}")
 
-        # 创建配置并初始化基类
+        # Create configuration and initialize base class
         config = Config()
         config.set_agent_config(agent_config=agent_config)
         super().__init__(config)
         
-        # 设置消息处理器
+        # Set message handler
         self.set_message_handler(ReActMessageHandler)
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """批调用 - 使用基类的通用实现"""
+        """Batch invoke - use base class's generic implementation"""
         return await self.controller_invoke(inputs, runtime)
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """流式调用 - 使用基类的通用实现"""
+        """Stream invoke - use base class's generic implementation"""
         async for result in self.controller_stream(inputs, runtime):
             yield result

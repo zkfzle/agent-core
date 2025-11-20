@@ -1,0 +1,885 @@
+#!/usr/bin/python3.10
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+"""LLMController - ReAct style controller based on BaseController"""
+
+from typing import Dict, Optional, List, Any
+from openjiuwen.agent.config.react_config import ReActAgentConfig
+from openjiuwen.agent.common.enum import TaskType
+from openjiuwen.core.agent.controller.controller import BaseController
+from openjiuwen.core.agent.message.message import Message, MessageType
+from openjiuwen.core.agent.task.task import Task, TaskResult, TaskStatus
+from openjiuwen.core.agent.controller.utils import MessageHandlerUtils
+from openjiuwen.agent.utils import MessageUtils
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.common.security.user_config import UserConfig
+from openjiuwen.core.common.utlis.hash_util import generate_key
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.workflow.base import WorkflowExecutionState
+
+
+class LLMController(BaseController):
+    """LLM Controller 
+    
+    Core responsibilities:
+    1. Receive user input and invoke LLM reasoning to generate tasks
+    2. Execute tasks (plugin/workflow)
+    3. After task completion, invoke LLM reasoning again to decide whether to continue
+    4. Loop until the problem is solved or the maximum iteration count is reached
+    """
+
+    def __init__(
+            self,
+            config: ReActAgentConfig,
+            context_engine,
+            runtime
+    ):
+        super().__init__(config, context_engine, runtime)
+        self.config = config
+        self.iteration = 0  # reasoning iteration count
+
+    async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
+        """Handle Message - only handles user input
+        
+        Notes:
+        - BaseController.invoke() only creates USER_INPUT type messages
+        - Task execution results are handled directly in _execute_tasks_loop
+        
+        Args:
+            message: Message object (only USER_INPUT type)
+            runtime: Runtime context
+            
+        Returns:
+            Final result
+        """
+        if message.msg_type != MessageType.USER_INPUT:
+            logger.warning(f"Unexpected message type: {message.msg_type}, expected USER_INPUT")
+            await self._send_error_stream("Unexpected message type", runtime)
+            return {"output": "Unexpected message type", "result_type": "answer"}
+        
+        try:
+            return await self._handle_user_input(message, runtime)
+        except Exception as e:
+            logger.error(f"Error in handling message: {e}")
+            error_result = await self._send_error_stream(str(e), runtime)
+            return self._unwrap_result(error_result)
+
+    async def _handle_user_input(self, message: Message, runtime: Runtime) -> Optional[Dict]:
+        """Handle user input - ReAct core: LLM reasoning to generate plan
+        
+        Process:
+        1. Add user message to conversation history
+        2. Call LLM reasoning to generate task plan
+        3. Execute tasks
+        4. If it's a workflow task, check if it needs to resume interrupted task
+        5. Loop until completion
+        """
+
+        # Add user message to conversation history
+        MessageUtils.add_user_message(message.get_display_content(), self._context_engine, runtime)
+
+        # Call LLM model to generate plans
+        tasks, llm_output = await self._generate_plan_from_llm(message, runtime)
+
+        if not tasks:
+            logger.info("ReAct end, No task is generated")
+            final_result = await self._send_final_stream(llm_output.content, runtime)
+            return self._unwrap_result(final_result)
+        
+        # Check if planned task is a workflow task
+        workflow_task = self._resolve_workflow_from_tasks(tasks)
+        if workflow_task:
+            # Check if it needs to resume interrupted task
+            interrupted_task = self._find_interrupted_task(workflow_task, runtime)
+            if interrupted_task:
+                logger.info(f"Resuming interrupted workflow task: {workflow_task.input.target_name}")
+                # Create resume task
+                resume_task = self._create_resume_task(message, interrupted_task)
+                tasks = [resume_task]
+            else:
+                logger.info(f"Creating new workflow task: {workflow_task.input.target_name}")
+        
+        # Execute tasks
+        return await self._execute_react_loop(tasks, runtime)
+
+    async def _post_task_completion(
+        self,
+        task: Task,
+        output: Any,
+        workflow_id: Optional[str],
+        runtime: Runtime
+    ):
+        """Post-processing after task completion: write stream, add history, clear state
+        
+        Args:
+            task: Completed task
+            output: Task output (stream data)
+            workflow_id: Workflow ID (if applicable)
+            runtime: Runtime context
+        """
+        # Write task completion stream data
+        await self._write_message_stream_data(output, runtime)
+
+        # Add tool call result to history
+        if output and len(output) > 0:
+            if output[0].type in ("plugin_final", "workflow_final"):
+                temp_message = Message.create_task_completed(
+                    conversation_id=runtime.session_id(),
+                    task_id=task.task_id,
+                    task_result=task.result,
+                    workflow_id=workflow_id,
+                    stream_data=output
+                )
+                MessageHandlerUtils.add_tool_result(temp_message, self._context_engine, runtime)
+        
+        # Clear workflow interrupted state (if any)
+        self._clear_interrupted_state(task, runtime)
+        logger.info(f"Cleared interrupt state for workflow: {workflow_id}")
+    
+    async def _generate_next_plan(
+        self,
+        task: Task,
+        workflow_id: Optional[str],
+        output: Any,
+        runtime: Runtime
+    ) -> tuple[list[Task], Any]:
+        """Generate next plan after task completion
+        
+        Args:
+            task: Completed task
+            workflow_id: Workflow ID (if applicable)
+            output: Task output (stream data)
+            runtime: Runtime context
+            
+        Returns:
+            tuple: (tasks, llm_output)
+        """
+        # Create temporary Message for LLM reasoning (maintain compatibility)
+        temp_message = Message.create_task_completed(
+            conversation_id=runtime.session_id(),
+            task_id=task.task_id,
+            task_result=task.result,
+            workflow_id=workflow_id,
+            stream_data=output
+        )
+        
+        return await self._generate_plan_from_llm(temp_message, runtime)
+
+    async def _handle_task_completed(
+            self,
+            task: Task,
+            execution_result: TaskResult,
+            runtime: Runtime
+    ) -> tuple[Optional[Dict], list[Task]]:
+        """Handle task completion - post-processing, generate next plan, check if done
+
+        Args:
+            task: Completed task
+            execution_result: Task execution result
+            runtime: Runtime context
+
+        Returns:
+            tuple: (final_result_if_done, new_tasks)
+            - If final_result is not None, ReAct loop should end
+            - If final_result is None, continue with new_tasks
+        """
+        workflow_id = execution_result.metadata.get("workflow_id")
+
+        # 1. Post-processing
+        await self._post_task_completion(
+            task=task,
+            output=execution_result.output,
+            workflow_id=workflow_id,
+            runtime=runtime
+        )
+
+        # 2. Generate next plan
+        tasks, llm_output = await self._generate_next_plan(
+            task=task,
+            workflow_id=workflow_id,
+            output=execution_result.output,
+            runtime=runtime
+        )
+
+        # 3. Check if done
+        if not tasks:
+            logger.info("No new tasks generated, ReAct loop completed")
+            final_result = await self._send_final_stream(llm_output.content, runtime)
+            return self._unwrap_result(final_result), []
+
+        # 4. Continue loop
+        return None, tasks
+
+    async def _handle_task_interrupted(
+        self,
+        output: List,
+        runtime: Runtime
+    ) -> Optional[Dict]:
+        """Handle task interruption
+        
+        Note: interruption state has been saved in _execute_workflow_task, only return result here
+        """
+        # Write interrupted task stream data
+        await self._write_message_stream_data(output, runtime)
+
+        # Return interruption result (stop processing, wait for user input)
+        logger.info(f"Task interrupted, return interaction requests")
+        return self._unwrap_result(output)
+
+    async def _handle_task_error(
+        self,
+        error_msg: str,
+        runtime: Runtime
+    ) -> Optional[Dict]:
+        """Handle task error
+
+        - send error stream data and return final result
+        """
+        logger.error(f"Task execution error: {error_msg}")
+        error_result = await self._send_error_stream(error_msg, runtime)
+        return self._unwrap_result(error_result)
+
+    async def _execute_react_loop(self, tasks: list[Task], runtime: Runtime) -> Optional[Dict]:
+        """Execute ReAct loop with explicit iteration - NO RECURSION
+
+        Main loop:
+        1. Execute task
+        2. If interrupted/failed, return immediately
+        3. If completed, do post-processing
+        4. Generate next plan from LLM
+        5. If no new tasks or max iteration reached, return final result
+        6. Otherwise, continue loop with new tasks
+
+        Note: ReAct typically processes one task at a time
+        
+        Args:
+            tasks: Initial task list
+            runtime: Runtime context
+            
+        Returns:
+            Final result dictionary
+        """
+        while tasks and self.iteration < self.config.constrain.max_iteration:
+            task = tasks[0]
+            logger.info(f"Executing task {task.task_id}, type: {task.task_type}")
+            
+            # Execute task
+            execution_result = await self._execute_task(task, runtime)
+            
+            # Handle interruption - stop immediately, wait for user input
+            if execution_result.status == TaskStatus.INTERRUPTED:
+                logger.info("Task interrupted, stopping ReAct loop")
+                return await self._handle_task_interrupted(
+                    output=execution_result.output,
+                    runtime=runtime
+                )
+            
+            # Handle error - stop immediately
+            if execution_result.status == TaskStatus.FAILED:
+                logger.error(f"Task failed: {execution_result.error}")
+                return await self._handle_task_error(
+                    error_msg=execution_result.error,
+                    runtime=runtime
+                )
+            
+            # Task completed successfully - do post-processing
+            if execution_result.status == TaskStatus.SUCCESS:
+                final_result, tasks = await self._handle_task_completed(
+                    task=task,
+                    execution_result=execution_result,
+                    runtime=runtime
+                )
+
+                if final_result is not None:
+                    return final_result
+
+                # Continue with new tasks (tasks already updated)
+                continue
+            
+            # Continue to next iteration (loop will check iteration count)
+        # Exceeded max iteration count
+        logger.warning(
+            f"Exceeded max iteration {self.config.constrain.max_iteration}, stopping ReAct loop"
+        )
+        return {"output": "Maximum iteration reached", "result_type": "answer"}
+
+    async def _execute_task(self, task: Task, runtime: Runtime) -> TaskResult:
+        """Execute single task - return execution task result
+        """
+        try:
+            if task.task_type == TaskType.WORKFLOW:
+                return await self._execute_workflow_task(task, runtime)
+            elif task.task_type == TaskType.PLUGIN:
+                return await self._execute_plugin_task(task, runtime)
+            else:
+                logger.warning(f"Unknown task type: {task.task_type}")
+                raise JiuWenBaseException(
+                    error_code=StatusCode.TASK_NOT_SUPPORT_ERROR.code,
+                    message=StatusCode.TASK_NOT_SUPPORT_ERROR.errmsg.format(msg=str(task.task_type))
+                )
+        except Exception as e:
+            logger.error(f"Error executing task {task.task_id}: {e}")
+            return TaskResult(
+                status=TaskStatus.FAILED,
+                error=str(e)
+            )
+
+    async def _execute_workflow_task(self, task: Task, runtime: Runtime) -> TaskResult:
+        """Execute workflow task - return result dictionary
+
+        - If task status is INTERRUPTED, it's a resume task
+        - Change status to RUNNING before execution
+        - Determine if interrupted or completed based on execution result
+        """
+        try:
+            workflow_id = task.input.target_id
+            workflow = self._find_workflow_by_id(workflow_id, runtime)
+            if not workflow:
+                raise ValueError(f"Workflow not found: {workflow_id}")
+            workflow_runtime = runtime.create_workflow_runtime()
+            
+            # Record task execution information
+            is_resume = task.status == TaskStatus.INTERRUPTED
+            logger.info(
+                f"Executing workflow: {task.input.target_name}, "
+                f"workflow_id: {task.input.target_id}, "
+                f"is_resume={is_resume}, "
+                f"input_type={type(task.input.arguments)}"
+            )
+            
+            # Update task status to RUNNING
+            task.status = TaskStatus.RUNNING
+            
+            # Execute workflow
+            result = await Runner.run_workflow(
+                workflow, 
+                inputs=task.input.arguments,
+                runtime=workflow_runtime
+            )
+            
+            # Prepare stream data
+            output_stream_data = self._prepare_workflow_stream_data(result)
+            
+            # Check result status
+            is_interrupted = self._is_workflow_interrupted(result)
+            result_state = "NO STATE"
+            if hasattr(result, 'state'):
+                result_state = result.state
+            logger.info(
+                f"Executing workflow result state: {result_state}, "
+                f"interrupted: {is_interrupted}"
+            )
+            if is_interrupted:
+                task.result = TaskResult(
+                    status=TaskStatus.INTERRUPTED,
+                    output=result,
+                    metadata={"state": result.state.value}
+                )
+                logger.info(f"Workflow {task.input.target_name} interrupted, waiting for user input")
+                
+                # Save interruption state to state
+                interaction_data = result.result if hasattr(result, 'result') else None
+                await self.interrupt_task(task, runtime, interaction_data)
+
+                return TaskResult(
+                    status=TaskStatus.INTERRUPTED,
+                    output=output_stream_data,
+                    metadata={"workflow_id": task.input.target_id}
+                )
+            else:
+                task.result = TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    output=result,
+                    metadata={"state": result.state.value if hasattr(result, 'state') else "completed"}
+                )
+                logger.info(f"Workflow {task.input.target_name} completed successfully")
+                
+                # Clear interrupted state (if any)
+                self._clear_interrupted_state(task, runtime)
+
+                return TaskResult(
+                    status=TaskStatus.SUCCESS,
+                    output=output_stream_data,
+                    metadata={"workflow_id": task.input.target_id}
+                )
+        except JiuWenBaseException as e:
+            logger.error(f"Error executing workflow task {task.input.target_name}: {e}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.WORKFLOW_EXECUTION_ERROR.code,
+                message=e.message
+            )
+        except Exception as e:
+            logger.error(f"Error executing workflow {task.input.target_name}: {e}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.WORKFLOW_EXECUTION_ERROR.code,
+                message=StatusCode.WORKFLOW_EXECUTION_ERROR.errmsg.format(msg=str(e))
+            )
+
+    async def _execute_plugin_task(self, task: Task, runtime: Runtime) -> TaskResult:
+        """Execute plugin task - return result dictionary"""
+        tool = runtime.get_tool(task.input.target_name)
+        if not tool:
+            logger.error("Tool not found")
+            raise JiuWenBaseException(
+                error_code=StatusCode.TOOL_NOT_FOUND_ERROR.code,
+                message=StatusCode.TOOL_NOT_FOUND_ERROR.errmsg
+            )
+        try:
+            result = await tool.ainvoke(task.input.arguments)
+            
+            # Prepare stream data
+            payload = {"output": result, "result_type": "answer"}
+            output_stream_data = [OutputSchema(type="plugin_final", index=0, payload=payload)]
+
+            # update task result
+            task.result = TaskResult(
+                status=TaskStatus.SUCCESS,
+                output=output_stream_data,
+                metadata={"tool_name": task.input.target_name}
+            )
+            return TaskResult(
+                status=TaskStatus.SUCCESS,
+                output=output_stream_data,
+                metadata={"tool_name": task.input.target_name}
+            )
+        except JiuWenBaseException as e:
+            logger.error(f"Error executing plugin task {task.input.target_name}: {e}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.TOOL_EXECUTION_ERROR.code,
+                message=e.message
+            )
+        except Exception as e:
+            logger.error(f"Error executing plugin task {task.input.target_name}: {e}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.TOOL_EXECUTION_ERROR.code,
+                message=StatusCode.TOOL_EXECUTION_ERROR.errmsg.format(msg=str(e))
+            )
+
+    async def _generate_plan_from_llm(self, message: Message, runtime: Runtime):
+        """Call LLM to generate plan - ReAct core method"""
+        logger.info(f"ReAct iteration {self.iteration + 1}/{self.config.constrain.max_iteration}")
+
+        inputs = message.get_display_content()
+        tools = runtime.get_tool_info()
+        logger.info(f"Loaded {len(tools)} Tool(s) for generating plans")
+        chat_history = MessageUtils.get_chat_history(self._context_engine, runtime, self.config)
+        llm_inputs = MessageHandlerUtils.format_llm_inputs(inputs, chat_history, self.config)
+
+        if UserConfig.is_sensitive():
+            logger.info(f"React llm inputs")
+        else:
+            logger.info(f"React llm inputs: {llm_inputs}")
+        
+        try:
+            model = self._get_model(runtime)
+            llm_output = await model.ainvoke(
+                self.config.model.model_info.model_name,
+                llm_inputs,
+                tools
+            )
+            
+            tasks = MessageHandlerUtils.parse_llm_output(llm_output, self.config)
+            # Add LLM output to CE conversation history
+            MessageUtils.add_ai_message(llm_output, self._context_engine, runtime)
+
+            if UserConfig.is_sensitive():
+                logger.info(f"React llm output")
+            else:
+                logger.info(f"React llm output: {llm_output}")
+        except Exception as e:
+            self.iteration += 1
+            logger.error(f"Failed to invoke model, {e}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.INVOKE_LLM_FAILED.code,
+                message=StatusCode.INVOKE_LLM_FAILED.errmsg
+            )
+        
+        self.iteration += 1
+        return tasks, llm_output
+
+    def _get_model(self, runtime: Runtime):
+        """Get model instance"""
+        model_id = generate_key(
+            self.config.model.model_info.api_key,
+            self.config.model.model_info.api_base,
+            self.config.model.model_provider
+        )
+        
+        model = runtime.get_model(model_id=model_id)
+        
+        if model is None:
+            model = ModelFactory().get_model(
+                model_provider=self.config.model.model_provider,
+                api_base=self.config.model.model_info.api_base,
+                api_key=self.config.model.model_info.api_key,
+                timeout=self.config.model.model_info.timeout
+            )
+            runtime.add_model(model_id=model_id, model=model)
+        
+        return runtime.get_model(model_id=model_id)
+    
+    def _get_workflow_id_from_schema(self, workflow_name: str) -> Optional[str]:
+        """Get workflow_id from workflow schema by name
+        
+        Args:
+            workflow_name: Workflow name
+            
+        Returns:
+            Workflow ID in format {id}_{version}, or None if not found
+        """
+        for workflow_schema in self.config.workflows:
+            if workflow_schema.name == workflow_name:
+                return f"{workflow_schema.id}_{workflow_schema.version}"
+        return None
+    
+    def _ensure_workflow_id(self, task: Task) -> str:
+        """Ensure task has valid workflow_id, construct from schema if needed
+        
+        Args:
+            task: Task object
+            
+        Returns:
+            Workflow ID
+            
+        Raises:
+            ValueError: If workflow_id cannot be determined
+        """
+        # If task already has target_id, use it
+        if task.input.target_id:
+            return task.input.target_id
+        
+        # Otherwise, construct from workflow schema
+        workflow_id = self._get_workflow_id_from_schema(task.input.target_name)
+        if workflow_id:
+            task.input.target_id = workflow_id
+            logger.info(
+                f"Set workflow_id={workflow_id} for workflow: {task.input.target_name}"
+            )
+            return workflow_id
+        
+        raise ValueError(
+            f"Cannot determine workflow_id for task: {task.input.target_name}"
+        )
+    
+    def _resolve_workflow_from_tasks(self, tasks: list[Task]) -> Optional[Task]:
+        """Find workflow task from task list"""
+        for task in tasks:
+            if task.task_type == TaskType.WORKFLOW:
+                return task
+        return None
+    
+    def _find_interrupted_task(self, workflow_task: Task, runtime: Runtime) -> Optional[Task]:
+        """Find interrupted task
+
+        Find interrupted task from runtime.state:
+        state["llm_controller"]["interrupted_tasks"][workflow_id]
+        
+        Find interrupted task for specified workflow from runtime.state
+        """
+        state = runtime.get_state("llm_controller")
+        if not state:
+            logger.info("No llm_controller state found, don't have interrupted tasks")
+            return None
+
+        interrupted_tasks = state.get("interrupted_tasks", {})
+        logger.info(f"find interrupted_tasks {list(interrupted_tasks.keys())} from llm_controller")
+        
+        # Get workflow_id from schema (unified method)
+        workflow_id = self._get_workflow_id_from_schema(workflow_task.input.target_name)
+        if not workflow_id:
+            logger.warning(f"Workflow schema not found for {workflow_task.input.target_name}")
+            return None
+
+        state_key = workflow_id.replace('.', '_')
+        
+        # Try to find interrupted task with normalized key
+        if state_key in interrupted_tasks:
+            logger.info(f"Found interrupted task for {workflow_task.input.target_name} (key: {state_key})")
+            task_data = interrupted_tasks[state_key]["task"]
+            return Task.model_validate(task_data)
+        
+        logger.info(f"No interrupted task found for workflow {workflow_task.input.target_name}")
+        return None
+
+    def _create_resume_task(self, message: Message, interrupted_task: Task) -> Task:
+        """Create resume task
+
+        - If message has InteractiveInput, use it directly
+        - Otherwise create InteractiveInput from query
+        - Update interrupted task input parameters
+        - Update task status to Interrupted
+        
+        Args:
+            message: Message
+            interrupted_task: Interrupted task recovered from state
+            
+        Returns:
+            Task: Resumed task object
+        """
+        # Check if message content already has InteractiveInput
+        if message.content.interactive_input is not None:
+            interactive_input = message.content.interactive_input
+            logger.info(f"Using InteractiveInput from message for resuming workflow directly")
+        else:
+            # Create InteractiveInput from query
+            query = message.content.get_query()
+            logger.info(f"Creating InteractiveInput from query: {query}")
+            interactive_input = InteractiveInput(raw_inputs=query)
+        
+        # Update interrupted task input to InteractiveInput
+        interrupted_task.input.arguments = interactive_input
+        
+        # Keep task status as INTERRUPTED
+        interrupted_task.status = TaskStatus.INTERRUPTED
+        
+        logger.info(
+            f"Created resume task: task_id={interrupted_task.task_id}, "
+            f"workflow={interrupted_task.input.target_name}, "
+            f"status={interrupted_task.status}, "
+            f"input_type={type(interrupted_task.input.arguments)}"
+        )
+        
+        return interrupted_task
+
+    def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
+        """Find workflow object from runtime
+        
+        Args:
+            workflow_id: workflow ID (format: {id}_{version})
+            runtime: Runtime context
+            
+        Returns:
+            Workflow object, None if not found
+        """
+        try:
+            workflow = runtime.get_workflow(workflow_id)
+            return workflow
+        except Exception as e:
+            logger.error(f"Failed to find workflow {workflow_id}: {e}")
+            return None
+
+    def _prepare_workflow_stream_data(self, result) -> list:
+        """Prepare workflow stream data"""
+        try:
+            if self._is_workflow_interrupted(result):
+                return result.result
+            else:
+                payload = {"output": result, "result_type": "answer"}
+                return [OutputSchema(type="workflow_final", index=0, payload=payload)]
+        except Exception as e:
+            logger.warning(f"Failed to prepare stream data: {e}")
+            return []
+
+    def _is_workflow_interrupted(self, result) -> bool:
+        """Check if workflow is interrupted"""
+        return hasattr(result, 'state') and result.state == WorkflowExecutionState.INPUT_REQUIRED
+
+    def _clear_interrupted_state(self, task: Task, runtime: Runtime):
+        """Clean up interruption state
+
+        Remove interrupted task for specified workflow from runtime.state
+        """
+        workflow_id = task.input.target_id
+        if not workflow_id:
+            logger.warning("Cannot clear interrupted state: task has no target_id")
+            return
+        
+        state = runtime.get_state("llm_controller") or {}
+        interrupted_tasks = state.get("interrupted_tasks", {})
+
+        # Normalize workflow_id for state key
+        state_key = workflow_id.replace('.', '_')
+
+        if state_key in interrupted_tasks:
+            del interrupted_tasks[state_key]
+            runtime.update_state({"llm_controller": state})
+            logger.info(
+                f"Cleared interrupted state for workflow: {task.input.target_id}, "
+                f"state_key: {state_key}"
+            )
+
+    async def interrupt_task(
+            self,
+            task: Task,
+            runtime: Runtime,
+            interaction_data: Optional[list] = None
+    ) -> Dict:
+        """Save interruption state to runtime.state
+
+        Args:
+            task: Task object
+            runtime: Runtime context
+            interaction_data: Interaction data during interruption (OutputSchema list)
+
+        Returns:
+            dict: Interruption information
+        """
+        # Ensure task has valid workflow_id (unified method)
+        try:
+            workflow_id = self._ensure_workflow_id(task)
+        except ValueError as e:
+            logger.error(f"interrupt_task: {e}")
+            workflow_id = "unknown"
+
+        # Step 1: Update task status
+        task.status = TaskStatus.INTERRUPTED
+
+        # Step 2: Save interruption state to runtime.state
+        state = runtime.get_state("llm_controller") or {}
+        if "interrupted_tasks" not in state:
+            state["interrupted_tasks"] = {}
+
+        # Extract component ID from interaction data
+        component_id = self._extract_component_id_from_interaction_data(
+            interaction_data
+        )
+        
+        # Normalize workflow_id for state key
+        state_key = workflow_id.replace('.', '_')
+
+        state["interrupted_tasks"][state_key] = {
+            "task": task.model_dump(),
+            "component_id": component_id
+        }
+
+        runtime.update_state({"llm_controller": state})
+
+        logger.info(
+            f"Task interrupted: workflow={workflow_id}, "
+            f"state_key={state_key}, component_id={component_id}, "
+            f"task_id={task.task_id}"
+        )
+
+        return {
+            "status": "interrupted",
+            "task_id": task.task_id,
+            "workflow_id": workflow_id,
+            "message": "Task interrupted, waiting for subsequent input"
+        }
+    
+    def _extract_component_id_from_interaction_data(self, interaction_data: Optional[list]) -> str:
+        """Extract component ID from interaction data
+        
+        Args:
+            interaction_data: OutputSchema list containing interaction requests during interruption
+            
+        Returns:
+            str: Component ID, defaults to "questioner"
+        """
+        if not interaction_data:
+            logger.warning("No interaction_data provided, using default component_id")
+            return "questioner"
+        
+        try:
+            # Iterate through interaction_data to find outputs with type '__interaction__'
+            for output_schema in interaction_data:
+                if (hasattr(output_schema, 'type') and 
+                    output_schema.type == '__interaction__'):
+                    # Extract InteractionOutput.id from payload
+                    if (hasattr(output_schema, 'payload') and 
+                        hasattr(output_schema.payload, 'id')):
+                        component_id = output_schema.payload.id
+                        logger.info(
+                            f"Extracted component_id from interaction_data: {component_id}"
+                        )
+                        return component_id
+        except Exception as e:
+            logger.warning(
+                f"Failed to extract component_id from interaction_data: {e}"
+            )
+        
+        logger.warning("No component_id found in interaction_data, using default")
+        return "questioner"  # Default value
+
+    async def _write_message_stream_data(self, stream_data: List, runtime: Runtime):
+        """Write stream data carried by message List[OutputSchema]"""
+        try:
+            for output_schema in stream_data:
+                await runtime.write_stream(output_schema)
+        except Exception as e:
+            logger.warning(f"Failed to write message stream data: {e}")
+
+    async def _send_final_stream(self, content: str, runtime: Runtime):
+        """Send final stream data"""
+        try:
+            payload = {"output": content, "result_type": "answer"}
+            final_stream = OutputSchema(
+                type="answer",
+                index=0,
+                payload=payload
+            )
+            await runtime.write_stream(final_stream)
+            return final_stream
+        except Exception as e:
+            logger.error(f"Failed to send final stream data: {e}")
+            return OutputSchema(
+                type="final",
+                index=0,
+                payload={
+                    "error": True,
+                    "message": str(e),
+                    "status": "failed"
+                }
+            )
+
+    async def _send_error_stream(self, error_msg: str, runtime: Runtime):
+        """Send error result stream and return OutputSchema"""
+        try:
+            error_stream = OutputSchema(
+                type="final",
+                index=0,
+                payload={
+                    "error": True,
+                    "message": error_msg,
+                    "status": "failed"
+                }
+            )
+            await runtime.write_stream(error_stream)
+            return error_stream
+        except Exception as e:
+            logger.error(f"Failed to send error stream: {e}")
+            return OutputSchema(
+                type="final",
+                index=0,
+                payload={
+                    "error": True,
+                    "message": str(e),
+                    "status": "failed"
+                }
+            )
+
+    def _unwrap_result(self, result):
+        """Unwrap result - unify return format"""
+        if isinstance(result, list):
+            if not result:
+                return {"output": "", "result_type": "answer"}
+            if isinstance(result[0], OutputSchema):
+                if len(result) == 1 and result[0].type == "workflow_final":
+                    return result[0].payload
+                return result
+            return {"output": result, "result_type": "answer"}
+        
+        if isinstance(result, OutputSchema):
+            payload = result.payload
+            if isinstance(payload, dict):
+                if 'output' in payload and isinstance(payload['output'], str):
+                    payload['output'] = payload['output'].strip()
+            return payload
+
+        return {"output": result, "result_type": "answer"}
+
+    def create_message(self, inputs: Dict) -> Message:
+        """Create message object - override to support query field"""
+        query = inputs.get("query", inputs.get("content", ""))
+        conversation_id = inputs.get("conversation_id", "default_session")
+        
+        return Message.create_user_message(
+            content=query,
+            conversation_id=conversation_id
+        )

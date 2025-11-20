@@ -13,40 +13,40 @@ from openjiuwen.core.common.security.user_config import UserConfig
 
 
 class ReActMessageHandler(MessageHandler):
-    """ReActMessageHandler - ReAct模式的消息处理器，包含ReAct状态管理"""
+    """ReActMessageHandler - ReAct mode message handler with ReAct state management"""
 
     def __init__(self, config: AgentConfig, context_engine=None, runtime=None):
         super().__init__(config, context_engine, runtime)
-        self.load_state()  # 从runtime加载状态（基类实现）
-        self.iteration = 0  # reasoning的迭代次数
+        self.load_state()  # Load state from runtime (base class implementation)
+        self.iteration = 0  # Reasoning iteration count
 
     def get_state_key(self) -> str:
-        """返回react handler的状态存储key"""
+        """Return react handler state storage key"""
         return "react_controller_state"
 
     async def handle_message(self, message: Message) -> MessageHandlerResult:
-        """处理react模式的消息，返回处理结果
+        """Handle react mode messages and return processing results
         
-        消息分发逻辑：
-        - TASK_COMPLETED: 调用 LLM 再次 reasoning，决定是否继续
-        - TASK_INTERRUPTED: 使用基类通用中断处理
-        - USER_INPUT: 调用 LLM reasoning 生成计划
-        - ERROR: 使用基类通用错误处理
+        Message distribution logic:
+        - TASK_COMPLETED: Call LLM for reasoning again to decide whether to continue
+        - TASK_INTERRUPTED: Use base class general interrupt handling
+        - USER_INPUT: Call LLM reasoning to generate plans
+        - ERROR: Use base class general error handling
         """
         try:
-            # 根据消息类型分发处理
+            # Distribute processing according to message type
             if message.msg_type == MessageType.TASK_COMPLETED:
                 return await self._handle_task_completed(message)
 
             elif message.msg_type == MessageType.TASK_INTERRUPTED:
-                # 使用基类通用中断处理
+                # Use base class general interrupt handling
                 return await self._handle_task_interrupted(message)
 
             elif message.msg_type == MessageType.USER_INPUT:
                 return await self._handle_user_input(message)
 
             elif message.msg_type == MessageType.ERROR:
-                # 使用基类通用错误处理
+                # Use base class general error handling
                 return await self._handle_error(message)
 
             else:
@@ -63,39 +63,39 @@ class ReActMessageHandler(MessageHandler):
             )
 
     async def _handle_user_input(self, message: Message) -> MessageHandlerResult:
-        """处理用户输入消息 - React 核心：LLM reasoning 生成计划
+        """Handle user input messages - React core: LLM reasoning to generate plans
         
-        流程：
-        1. 添加用户消息到对话历史
-        2. 调用 LLM reasoning 生成任务计划
-        3. 如果是 workflow 任务，判断是否需要恢复中断任务（使用基类方法）
-        4. 返回任务列表
+        Process:
+        1. Add user message to conversation history
+        2. Call LLM reasoning to generate task plans
+        3. If it's a workflow task, check if it needs to resume interrupted task (using base class methods)
+        4. Return task list
         """
         if not self.config.model:
             logger.warning("Model config missing, cannot generate plan")
             return MessageHandlerResult(tasks=[], stop=True)
 
-        # 添加user_message到对话历史
+        # Add user_message to conversation history
         MessageUtils.add_user_message(message.get_display_content(), self.context_engine, self.runtime)
 
-        # 调用大模型 reasoning 生成计划
+        # Call LLM reasoning to generate plans
         tasks, llm_output = await self._generate_plan_from_llm(message)
         if not tasks:
             logger.info("No task is generated")
             final_result = await self._send_final_stream(llm_output.content)
             return MessageHandlerResult(tasks=[], stop=True, final_result=final_result)
 
-        # 判断规划任务是否为 workflow 任务
+        # Check if planned task is a workflow task
         workflow_task = self._resolve_workflow_from_tasks(tasks)
         if not workflow_task:
-            # plugin任务 直接返回
+            # Plugin task - return directly
             logger.info("Created plugin task: %s", tasks)
             return MessageHandlerResult(tasks=tasks, stop=False)
 
-        # workflow任务 - 判断是否需要恢复中断任务（使用基类方法）
+        # Workflow task - check if it needs to resume interrupted task (using base class methods)
         interrupted_task = self._find_interrupted_task(workflow_task)
         if interrupted_task:
-            # reasoning返回的workflow处于中断状态，恢复它（使用基类方法）
+            # Workflow returned by reasoning is in interrupted state, resume it (using base class methods)
             logger.info(f"Resuming interrupted workflow: {workflow_task.name}")
             return await self._create_resume_task(message, workflow_task, interrupted_task)
 
@@ -103,36 +103,36 @@ class ReActMessageHandler(MessageHandler):
         return MessageHandlerResult(tasks=tasks, stop=False)
 
     async def _handle_task_completed(self, message: Message) -> MessageHandlerResult:
-        """处理任务完成消息 - React 特有：继续 LLM reasoning 直到任务完成
+        """Handle task completion messages - React specific: continue LLM reasoning until task completion
         
-        与 Workflow 的区别：
-        - Workflow: 任务完成就停止
-        - React: 任务完成后再次调用 LLM reasoning，判断问题是否已解决
+        Difference from Workflow:
+        - Workflow: Stop when task is completed
+        - React: Call LLM reasoning again after task completion to determine if the problem is solved
         """
-        # 写入任务完成的流数据
+        # Write stream data for completed tasks
         await self._write_message_stream_data(message)
 
-        # 添加工具调用结果到历史
+        # Add tool call results to history
         if message.content.stream_data[0].type in ("plugin_final", "workflow_final"):
             MessageHandlerUtils.add_tool_result(message, self.context_engine, self.runtime)
 
-        # 清除workflow的中断状态（如果有）- 使用基类状态管理
+        # Clear workflow interruption state (if any) - use base class state management
         if message.context.workflow_id:
             self._state.clear_interrupted_task(message.context.workflow_id)
             self.save_state()
             logger.info(f"Cleared interrupt state for workflow: {message.context.workflow_id}")
 
-        # 再次调用大模型 reasoning 生成计划 判断问题是否回答完成
+        # Call LLM reasoning again to generate plans and determine if the problem is answered
         if self.iteration < self.config.constrain.max_iteration:
             tasks, llm_output = await self._generate_plan_from_llm(message)
-            # 如果没有新的任务，返回停止信号，写入流数据, 携带最终结果
+            # If no new tasks, return stop signal, write stream data with final result
             if not tasks:
                 logger.info("No new tasks generated, task completed, returning stop signal with final result")
                 final_result = await self._send_final_stream(llm_output.content)
                 return MessageHandlerResult(tasks=[], stop=True, final_result=final_result)
             return MessageHandlerResult(tasks=tasks, stop=False)
 
-        # 超过最大迭代次数，直接返回停止信号，携带最终结果
+        # Exceed maximum iteration count, directly return stop signal with final result
         result = message.content.stream_data
         logger.info(f"Exceed max iteration {self.config.constrain.max_iteration}, "
                     "task completed, returning stop signal with final result")
@@ -144,12 +144,12 @@ class ReActMessageHandler(MessageHandler):
         )
 
     async def _generate_plan_from_llm(self, message: Message):
-        """调用大模型生成计划 - React 核心方法
+        """Call LLM to generate plans - React core method
         
-        这是 ReAct 模式的唯一差异化逻辑：
-        - 使用 LLM reasoning 生成任务执行计划
-        - 解析 LLM 输出为任务列表
-        - 迭代次数+1
+        This is the only differentiated logic for ReAct mode:
+        - Use LLM reasoning to generate task execution plans
+        - Parse LLM output into task list
+        - Increment iteration count by 1
         
         Returns:
             Tuple[List[Task], BaseMessage]: (tasks, llm_output)
@@ -173,7 +173,7 @@ class ReActMessageHandler(MessageHandler):
             )
 
             tasks = MessageHandlerUtils.parse_llm_output(llm_output, self.config)
-            # 大模型输出信息添加到CE对话历史中
+            # Add LLM output information to CE conversation history
             MessageUtils.add_ai_message(llm_output, self.context_engine, self.runtime)
             if UserConfig.is_sensitive():
                 logger.info(f"React llm output")

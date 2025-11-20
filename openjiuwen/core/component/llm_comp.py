@@ -3,11 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import List, Any, Dict, Optional, AsyncIterator, Union
 
 from pydantic import ValidationError, Field, BaseModel
 
-from openjiuwen.core.common.enum.enum import WorkflowLLMResponseType, MessageRole
 from openjiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -35,6 +35,19 @@ _ID = "id"
 _TYPE = "type"
 _INSTRUCTION_NAME = "instruction_name"
 _TEMPLATE_NAME = "template_name"
+
+
+class MessageRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    FUNCTION = "function"
+
+
+class WorkflowLLMResponseType(Enum):
+    JSON = "json"
+    MARKDOWN = "markdown"
+    TEXT = "text"
+
 
 RESPONSE_FORMAT_TO_PROMPT_MAP = {
     WorkflowLLMResponseType.JSON.value: {

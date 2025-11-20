@@ -67,7 +67,7 @@ class AsyncStreamQueue:
         self._closed = True
 
         try:
-            await asyncio.wait_for(self._stream_queue.join(), timeout)
+            await asyncio.wait_for(self._stream_queue.join(), timeout if timeout and timeout > 0 else None)
             logger.info(
                 f"StreamQueue closed successfully, timeout: {timeout}")
         except asyncio.TimeoutError:

@@ -86,7 +86,6 @@ class BaseWorkFlow:
             outputs_transformer: Transformer = None,
             stream_inputs_schema: dict = None,
             stream_outputs_schema: dict = None,
-            stream_inputs_transformer: Transformer = None,
             stream_outputs_transformer: Transformer = None,
             comp_ability: list[ComponentAbility] = None
     ) -> Self:
@@ -96,7 +95,6 @@ class BaseWorkFlow:
             io_config=CompIOConfig(inputs_schema=inputs_schema, outputs_schema=outputs_schema,
                                    inputs_transformer=inputs_transformer, outputs_transformer=outputs_transformer),
             stream_io_configs=CompIOConfig(inputs_schema=stream_inputs_schema, outputs_schema=stream_outputs_schema,
-                                           inputs_transformer=stream_inputs_transformer,
                                            outputs_transformer=stream_outputs_transformer),
             abilities=comp_ability if comp_ability is not None else [])
 
@@ -225,18 +223,43 @@ class BaseWorkFlow:
         source_stream_map = self._workflow_spec.stream_edges
         target_stream_map = self._source_to_target_map(source_stream_map)
 
-        user_provided_abilities = {}
-        for comp_id, comp_conf in conf.items():
-            user_provided_abilities[comp_id] = len(comp_conf.abilities) > 0
+        # Create a dictionary to indicate whether the user has provided ability configuration for components
+        user_provided_abilities = {
+            comp_id: len(comp_conf.abilities) > 0 
+            for comp_id, comp_conf in conf.items()
+        }
 
+        # Handle special abilities for loop nodes
+        loop_start_nodes = getattr(self, '_start_nodes', None)
+        loop_end_nodes = getattr(self, '_end_nodes', None)
+
+        if loop_start_nodes is not None:
+            for start_node in loop_start_nodes:
+                # Automatically add only when the user has not provided ability configuration 
+                # and the node is in streaming connections
+                if not user_provided_abilities[start_node] and start_node in source_stream_map:
+                    self._add_ability(conf, start_node, ComponentAbility.STREAM)
+
+        if loop_end_nodes is not None:
+            for end_node in loop_end_nodes:
+                # Automatically add only when the user has not provided ability configuration 
+                # and the node is in streaming connection targets
+                if not user_provided_abilities[end_node] and end_node in target_stream_map:
+                    self._add_ability(conf, end_node, ComponentAbility.COLLECT)
+
+        # Handle abilities for regular streaming connections
         for source in source_stream_map:
             if not user_provided_abilities[source]:
+                # If the node has both regular input and streaming output, it's STREAM ability
                 if source in target_map:
                     self._add_ability(conf, source, ComponentAbility.STREAM)
+                # If the node has both streaming input and streaming output, it's TRANSFORM ability
                 if source in target_stream_map:
                     self._add_ability(conf, source, ComponentAbility.TRANSFORM)
+                    
         for target in target_stream_map:
             if not user_provided_abilities[target]:
+                # If the node has both streaming input and regular output, it's COLLECT ability
                 if target in source_map:
                     self._add_ability(conf, target, ComponentAbility.COLLECT)
 
@@ -326,7 +349,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             outputs_transformer: Transformer = None,
             stream_inputs_schema: dict = None,
             stream_outputs_schema: dict = None,
-            stream_inputs_transformer: Transformer = None,
             stream_outputs_transformer: Transformer = None,
             response_mode: str = None
     ) -> Self:
@@ -334,14 +356,14 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if response_mode is not None and "streaming" == response_mode:
             comp_ability = [ComponentAbility.STREAM]
             self._is_streaming = True
-            if stream_inputs_schema is not None or stream_inputs_transformer is not None:
+            if stream_inputs_schema is not None:
                 comp_ability.append(ComponentAbility.TRANSFORM)
                 if isinstance(component, End):
                     component.set_mix()
             wait_for_all = True
         else:
             comp_ability = [ComponentAbility.INVOKE]
-            if stream_inputs_schema is not None or stream_inputs_transformer is not None:
+            if stream_inputs_schema is not None:
                 comp_ability.append(ComponentAbility.COLLECT)
                 if isinstance(component, End):
                     component.set_mix()
@@ -353,7 +375,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                                outputs_transformer=outputs_transformer,
                                stream_inputs_schema=stream_inputs_schema,
                                stream_outputs_schema=stream_outputs_schema,
-                               stream_inputs_transformer=stream_inputs_transformer,
                                stream_outputs_transformer=stream_outputs_transformer
                                )
         self.end_comp(end_comp_id)

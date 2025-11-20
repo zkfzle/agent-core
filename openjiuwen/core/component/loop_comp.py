@@ -50,15 +50,20 @@ class LoopGroup(BaseWorkFlow, Executable):
         self.compiled_graph = None
         self.group_input_schema = {}
         self._break_components = []
+        self._start_nodes = []
+        self._end_nodes = []
 
     def add_workflow_comp(
             self,
             comp_id: str,
             workflow_comp: Union[Executable, WorkflowComponent],
             *,
+            comp_ability: list[ComponentAbility] = None,
             wait_for_all: bool = None,
             inputs_schema: dict = None,
+            stream_inputs_schema: dict = None,
             outputs_schema: dict = None,
+            stream_outputs_schema: dict = None,
             inputs_transformer=None,
             outputs_transformer=None,
             **kwargs
@@ -69,30 +74,32 @@ class LoopGroup(BaseWorkFlow, Executable):
         if isinstance(workflow_comp, BreakComponent):
             self._break_components.append(workflow_comp)
         super().add_workflow_comp(comp_id, workflow_comp, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
+                                  stream_inputs_schema=stream_inputs_schema,
+                                  stream_outputs_schema=stream_outputs_schema,
                                   outputs_schema=outputs_schema, inputs_transformer=inputs_transformer,
-                                  outputs_transformer=outputs_transformer, comp_ability=[ComponentAbility.INVOKE])
+                                  outputs_transformer=outputs_transformer, comp_ability=comp_ability)
         if self._drawable and isinstance(workflow_comp, BreakComponent):
             self._drawable.set_break_node(comp_id)
 
     def start_nodes(self, nodes: list[str]) -> Self:
         for node in nodes:
             self.start_comp(node)
+        self._start_nodes = nodes
         return self
 
     def end_nodes(self, nodes: list[str]) -> Self:
         for node in nodes:
             self.end_comp(node)
+        self._end_nodes = nodes
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        self._auto_complete_abilities()
         actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, runtime=runtime)
         loop_runtime = SubWorkflowRuntime(runtime.parent(), self._workflow_config.metadata.id, actor_manager)
         self.compiled_graph = self.compile(loop_runtime)
         await self.compiled_graph.invoke(inputs, loop_runtime)
         return None
-
-    def add_stream_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
-        logger.warning("Loop component does not support stream connection")
 
     def skip_trace(self) -> bool:
         return True

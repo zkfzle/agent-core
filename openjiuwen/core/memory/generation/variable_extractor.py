@@ -8,7 +8,7 @@ from openjiuwen.core.memory.generation.memory_info import (
     ExtractedDataType
 )
 
-from openjiuwen.core.memory.generation.prompt_library.extract_variables import (
+from openjiuwen.core.memory.prompt.variable_extractor import (
     EXTRACT_VARIABLES_USER_SUMMARY,
     EXTRACT_VARIABLES_USER,
     EXTRACT_VARIABLES_SYS,

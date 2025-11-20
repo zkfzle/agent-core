@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Any
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.utils import EndFrame, get_value_by_nested_path, extract_origin_key
-from openjiuwen.core.utils.common.dict_utils import extract_leaf_nodes, format_path, rebuild_dict
+from openjiuwen.core.common.utlis.dict_utils import extract_leaf_nodes, format_path, rebuild_dict
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
 

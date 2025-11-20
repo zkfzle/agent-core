@@ -11,7 +11,7 @@ from openjiuwen.core.common.logging import logger
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.utils.prompt.common.singleton import Singleton
+from openjiuwen.core.common.utlis.singleton import Singleton
 from openjiuwen.core.utils.prompt.index.template_store.in_memory_template_store import InMemoryTemplateStore
 from openjiuwen.core.utils.prompt.index.template_store.template_store import TemplateStore, Template
 

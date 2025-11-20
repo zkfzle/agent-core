@@ -17,7 +17,7 @@ from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.utils.llm.hash_util import generate_key
+from openjiuwen.core.common.utlis.hash_util import generate_key
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.agent.message.message import Message

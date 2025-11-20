@@ -7,9 +7,9 @@ import os
 from typing import Dict, Type
 
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.model_utils.singleton import Singleton
+from openjiuwen.core.common.utlis.singleton import Singleton
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.utils.llm.base import BaseModelClient
 
 
 class ModelFactory(metaclass=Singleton):

@@ -11,7 +11,6 @@ from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.response_collec
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.message_queue_base import MessageQueueBase, SubscriptionBase
 from openjiuwen.core.runner.runner_config import get_runner_config
-from openjiuwen.core.utils.common import ip_utils
 
 
 @dataclass(frozen=True)

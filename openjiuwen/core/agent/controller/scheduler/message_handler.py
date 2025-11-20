@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from typing import List, Optional, Any
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.task.task import Task
-from openjiuwen.core.agent.message.message import Message, MessageType
+from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
 from openjiuwen.core.agent.controller.state import ControllerState
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.llm.hash_util import generate_key
+from openjiuwen.core.common.utlis.hash_util import generate_key
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.agent.common.schema import WorkflowSchema

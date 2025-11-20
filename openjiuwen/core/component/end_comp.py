@@ -19,7 +19,7 @@ from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.utils import get_value_by_nested_path
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.common.dict_utils import extract_leaf_nodes, format_path
+from openjiuwen.core.common.utlis.dict_utils import extract_leaf_nodes, format_path
 from openjiuwen.core.common.security.user_config import UserConfig
 
 STREAM_CACHE_KEY = "_stream_cache_key"

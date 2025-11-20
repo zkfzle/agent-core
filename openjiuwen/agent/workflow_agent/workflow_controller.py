@@ -217,7 +217,7 @@ class WorkflowController(IntentDetectionController):
                     runtime=workflow_runtime
                 )
             )
-            
+
             # 4. Register task to queue
             await self.task_queue.register_task(
                 conversation_id, task, workflow_task, target_id=workflow_id

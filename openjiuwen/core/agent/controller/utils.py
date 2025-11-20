@@ -9,7 +9,7 @@ from openjiuwen.agent.common.enum import TaskType
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.format.format_utils import FormatUtils
+from openjiuwen.core.utils.common.json_utils import JsonUtils
 from openjiuwen.core.utils.llm.messages import BaseMessage, ToolCall, AIMessage, HumanMessage, ToolMessage
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -43,7 +43,19 @@ class MessageHandlerUtils:
             content=config.prompt_template
         ).format(user_fields).to_messages())
 
-        return FormatUtils.create_llm_inputs(system_prompt, chat_history)
+        return MessageHandlerUtils.concat_system_prompt_with_chat_history(system_prompt, chat_history)
+
+    @staticmethod
+    def concat_system_prompt_with_chat_history(system_prompt: List[BaseMessage],
+                                               chat_history: List[BaseMessage]) -> List[BaseMessage]:
+        result_messages = []
+
+        if not chat_history or chat_history[0].role != "system":
+            result_messages.extend(system_prompt)
+
+        result_messages.extend(chat_history)
+
+        return result_messages
 
     @staticmethod
     def parse_llm_output(response: BaseMessage, config: AgentConfig) -> List[Task]:
@@ -69,7 +81,7 @@ class MessageHandlerUtils:
                 task_id=tool_call.id,
                 input=TaskInput(
                     target_name=tool_call.function.name,
-                    arguments=FormatUtils.json_loads(tool_call.function.arguments)
+                    arguments=JsonUtils.safe_json_loads(tool_call.function.arguments)
                 ),
                 task_type=task_type
             ))

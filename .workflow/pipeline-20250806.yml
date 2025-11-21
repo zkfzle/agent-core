@@ -32,11 +32,11 @@ stages:
           - ''
           - '# 3. 使用 uv 同步依赖 (uv 会自动使用它所安装的 Python 环境，通常是系统默认的)'
           - echo "=== Syncing dependencies with uv ==="
-          - uv sync --all-extras
+          - pip3 -m uv sync --all-extras
           - ''
           - '# 4. 使用 uv run 执行 pytest (uv 会调用正确的 Python 解释器)'
           - echo "=== Running tests with uv ==="
-          - uv run pytest
+          - pip3 -m uv run pytest
         report:
           path: report
           index: index.html

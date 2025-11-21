@@ -20,7 +20,7 @@ stages:
         pythonVersion: '3.11'
         commands:
           - '# 1. 确保系统依赖已安装 (这一步仍然需要)'
-          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/apt-get update -y
+          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
           - uv sync --group dev --all-extras
           - uv sync --all-extras
           - uv run pytest

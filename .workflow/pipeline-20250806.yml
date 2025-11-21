@@ -21,29 +21,22 @@ stages:
         commands:
           - '#!/bin/bash'
           - ''
-          - '# 1. 安装所有必要的编译依赖，包括 sqlite3'
-          - echo "=== Installing build dependencies ==="
+          - '# 1. 确保系统依赖已安装 (这一步仍然需要)'
+          - echo "=== Installing system dependencies (SQLite3) ==="
           - sudo apt-get update -y
-          - sudo apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget libsqlite3-dev
+          - sudo apt-get install -y libsqlite3-dev
           - ''
-          - '# 2. 下载 Python 3.11 的源码'
-          - echo "=== Downloading Python 3.11 source code ==="
-          - PYTHON_VERSION="3.11.9"
-          - wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
-          - tar -xf Python-$PYTHON_VERSION.tgz
-          - cd Python-$PYTHON_VERSION
+          - '# 2. 使用系统默认的 pip3 安装 uv'
+          - echo "=== Installing uv using system pip ==="
+          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
           - ''
-          - '# 3. 配置、编译和安装'
-          - echo "=== Configuring and building Python ==="
-          - ./configure --enable-optimizations --prefix=/usr/local/python3.11_new
-          - make -j $(nproc)
-          - sudo make altinstall
+          - '# 3. 使用 uv 同步依赖 (uv 会自动使用它所安装的 Python 环境，通常是系统默认的)'
+          - echo "=== Syncing dependencies with uv ==="
+          - uv sync --all-extras
           - ''
-          - '# 4. 使用新编译的 Python 来执行后续步骤'
-          - echo "=== Using newly built Python ==="
-          - /usr/local/python3.11_new/bin/python3.11 -m pip install uv -i https://mirrors.aliyun.com/pypi/simple/
-          - /usr/local/python3.11_new/bin/uv sync --all-extras
-          - /usr/local/python3.11_new/bin/uv run pytest
+          - '# 4. 使用 uv run 执行 pytest (uv 会调用正确的 Python 解释器)'
+          - echo "=== Running tests with uv ==="
+          - uv run pytest
         report:
           path: report
           index: index.html

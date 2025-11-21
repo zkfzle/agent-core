@@ -12,7 +12,7 @@ from openjiuwen.core.agent_group.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.resource_manager import ResourceMgr
+from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
 
 
 class AgentGroupRuntime(AgentRuntime):

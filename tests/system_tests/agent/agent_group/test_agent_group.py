@@ -105,7 +105,6 @@ class AgentGroupTest(unittest.IsolatedAsyncioTestCase):
         agent_group_config = AgentGroupConfig(
             group_id="test_agent_group_id",
             max_agents=10,
-            enable_cross_agent_communication=True,
             max_concurrent_messages=100,
             message_timeout=30.0
         )

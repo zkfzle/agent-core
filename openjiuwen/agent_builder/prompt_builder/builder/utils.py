@@ -266,7 +266,7 @@ PROMPT_BAD_CASE_OPTIMIZE_TEMPLATE = Template(content=[HumanMessage(content="""
 我们使用此提示词在多个输入上进行了测试，并观察到以下问题并收到了以下反馈：
 
 <feedback>
-{{feedbacks}}
+{{feedback}}
 </feedback>
 
 你的目标是修改原始提示词以解决反馈中提出的问题。修改后的提示词应：

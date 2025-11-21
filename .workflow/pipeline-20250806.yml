@@ -19,6 +19,9 @@ stages:
         displayName: Python 单元测试
         pythonVersion: '3.11'
         commands:
+          - apt-get update -y
+          - '# 安装 SQLite3 开发库'
+          - apt-get install -y libsqlite3-dev
           - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
           - uv sync --group dev --all-extras
           - uv sync --all-extras

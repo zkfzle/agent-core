@@ -19,15 +19,31 @@ stages:
         displayName: Python 单元测试
         pythonVersion: '3.11'
         commands:
-          - '# Python单元测试默认命令'
+          - '#!/bin/bash'
+          - ''
+          - '# 1. 安装所有必要的编译依赖，包括 sqlite3'
+          - echo "=== Installing build dependencies ==="
           - sudo apt-get update -y
-          - '# 安装 SQLite3 开发库'
-          - sudo apt-get install -y libsqlite3-dev
-          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
-          - uv sync --all-extras
-          - uv run pytest
-          - /usr/local/python3.11/bin/uv sync --all-extras
-          - /usr/local/python3.11/bin/uv run pytest
+          - sudo apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev wget libsqlite3-dev
+          - ''
+          - '# 2. 下载 Python 3.11 的源码'
+          - echo "=== Downloading Python 3.11 source code ==="
+          - PYTHON_VERSION="3.11.9"
+          - wget https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tgz
+          - tar -xf Python-$PYTHON_VERSION.tgz
+          - cd Python-$PYTHON_VERSION
+          - ''
+          - '# 3. 配置、编译和安装'
+          - echo "=== Configuring and building Python ==="
+          - ./configure --enable-optimizations --prefix=/usr/local/python3.11_new
+          - make -j $(nproc)
+          - sudo make altinstall
+          - ''
+          - '# 4. 使用新编译的 Python 来执行后续步骤'
+          - echo "=== Using newly built Python ==="
+          - /usr/local/python3.11_new/bin/python3.11 -m pip install uv -i https://mirrors.aliyun.com/pypi/simple/
+          - /usr/local/python3.11_new/bin/uv sync --all-extras
+          - /usr/local/python3.11_new/bin/uv run pytest
         report:
           path: report
           index: index.html

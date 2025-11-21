@@ -42,7 +42,6 @@ class LLMController(BaseController):
     ):
         super().__init__(config, context_engine, runtime)
         self.config = config
-        self.iteration = 0  # reasoning iteration count
 
     async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
         """Handle Message - only handles user input
@@ -88,7 +87,7 @@ class LLMController(BaseController):
         tasks, llm_output = await self._generate_plan_from_llm(message, runtime)
 
         if not tasks:
-            logger.info("ReAct end, No task is generated")
+            logger.info("ReAct Iteration: 1 end, No task is generated")
             final_result = await self._send_final_stream(llm_output.content, runtime)
             return self._unwrap_result(final_result)
         
@@ -265,7 +264,9 @@ class LLMController(BaseController):
         Returns:
             Final result dictionary
         """
-        while tasks and self.iteration < self.config.constrain.max_iteration:
+        iteration = 1
+        while tasks and iteration <= self.config.constrain.max_iteration:
+            logger.info(f"ReAct Iteration: {iteration} / {self.config.constrain.max_iteration}")
             task = tasks[0]
             logger.info(f"Executing task {task.task_id}, type: {task.task_type}")
             
@@ -295,14 +296,14 @@ class LLMController(BaseController):
                     execution_result=execution_result,
                     runtime=runtime
                 )
+                iteration += 1
 
                 if final_result is not None:
+                    logger.info(f"ReAct Iteration: {iteration} / {self.config.constrain.max_iteration}")
                     return final_result
 
-                # Continue with new tasks (tasks already updated)
-                continue
-            
             # Continue to next iteration (loop will check iteration count)
+
         # Exceeded max iteration count
         logger.warning(
             f"Exceeded max iteration {self.config.constrain.max_iteration}, stopping ReAct loop"
@@ -463,8 +464,6 @@ class LLMController(BaseController):
 
     async def _generate_plan_from_llm(self, message: Message, runtime: Runtime):
         """Call LLM to generate plan - ReAct core method"""
-        logger.info(f"ReAct iteration {self.iteration + 1}/{self.config.constrain.max_iteration}")
-
         inputs = message.get_display_content()
         tools = runtime.get_tool_info()
         logger.info(f"Loaded {len(tools)} Tool(s) for generating plans")
@@ -493,14 +492,12 @@ class LLMController(BaseController):
             else:
                 logger.info(f"React llm output: {llm_output}")
         except Exception as e:
-            self.iteration += 1
             logger.error(f"Failed to invoke model, {e}")
             raise JiuWenBaseException(
                 error_code=StatusCode.INVOKE_LLM_FAILED.code,
                 message=StatusCode.INVOKE_LLM_FAILED.errmsg
             )
-        
-        self.iteration += 1
+
         return tasks, llm_output
 
     def _get_model(self, runtime: Runtime):

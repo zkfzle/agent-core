@@ -1,5 +1,6 @@
 import os
 import unittest
+import asyncio
 from datetime import datetime
 from typing import List
 
@@ -268,7 +269,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def test_llm_agent_with_workflow_interrupt_agent_invoke(self):
         llm_agent = self._setup_test_environment_and_agent()
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "今天天气查询"})
+        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "昨天天气查询"})
         print(f"LLMAgent 第一次输出结果：{result}")
         self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
         self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
@@ -290,7 +291,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         llm_agent = self._setup_test_environment_and_agent()
 
         interaction_output_schema = []
-        async for chunk in llm_agent.stream({"query": "天气查询", "conversation_id": "c123"}):
+        async for chunk in llm_agent.stream({"query": "昨天天气查询", "conversation_id": "c123"}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)

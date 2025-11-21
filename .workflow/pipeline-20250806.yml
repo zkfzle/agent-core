@@ -20,6 +20,9 @@ stages:
         pythonVersion: '3.11'
         commands:
           - '# Python单元测试默认命令'
+          - sudo apt-get update -y
+          - '# 安装 SQLite3 开发库'
+          - sudo apt-get install -y libsqlite3-dev
           - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
           - uv sync --all-extras
           - uv run pytest

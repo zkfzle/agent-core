@@ -16,7 +16,7 @@ from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.agent_group import AgentGroupConfig
 from openjiuwen.core.agent_group.agent_group import BaseGroup, AgentGroupRuntime
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner.runner import Runner
 
 
 API_BASE = os.getenv("API_BASE", "")

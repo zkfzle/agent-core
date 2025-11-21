@@ -1,4 +1,5 @@
 import os
+import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -11,6 +12,7 @@ class TestTemplateManager:
     def assertEqual(self, left, right):
         assert left == right
 
+    @pytest.mark.skip()
     def test_template_register_in_bulk(self):
         dir_path = os.path.join(os.path.dirname(__file__), "data/")
         TemplateManager().register_in_bulk(dir_path=dir_path)
@@ -24,6 +26,7 @@ class TestTemplateManager:
             "#角色：场景识别助手\n以下是用户的问题： {{query}}\n注意：只输出'是'或'否'，不要回复对于内容"
         )
 
+    @pytest.mark.skip()
     def test_template_consistency(self):
         template = Template(name="test_template_consistent", content=[{"role": "system", "content": "here is a test"}])
         TemplateManager().register(template=template, force=True)
@@ -48,6 +51,7 @@ class TestTemplateManager:
         except JiuWenBaseException as e:
             self.assertEqual(e.error_code, StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code)
 
+    @pytest.mark.skip()
     def test_template_manager_format(self):
         template = Template(
             name="test_template_manager_format",

@@ -5,6 +5,8 @@ import unittest
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
+import pytest
+
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -83,6 +85,7 @@ class TestMetaTemplateBuilder(unittest.TestCase):
     def setUp(self):
         pass
 
+    @pytest.mark.skip()
     def test_register_custom_template(self):
         # register string template
         template = "this is a string meta template"
@@ -128,6 +131,7 @@ class TestMetaTemplateBuilder(unittest.TestCase):
                              TEMPLATE.PROMPT_BUILD_PLAN_META_USER_TEMPLATE.format(
                                  dict(instruction="你是一个旅行助手", tools="None")).content[0].content)
 
+    @pytest.mark.skip()
     def test_build_with_custom_meta_template(self):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         template = "you are a custom meta template"

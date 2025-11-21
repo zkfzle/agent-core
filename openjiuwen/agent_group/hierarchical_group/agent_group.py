@@ -8,7 +8,6 @@ from typing import Dict, Any, Optional, AsyncIterator
 
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent_group import (
-    BaseAgentGroup,
     AgentGroupConfig,
     GroupScheduler,
     GroupMessagePool,
@@ -17,7 +16,7 @@ from openjiuwen.agent_group.hierarchical_group.default_message_handler import De
 from openjiuwen.core.common.logging import logger
 
 
-class AgentGroup(BaseAgentGroup):
+class AgentGroup:
     """AgentGroup - 多Agent协同管理，有状态设计
     
     核心职责：

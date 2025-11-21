@@ -139,13 +139,17 @@ class IntentDetectionController(BaseController):
     4. Interruption handling: Call interrupt_task() to handle interruptions
     """
 
-    def __init__(self, config, context_engine, runtime):
+    def __init__(self, config=None, context_engine=None, runtime=None):
         """Initialize Intent Detection Controller
         
         Args:
-            config: Agent configuration
-            context_engine: Context engine
-            runtime: Agent-level Runtime (AgentRuntime)
+            config: Agent configuration (optional, can be injected later)
+            context_engine: Context engine (optional, can be injected later)
+            runtime: Agent-level Runtime (optional, can be injected later)
+            
+        Note:
+            If parameters are not provided, they will be injected by
+            ControllerAgent via setup_from_agent()
         """
         super().__init__(config, context_engine, runtime)
         
@@ -238,33 +242,43 @@ class IntentDetectionController(BaseController):
 
         logger.info(f"Handling resume task: task_id={task.task_id}")
 
-        # Create InteractiveInput from user input
-        if hasattr(message.content, 'query'):
-            query_text = message.content.query
+        # Check if InteractiveInput is already provided
+        if (hasattr(message.content, 'interactive_input') and 
+                message.content.interactive_input is not None):
+            # Use the provided InteractiveInput directly
+            interactive_input = message.content.interactive_input
+            logger.info(
+                f"Using provided InteractiveInput for resume: {interactive_input}"
+            )
         else:
-            query_text = ""
-        interactive_input = InteractiveInput()
+            # Create InteractiveInput from user query text
+            if hasattr(message.content, 'query'):
+                query_text = message.content.query
+            else:
+                query_text = ""
+            
+            interactive_input = InteractiveInput()
 
-        # Get component ID at interruption from workflow_controller
-        workflow_id = task.input.target_id
-        state = runtime.get_state("workflow_controller")
-        component_id = "questioner"  # Default value
+            # Get component ID at interruption from workflow_controller
+            workflow_id = task.input.target_id
+            state = runtime.get_state("workflow_controller")
+            component_id = "questioner"  # Default value
 
-        if state:
-            state_key = workflow_id.replace('.', '_')
-            interrupted_tasks = state.get("interrupted_tasks", {})
-            interrupted_info = interrupted_tasks.get(state_key)
-            if interrupted_info:
-                component_id = interrupted_info.get(
-                    "component_id",
-                    "questioner"
-                )
+            if state:
+                state_key = workflow_id.replace('.', '_')
+                interrupted_tasks = state.get("interrupted_tasks", {})
+                interrupted_info = interrupted_tasks.get(state_key)
+                if interrupted_info:
+                    component_id = interrupted_info.get(
+                        "component_id",
+                        "questioner"
+                    )
 
-        interactive_input.update(component_id, query_text)
-        logger.info(
-            f"Created InteractiveInput for resume: "
-            f"component_id={component_id}, query={query_text}"
-        )
+            interactive_input.update(component_id, query_text)
+            logger.info(
+                f"Created InteractiveInput for resume: "
+                f"component_id={component_id}, query={query_text}"
+            )
 
         # Key: Update task input parameters to InteractiveInput
         task.input.arguments = interactive_input

@@ -37,6 +37,7 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
     """
     deprecated
     """
+
     def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
         inner = StaticAgentRuntime(config, resource_mgr=resource_mgr)
         super().__init__(inner)
@@ -121,7 +122,7 @@ class Agent(ABC):
     def _create_controller(self, runtime: Runtime) -> "Controller":
         """Create Controller instance"""
         from openjiuwen.core.agent.controller.controller import Controller
-        
+
         if self._message_handler_class is None:
             return None
 
@@ -306,8 +307,6 @@ class Agent(ABC):
         raise NotImplementedError("")
 
 
-# ===== 新架构：BaseAgent 和 ControllerAgent =====
-
 class BaseAgent(ABC):
     """Base Agent - Minimal interface definition (new architecture)
     """
@@ -323,13 +322,13 @@ class BaseAgent(ABC):
         self._config_wrapper.set_agent_config(agent_config)
         self._agent_config = agent_config
         self._config = self._config_wrapper  # Unified interface
-        
+
         # 2. Create Runtime
         self._runtime = AgentRuntime(config=self._config)
-        
+
         # 3. Create ContextEngine
         self._context_engine = self._create_context_engine()
-        
+
         # 4. Uniformly hold tools and workflows (eliminate subclass duplication)
         self._tools: List[Tool] = []
         self._workflows: List[Workflow] = []
@@ -341,22 +340,22 @@ class BaseAgent(ABC):
             Config instance (contains get_agent_config() method)
         """
         return self._config_wrapper
-    
+
     @property
     def tools(self) -> List[Tool]:
         """Get tools list - Read-only access for subclasses"""
         return self._tools
-    
+
     @property
     def workflows(self) -> List[Workflow]:
         """Get workflows list - Read-only access for subclasses"""
         return self._workflows
-    
+
     @property
     def context_engine(self) -> ContextEngine:
         """Get Context Engine - Unified public interface"""
         return self._context_engine
-    
+
     def _create_context_engine(self) -> ContextEngine:
         """Create ContextEngine - Internal method, called during base class initialization"""
         # Get max conversation rounds configuration
@@ -396,7 +395,7 @@ class BaseAgent(ABC):
         )
 
     # ===== Dynamic configuration interface (Plan A: Backward compatible) =====
-    
+
     def add_prompt(self, prompt_template: List[Dict]) -> None:
         """Add Prompt template
         
@@ -582,10 +581,46 @@ class ControllerAgent(BaseAgent):
         
         Args:
             agent_config: Agent configuration
-            controller: Optional Controller (if not provided, subclass should create it before invoke/stream)
+            controller: Optional Controller instance (will be auto-configured)
+            
+        Note:
+            If controller is provided, it will be automatically configured with
+            config, context_engine and runtime from this agent via setup_from_agent()
+            
+        Usage:
+            # Simplest way - controller auto-configured:
+            controller = WorkflowController()  # No parameters needed
+            agent = ControllerAgent(config=config, controller=controller)
+            
+            # Alternative - set controller after agent creation:
+            agent = ControllerAgent(config=config)
+            agent.controller = WorkflowController()  # Will be auto-configured
         """
         super().__init__(agent_config)
         self.controller = controller
+        
+        # Auto-configure controller if provided
+        if self.controller is not None:
+            self._setup_controller()
+    
+    def _setup_controller(self):
+        """Setup controller with agent's config, context_engine and runtime"""
+        if hasattr(self.controller, 'setup_from_agent'):
+            self.controller.setup_from_agent(self)
+    
+    @property
+    def controller(self):
+        """Get controller"""
+        return self._controller
+    
+    @controller.setter
+    def controller(self, value):
+        """Set controller and auto-configure it"""
+        self._controller = value
+        # Auto-configure when setting controller
+        # Only if agent is already initialized (has _context_engine)
+        if value is not None and hasattr(self, '_context_engine'):
+            self._setup_controller()
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
         """Synchronous invocation - Fully delegate to controller
@@ -649,7 +684,19 @@ class ControllerAgent(BaseAgent):
         # Fully delegate to controller
         async def stream_process():
             try:
-                await self.controller.invoke(inputs, agent_runtime)
+                res = await self.controller.invoke(inputs, agent_runtime)
+                if res is not None:
+                    if isinstance(res, list):
+                        # List of OutputSchema - write each one
+                        for item in res:
+                            await agent_runtime.write_stream(item)
+                    elif isinstance(res, dict):
+                        final_output = OutputSchema(
+                            type="workflow_final",
+                            index=0,
+                            payload=res
+                        )
+                        await agent_runtime.write_stream(final_output)
             finally:
                 if need_cleanup:
                     await agent_runtime.post_run()

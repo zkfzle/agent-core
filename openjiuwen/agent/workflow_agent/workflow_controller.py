@@ -40,30 +40,47 @@ class WorkflowController(IntentDetectionController):
 
     def __init__(
             self,
-            config: AgentConfig,
-            context_engine,
-            runtime
+            config: AgentConfig = None,
+            context_engine=None,
+            runtime=None
     ):
         """Initialize WorkflowController
         
         Args:
-            config: Agent configuration
-            context_engine: Context engine
-            runtime: Agent-level Runtime (AgentRuntime)
+            config: Agent configuration (optional, can be injected later)
+            context_engine: Context engine (optional, can be injected later)
+            runtime: Agent-level Runtime (optional, can be injected later)
+            
+        Note:
+            If parameters are not provided, they will be injected by
+            ControllerAgent via setup_from_agent()
         """
         super().__init__(config, context_engine, runtime)
         
         # Maintain backward compatible attribute name
         self.agent_config = config
         
-        # Initialize reasoner
-        self.reasoner = AgentReasoner(
-            config,
-            context_engine,
-            None  # runtime is dynamically passed when used
-        )
-        
-        # task_queue is now initialized in IntentDetectionController base class
+        # Initialize reasoner (only if config and context_engine are available)
+        self.reasoner = None
+        if config is not None and context_engine is not None:
+            self._init_reasoner()
+    
+    def _init_reasoner(self):
+        """Initialize reasoner - can be called after setup_from_agent"""
+        if self._config is not None and self._context_engine is not None:
+            self.reasoner = AgentReasoner(
+                self._config,
+                self._context_engine,
+                None  # runtime is dynamically passed when used
+            )
+            # Update backward compatible reference
+            self.agent_config = self._config
+    
+    def setup_from_agent(self, agent):
+        """Override to also initialize reasoner after setup"""
+        super().setup_from_agent(agent)
+        # Initialize reasoner after base setup
+        self._init_reasoner()
 
     async def intent_detection(
             self,

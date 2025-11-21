@@ -41,13 +41,11 @@ class WorkflowAgent(ControllerAgent):
                 f"got {agent_config.controller_type}"
             )
 
-        super().__init__(agent_config, controller=None)
-
-        self.controller = WorkflowController(
-            config=agent_config,
-            context_engine=self.context_engine,
-            runtime=self._runtime
-        )
+        # Create controller without parameters - will be auto-configured by ControllerAgent
+        controller = WorkflowController()
+        
+        # Pass to parent - parent will auto-configure it
+        super().__init__(agent_config, controller=controller)
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
         """Synchronous invocation - Delegate to controller

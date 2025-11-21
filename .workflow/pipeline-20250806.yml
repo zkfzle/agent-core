@@ -23,8 +23,8 @@ stages:
           - ''
           - '# 1. 确保系统依赖已安装 (这一步仍然需要)'
           - echo "=== Installing system dependencies (SQLite3) ==="
-          - sudo apt-get update -y
-          - sudo apt-get install -y libsqlite3-dev
+          - apt-get update -y
+          - apt-get install -y libsqlite3-dev
           - ''
           - '# 2. 使用系统默认的 pip3 安装 uv'
           - echo "=== Installing uv using system pip ==="

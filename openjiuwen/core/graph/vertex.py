@@ -64,6 +64,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             batch_output = await self._executable.on_collect(collect_iter, self._runtime)
             await self._post_invoke(batch_output)
         elif ability == ComponentAbility.TRANSFORM:
+            transform_iter = None
             try:
                 transform_iter = await self._pre_stream(ability)
             except Exception as e:

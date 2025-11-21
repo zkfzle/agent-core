@@ -179,7 +179,6 @@ class BaseWorkFlow:
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
         if isinstance(runtime, WorkflowRuntime):
             runtime.set_workflow_id(self._workflow_config.metadata.id)
-        self._auto_complete_abilities()
         runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
 
         if isinstance(runtime, SubWorkflowRuntime):
@@ -516,7 +515,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             runtime.set_workflow_id(self._workflow_config.metadata.id)
             if context:
                 runtime._context = context
-        mq_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=False, runtime=runtime)
+        self._auto_complete_abilities()
+        mq_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=False, runtime=runtime)
         runtime.set_actor_manager(mq_manager)
         runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
         if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
@@ -534,7 +534,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         Returns:
             tuple: (actor_manager, sub_workflow_runtime)
         """
-        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, runtime=runtime)
+        self._auto_complete_abilities()
+        actor_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=True, runtime=runtime)
         sub_workflow_runtime = SubWorkflowRuntime(
             runtime,
             workflow_id=self._workflow_config.metadata.id,

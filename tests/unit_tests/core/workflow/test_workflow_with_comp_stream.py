@@ -498,3 +498,39 @@ async def test_interaction_with_exception():
     ]
 
     assert res.result == expect_result
+
+
+class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        array = inputs.get("array")
+        for item in array:
+            yield {"array": item}
+
+    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        iter = inputs.get("array")
+        i = 0
+        async for item in iter:
+            yield {'array': item}
+            i += 1
+
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        iter = inputs.get("array")
+        results = []
+        async for item in iter:
+            results.append(item)
+        return {"collect": results}
+
+async def test_workflow_stream_with_auto_calculate():
+    workflow = Workflow()
+    workflow.set_start_comp("start", Start(), inputs_schema={"array": "${user_inputs.array}"})
+    workflow.add_workflow_comp("stream", StreamNodeWithException(), inputs_schema={"array": "${start.array}"})
+    workflow.add_workflow_comp("transform", StreamNodeWithException(), stream_inputs_schema={"array": "${stream.array}"})
+    workflow.add_workflow_comp("collect", StreamNodeWithException(), stream_inputs_schema={"array": "${transform.array}"})
+    workflow.set_end_comp("end", End(), inputs_schema={"result": "${collect.collect}"})
+    workflow.add_connection("start", "stream")
+    workflow.add_stream_connection("stream", "transform")
+    workflow.add_stream_connection("transform", "collect")
+    workflow.add_connection("collect", "end")
+    result = await workflow.invoke(inputs={"user_inputs": {"array": [1,2,3,4,5,6,7]}}, runtime=WorkflowRuntime())
+    assert result.result == {'responseContent': '', 'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
+

@@ -91,27 +91,27 @@ INFORMATION_EXTRACTION_CASES = [
 TOOL_CALL_CASES = [
     Case(inputs=dict(query="请帮我打开空调"),
         label=dict(output="", tool_calls=[
-            ToolCall(id="", index=0, type='function', name="ac_open", arguments="{}")],
+            ToolCall(id="", type='function', name="ac_open", arguments="{}")],
                         usage_metadata=UsageMetadata(finish_reason="tool_calls")),
     ),
     Case(inputs=dict(query="请帮我关闭空调"),
          label=dict(output="", tool_calls=[
-             ToolCall(id="", index=0, type='function', name="ac_close", arguments="{}")],
+             ToolCall(id="", type='function', name="ac_close", arguments="{}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          ),
     Case(inputs=dict(query="天气太热了，开一下空调"),
          label=dict(output="", tool_calls=[
-             ToolCall(id="", index=0, type='function', name="ac_open", arguments="{}")],
+             ToolCall(id="", type='function', name="ac_open", arguments="{}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          ),
     Case(inputs=dict(query="有点冷，先帮我关窗，再调整到21度"),
          label=dict(output="", tool_calls=[
-             ToolCall(id="", index=0, type='function', name="ac_control", arguments="{\"temperature\":21}")],
+             ToolCall(id="", type='function', name="ac_control", arguments="{\"temperature\":21}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          ),
     Case(inputs=dict(query="有点热，先帮我开窗，再调整到29度"),
          label=dict(output="", tool_calls=[
-             ToolCall(id="", index=0, type='function', name="ac_control", arguments="{\"temperature\":29}")],
+             ToolCall(id="", type='function', name="ac_control", arguments="{\"temperature\":29}")],
                          usage_metadata=UsageMetadata(finish_reason="tool_calls")),
          )
 ]

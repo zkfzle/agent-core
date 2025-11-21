@@ -30,7 +30,6 @@ class ToolInfo(BaseModel):
 
 
 class ToolCall(BaseModel):
-    index: int = Field(default=0)
     id: Optional[str]
     type: str
     name: str

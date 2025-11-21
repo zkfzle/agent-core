@@ -198,7 +198,6 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 tool_calls=[
                     ToolCall(
                         id='mock_tool_call_1',
-                        index=0,
                         type='function',
                         name='questioner_weather_workflow',
                         arguments='{"query": "今天天气查询"}'
@@ -218,7 +217,6 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 tool_calls=[
                     ToolCall(
                         id='mock_tool_call_2',
-                        index=0,
                         type='function',
                         name='questioner_weather_workflow',
                         arguments='{"query": "上海"}'

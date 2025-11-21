@@ -25,11 +25,11 @@ class BaseModelClient:
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
                top_p:float = 0.1, **kwargs: Any):
         try:
-            return self._invoke(model_name=model_name, messages=self._cover_messages_format(messages),
+            return self._invoke(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs)
         except NotImplementedError:
-            return asyncio.run(self.ainvoke(model_name=model_name, messages=self._cover_messages_format(messages),
+            return asyncio.run(self.ainvoke(model_name=model_name, messages=self._convert_messages_format(messages),
                                             tools=self._convert_tool_info_format(tools),
                                             temperature=temperature, top_p=top_p, **kwargs))
 
@@ -37,11 +37,11 @@ class BaseModelClient:
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
                top_p:float=0.1, **kwargs: Any):
         try:
-            return await self._ainvoke(model_name=model_name, messages=self._cover_messages_format(messages),
+            return await self._ainvoke(model_name=model_name, messages=self._convert_messages_format(messages),
                                        tools=self._convert_tool_info_format(tools),
                                        temperature=temperature, top_p=top_p, **kwargs)
         except NotImplementedError:
-            return self._invoke(model_name=model_name, messages=self._cover_messages_format(messages),
+            return self._invoke(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs)
 
@@ -49,13 +49,13 @@ class BaseModelClient:
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any):
         try:
-            for chunk in self._stream(model_name=model_name, messages=self._cover_messages_format(messages),
+            for chunk in self._stream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
         except NotImplementedError:
             async def async_gen_wrapper():
-                async for chunk in self._astream(model_name=model_name, messages=self._cover_messages_format(messages),
+                async for chunk in self._astream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                     yield chunk
@@ -77,12 +77,12 @@ class BaseModelClient:
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float = 0.1,
                top_p:float = 0.1, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
         try:
-            async for chunk in self._astream(model_name=model_name, messages=self._cover_messages_format(messages),
+            async for chunk in self._astream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
         except NotImplementedError:
-            for chunk in self._stream(model_name=model_name, messages=self._cover_messages_format(messages),
+            for chunk in self._stream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                 yield chunk
@@ -140,7 +140,7 @@ class BaseModelClient:
             cleaned.append(cleaned_tool)
         return cleaned
 
-    def _cover_messages_format(self, messages: Union[List[BaseMessage], List[Dict], str]):
+    def _convert_messages_format(self, messages: Union[List[BaseMessage], List[Dict], str]):
         if not messages:
             return [{"role": "user", "content": ""}]
 

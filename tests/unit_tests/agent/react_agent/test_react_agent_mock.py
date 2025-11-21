@@ -179,7 +179,6 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
                 tool_calls=[
                     ToolCall(
                         id='mock_tool_call_1',
-                        index=0,
                         type='function',
                         name='add',
                         arguments='{"a": 1, "b": 2}'

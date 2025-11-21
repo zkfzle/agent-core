@@ -45,7 +45,6 @@ class AIMessageChunk(AIMessage, BaseMessageChunk):
                     if same_id and getattr(last, 'function', None) and getattr(incoming, 'function', None):
                         last.id = last.id or incoming.id
                         last.type = last.type or incoming.type
-                        last.index = last.index if last.index is not None else incoming.index
                         last.name = (last.name or "") + (incoming.name or "")
                         last.arguments = (last.arguments or "") + (incoming.arguments or "")
                         continue

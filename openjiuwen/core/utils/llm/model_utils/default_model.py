@@ -231,7 +231,7 @@ class RequestChatModel(BaseModelClient):
         content = "" if message.get("content") is None else message.get("content")
         return AIMessage(
             content=content,
-            tool_calls=message.get("tool_calls", []),
+            tool_calls=self._convert_tool_call_format(message.get("tool_calls", [])),
             usage_metadata=UsageMetadata(
                 model_name=model_name,
                 finish_reason=choice.get("finish_reason", ""),
@@ -324,6 +324,20 @@ class RequestChatModel(BaseModelClient):
     async def close(self):
         if self.aiohttp_session:
             await self.aiohttp_session.close()
+
+    @staticmethod
+    def _convert_tool_call_format(tool_calls: List[Dict]):
+        if not tool_calls:
+            return []
+        result = []
+        for tool_call in tool_calls:
+            result.append(ToolCall(
+                id=tool_call.get("id", ""),
+                type=tool_call.get("type", ""),
+                name=tool_call.get("function", {}).get("name", ""),
+                arguments=tool_call.get("function", {}).get("arguments", "")
+            ))
+        return result
 
 
 class OpenAIChatModel(BaseModelClient):

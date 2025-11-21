@@ -10,6 +10,7 @@ from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.security.json_utils import JsonUtils
+from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
 from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -173,7 +174,12 @@ class MessageHandlerUtils:
     def add_tool_result(message: Message, context_engine: ContextEngine, runtime: Runtime):
         if message:
             agent_context = context_engine.get_agent_context(runtime.session_id())
-            tool_message = ToolMessage(content=str(message.content.task_result.output),
+            tool_result = message.content.task_result.output
+            if isinstance(tool_result, OutputSchema):
+                payload = tool_result.payload
+                if isinstance(payload, dict):
+                    tool_result = payload.get("output", "")
+            tool_message = ToolMessage(content=str(tool_result),
                                        tool_call_id=message.context.task_id)
             agent_context.add_message(tool_message)
 

@@ -9,7 +9,7 @@ import re
 from typing import List, Optional, Dict
 
 from openjiuwen.agent_builder.tune.utils import TuneUtils
-from openjiuwen.core.utils.llm_call.base import LLMCall
+from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template

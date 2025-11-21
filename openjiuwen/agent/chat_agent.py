@@ -8,7 +8,7 @@ from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.llm_call.base import LLMCall
+from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.common.utlis.hash_util import generate_key
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.context_engine.config import ContextEngineConfig

@@ -14,7 +14,7 @@ from openjiuwen.core.agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.llm_call.base import LLMCall
+from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.agent_builder.tune.base import EvaluatedCase, TuneConstant, Case
 from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
 from openjiuwen.agent_builder.tune.evaluator.evaluator import BaseEvaluator

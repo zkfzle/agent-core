@@ -1,6 +1,6 @@
 import pytest
 
-from openjiuwen.core.utils.output_parser.markdown_output_parser import (
+from openjiuwen.core.utils.llm.output_parser.markdown_output_parser import (
     MarkdownOutputParser, MarkdownContent, MarkdownElementType
 )
 from openjiuwen.core.utils.llm.messages import AIMessage

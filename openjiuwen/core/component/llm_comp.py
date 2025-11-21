@@ -22,7 +22,6 @@ from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.prompt.template.template_manager import TemplateManager
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 CHAT_HISTORY_MAX_TURN = 3
@@ -449,7 +448,7 @@ class LLMExecutable(ComponentExecutable):
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         self._set_runtime(runtime)
         self._set_context(context)
-        response_format_type = self._get_response_format().get(_TYPE)
+        response_format_type = self._config.response_format.get(_TYPE, "")
         try:
             if response_format_type == WorkflowLLMResponseType.JSON.value:
                 async for out in self._invoke_for_json_format(inputs):
@@ -463,12 +462,6 @@ class LLMExecutable(ComponentExecutable):
                                                "Failed to stream", e)
             else:
                 ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
-
-    async def interrupt(self, message: dict):
-        raise InterruptException(
-            error_code=StatusCode.CONTROLLER_INTERRUPTED_ERROR.code,
-            message=json.dumps(message, ensure_ascii=False)
-        )
 
     def _initialize_if_needed(self):
         if not self._initialized:
@@ -511,46 +504,6 @@ class LLMExecutable(ComponentExecutable):
             original_history.extend(chat_history)
         original_history.extend(user_prompt)
         return original_history
-
-    def _get_response_format(self):
-        try:
-            response_format = self._config.response_format
-            if not response_format:
-                return {}
-
-            format_type = response_format.get(_TYPE)
-            if not format_type or format_type not in RESPONSE_FORMAT_TO_PROMPT_MAP:
-                return response_format
-
-            format_config = RESPONSE_FORMAT_TO_PROMPT_MAP[format_type]
-            instruction_name = format_config.get(_INSTRUCTION_NAME)
-
-            if response_format.get(instruction_name):
-                return response_format
-
-            instruction_content = self._get_instruction_from_template(format_config)
-            if instruction_content:
-                response_format[instruction_name] = instruction_content
-
-            return response_format
-
-        except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR,
-                                           "Failed to get response format", e)
-
-    def _get_instruction_from_template(self, format_config: dict) -> Optional[str]:
-        template_name = format_config.get(_TEMPLATE_NAME)
-        try:
-            if not template_name:
-                return None
-            filters = self._build_template_filters()
-
-            template_manager = TemplateManager()
-            template = template_manager.get(name=template_name, filters=filters)
-
-            return getattr(template, "content", None) if template else None
-        except Exception as e:
-            return None
 
     def _build_template_filters(self) -> dict:
         filters = {}

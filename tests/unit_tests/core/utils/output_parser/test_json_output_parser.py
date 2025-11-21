@@ -1,6 +1,6 @@
 import pytest
 
-from openjiuwen.core.utils.output_parser.json_output_parser import JsonOutputParser
+from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 

@@ -4,7 +4,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.utils.llm.messages import HumanMessage
 from openjiuwen.core.utils.prompt.index.template_store.template_store import Template
-from openjiuwen.core.utils.prompt.template.template_manager import TemplateManager
+from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder import TemplateManager
 
 
 class TestTemplateManager:

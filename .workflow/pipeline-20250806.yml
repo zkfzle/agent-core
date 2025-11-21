@@ -22,21 +22,14 @@ stages:
           - '#!/bin/bash'
           - ''
           - '# 1. 确保系统依赖已安装 (这一步仍然需要)'
-          - echo "=== Installing system dependencies (SQLite3) ==="
-          - apt-get update -y
-          - apt-get install -y libsqlite3-dev
-          - ''
-          - '# 2. 使用系统默认的 pip3 安装 uv'
-          - echo "=== Installing uv using system pip ==="
-          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/
-          - ''
-          - '# 3. 使用 uv 同步依赖 (uv 会自动使用它所安装的 Python 环境，通常是系统默认的)'
-          - echo "=== Syncing dependencies with uv ==="
+          - pip3 install uv -i https://mirrors.aliyun.com/pypi/simple/apt-get update -y
+          - uv sync --group dev --all-extras
           - uv sync --all-extras
-          - ''
-          - '# 4. 使用 uv run 执行 pytest (uv 会调用正确的 Python 解释器)'
-          - echo "=== Running tests with uv ==="
           - uv run pytest
+          - /usr/local/python3.11/bin/uv sync --group dev
+          - /usr/local/python3.11/bin/uv sync --all-extrasecho "=== Syncing dependencies with uv ==="
+          - /usr/local/python3.11/bin/uv run pytest
+          - ''
         report:
           path: report
           index: index.html

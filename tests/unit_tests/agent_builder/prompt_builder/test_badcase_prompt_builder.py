@@ -7,18 +7,11 @@ from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
 from openjiuwen.agent_builder.prompt_builder.builder.badcase_prompt_builder import BadCasePromptBuilder
-from openjiuwen.agent_builder.prompt_builder.builder.feedback_prompt_builder import FeedbackPromptBuilder
 from openjiuwen.agent_builder.tune.base import EvaluatedCase, Case
-from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.prompt.template.template_manager import TemplateManager
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.llm.messages import AIMessage
-from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder import (MetaTemplateBuilder,
-                                                                                   META_TEMPLATE_NAME_PREFIX)
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
 
@@ -111,5 +104,7 @@ class TestBadCasePromptBuilder(unittest.TestCase):
             self.assertEqual(response,
                              TEMPLATE.PROMPT_BAD_CASE_OPTIMIZE_TEMPLATE.format(
                              dict(original_prompt=prompt, feedback=parse_str[0])).content[0].content)
+
+            
 if __name__ == "__main__":
     unittest.main()

@@ -18,16 +18,6 @@ class ToolInfo(BaseModel):
     description: str = Field(default="")
     parameters: Optional[Parameters] = Field(default=None)
 
-    def to_dict(self) -> dict:
-        return {
-            "type": self.type,
-            "function": {
-                "name": self.name,
-                "description": self.description,
-                "parameters": self.parameters.model_dump() if self.parameters else {}
-            }
-        }
-
 
 class ToolCall(BaseModel):
     id: Optional[str]

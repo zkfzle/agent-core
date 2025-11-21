@@ -119,9 +119,10 @@ class BaseModelClient:
         if all(isinstance(item, Dict) for item in tools):
             return tools
         else:
-            return [tool.to_dict() for tool in tools]
+            return [self._convert_tool_info_to_dict(tool) for tool in tools]
 
-    def clean_tools(self, tools):
+    @staticmethod
+    def clean_tools(tools):
         """
         Remove non-standard fields (such as "results") from each dictionary in the tool list, and retain only the OpenAI format.
         """
@@ -140,7 +141,19 @@ class BaseModelClient:
             cleaned.append(cleaned_tool)
         return cleaned
 
-    def _convert_messages_format(self, messages: Union[List[BaseMessage], List[Dict], str]):
+    @staticmethod
+    def _convert_tool_info_to_dict(tool: ToolInfo):
+        return {
+            "type": tool.type,
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters.model_dump() if tool.parameters else {}
+            }
+        }
+
+    @staticmethod
+    def _convert_messages_format(messages: Union[List[BaseMessage], List[Dict], str]):
         if not messages:
             return [{"role": "user", "content": ""}]
 

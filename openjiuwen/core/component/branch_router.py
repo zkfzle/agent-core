@@ -4,7 +4,6 @@
 import os
 from typing import Callable, Union
 
-from openjiuwen.core.common.configs.env_constant import WORKFLOW_DRAWABLE
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.condition.condition import Condition, FuncCondition
@@ -13,6 +12,8 @@ from openjiuwen.core.runtime.runtime import Runtime, BaseRuntime
 from openjiuwen.core.tracer.workflow_tracer import trace_outputs, trace_inputs
 from openjiuwen.graph.visualization.drawable_edge import DrawableBranchRouter
 
+
+WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
 class Branch:
     def __init__(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],

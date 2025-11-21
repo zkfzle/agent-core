@@ -4,7 +4,6 @@
 import asyncio
 from typing import Any, Optional, AsyncIterator, Literal
 
-from openjiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -24,6 +23,8 @@ from openjiuwen.core.stream_actor.base import StreamConsumer
 from openjiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs, trace_error
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
+
+SUB_WORKFLOW_COMPONENT = "sub_workflow"
 
 class Vertex(AsyncAtomicNode, StreamConsumer):
     def __init__(self, node_id: str, executable: Executable = None):

@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import AsyncIterator
 
-from openjiuwen.core.common.constants.component import SUB_WORKFLOW_COMPONENT
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.base import WorkflowComponent
@@ -15,6 +14,8 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.graph.visualization.drawable_graph import DrawableGraph
 
+
+SUB_WORKFLOW_COMPONENT = "sub_workflow"
 
 class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
     def __init__(self, sub_workflow: Workflow):

@@ -11,7 +11,6 @@ from typing import Self, Any, Union, AsyncIterator, List
 
 from pydantic import BaseModel
 
-from openjiuwen.core.common.configs.env_constant import WORKFLOW_DRAWABLE
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -43,6 +42,8 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAb
 from openjiuwen.graph.pregel.graph import PregelGraph
 from openjiuwen.graph.visualization.drawable import Drawable
 
+
+WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
 class WorkflowExecutionState(Enum):
     COMPLETED = "COMPLETED"

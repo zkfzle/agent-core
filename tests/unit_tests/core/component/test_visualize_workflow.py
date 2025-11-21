@@ -4,7 +4,6 @@ import unittest
 from typing import Literal
 from unittest.mock import patch
 
-from openjiuwen.core.common.configs.env_constant import WORKFLOW_DRAWABLE
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.branch_comp import BranchComponent
@@ -27,6 +26,8 @@ from openjiuwen.graph.visualization.drawable import Drawable
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, MockEndNode, MockStartNode, CommonNode, \
     StreamCompNode, CollectCompNode, Node1
 
+
+WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
 class WorkflowTest(unittest.TestCase):
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})

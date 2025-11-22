@@ -34,17 +34,18 @@
 import os
 import unittest
 from datetime import datetime
-from typing import List, Any, AsyncIterator, Dict, Iterator
-from unittest.mock import patch
+from typing import List, Any, Union, AsyncIterator, Dict, Iterator
+from unittest.mock import patch, AsyncMock, Mock
 
 import pytest
 
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
+from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
+from openjiuwen.agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
@@ -53,7 +54,6 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMet
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 
 
 def build_current_date():
@@ -320,7 +320,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             )
             
             # ==================== 创建 ReAct Agent ====================
-            react_agent_config = create_react_llm_agent_config(
+            react_agent_config = create_llm_agent_config(
                 agent_id="react_agent_123",
                 agent_version="0.0.1",
                 description="AI助手",
@@ -330,7 +330,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 prompt_template=react_agent_prompt_template
             )
             
-            react_agent: ReActLLMAgent = create_react_llm_agent(
+            react_agent: LLMAgent = create_llm_agent(
                 agent_config=react_agent_config,
                 workflows=[flow],
                 tools=[]
@@ -348,7 +348,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 {"conversation_id": "12345", "query": "今天天气查询"}
             )
             
-            print(f"ReActLLMAgent 第一次输出结果：{result}")
+            print(f"LLMAgent 第一次输出结果：{result}")
             
             # 验证第一次调用返回交互请求
             self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
@@ -367,7 +367,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                     {"conversation_id": "12345", "query": interactive_input}
                 )
                 
-                print(f"ReActLLMAgent 第二次输出结果：{result}")
+                print(f"LLMAgent 第二次输出结果：{result}")
                 
                 # 验证第二次调用返回最终答案
                 self.assertIsInstance(result, dict, "第二次调用应该返回字典")

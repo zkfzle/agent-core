@@ -7,7 +7,7 @@ from typing import Union, Any, List, Optional
 
 from openjiuwen.agent.chat_agent import ChatAgent
 from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.agent import Agent
+from openjiuwen.core.agent.agent import Agent, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -155,6 +155,9 @@ class Runner:
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
         if isinstance(agent_instance, RemoteAgent):
             res = await agent_instance.invoke(inputs)
+        elif isinstance(agent_instance, BaseAgent):
+            # ControllerAgent handles its own runtime lifecycle
+            res = await agent_instance.invoke(inputs, runtime=None)
         else:
             res = await agent_instance.invoke(inputs, agent_runtime)
             await agent_runtime.post_run()
@@ -170,6 +173,10 @@ class Runner:
                 await agent_runtime.post_run()
         elif isinstance(agent_instance, RemoteAgent):
             async for chunk in agent_instance.stream(inputs):
+                yield chunk
+        elif isinstance(agent_instance, BaseAgent):
+            # ControllerAgent handles its own runtime lifecycle
+            async for chunk in agent_instance.stream(inputs, runtime=None):
                 yield chunk
         else:
             async def stream_process():

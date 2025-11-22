@@ -9,7 +9,7 @@ import pytest
 from openjiuwen.agent.common.enum import TaskType, ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.llm_agent.llm_agent import create_react_llm_agent_config, create_react_llm_agent, ReActLLMAgent
+from openjiuwen.agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -35,6 +35,15 @@ def build_current_date():
 class MockLLMModel:
     def model_provider(self):
         return MODEL_PROVIDER
+    
+    def invoke(self, model_name, messages, tools=None):
+        """Mock invoke method for Questioner component"""
+        # Return a mock response with extracted fields
+        return AIMessage(
+            content='{"location": "hangzhou", "time": "today"}',
+            tool_calls=[],
+            usage_metadata=UsageMetadata(input_tokens=10, output_tokens=20, total_tokens=30)
+        )
 
 
 class TestReActAgentInterrupt:  # ① 关键改动
@@ -58,14 +67,14 @@ class TestReActAgentInterrupt:  # ① 关键改动
         ]
 
     # Todo: 临时关闭
-    @unittest.skip("skip system test")
+    # @unittest.skip("skip system test")
     @pytest.mark.asyncio
-    @patch("openjiuwen.core.agent.controller.react_controller.ReActController.invoke")
+    @patch("openjiuwen.agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
     @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_react_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_llm_inputs,
-                                                                mock_extraction, mock_react_controller_invoke):
+                                                               mock_extraction, mock_generate_plan_from_llm):
         mock_get_model.return_value = MockLLMModel()
 
         react_agent_prompt_template = self._create_prompt_template()
@@ -108,8 +117,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             question_content="查询什么城市的天气",
             extract_fields_from_response=True,
             field_names=key_fields,
-            with_chat_history=False,
-            prompt_template=mock_prompt_template
+            with_chat_history=False
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
@@ -140,7 +148,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             )
         )
 
-        react_agent_config = create_react_llm_agent_config(
+        react_agent_config = create_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -151,7 +159,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
 
         # react_agent要创建，但要打桩下面的逻辑：1. 大模型创建； 2. 大模型输出
-        react_agent: ReActLLMAgent = create_react_llm_agent(
+        react_agent: LLMAgent = create_llm_agent(
             agent_config=react_agent_config,
             workflows=[flow],
             tools=[]
@@ -159,26 +167,30 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
         # 第一次大模型返回的结果让调用task
         # 返回格式改为元组: (tasks, llm_output)
-        mock_react_controller_invoke.return_value = (
+        mock_generate_plan_from_llm.return_value = (
             [task],
-            AIMessage(content = "This is first mock LLM output"),
+            AIMessage(content="This is first mock LLM output"),
         )
 
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州的天气"})
-        print(f"ReActLLMAgent 第一次输出结果：{result}")
+        print(f"LLMAgent 第一次输出结果：{result}")
 
         # 第二次大模型返回的结果不让调用task
         # 返回格式改为元组: (tasks, llm_output)
-        mock_react_controller_invoke.return_value = (
+        mock_generate_plan_from_llm.return_value = (
             [],
             AIMessage(content="This is second mock LLM output"),
         )
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
-            print(f"ReActLLMAgent 第二次输出结果：{result}")
+            print(f"LLMAgent 第二次输出结果：{result}")
 
-    @unittest.skip("skip system test")
-    async def test_real_react_agent_invoke_with_workflow_interrupt(self):
+    @pytest.mark.asyncio
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    async def test_real_react_agent_invoke_with_workflow_interrupt(self, mock_get_model):
+        # Mock LLM model
+        mock_get_model.return_value = MockLLMModel()
+        
         react_agent_prompt_template = self._create_prompt_template()
 
         prompt_template = [
@@ -210,18 +222,14 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+        model_config = ModelConfig(model_provider="openai",
                                    model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
+                                       model="gpt-4",
+                                       api_base="https://api.openai.com/v1",
+                                       api_key="mock-key",
                                        temperature=0.7,
                                        top_p=0.9,
-                                       timeout=30  # 添加超时设置
+                                       timeout=30
                                    ))
 
         questioner_config = QuestionerConfig(
@@ -229,8 +237,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             question_content="查询什么城市的天气",
             extract_fields_from_response=True,
             field_names=key_fields,
-            with_chat_history=False,
-            prompt_template=prompt_template
+            with_chat_history=False
         )
         questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
 
@@ -261,7 +268,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             )
         )
 
-        react_agent_config = create_react_llm_agent_config(
+        react_agent_config = create_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
             description="AI助手",
@@ -272,7 +279,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
 
         # react_agent要创建，但要打桩下面的逻辑：1. 大模型创建； 2. 大模型输出
-        react_agent: ReActLLMAgent = create_react_llm_agent(
+        react_agent: LLMAgent = create_llm_agent(
             agent_config=react_agent_config,
             workflows=[flow],
             tools=[]
@@ -280,16 +287,23 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
         # 第一次大模型返回的结果要让调用task
         result = await react_agent.invoke({"conversation_id": "12345", "query": "查询今天天气"})
-        print(f"ReActLLMAgent 第一次输出结果：{result}")
+        print(f"LLMAgent 第一次输出结果：{result}")
 
         # 第二次大模型返回的结果不让调用task
         if result.get("result_type") == 'question':
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
-            print(f"ReActLLMAgent 第二次输出结果：{result}")
+            print(f"LLMAgent 第二次输出结果：{result}")
 
 
-    @unittest.skip("skip system test")
-    async def test_real_workflow_agent_invoke_with_workflow_interrupt(self):
+    @pytest.mark.asyncio
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    async def test_real_workflow_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_extraction):
+        # Mock LLM model
+        mock_get_model.return_value = MockLLMModel()
+        # Mock extraction to return expected fields
+        mock_extraction.return_value = {"location": "hangzhou", "time": "today"}
+        
         questioner_workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
                 name="questioner",
@@ -315,18 +329,14 @@ class TestReActAgentInterrupt:  # ① 关键改动
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+        model_config = ModelConfig(model_provider="openai",
                                    model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
+                                       model="gpt-4",
+                                       api_base="https://api.openai.com/v1",
+                                       api_key="mock-key",
                                        temperature=0.7,
                                        top_p=0.9,
-                                       timeout=30  # 添加超时设置
+                                       timeout=30
                                    ))
 
         questioner_config = QuestionerConfig(
@@ -384,8 +394,15 @@ class TestReActAgentInterrupt:  # ① 关键改动
             result = await workflow_agent.invoke({"conversation_id": "12345", "query": interactive_input})
             print(f"WorkflowAgent 第二次输出结果：{result}")
 
-    @unittest.skip("skip system test")
-    async def test_real_workflow_agent_stream_with_workflow_interrupt(self):
+    @pytest.mark.asyncio
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    async def test_real_workflow_agent_stream_with_workflow_interrupt(self, mock_get_model, mock_extraction):
+        # Mock LLM model
+        mock_get_model.return_value = MockLLMModel()
+        # Mock extraction to return expected fields
+        mock_extraction.return_value = {"location": "hangzhou", "time": "today"}
+        
         questioner_workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
                 name="questioner",
@@ -411,18 +428,14 @@ class TestReActAgentInterrupt:  # ① 关键改动
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+        model_config = ModelConfig(model_provider="openai",
                                    model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
+                                       model="gpt-4",
+                                       api_base="https://api.openai.com/v1",
+                                       api_key="mock-key",
                                        temperature=0.7,
                                        top_p=0.9,
-                                       timeout=30  # 添加超时设置
+                                       timeout=30
                                    ))
 
         questioner_config = QuestionerConfig(

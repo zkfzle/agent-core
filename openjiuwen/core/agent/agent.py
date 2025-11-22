@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import asyncio
+import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Iterator, List, Union
 
@@ -60,6 +61,13 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
 
 class Agent(ABC):
     """
+    DEPRECATED: This class is deprecated and will be removed in a future version.
+    
+    Please use BaseAgent or ControllerAgent instead:
+    - BaseAgent: Minimal interface for new agent implementations
+    - ControllerAgent: Agent with built-in controller support
+    
+    Legacy documentation:
     The top-level abstract class and the common base class for all Agents.
     Subclasses must implement:
         - invoke : synchronous one-time call
@@ -67,6 +75,15 @@ class Agent(ABC):
     """
 
     def __init__(self, config: Config) -> None:
+        # Emit deprecation warning
+        warnings.warn(
+            f"{self.__class__.__name__} inherits from deprecated Agent class. "
+            "Please migrate to BaseAgent or ControllerAgent. "
+            "Agent class will be removed in a future version.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+        
         # All core attributes initialized uniformly in base class
         self._config = config
         self._runtime = AgentRuntime(config=config)

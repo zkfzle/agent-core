@@ -1,27 +1,29 @@
 #!/usr/bin/python3.10
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-from typing import Dict, List, Any, AsyncIterator
+"""LLMAgent - ReAct style Agent based on ControllerAgent"""
 
+from typing import Dict, List, Any, AsyncIterator
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.agent.config.react_config import ReActAgentConfig
-from openjiuwen.agent.llm_agent.llm_message_handler import ReActMessageHandler
-from openjiuwen.core.agent.agent import Agent
+from openjiuwen.agent.llm_agent.llm_controller import LLMController
+from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.runtime import Runtime, Workflow
+from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.tool.base import Tool
+from openjiuwen.core.workflow.base import Workflow
 
 
-def create_react_llm_agent_config(agent_id: str,
-                              agent_version: str,
-                              description: str,
-                              workflows: List[WorkflowSchema],
-                              plugins: List[PluginSchema],
-                              model: ModelConfig,
-                              prompt_template: List[Dict],
-                              tools: List[str] = []):
+def create_llm_agent_config(agent_id: str,
+                            agent_version: str,
+                            description: str,
+                            workflows: List[WorkflowSchema],
+                            plugins: List[PluginSchema],
+                            model: ModelConfig,
+                            prompt_template: List[Dict],
+                            tools: List[str] = []):
+    """Create LLM Agent configuration - backward compatible factory function"""
     config = ReActAgentConfig(id=agent_id,
                               version=agent_version,
                               description=description,
@@ -33,36 +35,71 @@ def create_react_llm_agent_config(agent_id: str,
     return config
 
 
-def create_react_llm_agent(agent_config: ReActAgentConfig,
-                       workflows: List[Workflow] = None,
-                       tools: List[Tool] = None):
-    agent = ReActLLMAgent(agent_config)
-    agent.bind_workflows(workflows)
-    agent.bind_tools(tools or [])
+def create_llm_agent(agent_config: ReActAgentConfig,
+                     workflows: List[Workflow] = None,
+                     tools: List[Tool] = None):
+    """Create LLM Agent - backward compatible factory function"""
+    agent = LLMAgent(agent_config)
+    agent.add_workflows(workflows)
+    agent.add_tools(tools or [])
     return agent
 
 
-class ReActLLMAgent(Agent):
-    """ReAct mode Agent - uses LLM reasoning to generate execution plans"""
+class LLMAgent(ControllerAgent):
+    """LLM Agent - ReAct style Agent based on new architecture
     
+    Core features:
+    1. Inherits ControllerAgent, holds LLMController
+    2. Uses message queue pattern to process messages
+    3. Supports LLM reasoning to generate task plans
+    4. Supports multi-round conversations and task execution
+    """
+
     def __init__(self, agent_config: ReActAgentConfig):
+        """Initialize LLMControllerAgent
+        
+        Args:
+            agent_config: ReAct Agent configuration
+        """
         # Validate controller_type
         if agent_config.controller_type != ControllerType.ReActController:
-            raise NotImplementedError(f"ReActAgent requires ReActController, got {agent_config.controller_type}")
+            raise NotImplementedError(
+                f"LLMControllerAgent requires ReActController, "
+                "got {agent_config.controller_type}"
+            )
 
-        # Create configuration and initialize base class
-        config = Config()
-        config.set_agent_config(agent_config=agent_config)
-        super().__init__(config)
-        
-        # Set message handler
-        self.set_message_handler(ReActMessageHandler)
+        # Initialize base class (pass controller)
+        super().__init__(agent_config, controller=None)
+
+        self.controller = LLMController(
+            config=agent_config,
+            context_engine=self.context_engine,
+            runtime=self._runtime
+        )
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """Batch invoke - use base class's generic implementation"""
-        return await self.controller_invoke(inputs, runtime)
+        """Synchronous call - fully delegate to controller
+        
+        Args:
+            inputs: Input data, contains query and conversation_id
+            runtime: Runtime instance (optional)
+            
+        Returns:
+            Execution result
+        """
+        # Fully delegate to ControllerAgent implementation
+        return await super().invoke(inputs, runtime)
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """Stream invoke - use base class's generic implementation"""
-        async for result in self.controller_stream(inputs, runtime):
+        """Stream call - fully delegate to controller
+        
+        Args:
+            inputs: Input data, contains query and conversation_id
+            runtime: Runtime instance (optional)
+            
+        Yields:
+            Stream output
+        """
+        # Fully delegate to ControllerAgent implementation
+        async for result in super().stream(inputs, runtime):
             yield result

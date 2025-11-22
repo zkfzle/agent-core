@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 
 from openjiuwen.agent.common.schema import PluginSchema
-from openjiuwen.agent.llm_agent.llm_controller_agent import create_llm_agent_config, create_llm_agent, LLMAgent
+from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.function.function import LocalFunction

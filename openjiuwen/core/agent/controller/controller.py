@@ -7,89 +7,12 @@ from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
 from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
-from openjiuwen.core.agent.controller.scheduler import (
-    AgentScheduler,
-    MessageHandler,
-    TaskHandler
-)
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
 from openjiuwen.core.runtime.runtime import Runtime
-
-
-class Controller:
-    """Controller
-    
-    Responsible for coordinating MessageHandler, TaskHandler and AgentScheduler
-    Handles message flow and task scheduling
-    """
-
-    def __init__(
-            self,
-            config: AgentConfig,
-            context_engine: ContextEngine,
-            runtime: Runtime,
-            message_handler: MessageHandler
-    ):
-        self._config = config
-        self._context_engine = context_engine
-        self._runtime = runtime
-        self._agent_handler = None
-
-        # Unified component initialization
-        self._scheduler = AgentScheduler(config)
-        self._reasoner = AgentReasoner(config, context_engine, runtime)
-        self._task_handler = TaskHandler(config, context_engine, runtime)
-
-        # Directly use the passed MessageHandler (contains its own state management)
-        self._message_handler = message_handler
-
-        # Set component references
-        self._scheduler.set_handlers(self._message_handler, self._task_handler)
-        self._message_handler.set_reasoner(self._reasoner)
-
-    async def start(self):
-        """Start controller - Start scheduler"""
-        await self._scheduler.start()
-
-    async def stop(self):
-        """Stop controller - Stop scheduler"""
-        await self._scheduler.stop()
-
-    async def receive_message(self, message: Message):
-        """Receive message - External systems call this interface, unified message entry"""
-        # All external messages are uniformly placed in AgentScheduler's message queue for unified scheduling
-        await self._scheduler.schedule_message(message)
-
-    async def run_until_complete(self):
-        """Wait for scheduler to complete and return final result"""
-        return await self._scheduler.run_until_complete()
-
-    async def process_inputs(self, inputs: dict):
-        """Process inputs and wait for completion - Unified invocation entry
-        
-        Args:
-            inputs: Input dictionary, contains query and conversation_id
-            
-        Returns:
-            dict: Final result (returned from MessageHandler's final_result)
-        """
-        # 1. Create message
-        session_id = inputs.get("conversation_id", "default_session")
-        message = Message.create_user_message(
-            content=inputs.get("query", ""),
-            conversation_id=session_id
-        )
-
-        # 2. Send message to scheduler
-        await self._scheduler.schedule_message(message)
-
-        # 3. Wait for scheduler to complete and return result
-        return await self._scheduler.run_until_complete()
 
 
 class BaseController(ABC):

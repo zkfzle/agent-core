@@ -857,17 +857,31 @@ class LLMController(BaseController):
             if not result:
                 return {"output": "", "result_type": "answer"}
             if isinstance(result[0], OutputSchema):
-                if len(result) == 1 and result[0].type == "workflow_final":
-                    return result[0].payload
+                # If it's interaction requests (multiple or single), return list
+                if result[0].type == '__interaction__':
+                    return result
+                # If it's a single non-interaction OutputSchema, extract its payload
+                if len(result) == 1:
+                    payload = result[0].payload
+                    if isinstance(payload, dict):
+                        if 'output' in payload and isinstance(payload['output'], str):
+                            payload['output'] = payload['output'].strip()
+                        return payload
+                    return {"output": payload, "result_type": "answer"}
+                # If it's multiple non-interaction OutputSchemas, return list
                 return result
             return {"output": result, "result_type": "answer"}
         
         if isinstance(result, OutputSchema):
+            # If it's interaction, return wrapped in list for consistency
+            if result.type == '__interaction__':
+                return [result]
             payload = result.payload
             if isinstance(payload, dict):
                 if 'output' in payload and isinstance(payload['output'], str):
                     payload['output'] = payload['output'].strip()
-            return payload
+                return payload
+            return {"output": payload, "result_type": "answer"}
 
         return {"output": result, "result_type": "answer"}
 

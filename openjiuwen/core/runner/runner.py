@@ -11,7 +11,6 @@ from openjiuwen.core.agent.agent import Agent, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runner.drunner.common.constants import AGENT_ADAPTER
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
 from openjiuwen.core.runner.drunner.dmessage_queue.message_queue_factory import MessageQueueFactory
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
@@ -34,6 +33,8 @@ from openjiuwen.core.utils.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.runner.agent_group import AgentGroup
 
+
+AGENT_ADAPTER = "agent_adapter_"
 
 # mock
 class LocalMessageQueue:

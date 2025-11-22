@@ -26,11 +26,11 @@ class MemoryEngineBase(ABC):
         pass
 
     @abstractmethod
-    def add_conversation_message(
+    def add_conversation_messages(
         self,
         user_id: str,
         app_id: str,
-        messages: SeqMessage,
+        messages: list[SeqMessage],
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
@@ -38,11 +38,11 @@ class MemoryEngineBase(ABC):
         pass
     
     @abstractmethod
-    async def aadd_conversation_message(
+    async def aadd_conversation_messages(
         self,
         user_id: str,
         app_id: str,
-        messages: SeqMessage,
+        messages: list[SeqMessage],
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None

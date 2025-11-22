@@ -71,7 +71,7 @@ class VariableManager(BaseMemoryManager):
         """query variable by user_id, app_id, variable_name return variable mem."""
         self._check_user_and_app_id(user_id, app_id, "Search")
         if not name or not name.strip():
-            regex_str = f"^user_var:{escape(user_id)}:{escape(app_id)}:/*$"
+            regex_str = f"^user_var:{escape(user_id)}:{escape(app_id)}:.*$"
             return {k.split(":")[-1]: v for k, v in self.kv_store.get_by_regex(regex_str).items()}
         if session_id:
             key = f"session_var:{user_id}:{app_id}:{session_id}:{name}"

@@ -70,7 +70,7 @@ class SearchManager:
             return None
         return res[var_name]
 
-    def get_all_user_variable(self, user_id: str, app_id: str) -> str | None:
+    def get_all_user_variable(self, user_id: str, app_id: str) -> dict[str, Any]:
         if not isinstance(self.managers[MemoryType.VARIABLE.value], VariableManager):
             raise ValueError(f"{MemoryType.VARIABLE.value} manager class is not VariableManager")
         return self.managers[MemoryType.VARIABLE.value].query_variable(user_id=user_id, app_id=app_id)

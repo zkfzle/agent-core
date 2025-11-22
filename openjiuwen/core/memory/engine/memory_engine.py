@@ -5,7 +5,7 @@ from sqlalchemy.engine import Engine
 from openjiuwen.core.memory.manage.write_manager import WriteManager
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
-from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, UserProfileUnit, VariableUnit, MemoryType
+from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.messages.messages import SeqMessage
 from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
@@ -33,6 +33,7 @@ def _check_user_and_app_id(user_id: str, app_id: str, context="Operation"):
     
 class MemoryEngine(MemoryEngineBase):
     def __init__(self, config: Config, llm_base: BaseModelClient = None):
+        super().__init__(config, llm_base)
         self.config_manager = ConfigManger(config)
         self.llm_base = llm_base
         self.user_profile_manager: UserProfileManager = None
@@ -77,19 +78,21 @@ class MemoryEngine(MemoryEngineBase):
         self.config_manager.set_app_config(app_id, config_key, config_value)
         return True
     
-    def add_conversation_message(
+    def add_conversation_messages(
         self,
         user_id: str,
         app_id: str,
-        messages: SeqMessage,
+        messages: list[SeqMessage],
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
     ) -> str:
+        if len(messages) == 0:
+            logger.warning("Failed to add_conversation_messages: messages is empty.")
+            return "-1"
         llm = llm if llm else self.llm_base
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
-        current_message = BaseMessage(role=messages.role, content=messages.content)
         config = self.config_manager.get_config(app_id, request_config)
         threshold = config.realtime_process_config.window_size
         user_profile_custom_define = config.realtime_process_config.user_profile_custom_define
@@ -99,16 +102,20 @@ class MemoryEngine(MemoryEngineBase):
             session_id=session_id,
             message_len=threshold
         )
-        message_mem_id = self.message_manager.add(
-            user_id=user_id,
-            app_id=app_id,
-            role=messages.role,
-            content=messages.content,
-        )
+        message_mem_id = "-1"
+        # when multi messages, use last message_mem_id
+        for msg in messages:
+            message_mem_id = self.message_manager.add(
+                user_id=user_id,
+                app_id=app_id,
+                role=msg.role,
+                content=msg.content,
+                session_id=session_id,
+            )
         all_memory: list[BaseMemoryUnit] = self.generator.gen_all_memory(
             app_id=app_id,
             user_id=user_id,
-            messages=[current_message],
+            messages=messages,
             history_messages=history_messages,
             session_id=session_id,
             config=config,
@@ -119,17 +126,17 @@ class MemoryEngine(MemoryEngineBase):
         self.write_manager.add_mem(all_memory)
         return message_mem_id
     
-    async def aadd_conversation_message(
+    async def aadd_conversation_messages(
         self,
         user_id: str,
         app_id: str,
-        messages: SeqMessage,
+        messages: list[SeqMessage],
         request_config: dict[str, Any] = None,
         session_id: str = None,
         llm: BaseModelClient = None
     ) -> str:
         loop = asyncio.get_event_loop()
-        message_mem_id = await loop.run_in_executor(None, self.add_conversation_message,
+        message_mem_id = await loop.run_in_executor(None, self.add_conversation_messages,
                                                    user_id, app_id, messages,
                                                    request_config, session_id, llm)
         return message_mem_id
@@ -188,7 +195,7 @@ class MemoryEngine(MemoryEngineBase):
     
     def list_user_variables(self, user_id: str, app_id: str) -> dict[str, str]:
         _check_user_and_app_id(user_id, app_id, "List User Variables")
-        return self.search_manager.get_all_user_variables(user_id, app_id)
+        return self.search_manager.get_all_user_variable(user_id, app_id)
     
     def list_user_mem(self, user_id: str, app_id: str, num: int, page: int) -> list[dict[str, Any]]:
         if num is None or num <= 0:

@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import asyncio
-import json
 from abc import abstractmethod
 from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator, ConfigDict
@@ -14,16 +13,16 @@ from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessage
 
 
 class BaseModelClient:
-    def __init__(self, api_key:str, api_base:str, max_retries: int=3, timeout: int=60, **kwargs):
+    def __init__(self, api_key:str, api_base:str, max_retries: int = 3, timeout: int = 60, **kwargs):
         self.api_key = api_key
         self.api_base = api_base
         self.max_retries = max_retries
         self.timeout = timeout
-        self.kwargs = kwargs
+        self.extra_params_config = kwargs
 
     def invoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
-               top_p:float = 0.1, **kwargs: Any):
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature: Optional[float] = None,
+               top_p: Optional[float] = None, **kwargs: Any):
         try:
             return self._invoke(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
@@ -34,8 +33,8 @@ class BaseModelClient:
                                             temperature=temperature, top_p=top_p, **kwargs))
 
     async def ainvoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float=0.1,
-               top_p:float=0.1, **kwargs: Any):
+               tools: Union[List[ToolInfo], List[Dict]] = None,  temperature: Optional[float] = None,
+               top_p: Optional[float] = None, **kwargs: Any):
         try:
             return await self._ainvoke(model_name=model_name, messages=self._convert_messages_format(messages),
                                        tools=self._convert_tool_info_format(tools),
@@ -46,8 +45,8 @@ class BaseModelClient:
                                 temperature=temperature, top_p=top_p, **kwargs)
 
     def stream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any):
+               tools: Union[List[ToolInfo], List[Dict]] = None,  temperature: Optional[float] = None,
+               top_p: Optional[float] = None, **kwargs: Any):
         try:
             for chunk in self._stream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
@@ -74,8 +73,8 @@ class BaseModelClient:
 
 
     async def astream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
+               tools: Union[List[ToolInfo], List[Dict]] = None,  temperature: Optional[float] = None,
+               top_p: Optional[float] = None, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
         try:
             async for chunk in self._astream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
@@ -88,23 +87,23 @@ class BaseModelClient:
                 yield chunk
 
     @abstractmethod
-    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,  temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         raise NotImplementedError("BaseModelClient _invoke not implemented")
 
     @abstractmethod
-    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None,**kwargs: Any) -> AIMessage:
         raise NotImplementedError("BaseModelClient _ainvoke not implemented")
 
     @abstractmethod
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
         raise NotImplementedError("BaseModelClient _stream not implemented")
 
     @abstractmethod
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
         raise NotImplementedError("BaseModelClient _astream not implemented")
 
@@ -169,6 +168,20 @@ class BaseModelClient:
 
     def pre_process(self, model_output):
         pass
+
+    def _update_model_params(self, temperature, top_p, **kwargs):
+        result = {}
+        if temperature is not None:
+            result["temperature"] = temperature
+        if top_p is not None:
+            result["top_p"] = top_p
+        for key, value in kwargs.items():
+            if key not in result and value is not None:
+                result[key] = value
+        for key, value in self.extra_params_config.items():
+            if key not in result and value is not None:
+                result[key] = value
+        return result
 
 
 class BaseModelInfo(BaseModel):

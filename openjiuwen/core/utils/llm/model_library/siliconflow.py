@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import List, Dict, Any, Iterator, AsyncIterator
+from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 from pydantic import BaseModel
 
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -16,7 +16,7 @@ class Siliconflow(BaseModel, BaseModelClient):
 
     def __init__(self,
                  api_key: str, api_base: str, max_retries: int = 3, timeout: int = 60, **kwargs):
-        # Ensure api_base ends with /chat/completions for Silicon Flow
+        # Ensure api_base ends with /chat/completions for siliconflow
         api_base = self._normalize_api_base(api_base)
         super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout)
         self._request_model = RequestChatModel(api_key=api_key, api_base=api_base,
@@ -56,27 +56,27 @@ class Siliconflow(BaseModel, BaseModelClient):
     def model_provider(self) -> str:
         return "siliconflow"
 
-    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                top_p: float = 0.1, **kwargs: Any) -> AIMessage:
+    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs) -> AIMessage:
         return self._request_model._invoke(
             model_name=model_name, messages=messages, tools=tools,
             temperature=temperature, top_p=top_p, **kwargs)
 
-    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                       top_p: float = 0.1, **kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs) -> AIMessage:
         return await self._request_model._ainvoke(
             model_name=model_name, messages=messages, tools=tools,
             temperature=temperature, top_p=top_p, **kwargs)
 
-    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, temperature: float = 0.1,
-                top_p: float = 0.1, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs) -> Iterator[AIMessageChunk]:
         return self._request_model._stream(
             model_name=model_name, messages=messages, tools=tools,
             temperature=temperature, top_p=top_p, **kwargs)
 
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None, temperature:float = 0.1,
-               top_p:float = 0.1, **kwargs: Any) -> AsyncIterator[
-        AIMessageChunk]:
+    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs
+                       ) -> AsyncIterator[AIMessageChunk]:
         async for chunk in self._request_model._astream(
             model_name=model_name, messages=messages, tools=tools,
             temperature=temperature, top_p=top_p, **kwargs):

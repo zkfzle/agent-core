@@ -25,7 +25,9 @@ class ComponentExecutable(Executable):
                                     StatusCode.RUNTIME_COMPONENT_INVALID_RUNTIME_TYPE.errmsg)
         
         current_class = type(self)
+        # Check if the attribute exists, is callable, and is not the base implementation
         if (hasattr(current_class, 'invoke') and 
+            callable(getattr(current_class, 'invoke')) and 
             current_class.invoke is ComponentExecutable.invoke):
             raise JiuWenBaseException(StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.code, 
                                     StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
@@ -40,7 +42,9 @@ class ComponentExecutable(Executable):
         
         current_class = type(self)
         
+        # Check if the attribute exists, is callable, and is not the base implementation
         if (hasattr(current_class, 'stream') and 
+            callable(getattr(current_class, 'stream')) and 
             current_class.stream is ComponentExecutable.stream):
             raise JiuWenBaseException(StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.code, 
                                     StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
@@ -56,7 +60,9 @@ class ComponentExecutable(Executable):
         
         current_class = type(self)
         
+        # Check if the attribute exists, is callable, and is not the base implementation
         if (hasattr(current_class, 'collect') and 
+            callable(getattr(current_class, 'collect')) and 
             current_class.collect is ComponentExecutable.collect):
             raise JiuWenBaseException(StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.code, 
                                     StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
@@ -71,7 +77,9 @@ class ComponentExecutable(Executable):
         
         current_class = type(self)
         
+        # Check if the attribute exists, is callable, and is not the base implementation
         if (hasattr(current_class, 'transform') and 
+            callable(getattr(current_class, 'transform')) and 
             current_class.transform is ComponentExecutable.transform):
             raise JiuWenBaseException(StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.code, 
                                     StatusCode.RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(

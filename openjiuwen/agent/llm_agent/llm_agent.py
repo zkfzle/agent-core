@@ -13,6 +13,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.workflow.base import Workflow
+import asyncio
 
 
 def create_llm_agent_config(agent_id: str,
@@ -91,15 +92,39 @@ class LLMAgent(ControllerAgent):
         return await super().invoke(inputs, runtime)
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """Stream call - fully delegate to controller
-        
+        """Streaming invocation - Fully delegate to controller
+
         Args:
-            inputs: Input data, contains query and conversation_id
-            runtime: Runtime instance (optional)
-            
+            inputs: Input data
+            runtime: Runtime instance (if None, auto create)
+
         Yields:
-            Stream output
+            Streaming output
         """
-        # Fully delegate to ControllerAgent implementation
-        async for result in super().stream(inputs, runtime):
+        if not self.controller:
+            raise RuntimeError(
+                f"{self.__class__.__name__} has no controller, "
+                "subclass should create controller before invocation"
+            )
+
+        # If runtime not provided, create one
+        session_id = inputs.get("conversation_id", "default_session")
+        if runtime is None:
+            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+            need_cleanup = True
+        else:
+            agent_runtime = runtime
+            need_cleanup = False
+
+        # Fully delegate to controller
+        async def stream_process():
+            try:
+                await self.controller.invoke(inputs, agent_runtime)
+            finally:
+                if need_cleanup:
+                    await agent_runtime.post_run()
+
+        task = asyncio.create_task(stream_process())
+        async for result in agent_runtime.stream_iterator():
             yield result
+        await task

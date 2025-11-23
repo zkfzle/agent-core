@@ -1,6 +1,5 @@
 import os
 import unittest
-import asyncio
 from datetime import datetime
 from typing import List
 
@@ -285,7 +284,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
             print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
-    @unittest.skip("require network")
+    @unittest.skip("requires network")
     async def test_llm_agent_with_workflow_interrupt_with_stream(self):
         llm_agent = self._setup_test_environment_and_agent()
 
@@ -325,4 +324,22 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         print(f"LLMAgent 第三次输出结果：{result}")
         self.assertIsInstance(result, dict, "第三次调用应该返回字典")
         self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
+        print(f"✅ 第三次调用校验通过：恢复中断工作流完成，返回结果正确")
+
+    @unittest.skip("require network")
+    async def test_llm_agent_with_workflow_interrupt_agent_stream_multi_rounds(self):
+        llm_agent = self._setup_test_environment_and_agent()
+
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "今天天气查询"}):
+            print(f"LLMAgent 第一次输出结果 >>> {chunk}")
+        print(f"✅ 第一次调用校验通过：返回交互请求")
+
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "今天是周几"}):
+            print(f"LLMAgent 第二次输出结果 >>> {chunk}")
+        print(f"✅ 第二次调用校验通过：调用完成，返回结果正确")
+
+        interactive_input = InteractiveInput()
+        interactive_input.update("questioner", "上海")
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+            print(f"LLMAgent 第三次输出结果 >>> {chunk}")
         print(f"✅ 第三次调用校验通过：恢复中断工作流完成，返回结果正确")

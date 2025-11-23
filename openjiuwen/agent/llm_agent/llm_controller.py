@@ -22,6 +22,7 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.workflow.base import WorkflowExecutionState
+from openjiuwen.core.utils.llm.messages import AIMessage
 
 
 class LLMController(BaseController):
@@ -477,12 +478,13 @@ class LLMController(BaseController):
         
         try:
             model = self._get_model(runtime)
-            llm_output = await model.ainvoke(
+            llm_output = await self._call_llm_get_output(
+                model,
                 self.config.model.model_info.model_name,
                 llm_inputs,
-                tools
+                tools,
+                runtime
             )
-            
             tasks = MessageHandlerUtils.parse_llm_output(llm_output, self.config)
             # Add LLM output to CE conversation history
             MessageUtils.add_ai_message(llm_output, self._context_engine, runtime)
@@ -499,6 +501,88 @@ class LLMController(BaseController):
             )
 
         return tasks, llm_output
+
+    async def _call_llm_get_output(
+        self,
+        model,
+        model_name: str,
+        llm_inputs: Any,
+        tools: List[Any],
+        runtime: Runtime
+    ) -> AIMessage:
+        """ Stream LLM invocation and output chunks in real-time
+        
+        Args:
+            model: Model instance
+            model_name: Model name
+            llm_inputs: LLM input messages
+            tools: Available tools
+            runtime: Runtime context for streaming output
+            
+        Returns:
+            AIMessage: Accumulated complete message from all chunks
+            
+        Raises:
+            JiuWenBaseException: If LLM returns empty response or invocation fails
+        """
+        accumulated_chunk = None
+        stream_index = 0
+        
+        try:
+            async for chunk in model.astream(model_name, llm_inputs, tools):
+                # Accumulate chunks using AIMessageChunk's __add__ method
+                if accumulated_chunk is None:
+                    accumulated_chunk = chunk
+                else:
+                    accumulated_chunk = accumulated_chunk + chunk
+
+                # Stream output for reasoning content
+                if chunk.reason_content:
+                    stream_output = OutputSchema(
+                        type="llm_reasoning",
+                        index=stream_index,
+                        payload={
+                            "output": chunk.reason_content,
+                            "result_type": "answer"
+                        }
+                    )
+                    await runtime.write_stream(stream_output)
+                    stream_index += 1
+                
+                # Stream output for response content
+                if chunk.content:
+                    stream_output = OutputSchema(
+                        type="llm_output",
+                        index=stream_index,
+                        payload={
+                            "output": chunk.content,
+                            "result_type": "answer"
+                        }
+                    )
+                    await runtime.write_stream(stream_output)
+                    stream_index += 1
+            
+            # Check for empty response
+            if accumulated_chunk is None:
+                raise JiuWenBaseException(
+                    StatusCode.INVOKE_LLM_FAILED.code,
+                    "LLM returned empty response"
+                )
+            
+            # Convert accumulated chunk to AIMessage
+            return AIMessage(
+                role=accumulated_chunk.role or "assistant",
+                content=accumulated_chunk.content or "",
+                tool_calls=accumulated_chunk.tool_calls or [],
+                usage_metadata=accumulated_chunk.usage_metadata,
+                raw_content=accumulated_chunk.raw_content,
+                reason_content=accumulated_chunk.reason_content,
+                name=accumulated_chunk.name
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to stream LLM output: {e}")
+            raise
 
     def _get_model(self, runtime: Runtime):
         """Get model instance"""

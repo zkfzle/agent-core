@@ -27,7 +27,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow.base import Workflow, WorkflowOutput
 from openjiuwen.core.runtime.config import Config
 
 if TYPE_CHECKING:
@@ -702,12 +702,17 @@ class ControllerAgent(BaseAgent):
         async def stream_process():
             try:
                 res = await self.controller.invoke(inputs, agent_runtime)
-                if res is not None:
-                    if isinstance(res, list):
-                        # List of OutputSchema - write each one
-                        for item in res:
-                            await agent_runtime.write_stream(item)
-                    elif isinstance(res, dict):
+                if isinstance(res, list):
+                    for item in res:
+                        await agent_runtime.write_stream(item)
+                elif isinstance(res, dict):
+                    output_in_result = res.get("output")
+                    if isinstance(output_in_result, WorkflowOutput) and output_in_result.result is not None:
+                        total_result = output_in_result.result
+                        if isinstance(total_result, list):
+                            for item in total_result:
+                                await agent_runtime.write_stream(item)
+                    else:
                         final_output = OutputSchema(
                             type="workflow_final",
                             index=0,

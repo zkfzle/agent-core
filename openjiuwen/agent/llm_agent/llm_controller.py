@@ -21,7 +21,7 @@ from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.workflow.base import WorkflowExecutionState
+from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.utils.llm.messages import AIMessage
 
 
@@ -400,6 +400,7 @@ class LLMController(BaseController):
                     output=result,
                     metadata={"state": result.state.value if hasattr(result, 'state') else "completed"}
                 )
+                await self._write_workflow_stream_output(result, runtime)
                 logger.info(f"Workflow {task.input.target_name} completed successfully")
                 
                 # Clear interrupted state (if any)
@@ -978,3 +979,9 @@ class LLMController(BaseController):
             content=query,
             conversation_id=conversation_id
         )
+
+    @staticmethod
+    async def _write_workflow_stream_output(result, runtime):
+        if isinstance(result, WorkflowOutput) and isinstance(result.result, list):
+            for item in result.result:
+                await runtime.write_stream(item)

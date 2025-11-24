@@ -185,10 +185,6 @@ class StatusCode(Enum):
     # Development Toolchain - Prompt Generation 160000 - 160999
     # Development Toolchain - Agent DL convertor 161000 - 161999
     # Development Toolchain - NL2Agent 162000 - 162999
-    NL2AGENT_WORKFLOW_INTENTION_DETECT_ERROR = (162000, "NL2Agent workflow intention detect error: {error_msg}")
-    NL2AGENT_WORKFLOW_STATE_ERROR = (162001, "NL2Agent workflow state error: {error_msg}")
-    NL2AGENT_WORKFLOW_DL_GENERATION_ERROR = (162002, "NL2Agent workflow dl generation error: {error_msg}")
-    NL2AGENT_LLM_AGENT_STATE_ERROR = (162010, "NL2Agent llm agent state error: {error_msg}")
 
     # Optimization Toolchain 170000 - 179999
     # Optimization Toolchain - Prompt Self-optimization 170000 - 170999

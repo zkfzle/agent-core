@@ -98,7 +98,7 @@ class WrappedRuntime(Runtime, ABC):
     def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
         self._inner.resource_manager().workflow().add_workflows(workflows)
         for workflow_id, workflow in workflows:
-            self._inner.config().add_workflow_config(workflow_id, workflow)
+            self._inner.config().add_workflow_config(workflow_id, workflow.config())
 
     def remove_workflow(self, workflow_id: str):
         self._inner.resource_manager().workflow().remove_workflow(workflow_id)

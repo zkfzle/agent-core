@@ -207,7 +207,7 @@ class WorkflowController(IntentDetectionController):
             task.status = TaskStatus.RUNNING
 
             # Get workflow object (from controller's agent)
-            workflow = self._find_workflow_from_agent(workflow_id)
+            workflow = self._find_workflow_from_agent(workflow_id, runtime)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
 
@@ -636,11 +636,12 @@ class WorkflowController(IntentDetectionController):
         logger.warning("No component_id found in interaction_data, using default")
         return "questioner"  # Default value
 
-    def _find_workflow_from_agent(self, workflow_id: str):
+    def _find_workflow_from_agent(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime
         
         Args:
             workflow_id: workflow ID (format: {id}_{version})
+            runtime: Task Runtime context
             
         Returns:
             Workflow object, None if not found
@@ -652,7 +653,7 @@ class WorkflowController(IntentDetectionController):
             all_workflows = resource_mgr.workflow()._resources
             logger.info(f"Available workflows in resource_mgr: {list(all_workflows.keys())}")
 
-            workflow = resource_mgr.workflow().get_workflow(workflow_id)
+            workflow = resource_mgr.workflow().get_workflow(workflow_id, runtime.base())
             logger.info(f"Found workflow from resource_mgr: {workflow is not None}")
             if workflow:
                 return workflow

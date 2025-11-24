@@ -413,19 +413,6 @@ class TestExpressionCondition(TestConditionBase):
         with pytest.raises(JiuWenBaseException):
             expr_condition.invoke({}, self.mock_runtime)
     
-    def test_expression_non_boolean_result(self):
-        """Test handling of non-boolean expression results"""
-        # Set up mock data - expression result is non-boolean
-        expression = "${a} + ${b}"
-        self.mock_state.get_global.side_effect = lambda x: 5 if x == "a" else 3 if x == "b" else None
-        
-        # Create ExpressionCondition instance
-        expr_condition = ExpressionCondition(expression)
-        
-        # Test if non-boolean result is handled correctly
-        with pytest.raises(JiuWenBaseException):
-            expr_condition.invoke({}, self.mock_runtime)
-    
     def test_disallowed_operations(self):
         """Test handling of disallowed operations"""
         # Test disallowed variable

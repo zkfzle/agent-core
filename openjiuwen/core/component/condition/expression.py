@@ -92,14 +92,6 @@ class ExpressionCondition(Condition):
             # Check AST depth before evaluation
             _check_ast_depth(tree)
             result = _evaluate_ast(tree, runtime)
-            
-            # Ensure the result is a boolean value
-            if not isinstance(result, bool):
-                raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                          StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                              expression="<expression>",
-                                              error_msg="Expression did not evaluate to a boolean value"
-                                          ))
 
             return result
         except SyntaxError as e:

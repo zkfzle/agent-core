@@ -23,9 +23,9 @@ class StreamNodeWithTracer(MockNodeBase):
             await runtime.trace_error(e)
             raise e
 
-        await asyncio.sleep(random.randint(0, 5))
+        await asyncio.sleep(random.randint(0, 2))
         for data in self._datas:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
             await runtime.write_custom_stream(data)
         print("StreamNode: output = " + str(inputs))
         return inputs

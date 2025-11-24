@@ -530,7 +530,13 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code, StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=task.exception()))
             else:
                 raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code, StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
-
+        finally:
+            if not task.done():
+                task.cancel()
+                try:
+                    await task
+                except Exception:
+                    pass
 
     def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
         if isinstance(runtime, WorkflowRuntime):

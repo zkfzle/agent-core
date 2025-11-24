@@ -516,8 +516,8 @@ class TestTraceWorkflow:
                                            stream_modes=[BaseStreamMode.TRACE]):
                 logger.info("stream chunk: {%s}", chunk)
                 results.append(chunk)
-        assert e.value.error_code == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code
-        assert e.value.message == StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=RuntimeError("mocked stream error"))
+        assert e.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
+        assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="end", ability="stream", error=RuntimeError("mocked stream error"))
 
         assert len(results) == 7
         end_error_chunk = results[5]

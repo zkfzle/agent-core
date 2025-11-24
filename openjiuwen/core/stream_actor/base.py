@@ -14,7 +14,7 @@ from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
 class StreamConsumer(ABC):
     @abstractmethod
-    async def stream_call(self, event: asyncio.Event):
+    async def stream_call(self, event: asyncio.Event, done_callback):
         pass
 
     @abstractmethod
@@ -42,6 +42,7 @@ class StreamActor:
             for ability in abilities
         }
         self._task = None
+        self._task_error: asyncio.Future = None
         self._vertex = vertex
         self._node_id: str = node_id
 
@@ -51,9 +52,14 @@ class StreamActor:
                 f"discard message [{message}], because current component [{self._node_id}] can not handle message")
             return
         if self._task is None or self._task.done():
+            if self._task_error and self._task_error.exception():
+                logger.warning(
+                    f"discard message [{message}], because current component [{self._node_id}] has error [{self._task_error.exception()}], can not handle message ")
+                return
             logger.debug(f"actor [{self._node_id}] start by message: {message}")
             event = asyncio.Event()
-            self._task = asyncio.create_task(self._vertex.stream_call(event))
+            self._task_error = asyncio.Future()
+            self._task = asyncio.create_task(self._vertex.stream_call(event, self._error_callback))
             await event.wait()
             for _, processor in self._processors.items():
                 asyncio.create_task(processor.run())
@@ -65,6 +71,10 @@ class StreamActor:
         processor = self._processors[ability]
         logger.debug(f"processor [{processor.node_id}] generate message for ability: [{ability.name}]")
         return processor.generator(schema)
+
+    def _error_callback(self, error):
+        if error:
+            self._task_error.set_exception(error)
 
 
 class StreamProcessor:

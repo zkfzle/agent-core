@@ -1,6 +1,7 @@
 import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
@@ -40,7 +41,9 @@ class TestSubWorkflowComp:
             workflow_config = WorkflowConfig(workflow_max_nesting_depth=1)
             main_workflow = self.create_nesting_workflow(3, workflow_config)
             await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
-        assert err.value.message == "Sub workflow component running error, detail: workflow nesting hierarchy is too big, must <= 1"
+        assert err.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="sub2",
+             ability="invoke", error=JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
+             StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(detail='workflow nesting hierarchy is too big, must <= 1')))
 
         workflow_config = WorkflowConfig(workflow_max_nesting_depth=3)
         main_workflow = self.create_nesting_workflow(3, workflow_config)

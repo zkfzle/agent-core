@@ -4,6 +4,8 @@
 import asyncio
 from typing import Any, Optional, AsyncIterator, Literal
 
+from langgraph.errors import GraphInterrupt
+
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -12,7 +14,6 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.graph.atomic_node import AsyncAtomicNode
 from openjiuwen.core.graph.executable import Executable, Output
 from openjiuwen.core.graph.graph_state import GraphState
-from openjiuwen.core.graph.timeout_async_iterator_wrapper import TimeoutAsyncIteratorWrapper
 from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.utils import get_by_schema
@@ -44,36 +45,53 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         return True
 
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None,
-                              event: asyncio.Event = None):
-        if event is not None:
-            logger.debug(f"node {self._node_id} with ability {ability.name} set event")
-            event.set()
-        if ability == ComponentAbility.INVOKE:
-            batch_inputs = await self._pre_invoke()
-            if is_subgraph:
-                batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-            results = await self._executable.on_invoke(batch_inputs, runtime=self._runtime)
-            await self._post_invoke(results)
-        elif ability == ComponentAbility.STREAM:
-            batch_inputs = await self._pre_invoke()
-            if is_subgraph:
-                batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-            result_iter = self._executable.on_stream(batch_inputs, runtime=self._runtime)
-            await self._post_stream(result_iter)
-        elif ability == ComponentAbility.COLLECT:
-            collect_iter = await self._pre_stream(ability)
-            batch_output = await self._executable.on_collect(collect_iter, self._runtime)
-            await self._post_invoke(batch_output)
-        elif ability == ComponentAbility.TRANSFORM:
-            transform_iter = None
-            try:
-                transform_iter = await self._pre_stream(ability)
-            except Exception as e:
-                logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
-            output_iter = self._executable.on_transform(transform_iter, self._runtime)
-            await self._post_stream(output_iter)
-        else:
-            logger.error(f"error ComponentAbility: {ability.name}")
+                              event: asyncio.Event = None) -> bool:
+        try:
+            if event is not None:
+                logger.debug(f"node {self._node_id} with ability {ability.name} set event")
+                event.set()
+            if ability == ComponentAbility.INVOKE:
+                batch_inputs = await self._pre_invoke()
+                if is_subgraph:
+                    batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
+                results = await self._executable.on_invoke(batch_inputs, runtime=self._runtime)
+                await self._post_invoke(results)
+            elif ability == ComponentAbility.STREAM:
+                batch_inputs = await self._pre_invoke()
+                if is_subgraph:
+                    batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
+                result_iter = self._executable.on_stream(batch_inputs, runtime=self._runtime)
+                await self._post_stream(result_iter)
+            elif ability == ComponentAbility.COLLECT:
+                collect_iter = await self._pre_stream(ability)
+                batch_output = await self._executable.on_collect(collect_iter, self._runtime)
+                await self._post_invoke(batch_output)
+            elif ability == ComponentAbility.TRANSFORM:
+                transform_iter = None
+                try:
+                    transform_iter = await self._pre_stream(ability)
+                except Exception as e:
+                    logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
+                output_iter = self._executable.on_transform(transform_iter, self._runtime)
+                await self._post_stream(output_iter)
+            else:
+                logger.error(f"error ComponentAbility: {ability.name}")
+            return True
+        except GraphInterrupt:
+            raise
+        except JiuWenBaseException as e:
+            if e.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code:
+                raise e
+            else:
+                raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
+                                          StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
+                                                                                           ability=ability.name,
+                                                                                           error=e))
+        except Exception as e:
+            raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code, StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id, ability=ability.name, error=e))
+        finally:
+            if event and not event.is_set():
+                event.set()
 
     async def __call__(self, state: GraphState, config) -> Output:
         if self._executable.post_commit():
@@ -114,37 +132,36 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         return results
 
     async def _pre_stream(self, ability: ComponentAbility) -> dict:
-        queue_manager = self._runtime.actor_manager()
+        actor_manager = self._runtime.actor_manager()
         inputs_schema = self._node_config.stream_io_configs.inputs_schema if self._node_config else None
         logger.debug(f"{ability} consumer handler inputs schema: {inputs_schema}")
-        return await queue_manager.consume(self._node_id, ability, inputs_schema)
+        return await actor_manager.consume(self._node_id, ability, inputs_schema)
 
     async def _post_stream(self, results_iter: AsyncIterator) -> None:
+        is_end_node = isinstance(self._executable, End)
+        is_sub_graph = self._runtime.parent_id() != ''
         try:
-            queue_manager = self._runtime.actor_manager()
+            actor_manager = self._runtime.actor_manager()
             output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
             output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config else None
             end_stream_index = 0
-            timeout_results_iter = TimeoutAsyncIteratorWrapper(results_iter, timeout=self._stream_called_timeout,
-                                                               raise_on_timeout=True)
-            is_end_node = isinstance(self._executable, End)
-            is_sub_graph = self._runtime.parent_id() != ''
-            async for chunk in timeout_results_iter:
+            async for chunk in results_iter:
                 if output_transformer is None:
-                    message = queue_manager.stream_transform.get_by_default_transformer(chunk, output_schema) \
+                    message = actor_manager.stream_transform.get_by_default_transformer(chunk, output_schema) \
                         if output_schema else chunk
                 else:
-                    message = queue_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
+                    message = actor_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
                 await self._process_chunk(message, is_end_node, end_stream_index, is_sub_graph)
                 end_stream_index += 1
-            if is_end_node and is_sub_graph:
-                await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
-            else:
-                await queue_manager.end_message(self._node_id)
         except Exception as e:
             if self._runtime.tracer() is not None:
                 await self.__trace_error__(e)
             raise e
+        finally:
+            if is_end_node and is_sub_graph:
+                await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
+            else:
+                await self._runtime.actor_manager().end_message(self._node_id)
 
     async def _process_chunk(self, message, is_end_node: bool, end_stream_index: int, is_sub_graph: bool):
         if is_end_node and not is_sub_graph:
@@ -207,30 +224,35 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                                               timeout=self._stream_called_timeout))
         logger.debug("node [%s] call finished", self._node_id)
 
-    async def stream_call(self, event: asyncio.Event):
+    async def stream_call(self, event: asyncio.Event, error_callback):
         self._stream_called = True
         self._stream_done = asyncio.Future()
         logger.debug(f"node [{self._node_id}] stream entrypoint has been called")
         event.set()
 
         if self._runtime is None or self._runtime.actor_manager() is None:
-            raise JiuWenBaseException(1, "queue manager is not initialized")
+            error = JiuWenBaseException(1, "queue manager is not initialized")
+            self._stream_done.set_result(error)
+            error_callback(error)
+            return
         error = None
         try:
-            call_ability = self._stream_abilities()
             tasks = []
+            call_ability = self._stream_abilities()
             for ability in call_ability:
                 e = asyncio.Event()
                 task = asyncio.create_task(self._run_executable(ability, event=e))
                 await e.wait()
                 tasks.append(task)
-            await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks, return_exceptions=True)
             logger.debug(f"node [{self._node_id}] all streaming tasks have been finished")
-        except JiuWenBaseException as e:
-            logger.error(f"failed to call node {self._node_id}, error: {e}")
-            error = JiuWenBaseException(e.error_code, "failed to stream, caused by " + e.message)
-        except BaseException as e:
-            logger.warning(f"failed to call node {self._node_id}, unknown error: {e}")
+            for result in results:
+                if isinstance(result, Exception):
+                    raise result
+        except Exception as e:
+            logger.error(f"failed to call node [{self._node_id}], error: {e}")
+            error_callback(e)
+            error = e
         finally:
             self._stream_done.set_result(error if error else True)
             logger.debug(f"node [{self._node_id}] stream call finished")

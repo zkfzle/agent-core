@@ -501,6 +501,10 @@ async def test_interaction_with_exception():
 
 
 class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
+    def __init__(self):
+        super().__init__()
+        self._raise_error: bool = True
+
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         array = inputs.get("array")
         for item in array:
@@ -512,6 +516,10 @@ class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
         async for item in iter:
             yield {'array': item}
             i += 1
+            if i >=3:
+                if self._raise_error:
+                    self._raise_error = False
+                    raise JiuWenBaseException(-1, "mock error")
 
     async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         iter = inputs.get("array")
@@ -520,7 +528,7 @@ class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
             results.append(item)
         return {"collect": results}
 
-async def test_workflow_stream_with_auto_calculate():
+async def test_workflow_stream_with_exception():
     workflow = Workflow()
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${user_inputs.array}"})
     workflow.add_workflow_comp("stream", StreamNodeWithException(), inputs_schema={"array": "${start.array}"})
@@ -531,6 +539,12 @@ async def test_workflow_stream_with_auto_calculate():
     workflow.add_stream_connection("stream", "transform")
     workflow.add_stream_connection("transform", "collect")
     workflow.add_connection("collect", "end")
-    result = await workflow.invoke(inputs={"user_inputs": {"array": [1,2,3,4,5,6,7]}}, runtime=WorkflowRuntime())
+    with pytest.raises(JiuWenBaseException) as e:
+        await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}},
+                                       runtime=WorkflowRuntime())
+    assert e.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
+    assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="transform", ability="transform", error=JiuWenBaseException(-1, "mock error"))
+
+    result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, runtime=WorkflowRuntime())
     assert result.result == {'responseContent': '', 'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
 

@@ -128,7 +128,7 @@ def split_nested_path(nested_key: str) -> list:
             if base_part:
                 final_list.append(base_part)
 
-            indexes = re.findall(r'\[(\d+)\]|\[\'([^\']+)\'\]', param)
+            indexes = re.findall(r'\[(-?\d+)\]|\[\'([^\']+)\'\]', param)
             for idx_tuple in indexes:
                 if idx_tuple[0]:
                     final_list.append(int(idx_tuple[0]))

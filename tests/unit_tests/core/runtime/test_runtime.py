@@ -55,7 +55,7 @@ class TestRuntime:
         assert sub_node1_context.state().get_global('c') == 4
         assert sub_node1_context.state().get('url') == '0.0.0.2'
 
-    def test_context_state(self):
+    def test_get_by_schema(self):
         source = {}
         # 增加a.b: nums属性
         update_dict({"a.b.nums": [1, 2, 3]}, source)
@@ -78,6 +78,7 @@ class TestRuntime:
         assert get_by_schema({"result": ["abc", "cde"]}, data=source) == {"result": ["abc", "cde"]}
         assert get_by_schema({"result": {"abc": "cde", "result": "${1}"}}, data=source) == {
             "result": {"abc": "cde", "result": None}}
+        assert get_by_schema({"a": "${a.b[-1]}"}, source) == {'a': 3}
         source1 = {'a': {'b': ['cc', 'dd', 'ee']}}
         assert get_by_schema({"result": "${a.b[1]}"}, data=source1) == {"result": 'dd'}
 

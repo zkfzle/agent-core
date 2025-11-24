@@ -16,11 +16,12 @@ from openjiuwen.core.memory.config.config_manager import ConfigManger
 from openjiuwen.core.memory.generation.generation import Generator
 from openjiuwen.core.memory.memory_logging import get_logger
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
-from openjiuwen.memory.store.user_mem_store import UserMemStore
+from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.memory.store.message import create_tables
 
 logger = get_logger()
 
@@ -47,6 +48,8 @@ class MemoryEngine(MemoryEngineBase):
                        semantic_db_instance: BaseSemanticStore,
                        db_engine_instance: Engine,
                        kv_db_instance: BaseKVStore):
+        if db_engine_instance is not None:
+            create_tables(db_engine_instance)
         data_id_generator = DataIdManager(kv_db_instance)
         user_mem_store = UserMemStore(kv_db_instance)
         self.user_profile_manager = UserProfileManager(

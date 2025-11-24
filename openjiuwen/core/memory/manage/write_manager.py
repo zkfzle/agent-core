@@ -4,12 +4,10 @@
 
 from typing import Any
 
-from .base_memory_manager import BaseMemoryManager
-from ..mem_unit.memory_unit import BaseMemoryUnit
-from ..memory_logging import get_logger
-from ....memory.store.user_mem_store import UserMemStore
-
-logger = get_logger()
+from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
+from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 
 class WriteManager:

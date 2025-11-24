@@ -4,14 +4,6 @@
 
 from pydantic import BaseModel, Field
 
-
-class ModelConfig(BaseModel):
-    model_name_or_path: str
-    device: str | None = "cpu"
-    normalize: bool | None = True
-    batch_size: int | None = 16
-    max_seq_length: int | None = 512
-
 class RealtimeConfig(BaseModel):
     window_size: int = 5
     user_profile_custom_define: dict[str, str] = {}
@@ -31,5 +23,3 @@ class Config(BaseModel):
     enable_long_term_mem: bool | None = False # generate long-term memory or not
     enable_session_summary: bool | None = False # generate session summary or not
     realtime_process_config: RealtimeConfig = Field(default_factory=RealtimeConfig)
-    vector_store_dir: str = ""
-    kv_store_dir: str = ""

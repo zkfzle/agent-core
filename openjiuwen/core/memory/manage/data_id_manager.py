@@ -6,7 +6,8 @@ import threading
 
 
 class DataIdManager:
-    ID_KEY = 'id_manager:next_id'
+    SEPARATOR = "\x1F"
+    ID_KEY = f'id_manager{SEPARATOR}next_id'
 
     def __init__(self, kv_store):
         self.lock = threading.Lock()

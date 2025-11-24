@@ -1,6 +1,6 @@
 import random
 from datetime import datetime
-from openjiuwen.memory.store.user_mem_store import UserMemStore
+from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 import unittest
 from openjiuwen.memory.store.dbm_kv_store import DbmKVStore
 import os
@@ -99,7 +99,7 @@ class TestUserMemStore(unittest.TestCase):
         self.assertEqual(len(topic_data), 1)
 
         # Test delete and delete_by_user
-        self.assertTrue(store.delete_be_user(user_id1, app_id1))
+        self.assertTrue(store.delete_by_user(user_id1, app_id1))
         self.assertTrue(store.delete(user_id2, app_id2, mem_id3))
         self.assertEqual(store.get_all(user_id1, app_id1), None)
         self.assertEqual(store.get_all(user_id2, app_id2), None)

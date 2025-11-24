@@ -49,39 +49,39 @@ class TestDBMStore(unittest.TestCase):
         self.assertTrue(len(files) > 0, "dbm files should be created")
 
     def test_get_by_regex(self):
-        self.store.set("session_summary:user1:app1:session1", "mock_value")
-        self.store.set("session_summary:user1:app2:session2", "mock_value")
-        self.store.set("session_summary:user1:app1:session3", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp1\x1Fsession1", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp2\x1Fsession2", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp1\x1Fsession3", "mock_value")
 
-        res = self.store.get_by_regex(r"session_summary:user1:.*$")
+        res = self.store.get_by_regex("session_summary\x1Fuser1\x1F.*$")
         self.assertEqual(res, {
-            "session_summary:user1:app1:session1": "mock_value",
-            "session_summary:user1:app2:session2": "mock_value",
-            "session_summary:user1:app1:session3": "mock_value"
+            "session_summary\x1Fuser1\x1Fapp1\x1Fsession1": "mock_value",
+            "session_summary\x1Fuser1\x1Fapp2\x1Fsession2": "mock_value",
+            "session_summary\x1Fuser1\x1Fapp1\x1Fsession3": "mock_value"
         })
 
     def test_delete_by_regex(self):
-        self.store.set("session_summary:user1:app1:session1", "mock_value")
-        self.store.set("session_summary:user1:app2:session2", "mock_value")
-        self.store.set("session_summary:user1:app1:session3", "mock_value")
-        self.store.set("session_summary:user2:app1:session4", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp1\x1Fsession1", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp2\x1Fsession2", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp1\x1Fsession3", "mock_value")
+        self.store.set("session_summary\x1Fuser2\x1Fapp1\x1Fsession4", "mock_value")
 
-        self.store.delete_by_regex("^session_summary:+user1+:.*$")
-        self.assertFalse(self.store.exists("session_summary:user1:app1:session1"))
-        self.assertFalse(self.store.exists("session_summary:user1:app2:session2"))
-        self.assertFalse(self.store.exists("session_summary:user1:app1:session3"))
-        self.assertTrue(self.store.exists("session_summary:user2:app1:session4"))
+        self.store.delete_by_regex("^session_summary\x1F+user1+\x1F.*$")
+        self.assertFalse(self.store.exists("session_summary\x1Fuser1\x1Fapp1\x1Fsession1"))
+        self.assertFalse(self.store.exists("session_summary\x1Fuser1\x1Fapp2\x1Fsession2"))
+        self.assertFalse(self.store.exists("session_summary\x1Fuser1\x1Fapp1\x1Fsession3"))
+        self.assertTrue(self.store.exists("session_summary\x1Fuser2\x1Fapp1\x1Fsession4"))
 
     def test_delete_by_regex_1(self):
-        self.store.set("session_summary:user1:app1:session1", "mock_value")
-        self.store.set("session_summary:user1:app2:session2", "mock_value")
-        self.store.set("session_summary:user1:app1:session3", "mock_value")
-        self.store.set("session_summary:user2:app1:session4", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp1\x1Fsession1", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp2\x1Fsession2", "mock_value")
+        self.store.set("session_summary\x1Fuser1\x1Fapp1\x1Fsession3", "mock_value")
+        self.store.set("session_summary\x1Fuser2\x1Fapp1\x1Fsession4", "mock_value")
 
-        self.store.delete_by_regex("^[^:]+:user1:.*$")
-        self.assertFalse(self.store.exists("session_summary:user1:app1:session1"))
-        self.assertFalse(self.store.exists("session_summary:user1:app2:session2"))
-        self.assertTrue(self.store.exists("session_summary:user2:app1:session4"))
+        self.store.delete_by_regex("^[^\x1F]+\x1Fuser1\x1F.*$")
+        self.assertFalse(self.store.exists("session_summary\x1Fuser1\x1Fapp1\x1Fsession1"))
+        self.assertFalse(self.store.exists("session_summary\x1Fuser1\x1Fapp2\x1Fsession2"))
+        self.assertTrue(self.store.exists("session_summary\x1Fuser2\x1Fapp1\x1Fsession4"))
 
 if __name__ == "__main__":
     unittest.main()

@@ -115,7 +115,7 @@ class UserMemStore:
             self.kv_store.delete(user_mem_key)
             return True
     
-    def delete_be_user(self, user_id: str, app_id: str) -> bool:
+    def delete_by_user(self, user_id: str, app_id: str) -> bool:
         """delete all data under the given user_id and app_id"""
         delete_regex_key = self.__get_concatenation_key([re.escape(user_id), re.escape(app_id), ".*"])
         with self._lock.write_lock():

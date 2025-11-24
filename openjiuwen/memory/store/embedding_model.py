@@ -8,31 +8,20 @@ from openjiuwen.core.memory.config.config import ModelConfig
 import torch.nn.functional as F
 
 class EmbeddingModel:
-    def __init__(self, config: ModelConfig):
-        self._validate_config(config)
-        self.model_config = config
+    BATCH_SIZE = 16
+    def __init__(self, model_name_or_path):
+        self.model_name_or_path = model_name_or_path
         self.tokenizer, self.model = self._load_model_and_tokenizer()
 
-    def _validate_config(self, config: ModelConfig):
-        if config.device not in ["cpu", "cuda"]:
-            raise ValueError(f"unsupported device type: {config.device}, only 'cpu' or 'cuda' is supported")
-
-        if not isinstance(config.batch_size, int) or config.batch_size <= 0:
-            raise ValueError(f"invalid batch_size: {config.batch_size}，must be a positive integer")
-
-        if not isinstance(config.max_seq_length, int) or config.max_seq_length <= 0:
-            raise ValueError(f"invalid max_seq_length: {config.max_seq_length}，must be a positive integer")
-
-    def _load_model_and_tokenizer(self, config: ModelConfig) -> tuple[AutoTokenizer, AutoModel]:
+    def _load_model_and_tokenizer(self) -> tuple[AutoTokenizer, AutoModel]:
         try:
             tokenizer = AutoTokenizer.from_pretrained(
-                config.model_name_or_path,
+                self.model_name_or_path,
                 trust_remote_code=True
             )
             model = AutoModel.from_pretrained(
-                config.model_name_or_path,
+                self.model_name_or_path,
                 trust_remote_code=True,
-                device_map=config.device
             )
             model.eval()
             return tokenizer, model
@@ -43,23 +32,21 @@ class EmbeddingModel:
         if not texts:
             return []
         all_embeddings: List[List[float]] = []
-        device = self.model_config.device
+        device = "cpu"
 
-        for i in range(0, len(texts), self.model_config.batch_size):
-            batch_texts = texts[i:i + self.model_config.batch_size]
+        for i in range(0, len(texts), self.BATCH_SIZE):
+            batch_texts = texts[i:i + self.BATCH_SIZE]
             inputs = self.tokenizer(
                 batch_texts,
                 padding=True,
                 truncation=True,
-                max_length=self.model_config.max_seq_length,
+                max_length=512,
                 return_tensors="pt", **kwargs
             ).to(device)
 
             with torch.no_grad():
                 model_output = self.model(**inputs)
             embeddings = model_output[0][:, 0]
-
-            if self.model_config.normalize:
-                embeddings = F.normalize(embeddings, p=2, dim=1)
+            embeddings = F.normalize(embeddings, p=2, dim=1)
             all_embeddings.extend(embeddings.cpu().tolist())
         return all_embeddings

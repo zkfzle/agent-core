@@ -6,15 +6,13 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 
-from ..store.base_semantic_store import BaseSemanticStore
-from ..common.base import parse_memory_hit_infos
-from ..manage.base_memory_manager import BaseMemoryManager
-from .data_id_manager import DataIdManager
-from ..mem_unit.memory_unit import UserProfileUnit, MemoryType, ConflictType, BaseMemoryUnit
-from ..memory_logging import get_logger
-from ....memory.store.user_mem_store import UserMemStore
-
-logger = get_logger()
+from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
+from openjiuwen.core.memory.common.base import parse_memory_hit_infos
+from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
+from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
+from openjiuwen.core.memory.mem_unit.memory_unit import UserProfileUnit, MemoryType, ConflictType, BaseMemoryUnit
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 
 class UserProfileManager(BaseMemoryManager):
@@ -192,7 +190,7 @@ class UserProfileManager(BaseMemoryManager):
         """
         dimension = len(mem[0])
         if dimension == 0:
-            raise ValueError('dimension must noy be zero')
+            raise ValueError('dimension must not be zero')
         if self.semantic_recall:
             self.semantic_recall.add(mem=mem, memory_id=memory_id, user_id=user_id,
                                      app_id=app_id, mem_type=mem_type)

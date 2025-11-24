@@ -184,11 +184,6 @@ class TestSqlDbStore(unittest.TestCase):
         row = self.store.condition_get("messages", {"id": ["m1"]})
         self.assertIsNone(row)
 
-    def test_close(self):
-        self.store.close()
-
-    def test_delete_table(self):
-        self.store.delete_table(CONTEXT_CONFIG["table"])
 
 if __name__ == "__main__":
     unittest.main()

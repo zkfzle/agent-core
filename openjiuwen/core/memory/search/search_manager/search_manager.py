@@ -4,11 +4,11 @@
 
 from typing import Optional, Any
 
-from ...manage.base_memory_manager import BaseMemoryManager
-from ...manage.user_profile_manager import UserProfileManager
-from ...manage.variable_manager import VariableManager
-from ...mem_unit.memory_unit import MemoryType
-from openjiuwen.memory.store.user_mem_store import UserMemStore
+from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
+from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
+from openjiuwen.core.memory.manage.variable_manager import VariableManager
+from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
+from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 
 class SearchManager:
@@ -26,7 +26,7 @@ class SearchManager:
                 if mem_type in self.user_mem_manager_list:
                     res = manager.search(query=query, top_k=top_k, **kwargs)
                     if res is not None:
-                        result.append(res)
+                        result.extend(res)
         elif search_type in self.all_mem_manager_list:
             if self.managers.get(search_type, None):
                 res = self.managers[search_type].search(query=query, top_k=top_k, **kwargs)

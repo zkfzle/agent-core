@@ -44,15 +44,14 @@ def convert_faiss_result(distance: np.ndarray, ids: np.ndarray) -> List[List[Sea
 class FaissSemanticStore(BaseSemanticStore):
     vector_persist_interval = 1 * 24 * 60 * 60
 
-    def __init__(self, config: Config, model_config: ModelConfig):
+    def __init__(self, vector_store_dir: str, model_name_or_path: str):
 
         self.normalize_L2 = True
         self.search_type = SearchType.COSINE
         self.mod_cnt = defaultdict(int)
         self.index_store: dict[str, faiss.Index] = {}
         self.suffix = ".faiss"
-        data_store_dir = config.vector_store_dir
-        path = Path(data_store_dir)
+        path = Path(vector_store_dir)
         self.fold_path = str(path.resolve())
 
         self.instance_lock = threading.RLock()
@@ -60,8 +59,7 @@ class FaissSemanticStore(BaseSemanticStore):
         self.timer = TimeUtil(interval=self.vector_persist_interval, callback=self.__persist_all)
         self.timer.start()
         self.closed = False
-        self.model_config = model_config
-        self.embedding_model = EmbeddingModel(model_config)
+        self.embedding_model = EmbeddingModel(model_name_or_path)
 
     def __with_lock(self, index_name: str):
         return self.index_locks[index_name]

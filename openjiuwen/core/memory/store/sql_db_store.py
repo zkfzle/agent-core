@@ -12,22 +12,15 @@ logger = logging.getLogger(__name__)
 class SqlDbStore():
     def __init__(self, conn_pool: engine.Engine):
         self.conn_pool = conn_pool
+        self._table_cache: dict[str, Table] = {}
 
     def _get_table(self, table_name: str) -> Table:
+        if table_name in self._table_cache:
+            return self._table_cache[table_name]
         metadata = MetaData()
-        columns = []
-        try:
-            with self.conn_pool.connect() as conn:
-                result = conn.execute(text(f"PRAGMA table_info('{table_name}')"))
-                rows = result.fetchall()
-                if not rows:
-                    raise ValueError(f"Table '{table_name}' does not exist")
-                for row in rows:
-                    columns.append(Column(row[1], Text))
-        except Exception as e:
-            logger.error(f"Failed to read table schema for '{table_name}'", exc_info=e)
-            raise
-        return Table(table_name, metadata, *columns, extend_existing=True)
+        table = Table(table_name, metadata, autoload_with=self.conn_pool)
+        self._table_cache[table_name] = table
+        return table
 
     def write(self, table: str, data: dict) -> bool:
         t = self._get_table(table)
@@ -142,10 +135,11 @@ class SqlDbStore():
             logger.error("Delete failed", exc_info=e)
             return False
 
-    def delete_table(self, table: str) -> bool:
+    def delete_table(self, table_name: str) -> bool:
         try:
-            with self.conn_pool.connect() as conn:
-                conn.execute(text(f'DROP TABLE IF EXISTS "{table}"'))
+            metadata = MetaData()
+            t = Table(table_name, metadata)
+            t.drop(self.conn_pool, checkfirst=True)
             return True
         except Exception as e:
             logger.error("Delete table failed", exc_info=e)

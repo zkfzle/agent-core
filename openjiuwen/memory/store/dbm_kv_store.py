@@ -51,8 +51,10 @@ class DbmKVStore(BaseKVStore):
             k = key_b.decode()
             if pat.search(k):
                 delete_keys.append(key_b)
-        for key_b in delete_keys:
-            del self.db[key_b]
+        if delete_keys:
+            for key_b in delete_keys:
+                del self.db[key_b]
+            self._cached_get.cache_clear()
 
     def mget(self, keys: List[str], default: Any = None) -> List[str]:
         result = []

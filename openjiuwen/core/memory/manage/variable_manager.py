@@ -14,6 +14,7 @@ logger = get_logger()
 
 
 class VariableManager(BaseMemoryManager):
+    SEPARATOR = "\x1F"
     def __init__(self, kv_store: BaseKVStore):
         self.kv_store = kv_store
 
@@ -48,8 +49,8 @@ class VariableManager(BaseMemoryManager):
     def delete_by_user_id(self, user_id: str, app_id: str):
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
-        user_key = f"^user_var:{escape(user_id)}:{escape(app_id)}:/*$"
-        session_key = f"^session_var:{escape(user_id)}:{escape(app_id)}:/*$"
+        user_key = f"^user_var{self.SEPARATOR}{escape(user_id)}{self.SEPARATOR}{escape(app_id)}{self.SEPARATOR}.*$"
+        session_key = f"^session_var{self.SEPARATOR}{escape(user_id)}{self.SEPARATOR}{escape(app_id)}{self.SEPARATOR}.*$"
         self.kv_store.delete_by_regex(user_key)
         self.kv_store.delete_by_regex(session_key)
 
@@ -71,12 +72,12 @@ class VariableManager(BaseMemoryManager):
         """query variable by user_id, app_id, variable_name return variable mem."""
         self._check_user_and_app_id(user_id, app_id, "Search")
         if not name or not name.strip():
-            regex_str = f"^user_var:{escape(user_id)}:{escape(app_id)}:.*$"
-            return {k.split(":")[-1]: v for k, v in self.kv_store.get_by_regex(regex_str).items()}
+            regex_str = f"^user_var{self.SEPARATOR}{escape(user_id)}{self.SEPARATOR}{escape(app_id)}{self.SEPARATOR}.*$"
+            return {k.split(f"{self.SEPARATOR}")[-1]: v for k, v in self.kv_store.get_by_regex(regex_str).items()}
         if session_id:
-            key = f"session_var:{user_id}:{app_id}:{session_id}:{name}"
+            key = f"session_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{app_id}{self.SEPARATOR}{session_id}{self.SEPARATOR}{name}"
         else:
-            key = f"user_var:{user_id}:{app_id}:{name}"
+            key = f"user_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{app_id}{self.SEPARATOR}{name}"
         return {name: self.kv_store.get(key)}
 
     @staticmethod
@@ -93,11 +94,20 @@ class VariableManager(BaseMemoryManager):
         if var_name is not None:
             # 1) user_var
             if session_id is None:
-                key = f"user_var:{usr_id}:{app_id}:{var_name}"
+                key = (
+                    f"user_var{VariableManager.SEPARATOR}{usr_id}"
+                    f"{VariableManager.SEPARATOR}{app_id}"
+                    f"{VariableManager.SEPARATOR}{var_name}"
+                )
                 value = None if for_deletion else user_var_value
             # 2# session_var
             else:
-                key = f"session_var:{usr_id}:{app_id}:{session_id}:{var_name}"
+                key = (
+                    f"session_var{VariableManager.SEPARATOR}{usr_id}"
+                    f"{VariableManager.SEPARATOR}{app_id}"
+                    f"{VariableManager.SEPARATOR}{session_id}"
+                    f"{VariableManager.SEPARATOR}{var_name}"
+                )
                 value = None if for_deletion else session_var_value
         return key, value
 

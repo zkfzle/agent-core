@@ -84,10 +84,11 @@ class RequestChatModel(BaseModelClient):
         params = self._request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         
-        connector = None
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
             connector = aiohttp.TCPConnector(ssl=ssl_context)
+        else:
+            connector = aiohttp.TCPConnector(ssl=False)
         
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         async with aiohttp.ClientSession(connector=connector) as session:
@@ -153,10 +154,11 @@ class RequestChatModel(BaseModelClient):
 
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
         
-        connector = None
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
             connector = aiohttp.TCPConnector(ssl=ssl_context)
+        else:
+            connector = aiohttp.TCPConnector(ssl=False)
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         async with aiohttp.ClientSession(connector=connector) as session:

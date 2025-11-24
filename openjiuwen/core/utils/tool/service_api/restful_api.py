@@ -136,27 +136,19 @@ class RestfulApi(Tool):
         ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
-                async with session.request(
-                    self.method,
-                    ip_address_url,
-                    headers=request_args.get("headers"),
-                    allow_redirects=False,
-                    timeout=timeout_aiohttp,
-                    **request_arg,
-                ) as response:
-                    response_data = await _data_of_async_request(response)
+            connector = aiohttp.TCPConnector(ssl=ssl_context)
         else:
-            async with aiohttp.ClientSession() as session:
-                async with session.request(
-                    self.method,
-                    ip_address_url,
-                    headers=request_args.get("headers"),
-                    allow_redirects=False,
-                    timeout=timeout_aiohttp,
-                    **request_arg,
-                ) as response:
-                    response_data = await _data_of_async_request(response)
+            connector = aiohttp.TCPConnector(ssl=False)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.request(
+                self.method,
+                ip_address_url,
+                headers=request_args.get("headers"),
+                allow_redirects=False,
+                timeout=timeout_aiohttp,
+                **request_arg,
+            ) as response:
+                response_data = await _data_of_async_request(response)
         return response_data
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import ipaddress
 import os
 import re
 import socket
@@ -31,17 +32,24 @@ class UrlUtils:
             ExceptionUtils.raise_exception(StatusCode.URL_INVALID_ERROR, f"illegal ip address")
 
     @staticmethod
-    def get_global_proxy_url() -> Optional[str]:
+    def get_global_proxy_url(url: str) -> Optional[str]:
         """get global proxy url"""
-        global_proxy_url = os.getenv("GLOBAL_PROXY_URL")
+        no_proxy_list = UrlUtils._get_no_proxy_list()
+        parsed_url = urlparse(url)
+        hostname = parsed_url.hostname
+        global_proxy_url = None
+
+        if not UrlUtils._is_no_proxy_match(hostname, no_proxy_list):
+            global_proxy_url = os.getenv("http_proxy")
+
         if global_proxy_url:
             return global_proxy_url.strip()
         return global_proxy_url
 
     @staticmethod
-    def get_global_proxies() -> Optional[dict]:
+    def get_global_proxies(url: str) -> Optional[dict]:
         """get global proxies"""
-        global_proxy_url = UrlUtils.get_global_proxy_url()
+        global_proxy_url = UrlUtils.get_global_proxy_url(url)
         if global_proxy_url:
             return {
                 "http": global_proxy_url,
@@ -68,3 +76,23 @@ class UrlUtils:
     def _ip_to_long(ip_addr):
         """ trans ip to long"""
         return unpack("!L", inet_aton(ip_addr))[0]
+
+    @staticmethod
+    def _get_no_proxy_list() -> list[str]:
+        no_proxy = os.getenv("NO_PROXY", "")
+        no_proxy_list = [domain.strip() for domain in no_proxy.split(",") if domain.strip()]
+        return no_proxy_list
+
+    @staticmethod
+    def _is_no_proxy_match(hostname: str, no_proxy_match: list[str]) -> bool:
+        """check no proxy matchs"""
+        if not no_proxy_match or not hostname:
+            return False
+        clean_hostname = hostname.strip().lower()
+        for domain in no_proxy_match:
+            clean_domain = domain.strip().lower()
+            if not clean_domain:
+                continue
+            if clean_hostname.endswith(clean_domain):
+                return True
+        return False

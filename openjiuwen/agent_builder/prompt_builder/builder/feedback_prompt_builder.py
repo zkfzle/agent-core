@@ -131,21 +131,13 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                  )
         ).to_messages()
         feedback_message = self._model.invoke(self._model_name, messages)
-        intent, optimized_feedback = self._extract_intent_from_respones(feedback_message.content)
-        if not intent:
-            raise JiuWenBaseException(
-                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
-                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
-                    error_msg=f"failed to get intent from feedback"
-                )
-            )
-        if not optimized_feedback.strip():
-            raise JiuWenBaseException(
-                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
-                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
-                    error_msg=f"failed to get optimized feedback"
-                )
-            )
+        try:
+            intent, optimized_feedback = self._extract_intent_from_respones(feedback_message.content)
+        except JiuWenBaseException:
+            logger.warning(f"Intent recognition failed, using original feedback instead")
+            return feedback
+        if not intent or not optimized_feedback.strip():
+            return feedback
         return optimized_feedback.strip()
 
     def _is_index_within_bounds(self, prompt: str, mode, start_pos: int, end_pos: Optional[int] = None) -> bool:

@@ -182,10 +182,10 @@ class RequestParams:
         self.ip_address_url = url
         self.headers = headers
         self.request_arg = request_arg
-        if restful_api.method in ["GET", "DELETE"]:
+        if restful_api.method in ["GET"]:
             self.request_arg["params"] = self.query_params_in_inputs
-        elif restful_api.method in ["POST", "PUT"]:
-            self.request_arg["data"] = self.query_params_in_inputs
+        elif restful_api.method in ["POST"]:
+            self.request_arg["json"] = self.query_params_in_inputs
         else:
             raise JiuWenBaseException(
                 error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message="the http method is not supported"

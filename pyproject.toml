@@ -47,6 +47,3 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["jiuwen"]
 addopts = ["-v", "--html=report/index.html", "--self-contained-html"]
-
-[project.optional-dependencies]
-pulsar = ["pulsar-client==3.5.0"]

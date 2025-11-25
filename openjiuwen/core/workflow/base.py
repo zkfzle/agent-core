@@ -4,6 +4,7 @@
 import asyncio
 import inspect
 import os
+import re
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from enum import Enum
@@ -42,7 +43,6 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAb
 from openjiuwen.graph.pregel.graph import PregelGraph
 from openjiuwen.graph.visualization.drawable import Drawable
 
-
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
 class WorkflowExecutionState(Enum):
@@ -74,6 +74,14 @@ class BaseWorkFlow:
     def config(self):
         return self._workflow_config
 
+    def _validate_comp_id(self, comp_id: str) -> None:
+        """validate compnent id"""
+        if len(comp_id) > 100:
+            raise JiuWenBaseException(-1, "workflow component id length must not exceed 100")
+        if not re.match(r'^[A-Za-z0-9_-]+$', comp_id):
+            raise JiuWenBaseException(-1, "workflow component id must contain only letters (a–z, A–Z), "
+                                          "digits (0–9), underscores (_) or hyphens (-)")
+
     def add_workflow_comp(
             self,
             comp_id: str,
@@ -89,6 +97,7 @@ class BaseWorkFlow:
             stream_outputs_transformer: Transformer = None,
             comp_ability: list[ComponentAbility] = None
     ) -> Self:
+        self._validate_comp_id(comp_id)
         if not isinstance(workflow_comp, WorkflowComponent):
             workflow_comp = self._convert_to_component(workflow_comp)
         node_spec = NodeSpec(
@@ -225,7 +234,7 @@ class BaseWorkFlow:
 
         # Create a dictionary to indicate whether the user has provided ability configuration for components
         user_provided_abilities = {
-            comp_id: len(comp_conf.abilities) > 0 
+            comp_id: len(comp_conf.abilities) > 0
             for comp_id, comp_conf in conf.items()
         }
 
@@ -256,7 +265,6 @@ class BaseWorkFlow:
                 # If the node has both streaming input and streaming output, it's TRANSFORM ability
                 if source in target_stream_map:
                     self._add_ability(conf, source, ComponentAbility.TRANSFORM)
-                    
         for target in target_stream_map:
             if not user_provided_abilities[target]:
                 # If the node has both streaming input and regular output, it's COLLECT ability

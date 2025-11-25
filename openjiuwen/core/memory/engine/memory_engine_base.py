@@ -82,7 +82,8 @@ class MemoryEngineBase(ABC):
         pass
     
     @abstractmethod
-    def search_user_mem(self, user_id: str, app_id: str, query: str, num: int) -> list[dict[str, Any]]:
+    def search_user_mem(self, user_id: str, app_id: str, query: str, num: int, threshold: float) \
+            -> list[dict[str, Any]]:
         pass
     
     @abstractmethod

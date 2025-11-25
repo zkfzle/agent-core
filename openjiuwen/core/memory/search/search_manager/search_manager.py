@@ -18,7 +18,7 @@ class SearchManager:
         self.managers = managers
         self.mem_store = user_mem_store
 
-    def search(self, query: str, top_k: int = 5, search_type: Optional[str] = None, **kwargs) \
+    def search(self, query: str, top_k: int = 5, threshold: float = 0.3, search_type: Optional[str] = None, **kwargs) \
         -> list[dict[str, Any]] | None:
         result = []
         if search_type is None:
@@ -36,7 +36,8 @@ class SearchManager:
                 raise ValueError(f"{search_type} memory manager not inited")
         else:
             raise ValueError(f"{search_type} is not a valid search type")
-        return result
+        filtered_res = [item for item in result if item["score"] >= threshold]
+        return filtered_res
 
     def list_user_mem(self, user_id: str, app_id: str, nums: int, pages: int) -> list[dict[str, Any]] | None:
         data = self.mem_store.get_all(user_id=user_id, app_id=app_id)

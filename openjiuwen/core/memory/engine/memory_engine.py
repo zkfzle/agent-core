@@ -188,13 +188,14 @@ class MemoryEngine(MemoryEngineBase):
             raise ValueError("Query Variable failed: variable name is empty.")
         return self.search_manager.get_user_variable(user_id, app_id, name)
     
-    def search_user_mem(self, user_id: str, app_id: str, query: str, num: int) -> list[dict[str, Any]]:
+    def search_user_mem(self, user_id: str, app_id: str, query: str, num: int, threshold: float = 0.3) \
+            -> list[dict[str, Any]]:
         _check_user_and_app_id(user_id, app_id, "Search User Memory")
         if not query or query.strip() == "":
             raise ValueError("Search User Memory failed: query is empty.")
         if num is None or num <= 0:
             raise ValueError("Search User Memory failed: num must be greater than 0.")
-        return self.search_manager.search(query=query, app_id=app_id, top_k=num, user_id=user_id)
+        return self.search_manager.search(query=query, app_id=app_id, top_k=num, user_id=user_id, threshold=threshold)
     
     def list_user_variables(self, user_id: str, app_id: str) -> dict[str, str]:
         _check_user_and_app_id(user_id, app_id, "List User Variables")

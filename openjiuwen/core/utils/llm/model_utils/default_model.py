@@ -67,7 +67,7 @@ class RequestChatModel(BaseModelClient):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
-                proxies=UrlUtils.get_global_proxies(),
+                proxies=UrlUtils.get_global_proxies(self.api_base),
                 allow_redirects=False,
                 timeout=self.timeout
             )
@@ -94,7 +94,7 @@ class RequestChatModel(BaseModelClient):
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
                     url=self.api_base,
-                    proxy=UrlUtils.get_global_proxy_url(),
+                    proxy=UrlUtils.get_global_proxy_url(self.api_base),
                     headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {self.api_key}"
@@ -127,7 +127,7 @@ class RequestChatModel(BaseModelClient):
                     "Authorization": f"Bearer {self.api_key}"
                 },
                 json=params,
-                proxies=UrlUtils.get_global_proxies(),
+                proxies=UrlUtils.get_global_proxies(self.api_base),
                 stream=True,
                 allow_redirects=False,
                 timeout=self.timeout
@@ -164,7 +164,7 @@ class RequestChatModel(BaseModelClient):
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
                     url=self.api_base,
-                    proxy=UrlUtils.get_global_proxy_url(),
+                    proxy=UrlUtils.get_global_proxy_url(self.api_base),
                     headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {self.api_key}"

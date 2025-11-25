@@ -40,7 +40,7 @@ class UrlUtils:
         global_proxy_url = None
 
         if not UrlUtils._is_no_proxy_match(hostname, no_proxy_list):
-            global_proxy_url = os.getenv("http_proxy")
+            global_proxy_url = os.getenv("http_proxy", os.getenv("HTTP_PROXY", ""))
 
         if global_proxy_url:
             return global_proxy_url.strip()
@@ -79,7 +79,7 @@ class UrlUtils:
 
     @staticmethod
     def _get_no_proxy_list() -> list[str]:
-        no_proxy = os.getenv("NO_PROXY", "")
+        no_proxy = os.getenv("no_proxy", os.getenv("NO_PROXY", ""))
         no_proxy_list = [domain.strip() for domain in no_proxy.split(",") if domain.strip()]
         return no_proxy_list
 

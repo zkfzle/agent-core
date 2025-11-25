@@ -133,27 +133,6 @@ class StatusCode(Enum):
     # Multi-Agent Orchestration - Multi-Agent Debug 133000 - 133999
     # Multi-Agent Orchestration - Distribution Runtime 134000 - 134999
     # Multi-Agent Orchestration - Multi-Agent Runner 131000-131030
-    MULTI_AGENT_RUNNER_ALREADY_STARTED = (131000, "Runner is already started")
-    MULTI_AGENT_TARGET_MEMBER_NOT_FOUND = (131001, "Target member not found: {}")
-    MULTI_AGENT_MESSAGE_SUSPENDED = (131002, "Message suspended, waiting for user input: {}")
-    MULTI_AGENT_PROCESSING_INTERRUPTED = (131003, "Processing interrupted: {}")
-    MULTI_AGENT_RUNNER_NOT_RUNNING = (131004, "Runner not running: {}")
-    MULTI_AGENT_RUNNER_NOT_STARTED = (131005, "Runner not started: {}")
-
-    #  Multi-Agent Orchestration - Multi-Agent AgentRunSpace 131031-131060
-    MULTI_AGENT_RUN_SPACE_EXECUTION_ERROR = (131031, "AgentRunSpace execution error: {}")
-    MULTI_AGENT_RUN_SPACE_SHUTDOWN_QUEUE_ERROR = (131032, "Failed to shutdown message queue: {}")
-    MULTI_AGENT_RUN_SPACE_STOP_TASK_ERROR = (131033, "Failed to stop run task: {}")
-    MULTI_AGENT_RUN_SPACE_STOP_IDLE_ERROR = (131034, "Failed to stop when idle: {}")
-    MULTI_AGENT_RUN_SPACE_CHECK_CONDITION_ERROR = (131035, "Failed to check stop condition: {}")
-    MULTI_AGENT_RUN_SPACE_EXECUTE_STOP_WHEN_ERROR = (131036, "Failed to execute stop_when: {}")
-
-    # Multi-Agent Orchestration - Multi-Agent Member 131061-131090
-    MULTI_AGENT_MEMBER_PROCESS_MESSAGE_ERROR = (131061, "Failed to process message in member {}: {}")
-    MULTI_AGENT_MEMBER_PROCESSING_ERROR = (131062, "Error occurred while processing message: {}")
-
-    # Multi-Agent Orchestration - Multi-Agent MessageQueue 131091-131099
-    MULTI_AGENT_MESSAGE_NOT_PROCESSING = (131091, "Message {} is not currently being processed")
 
     # Runner 134000 - 134999
     REMOTE_AGENT_REQUEST_TIMEOUT = (134001, "RemoteAgent {} request timeout")

@@ -66,6 +66,7 @@ class Trainer:
             return agent
         logger.info(f"val set baseline score: {progress.val_baseline_score}")
         parameter_searcher = ParameterSearcher(self, case_loader=val_cases)
+        score = 0.0
         for _ in progress.run_epoch():
             # get trace of execution
             self._callbacks.on_train_epoch_begin(agent, progress)
@@ -88,7 +89,7 @@ class Trainer:
                 if score > progress.best_batch_score:
                     progress.best_batch_score = score
                     best_batch_parameters = cur_batch_parameters
-            logger.info(f"train epoch {progress.current_epoch}, val set score:: {score}")
+            logger.info(f"train epoch {progress.current_epoch}, val set score: {score}")
             if progress.best_batch_score > progress.best_score:
                 progress.best_score = progress.best_batch_score
                 self._update_agent(agent, best_batch_parameters)

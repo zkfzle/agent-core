@@ -263,6 +263,11 @@ class BaseWorkFlow:
                 if target in source_map:
                     self._add_ability(conf, target, ComponentAbility.COLLECT)
 
+        for target in target_map:
+            if not user_provided_abilities[target]:
+                if target in source_map:
+                    self._add_ability(conf, target, ComponentAbility.INVOKE)
+
     @staticmethod
     def _add_ability(conf: dict[str, NodeSpec], comp: str, ability: ComponentAbility):
         if ability not in conf[comp].abilities:

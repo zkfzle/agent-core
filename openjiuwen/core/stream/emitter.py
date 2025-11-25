@@ -113,9 +113,13 @@ class StreamEmitter:
                 "Can not emit data after the stream emitter is closed.")
         await self._stream_queue.send(stream_data)
 
+    def is_closed(self) -> bool:
+        return self._closed
+
     async def close(self) -> None:
         if self._closed:
             logger.debug("StreamWriter is already closed.")
+            return
         self._closed = True
 
         if not self._stream_queue.is_closed:

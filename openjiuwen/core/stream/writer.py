@@ -7,6 +7,7 @@ from pydantic import BaseModel, ValidationError
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.stream.base import OutputSchema, TraceSchema, CustomSchema
 from openjiuwen.core.stream.emitter import StreamEmitter
 
@@ -40,7 +41,10 @@ class StreamWriter(Generic[T, S]):
                                       StatusCode.STREAM_WRITER_WRITE_FAILED.errmsg.format(reason=error)) from error
 
     async def _do_write(self, validated_data: S) -> None:
-        await self._stream_emitter.emit(validated_data)
+        if self._stream_emitter and not self._stream_emitter.is_closed():
+            await self._stream_emitter.emit(validated_data)
+        else:
+            logger.warning(f'discard message [{validated_data}], because stream emitter has already been closed')
 
 
 class OutputStreamWriter(StreamWriter[dict, OutputSchema]):

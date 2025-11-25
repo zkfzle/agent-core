@@ -95,12 +95,13 @@ class MemoryEngine(MemoryEngineBase):
         config = self.config_manager.get_config(app_id, request_config)
         threshold = config.realtime_process_config.window_size
         user_profile_custom_define = config.realtime_process_config.user_profile_custom_define
-        history_messages = self.message_manager.get(
+        history_messages_tuple = self.message_manager.get(
             user_id=user_id,
             app_id=app_id,
             session_id=session_id,
             message_len=threshold
         )
+        history_messages = [msg[0] for msg in history_messages_tuple]
         message_mem_id = "-1"
         # when multi messages, use last message_mem_id
         for msg in messages:

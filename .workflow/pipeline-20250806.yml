@@ -27,7 +27,7 @@ stages:
           - uv sync --all-extras
           - uv run pytest
           - /usr/local/python3.11/bin/uv sync --group dev
-          - /usr/local/python3.11/bin/uv sync --all-extrasecho "=== Syncing dependencies with uv ==="
+          - /usr/local/python3.11/bin/uv sync --all-extras
           - /usr/local/python3.11/bin/uv run pytest
         report:
           path: report

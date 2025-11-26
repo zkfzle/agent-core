@@ -6,11 +6,13 @@ ReActAgent - 极简版 ReAct Agent（无中断、无Controller）
 """
 
 import json
+import asyncio
 from typing import Dict, Any, AsyncIterator, List
 from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
+from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
@@ -209,13 +211,32 @@ class ReActAgent(BaseAgent):
                 await runtime.post_run()
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """流式调用 - 暂时使用 invoke 实现
-        
-        简化版：直接返回 invoke 结果
+        """流式调用 - 极简版
         """
-        result = await self.invoke(inputs, runtime)
-        yield result
+        # 准备runtime
+        session_id = inputs.get("conversation_id", "default_session")
+        runtime_created = False
+        if runtime is None:
+            # 使用 BaseAgent 的 _runtime，需要创建 task runtime
+            runtime = await self._runtime.pre_run(session_id=session_id, inputs=inputs)
+            runtime_created = True
 
+        async def stream_process():
+            try:
+                final_result = await self.invoke(inputs, runtime)
+                await runtime.write_stream(OutputSchema(type="answer", index=0,
+                                                        payload={"output": final_result, "result_type": "answer"}))
+            except Exception as e:
+                logger.error(f"ReActAgent stream error: {e}")
+            finally:
+                # 清理 runtime（如果是我们创建的）
+                if runtime_created:
+                    await runtime.post_run()
+
+        task = asyncio.create_task(stream_process())
+        async for result in runtime.stream_iterator():
+            yield result
+        await task
 
 # ===== 工厂函数 =====
 

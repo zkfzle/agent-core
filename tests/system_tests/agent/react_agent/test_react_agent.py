@@ -260,6 +260,37 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 使用注解工具最终输出结果：{result}")
 
+    @unittest.skip("require network")
+    async def test_react_agent_stream_with_annotated_function(self):
+        """测试使用tool注解装饰的函数作为工具（使用新的动态配置方法）"""
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+
+        # 1. 创建最小化配置的 agent（Linus 风格：只传必要参数）
+        react_agent_config = ReActAgentConfig(
+            id="react_agent_1235",
+            version="0.0.3",
+            description="AI计算助手（使用注解）",
+            model=self._create_model()
+        )
+
+        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+
+        # 2. 动态添加 prompt
+        react_agent.add_prompt([
+            dict(role="system", content="你是一个数学计算专家。")
+        ])
+
+        # 3. 动态添加工具（使用注解装饰的函数，自动生成 schema）
+        annotated_tool = self._create_function_tool_with_annotation()
+        react_agent.add_tools([annotated_tool])
+
+        # 4. 添加工具到 resource_mgr
+        resource_mgr.tool().add_tool("add", annotated_tool)
+
+        result = Runner.run_agent_streaming(react_agent, {"query": "计算1+2"})
+        async for i in result:
+            print("ReActAgent 输出结果：", i)
+
 
 if __name__ == "__main__":
     unittest.main()

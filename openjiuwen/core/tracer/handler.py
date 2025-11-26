@@ -98,11 +98,13 @@ class TraceAgentHandler(TraceBaseHandler):
 
     def _update_end_trace_data(self, span: TraceAgentSpan, outputs, **kwargs):
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)
+        elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
         update_data = {
             "end_time": end_time,
-            "outputs": outputs,
-            "elapsed_time": self._get_elapsed_time(span.start_time, end_time)
+            "outputs": outputs
         }
+        if elapsed_time is not None:
+            update_data["elapsed_time"] = elapsed_time
         self._span_manager.update_span(span, update_data)
 
     def _update_error_trace_data(self, span: TraceAgentSpan, error, **kwargs):
@@ -112,11 +114,13 @@ class TraceAgentHandler(TraceBaseHandler):
         else:
             error_info = {"error_code": StatusCode.ERROR.code,
                           "message": type(error).__name__}
+        elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
         update_data = {
             "end_time": end_time,
-            "error": error_info,
-            "elapsed_time": self._get_elapsed_time(span.start_time, end_time)
+            "error": error_info
         }
+        if elapsed_time is not None:
+            update_data["elapsed_time"] = elapsed_time
         self._span_manager.update_span(span, update_data)
 
     @trigger_event
@@ -289,9 +293,11 @@ class TraceWorkflowHandler(TraceBaseHandler):
             if on_invoke_data:
                 span.on_invoke_data.append(on_invoke_data)
             update_data = {
-                "end_time": end_time,
-                "elapsed_time": self._get_elapsed_time(span.start_time, end_time)
+                "end_time": end_time
             }
+            elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
+            if elapsed_time is not None:
+                update_data["elapsed_time"] = elapsed_time
         else:
             if not isinstance(span.on_invoke_data, list):
                 span.on_invoke_data = []
@@ -307,11 +313,13 @@ class TraceWorkflowHandler(TraceBaseHandler):
     async def on_post_invoke(self, invoke_id: str, outputs, inputs=None, **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)
+        elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
         update_data = {
             "outputs": outputs,
-            "end_time": end_time,
-            "elapsed_time": self._get_elapsed_time(span.start_time, end_time)
+            "end_time": end_time
         }
+        if elapsed_time is not None:
+            update_data["elapsed_time"] = elapsed_time
         if inputs and span.component_type in ["End", "Message"]:
             span.inputs = inputs
 

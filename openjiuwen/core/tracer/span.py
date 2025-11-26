@@ -10,7 +10,7 @@ from pydantic import ConfigDict, Field, BaseModel
 
 class Span(BaseModel):
     trace_id: str = Field(alias="traceId")
-    start_time: datetime = Field(default=None, alias="startTime")
+    start_time: Optional[datetime] = Field(default=None, alias="startTime")
     end_time: Optional[datetime] = Field(default=None, alias="endTime")
     inputs: Optional[dict] = Field(default=None, alias="inputs")
     outputs: Optional[dict] = Field(default=None, alias="outputs")

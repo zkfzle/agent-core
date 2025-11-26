@@ -83,7 +83,7 @@ class UserProfileManager(BaseMemoryManager):
             raise ValueError("Must pass app_id")
         if user_id == "":
             raise ValueError("Must pass user_id")
-        mem_type = kwargs.get("mem_type", MemoryType.USER_PROFILE.value)
+        mem_type = MemoryType.USER_PROFILE.value
         mem_ids, scores = self._recall_by_vector(query, user_id, app_id, top_k, mem_type)
         retrieve_res = self.mem_store.batch_get(user_id=user_id, app_id=app_id, mem_ids=mem_ids)
         if retrieve_res is None:
@@ -102,7 +102,7 @@ class UserProfileManager(BaseMemoryManager):
         if data is None:
             logger.error(f"Delete user_profile in db failed, the mem of mem_id({mem_id}) is not exist.")
             return False
-        mem_type = kwargs.get("mem_type", MemoryType.USER_PROFILE.value)
+        mem_type = MemoryType.USER_PROFILE.value
         with self.lock:
             self.mem_store.delete(mem_id=mem_id, user_id=data['user_id'], app_id=data['app_id'])
             self._delete_vector_user_profile_memory(memory_id=[mem_id], user_id=data['user_id'],
@@ -110,7 +110,7 @@ class UserProfileManager(BaseMemoryManager):
         return True
 
     def delete_by_user_id(self, user_id: str, app_id: str):
-        data = self.mem_store.get_all(user_id=user_id, app_id=app_id)
+        data = self.mem_store.get_all(user_id=user_id, app_id=app_id, mem_type=MemoryType.USER_PROFILE.value)
         if data is None:
             logger.error(f"Delete user_profile in db failed, the mem of user_id({user_id}) is not exist.")
             return False
@@ -122,7 +122,7 @@ class UserProfileManager(BaseMemoryManager):
         return True
 
     def list_user_profile(self, user_id: str, app_id: str, profile_type: Optional[str] = None,
-                          mem_type=MemoryType.USER_PROFILE) -> List[UserProfileUnit]:
+                          mem_type=MemoryType.USER_PROFILE) -> List[UserProfileUnit] | None:
         datas = self.mem_store.get_all(user_id=user_id, app_id=app_id, mem_type=mem_type.value)
         new_datas = []
         if profile_type is not None:
@@ -195,7 +195,7 @@ class UserProfileManager(BaseMemoryManager):
             self.semantic_recall.add(mem=mem, memory_id=memory_id, user_id=user_id,
                                      app_id=app_id, mem_type=mem_type)
         else:
-            raise ValueError('vector store must not be None')
+            raise ValueError('semantic store must not be None')
 
     def _delete_vector_user_profile_memory(
             self, user_id: str, app_id: str,
@@ -204,4 +204,4 @@ class UserProfileManager(BaseMemoryManager):
             self.semantic_recall.remove(ids=memory_id, user_id=user_id,
                                      app_id=app_id, mem_type=mem_type)
         else:
-            raise ValueError('vector store must not be None')
+            raise ValueError('semantic store must not be None')

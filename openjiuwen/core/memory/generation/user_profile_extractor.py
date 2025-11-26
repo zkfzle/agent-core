@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict
+from typing import List
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.common.logging import logger
@@ -8,7 +8,7 @@ from openjiuwen.core.memory.generation.categorizer import Categorizer
 from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_EXTRACTOR_PROMPT
 
 
-def _get_message(user_define: Dict[str, str] = None) -> str:
+def _get_message(user_define: dict[str, str] = None) -> str:
     if user_define and len(user_define) > 0:
         user_define_description = ""
         user_define_format = ""
@@ -38,9 +38,9 @@ class UserProfileExtractor:
         history_messages: List[BaseMessage],
         base_chat_model: BaseModelClient,
         config: Config,
-        user_define: Dict[str, str] = None,
+        user_define: dict[str, str] = None,
         retries: int = 3
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         sym_prompt = _get_message(user_define)
         model_input = Categorizer.GetModelInput(
             messages,
@@ -65,9 +65,9 @@ class UserProfileExtractor:
         history_messages: List[BaseMessage],
         base_chat_model: BaseModelClient,
         config: Config,
-        user_define: Dict[str, str] = None,
+        user_define: dict[str, str] = None,
         retries: int = 3
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         sym_prompt = _get_message(user_define)
         model_input = Categorizer.GetModelInput(
             messages,

@@ -8,6 +8,19 @@ from typing import Any, Optional
 from openjiuwen.core.common.logging import logger
 
 
+# Default timeout for each send attempt in seconds
+DEFAULT_SEND_ATTEMPT_TIMEOUT = 0.2
+
+# Maximum number of retries for sending data
+DEFAULT_MAX_SEND_RETRIES = 5
+
+# Default timeout for receiving data in seconds
+DEFAULT_RECEIVE_TIMEOUT = 0.2
+
+# Default timeout for closing the queue in seconds
+DEFAULT_CLOSE_TIMEOUT = 5.0
+
+
 class AsyncStreamQueue:
 
     def __init__(self, maxsize: int = 0):
@@ -26,8 +39,8 @@ class AsyncStreamQueue:
 
     async def send(self,
                    data: Any,
-                   attempt_timeout: float = 0.2,
-                   max_retries: int = 5) -> None:
+                   attempt_timeout: float = DEFAULT_SEND_ATTEMPT_TIMEOUT,
+                   max_retries: int = DEFAULT_MAX_SEND_RETRIES) -> None:
         if self._closed:
             raise RuntimeError("StreamQueue is already closed")
 
@@ -44,8 +57,12 @@ class AsyncStreamQueue:
                     f"Sending stream data timeout error, timeout: {attempt_timeout}, attempt: {attempt + 1}"
                 )
                 continue
+        
+        logger.error(
+            f"Failed to send stream data after {max_retries} attempts, timeout: {attempt_timeout}"
+        )
 
-    async def receive(self, timeout: float = 0.2) -> Optional[Any]:
+    async def receive(self, timeout: float = DEFAULT_RECEIVE_TIMEOUT) -> Optional[Any]:
         if self._closed:
             raise RuntimeError("StreamQueue is already closed")
 
@@ -60,7 +77,7 @@ class AsyncStreamQueue:
                 f"Receiving stream data timeout error, timeout: {timeout}")
             return None
 
-    async def close(self, timeout: float = 5.0) -> None:
+    async def close(self, timeout: float = DEFAULT_CLOSE_TIMEOUT) -> None:
         if self._closed:
             logger.debug("StreamQueue is already closed")
             return

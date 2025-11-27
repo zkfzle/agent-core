@@ -161,7 +161,15 @@ class BaseModelClient:
         else:
             if all(isinstance(item, Dict) for item in messages):
                 return messages
-            return [item.model_dump(exclude_none=True) for item in messages]
+            result = []
+            for item in messages:
+                item_dict = item.model_dump(exclude_none=True)
+                if item.role == "assistant":
+                    if "usage_metadata" in item_dict:
+                        item_dict.pop("usage_metadata")
+                result.append(item_dict)
+
+            return result
 
     def post_process(self, model_output):
         pass

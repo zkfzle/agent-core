@@ -8,20 +8,18 @@ from typing import Any, Optional
 from openjiuwen.core.common.logging import logger
 
 
-# Default timeout for each send attempt in seconds
-DEFAULT_SEND_ATTEMPT_TIMEOUT = 0.2
-
-# Maximum number of retries for sending data
-DEFAULT_MAX_SEND_RETRIES = 5
-
-# Default timeout for receiving data in seconds
-DEFAULT_RECEIVE_TIMEOUT = 0.2
-
-# Default timeout for closing the queue in seconds
-DEFAULT_CLOSE_TIMEOUT = 5.0
-
-
 class AsyncStreamQueue:
+    # Default timeout for each send attempt in seconds
+    DEFAULT_SEND_ATTEMPT_TIMEOUT = 0.2
+
+    # Maximum number of retries for sending data
+    DEFAULT_MAX_SEND_RETRIES = 5
+
+    # Default timeout for receiving data in seconds
+    DEFAULT_RECEIVE_TIMEOUT = 0.2
+
+    # Default timeout for closing the queue in seconds
+    DEFAULT_CLOSE_TIMEOUT = 5.0
 
     def __init__(self, maxsize: int = 0):
         if not isinstance(maxsize, int):

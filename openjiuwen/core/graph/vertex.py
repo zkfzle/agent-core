@@ -50,30 +50,47 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             if event is not None:
                 logger.debug(f"node {self._node_id} with ability {ability.name} set event")
                 event.set()
-            if ability == ComponentAbility.INVOKE:
+            
+            # Simplified strategy pattern using lambda functions wrapping async execution
+            async def invoke_strategy():
                 batch_inputs = await self._pre_invoke()
                 if is_subgraph:
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
                 results = await self._executable.on_invoke(batch_inputs, runtime=self._runtime)
                 await self._post_invoke(results)
-            elif ability == ComponentAbility.STREAM:
+            
+            async def stream_strategy():
                 batch_inputs = await self._pre_invoke()
                 if is_subgraph:
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
                 result_iter = self._executable.on_stream(batch_inputs, runtime=self._runtime)
                 await self._post_stream(result_iter)
-            elif ability == ComponentAbility.COLLECT:
-                collect_iter = await self._pre_stream(ability)
+            
+            async def collect_strategy():
+                collect_iter = await self._pre_stream(ComponentAbility.COLLECT)
                 batch_output = await self._executable.on_collect(collect_iter, self._runtime)
                 await self._post_invoke(batch_output)
-            elif ability == ComponentAbility.TRANSFORM:
+            
+            async def transform_strategy():
                 transform_iter = None
                 try:
-                    transform_iter = await self._pre_stream(ability)
+                    transform_iter = await self._pre_stream(ComponentAbility.TRANSFORM)
                 except Exception as e:
                     logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
                 output_iter = self._executable.on_transform(transform_iter, self._runtime)
                 await self._post_stream(output_iter)
+            
+            ability_strategies = {
+                ComponentAbility.INVOKE: invoke_strategy,
+                ComponentAbility.STREAM: stream_strategy,
+                ComponentAbility.COLLECT: collect_strategy,
+                ComponentAbility.TRANSFORM: transform_strategy
+            }
+            
+            # Execute strategy if found
+            strategy = ability_strategies.get(ability)
+            if strategy:
+                await strategy()
             else:
                 logger.error(f"error ComponentAbility: {ability.name}")
             return True
@@ -88,7 +105,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                                                                                            ability=ability.name,
                                                                                            error=e))
         except Exception as e:
-            raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code, StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id, ability=ability.name, error=e))
+            raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
+                                      StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
+                                                                                       ability=ability.name,
+                                                                                       error=e))
         finally:
             if event and not event.is_set():
                 event.set()

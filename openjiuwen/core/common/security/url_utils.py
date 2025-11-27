@@ -7,7 +7,7 @@ import re
 import socket
 from struct import unpack
 from socket import inet_aton
-from typing import Optional
+from typing import Optional, List
 from urllib.parse import urlparse
 
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -34,14 +34,11 @@ class UrlUtils:
     @staticmethod
     def get_global_proxy_url(url: str) -> Optional[str]:
         """get global proxy url"""
-        no_proxy_list = UrlUtils._get_no_proxy_list()
-        parsed_url = urlparse(url)
-        hostname = parsed_url.hostname
-        global_proxy_url = None
+        if url and UrlUtils.should_bypass_proxy(url):
+            return None
 
-        if not UrlUtils._is_no_proxy_match(hostname, no_proxy_list):
-            global_proxy_url = os.getenv("http_proxy", os.getenv("HTTP_PROXY", ""))
-
+        global_proxy_url = os.getenv("http_proxy") or os.getenv("https_proxy") \
+                           or os.getenv("HTTP_PROXY") or os.getenv("HTTPS_PROXY")
         if global_proxy_url:
             return global_proxy_url.strip()
         return global_proxy_url
@@ -78,21 +75,67 @@ class UrlUtils:
         return unpack("!L", inet_aton(ip_addr))[0]
 
     @staticmethod
-    def _get_no_proxy_list() -> list[str]:
-        no_proxy = os.getenv("no_proxy", os.getenv("NO_PROXY", ""))
-        no_proxy_list = [domain.strip() for domain in no_proxy.split(",") if domain.strip()]
-        return no_proxy_list
+    def should_bypass_proxy(url: str) -> bool:
+        """check if URL should bypass proxy based on NO_PROXY environment variable"""
+        no_proxy = os.getenv("NO_PROXY") or os.getenv("no_proxy")
+        if not no_proxy:
+            return False
+
+        if no_proxy.strip() == "*":
+            return True
+
+        parsed_url = urlparse(url)
+        hostname = parsed_url.hostname
+        if not hostname:
+            return False
+
+        no_proxy_list = UrlUtils._parse_no_proxy(no_proxy)
+        return UrlUtils._hostname_matches_no_proxy(hostname, no_proxy_list)
 
     @staticmethod
-    def _is_no_proxy_match(hostname: str, no_proxy_match: list[str]) -> bool:
-        """check no proxy matchs"""
-        if not no_proxy_match or not hostname:
-            return False
-        clean_hostname = hostname.strip().lower()
-        for domain in no_proxy_match:
-            clean_domain = domain.strip().lower()
-            if not clean_domain:
-                continue
-            if clean_hostname.endswith(clean_domain):
+    def _parse_no_proxy(no_proxy_str: str) -> List[str]:
+        """parse NO_PROXY environment variable"""
+        no_proxy_str = no_proxy_str.replace(" ", ",").replace(";", ",")
+        entries = [
+            entry.strip().lower()
+            for entry in no_proxy_str.split(",")
+            if entry.strip()
+        ]
+        return entries
+
+    @staticmethod
+    def _hostname_matches_no_proxy(hostname: str, no_proxy_list: List[str]) -> bool:
+        """check if hostname matches any entry in NO_PROXY list"""
+
+        hostname_lower = hostname.lower()
+        for entry in no_proxy_list:
+            # 1. Wildcard "*" matches everything
+            if entry == "*":
                 return True
+            # 2. Exact domain match: "example.com" matches "example.com"
+            if entry == hostname_lower:
+                return True
+            # 3. Suffix match: ".example.com" matches "*.example.com"
+            if entry.startswith("."):
+                if hostname_lower.endswith(entry):
+                    return True
+            # 4. IP address exact match
+            if UrlUtils._is_ip_match(hostname_lower, entry):
+                return True
+
         return False
+
+    @staticmethod
+    def _is_ip_match(hostname: str, entry: str) -> bool:
+        """check if IP address or CIDR matches"""
+        try:
+            ip_addr = ipaddress.ip_address(hostname)
+
+            if "/" in entry:
+                network = ipaddress.ip_network(entry, strict=False)
+                return ip_addr in network
+            else:
+                entry_ip = ipaddress.ip_address(entry)
+                return ip_addr == entry_ip
+        except ValueError:
+            return False

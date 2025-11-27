@@ -236,6 +236,9 @@ class StatusCode(Enum):
     # Runtime - Tracer 191000 - 191999
     RUNTIME_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
     # Runtime - State 192000 - 192999
+    RUNTIME_STATE_RUNTIME_NONE = (192000, "Runtime is None, expected BaseRuntime instance")
+    RUNTIME_STATE_INVALID_RUNTIME_TYPE = (192001, "Invalid runtime type: {runtime_type}, expected BaseRuntime")
+    RUNTIME_STATE_INVALID_STATE_TYPE = (192002, "Invalid state type: {state_type}, expected CommitState")
     # Runtime - StreamWriter 193000 - 193999
     STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001,
                                          "failed to write stream, stream schema validate failed, details: {detail}")

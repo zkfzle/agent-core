@@ -16,10 +16,10 @@ class UserMemStore:
     HEX_NUM_PER_INT: int = 8
     IDS_STR: str = "ids"
     USER_PROFILE_TOPIC_STR: str = "UPT"
-    KEY_PREFIX_STR = "UMD"
+    KEY_PREFIX_STR: str = "UMD"
     MEM_TYPE_FIELD_KEY: str = "mem_type"
     TOPIC_FIELD_KEY: str = "profile_type"
-    SEPARATOR = "\x1F"
+    SEPARATOR: str = "\x1F"
 
     def __init__(self, kv_store_instance: BaseKVStore):
         if kv_store_instance is None:
@@ -130,8 +130,10 @@ class UserMemStore:
     def batch_get(self, user_id: str, app_id: str, mem_ids: list[str]) -> list[dict[str, Any]] | None:
         """get data from given ids"""
         with self._lock.read_lock():
-            return [self.__get(self.__get_user_mem_key(user_id, app_id, mem_id)) for mem_id in mem_ids]
-    
+            keys_list = [self.__get_user_mem_key(user_id, app_id, mem_id) for mem_id in mem_ids]
+            value_list = self.kv_store.mget(keys_list)
+            return [json.loads(key) for key in value_list if key is not None]
+
     def get_all(self, user_id: str, app_id: str, mem_type: str = None) -> list[dict[str, Any]] | None:
         """get data from given user_id|app_id|mem_type"""
         user_ids_key = self.__get_user_ids_key(user_id, app_id, mem_type)

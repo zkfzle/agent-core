@@ -5,6 +5,7 @@ import threading
 import time
 from enum import Enum
 from typing import Optional, Callable, Any
+from openjiuwen.core.common.logging import logger
 
 class VectorDBType(str, Enum):
     FAISS = "FAISS"
@@ -39,19 +40,19 @@ class TimeUtil:
         """single-thread run loop"""
         next_run_time = time.time() + self.interval
 
-        with self._running:
+        while self._running:
             current_time = time.time()
 
             if current_time >= next_run_time:
                 # execute callback
                 try:
-                    print(f"start executing scheduled tasks")
+                    logger.info("start executing scheduled tasks")
                     if self.callback_kwargs:
                         self.callback(**self.callback_kwargs)
                     else:
                         self.callback()
                 except Exception as e:
-                    print(f"callback execution exception: {e}")
+                    logger.error(f"callback execution exception: {e}")
 
                 next_run_time += self.interval
 

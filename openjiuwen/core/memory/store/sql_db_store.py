@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Any, Dict, List, Tuple
-from sqlalchemy import (text, engine, insert, update,
-                        select, delete, exists, Table, MetaData,
-                        Column, Text, column, and_, or_, desc, asc)
+from typing import Any, Dict, List
+from sqlalchemy import (engine, insert, update, select, delete, 
+                        Table, MetaData, and_, or_, desc, asc)
 import logging
 
 logger = logging.getLogger(__name__)

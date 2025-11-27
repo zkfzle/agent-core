@@ -4,7 +4,7 @@
 """
 prompt optimization evaluators
 """
-
+import random
 import re
 from typing import List, Optional, Dict
 
@@ -14,7 +14,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.prompt.assemble.assembler import Assembler
-from openjiuwen.agent_builder.tune.base import EvaluatedCase
+from openjiuwen.agent_builder.tune.base import EvaluatedCase, TuneConstant
 from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer, TextualParameter
 
 PROMPT_INSTRUCTION_OPTIMIZE_TEMPLATE = Template(content="""
@@ -182,7 +182,6 @@ class InstructionOptimizer(BaseOptimizer):
             api_base=model_config.model_info.api_base
         )
         self._model_name = model_config.model_info.model_name
-        self._bad_cases_string: str = ""
 
     def _backward(self,
                  evaluated_cases: List[EvaluatedCase],
@@ -312,6 +311,13 @@ class InstructionOptimizer(BaseOptimizer):
             for eval_case in self._bad_cases
         )
         return error_example_string
+
+    def _get_bad_cases(self, evaluated_cases: List[EvaluatedCase]) -> List[EvaluatedCase]:
+        bad_cases = [case for case in evaluated_cases if case.score == 0]
+        self._bad_cases = bad_cases
+        if len(self._bad_cases) > TuneConstant.DEFAULT_MAX_SAMPLED_EXAMPLE_NUM:
+            self._bad_cases = random.sample(self._bad_cases, k=TuneConstant.DEFAULT_MAX_SAMPLED_EXAMPLE_NUM)
+        return self._bad_cases
 
     def _validate_and_revise_optimized_prompt(self,
                                               original_prompt: str,

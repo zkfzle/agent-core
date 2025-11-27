@@ -7,6 +7,7 @@ from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
 class MemoryEngineBase(ABC):
@@ -24,6 +25,10 @@ class MemoryEngineBase(ABC):
     
     @abstractmethod
     def set_app_config(self, app_id: str, config: MemoryConfig):
+        pass
+
+    @abstractmethod
+    def set_llm_model(self, config: ModelConfig):
         pass
 
     @abstractmethod

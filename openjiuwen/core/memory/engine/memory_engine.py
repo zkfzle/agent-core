@@ -22,6 +22,8 @@ from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.memory.store.message import create_tables
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
 def _check_user_and_app_id(user_id: str, app_id: str, context="Operation"):
@@ -75,7 +77,17 @@ class MemoryEngine(MemoryEngineBase):
             return False
         self.config_manager.set_app_config(app_id, config)
         return True
-    
+
+    def set_llm_model(self, config: ModelConfig):
+        request_config= {'model_name': config.model_info.model_name}
+        all_config = self.config_manager.get_config(request_config=request_config)
+        self.config_manager = ConfigManger(all_config)
+        self.llm_base = ModelFactory().get_model(
+            model_provider=config.model_provider,
+            api_key=config.model_info.api_key,
+            api_base=config.model_info.api_base
+        )
+
     def add_conversation_messages(
         self,
         user_id: str,

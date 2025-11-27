@@ -588,6 +588,9 @@ class BaseAgent(ABC):
             inputs=inputs
         )
 
+    async def clear_session(self, session_id: str = "default_session"):
+        await self._runtime.release(session_id)
+
 
 class ControllerAgent(BaseAgent):
     """Agent that holds Controller (new architecture)

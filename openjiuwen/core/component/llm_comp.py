@@ -254,6 +254,10 @@ class OutputFormatter:
                 if field_config.get("required", True):
                     missing_keys.append(field_name)
             else:
+                iterable_data = list(v) if (v := parsed_json[field_name]) and isinstance(v, (list, dict)) else []
+                for key in iterable_data:
+                    if key not in field_config.get("properties", {}):
+                        parsed_json[field_name].pop(key)
                 output[field_name] = parsed_json[field_name]
 
         if missing_keys:

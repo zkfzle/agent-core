@@ -65,8 +65,6 @@ class JsonOutputParser(BaseOutputParser):
         """
         buffer = ""
         for chunk in streaming_inputs:
-            await asyncio.sleep(0.001)
-
             if isinstance(chunk, AIMessageChunk):
                 if chunk.content:
                     buffer += chunk.content

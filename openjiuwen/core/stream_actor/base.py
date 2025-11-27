@@ -61,9 +61,9 @@ class StreamActor:
             self._task_error = asyncio.Future()
             self._task = asyncio.create_task(self._vertex.stream_call(event, self._error_callback))
             await event.wait()
-            for _, processor in self._processors.items():
+            for processor in self._processors.values():
                 asyncio.create_task(processor.run())
-        for _, processor in self._processors.items():
+        for processor in self._processors.values():
             logger.debug(f"processor [{processor.node_id}] receive message [{message}]")
             await processor.receive(message)
 

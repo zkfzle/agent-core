@@ -11,9 +11,9 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 
 class WriteManager:
-    def __init__(self, managers: dict[str, BaseMemoryManager], memStore: UserMemStore):
+    def __init__(self, managers: dict[str, BaseMemoryManager], mem_store: UserMemStore):
         self.managers = managers
-        self.memStore = memStore
+        self.mem_store = mem_store
 
     def add_mem(self, mem_units: list[BaseMemoryUnit]):
         for mem_unit in mem_units:
@@ -24,37 +24,37 @@ class WriteManager:
                 logger.warning(f"Unsupported memory type: {mem_type}")
 
     def update_mem_by_id(self, mem_id: str, memory: str):
-        context_data = self.__get_context_data_from_db(mem_id)
-        if context_data is None:
-            logger.error(f"Failed to update mem for mem_id: {mem_id}, because get context data failed")
+        mem_type = self.__get_mem_type_from_store(mem_id)
+        if mem_type is None:
+            logger.error(f"Failed to update mem for mem_id: {mem_id}, because get memory type failed")
             return
-        self.managers[context_data["mem_type"]].update(mem_id, memory)
+        self.managers[mem_type].update(mem_id, memory)
 
     def delete_mem_by_id(self, mem_id: str):
-        context_data = self.__get_context_data_from_db(mem_id)
-        if context_data is None:
-            logger.error(f"Failed to delete mem for mem_id: {mem_id}, because get context data failed")
+        mem_type = self.__get_mem_type_from_store(mem_id)
+        if mem_type is None:
+            logger.error(f"Failed to delete mem for mem_id: {mem_id}, because get memory type failed")
             return
-        self.managers[context_data["mem_type"]].delete(mem_id)
+        self.managers[mem_type].delete(mem_id)
 
     def delete_mem_by_user_id(self, user_id: str, app_id: str):
         for manager in self.managers:
             self.managers[manager].delete_by_user_id(user_id=user_id, app_id=app_id)
 
-    def __get_context_data_from_db(self, mem_id: str) -> dict[str, Any] | None:
-        context_data = None
+    def __get_mem_type_from_store(self, mem_id: str) -> str | None:
+        data = None
         try:
-            context_data = self.memStore.get_by_id(mem_id=mem_id)
+            data = self.mem_store.get_by_id(mem_id=mem_id)
         except Exception as e:
-            logger.error(f"Failed to get context memory: {e}")
+            logger.error(f"Failed to get memory: {e}")
             return None
-        if context_data is None:
-            logger.error(f"Failed to get context memory from db store for mem id: {mem_id}")
+        if data is None:
+            logger.error(f"Failed to get memory from store for mem id: {mem_id}")
             return None
-        if "mem_type" not in context_data or "user_id" not in context_data or "app_id" not in context_data:
-            logger.error(f"mem_type|user_id|app_id must exist in db store for mem id: {mem_id}")
+        if "mem_type" not in data:
+            logger.error(f"mem_type must exist in store for mem id: {mem_id}")
             return None
-        if context_data['mem_type'] not in self.managers:
-            logger.error(f"Unsupported memory type: {context_data['mem_type']} for mem id {mem_id}")
+        if data['mem_type'] not in self.managers:
+            logger.error(f"Unsupported memory type: {data['mem_type']} for mem id {mem_id}")
             return None
-        return context_data
+        return data['mem_type']

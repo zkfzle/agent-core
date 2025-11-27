@@ -43,7 +43,7 @@ class UserMemStore:
                 user_mem_ids_value = self.kv_store.get(user_mem_ids_key, "")
                 self.kv_store.set(user_mem_ids_key, self.__write_int(user_mem_ids_value, int(mem_id)))
 
-                #Append id to user profile topic ids
+                # Append id to user profile topic ids
                 if (data[UserMemStore.MEM_TYPE_FIELD_KEY] == MemoryType.USER_PROFILE.value and
                     UserMemStore.TOPIC_FIELD_KEY in data.keys() and
                     data[UserMemStore.TOPIC_FIELD_KEY] is not None):
@@ -79,54 +79,24 @@ class UserMemStore:
                 dict_value[new_key] = new_value
             self.kv_store.set(user_mem_key, json.dumps(dict_value))
             return True
-    
+
     def delete(self, user_id: str, app_id: str, mem_id: str):
         """delete data by given id"""
-        user_mem_key = self.__get_user_mem_key(user_id, app_id, mem_id)
         with self._lock.write_lock():
-            if not self.kv_store.exists(user_mem_key):
-                logger.warning(f"delete failed, user memory does not exists for user_id={user_id}, app_id={app_id}, "
-                               f"mem_id={mem_id}")
-                return True
-            data = self.kv_store.get(user_mem_key, "")
-            if data:
-                # Delete user mem_type ids
-                dict_value = json.loads(data)
-                if UserMemStore.MEM_TYPE_FIELD_KEY in dict_value:
-                    user_mem_ids_key = self.__get_user_ids_key(user_id, app_id,
-                                                               dict_value[UserMemStore.MEM_TYPE_FIELD_KEY])
-                    self.__delete_mem_id(user_mem_ids_key, mem_id)
+            self.__inner_delete(user_id, app_id, mem_id)
 
-                    #Delete user profile topic ids
-                    if (dict_value[UserMemStore.MEM_TYPE_FIELD_KEY] == MemoryType.USER_PROFILE.value and
-                        UserMemStore.TOPIC_FIELD_KEY in dict_value and
-                        dict_value[UserMemStore.TOPIC_FIELD_KEY] is not None):
-                        user_mem_topic_key = self.__get_concatenation_key([user_id, app_id,
-                                                                           UserMemStore.USER_PROFILE_TOPIC_STR,
-                                                                           dict_value[UserMemStore.TOPIC_FIELD_KEY]])
-                        self.__delete_mem_id(user_mem_topic_key, mem_id)
-            
-            # Delete user ids
-            user_ids_key = self.__get_user_ids_key(user_id, app_id)
-            self.__delete_mem_id(user_ids_key, mem_id)
-
-            # Delete user mem
-            self.kv_store.delete(user_mem_key)
-            return True
-    
-    def delete_by_user(self, user_id: str, app_id: str) -> bool:
-        """delete all data under the given user_id and app_id"""
-        delete_regex_key = self.__get_concatenation_key([re.escape(user_id), re.escape(app_id), ".*"])
+    def batch_delete(self, user_id: str, app_id: str, mem_ids: list[str]):
+        """batch delete data by given ids"""
         with self._lock.write_lock():
-            self.kv_store.delete_by_regex(delete_regex_key)
-        return True
-    
+            for mem_id in mem_ids:
+                self.__inner_delete(user_id, app_id, mem_id)
+
     def get(self, user_id: str, app_id: str, mem_id: str) -> dict[str, Any] | None:
         """get data from given id"""
         user_mem_key = self.__get_user_mem_key(user_id, app_id, mem_id)
         with self._lock.read_lock():
             return self.__get(user_mem_key)
-    
+
     def batch_get(self, user_id: str, app_id: str, mem_ids: list[str]) -> list[dict[str, Any]] | None:
         """get data from given ids"""
         with self._lock.read_lock():
@@ -174,6 +144,17 @@ class UserMemStore:
                 return None
             return json.loads(list(mem_value.values())[0])
 
+    def get_in_range(self, user_id: str, app_id: str, start_idx: int, end_idx: int) -> list[dict[str, Any]] | None:
+        user_ids_key = self.__get_user_ids_key(user_id, app_id)
+        with self._lock.read_lock():
+            if not self.kv_store.exists(user_ids_key):
+                return None
+            user_ids_value = self.kv_store.get(user_ids_key, "")
+            if not user_ids_value:
+                return None
+            mem_ids = self.__get_ids_in_range(user_ids_value, start_idx, end_idx)
+            return self.batch_get(user_id, app_id, mem_ids)
+
     def __get_user_ids_key(self, user_id: str, app_id: str, mem_type: str = None) -> str:
         if mem_type is None:
             return self.__get_concatenation_key([user_id, app_id, self.IDS_STR])
@@ -188,6 +169,37 @@ class UserMemStore:
         for field in fields:
             key_str += f"{self.SEPARATOR}{field}"
         return key_str
+
+    def __inner_delete(self, user_id: str, app_id: str, mem_id: str):
+        user_mem_key = self.__get_user_mem_key(user_id, app_id, mem_id)
+        if not self.kv_store.exists(user_mem_key):
+            logger.warning(f"delete failed, user memory does not exists for user_id={user_id}, app_id={app_id}, "
+                           f"mem_id={mem_id}")
+            return
+        data = self.kv_store.get(user_mem_key, "")
+        if data:
+            # Delete user mem_type ids
+            dict_value = json.loads(data)
+            if UserMemStore.MEM_TYPE_FIELD_KEY in dict_value:
+                user_mem_ids_key = self.__get_user_ids_key(user_id, app_id,
+                                                           dict_value[UserMemStore.MEM_TYPE_FIELD_KEY])
+                self.__delete_mem_id(user_mem_ids_key, mem_id)
+
+                # Delete user profile topic ids
+                if (dict_value[UserMemStore.MEM_TYPE_FIELD_KEY] == MemoryType.USER_PROFILE.value and
+                        UserMemStore.TOPIC_FIELD_KEY in dict_value and
+                        dict_value[UserMemStore.TOPIC_FIELD_KEY] is not None):
+                    user_mem_topic_key = self.__get_concatenation_key([user_id, app_id,
+                                                                       UserMemStore.USER_PROFILE_TOPIC_STR,
+                                                                       dict_value[UserMemStore.TOPIC_FIELD_KEY]])
+                    self.__delete_mem_id(user_mem_topic_key, mem_id)
+
+        # Delete user ids
+        user_ids_key = self.__get_user_ids_key(user_id, app_id)
+        self.__delete_mem_id(user_ids_key, mem_id)
+
+        # Delete user mem
+        self.kv_store.delete(user_mem_key)
 
     def __delete_mem_id(self, ids_key: str, mem_id: str):
         if self.kv_store.exists(ids_key):
@@ -227,3 +239,15 @@ class UserMemStore:
             value = struct.unpack('i', bytes_chunk)[0]
             ints.append(value)
         return ints
+
+    def __get_ids_in_range(self, data_list: str, start_idx: int, end_idx: int) -> list[str]:
+        total = len(data_list) // self.HEX_NUM_PER_INT
+        start_idx = max(start_idx, 0)
+        end_idx = min(end_idx, total)
+        if start_idx >= end_idx:
+            return []
+        nums = []
+        for idx in range(start_idx, end_idx):
+            bytes_chunk = bytes.fromhex(data_list[idx * self.HEX_NUM_PER_INT:(idx+1) * self.HEX_NUM_PER_INT])
+            nums.append(str(struct.unpack('i', bytes_chunk)[0]))
+        return nums

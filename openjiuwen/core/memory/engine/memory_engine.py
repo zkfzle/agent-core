@@ -186,8 +186,12 @@ class MemoryEngine(MemoryEngineBase):
                                                     request_config, session_id, llm)
         return message_mem_id
 
-    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[
-        Tuple[BaseMessage, datetime]]:
+    def get_recent_messages(
+            self,
+            user_id: str,
+            app_id: str,
+            session_id: str = None
+    ) -> list[Tuple[BaseMessage, datetime]]:
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         return self.message_manager.get(
@@ -195,12 +199,12 @@ class MemoryEngine(MemoryEngineBase):
             app_id=app_id,
             session_id=session_id
         )
-
-    def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
+    
+    def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime] | None:
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
-        return self.message_manager.get_by_id(msg_id)[0]
-
+        return self.message_manager.get_by_id(msg_id)
+    
     def delete_mem_by_id(self, mem_id: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
@@ -214,8 +218,8 @@ class MemoryEngine(MemoryEngineBase):
         return True
 
     def delete_user_profile_by_user_id(self, user_id: str, app_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+        if not self.user_profile_manager:
+            raise ValueError("User profile manager is not initialized. Please call init_mem_store first.")
         self.user_profile_manager.delete_by_user_id(user_id=user_id, app_id=app_id)
         return True
 

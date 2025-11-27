@@ -106,12 +106,12 @@ class UserProfileManager(BaseMemoryManager):
         return True
 
     def delete_by_user_id(self, user_id: str, app_id: str):
-        data = self.mem_store.get_all(user_id=user_id, app_id=app_id)
+        data = self.mem_store.get_all(user_id=user_id, app_id=app_id, mem_type=MemoryType.USER_PROFILE.value)
         if data is None:
             logger.error(f"Delete user_profile in db failed, the mem of user_id({user_id}) is not exist.")
             return False
         mem_ids = [item['id'] for item in data]
-        self.mem_store.delete_by_user(user_id=user_id, app_id=app_id)
+        self.mem_store.batch_delete(user_id=user_id, app_id=app_id, mem_ids=mem_ids)
         self._delete_vector_user_profile_memory(memory_id=mem_ids, user_id=user_id,
                                                 app_id=app_id, mem_type=MemoryType.USER_PROFILE.value)
         return True

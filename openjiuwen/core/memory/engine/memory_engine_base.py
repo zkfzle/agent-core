@@ -16,7 +16,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 class MemoryEngineBase(ABC):
     def __init__(self, config: Config, llm_base: BaseModelClient = None):
         pass
-    
+
     @abstractmethod
     def init_mem_store(
         self,
@@ -25,7 +25,7 @@ class MemoryEngineBase(ABC):
         kv_db_instance: BaseKVStore
     ):
         pass
-    
+
     @abstractmethod
     def set_app_config(self, app_id: str, config: MemoryConfig):
         pass
@@ -46,7 +46,7 @@ class MemoryEngineBase(ABC):
         llm: BaseModelClient = None
     ) -> str:
         pass
-    
+
     @abstractmethod
     async def aadd_conversation_messages(
         self,
@@ -59,48 +59,53 @@ class MemoryEngineBase(ABC):
         llm: BaseModelClient = None
     ) -> str:
         pass
-    
+
     @abstractmethod
-    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[Tuple[BaseMessage, datetime]]:
+    def get_recent_messages(
+            self,
+            user_id: str,
+            app_id: str,
+            session_id: str | None = None
+    ) -> list[Tuple[BaseMessage, datetime]]:
         pass
-    
+
     @abstractmethod
     def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
         pass
-    
+
     @abstractmethod
     def delete_mem_by_id(self, mem_id: str) -> bool:
         pass
-    
+
     @abstractmethod
     def delete_mem_by_user_id(self, user_id: str, app_id: str) -> bool:
         pass
-    
+
     @abstractmethod
     def delete_user_profile_by_user_id(self, user_id: str, app_id: str) -> bool:
         pass
-    
+
     @abstractmethod
     def update_mem_by_id(self, mem_id: str, memory: str) -> bool:
         pass
-    
+
     @abstractmethod
     def get_user_variable(self, user_id: str, app_id: str, name: str) -> str:
         pass
-    
+
     @abstractmethod
     def list_user_variables(self, user_id: str, app_id: str) -> dict[str, str]:
         pass
-    
+
     @abstractmethod
     def search_user_mem(self, user_id: str, app_id: str, query: str, num: int, threshold: float) \
             -> list[dict[str, Any]]:
         pass
-    
+
     @abstractmethod
     def list_user_mem(self, user_id: str, app_id: str, num: int, page: int) -> list[dict[str, Any]]:
         pass
-    
+
     @abstractmethod
     def get_user_profile_by_topics(self, user_id: str, app_id: str, topics: list[str]) -> dict[str, str]:
         pass

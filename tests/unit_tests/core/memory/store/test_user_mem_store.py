@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 import unittest
-from openjiuwen.memory.store.dbm_kv_store import DbmKVStore
+from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 import os
 
 
@@ -98,9 +98,16 @@ class TestUserMemStore(unittest.TestCase):
         topic_data = store.get_by_topic(user_id1, app_id1, profile_type1)
         self.assertEqual(len(topic_data), 1)
 
+        # Test get_in_range
+        range_data = store.get_in_range(user_id1, app_id1, 0, 1)
+        self.assertEqual(len(range_data), 1)
+        range_data = store.get_in_range(user_id1, app_id1, -1, 2)
+        self.assertEqual(len(range_data), 2)
+
         # Test delete and delete_by_user
-        self.assertTrue(store.delete_by_user(user_id1, app_id1))
-        self.assertTrue(store.delete(user_id2, app_id2, mem_id3))
+        all_user1_mem_ids = [data["id"] for data in all_user1_data_list]
+        store.batch_delete(user_id1, app_id1, all_user1_mem_ids)
+        store.delete(user_id2, app_id2, mem_id3)
         self.assertEqual(store.get_all(user_id1, app_id1), None)
         self.assertEqual(store.get_all(user_id2, app_id2), None)
 

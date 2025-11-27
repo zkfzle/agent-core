@@ -1,7 +1,6 @@
 import os
-import shutil
 import unittest
-from openjiuwen.memory.store.dbm_kv_store import DbmKVStore   # ← 修改为你的真实模块路径
+from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore   # ← 修改为你的真实模块路径
 
 
 class TestDBMStore(unittest.TestCase):

@@ -5,15 +5,15 @@ import threading
 from pathlib import Path
 from typing import List
 from collections import defaultdict
-import re
 import faiss
 import numpy as np
+import re
+import requests
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.common.base import generate_idx_name
-from openjiuwen.memory.store.faiss_semantic_utils import SearchType, TimeUtil
+from openjiuwen.core.memory.store.impl.faiss_semantic_utils import SearchType, TimeUtil
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore, SearchHit
 from urllib.parse import urljoin
-import requests
 
 def match_index_name(match_list: List[str], cur_index: str) -> bool:
     cur_parts = re.split(r'\^', cur_index)

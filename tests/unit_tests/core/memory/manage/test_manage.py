@@ -1,21 +1,18 @@
 import unittest
 from enum import StrEnum
-from sqlalchemy import engine, text, create_engine, QueuePool
-from pathlib import Path
+from sqlalchemy import engine, text
 import os
 
 from openjiuwen.core.memory.store.base_semantic_store import SearchHit
 os.environ['HF_ENDPOINT']= "https://hf-mirror.com"
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
-from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.manage.write_manager import WriteManager
 from openjiuwen.core.memory.mem_unit.memory_unit import UserProfileUnit, VariableUnit, MemoryType, ConflictType
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
-from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
-from openjiuwen.memory.store.dbm_kv_store import DbmKVStore as MockKVStore
+from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore as MockKVStore
 from openjiuwen.core.memory.config.config import Config
 
 

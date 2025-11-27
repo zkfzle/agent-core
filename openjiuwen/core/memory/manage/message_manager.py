@@ -53,8 +53,9 @@ class MessageManager:
         messages = self.sql_db.get_with_sort(table=self.message_table, filters=filters, order="ASC", limit=message_len)
         return [(BaseMessage(**message), message['timestamp']) for message in messages]
 
-    def get_by_id(self, msg_id: str) -> list[Tuple[BaseMessage, datetime]]:
-        filters: Dict[str, Any] = {}
-        filters['message_id'] = [msg_id]
+    def get_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime] | None:
+        filters: Dict[str, Any] = {'message_id': [msg_id]}
         messages = self.sql_db.condition_get(table=self.message_table, conditions=filters)
-        return [(BaseMessage(**message), message['timestamp']) for message in messages]
+        if not messages:
+            return None
+        return BaseMessage(**messages[0]), messages[0]['timestamp']

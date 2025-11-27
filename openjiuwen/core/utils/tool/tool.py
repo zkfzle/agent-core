@@ -77,37 +77,32 @@ def extract_type(param_annotation):
     # basic type
     if param_annotation is str:
         return ValueTypeEnum.STRING, None
-    elif param_annotation is int:
+    if param_annotation is int:
         return ValueTypeEnum.INTEGER, None
-    elif param_annotation is float:
+    if param_annotation is float:
         return ValueTypeEnum.NUMBER, None
-    elif param_annotation is bool:
+    if param_annotation is bool:
         return ValueTypeEnum.BOOLEAN, None
-    elif origin is list or origin is List:
+    if origin is list or origin is List:
         if not args:
             return ValueTypeEnum.ARRAY, None
         inner_type = args[0]
         inner_type, inner_params = extract_type(inner_type)
         if inner_type is ValueTypeEnum.STRING:
             return ValueTypeEnum.ARRAY_STRING, None
-        elif inner_type is ValueTypeEnum.INTEGER:
+        if inner_type is ValueTypeEnum.INTEGER:
             return ValueTypeEnum.ARRAY_INTEGER, None
-        elif inner_type is ValueTypeEnum.NUMBER:
+        if inner_type is ValueTypeEnum.NUMBER:
             return ValueTypeEnum.ARRAY_NUMBER, None
-        elif inner_type is ValueTypeEnum.BOOLEAN:
+        if inner_type is ValueTypeEnum.BOOLEAN:
             return ValueTypeEnum.ARRAY_BOOLEAN, None
-        elif inner_type is ValueTypeEnum.OBJECT:
+        if inner_type is ValueTypeEnum.OBJECT:
             return ValueTypeEnum.ARRAY_OBJECT, inner_params
-        else:
-            raise JiuWenBaseException(
-                error_code=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.code,
-                message=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.errmsg,
-            )
-    else:
-        raise JiuWenBaseException(
-            error_code=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.code,
-            message=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.errmsg,
-        )
+
+    raise JiuWenBaseException(
+        error_code=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.code,
+        message=StatusCode.PLUGIN_PARAMS_CHECK_FAILED.errmsg,
+    )
 
 
 def extract_params(func: Callable):

@@ -13,10 +13,23 @@ from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import MAX_COLLECTION_SIZE, MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
 
+RULES = [
+    (re.compile(r"&&"), "and"),
+    (re.compile(r"\|\|"), "or"),
+    (re.compile(r"true"), "True"),
+    (re.compile(r"false"), "False"),
+    (re.compile(r"length\("), "len("),
+    (re.compile(r"not_in"), "not in"),
+    (re.compile(r"is_empty\("), "_safe_is_empty("),
+    (re.compile(r"is_not_empty\("), "_safe_is_not_empty("),
+]
+
 class ExpressionCondition(Condition):
     def __init__(self, expression: str):
         super().__init__()
         self._expression = expression
+        pattern = r"\$\{[^}]*\}"
+        self._matches = re.findall(pattern, self._expression)
         # Check expression length limit
         if len(expression) > MAX_EXPRESSION_LENGTH:
             raise JiuWenBaseException(
@@ -36,10 +49,8 @@ class ExpressionCondition(Condition):
     def _get_inputs(self, runtime: BaseRuntime) -> dict:
         if len(self._expression) == 0 or runtime is None:
             return {}
-        pattern = r'\$\{[^}]*\}'
-        matches = re.findall(pattern, self._expression)
         inputs = {}
-        for match in matches:
+        for match in self._matches:
             inputs[match] = runtime.state().get_global(match[2:-1])
         return inputs
 
@@ -62,7 +73,7 @@ class ExpressionCondition(Condition):
             full_match = f'${{{match}}}'
             safe_var_name = f'var_{i}'
             var_mapping[full_match] = safe_var_name
-        
+
         for full_match, safe_var_name in sorted(var_mapping.items(), key=lambda x: len(x[0]), reverse=True):
             processed_expression = processed_expression.replace(full_match, safe_var_name)
 
@@ -88,7 +99,7 @@ class ExpressionCondition(Condition):
 
         try:
             tree = ast.parse(processed_expression, mode='eval')
-            
+
             # Check AST depth before evaluation
             _check_ast_depth(tree)
             result = _evaluate_ast(tree, runtime)
@@ -118,27 +129,8 @@ class ExpressionCondition(Condition):
                                       ))
 
 def convert_condition(condition, inputs):
-    # 1. Replace basic logical operators
-    condition = condition.replace('&&', 'and')
-    condition = condition.replace('||', 'or')
-
-    # 2. Replace boolean literals
-    condition = condition.replace('true', 'True')
-    condition = condition.replace('false', 'False')
-
-    # 3. Replace function names
-    condition = condition.replace('length(', 'len(')
-
-    # 4. Replace special operators
-    condition = condition.replace('not_in', 'not in')
-
-    # 5. Handle is_empty and is_not_empty function calls
-    # Here we use simple string replacement to ensure function names are correctly identified
-    condition = condition.replace('is_empty(', '_safe_is_empty(')
-    condition = condition.replace('is_not_empty(', '_safe_is_not_empty(')
-
-    # Note: We don't process variable references (${...}) here as that part will be handled in the _evaluate function
-
+    for pattern, replacement in RULES:
+        condition = pattern.sub(replacement, condition)
     return condition
 
 def _safe_is_empty(value):
@@ -154,46 +146,24 @@ def _safe_is_empty(value):
                 error_msg=f"Cannot check emptiness of {type(value).__name__} type"
             )
         )
-    try:
-        # Check collection size limit
-        if hasattr(value, '__len__') and len(value) > MAX_COLLECTION_SIZE:
-            raise JiuWenBaseException(
-                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                    expression="<expression>",
-                    error_msg=f"Collection size exceeds maximum allowed size of {MAX_COLLECTION_SIZE}"
-                )
-            )
-        return len(value) == 0
-    except (TypeError, AttributeError):
-        return False
 
-def _safe_is_not_empty(value):
-    """Safely check if a value is not empty"""
-    if value is None:
+    # Check collection size limit
+    if not hasattr(value, "__len__"):
         return False
-    # Check if value is a non-collection type that shouldn't be checked for emptiness
-    if isinstance(value, (int, float, bool)):
+    length = len(value)
+    if length > MAX_COLLECTION_SIZE:
         raise JiuWenBaseException(
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
             StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
                 expression="<expression>",
-                error_msg=f"Cannot check emptiness of {type(value).__name__} type"
-            )
+                error_msg=f"Collection size exceeds maximum allowed size of {MAX_COLLECTION_SIZE}",
+            ),
         )
-    try:
-        # Check collection size limit
-        if hasattr(value, '__len__') and len(value) > MAX_COLLECTION_SIZE:
-            raise JiuWenBaseException(
-                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                    expression="<expression>",
-                    error_msg=f"Collection size exceeds maximum allowed size of {MAX_COLLECTION_SIZE}"
-                )
-            )
-        return len(value) > 0
-    except (TypeError, AttributeError):
-        return False
+    return length == 0
+
+def _safe_is_not_empty(value):
+    """Safely check if a value is not empty"""
+    return not _safe_is_empty(value)
 
 def _check_ast_depth(node: ast.AST, current_depth: int = 0) -> int:
     """

@@ -11,7 +11,6 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 DEFAULT_MAX_LOOP_NUMBER = 1000
-DEFAULT_PATH_ARRAY_LOOP_VAR = "arrLoopVar"
 
 
 class ArrayCondition(Condition):
@@ -33,19 +32,12 @@ class ArrayCondition(Condition):
         io_updates = updates.copy()
         return True, io_updates
 
-
 class ArrayConditionInRuntime(Condition):
-    def __init__(self, arrays: dict[str, list[Any]]):
+
+    def __init__(self, arrays: dict[str, Union[list[Any], tuple[Any]]]):
         super().__init__()
-        min_length = DEFAULT_MAX_LOOP_NUMBER
-        for key, array_info in arrays.items():
-            if array_info is None:
-                raise JiuWenBaseException(StatusCode.ARRAY_CONDITION_ERROR.code, f"Value for key '{key}' in loop_array cannot be None")
-            if not isinstance(array_info, (list, tuple)):
-                raise JiuWenBaseException(StatusCode.ARRAY_CONDITION_ERROR.code, f"Expected list/tuple for '{key}' in loop_array, got {type(array_info).__name__}")
-            min_length = min(len(array_info), min_length)
         self._arrays = arrays
-        self._min_length = min_length
+        self._min_length = self._check_arrays(arrays)
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         current_idx = runtime.state().get(INDEX) + 1
@@ -64,3 +56,18 @@ class ArrayConditionInRuntime(Condition):
         runtime.state().update(updates)
         io_updates = updates.copy()
         return True, io_updates
+
+    def _check_arrays(self, arrays: dict[str, Union[list[Any], tuple[Any]]]) -> int:
+        min_length = DEFAULT_MAX_LOOP_NUMBER
+        for key, array_info in arrays.items():
+            if array_info is None:
+                raise JiuWenBaseException(
+                    StatusCode.ARRAY_CONDITION_ERROR.code, f"Value for key '{key}' in loop_array cannot be None"
+                )
+            if not isinstance(array_info, (list, tuple)):
+                raise JiuWenBaseException(
+                    StatusCode.ARRAY_CONDITION_ERROR.code,
+                    f"Expected list/tuple for '{key}' in loop_array, got {type(array_info).__name__}",
+                )
+            min_length = min(len(array_info), min_length)
+        return min_length

@@ -24,7 +24,6 @@ from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
-CHAT_HISTORY_MAX_TURN = 3
 _ROLE = "role"
 _CONTENT = "content"
 ROLE_MAP = {"user": "用户", "assistant": "助手", "system": "系统"}

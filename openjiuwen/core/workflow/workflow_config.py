@@ -10,6 +10,25 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.runtime.state import Transformer
 
 
+class ComponentAbility(Enum):
+    INVOKE = ("invoke", "batch in, batch out")
+    STREAM = ("stream", "batch in, stream out")
+    COLLECT = ("collect", "stream in, batch out")
+    TRANSFORM = ("transform", "stream in, stream out")
+
+    def __init__(self, name: str, desc: str):
+        self._name = name
+        self._desc = desc
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def desc(self) -> str:
+        return self._desc
+
+
 class CompIOConfig(BaseModel):
     inputs_schema: Optional[Dict] = None
     outputs_schema: Optional[Dict] = None
@@ -26,7 +45,7 @@ class WorkflowMetadata(BaseModel):
 class NodeSpec(BaseModel):
     io_config: CompIOConfig
     stream_io_configs: CompIOConfig
-    abilities: List[Any] = Field(default_factory=list)
+    abilities: List[ComponentAbility] = Field(default_factory=list)
 
 
 class WorkflowSpec(BaseModel):
@@ -46,21 +65,3 @@ class WorkflowConfig(BaseModel):
     spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
     workflow_inputs_schema: Optional[WorkflowInputsSchema] = Field(default_factory=WorkflowInputsSchema)
     workflow_max_nesting_depth: int = Field(default=5, ge=0, le=10)
-
-class ComponentAbility(Enum):
-    INVOKE = ("invoke", "batch in, batch out")
-    STREAM = ("stream", "batch in, stream out")
-    COLLECT = ("collect", "stream in, batch out")
-    TRANSFORM = ("transform", "stream in, stream out")
-
-    def __init__(self, name: str, desc: str):
-        self._name = name
-        self._desc = desc
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def desc(self) -> str:
-        return self._desc

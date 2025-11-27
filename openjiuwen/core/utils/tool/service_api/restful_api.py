@@ -41,11 +41,6 @@ class RestfulApi(Tool):
         tool_info = ToolInfo(**tool_info_dict)
         return tool_info
 
-    def format_input_with_default_when_required(self, inputs: dict):
-        """format input with default"""
-        inputs = ParamUtil._assign_format_default_value(self.params, inputs)
-        return inputs
-
     def get_header_params_from_input(self, inputs: dict):
         """get header params from input"""
         header_params = {}
@@ -160,7 +155,7 @@ class RequestParams:
         self.inputs = inputs
         self.kwargs = kwargs
 
-        inputs = restful_api.format_input_with_default_when_required(inputs)
+        inputs = ParamUtil.format_input_with_default_when_required(self.restful_api.params, inputs)
         self.header_params_in_inputs = restful_api.get_header_params_from_input(inputs)
         self.query_params_in_inputs = restful_api.get_query_params_from_input(inputs)
         self.inputs = restful_api.parse_retrieval_inputs(inputs)

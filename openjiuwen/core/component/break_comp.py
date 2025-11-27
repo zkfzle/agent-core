@@ -6,6 +6,8 @@ from abc import abstractmethod, ABC
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.graph.executable import Input, Output, Executable
 from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class LoopController(ABC):
@@ -28,6 +30,6 @@ class BreakComponent(WorkflowComponent, Executable):
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if self._loop_controller is None:
-            raise RuntimeError('Loop controller not initialized')
+            raise JiuWenBaseException(StatusCode.ERROR.code, "Loop controller not initialized")
         self._loop_controller.break_loop()
         return {}

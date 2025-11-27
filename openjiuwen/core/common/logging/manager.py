@@ -18,24 +18,6 @@ class LogManager:
         cls._default_logger_class = logger_class
 
     @classmethod
-    def _get_default_logger_class(cls) -> Type[LoggerProtocol]:
-        if cls._default_logger_class is None:
-            try:
-                from openjiuwen.extensions.common.log.default_impl import DefaultLogger
-                cls._default_logger_class = DefaultLogger
-            except ImportError:
-                raise RuntimeError("No default logger class set and cannot import DefaultLogger from extensions")
-        return cls._default_logger_class
-
-    @classmethod
-    def _get_log_config(cls) -> Optional[object]:
-        try:
-            from openjiuwen.extensions.common.configs.log_config import log_config
-            return log_config
-        except ImportError:
-            return None
-
-    @classmethod
     def initialize(cls) -> None:
         with cls._lock:
             if cls._initialized:
@@ -72,21 +54,22 @@ class LogManager:
             if log_type not in cls._loggers:
                 default_logger_class = cls._get_default_logger_class()
                 log_config = cls._get_log_config()
-                
+
                 if log_config:
                     config = log_config.get_custom_config(log_type)
                 else:
                     raise RuntimeError(f"LogConfig not available. Cannot create logger for '{log_type}'.")
-                
+
                 cls._loggers[log_type] = default_logger_class(log_type, config)
 
             return cls._loggers[log_type]
 
     @classmethod
     def get_all_loggers(cls) -> Dict[str, LoggerProtocol]:
-        if not cls._initialized:
-            cls.initialize()
-        return cls._loggers.copy()
+        with cls._lock:
+            if not cls._initialized:
+                cls.initialize()
+            return cls._loggers.copy()
 
     @classmethod
     def reset(cls) -> None:
@@ -96,13 +79,21 @@ class LogManager:
             cls._default_logger_class = None
 
     @classmethod
-    def create_default_logger(cls, log_type: str, config: Dict = None) -> LoggerProtocol:
-        if config is None:
-            log_config = cls._get_log_config()
-            if log_config:
-                config = log_config.get_custom_config(log_type)
-            else:
-                raise RuntimeError(f"LogConfig not available. Cannot create logger for '{log_type}'.")
-        
-        default_logger_class = cls._get_default_logger_class()
-        return default_logger_class(log_type, config) 
+    def _get_default_logger_class(cls) -> Type[LoggerProtocol]:
+        if cls._default_logger_class is None:
+            try:
+                from openjiuwen.extensions.common.log.default_impl import DefaultLogger
+
+                cls._default_logger_class = DefaultLogger
+            except ImportError:
+                raise RuntimeError("No default logger class set and cannot import DefaultLogger from extensions")
+        return cls._default_logger_class
+
+    @classmethod
+    def _get_log_config(cls) -> Optional[object]:
+        try:
+            from openjiuwen.extensions.common.configs.log_config import log_config
+
+            return log_config
+        except ImportError:
+            return None

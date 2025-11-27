@@ -20,7 +20,3 @@ class WorkflowAgentConfig(AgentConfig):
     global_params: Dict[str, Any] = Field(default_factory=dict)
 
     constrain: ConstrainConfig = Field(default=ConstrainConfig())
-
-    @property
-    def is_single_workflow(self) -> bool:
-        return len(self.workflows) == 1

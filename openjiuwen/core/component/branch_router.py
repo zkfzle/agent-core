@@ -34,7 +34,7 @@ class Branch:
     def evaluate(self, runtime: BaseRuntime) -> bool:
         return self._condition(runtime)
 
-    def trace_info(self, runtime: BaseRuntime = None) -> str:
+    def trace_info(self, runtime: BaseRuntime) -> str:
         return self._condition.trace_info(runtime)
 
 
@@ -71,7 +71,13 @@ class BranchRouter:
         if isinstance(runtime, Runtime):
             self._runtime = runtime.base()
             return
-        self._runtime = runtime
+        if isinstance(runtime, BaseRuntime):
+            self._runtime = runtime
+            return
+        raise JiuWenBaseException(
+            StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
+            StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(error_msg="runtime type is wrong"),
+        )
 
     async def __call__(self, *args, **kwargs) -> list[str]:
         runtime = self._runtime

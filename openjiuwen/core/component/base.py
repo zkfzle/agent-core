@@ -32,8 +32,6 @@ class ComponentState:
 
 
 class WorkflowComponent(ABC):
-    def __init__(self):
-        pass
 
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
         graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
@@ -41,4 +39,6 @@ class WorkflowComponent(ABC):
     def to_executable(self) -> Executable:
         if isinstance(self, Executable):
             return self
-        raise JiuWenBaseException(StatusCode.COMPONENT_NOT_EXECUTABLE_ERROR.code, "workflow component should implement Executable")
+        raise JiuWenBaseException(
+            StatusCode.COMPONENT_NOT_EXECUTABLE_ERROR.code, "workflow component should implement Executable"
+        )

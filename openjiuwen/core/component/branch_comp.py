@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Callable, Union, Hashable
+from typing import Callable, Union, Hashable, Any
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -23,19 +23,10 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
 
     def add_branch(self, condition: Union[str, Callable[[], bool], Condition], target: Union[str, list[str]],
                    branch_id: str = None):
-        if not condition:
-            raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
-                                      StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
-                                          error_msg="condition is not invalid, can not be None"))
-        if not target:
-            raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
-                                      StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
-                                          error_msg="target is not invalid, can not None or empty"))
+        self._validata_branch_param(condition)
+        self._validata_branch_param(target)
         for item in target:
-            if not item:
-                raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
-                                          StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(
-                                              error_msg="target list item is not invalid, can not None or empty"))
+            self._validata_branch_param(item)
         self._router.add_branch(condition, target, branch_id=branch_id)
 
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:
@@ -51,3 +42,11 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
 
     def skip_trace(self) -> bool:
         return True
+
+    def _validata_branch_param(self, param_value: Any):
+        if not param_value:
+            error_msg = f"{param_value} is invalid , can not be None or empty"
+            raise JiuWenBaseException(
+                StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
+                StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(error_msg=error_msg),
+            )

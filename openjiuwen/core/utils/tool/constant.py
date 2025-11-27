@@ -7,7 +7,6 @@ from typing import TypeVar
 Input = TypeVar('Input', contravariant=True)
 Output = TypeVar('Output', contravariant=True)
 
-HTTP_METHOD = {"GET", "POST", "HEAD", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH", "TRACE"}
 MAX_RESULT_SIZE = 10 * 1024 * 1024
 REQUEST_TIMEOUT = 60
 

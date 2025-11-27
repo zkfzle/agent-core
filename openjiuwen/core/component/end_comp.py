@@ -22,8 +22,8 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.common.utlis.dict_utils import extract_leaf_nodes, format_path
 from openjiuwen.core.common.security.user_config import UserConfig
 
-STREAM_CACHE_KEY = "_stream_cache_key"
 
+RESPONSE_TEMPLATE = "responseTemplate"
 
 class EndConfig(TypedDict):
     responseTemplate: str
@@ -36,8 +36,8 @@ class End(ComponentExecutable, WorkflowComponent):
         self.template = None
         self._batch_template = None
         self._mix = False
-        if conf is not None and conf.get("responseTemplate") is not None:
-            template = conf["responseTemplate"]
+        if conf is not None and conf.get(RESPONSE_TEMPLATE) is not None:
+            template = conf.get(RESPONSE_TEMPLATE)
             if not isinstance(template, str):
                 raise JiuWenBaseException(StatusCode.WORKFLOW_END_CREATE_VALUE.code,
                                           message=StatusCode.WORKFLOW_END_CREATE_VALUE.errmsg.format(
@@ -54,16 +54,12 @@ class End(ComponentExecutable, WorkflowComponent):
                 return
             return await self._render(inputs, runtime.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))
         else:
-            answer = ""
             if inputs is not None:
                 output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
             else:
                 output = None
             logger.debug(f"end component invoke method output: {output}")
-            return {
-                "responseContent": answer,
-                "output": output
-            }
+            return {"responseContent": "", "output": output}
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
@@ -267,11 +263,11 @@ class TemplateBatchProcessor:
         else:
             inputs = self._inputs | inputs
         generator = self._template.render_stream(inputs)
-        answer = ""
+        answer = []
         async for frame in generator:
             logger.debug(f"rendering collect frame: {frame}")
-            answer += str(frame.get("data"))
-        return answer
+            answer.append(str(frame.get("data")))
+        return "".join(answer)
 
 
 class TemplateUtils:

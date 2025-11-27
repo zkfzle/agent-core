@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Protocol, runtime_checkable, Dict, Any, Optional
+from typing import Protocol, runtime_checkable, Dict, Any
 import logging
 
 

@@ -7,6 +7,8 @@ from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.utils.tool.constant import Input, Output
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 from pydantic import BaseModel
 
@@ -46,6 +48,12 @@ class MCPTool(Tool):
         self.tool_name = tool_name
         self.server_name = server_name
         self._tool_info: Optional[ToolInfo] = None
+
+    def invoke(self, inputs: Input, **kwargs) -> Output:
+        """invoke of the MCP tool"""
+        raise JiuWenBaseException(
+            error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message="mcp tool only support ainvoke"
+        )
 
     async def ainvoke(self, inputs: Input, **kwargs) -> Output:
         """Async invoke of the MCP tool"""

@@ -128,3 +128,9 @@ class LLMAgent(ControllerAgent):
         async for result in agent_runtime.stream_iterator():
             yield result
         await task
+
+    def set_prompt_template(self, prompt_template: List[Dict]):
+        self._agent_config.prompt_template = prompt_template
+        self._config_wrapper.set_agent_config(self._agent_config)
+        self._config = self._config_wrapper
+        self.controller.set_llm_controller_prompt_template(prompt_template)

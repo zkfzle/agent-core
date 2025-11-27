@@ -985,3 +985,7 @@ class LLMController(BaseController):
         if isinstance(result, WorkflowOutput) and isinstance(result.result, list):
             for item in result.result:
                 await runtime.write_stream(item)
+
+    def set_llm_controller_prompt_template(self, prompt_template: List[Dict[str, str]]):
+        """Set prompt template for LLMController"""
+        self.config.prompt_template = prompt_template

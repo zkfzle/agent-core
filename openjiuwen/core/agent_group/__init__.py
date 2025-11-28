@@ -1,16 +1,12 @@
-"""AgentGroup 核心模块 - 基础接口和类定义"""
+"""AgentGroup core module - Base interfaces and class definitions"""
 
 from .config import AgentGroupConfig
-from .agent_group import BaseGroup
-from openjiuwen.core.agent_group.group_scheduler.scheduler import GroupScheduler
-from openjiuwen.core.agent_group.group_scheduler.message_pool import GroupMessagePool
-from openjiuwen.core.agent_group.group_scheduler.message_handler import BaseGroupMessageHandler
+from .agent_group import BaseGroup, ControllerGroup, AgentGroupRuntime
 
 __all__ = [
     "AgentGroupConfig",
     "BaseGroup",
-    "GroupScheduler",
-    "GroupMessagePool",
-    "BaseGroupMessageHandler",
+    "ControllerGroup",
+    "AgentGroupRuntime",
 ]
 

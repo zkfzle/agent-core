@@ -4,7 +4,7 @@
 """Controller of Agent"""
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.message.message import Message
@@ -48,6 +48,9 @@ class BaseController(ABC):
         self._config = config
         self._context_engine = context_engine
         self._runtime = runtime
+        
+        # Group reference (auto-injected by BaseGroup.add_agent)
+        self._group = None
 
         # Create message queue (shared across all conversations)
         self.msg_queue = MessageQueueInMemory()
@@ -277,3 +280,78 @@ class BaseController(ABC):
 
         # Stop message queue
         await self.msg_queue.stop()
+
+    # ===== Group routing support (auto-injected by BaseGroup.add_agent) =====
+
+    def set_group(self, group):
+        """Set group reference (auto-injected by BaseGroup.add_agent)
+        
+        This method is called automatically when an agent is added to a group.
+        Developers should not call this method directly.
+        
+        Args:
+            group: The AgentGroup instance this controller's agent belongs to
+        """
+        self._group = group
+        logger.debug(
+            f"{self.__class__.__name__}: Group reference injected "
+            f"(group_id={getattr(group, 'group_id', 'unknown')})"
+        )
+
+    async def send_to_agent(
+        self,
+        agent_id: str,
+        message: Message,
+        runtime
+    ) -> Any:
+        """Send message to specified agent (point-to-point)
+        
+        This method delegates to the group's controller for actual routing.
+        Only works when this controller's agent is part of a group.
+        
+        Args:
+            agent_id: Target agent ID
+            message: Message object
+            runtime: Runtime context
+        
+        Returns:
+            Agent's return result
+        
+        Raises:
+            RuntimeError: If agent is not part of a group
+        """
+        if self._group and hasattr(self._group, 'group_controller'):
+            return await self._group.group_controller.send_to_agent(
+                message, agent_id, runtime
+            )
+        raise RuntimeError(
+            f"{self.__class__.__name__}: Cannot send_to_agent('{agent_id}'). "
+            "Agent is not part of a group with a controller."
+        )
+
+    async def publish(
+        self,
+        message: Message,
+        runtime
+    ) -> List[Any]:
+        """Publish message to subscribers (broadcast)
+        
+        This method delegates to the group's controller for actual routing.
+        Only works when this controller's agent is part of a group.
+        
+        Args:
+            message: Message object (must have message_type set)
+            runtime: Runtime context
+        
+        Returns:
+            List of results from all subscribers
+        
+        Raises:
+            RuntimeError: If agent is not part of a group
+        """
+        if self._group and hasattr(self._group, 'group_controller'):
+            return await self._group.group_controller.publish(message, runtime)
+        raise RuntimeError(
+            f"{self.__class__.__name__}: Cannot publish(). "
+            "Agent is not part of a group with a controller."
+        )

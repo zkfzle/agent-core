@@ -137,6 +137,10 @@ class Message:
     # 扩展元数据
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    # AgentGroup 路由支持
+    receiver_id: Optional[str] = None  # 目标 Agent ID（用于点对点发送）
+    message_type: Optional[str] = None  # 自定义消息类型（用于订阅路由）
+
     def __post_init__(self):
         if self.metadata is None:
             self.metadata = {}

@@ -3,6 +3,7 @@ from enum import StrEnum
 from sqlalchemy import engine, text, create_engine, QueuePool
 from pathlib import Path
 import os
+
 from openjiuwen.core.memory.store.base_semantic_store import SearchHit
 os.environ['HF_ENDPOINT']= "https://hf-mirror.com"
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
@@ -60,7 +61,13 @@ def create(conn: engine.Engine, table: str, columns: dict[str, ContextStoreColum
 
 config = Config(
     variables_key={"key":["value"]},
+    model_api_base="http://test.com",
+    model_api_key="test_key",
     model_name="test_model",
+    model_provider="test_provider",
+    strategy=["test_strategy"],
+    vector_store_dir=".",
+    kv_store_dir="."
 )
 
 # Mock语义存储实现，避免实际模型加载
@@ -242,11 +249,10 @@ class TestManage(unittest.TestCase):
         for rr in res:
             write_manager.delete_mem_by_id(rr['id'])
 
-        res = user_profile_manager.search(query, 5, user_id="usrZH2025", app_id="fitnesstrackerv3")
+        res = user_profile_manager.search(query, 5, user_id="userZH2025", app_id="fitnesstrackerv3")
         self.assertEqual(0, len(res))
-        write_manager.delete_mem_by_user_id("usrZH2025", "fitnesstrackerv3")
-        write_manager.delete_mem_by_user_id("usrZH2026", "fitnesstrackerv3")
-        res = user_profile_manager.search(query, 5, user_id="usrZH2026", app_id="fitnesstrackerv3")
+        write_manager.delete_mem_by_user_id("userZH2026", "fitnesstrackerv3")
+        res = user_profile_manager.search(query, 5, user_id="userZH2026", app_id="fitnesstrackerv3")
         self.assertEqual(0, len(res))
 
 if __name__ == '__main__':

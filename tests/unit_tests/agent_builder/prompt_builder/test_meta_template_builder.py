@@ -5,8 +5,6 @@ import unittest
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
-import pytest
-
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -15,8 +13,7 @@ from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder import (MetaTemplateBuilder,
-                                                                                   META_TEMPLATE_NAME_PREFIX,
-                                                                                   TemplateManager)
+                                                                                   META_TEMPLATE_NAME_PREFIX)
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
 
@@ -52,7 +49,7 @@ class MockLLMModel(BaseModelClient):
             **kwargs: Any
     ) -> AIMessage:
         """异步调用"""
-        return self._get_next_response()
+        return self._get_next_response([])
 
     def _stream(
             self,
@@ -64,7 +61,7 @@ class MockLLMModel(BaseModelClient):
             **kwargs: Any
     ) -> Iterator[Any]:
         """流式返回"""
-        result = self._get_next_response()
+        result = self._get_next_response([])
         yield result
 
     async def _astream(
@@ -77,7 +74,7 @@ class MockLLMModel(BaseModelClient):
             **kwargs: Any
     ) -> AsyncIterator[Any]:
         """异步流式返回"""
-        result = self._get_next_response()
+        result = self._get_next_response([])
         yield result
 
 
@@ -85,27 +82,31 @@ class TestMetaTemplateBuilder(unittest.TestCase):
     def setUp(self):
         pass
 
-    @pytest.mark.skip()
     def test_register_custom_template(self):
-        # register string template
-        template = "this is a string meta template"
-        MetaTemplateBuilder.register_meta_template("custom_general", template)
-        meta_template = TemplateManager().get(META_TEMPLATE_NAME_PREFIX + "custom_general")
-        self.assertEqual(meta_template.content, template)
-        TemplateManager().delete(META_TEMPLATE_NAME_PREFIX + "custom_general")
+        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+        config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+            # register string template
+            mock_get_model.return_value = mock_llm
+            builder = MetaTemplateBuilder(config)
+            template = "this is a string meta template"
+            builder.register_meta_template("custom_general", template)
+            meta_template = builder._meta_template_manager.get(META_TEMPLATE_NAME_PREFIX + "custom_general")
+            self.assertEqual(meta_template.content, template)
+            builder._meta_template_manager.pop(META_TEMPLATE_NAME_PREFIX + "custom_general")
 
-        # register string-Template template
-        template = Template(content="this is a string meta template")
-        MetaTemplateBuilder.register_meta_template("custom_general", template)
-        meta_template = TemplateManager().get(META_TEMPLATE_NAME_PREFIX + "custom_general")
-        self.assertEqual(meta_template.content, template.content)
-        TemplateManager().delete(META_TEMPLATE_NAME_PREFIX + "custom_general")
+            # register string-Template template
+            template = Template(content="this is a string meta template")
+            builder.register_meta_template("custom_general", template)
+            meta_template = builder._meta_template_manager.get(META_TEMPLATE_NAME_PREFIX + "custom_general")
+            self.assertEqual(meta_template.content, template.content)
+            builder._meta_template_manager.pop(META_TEMPLATE_NAME_PREFIX + "custom_general")
 
-        # register invalid type template
-        template = ("this is a invalid tuple meta template", )
-        with self.assertRaises(JiuWenBaseException) as context:
-            MetaTemplateBuilder.register_meta_template("custom_general", template)
-        self.assertEqual(context.exception.error_code, StatusCode.AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR.code)
+            # register invalid type template
+            template = ("this is a invalid tuple meta template", )
+            with self.assertRaises(JiuWenBaseException) as context:
+                builder.register_meta_template("custom_general", template)
+            self.assertEqual(context.exception.error_code, StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code)
 
     def test_build_with_default_meta_template(self):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
@@ -131,11 +132,9 @@ class TestMetaTemplateBuilder(unittest.TestCase):
                              TEMPLATE.PROMPT_BUILD_PLAN_META_USER_TEMPLATE.format(
                                  dict(instruction="你是一个旅行助手", tools="None")).content[0].content)
 
-    @pytest.mark.skip()
     def test_build_with_custom_meta_template(self):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         template = "you are a custom meta template"
-        MetaTemplateBuilder.register_meta_template("custom_general", template)
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
             config = ModelConfig(model_provider="", model_info=BaseModelInfo())
@@ -143,12 +142,13 @@ class TestMetaTemplateBuilder(unittest.TestCase):
 
             with self.assertRaises(JiuWenBaseException) as context:
                 response = builder.build(prompt="你是一个旅行助手", template_type="other")
-            self.assertEqual(context.exception.error_code, StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code)
+            self.assertEqual(context.exception.error_code, StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code)
 
             with self.assertRaises(JiuWenBaseException) as context:
+                builder.register_meta_template("custom_general", template)
                 response = builder.build(prompt="你是一个旅行助手", template_type="other",
                                          custom_template_name="not_defined")
-            self.assertEqual(context.exception.error_code, StatusCode.PROMPT_TEMPLATE_NOT_FOUND_ERROR.code)
+            self.assertEqual(context.exception.error_code, StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code)
 
             response = builder.build(prompt="你是一个旅行助手", template_type="other",
                                      custom_template_name="custom_general")

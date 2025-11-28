@@ -20,7 +20,7 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -98,22 +98,15 @@ class MemoryEngine(MemoryEngineBase):
         session_id: str = None,
         llm: BaseModelClient = None
     ) -> str:
-        if len(messages) == 0:
-            logger.warning("Failed to add_conversation_messages: messages is empty.")
-            return "-1"
         llm = llm if llm else self.llm_base
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         config = self.config_manager.get_config(app_id, request_config)
-        threshold = config.realtime_process_config.window_size
         user_profile_custom_define = config.realtime_process_config.user_profile_custom_define
-        history_messages_tuple = self.message_manager.get(
-            user_id=user_id,
-            app_id=app_id,
-            session_id=session_id,
-            message_len=threshold
-        )
-        history_messages = [msg[0] for msg in history_messages_tuple]
+        history_messages = self._get_history_messages(user_id=user_id,
+                                                      app_id=app_id,
+                                                      session_id=session_id,
+                                                      config=config)
         message_mem_id = "-1"
         # when multi messages, use last message_mem_id
         for msg in messages:
@@ -125,6 +118,9 @@ class MemoryEngine(MemoryEngineBase):
                 session_id=session_id,
                 timestamp=timestamp
             )
+        if not MemoryEngine._check_messages(messages):
+            logger.info("Memory engine no need to process messages.")
+            return message_mem_id
         all_memory: list[BaseMemoryUnit] = self.generator.gen_all_memory(
             app_id=app_id,
             user_id=user_id,
@@ -138,6 +134,39 @@ class MemoryEngine(MemoryEngineBase):
         )
         self.write_manager.add_mem(all_memory)
         return message_mem_id
+
+    def _get_history_messages(self,
+                              user_id: str,
+                              app_id: str,
+                              session_id: str,
+                              config: Config,
+                              ) -> list[BaseMessage]:
+        threshold = config.realtime_process_config.window_size
+        history_message_length_limit = config.realtime_process_config.history_message_length_limit
+        history_messages_tuple = self.message_manager.get(
+            user_id=user_id,
+            app_id=app_id,
+            session_id=session_id,
+            message_len=threshold
+        )
+        history_messages = []
+        human_message: HumanMessage = HumanMessage()
+        for msg, _ in history_messages_tuple:
+            if msg.role == human_message.role:
+                history_messages.append(msg)
+                continue
+            if len(msg.content) <= history_message_length_limit:
+                history_messages.append(msg)
+        return history_messages
+
+
+    @staticmethod
+    def _check_messages(messages: list[BaseMessage]) -> bool:
+        human_message: HumanMessage = HumanMessage()
+        for msg in messages:
+            if msg.role == human_message.role:
+                return True
+        return False
     
     async def aadd_conversation_messages(
         self,

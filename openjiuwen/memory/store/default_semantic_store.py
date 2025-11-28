@@ -80,6 +80,9 @@ class DefaultSemanticStore(BaseSemanticStore):
                     if "embeddings" not in data:
                         raise ValueError(f"response missing 'embeddings': {data}")
                     embs = data["embeddings"]
+                    if len(embs[0]) != self.embedding_dims:
+                        raise ValueError(f"embedding dimension mismatch: "
+                                         f"expected {self.embedding_dims}, but got {len(embs[0])}")
                     return embs
         except Exception as e:
             logger.error(f"[aio_get_embeddings] request failed: {e}")

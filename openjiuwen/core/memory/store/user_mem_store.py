@@ -132,6 +132,8 @@ class UserMemStore:
         with self._lock.read_lock():
             keys_list = [self.__get_user_mem_key(user_id, app_id, mem_id) for mem_id in mem_ids]
             value_list = self.kv_store.mget(keys_list)
+            if not value_list:
+                return []
             return [json.loads(key) for key in value_list if key is not None]
 
     def get_all(self, user_id: str, app_id: str, mem_type: str = None) -> list[dict[str, Any]] | None:

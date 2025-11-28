@@ -50,7 +50,7 @@ class MessageManager:
             filters['session_id'] = session_id
         if message_len <= 0:
             raise ValueError('message_len Must bigger than zero')
-        messages = self.sql_db.get_with_sort(table=self.message_table, filters=filters, limit=message_len)
+        messages = self.sql_db.get_with_sort(table=self.message_table, filters=filters, order="ASC", limit=message_len)
         return [(BaseMessage(**message), message['timestamp']) for message in messages]
 
     def get_by_id(self, msg_id: str) -> list[Tuple[BaseMessage, datetime]]:

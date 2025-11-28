@@ -11,6 +11,7 @@ class MemoryConfig(BaseModel):
 class RealtimeConfig(BaseModel):
     window_size: int = 5
     user_profile_custom_define: dict[str, str] = {}
+    history_message_length_limit: int = 50
 
 class Config(BaseModel):
     temperature: float | None = 0.01

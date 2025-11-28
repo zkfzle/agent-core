@@ -8,13 +8,13 @@ from collections import defaultdict
 import re
 import faiss
 import numpy as np
-
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.common.base import generate_idx_name
 from openjiuwen.memory.store.faiss_semantic_utils import SearchType, TimeUtil
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore, SearchHit
-from openjiuwen.memory.store.embedding_model import EmbeddingModel
-
+from urllib.parse import urljoin
+import aiohttp
+import asyncio
 
 def match_index_name(match_list: List[str], cur_index: str) -> bool:
     cur_parts = re.split(r'\^', cur_index)
@@ -40,11 +40,10 @@ def convert_faiss_result(distance: np.ndarray, ids: np.ndarray) -> List[List[Sea
         result.append(hits)
     return result
 
-class FaissSemanticStore(BaseSemanticStore):
+class DefaultSemanticStore(BaseSemanticStore):
     vector_persist_interval = 1 * 24 * 60 * 60
 
-    def __init__(self, vector_store_dir: str, model_name_or_path: str):
-
+    def __init__(self, vector_store_dir: str, embedding_addr: str, embedding_dims: int):
         self.normalize_L2 = True
         self.search_type = SearchType.COSINE
         self.mod_cnt = defaultdict(int)
@@ -58,14 +57,37 @@ class FaissSemanticStore(BaseSemanticStore):
         self.timer = TimeUtil(interval=self.vector_persist_interval, callback=self.__persist_all)
         self.timer.start()
         self.closed = False
-        self.embedding_model = EmbeddingModel(model_name_or_path)
+        self.embedding_addr = embedding_addr
+        self.embedding_dims = embedding_dims
 
     def __with_lock(self, index_name: str):
         return self.index_locks[index_name]
 
+    async def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """
+        embedding_addr: embedding server addr, example: "http://127.0.0.1:8000"
+        texts: List[str], text list
+        return: List[List[float]], embedding list
+        """
+        url = urljoin(self.embedding_addr, "/embedding")
+        payload = {"texts": texts}
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload, timeout=30) as resp:
+                    if resp.status != 200:
+                        raise Exception(f"HTTP {resp.status}")
+                    data = await resp.json()
+                    if "embeddings" not in data:
+                        raise ValueError(f"response missing 'embeddings': {data}")
+                    embs = data["embeddings"]
+                    return embs
+        except Exception as e:
+            logger.error(f"[aio_get_embeddings] request failed: {e}")
+            return None
+
     def add(self, mem: List[str], memory_id: List[str], user_id: str, app_id: str, mem_type: str | None = None) -> None:
         index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        embeddings = self.embedding_model.encode(texts=mem)
+        embeddings = asyncio.run(self._get_embeddings(texts=mem))
         dimension = len(embeddings[0])
         if len(memory_id) != len(embeddings):
             raise ValueError(f"ids and embeddings must have same length, len of mem_id={len(memory_id)}, "
@@ -94,7 +116,7 @@ class FaissSemanticStore(BaseSemanticStore):
 
     def search(self, query: List[str], user_id: str, app_id: str, mem_type: str | None = None, top_k: int = 5):
         index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        embedding = self.embedding_model.encode(texts=query)
+        embedding = asyncio.run(self._get_embeddings(texts=query))
         with self.__with_lock(index_name):
             cur_index = self.__get_faiss_index(index_name)
             if cur_index is None:
@@ -147,5 +169,3 @@ class FaissSemanticStore(BaseSemanticStore):
         for filename in Path(self.fold_path).rglob(f"*{self.suffix}"):
             if match_index_name(match_list, filename.stem):
                 filename.unlink()
-
-

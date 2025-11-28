@@ -42,7 +42,8 @@ class AIMessageChunk(AIMessage, BaseMessageChunk):
                 if merged_tool_calls:
                     last = merged_tool_calls[-1]
                     same_id = (last.id and incoming.id and last.id == incoming.id) or (not last.id or not incoming.id)
-                    if same_id and getattr(last, 'function', None) and getattr(incoming, 'function', None):
+                    if (same_id and hasattr(last, 'type') and last.type == 'function'
+                            and hasattr(incoming, 'type') and incoming.type == 'function'):
                         last.id = last.id or incoming.id
                         last.type = last.type or incoming.type
                         last.name = (last.name or "") + (incoming.name or "")

@@ -74,5 +74,5 @@ class TimeUtil:
             return self._running
 
     def __del__(self):
-        if hasattr(self, '_running' and self._running):
+        if hasattr(self, '_running') and getattr(self, '_running'):
             self.stop()

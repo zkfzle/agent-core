@@ -240,10 +240,12 @@ class BaseController(ABC):
         # Support both content and query field names (backward compatible)
         content = inputs.get("content") or inputs.get("query", "")
         conversation_id = inputs.get("conversation_id", "default_session")
+        user_id = inputs.get("user_id")
 
         return Message.create_user_message(
             content=content,
-            conversation_id=conversation_id
+            conversation_id=conversation_id,
+            user_id=user_id
         )
 
     async def cleanup_conversation(self, conversation_id: str):

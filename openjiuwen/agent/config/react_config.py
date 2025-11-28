@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,7 @@ from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import PluginSchema
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.memory.config.config import MemoryConfig
 
 
 class ConstrainConfig(BaseModel):
@@ -35,3 +36,4 @@ class ReActAgentConfig(AgentConfig):
     prompt_template: List[Dict] = Field(default_factory=list)
     constrain: ConstrainConfig = Field(default=ConstrainConfig())
     plugins: List[PluginSchema] = Field(default_factory=list)
+    memory_config: MemoryConfig = Field(default=MemoryConfig())

@@ -14,6 +14,8 @@ from openjiuwen.agent.utils import MessageUtils
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.security.json_utils import JsonUtils
+from openjiuwen.core.memory.engine.memory_engine_factory import get_memengine_instance
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utlis.hash_util import generate_key
@@ -23,6 +25,7 @@ from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.utils.llm.messages import AIMessage
+from openjiuwen.core.memory.config.config import Config
 
 
 class LLMController(BaseController):
@@ -467,10 +470,12 @@ class LLMController(BaseController):
     async def _generate_plan_from_llm(self, message: Message, runtime: Runtime):
         """Call LLM to generate plan - ReAct core method"""
         inputs = message.get_display_content()
+        user_id = message.source.user_id
         tools = runtime.get_tool_info()
         logger.info(f"Loaded {len(tools)} Tool(s) for generating plans")
+        system_prompt_keywords = await self._get_system_prompt_keywords(inputs, user_id)
         chat_history = MessageUtils.get_chat_history(self._context_engine, runtime, self.config)
-        llm_inputs = MessageHandlerUtils.format_llm_inputs(inputs, chat_history, self.config)
+        llm_inputs = MessageHandlerUtils.format_llm_inputs(inputs, chat_history, self.config, system_prompt_keywords)
 
         if UserConfig.is_sensitive():
             logger.info(f"React llm inputs")
@@ -977,10 +982,12 @@ class LLMController(BaseController):
         """Create message object - override to support query field"""
         query = inputs.get("query", inputs.get("content", ""))
         conversation_id = inputs.get("conversation_id", "default_session")
-        
+        user_id = inputs.get("user_id")
+
         return Message.create_user_message(
             content=query,
-            conversation_id=conversation_id
+            conversation_id=conversation_id,
+            user_id=user_id
         )
 
     @staticmethod
@@ -992,3 +999,44 @@ class LLMController(BaseController):
     def set_llm_controller_prompt_template(self, prompt_template: List[Dict[str, str]]):
         """Set prompt template for LLMController"""
         self.config.prompt_template = prompt_template
+
+    async def _get_system_prompt_keywords(self, inputs: Any, user_id: str):
+        result = {}
+        memory_keywords = await self._get_keywords_from_memory(inputs, user_id)
+        result.update(memory_keywords)
+        return result
+
+    async def _get_keywords_from_memory(self, inputs: Any, user_id: str):
+        result = {}
+        # app_id = f"{self._config.id}_{self._config.version}"
+        app_id = f"{self._config.id}"
+        if isinstance(inputs, str):
+            query = inputs
+        elif isinstance(inputs, dict):
+            query = inputs.get("query", "")
+        else:
+            query = ""
+        logger.info(f"app_id: {app_id} | user_id: {user_id} | inputs: {inputs}")
+        mem_manager_config = {}
+        config = Config(**mem_manager_config)
+        memory_engine = get_memengine_instance(config)
+        if not memory_engine:
+            return result
+        memory_variables = memory_engine.list_user_variables(
+            user_id=user_id,
+            app_id=app_id
+        )
+        if memory_variables:
+            result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables)})
+        logger.info(f"memory_variables: {memory_variables}")
+
+        long_term_memory = memory_engine.search_user_mem(
+            user_id=user_id,
+            app_id=app_id,
+            query=query,
+            num=1
+        )
+        if long_term_memory:
+            result.update({"sys_long_term_memory": JsonUtils.safe_json_dumps(long_term_memory)})
+        logger.info(f"long_term_memory: {long_term_memory}")
+        return result

@@ -48,6 +48,7 @@ class MessageSource:
     """消息来源信息"""
     conversation_id: str  # 对话ID
     source_type: SourceType  # 来源类型
+    user_id: Optional[str] = None
 
 
 @dataclass
@@ -143,11 +144,13 @@ class Message:
     # ========== 工厂方法 ==========
 
     @classmethod
-    def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default") -> 'Message':
+    def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default",
+                            user_id: Optional[str] = None) -> 'Message':
         """创建用户消息 - 统一处理字符串和 InteractiveInput"""
         source = MessageSource(
             conversation_id=conversation_id,
-            source_type=SourceType.USER
+            source_type=SourceType.USER,
+            user_id=user_id
         )
         
         # 根据类型分配到不同字段

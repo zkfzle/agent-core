@@ -41,7 +41,7 @@ class SearchManager:
 
     def list_user_mem(self, user_id: str, app_id: str, nums: int, pages: int) -> list[dict[str, Any]] | None:
         data = self.mem_store.get_all(user_id=user_id, app_id=app_id)
-        if len(data) <= nums * (pages - 1):
+        if data is None or len(data) <= nums * (pages - 1):
             return None
         if len(data) > nums * pages:
             return data[(nums * (pages - 1)):(nums * pages)]

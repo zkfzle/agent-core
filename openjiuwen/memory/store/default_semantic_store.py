@@ -13,8 +13,7 @@ from openjiuwen.core.memory.common.base import generate_idx_name
 from openjiuwen.memory.store.faiss_semantic_utils import SearchType, TimeUtil
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore, SearchHit
 from urllib.parse import urljoin
-import aiohttp
-import asyncio
+import requests
 
 def match_index_name(match_list: List[str], cur_index: str) -> bool:
     cur_parts = re.split(r'\^', cur_index)
@@ -63,7 +62,7 @@ class DefaultSemanticStore(BaseSemanticStore):
     def __with_lock(self, index_name: str):
         return self.index_locks[index_name]
 
-    async def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
         """
         embedding_addr: embedding server addr, example: "http://127.0.0.1:8000"
         texts: List[str], text list
@@ -72,25 +71,24 @@ class DefaultSemanticStore(BaseSemanticStore):
         url = urljoin(self.embedding_addr, "/embedding")
         payload = {"texts": texts}
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload, timeout=30) as resp:
-                    if resp.status != 200:
-                        raise Exception(f"HTTP {resp.status}")
-                    data = await resp.json()
-                    if "embeddings" not in data:
-                        raise ValueError(f"response missing 'embeddings': {data}")
-                    embs = data["embeddings"]
-                    if len(embs[0]) != self.embedding_dims:
-                        raise ValueError(f"embedding dimension mismatch: "
-                                         f"expected {self.embedding_dims}, but got {len(embs[0])}")
-                    return embs
+            resp = requests.post(url, json=payload, timeout=30)
+            resp.raise_for_status()
+            data = resp.json()
+            if "embeddings" not in data:
+                raise ValueError(f"response missing 'embeddings': {data}")
+            embs = data["embeddings"]
+            if len(embs[0]) != self.embedding_dims:
+                raise ValueError(
+                    f"embeddings dimension mismatch: expected {self.embedding_dims}, got {len(embs[0])}"
+                )
+            return embs
         except Exception as e:
-            logger.error(f"[aio_get_embeddings] request failed: {e}")
+            logger.error(f"[get_embeddings] request failed: {e}")
             return None
 
     def add(self, mem: List[str], memory_id: List[str], user_id: str, app_id: str, mem_type: str | None = None) -> None:
         index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        embeddings = asyncio.run(self._get_embeddings(texts=mem))
+        embeddings = self._get_embeddings(texts=mem)
         dimension = len(embeddings[0])
         if len(memory_id) != len(embeddings):
             raise ValueError(f"ids and embeddings must have same length, len of mem_id={len(memory_id)}, "
@@ -119,7 +117,7 @@ class DefaultSemanticStore(BaseSemanticStore):
 
     def search(self, query: List[str], user_id: str, app_id: str, mem_type: str | None = None, top_k: int = 5):
         index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        embedding = asyncio.run(self._get_embeddings(texts=query))
+        embedding = self._get_embeddings(texts=query)
         with self.__with_lock(index_name):
             cur_index = self.__get_faiss_index(index_name)
             if cur_index is None:

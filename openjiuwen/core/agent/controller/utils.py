@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import copy
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from openjiuwen.agent.common.enum import TaskType
 from openjiuwen.agent.config.base import AgentConfig
@@ -32,7 +32,8 @@ class MessageHandlerUtils:
     def format_llm_inputs(
             inputs: Any,
             chat_history: List[BaseMessage],
-            config: AgentConfig
+            config: AgentConfig,
+            keywords: Optional[dict]=None
     ) -> List[BaseMessage]:
         if isinstance(inputs, InteractiveInput):
             user_fields = {}
@@ -40,6 +41,9 @@ class MessageHandlerUtils:
             user_fields = copy.deepcopy(inputs)
         else:
             user_fields = {"query": inputs}
+
+        if keywords:
+            user_fields.update(keywords)
 
         system_prompt = (Template(
             name=config.prompt_template_name,

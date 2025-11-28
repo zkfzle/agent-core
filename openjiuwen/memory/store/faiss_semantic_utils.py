@@ -7,12 +7,10 @@ from enum import Enum
 from typing import Optional, Callable, Any
 from openjiuwen.core.common.logging import logger
 
-class VectorDBType(str, Enum):
-    FAISS = "FAISS"
-    MILVUS = "MILVUS"
 
 class SearchType(str, Enum):
     COSINE = "COSINE"
+
 
 class TimeUtil:
     """single-threaded timer utility class"""

@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from typing import List
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -7,13 +10,12 @@ from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.prompt.categorizer import CATEGORIZATION_PROMPT
 
 
-
 class Categorizer:
     def __init__(self) -> None:
         pass
 
     @staticmethod
-    def GetModelInput(messages: List[BaseMessage],
+    def get_model_input(messages: List[BaseMessage],
                       history_messages: List[BaseMessage],
                       prompt: str) -> List[dict]:
         history = ""
@@ -38,22 +40,24 @@ class Categorizer:
         return model_input
 
     @staticmethod
-    def GetCategories(
+    def get_categories(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
         base_chat_model: BaseModelClient,
         config: Config,
         retries: int = 3
     ) -> List[str]:
-        model_input = Categorizer.GetModelInput(
+        model_input = Categorizer.get_model_input(
             messages,
             history_messages,
             CATEGORIZATION_PROMPT,
         )
+        logger.debug(f"Start to get categories, model_input: {model_input}")
         for attempt in range(retries):
             try:
                 response = base_chat_model.invoke(config.model_name, model_input).content
                 categories = json.loads(response)
+                logger.debug(f"Succeed to get categories, output: {categories}")
                 if isinstance(categories, list):
                     return categories
             except json.JSONDecodeError as e:
@@ -63,22 +67,24 @@ class Categorizer:
         return []
         
     @staticmethod
-    async def aGetCategories(
+    async def aget_categories(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
         base_chat_model: BaseModelClient,
         config: Config,
         retries: int = 3
     ) -> List[str]:
-        model_input = Categorizer.GetModelInput(
+        model_input = Categorizer.get_model_input(
             messages,
             history_messages,
             CATEGORIZATION_PROMPT,
         )
+        logger.debug(f"Start to get categories, model_input: {model_input}")
         for attempt in range(retries):
             try:
-                response = await base_chat_model.ainvoke(config.model_name, model_input).content
-                categories = json.loads(response)
+                response = await base_chat_model.ainvoke(config.model_name, model_input)
+                categories = json.loads(response.content)
+                logger.debug(f"Succeed to get categories, output: {categories}")
                 if isinstance(categories, list):
                     return categories
             except json.JSONDecodeError as e:

@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from .memory_info import ExtractedData
 from openjiuwen.core.memory.generation.variable_extractor import ComprehensionExtractor
 from ..search.search_manager.search_manager import SearchManager
@@ -39,7 +42,7 @@ def _generate_user_profile(
     base_chat_model: BaseModelClient,
     user_define: dict[str, str] = None
 ) -> dict[str, str]:
-    return UserProfileExtractor.GetUserProfile(
+    return UserProfileExtractor.get_user_profile(
         messages,
         history_messages,
         base_chat_model,
@@ -68,17 +71,15 @@ def _get_conflict_input(
             search_result['mem'],
             search_result['score']
         ))
-    input_memories_map: dict[int, str] = {}
     input_memory_ids_map: dict[int, str] = {}
     input_memories: list[str] = []
     i = 1
     for historical in historical_profiles:
         mem_id, mem_content, _ = historical
         input_memories.append(mem_content)
-        input_memories_map[i] = mem_content
         input_memory_ids_map[i] = mem_id
         i += 1
-    return input_memories, input_memories_map, input_memory_ids_map
+    return input_memories, input_memory_ids_map
 
 
 def _process_conflict_info(conflict_info: list[dict], input_memory_ids_map: dict[int, str]) -> list[dict]:
@@ -115,13 +116,10 @@ class Generator:
         user_define = kwargs.get("user_define", None)
         user_id = kwargs.get("user_id")
         app_id = kwargs.get("app_id")
-        session_id = kwargs.get("session_id")
         history_messages = kwargs.get("history_messages")
         message_mem_id = kwargs.get("message_mem_id")
-        if not all([messages, config, user_id, app_id, session_id]) :
-            logger.error("messages, config, user_id, app_id, session_id are required parameters")
-        if not model:
-            logger.error("base_chat_model is required parameter")
+        if not all([messages, config, user_id, app_id, model]) :
+            logger.error("messages, config, user_id, app_id, model are required parameters")
         categorizer = Categorizer()
         all_memory_results = []
         variable_units = self.gen_extracted_data(
@@ -133,7 +131,7 @@ class Generator:
             base_chat_model=model
         )
         all_memory_results += variable_units
-        categories = categorizer.GetCategories(
+        categories = categorizer.get_categories(
             messages,
             history_messages,
             model,
@@ -205,7 +203,7 @@ class Generator:
                 logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
                 continue
             for profile in profile_list:
-                input_memories, input_memories_map, input_memory_ids_map = _get_conflict_input(
+                input_memories, input_memory_ids_map = _get_conflict_input(
                     user_id,
                     app_id,
                     profile,

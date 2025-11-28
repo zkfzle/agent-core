@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from typing import Any
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -25,15 +28,15 @@ class ComprehensionExtractor:
 
     @staticmethod
     def extract(
-        message: list[BaseMessage],
+        messages: list[BaseMessage],
         history_summary: BaseMessage,
         base_chat_model: BaseModelClient,
         config: Config
     ) -> list[ExtractedData]:
-        """Extract variables from the given message using LLM.
+        """Extract variables from the given messages using LLM.
         
         Args:
-            message (list[BaseMessage]): The current message to extract variables from.
+            messages (list[BaseMessage]): The current messages to extract variables from.
             history_summary (BaseMessage): The summary of historical messages.
             base_chat_model (BaseModelClient): The chat model to use for extraction.
             config (Config): Configuration for the extraction process.
@@ -54,7 +57,7 @@ class ComprehensionExtractor:
                 variables_dict["variables_str"] += f"{var['name']}({var['description']}),"
                 variables_dict["variables_enum"] += "{\"" + var['name'] + "\": {\"value\": \"string\"}}\n"
         conversation = ""
-        for msg in message:
+        for msg in messages:
             conversation += f"{msg.role}: {msg.content}\n"
 
         # Construct prompts
@@ -75,7 +78,7 @@ class ComprehensionExtractor:
                 variables_enum=variables_dict["variables_enum"]
             )
         sys_message = EXTRACT_VARIABLES_SYS_zh_CN if config.language == "zh-CN" else EXTRACT_VARIABLES_SYS
-
+        logger.debug(f"Start to extract variable, input user_message: {user_message}, sys_message: {sys_message}")
         response = base_chat_model.invoke(
             config.model_name,
             [{
@@ -87,7 +90,7 @@ class ComprehensionExtractor:
                 "content": user_message
             }]
         )
-
+        logger.debug(f"variable extractor output: {response.content}")
         # Parse response
         extract_result = []
         try:
@@ -108,6 +111,7 @@ class ComprehensionExtractor:
                                 value=value
                             )
                         )
+            logger.debug(f"Succeed to extract variable, result: {extract_result}")
             return extract_result
         except Exception as e:
             logger.error(f"LLM返回的json格式有误: {e}")
@@ -115,8 +119,7 @@ class ComprehensionExtractor:
         
     @staticmethod
     def _check_value(value: Any) -> bool:
-        if value is None or not isinstance(value, dict) or value.get("value", "") is None:
-            return False
-        if value.get("value", "").lower() == "none":
+        if (value is None or not isinstance(value, dict) or value.get("value", "") is None
+                or value.get("value", "").lower() == "none"):
             return False
         return True

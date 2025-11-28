@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from typing import List, Dict
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -33,7 +36,7 @@ class UserProfileExtractor:
         pass
 
     @staticmethod
-    def GetUserProfile(
+    def get_user_profile(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
         base_chat_model: BaseModelClient,
@@ -42,15 +45,17 @@ class UserProfileExtractor:
         retries: int = 3
     ) -> Dict[str, str]:
         sym_prompt = _get_message(user_define)
-        model_input = Categorizer.GetModelInput(
+        model_input = Categorizer.get_model_input(
             messages,
             history_messages,
             sym_prompt
         )
+        logger.debug(f"Start to get user profile, model_input: {model_input}")
         for attempt in range(retries):
             try:
                 response = base_chat_model.invoke(config.model_name, model_input).content
                 result = json.loads(response)
+                logger.debug(f"Succeed to get user profile, output: {result}")
                 if isinstance(result, dict):
                     return result
             except json.JSONDecodeError as e:
@@ -60,7 +65,7 @@ class UserProfileExtractor:
         return {}
 
     @staticmethod
-    async def aGetUserProfile(
+    async def aget_user_profile(
         messages: List[BaseMessage],
         history_messages: List[BaseMessage],
         base_chat_model: BaseModelClient,
@@ -69,15 +74,17 @@ class UserProfileExtractor:
         retries: int = 3
     ) -> Dict[str, str]:
         sym_prompt = _get_message(user_define)
-        model_input = Categorizer.GetModelInput(
+        model_input = Categorizer.get_model_input(
             messages,
             history_messages,
             sym_prompt
         )
+        logger.debug(f"Start to get user profile, model_input: {model_input}")
         for attempt in range(retries):
             try:
-                response = await base_chat_model.ainvoke(config.model_name, model_input).content
-                result = json.loads(response)
+                response = await base_chat_model.ainvoke(config.model_name, model_input)
+                result = json.loads(response.content)
+                logger.debug(f"Succeed to get user profile, output: {result}")
                 if isinstance(result, dict):
                     return result
             except json.JSONDecodeError as e:

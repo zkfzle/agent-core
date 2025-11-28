@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Tuple
@@ -17,7 +20,7 @@ class MemoryEngineBase(ABC):
     @abstractmethod
     def init_mem_store(
         self,
-        vector_db_instance: BaseSemanticStore,
+        semantic_db_instance: BaseSemanticStore,
         db_engine_instance: Engine,
         kv_db_instance: BaseKVStore
     ):

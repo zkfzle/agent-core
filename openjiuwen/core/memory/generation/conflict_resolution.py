@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from enum import Enum
 from typing import List
@@ -6,7 +9,6 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.prompt.conflict_resolution import (
     CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER)
-
 
 
 class ConflictType(Enum):
@@ -62,10 +64,12 @@ class ConflictResolution:
             list[dict]: A list of dictionaries representing the conflict resolution results.
         """
         messages = _get_message(old_messages, new_message)
+        logger.debug(f"start to check conflict, input: {messages}")
         for attempt in range(retries):
             try:
                 response = base_chat_model.invoke(model_name=config.model_name, messages=messages).content
                 result = json.loads(str(response).strip().replace("'", '"'))
+                logger.debug(f"Succeed to check conflict, output: {result}")
                 if isinstance(result, list):
                     return result
             except json.JSONDecodeError as e:
@@ -83,10 +87,12 @@ class ConflictResolution:
         retries: int = 3
     ) -> list[dict]:
         messages = _get_message(old_messages, new_message)
+        logger.debug(f"Start to check conflict, input: {messages}")
         for attempt in range(retries):
             try:
-                response = await base_chat_model.ainvoke(model_name=config.model_name, messages=messages).content
-                result = json.loads(str(response).strip().replace("'", '"'))
+                response = await base_chat_model.ainvoke(model_name=config.model_name, messages=messages)
+                result = json.loads(str(response.content).strip().replace("'", '"'))
+                logger.debug(f"Succeed to check conflict, output: {result}")
                 if isinstance(result, list):
                     return result
             except json.JSONDecodeError as e:

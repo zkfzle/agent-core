@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
 from datetime import datetime
 from typing import Any, Tuple
@@ -31,7 +34,8 @@ def _check_user_and_app_id(user_id: str, app_id: str, context="Operation"):
         raise ValueError(f"{context} failed: user_id is empty.")
     if not app_id or app_id.strip() == "":
         raise ValueError(f"{context} failed: app_id is empty.")
-    
+
+
 class MemoryEngine(MemoryEngineBase):
     def __init__(self, config: Config, llm_base: BaseModelClient = None):
         super().__init__(config, llm_base)
@@ -43,7 +47,7 @@ class MemoryEngine(MemoryEngineBase):
         self.message_manager: MessageManager = None
         self.generator: Generator = None
         self.search_manager: SearchManager = None
-    
+
     def init_mem_store(self,
                        semantic_db_instance: BaseSemanticStore,
                        db_engine_instance: Engine,
@@ -67,7 +71,7 @@ class MemoryEngine(MemoryEngineBase):
         self.search_manager = SearchManager(managers, user_mem_store)
         self.generator = Generator(self.search_manager)
         self.write_manager = WriteManager(managers, user_mem_store)
-        
+
     def set_app_config(self, app_id: str, config: MemoryConfig):
         if app_id is None or app_id.strip() == "":
             logger.warning("set_app_config failed: app_id is empty.")
@@ -79,7 +83,7 @@ class MemoryEngine(MemoryEngineBase):
         return True
 
     def set_llm_model(self, config: ModelConfig):
-        request_config= {'model_name': config.model_info.model_name}
+        request_config = {'model_name': config.model_info.model_name}
         all_config = self.config_manager.get_config(request_config=request_config)
         self.config_manager = ConfigManger(all_config)
         self.llm_base = ModelFactory().get_model(
@@ -89,14 +93,14 @@ class MemoryEngine(MemoryEngineBase):
         )
 
     def add_conversation_messages(
-        self,
-        user_id: str,
-        app_id: str,
-        messages: list[BaseMessage],
-        timestamp: datetime = None,
-        request_config: dict[str, Any] = None,
-        session_id: str = None,
-        llm: BaseModelClient = None
+            self,
+            user_id: str,
+            app_id: str,
+            messages: list[BaseMessage],
+            timestamp: datetime = None,
+            request_config: dict[str, Any] = None,
+            session_id: str = None,
+            llm: BaseModelClient = None
     ) -> str:
         llm = llm if llm else self.llm_base
         if not self.message_manager:
@@ -126,7 +130,6 @@ class MemoryEngine(MemoryEngineBase):
             user_id=user_id,
             messages=messages,
             history_messages=history_messages,
-            session_id=session_id,
             config=config,
             base_chat_model=llm,
             message_mem_id=message_mem_id,
@@ -159,7 +162,6 @@ class MemoryEngine(MemoryEngineBase):
                 history_messages.append(msg)
         return history_messages
 
-
     @staticmethod
     def _check_messages(messages: list[BaseMessage]) -> bool:
         human_message: HumanMessage = HumanMessage()
@@ -167,24 +169,25 @@ class MemoryEngine(MemoryEngineBase):
             if msg.role == human_message.role:
                 return True
         return False
-    
+
     async def aadd_conversation_messages(
-        self,
-        user_id: str,
-        app_id: str,
-        messages: list[BaseMessage],
-        timestamp: datetime = None,
-        request_config: dict[str, Any] = None,
-        session_id: str = None,
-        llm: BaseModelClient = None
+            self,
+            user_id: str,
+            app_id: str,
+            messages: list[BaseMessage],
+            timestamp: datetime = None,
+            request_config: dict[str, Any] = None,
+            session_id: str = None,
+            llm: BaseModelClient = None
     ) -> str:
         loop = asyncio.get_event_loop()
         message_mem_id = await loop.run_in_executor(None, self.add_conversation_messages,
-                                                   user_id, app_id, messages, timestamp,
-                                                   request_config, session_id, llm)
+                                                    user_id, app_id, messages, timestamp,
+                                                    request_config, session_id, llm)
         return message_mem_id
-    
-    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[Tuple[BaseMessage, datetime]]:
+
+    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[
+        Tuple[BaseMessage, datetime]]:
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         return self.message_manager.get(
@@ -192,36 +195,36 @@ class MemoryEngine(MemoryEngineBase):
             app_id=app_id,
             session_id=session_id
         )
-    
+
     def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
         if not self.message_manager:
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         return self.message_manager.get_by_id(msg_id)[0]
-    
+
     def delete_mem_by_id(self, mem_id: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
         self.write_manager.delete_mem_by_id(mem_id)
         return True
-    
+
     def delete_mem_by_user_id(self, user_id: str, app_id: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
         self.write_manager.delete_mem_by_user_id(user_id=user_id, app_id=app_id)
         return True
-    
+
     def delete_user_profile_by_user_id(self, user_id: str, app_id: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
         self.user_profile_manager.delete_by_user_id(user_id=user_id, app_id=app_id)
         return True
-    
+
     def update_mem_by_id(self, mem_id: str, memory: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
         self.write_manager.update_mem_by_id(mem_id, memory)
         return True
-    
+
     def get_user_variable(self, user_id: str, app_id: str, name: str) -> str:
         _check_user_and_app_id(user_id, app_id, "Query Variable")
         if not name or name.strip() == "":
@@ -248,11 +251,11 @@ class MemoryEngine(MemoryEngineBase):
         if num is None or num <= 0:
             raise ValueError("Search User Memory failed: num must be greater than 0.")
         return self.search_manager.search(query=query, app_id=app_id, top_k=num, user_id=user_id, threshold=threshold)
-    
+
     def list_user_variables(self, user_id: str, app_id: str) -> dict[str, str]:
         _check_user_and_app_id(user_id, app_id, "List User Variables")
         return self.search_manager.get_all_user_variable(user_id, app_id)
-    
+
     def list_user_mem(self, user_id: str, app_id: str, num: int, page: int) -> list[dict[str, Any]]:
         if num is None or num <= 0:
             raise ValueError("List User Memory failed: num must be greater than 0.")
@@ -260,7 +263,7 @@ class MemoryEngine(MemoryEngineBase):
             raise ValueError("List User Memory failed: page must be greater than 0.")
         _check_user_and_app_id(user_id, app_id, "List User Memory")
         return self.search_manager.list_user_mem(user_id=user_id, app_id=app_id, nums=num, pages=page)
-    
+
     def get_user_profile_by_topics(self, user_id: str, app_id: str, topics: list[str]) -> dict[str, str]:
         result = {}
         for topic in topics:

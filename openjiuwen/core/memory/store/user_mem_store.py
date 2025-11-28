@@ -227,16 +227,3 @@ class UserMemStore:
             value = struct.unpack('i', bytes_chunk)[0]
             ints.append(value)
         return ints
-
-    def __delete_int_by_idx(self, data_list: str, idx: int) -> str:
-        total = len(data_list) // self.HEX_NUM_PER_INT
-        if 0 <= idx < total:
-            return data_list[:idx * self.HEX_NUM_PER_INT] + data_list[(idx+1) * self.HEX_NUM_PER_INT:]
-        return data_list
-
-    def __get_int_by_idx(self, data_list: str, idx: int) -> int | None:
-        total = len(data_list) // self.HEX_NUM_PER_INT
-        if 0 <= idx < total:
-            bytes_chunk = bytes.fromhex(data_list[idx * self.HEX_NUM_PER_INT:(idx+1) * self.HEX_NUM_PER_INT])
-            return struct.unpack('i', bytes_chunk)[0]
-        return None

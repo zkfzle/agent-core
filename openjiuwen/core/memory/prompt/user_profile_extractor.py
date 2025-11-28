@@ -1,5 +1,5 @@
 USER_PROFILE_EXTRACTOR_PROMPT = """
-你是一个用户画像分析专家，你的任务是从当前记忆`current_memory`中(结合历史记忆`historical memory`)精准提取用户画像信息。信息分为两大类：核心信息和非核心信息。
+你是一个用户画像分析专家，你的任务是从当前记忆`current_memory`中(结合历史记忆`historical_memory`)精准提取用户画像信息。信息分为两大类：核心信息和非核心信息。
 # 提取规则：
 1.   **用户画像分类**：
      *    **personal_information**: 提取用户明确的姓名，年龄/年龄段（如20多岁），职业，所在地（如北京/上海），家庭成员（不包括朋友）。

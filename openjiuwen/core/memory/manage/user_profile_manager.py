@@ -124,6 +124,10 @@ class UserProfileManager(BaseMemoryManager):
     def list_user_profile(self, user_id: str, app_id: str, profile_type: Optional[str] = None,
                           mem_type=MemoryType.USER_PROFILE) -> List[UserProfileUnit]:
         datas = self.mem_store.get_all(user_id=user_id, app_id=app_id, mem_type=mem_type.value)
+        if not datas:
+            logger.debug(f"End to get user profile, result is None, "
+                         f"params user_id:{user_id}, app_id:{app_id}, mem_type:{mem_type}")
+            return []
         new_datas = []
         if profile_type is not None:
             for data in datas:

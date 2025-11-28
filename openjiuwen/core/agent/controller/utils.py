@@ -9,6 +9,7 @@ from openjiuwen.agent.common.enum import TaskType
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
@@ -103,6 +104,11 @@ class MessageHandlerUtils:
                         task_type=task_type
                     ))
                     break
+        if not result:
+            raise JiuWenBaseException(
+                error_code=StatusCode.TOOL_NOT_FOUND_ERROR.code,
+                message=StatusCode.TOOL_NOT_FOUND_ERROR.errmsg
+            )
         return result
 
     @staticmethod

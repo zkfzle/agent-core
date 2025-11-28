@@ -496,10 +496,13 @@ class LLMController(BaseController):
                 logger.info(f"React llm output: {llm_output}")
         except Exception as e:
             logger.error(f"Failed to invoke model, {e}")
-            raise JiuWenBaseException(
-                error_code=StatusCode.INVOKE_LLM_FAILED.code,
-                message=StatusCode.INVOKE_LLM_FAILED.errmsg
-            )
+            if isinstance(e, JiuWenBaseException):
+                raise e
+            else:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.INVOKE_LLM_FAILED.code,
+                    message=StatusCode.INVOKE_LLM_FAILED.errmsg
+                )
 
         return tasks, llm_output
 

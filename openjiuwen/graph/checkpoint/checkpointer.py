@@ -61,13 +61,6 @@ class GraphCheckpointer(BaseCheckpointSaver[str]):
             thread_id: str,
     ) -> None:
         self._inner.delete_thread(thread_id=thread_id)
-        for key in list(self.state_blobs.keys()):
-            if key[0] == thread_id:
-                del self.state_blobs[key]
-
-        for key in list(self.state_updates_blobs.keys()):
-            if key[0] == thread_id:
-                del self.state_updates_blobs[key]
 
     async def aget_tuple(self, config: RunnableConfig) -> CheckpointTuple | None:
         return await self._inner.aget_tuple(config=config)
@@ -105,7 +98,7 @@ class GraphCheckpointer(BaseCheckpointSaver[str]):
             self,
             thread_id: str,
     ) -> None:
-        return self.delete_thread(thread_id=thread_id)
+        return await self._inner.adelete_thread(thread_id=thread_id)
 
     def get_next_version(self, current: str | None, channel: None) -> str:
         return self._inner.get_next_version(current=current, channel=channel)

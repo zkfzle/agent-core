@@ -9,7 +9,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.condition.condition import Condition, FuncCondition
 from openjiuwen.core.component.condition.expression import ExpressionCondition
 from openjiuwen.core.runtime.runtime import Runtime, BaseRuntime
-from openjiuwen.core.tracer.workflow_tracer import trace_outputs, trace_inputs
+from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.graph.visualization.drawable_edge import DrawableBranchRouter
 
 
@@ -82,11 +82,11 @@ class BranchRouter:
                     "branch_id": branch.branch_id,
                     "condition": branch.trace_info(runtime)
                 })
-            await trace_inputs(runtime, {"branches": branches})
+            await TracerWorkflowUtils.trace_inputs(runtime, {"branches": branches})
         for branch in self._branches:
             if branch.evaluate(runtime):
                 if self.report_trace:
-                    await trace_outputs(runtime, {"branch_id": branch.branch_id})
+                    await TracerWorkflowUtils.trace_outputs(runtime, {"branch_id": branch.branch_id})
                 return branch.target
         raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.code,
                                   StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.errmsg)

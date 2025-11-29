@@ -36,7 +36,7 @@ from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.stream_actor.base import StreamGraph
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.tracer.tracer import Tracer
-from openjiuwen.core.tracer.workflow_tracer import workflow_trace_inputs, workflow_trace_outputs
+from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
@@ -486,7 +486,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     ) -> AsyncIterator[WorkflowChunk]:
         self._validate_and_init_runtime(runtime, stream_modes, context)
         # workflow start tracer info
-        await workflow_trace_inputs(runtime, inputs)
+        await TracerWorkflowUtils.workflow_trace_inputs(runtime, inputs)
         timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
         frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
         if timeout is not None and 0 < timeout <= frame_timeout:
@@ -500,7 +500,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             finally:
                 # workflow end tracer info
                 outputs = runtime.state().get_outputs(self._end_comp_id)
-                await workflow_trace_outputs(runtime, outputs)
+                await TracerWorkflowUtils.workflow_trace_outputs(runtime, outputs)
                 await runtime.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(

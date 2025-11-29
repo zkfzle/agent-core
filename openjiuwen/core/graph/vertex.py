@@ -21,7 +21,7 @@ from openjiuwen.core.runtime.workflow import NodeRuntime
 from openjiuwen.core.stream.base import StreamSchemas, OutputSchema
 from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream_actor.base import StreamConsumer
-from openjiuwen.core.tracer.workflow_tracer import trace_inputs, trace_outputs, trace_error
+from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
 
@@ -207,7 +207,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
     async def __trace_inputs__(self, inputs: Optional[dict]) -> None:
         if self._executable.skip_trace():
             return
-        await trace_inputs(self._runtime, inputs)
+        await TracerWorkflowUtils.trace_inputs(self._runtime, inputs)
 
         if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
             self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
@@ -296,9 +296,9 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
     async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:
         if self._executable.skip_trace():
             return
-        await trace_outputs(self._runtime, outputs)
+        await TracerWorkflowUtils.trace_outputs(self._runtime, outputs)
 
     async def __trace_error__(self, error: Exception) -> None:
         if self._executable.skip_trace():
             return
-        await trace_error(self._runtime, error)
+        await TracerWorkflowUtils.trace_error(self._runtime, error)

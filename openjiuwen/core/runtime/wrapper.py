@@ -13,7 +13,7 @@ from openjiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.stream.writer import StreamWriter
 from openjiuwen.core.tracer.tracer import Tracer
-from openjiuwen.core.tracer.workflow_tracer import trace, trace_error
+from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
@@ -191,7 +191,7 @@ class RouterRuntime(StateRuntime):
         pass
 
     async def trace(self, data: dict):
-        await trace(self._inner, data)
+        await TracerWorkflowUtils.trace(self._inner, data)
 
     def stream_writer(self) -> Optional[StreamWriter]:
         pass
@@ -206,7 +206,7 @@ class RouterRuntime(StateRuntime):
         pass
 
     async def trace_error(self, error: Exception):
-        await trace_error(self._inner, error)
+        await TracerWorkflowUtils.trace_error(self._inner, error)
 
     def update_global_state(self, data: dict):
         pass
@@ -286,10 +286,10 @@ class WrappedNodeRuntime(StateRuntime):
         self._stream_mode = stream_mode
 
     async def trace(self, data: dict):
-        await trace(self._inner, data)
+        await TracerWorkflowUtils.trace(self._inner, data)
 
     async def trace_error(self, error: Exception):
-        await trace_error(self._inner, error)
+        await TracerWorkflowUtils.trace_error(self._inner, error)
 
     async def interact(self, value):
         if self._stream_mode:

@@ -141,7 +141,7 @@ class LLMAgent(ControllerAgent):
         task = asyncio.create_task(stream_process())
         result_for_memory = ""
         async for result in agent_runtime.stream_iterator():
-            if (result.payload.get("result_type") == 'answer' and
+            if (isinstance(result.payload, dict) and result.payload.get("result_type") == 'answer' and
                     isinstance(result.payload.get("output"), str)):
                 result_for_memory += result.payload.get("output")
             yield result

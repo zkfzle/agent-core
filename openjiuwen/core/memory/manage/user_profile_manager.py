@@ -22,19 +22,18 @@ class UserProfileManager(BaseMemoryManager):
         self.mem_store = user_mem_store
         self.semantic_recall = semantic_recall_instance
         self.date_user_profile_id = data_id_generator
-        self.lock = threading.Lock()
 
     def add(self, memory: BaseMemoryUnit):
         if not isinstance(memory, UserProfileUnit):
             raise ValueError('user profile add Must pass UserProfileUnit class.')
         if not memory.user_id:
-            raise ValueError('Must pass user_id')
+            raise ValueError('user_profile_manager add operation must pass user_id')
         if not memory.app_id:
-            raise ValueError('Must pass app_id')
+            raise ValueError('user_profile_manager add operation must pass app_id')
         if not memory.profile_mem:
-            raise ValueError('Must pass profile_mem')
+            raise ValueError('user_profile_manager add operation must pass profile_mem')
         if not memory.profile_type:
-            raise ValueError('Must profile_type')
+            raise ValueError('user_profile_manager add operation must pass profile_type')
         for conflict in memory.conflict_info:
             conf_id = conflict['id']
             conf_mem = conflict['text']
@@ -52,12 +51,12 @@ class UserProfileManager(BaseMemoryManager):
                                                      memory_id=[mem_id],
                                                      mem=[conf_mem])
             elif conf_event == ConflictType.NONE.value:
-                logger.info(f"none conflict info: {conflict}")
+                logger.info(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
             elif conf_event ==ConflictType.UPDATE.value:
-                logger.info(f"update conflict info: {conflict}, update: {memory.profile_mem}")
+                logger.info(f"update conflict info: {conflict}, update_profile: {memory.profile_mem}")
                 self.update(conf_id, memory.profile_mem)
             elif conf_event == ConflictType.DELETE.value:
-                logger.info(f"delete conflict info: {conflict}")
+                logger.info(f"delete conflict info: {conflict}, new_profile: {memory.profile_mem}")
                 self.delete(conf_id)
 
     def update(self, mem_id: str, new_memory: str, **kwargs) -> bool:
@@ -67,9 +66,7 @@ class UserProfileManager(BaseMemoryManager):
             return False
         time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
         new_data = {'mem': new_memory, 'time': time}
-        new_data.update(kwargs)
-        with self.lock:
-            self.mem_store.update(mem_id=mem_id, user_id=data['user_id'], app_id=data['app_id'], data=new_data)
+        self.mem_store.update(mem_id=mem_id, user_id=data['user_id'], app_id=data['app_id'], data=new_data)
         self.semantic_recall.remove(ids=[mem_id], user_id=data['user_id'],
                                     app_id=data['app_id'], mem_type=MemoryType.USER_PROFILE.value)
         self.semantic_recall.add(mem=[new_memory], memory_id=[mem_id], user_id=data['user_id'],
@@ -103,10 +100,9 @@ class UserProfileManager(BaseMemoryManager):
             logger.error(f"Delete user_profile in db failed, the mem of mem_id({mem_id}) is not exist.")
             return False
         mem_type = kwargs.get("mem_type", MemoryType.USER_PROFILE.value)
-        with self.lock:
-            self.mem_store.delete(mem_id=mem_id, user_id=data['user_id'], app_id=data['app_id'])
-            self._delete_vector_user_profile_memory(memory_id=[mem_id], user_id=data['user_id'],
-                                                    app_id=data['app_id'], mem_type=mem_type)
+        self.mem_store.delete(mem_id=mem_id, user_id=data['user_id'], app_id=data['app_id'])
+        self._delete_vector_user_profile_memory(memory_id=[mem_id], user_id=data['user_id'],
+                                                app_id=data['app_id'], mem_type=mem_type)
         return True
 
     def delete_by_user_id(self, user_id: str, app_id: str):
@@ -115,10 +111,9 @@ class UserProfileManager(BaseMemoryManager):
             logger.error(f"Delete user_profile in db failed, the mem of user_id({user_id}) is not exist.")
             return False
         mem_ids = [item['id'] for item in data]
-        with self.lock:
-            self.mem_store.delete_by_user(user_id=user_id, app_id=app_id)
-            self._delete_vector_user_profile_memory(memory_id=mem_ids, user_id=user_id,
-                                                    app_id=app_id, mem_type=MemoryType.USER_PROFILE.value)
+        self.mem_store.delete_by_user(user_id=user_id, app_id=app_id)
+        self._delete_vector_user_profile_memory(memory_id=mem_ids, user_id=user_id,
+                                                app_id=app_id, mem_type=MemoryType.USER_PROFILE.value)
         return True
 
     def list_user_profile(self, user_id: str, app_id: str, profile_type: Optional[str] = None,
@@ -160,14 +155,6 @@ class UserProfileManager(BaseMemoryManager):
         """
         向用户画像表中添加数据
         """
-        if not user_id:
-            raise ValueError('Must pass user_id')
-        if not app_id:
-            raise ValueError('Must pass app_id')
-        if not profile_mem:
-            raise ValueError('Must pass profile_mem')
-        if not profile_type:
-            raise ValueError('Must profile_type')
         mem_id = str(self.date_user_profile_id.generate_next_id())
         time = datetime.now(timezone.utc)
         data = {

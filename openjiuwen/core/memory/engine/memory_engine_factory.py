@@ -76,7 +76,7 @@ def get_memengine_instance(config: Config) -> MemoryEngineBase | None:
         with _memengine_singleton_lock:
             if _memengine_singleton_instance is None:
                 if _kv_db_instance is None:
-                    logger.error("Failed to new memory engine, you need register one of kv store and mem_store")
+                    logger.error("Failed to new memory engine, you need register kv store")
                     return None
                 _memengine_singleton_instance = new(
                     config=config,

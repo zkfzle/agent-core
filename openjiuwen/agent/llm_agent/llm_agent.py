@@ -141,13 +141,15 @@ class LLMAgent(ControllerAgent):
         task = asyncio.create_task(stream_process())
         result_for_memory = ""
         async for result in agent_runtime.stream_iterator():
-            if result.payload.get("result_type") == 'answer':
+            if (result.payload.get("result_type") == 'answer' and
+                    isinstance(result.payload.get("output"), str)):
                 result_for_memory += result.payload.get("output")
             yield result
         await task
         await user_memory_task
-        agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
-        await agent_memory_task
+        if result_for_memory != "":
+            agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
+            await agent_memory_task
 
 
     def set_prompt_template(self, prompt_template: List[Dict]):
@@ -169,7 +171,7 @@ class LLMAgent(ControllerAgent):
     async def _write_messages_to_memory(self, inputs, result = None):
         user_id = inputs.get("user_id")
         session_id = inputs.get("conversation_id", "default_session")
-        app_id = session_id
+        app_id = inputs.get("app_id","default_app_id")
 
         if not user_id or not self._memory_engine:
             return

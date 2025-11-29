@@ -1024,21 +1024,22 @@ class LLMController(BaseController):
         memory_engine = get_memengine_instance(config)
         if not memory_engine:
             return result
-        memory_variables = memory_engine.list_user_variables(
-            user_id=user_id,
-            app_id=app_id
-        )
-        if memory_variables:
-            result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables)})
-        logger.info(f"memory_variables: {memory_variables}")
+        if user_id and app_id:
+            memory_variables = memory_engine.list_user_variables(
+                user_id=user_id,
+                app_id=app_id
+            )
+            if memory_variables:
+                result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables)})
+            logger.info(f"memory_variables: {memory_variables}")
 
-        long_term_memory = memory_engine.search_user_mem(
-            user_id=user_id,
-            app_id=app_id,
-            query=query,
-            num=1
-        )
-        if long_term_memory:
-            result.update({"sys_long_term_memory": JsonUtils.safe_json_dumps(long_term_memory)})
-        logger.info(f"long_term_memory: {long_term_memory}")
+            long_term_memory = memory_engine.search_user_mem(
+                user_id=user_id,
+                app_id=app_id,
+                query=query,
+                num=1
+            )
+            if long_term_memory:
+                result.update({"sys_long_term_memory": JsonUtils.safe_json_dumps(long_term_memory)})
+            logger.info(f"long_term_memory: {long_term_memory}")
         return result

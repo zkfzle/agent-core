@@ -223,7 +223,8 @@ class RequestChatModel(BaseModelClient):
         if UserConfig.is_sensitive():
             logger.info("Before request chat model, request params is ready.")
         else:
-            logger.info(f"Before request chat model, request params is ready. params: {params}")
+            logger.info(f"Before request chat model, request params is ready. "
+                        f"params: {params}, timeout: {self.timeout}")
 
         return params
 
@@ -442,6 +443,11 @@ class OpenAIChatModel(BaseModelClient):
         if tools:
             params["tools"] = tools
             params["tool_choice"] = "auto"
+
+        if UserConfig.is_sensitive():
+            logger.info("Before request openai chat model, request params is ready.")
+        else:
+            logger.info(f"Before request openai chat model, request params is ready. params: {params}")
 
         return params
 

@@ -2,56 +2,59 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Any, Dict, List
-from sqlalchemy import (engine, insert, update, select, delete, 
-                        Table, MetaData, and_, or_, desc, asc)
+from sqlalchemy import insert, update, select, delete, Table, MetaData, and_, or_, desc, asc
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from openjiuwen.core.memory.store import BaseDbStore
 import logging
 
 logger = logging.getLogger(__name__)
 
-class SqlDbStore():
-    def __init__(self, conn_pool: engine.Engine):
-        self.conn_pool = conn_pool
-        self._table_cache: dict[str, Table] = {}
 
-    def _get_table(self, table_name: str) -> Table:
-        if table_name in self._table_cache:
-            return self._table_cache[table_name]
-        metadata = MetaData()
-        table = Table(table_name, metadata, autoload_with=self.conn_pool)
-        self._table_cache[table_name] = table
-        return table
+class SqlDbStore:
+    def __init__(self,
+                 db_store: BaseDbStore
+                 ):
+        self.db_store = db_store
+        self._async_table_cache: dict[str, Table] = {}
+        self.async_session = async_sessionmaker(
+            bind=self.db_store.get_async_engine(),
+            expire_on_commit=False,
+            class_=AsyncSession)
 
-    def write(self, table: str, data: dict) -> bool:
-        t = self._get_table(table)
+    async def write(self, table: str, data: dict) -> bool:
+        t = await self._get_table(table)
         stmt = insert(t).values(**data)
         try:
-            with self.conn_pool.begin() as conn:
-                conn.execute(stmt)
-            return True
+            async with self.async_session() as session:
+                async with session.begin():
+                    await session.execute(stmt)
+                return True
         except Exception as e:
             logger.error("Write failed", exc_info=e)
             return False
 
-    def get(self, table: str, id: str, columns: list[str] = []) -> dict[str, Any] | None:
+    async def get(self, table: str, id: str, columns: list[str] = []) -> dict[str, Any] | None:
         try:
-            t = self._get_table(table)
+            t = await self._get_table(table)
             if columns:
                 cols = [t.c[col] for col in columns]
                 stmt = select(*cols)
             else:
                 stmt = select(t)
             stmt = stmt.where(t.c.id == id)
-            with self.conn_pool.connect() as conn:
-                row = conn.execute(stmt).mappings().first()
-                return dict(row) if row else None
+            async with self.async_session() as session:
+                async with session.begin():
+                    execute_result = await session.execute(stmt)
+                    row = execute_result.mappings().first()
+                    return dict(row) if row else None
         except Exception as e:
             logger.error("Failed to get data", exc_info=e)
             return None
 
-    def get_with_sort(self, table: str, filters: Dict[str, Any], sort_by: str = "timestamp",
-                      order: str = "DESC", limit: int = 100) -> List[Dict[str, Any]]:
+    async def get_with_sort(self, table: str, filters: Dict[str, Any], sort_by: str = "timestamp",
+                             order: str = "ASC", limit: int = 100) -> List[Dict[str, Any]]:
         try:
-            t = self._get_table(table)
+            t = await self._get_table(table)
             if sort_by not in t.c:
                 raise ValueError(f"Sort column '{sort_by}' does not exist in table '{table}'")
             clauses = [
@@ -65,31 +68,37 @@ class SqlDbStore():
             else:
                 stmt = stmt.order_by(asc(t.c[sort_by]))
             stmt = stmt.limit(limit)
-            with self.conn_pool.connect() as conn:
-                result = conn.execute(stmt).mappings().fetchall()
-                return [dict(row) for row in result]
+            async with self.async_session() as session:
+                async with session.begin():
+                    execute_result = await session.execute(stmt)
+                    result = execute_result.mappings().fetchall()
+                    return [dict(row) for row in result]
         except Exception as e:
             logger.error("Failed to fetch filtered and sorted data", exc_info=e)
             return []
 
-    def exist(self, table: str, conditions: Dict[str, Any]) -> bool:
-        t = self._get_table(table)
+    async def exist(self, table: str, conditions: Dict[str, Any]) -> bool:
+        t = await self._get_table(table)
         clauses = [t.c[col] == val for col, val in conditions.items()]
         stmt = select(1).where(and_(*clauses))
-        with self.conn_pool.connect() as conn:
-            return conn.execute(stmt).first() is not None
+        async with self.async_session() as session:
+            async with session.begin():
+                execute_result = await session.execute(stmt)
+                return execute_result.first() is not None
 
-    def batch_get(self, table: str, conditions_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        t = self._get_table(table)
+    async def batch_get(self, table: str, conditions_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        t = await self._get_table(table)
         clauses = [or_(*[t.c[col] == val for col, val in cond.items()]) for cond in conditions_list]
         stmt = select(t).where(or_(*clauses)) if clauses else select(t)
-        with self.conn_pool.connect() as conn:
-            return [dict(r) for r in conn.execute(stmt).mappings().fetchall()]
+        async with self.async_session() as session:
+            async with session.begin():
+                execute_result = await session.execute(stmt)
+                return [dict(r) for r in execute_result.mappings().fetchall()]
 
-    def condition_get(self, table: str, conditions: Dict[str, List[Any]],
-                      columns: List[str] = []) -> List[Dict[str, Any]] | None:
+    async def condition_get(self, table: str, conditions: Dict[str, List[Any]],
+                             columns: List[str] = []) -> List[Dict[str, Any]] | None:
         try:
-            t: Table = self._get_table(table)
+            t: Table = await self._get_table(table)
             stmt = (
                 select(t) if not columns
                 else select(*[t.c[col] for col in columns])
@@ -101,45 +110,62 @@ class SqlDbStore():
                 clause_list.append(t.c[col].in_(values))
             if clause_list:
                 stmt = stmt.where(and_(*clause_list))
-            with self.conn_pool.connect() as conn:
-                rows = conn.execute(stmt).mappings().fetchall()
-                return [dict(r) for r in rows]
+            async with self.async_session() as session:
+                async with session.begin():
+                    execute_result = await session.execute(stmt)
+                    rows = execute_result.mappings().fetchall()
+                    return [dict(r) for r in rows]
         except Exception as e:
             logger.error("Failed to get data via condition_get", exc_info=e)
             return None
 
-    def update(self, table: str, conditions: dict, data: dict) -> bool:
-        t = self._get_table(table)
+    async def update(self, table: str, conditions: dict, data: dict) -> bool:
+        t = await self._get_table(table)
         clauses = [t.c[col].in_(vals) if isinstance(vals, list) else t.c[col] == vals
                    for col, vals in conditions.items()]
         stmt = update(t).where(and_(*clauses)).values(**data)
         try:
-            with self.conn_pool.begin() as conn:
-                conn.execute(stmt)
+            async with self.async_session() as session:
+                async with session.begin():
+                    await session.execute(stmt)
             return True
         except Exception as e:
             logger.error("Update failed", exc_info=e)
             return False
 
-    def delete(self, table: str, conditions: dict) -> bool:
-        t = self._get_table(table)
+    async def delete(self, table: str, conditions: dict) -> bool:
+        t = await self._get_table(table)
         clauses = [t.c[col].in_(vals) if isinstance(vals, list) else t.c[col] == vals
                    for col, vals in conditions.items()]
         stmt = delete(t).where(and_(*clauses))
         try:
-            with self.conn_pool.begin() as conn:
-                conn.execute(stmt)
+            async with self.async_session() as session:
+                async with session.begin():
+                    await session.execute(stmt)
             return True
         except Exception as e:
             logger.error("Delete failed", exc_info=e)
             return False
 
-    def delete_table(self, table_name: str) -> bool:
+    async def delete_table(self, table_name: str) -> bool:
         try:
             metadata = MetaData()
             t = Table(table_name, metadata)
-            t.drop(self.conn_pool, checkfirst=True)
+            async with self.db_store.get_async_engine().begin() as conn:
+                await conn.run_sync(t.drop, checkfirst=True)
             return True
         except Exception as e:
             logger.error("Delete table failed", exc_info=e)
             return False
+
+    async def _get_table(self, table_name: str) -> Table:
+        if table_name in self._async_table_cache:
+            return self._async_table_cache[table_name]
+        metadata = MetaData()
+        async with self.db_store.get_async_engine().connect() as conn:
+            def sync_reflect(sync_conn):
+                return Table(table_name, metadata, autoload_with=sync_conn)
+
+            table = await conn.run_sync(sync_reflect)
+            self._async_table_cache[table_name] = table
+            return table

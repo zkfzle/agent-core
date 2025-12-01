@@ -4,8 +4,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Tuple
-from sqlalchemy import Engine
 from openjiuwen.core.memory.config.config import Config, MemoryConfig
+from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -20,8 +20,8 @@ class MemoryEngineBase(ABC):
     @abstractmethod
     def init_mem_store(
         self,
-        semantic_db_instance: BaseSemanticStore,
-        db_engine_instance: Engine,
+        vector_db_instance: BaseSemanticStore,
+        db_instance: BaseDbStore,
         kv_db_instance: BaseKVStore
     ):
         pass
@@ -74,7 +74,7 @@ class MemoryEngineBase(ABC):
         pass
 
     @abstractmethod
-    def delete_mem_by_id(self, mem_id: str) -> bool:
+    def delete_mem_by_id(self, user_id: str, app_id: str, mem_id: str) -> bool:
         pass
 
     @abstractmethod
@@ -86,7 +86,7 @@ class MemoryEngineBase(ABC):
         pass
 
     @abstractmethod
-    def update_mem_by_id(self, mem_id: str, memory: str) -> bool:
+    def update_mem_by_id(self, user_id: str, app_id: str, mem_id: str, memory: str) -> bool:
         pass
 
     @abstractmethod

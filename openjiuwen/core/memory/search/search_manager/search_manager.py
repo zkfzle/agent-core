@@ -18,8 +18,8 @@ class SearchManager:
         self.managers = managers
         self.mem_store = user_mem_store
 
-    def search(self, query: str, top_k: int = 5, threshold: float = 0.3, search_type: Optional[str] = None, **kwargs) \
-        -> list[dict[str, Any]] | None:
+    def search(self, user_id: str, app_id: str, query: str, top_k: int = 5, threshold: float = 0.3,
+               search_type: Optional[str] = None, **kwargs) -> list[dict[str, Any]] | None:
         # search_type is illegal
         if search_type is not None and search_type not in self.all_mem_manager_list:
             raise ValueError(f"{search_type} is not a valid search type")
@@ -31,12 +31,13 @@ class SearchManager:
         if search_type is None:
             for mem_type, manager in self.managers.items():
                 if mem_type in self.user_mem_manager_list:
-                    res = manager.search(query=query, top_k=top_k, **kwargs)
-                    if res:
+                    res = manager.search(user_id=user_id, app_id=app_id, query=query, top_k=top_k, **kwargs)
+                    if res is not None:
                         result.extend(res)
         # call the manager corresponding to search_type
         else:
-            res = self.managers[search_type].search(query=query, top_k=top_k, **kwargs)
+            res = self.managers[search_type].search(user_id=user_id, app_id=app_id, query=query, top_k=top_k,
+                                                    **kwargs)
             if res:
                 result = res
 

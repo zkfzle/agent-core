@@ -4,7 +4,7 @@
 import threading
 from typing import Optional
 
-from sqlalchemy import Engine
+from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.engine.memory_engine_base import MemoryEngineBase
 from openjiuwen.core.memory.config.config import Config
@@ -20,14 +20,14 @@ def new(
     llm_base: BaseModelClient | None = None,
     semantic_recall_instance: BaseSemanticStore | None = None,
     kv_store_instance: BaseKVStore | None = None,
-    db_engine_instance: Engine | None = None
+    db_instance: BaseDbStore | None = None
 ) -> MemoryEngineBase | None:
     try:
         mem_engine = MemoryEngine(config, llm_base)
         mem_engine.init_mem_store(
             semantic_db_instance=semantic_recall_instance,
             kv_db_instance=kv_store_instance,
-            db_engine_instance=db_engine_instance
+            db_instance=db_instance
         )
         return mem_engine
     except Exception as e:
@@ -39,7 +39,7 @@ _memengine_singleton_instance: Optional[MemoryEngine] = None
 _memengine_singleton_lock = threading.Lock()
 _kv_db_instance: Optional[BaseKVStore] = None
 _semantic_recall_instance: Optional[BaseSemanticStore] = None
-_db_engine_instance: Optional[Engine] = None
+_db_instance: Optional[BaseDbStore] = None
 _llm_base: Optional[BaseModelClient] = None
 
 def register_kv_db(kv_db_instance: BaseKVStore):
@@ -56,12 +56,12 @@ def register_semantic_recall(semantic_recall_instance: BaseSemanticStore):
     else:
         logger.error("semantic recall instance must be subclass of BaseSemanticStore")
 
-def register_relation_db(db_engine_instance: Engine):
-    global _db_engine_instance
-    if issubclass(db_engine_instance.__class__, Engine):
-        _db_engine_instance = db_engine_instance
+def register_relation_db(db_instance: BaseDbStore):
+    global _db_instance
+    if issubclass(db_instance.__class__, BaseDbStore):
+        _db_instance = db_instance
     else:
-        logger.error("db engine instance must be subclass of Engine")
+        logger.error("db instance must be subclass of BaseDbStore")
 
 def register_llm(llm_base: BaseModelClient):
     global _llm_base
@@ -82,7 +82,7 @@ def get_memengine_instance(config: Config) -> MemoryEngineBase | None:
                     config=config,
                     semantic_recall_instance=_semantic_recall_instance,
                     kv_store_instance=_kv_db_instance,
-                    db_engine_instance=_db_engine_instance,
+                    db_instance=_db_instance,
                     llm_base=_llm_base
                 )
     return _memengine_singleton_instance

@@ -2,28 +2,74 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
-from typing import List
-from dataclasses import dataclass
+from typing import List, Tuple
 
-@dataclass
-class SearchHit:
-    id: str  # ID of the hit vector
-    distance: float  # distance from the query vector
 
 class BaseSemanticStore(ABC):
+    """
+    Abstract base class defining a unified interface for semantic storage.
+
+    This class defines the interface for storing, deleting, and searching vector embeddings in a table-based structure.
+    Concrete implementations must handle the embedding generation internally during the `add_docs` and `search` method.
+    """
+
     @abstractmethod
-    def add(self, mem: List[str], memory_id: List[str], user_id: str, app_id: str,
-            mem_type: str | None = None) -> None:
+    async def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
+        """
+        Add documents to a specified table after generating their embeddings.
+
+        Args:
+            docs (List[Tuple[str, str]]): A list of (id, text) tuples where id is a unique identifier
+                and text is the raw string to be embedded.
+            table_name (str): The name of the table where the embeddings will be stored.
+
+        Returns:
+            bool: True if the operation succeeded, False otherwise.
+        """
         pass
 
     @abstractmethod
-    def remove(self, ids: List[str], user_id: str, app_id: str, mem_type: str | None = None) -> None:
+    async def delete_docs(self, ids: List[str], table_name: str) -> bool:
+        """
+        Delete documents from a specified table by their ids.
+
+        Args:
+            ids (List[str]): A list of unique document ids whose embeddings should be removed.
+            table_name (str): The name of the table from which to delete embeddings.
+
+        Returns:
+            bool: True if the operation succeeded, False otherwise.
+        """
         pass
 
     @abstractmethod
-    def search(self, query: List[str], user_id: str, app_id: str, mem_type: str | None = None, top_k: int = 5) -> List[SearchHit]:
+    async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
+        """
+        Search for the top-k most similar documents based on inner-product distance.
+
+        The query string is embedded internally before similarity comparison.
+
+        Args:
+            query (str): The raw query string to embed and search for.
+            table_name (str): The name of the table to search within.
+            top_k (int): The number of most similar results to return.
+
+        Returns:
+            List[Tuple[str, float]]: A list of (id, score) tuples where `id`
+                is the unique identifier of the matched document and `score`
+                is the inner-product similarity distance (higher is more similar).
+        """
         pass
 
     @abstractmethod
-    def delete_index_by_match(self, match_str: str) -> None:
+    async def delete_table(self, table_name: str) -> bool:
+        """
+        Delete an entire table and all its stored embeddings.
+
+        Args:
+            table_name (str): The name of the table to delete.
+
+        Returns:
+            bool: True if the operation succeeded, False otherwise.
+        """
         pass

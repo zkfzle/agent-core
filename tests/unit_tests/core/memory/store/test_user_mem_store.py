@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import asyncio
 import random
 from datetime import datetime
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
@@ -7,19 +11,19 @@ import os
 
 
 class TestUserMemStore(unittest.TestCase):
-    @staticmethod
-    def _generate_next_id() -> str:
-        return str(random.randint(0, 2 ** 31 - 1))
-
-    def test_basic(self):
+    def setUp(self):
         # kv_store_instance = SqliteKVStore(".")
         test_dir = "test_dbm"
         os.makedirs(test_dir, exist_ok=True)
         db_path = os.path.join(test_dir, "testdb")
         kv_store_instance = DbmKVStore(db_path)
+        self.store = UserMemStore(kv_store_instance=kv_store_instance)
 
-        store = UserMemStore(kv_store_instance=kv_store_instance)
+    @staticmethod
+    def _generate_next_id() -> str:
+        return str(random.randint(0, 2 ** 31 - 1))
 
+    async def basic(self):
         user_profile_mem_type = "user_profile"
         episodic_mem_type = "episodic_mem"
 
@@ -37,8 +41,8 @@ class TestUserMemStore(unittest.TestCase):
             "mem_type": user_profile_mem_type,
             "time": str(datetime.now()),
         }
-        self.assertTrue(store.write(user_id1, app_id1, mem_id1, data1))
-        user_profile_data1 = store.get(user_id1, app_id1, mem_id1)
+        self.assertTrue(await self.store.write(user_id1, app_id1, mem_id1, data1))
+        user_profile_data1 = await self.store.get(user_id1, app_id1, mem_id1)
         self.assertEqual(user_profile_data1, data1)
 
         mem_id2 = TestUserMemStore._generate_next_id()
@@ -50,7 +54,7 @@ class TestUserMemStore(unittest.TestCase):
             "mem_type": episodic_mem_type,
             "time": str(datetime.now()),
         }
-        self.assertTrue(store.write(user_id1, app_id1, mem_id2, data2))
+        self.assertTrue(await self.store.write(user_id1, app_id1, mem_id2, data2))
 
         user_id2 = "user2"
         app_id2 = "app2"
@@ -63,54 +67,52 @@ class TestUserMemStore(unittest.TestCase):
             "mem_type": episodic_mem_type,
             "time": str(datetime.now()),
         }
-        self.assertTrue(store.write(user_id2, app_id2, mem_id3, data3))
+        self.assertTrue(await self.store.write(user_id2, app_id2, mem_id3, data3))
 
         # Test update and get
         modify_user_profile_mem = "user profile 2"
-        self.assertTrue(store.update(user_id1, app_id1, mem_id1, {"profile_mem": modify_user_profile_mem}))
-        user_profile_update_data1 = store.get(user_id1, app_id1, mem_id1)
+        self.assertTrue(await self.store.update(user_id1, app_id1, mem_id1, {"profile_mem": modify_user_profile_mem}))
+        user_profile_update_data1 = await self.store.get(user_id1, app_id1, mem_id1)
         self.assertEqual(user_profile_update_data1.get("profile_mem"), modify_user_profile_mem)
 
         # Test get_all
-        all_user1_data_list = store.get_all(user_id1, app_id1)
+        all_user1_data_list = await self.store.get_all(user_id1, app_id1)
         self.assertEqual(len(all_user1_data_list), 2)
         # get all user profile data
-        all_user1_profile_list = store.get_all(user_id1, app_id1, user_profile_mem_type)
+        all_user1_profile_list = await self.store.get_all(user_id1, app_id1, user_profile_mem_type)
         self.assertEqual(len(all_user1_profile_list), 1)
         # get all episodic mem data
-        all_user1_episodic_list = store.get_all(user_id1, app_id1, episodic_mem_type)
+        all_user1_episodic_list = await self.store.get_all(user_id1, app_id1, episodic_mem_type)
         self.assertEqual(len(all_user1_episodic_list), 1)
 
-        all_user2_data_list = store.get_all(user_id2, app_id2)
+        all_user2_data_list = await self.store.get_all(user_id2, app_id2)
         self.assertEqual(len(all_user2_data_list), 1)
 
         # Test batch_get
-        batch_get_user1_data_list = store.batch_get(user_id1, app_id1, [mem_id1, mem_id2])
+        batch_get_user1_data_list = await self.store.batch_get(user_id1, app_id1, [mem_id1, mem_id2])
         self.assertEqual(len(batch_get_user1_data_list), 2)
         self.assertNotEqual(batch_get_user1_data_list[0], None)
         self.assertNotEqual(batch_get_user1_data_list[1], None)
 
-        # Test get_by_id
-        get_data2 = store.get_by_id(mem_id2)
-        self.assertEqual(data2, get_data2)
-
         # Test get_by_topic
-        topic_data = store.get_by_topic(user_id1, app_id1, profile_type1)
+        topic_data = await self.store.get_by_topic(user_id1, app_id1, profile_type1)
         self.assertEqual(len(topic_data), 1)
 
         # Test get_in_range
-        range_data = store.get_in_range(user_id1, app_id1, 0, 1)
+        range_data = await self.store.get_in_range(user_id1, app_id1, 0, 1)
         self.assertEqual(len(range_data), 1)
-        range_data = store.get_in_range(user_id1, app_id1, -1, 2)
+        range_data = await self.store.get_in_range(user_id1, app_id1, -1, 2)
         self.assertEqual(len(range_data), 2)
 
-        # Test delete and delete_by_user
+        # Test delete and batch_delete
         all_user1_mem_ids = [data["id"] for data in all_user1_data_list]
-        store.batch_delete(user_id1, app_id1, all_user1_mem_ids)
-        store.delete(user_id2, app_id2, mem_id3)
-        self.assertEqual(store.get_all(user_id1, app_id1), None)
-        self.assertEqual(store.get_all(user_id2, app_id2), None)
+        await self.store.batch_delete(user_id1, app_id1, all_user1_mem_ids)
+        await self.store.delete(user_id2, app_id2, mem_id3)
+        self.assertEqual(await self.store.get_all(user_id1, app_id1), None)
+        self.assertEqual(await self.store.get_all(user_id2, app_id2), None)
+
+    def test_basic(self):
+        asyncio.run(self.basic())
 
 if __name__ == "__main__":
-    testIns = TestUserMemStore()
-    testIns.test_basic()
+    unittest.main()

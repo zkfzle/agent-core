@@ -2,25 +2,26 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-import threading
+import asyncio
+from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 
 
 class DataIdManager:
     SEPARATOR = "\x1F"
     ID_KEY = f'id_manager{SEPARATOR}next_id'
 
-    def __init__(self, kv_store):
-        self.lock = threading.Lock()
+    def __init__(self, kv_store: BaseKVStore):
         self.kv_store = kv_store
-        self.next_id = self.kv_store.get(DataIdManager.ID_KEY)
-        if not self.next_id:
-            self.next_id = 0
-        self.next_id = int(self.next_id)
+        self.async_lock = asyncio.Lock()
 
-    def generate_next_id(self) -> int:
-        """Generate a unique ID and store it in the KV"""
-        with self.lock:
-            ret = self.next_id
-            self.next_id += 1
-            self.kv_store.set(DataIdManager.ID_KEY, str(self.next_id))
-            return ret
+    async def generate_next_id(self) -> int:
+        """async generate a unique ID and store it in the KV"""
+        async with self.async_lock:
+            current_id = await self.kv_store.get(DataIdManager.ID_KEY)
+            if not current_id:
+                current_id = 0
+            current_id = int(current_id)
+
+            next_id = current_id + 1
+            await self.kv_store.set(DataIdManager.ID_KEY, str(next_id))
+            return current_id

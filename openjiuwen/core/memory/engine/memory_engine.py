@@ -4,7 +4,6 @@
 import asyncio
 from datetime import datetime
 from typing import Any, Tuple
-from sqlalchemy.engine import Engine
 
 from openjiuwen.core.memory.manage.write_manager import WriteManager
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
@@ -12,6 +11,7 @@ from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
+from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.engine.memory_engine_base import MemoryEngineBase
 from openjiuwen.core.memory.config.config import Config, MemoryConfig
@@ -50,10 +50,10 @@ class MemoryEngine(MemoryEngineBase):
 
     def init_mem_store(self,
                        semantic_db_instance: BaseSemanticStore,
-                       db_engine_instance: Engine,
+                       db_instance: BaseDbStore,
                        kv_db_instance: BaseKVStore):
-        if db_engine_instance is not None:
-            create_tables(db_engine_instance)
+        if db_instance is not None:
+            asyncio.run(create_tables(db_instance))
         data_id_generator = DataIdManager(kv_db_instance)
         user_mem_store = UserMemStore(kv_db_instance)
         self.user_profile_manager = UserProfileManager(
@@ -62,7 +62,7 @@ class MemoryEngine(MemoryEngineBase):
             data_id_generator
         )
         self.variable_manager = VariableManager(kv_db_instance)
-        sql_db_store = SqlDbStore(db_engine_instance)
+        sql_db_store = SqlDbStore(db_instance)
         self.message_manager = MessageManager(sql_db_store, data_id_generator)
         managers = {
             MemoryType.USER_PROFILE.value: self.user_profile_manager,
@@ -205,10 +205,10 @@ class MemoryEngine(MemoryEngineBase):
             raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
         return self.message_manager.get_by_id(msg_id)
     
-    def delete_mem_by_id(self, mem_id: str) -> bool:
+    def delete_mem_by_id(self, user_id: str, app_id: str, mem_id: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        self.write_manager.delete_mem_by_id(mem_id)
+        self.write_manager.delete_mem_by_id(user_id, app_id, mem_id)
         return True
 
     def delete_mem_by_user_id(self, user_id: str, app_id: str) -> bool:
@@ -222,11 +222,11 @@ class MemoryEngine(MemoryEngineBase):
             raise ValueError("User profile manager is not initialized. Please call init_mem_store first.")
         self.user_profile_manager.delete_by_user_id(user_id=user_id, app_id=app_id)
         return True
-
-    def update_mem_by_id(self, mem_id: str, memory: str) -> bool:
+    
+    def update_mem_by_id(self, user_id: str, app_id: str, mem_id: str, memory: str) -> bool:
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        self.write_manager.update_mem_by_id(mem_id, memory)
+        self.write_manager.update_mem_by_id(user_id, app_id, mem_id, memory)
         return True
 
     def get_user_variable(self, user_id: str, app_id: str, name: str) -> str:

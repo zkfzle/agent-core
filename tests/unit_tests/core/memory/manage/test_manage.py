@@ -1,9 +1,10 @@
 import unittest
 from enum import StrEnum
+from typing import List, Tuple
+
 from sqlalchemy import engine, text
 import os
 
-from openjiuwen.core.memory.store.base_semantic_store import SearchHit
 os.environ['HF_ENDPOINT']= "https://hf-mirror.com"
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
@@ -76,96 +77,46 @@ class MockSemanticStore:
         self.config = config
         self.model_config = model_config
     
-    def add(self, mem, memory_id, user_id, app_id, mem_type=None):
+    def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
         """模拟添加记忆"""
-        index_name = f"{user_id}^{app_id}^{mem_type or 'default'}"
-        if index_name not in self.memory_store:
-            self.memory_store[index_name] = {}
+        if table_name not in self.memory_store:
+            self.memory_store[table_name] = {}
         
-        for m, mid in zip(mem, memory_id):
-            self.memory_store[index_name][mid] = {
-                'content': m,
-                'user_id': user_id,
-                'app_id': app_id,
-                'mem_type': mem_type
+        for mid, m in docs:
+            self.memory_store[table_name][mid] = {
+                'content': m
             }
-    
-    def remove(self, ids, user_id, app_id, mem_type=None):
+        return True
+
+    def delete_docs(self, ids: List[str], table_name: str) -> bool:
         """模拟删除记忆"""
-        index_name = f"{user_id}^{app_id}^{mem_type or 'default'}"
-        if index_name in self.memory_store:
+        if table_name in self.memory_store:
             for id_to_remove in ids:
-                self.memory_store[index_name].pop(id_to_remove, None)
+                self.memory_store[table_name].pop(id_to_remove, None)
+        return True
     
-    def search(self, query, user_id, app_id, mem_type=None, top_k=5):
+    def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
         """模拟搜索功能，返回匹配的记忆"""
-        index_name = f"{user_id}^{app_id}^{mem_type or 'default'}"
-        if index_name not in self.memory_store:
+        if table_name not in self.memory_store:
             return []
         
         # 简单的文本匹配搜索
-        results = []
-        for memory_id, memory_data in self.memory_store[index_name].items():
+        results: List[Tuple[str, float]] = []
+        for memory_id, memory_data in self.memory_store[table_name].items():
             content = memory_data['content']
             # 简单的关键词匹配
             if any(q in content for q in query):
                 # 模拟返回SearchHit对象
-                results.append(SearchHit(id=memory_id, distance=0.0))
+                results.append((memory_id, 0.0))
         
         # 返回top_k个结果
-        return results
-    
-    def get_memory(self, memory_id):
-        """获取特定记忆"""
-        for index_name, memories in self.memory_store.items():
-            if memory_id in memories:
-                return memories[memory_id]
-        return None
-    
-    def update_memory(self, memory_id, new_content):
-        """更新记忆内容"""
-        for index_name, memories in self.memory_store.items():
-            if memory_id in memories:
-                memories[memory_id]['content'] = new_content
-                return True
-        return False
-    
-    def list_memories(self, user_id, app_id, mem_type=None):
-        """列出用户的所有记忆"""
-        index_name = f"{user_id}^{app_id}^{mem_type or 'default'}"
-        if index_name not in self.memory_store:
-            return []
-        
-        return [{'id': k, 'content': v['content']} for k, v in self.memory_store[index_name].items()]
-    
-    def delete_index_by_match(self, match_str):
+        return results[-5:]
+
+    def delete_table(self, table_name: str) -> bool:
         """模拟删除索引功能"""
-        # 解析匹配字符串，格式为 user_id^app_id^mem_type^suffix
-        parts = match_str.split('^')
-        if len(parts) != 4:
-            logger.error(f"Invalid match_str: {match_str}")
-            return
-        
-        # 根据匹配模式删除对应的索引
-        user_pattern, app_pattern, type_pattern, suffix_pattern = parts
-        to_delete = []
-        
-        for index_name in self.memory_store:
-            index_parts = index_name.split('^')
-            if len(index_parts) >= 3:  # user_id^app_id^mem_type
-                idx_user, idx_app, idx_type = index_parts[0], index_parts[1], index_parts[2]
-                
-                # 检查是否匹配
-                user_match = (user_pattern == "*" or user_pattern == idx_user)
-                app_match = (app_pattern == "*" or app_pattern == idx_app)
-                type_match = (type_pattern == "*" or type_pattern == idx_type)
-                
-                if user_match and app_match and type_match:
-                    to_delete.append(index_name)
-        
-        # 删除匹配的索引
-        for index_name in to_delete:
-            del self.memory_store[index_name]
+        if table_name in self.memory_store:
+            del self.memory_store[table_name]
+        return True
 
 class TestManage(unittest.TestCase):
     def test_basic(self):
@@ -174,7 +125,7 @@ class TestManage(unittest.TestCase):
         
         # 使用Mock语义存储替代实际模型
         mock_semantic_recall = MockSemanticStore(config, None)
-        
+
         # path = Path("./sql_db.db")
         # conn = create_engine(
         #     f"sqlite:///{path.resolve()}",
@@ -231,12 +182,12 @@ class TestManage(unittest.TestCase):
         # message = message_manager.get(user_id=test_all_data[0]['user_id'], app_id=test_all_data[0]['app_id'], message_len=3)
         query = "用户的职业"
         res = variable_manager.query_variable(user_id=test_all_data[0]['user_id'], app_id=test_all_data[0]['app_id'])
-        res = user_profile_manager.search(query, 5, user_id="usrZH2025", app_id="fitnesstrackerv3")
-        self.assertEqual(1, len(res))
+        res = user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
+        self.assertEqual(5, len(res))
         # message_by_id = message_manager.get_by_id("15")
 
-        user_profile_manager.update(res[0]['id'], "用户不是软件工程师，是系统")
-        self.assertEqual("用户不是软件工程师，是系统", user_profile_manager.get(res[0]['id'])['mem'])
+        user_profile_manager.update(res[0]['user_id'], res[0]['app_id'], res[0]['id'], "用户不是软件工程师，是系统")
+        self.assertEqual("用户不是软件工程师，是系统", user_profile_manager.get(res[0]['user_id'], res[0]['app_id'], res[0]['id'])['mem'])
 
         res = user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3")
         self.assertEqual(6, len(res))
@@ -244,12 +195,12 @@ class TestManage(unittest.TestCase):
         res = user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3", "personal_information")
         self.assertEqual(2, len(res))
         for rr in res:
-            write_manager.delete_mem_by_id(rr['id'])
+            write_manager.delete_mem_by_id(rr["user_id"], rr["app_id"], rr["id"])
 
-        res = user_profile_manager.search(query, 5, user_id="userZH2025", app_id="fitnesstrackerv3")
-        self.assertEqual(0, len(res))
-        write_manager.delete_mem_by_user_id("userZH2026", "fitnesstrackerv3")
-        res = user_profile_manager.search(query, 5, user_id="userZH2026", app_id="fitnesstrackerv3")
+        res = user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
+        self.assertEqual(4, len(res))
+        write_manager.delete_mem_by_user_id("usrZH2026", "fitnesstrackerv3")
+        res = user_profile_manager.search("usrZH2026", "fitnesstrackerv3", query, 5)
         self.assertEqual(0, len(res))
 
 if __name__ == '__main__':

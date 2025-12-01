@@ -48,11 +48,13 @@ class HierarchicalMainController(BaseController):
             result[agent_id] = agent
         return result
     
-    def init_reasoner(self, runtime):
-        """Initialize reasoner for intent detection"""
-        if self.reasoner is not None:
-            return
+    def _ensure_reasoner_initialized(self, runtime):
+        """Initialize or update reasoner for intent detection
         
+        Like WorkflowController._ensure_intent_detection_initialized:
+        - If reasoner exists, update its intent_detection_module.runtime
+        - Otherwise create new reasoner and IntentDetection
+        """
         if not self._group:
             logger.warning("HierarchicalMainController: Not attached to a group")
             return
@@ -62,6 +64,17 @@ class HierarchicalMainController(BaseController):
             logger.warning("HierarchicalMainController: No other agents found")
             return
         
+        # If already initialized, just update runtime
+        if self.reasoner is not None:
+            has_intent_module = (
+                hasattr(self.reasoner, 'intent_detection_module')
+                and self.reasoner.intent_detection_module
+            )
+            if has_intent_module:
+                self.reasoner.intent_detection_module.runtime = runtime
+                return
+        
+        # Create new reasoner and IntentDetection
         category_names = []
         category_lines = []
         
@@ -90,14 +103,14 @@ class HierarchicalMainController(BaseController):
             self.reasoner = AgentReasoner(
                 config=self._config,
                 context_engine=self._context_engine,
-                runtime=self._runtime
+                runtime=runtime
             )
             
             intent_detection = IntentDetection(
                 intent_config=intent_config,
                 agent_config=self._config,
                 context_engine=self._context_engine,
-                runtime=self._runtime
+                runtime=runtime
             )
             
             self.reasoner.set_intent_detection(intent_detection)
@@ -110,14 +123,16 @@ class HierarchicalMainController(BaseController):
             self.reasoner = None
     
     async def handle_message(self, message: Message, runtime) -> dict:
-        """Process message: interruption recovery -> intent detection -> dispatch"""
-        self.init_reasoner(runtime)
+        """Process message: intent detection -> interruption check -> dispatch
         
-        interrupted_id = self._get_last_interrupted_agent(runtime)
-        if interrupted_id:
-            logger.info(f"HierarchicalMainController: Resuming {interrupted_id}")
-            return await self._dispatch(interrupted_id, message, runtime)
+        Logic:
+        1. Always detect intent first
+        2. If intent matches an interrupted agent, resume it
+        3. If intent points to a different agent, route to that agent
+        """
+        self._ensure_reasoner_initialized(runtime)
         
+        # Always detect intent first
         target_id = await self._detect_intent(message)
         logger.info(f"HierarchicalMainController: Intent -> {target_id}")
         

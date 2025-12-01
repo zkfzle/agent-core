@@ -742,3 +742,6 @@ class ControllerAgent(BaseAgent):
                 # 中断情况：返回 list（包含 __interaction__）
                 for item in res:
                     yield item
+            else:
+                # 正常完成：yield dict 或其他结果
+                yield res

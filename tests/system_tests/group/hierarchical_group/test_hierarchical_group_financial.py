@@ -483,6 +483,242 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         print("\n🎉 金融场景 Stream 测试完成！")
 
+    @unittest.skip("skip system test - requires network")
+    async def test_multi_agent_jump_and_recovery_stream(self):
+        """
+        多子Agent跳转恢复测试：HierarchicalGroup.stream + 多Agent中断跳转恢复
+
+        场景：
+        1. query1 "我要转账" -> 路由到 transfer_agent -> 中断（询问金额）
+        2. query2 "我想理财" -> 路由到 invest_agent -> 中断（询问产品）
+        3. query3 "100元" -> 恢复 transfer_agent -> 完成转账
+        4. query4 "稳健型产品" -> 恢复 invest_agent -> 完成理财
+
+        验证：
+        - 多个子Agent可以同时处于中断状态
+        - 系统能正确识别用户意图并恢复对应的Agent
+        - 每个Agent的中断状态独立维护
+        """
+        print("\n=== 多子Agent跳转恢复测试 ===")
+
+        # 1. 创建金融业务工作流
+        transfer_workflow = self._build_financial_workflow(
+            workflow_id="transfer_flow_multi",
+            workflow_name="转账服务",
+            workflow_desc="处理用户转账请求，支持转账到指定账户",
+            field_name="amount",
+            field_desc="转账金额（数字）"
+        )
+
+        balance_workflow = self._build_financial_workflow(
+            workflow_id="balance_flow_multi",
+            workflow_name="余额查询",
+            workflow_desc="查询用户账户余额信息",
+            field_name="account",
+            field_desc="账户号码"
+        )
+
+        invest_workflow = self._build_financial_workflow(
+            workflow_id="invest_flow_multi",
+            workflow_name="理财服务",
+            workflow_desc="提供理财产品推荐和购买服务",
+            field_name="product",
+            field_desc="理财产品名称"
+        )
+
+        # 2. 创建 WorkflowAgent
+        transfer_agent = self._create_workflow_agent(
+            agent_id="transfer_agent",
+            description="转账服务，处理用户的转账请求",
+            workflow=transfer_workflow
+        )
+
+        balance_agent = self._create_workflow_agent(
+            agent_id="balance_agent",
+            description="余额查询服务，查询用户账户余额",
+            workflow=balance_workflow
+        )
+
+        invest_agent = self._create_workflow_agent(
+            agent_id="invest_agent",
+            description="理财服务，提供理财产品推荐和购买",
+            workflow=invest_workflow
+        )
+
+        # 3. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="financial_group_multi",
+            leader_agent_id="main_controller"
+        )
+        hierarchical_group = HierarchicalGroup(config)
+
+        # 4. 创建主 agent（HierarchicalMainController）
+        main_config = AgentConfig(
+            id="main_controller",
+            description="金融服务主控制器，识别用户意图并分发任务",
+            model=self._create_model_config()
+        )
+        main_controller = HierarchicalMainController()
+        main_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 5. 添加所有 agent 到 group
+        hierarchical_group.add_agent("main_controller", main_agent)
+        hierarchical_group.add_agent("transfer_agent", transfer_agent)
+        hierarchical_group.add_agent("balance_agent", balance_agent)
+        hierarchical_group.add_agent("invest_agent", invest_agent)
+
+        conversation_id = "financial_multi_agent_jump_test_001"
+
+        # ========== 步骤1: 发送转账请求 -> transfer_agent 中断 ==========
+        print("\n【步骤1】发送转账请求 -> transfer_agent 中断")
+        message1 = Message.create_user_message(
+            content="我要转账",
+            conversation_id=conversation_id
+        )
+
+        chunks1 = []
+        try:
+            async def collect_stream1():
+                async for chunk in hierarchical_group.stream(message1):
+                    print(f"  Stream chunk: {chunk.type}")
+                    chunks1.append(chunk)
+
+            await asyncio.wait_for(collect_stream1(), timeout=120.0)
+        except asyncio.TimeoutError:
+            print("❌ 步骤1 超时！")
+            raise
+
+        print(f"步骤1 收到 {len(chunks1)} 个 chunks")
+
+        # 校验：transfer_agent 触发中断
+        self.assertTrue(len(chunks1) > 0, "步骤1应该有流式输出")
+        final_chunk1 = chunks1[-1]
+        self.assertEqual(
+            final_chunk1.type, const.INTERACTION, "步骤1应该返回交互类型"
+        )
+        print(f"✅ 步骤1成功：transfer_agent 触发中断，询问金额")
+
+        # ========== 步骤2: 发送理财请求 -> invest_agent 中断 ==========
+        print("\n【步骤2】发送理财请求 -> invest_agent 中断（跳转到新Agent）")
+        message2 = Message.create_user_message(
+            content="我想理财",
+            conversation_id=conversation_id
+        )
+
+        chunks2 = []
+        try:
+            async def collect_stream2():
+                async for chunk in hierarchical_group.stream(message2):
+                    print(f"  Stream chunk: {chunk.type}")
+                    chunks2.append(chunk)
+
+            await asyncio.wait_for(collect_stream2(), timeout=120.0)
+        except asyncio.TimeoutError:
+            print("❌ 步骤2 超时！")
+            raise
+
+        print(f"步骤2 收到 {len(chunks2)} 个 chunks")
+
+        # 校验：invest_agent 触发中断
+        self.assertTrue(len(chunks2) > 0, "步骤2应该有流式输出")
+        final_chunk2 = chunks2[-1]
+        self.assertEqual(
+            final_chunk2.type, const.INTERACTION, "步骤2应该返回交互类型"
+        )
+        print(f"✅ 步骤2成功：invest_agent 触发中断，询问产品")
+
+        # ========== 步骤3: 提供金额 -> 恢复 transfer_agent -> 完成 ==========
+        print("\n【步骤3】提供金额 -> 恢复 transfer_agent -> 完成转账")
+        message3 = Message.create_user_message(
+            content="我要转账100元",
+            conversation_id=conversation_id
+        )
+
+        chunks3 = []
+        try:
+            async def collect_stream3():
+                async for chunk in hierarchical_group.stream(message3):
+                    print(f"  Stream chunk: {chunk.type}")
+                    chunks3.append(chunk)
+
+            await asyncio.wait_for(collect_stream3(), timeout=120.0)
+        except asyncio.TimeoutError:
+            print("❌ 步骤3 超时！")
+            raise
+
+        print(f"步骤3 收到 {len(chunks3)} 个 chunks")
+
+        # 校验：transfer_agent 恢复并完成
+        self.assertTrue(len(chunks3) > 0, "步骤3应该有流式输出")
+
+        # 找到最终结果 chunk
+        final_chunk3 = None
+        for chunk in chunks3:
+            if chunk.type == 'workflow_final':
+                final_chunk3 = chunk
+                break
+
+        self.assertIsNotNone(final_chunk3, "步骤3应该有 workflow_final chunk")
+        payload3 = final_chunk3.payload
+        self.assertEqual(
+            payload3['result_type'], 'answer', "步骤3应该返回 answer 类型"
+        )
+        self.assertEqual(
+            payload3['output'].state.value, 'COMPLETED',
+            "步骤3 transfer 工作流应该完成"
+        )
+        response_content3 = payload3['output'].result.get('responseContent', '')
+        self.assertIn('100', response_content3, "步骤3应该包含转账金额")
+        print(f"✅ 步骤3成功：transfer_agent 恢复并完成，返回: {response_content3}")
+
+        # ========== 步骤4: 提供产品 -> 恢复 invest_agent -> 完成 ==========
+        print("\n【步骤4】提供产品 -> 恢复 invest_agent -> 完成理财")
+        message4 = Message.create_user_message(
+            content="我要购买稳健型理财产品",
+            conversation_id=conversation_id
+        )
+
+        chunks4 = []
+        try:
+            async def collect_stream4():
+                async for chunk in hierarchical_group.stream(message4):
+                    print(f"  Stream chunk: {chunk.type}")
+                    chunks4.append(chunk)
+
+            await asyncio.wait_for(collect_stream4(), timeout=120.0)
+        except asyncio.TimeoutError:
+            print("❌ 步骤4 超时！")
+            raise
+
+        print(f"步骤4 收到 {len(chunks4)} 个 chunks")
+
+        # 校验：invest_agent 恢复并完成
+        self.assertTrue(len(chunks4) > 0, "步骤4应该有流式输出")
+
+        # 找到最终结果 chunk
+        final_chunk4 = None
+        for chunk in chunks4:
+            if chunk.type == 'workflow_final':
+                final_chunk4 = chunk
+                break
+
+        self.assertIsNotNone(final_chunk4, "步骤4应该有 workflow_final chunk")
+        payload4 = final_chunk4.payload
+        self.assertEqual(
+            payload4['result_type'], 'answer', "步骤4应该返回 answer 类型"
+        )
+        self.assertEqual(
+            payload4['output'].state.value, 'COMPLETED',
+            "步骤4 invest 工作流应该完成"
+        )
+        response_content4 = payload4['output'].result.get('responseContent', '')
+        self.assertIn('稳健', response_content4, "步骤4应该包含理财产品名称")
+        print(f"✅ 步骤4成功：invest_agent 恢复并完成，返回: {response_content4}")
+
+        print("\n🎉 多子Agent跳转恢复测试完成！")
+        print("   - transfer_agent: 中断 -> 跳转 -> 恢复 -> 完成")
+        print("   - invest_agent: 中断 -> 恢复 -> 完成")
+
 
 if __name__ == "__main__":
     unittest.main()

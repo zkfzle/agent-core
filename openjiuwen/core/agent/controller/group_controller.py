@@ -249,6 +249,7 @@ class BaseGroupController(ABC):
             Final result (last chunk or default)
         """
         from openjiuwen.core.stream.base import OutputSchema
+        from openjiuwen.core.common.constants.constant import INTERACTION
 
         agent = self.agent_group.agents.get(agent_id)
         if not agent:
@@ -272,17 +273,27 @@ class BaseGroupController(ABC):
         try:
             # 调用 agent.stream，传入共享 runtime
             # agent 内部会把数据写入 runtime，不会从 stream_iterator 读取
-            # 这里只是消费 stream generator（可能为空），等待执行完成
-            final_result = None
+            # 收集所有 chunks 以处理中断情况
+            chunks = []
             async for chunk in agent.stream(inputs, runtime):
-                # 如果 agent.stream yield 了数据，记录最后一个作为返回值
-                final_result = chunk
+                chunks.append(chunk)
             
-            # 返回最终结果
-            if final_result is not None:
+            # 检查是否为中断情况（包含 __interaction__ 类型）
+            if chunks:
+                has_interaction = any(
+                    isinstance(c, OutputSchema) and c.type == INTERACTION
+                    for c in chunks
+                )
+                if has_interaction:
+                    # 中断情况：返回整个列表
+                    return chunks
+                
+                # 正常情况：返回最后一个结果
+                final_result = chunks[-1]
                 if isinstance(final_result, OutputSchema):
                     return final_result.payload
                 return final_result
+            
             return {"output": "processed"}
         except Exception as e:
             logger.error(

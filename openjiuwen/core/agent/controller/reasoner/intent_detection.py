@@ -68,35 +68,64 @@ class IntentDetection:
         tasks = self._generate_tasks_from_intent(detected_intent_id, message)
         return tasks
 
-    def _generate_tasks_from_intent(self, workflow_id: str, message: Message) -> List[Task]:
+    def _generate_tasks_from_intent(
+        self, intent_id: str, message: Message
+    ) -> List[Task]:
         """
-        创建工作流任务对象
+        创建任务对象
         
         根据识别到的意图创建对应的任务
         1. 映射意图到任务类型
         2. 创建任务实例
         3. 返回任务列表
+        
+        Note: 如果 agent_config 没有 workflows，直接用 intent_id 作为 target_name
         """
         tasks = []
         session_id = self.runtime.session_id()
-        task_unique_id = f"{session_id}_workflow_{workflow_id}_{secrets.token_hex(4)}"
-        if workflow_id == IntentDetectionConstants.DEFAULT_CLASS:
-            # 意图识别没有匹配的工作流，返回空任务列表
-            pass
-        else:
-            for workflow in self.agent_config.workflows:
-                if workflow.id == workflow_id:
-                    tasks.append(Task(
-                        agent_id=self.agent_config.id,
-                        task_id=task_unique_id,
-                        task_type=TaskType.WORKFLOW,
-                        input=TaskInput(
-                            target_id=workflow.id,
-                            target_name=workflow.name,
-                            arguments=message.content
-                        )
-                    ))
-                    logger.info(f"[%s] success to create task for intent: %s", session_id, workflow_id)
+        task_unique_id = f"{session_id}_intent_{intent_id}_{secrets.token_hex(4)}"
+        
+        if intent_id == IntentDetectionConstants.DEFAULT_CLASS:
+            # 意图识别没有匹配结果，返回空任务列表
+            return tasks
+        
+        # 如果没有 workflows，直接用 intent_id 作为 target
+        workflows = getattr(self.agent_config, 'workflows', None) or []
+        if not workflows:
+            tasks.append(Task(
+                agent_id=self.agent_config.id,
+                task_id=task_unique_id,
+                task_type=TaskType.WORKFLOW,
+                input=TaskInput(
+                    target_id=intent_id,
+                    target_name=intent_id,
+                    arguments=message.content
+                )
+            ))
+            logger.info(
+                f"[%s] success to create task for intent (direct): %s",
+                session_id, intent_id
+            )
+            return tasks
+        
+        # 有 workflows 时，匹配 workflow
+        for workflow in workflows:
+            if workflow.id == intent_id:
+                tasks.append(Task(
+                    agent_id=self.agent_config.id,
+                    task_id=task_unique_id,
+                    task_type=TaskType.WORKFLOW,
+                    input=TaskInput(
+                        target_id=workflow.id,
+                        target_name=workflow.name,
+                        arguments=message.content
+                    )
+                ))
+                logger.info(
+                    f"[%s] success to create task for intent: %s",
+                    session_id, intent_id
+                )
+                break
         return tasks
 
     def _parse_intent_from_output(self, llm_output: str) -> str:
@@ -105,29 +134,49 @@ class IntentDetection:
         
         从大模型的输出中提取意图
         1. 解析输出中的意图标签
-        2. 返回意图工作流id
+        2. 返回意图工作流id或category名称
+        
+        Note: 如果 agent_config 没有 workflows，直接返回 category 名称
         """
         detected_intent_id = ""
         session_id = self.runtime.session_id()
         try:
             output_data = json.loads(llm_output)
             detected_class_number = int(output_data.get('result', ''))
-            if detected_class_number <= 0 or detected_class_number > len(self.intent_config.category_list):
+            if (detected_class_number <= 0 or
+                    detected_class_number > len(self.intent_config.category_list)):
                 # 意图不明
                 logger.warning("get unknown class")
             else:
-                detected_intent_name = self.intent_config.category_list[detected_class_number - 1]
-                for workflow in self.agent_config.workflows:
+                detected_intent_name = (
+                    self.intent_config.category_list[detected_class_number - 1]
+                )
+                
+                # 如果没有 workflows，直接返回 category 名称
+                workflows = getattr(self.agent_config, 'workflows', None) or []
+                if not workflows:
+                    logger.info(
+                        f"[%s] get intent (direct category): %s",
+                        session_id, detected_intent_name
+                    )
+                    return detected_intent_name
+                
+                # 有 workflows 时，匹配 workflow
+                for workflow in workflows:
                     if workflow.name == detected_intent_name:
                         detected_intent_id = workflow.id
-                        logger.info(f"[%s] get intent: %s", session_id, detected_intent_id)
+                        logger.info(
+                            f"[%s] get intent: %s", session_id, detected_intent_id
+                        )
                         break
                 return detected_intent_id
         except Exception as e:
             if UserConfig.is_sensitive():
                 logger.error("failed to parse JSON from LLM output")
             else:
-                logger.error("failed to parse JSON from LLM output, error: %s", str(e))
+                logger.error(
+                    "failed to parse JSON from LLM output, error: %s", str(e)
+                )
             raise
 
         return IntentDetectionConstants.DEFAULT_CLASS

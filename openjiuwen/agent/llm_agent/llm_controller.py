@@ -20,6 +20,7 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utlis.hash_util import generate_key
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -869,10 +870,10 @@ class LLMController(BaseController):
             return "questioner"
         
         try:
-            # Iterate through interaction_data to find outputs with type '__interaction__'
+            # Iterate through interaction_data to find outputs with INTERACTION type
             for output_schema in interaction_data:
-                if (hasattr(output_schema, 'type') and 
-                    output_schema.type == '__interaction__'):
+                if (hasattr(output_schema, 'type') and
+                    output_schema.type == const.INTERACTION):
                     # Extract InteractionOutput.id from payload
                     if (hasattr(output_schema, 'payload') and 
                         hasattr(output_schema.payload, 'id')):
@@ -953,7 +954,7 @@ class LLMController(BaseController):
                 return {"output": "", "result_type": "answer"}
             if isinstance(result[0], OutputSchema):
                 # If it's interaction requests (multiple or single), return list
-                if result[0].type == '__interaction__':
+                if result[0].type == const.INTERACTION:
                     return result
                 # If it's a single non-interaction OutputSchema, extract its payload
                 if len(result) == 1:
@@ -969,7 +970,7 @@ class LLMController(BaseController):
         
         if isinstance(result, OutputSchema):
             # If it's interaction, return wrapped in list for consistency
-            if result.type == '__interaction__':
+            if result.type == const.INTERACTION:
                 return [result]
             payload = result.payload
             if isinstance(payload, dict):

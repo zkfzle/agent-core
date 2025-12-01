@@ -685,6 +685,10 @@ class ControllerAgent(BaseAgent):
         
         Yields:
             Streaming output
+        
+        Note:
+            当传入外部 runtime 时，数据会写入该 runtime，但不从其 stream_iterator
+            读取（避免嵌套读取导致死锁）。外部调用方负责从 runtime 读取流式数据。
         """
         if not self.controller:
             raise RuntimeError(
@@ -697,36 +701,44 @@ class ControllerAgent(BaseAgent):
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
+            own_stream = True  # 自己拥有 stream 的生命周期
         else:
             agent_runtime = runtime
             need_cleanup = False
+            own_stream = False  # 外部拥有 stream 的生命周期
+
+        # 用于存储最终结果，供 send_to_agent 获取
+        final_result_holder = {"result": None}
 
         # Fully delegate to controller
         async def stream_process():
             try:
                 res = await self.controller.invoke(inputs, agent_runtime)
+                final_result_holder["result"] = res
+                # 中断情况：list 包含 __interaction__ 等 OutputSchema
+                # 流式数据（包括 workflow_final）已由 controller 层写入 runtime
                 if isinstance(res, list):
                     for item in res:
                         await agent_runtime.write_stream(item)
-                elif isinstance(res, dict):
-                    output_in_result = res.get("output")
-                    if isinstance(output_in_result, WorkflowOutput) and output_in_result.result is not None:
-                        total_result = output_in_result.result
-                        if isinstance(total_result, list):
-                            for item in total_result:
-                                await agent_runtime.write_stream(item)
-                    else:
-                        final_output = OutputSchema(
-                            type="workflow_final",
-                            index=0,
-                            payload=res
-                        )
-                        await agent_runtime.write_stream(final_output)
             finally:
                 if need_cleanup:
                     await agent_runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        async for result in agent_runtime.stream_iterator():
-            yield result
+        
+        if own_stream:
+            # 只有自己拥有 stream 时才从 stream_iterator 读取
+            # 如果传入了外部 runtime，外部调用方负责读取
+            async for result in agent_runtime.stream_iterator():
+                yield result
+        
         await task
+        
+        # 当 own_stream = False 时，yield 最终结果给 send_to_agent
+        # 这样 send_to_agent 可以获取到 agent 的实际返回值
+        if not own_stream and final_result_holder["result"] is not None:
+            res = final_result_holder["result"]
+            if isinstance(res, list):
+                # 中断情况：返回 list（包含 __interaction__）
+                for item in res:
+                    yield item

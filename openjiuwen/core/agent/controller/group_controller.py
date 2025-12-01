@@ -233,16 +233,23 @@ class BaseGroupController(ABC):
         agent_id: str,
         runtime: 'AgentGroupRuntime'
     ) -> Any:
-        """Send message to specified Agent (point-to-point)
+        """Send message to specified Agent (point-to-point, streaming)
+        
+        调用 agent.stream() 并传入共享 runtime。agent 内部会把流式数据写入该
+        runtime（不会从 stream_iterator 读取，避免嵌套死锁）。
+        
+        外部 ControllerGroup.stream() 通过 runtime.stream_iterator() 统一读取。
         
         Args:
             message: Message object
             agent_id: Target Agent ID
-            runtime: Runtime context (passed to agent for stream sharing)
+            runtime: Runtime context (shared stream)
         
         Returns:
-            Agent's return result
+            Final result (last chunk or default)
         """
+        from openjiuwen.core.stream.base import OutputSchema
+
         agent = self.agent_group.agents.get(agent_id)
         if not agent:
             logger.warning(
@@ -250,7 +257,6 @@ class BaseGroupController(ABC):
             )
             return None
 
-        # Call agent's invoke method
         inputs = {
             "message": message,
             "content": message.content.get_query(),
@@ -260,17 +266,27 @@ class BaseGroupController(ABC):
         }
         
         logger.info(
-            f"BaseGroupController: Sending message to agent {agent_id}"
+            f"BaseGroupController: Streaming message to agent {agent_id}"
         )
         
         try:
-            # 传递 runtime 让子 agent 写入共享的 stream
-            # 这样 group.stream 可以通过 runtime.stream_iterator 读取子 agent 的流式输出
-            result = await agent.invoke(inputs, runtime)
-            return result
+            # 调用 agent.stream，传入共享 runtime
+            # agent 内部会把数据写入 runtime，不会从 stream_iterator 读取
+            # 这里只是消费 stream generator（可能为空），等待执行完成
+            final_result = None
+            async for chunk in agent.stream(inputs, runtime):
+                # 如果 agent.stream yield 了数据，记录最后一个作为返回值
+                final_result = chunk
+            
+            # 返回最终结果
+            if final_result is not None:
+                if isinstance(final_result, OutputSchema):
+                    return final_result.payload
+                return final_result
+            return {"output": "processed"}
         except Exception as e:
             logger.error(
-                f"BaseGroupController: Failed to invoke agent {agent_id}: {e}",
+                f"BaseGroupController: Failed to stream agent {agent_id}: {e}",
                 exc_info=True
             )
             raise

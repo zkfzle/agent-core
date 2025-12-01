@@ -243,21 +243,23 @@ class ControllerGroup(BaseGroup):
                 await task_runtime.post_run()
 
     async def stream(self, message, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
-        """Streaming invocation - Fully delegated to group_controller
+        """Streaming invocation - 真正的流式输出
         
-        Design: invoke 和 stream 都调用 group_controller.invoke，
-        区别是 stream 把结果通过 yield 返回，支持流式输出。
+        Design: 
+        1. 后台任务执行 group_controller.invoke
+        2. group_controller.send_to_agent 会调用 agent.stream 并透传 chunk 到 runtime
+        3. 本方法从 runtime.stream_iterator() 实时读取并 yield
         
         流式数据来源：
-        1. 子 agent 的流式输出（如 __interaction__）通过共享的 runtime 透传
-        2. 最终结果包装成 OutputSchema yield 出去
+        - 子 agent 的流式输出通过共享 runtime 透传
+        - 包括 __interaction__、workflow_final 等所有类型
         
         Args:
             message: Message object (carries message_type for routing)
             runtime: Runtime instance (optional, auto-created if None)
         
         Yields:
-            Streaming output from group_controller
+            Streaming output from sub-agents
         """
         if not self.group_controller:
             raise RuntimeError(
@@ -275,37 +277,21 @@ class ControllerGroup(BaseGroup):
             task_runtime = runtime
             need_cleanup = False
 
-        try:
-            # 调用 group_controller.invoke，结果会通过 task_runtime 的 stream 透传
-            result = await self.group_controller.invoke(message, task_runtime)
-            
-            # 把最终结果 yield 出去
-            if result is not None:
-                if isinstance(result, list):
-                    for item in result:
-                        if isinstance(item, OutputSchema):
-                            yield item
-                        else:
-                            yield OutputSchema(
-                                type="group_result",
-                                index=0,
-                                payload=item
-                            )
-                elif isinstance(result, OutputSchema):
-                    yield result
-                elif isinstance(result, dict):
-                    yield OutputSchema(
-                        type="workflow_final",
-                        index=0,
-                        payload=result
-                    )
-                else:
-                    yield OutputSchema(
-                        type="group_result",
-                        index=0,
-                        payload=result
-                    )
-        finally:
-            if need_cleanup:
-                await task_runtime.post_run()
+        # 后台任务执行 group_controller.invoke
+        # send_to_agent 会调用 agent.stream 并把 chunk 写入 task_runtime
+        async def run_controller():
+            try:
+                await self.group_controller.invoke(message, task_runtime)
+            finally:
+                if need_cleanup:
+                    await task_runtime.post_run()
+
+        task = asyncio.create_task(run_controller())
+
+        # 真正流式读取：从 stream_iterator 实时获取 chunk
+        async for chunk in task_runtime.stream_iterator():
+            yield chunk
+
+        # 等待后台任务完成
+        await task
 

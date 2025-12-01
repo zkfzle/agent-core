@@ -23,6 +23,7 @@ from openjiuwen.core.agent.controller.reasoner.intent_detection import (
 )
 from openjiuwen.core.agent.message.message import Message, MessageContent
 from openjiuwen.core.agent.task.task import Task, TaskInput
+from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runtime.runtime import Runtime
@@ -226,14 +227,55 @@ class WorkflowController(IntentDetectionController):
             else:
                 logger.info(f"Starting workflow: {workflow_id}")
 
-            # 3. Create asyncio.Task (non-blocking)
-            workflow_task = asyncio.create_task(
-                Runner.run_workflow(
+            # 3. 使用流式调用 workflow，这样 workflow 层可以 yield:
+            #    - tracer_workflow (执行跟踪)
+            #    - __interaction__ (中断请求)
+            #    - workflow_final (完成结果)
+            # 流式数据会写入 runtime，agent 层的 stream_iterator 可以读取
+            async def run_workflow_streaming():
+                from openjiuwen.core.workflow.base import (
+                    WorkflowOutput, WorkflowExecutionState
+                )
+                from openjiuwen.core.stream.base import OutputSchema
+                workflow_stream = await Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
                     runtime=workflow_runtime
                 )
-            )
+                chunks = []
+                has_interaction = False
+                final_result = None
+                async for chunk in workflow_stream:
+                    # 检查 chunk 类型
+                    if isinstance(chunk, OutputSchema):
+                        if chunk.type == INTERACTION:
+                            has_interaction = True
+                            # 透传 __interaction__
+                            await runtime.write_stream(chunk)
+                        elif chunk.type == "workflow_final":
+                            # 不透传原始的 workflow_final
+                            # 后面会构造正确格式的 workflow_final
+                            final_result = chunk.payload
+                        else:
+                            # 透传其他流式数据（tracer 等）
+                            await runtime.write_stream(chunk)
+                    else:
+                        await runtime.write_stream(chunk)
+                    chunks.append(chunk)
+                
+                # 构造 WorkflowOutput
+                if has_interaction:
+                    return WorkflowOutput(
+                        result=chunks,
+                        state=WorkflowExecutionState.INPUT_REQUIRED
+                    )
+                else:
+                    return WorkflowOutput(
+                        result=final_result,
+                        state=WorkflowExecutionState.COMPLETED
+                    )
+
+            workflow_task = asyncio.create_task(run_workflow_streaming())
 
             # 4. Register task to queue
             await self.task_queue.register_task(
@@ -286,8 +328,17 @@ class WorkflowController(IntentDetectionController):
                 # Clean up interruption state (if any)
                 self._clear_interrupted_state(task, runtime)
 
-                # Return completion response
+                # 写入 workflow_final 到流
+                from openjiuwen.core.stream.base import OutputSchema
                 payload = {"output": result, "result_type": "answer"}
+                final_output = OutputSchema(
+                    type="workflow_final",
+                    index=0,
+                    payload=payload
+                )
+                await runtime.write_stream(final_output)
+
+                # Return completion response
                 return payload
 
         except asyncio.CancelledError:

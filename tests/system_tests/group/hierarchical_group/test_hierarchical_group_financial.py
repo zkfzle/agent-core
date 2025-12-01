@@ -38,6 +38,7 @@ from openjiuwen.core.component.questioner_comp import (
     QuestionerConfig
 )
 from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
@@ -178,7 +179,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         return agent
 
     @unittest.skip("skip system test - requires network")
-    async def test_financial_workflow_with_interrupt(self):
+    async def test_financial_workflow_with_interrupt_invoke(self):
         """
         金融场景完整用例：HierarchicalGroup + 工作流中断恢复
 
@@ -282,7 +283,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result1, list, "步骤1应该返回交互请求列表")
         self.assertTrue(len(result1) > 0, "步骤1应该有交互请求")
         self.assertEqual(
-            result1[0].type, '__interaction__', "步骤1应该返回交互类型"
+            result1[0].type, const.INTERACTION, "步骤1应该返回交互类型"
         )
         print(f"✅ 步骤1成功：转账工作流触发中断，询问金额")
 
@@ -426,9 +427,9 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # 校验：应该触发中断
         self.assertTrue(len(chunks1) > 0, "步骤1应该有流式输出")
         final_chunk1 = chunks1[-1]
-        # 交互请求会直接透传 __interaction__ 类型
+        # 交互请求会直接透传 INTERACTION 类型
         self.assertEqual(
-            final_chunk1.type, '__interaction__', "步骤1应该返回交互类型"
+            final_chunk1.type, const.INTERACTION, "步骤1应该返回交互类型"
         )
         print(f"✅ 步骤1成功：转账工作流触发中断，询问金额")
 

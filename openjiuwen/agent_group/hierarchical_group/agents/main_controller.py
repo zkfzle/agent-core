@@ -11,6 +11,7 @@ from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetect
 from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
 from openjiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
 from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.common.logging import logger
 
 
@@ -197,7 +198,8 @@ class HierarchicalMainController(BaseController):
             first_item = result[0]
             # Check if it's an interaction (interrupt)
             is_interaction = (
-                hasattr(first_item, 'type') and first_item.type == '__interaction__'
+                hasattr(first_item, 'type')
+                and first_item.type == const.INTERACTION
             )
             if is_interaction:
                 state["interrupted_agents"][agent_id] = {

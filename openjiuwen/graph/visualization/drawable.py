@@ -113,9 +113,6 @@ class Drawable:
 
     def to_mermaid(self, title: str = "", expand_subgraph: int | bool = False, enable_animation: bool = False) -> str:
         """convert self._graph to Mermaid syntax"""
-        if not isinstance(expand_subgraph, bool) and expand_subgraph < 0:
-            raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code,
-                                      message=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
         return _MermaidDiagram().to_mermaid(self._graph, title, expand_subgraph, enable_animation)
 
     def to_mermaid_png(self, title: str = "", expand_subgraph: int | bool = False) -> bytes:
@@ -220,8 +217,20 @@ else:
 
 
         def to_mermaid(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False,
-                       enable_animation = False) -> str:
+                       enable_animation: bool = False) -> str:
             """convert graph to Mermaid syntax"""
+            if not isinstance(title, str):
+                raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.code,
+                                          message=StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.errmsg)
+            if (not isinstance(expand_subgraph, bool) and
+                    not isinstance(expand_subgraph, int) or
+                    isinstance(expand_subgraph, int) and expand_subgraph < 0):
+                raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code,
+                                          message=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
+            if not isinstance(enable_animation, bool):
+                raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION.code,
+                                          message=StatusCode.DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION.errmsg)
+
             mermaid_nodes = {}
             subgraph_mermaid_nodes = {}
             for node in graph.nodes.values():

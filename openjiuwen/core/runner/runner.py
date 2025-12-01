@@ -221,11 +221,9 @@ class Runner:
             if agent_with_runtime is None:
                 raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
                                           StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
-            if isinstance(agent_with_runtime):
-                # Remote agent does not add runtime, keep sessionId in input
-                if self._AGENT_CONVERSATION_ID not in inputs:
-                    inputs[self._AGENT_CONVERSATION_ID] = session_id
-                return agent_with_runtime, None
+            if self._AGENT_CONVERSATION_ID not in inputs:
+                inputs[self._AGENT_CONVERSATION_ID] = session_id
+            return agent_with_runtime, None
             task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs))
             return agent_with_runtime.agent, task_runtime
         agent_runtime = StaticAgentRuntime(agent.config(), resource_mgr=self._resource_manager)

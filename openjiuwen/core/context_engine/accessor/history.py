@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Union
 
-from openjiuwen.core.context_engine.base import ContextOwner
-from openjiuwen.core.context_engine.utils import ContextUtils
+from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 DEFAULT_HISTORY_LENGTH = 100
@@ -15,49 +13,39 @@ DEFAULT_HISTORY_LENGTH = 100
 class ConversationMessage(BaseModel):
     order_id: int
     message: BaseMessage
-    owner: List[ContextOwner] = Field(default=[])
     tags: Dict[str, str] = Field(default={})
-
-    def is_owner(self, target_owner: ContextOwner) -> bool:
-        if not target_owner:
-            return True
-        for owner in self.owner:
-            if owner in target_owner:
-                return True
-        return False
 
 
 class ConversationHistory:
-    def __init__(self):
-        self.__history = []
-        self.__expired_history = []
-        self.__compressed_history = []
-        self.__conversation_order_id = 0
-        self.__history_capacity: int = DEFAULT_HISTORY_LENGTH
+    def __init__(self, config: ContextEngineConfig):
+        self._history = []
+        self._conversation_order_id = 0
+        self._history_queue_length: int = config.conversation_history_length
+        self._history_queue_rebuild_length = self._history_queue_length * 2
 
     def __len__(self):
-        return len(self.__history)
+        return len(self._history)
 
     def add_message(self, message: BaseMessage,
-                    owner: Optional[List[ContextOwner]] = None,
                     tags: Optional[Dict[str, str]] = None):
-        self.__history.append(ConversationMessage(
-            order_id=self.__conversation_order_id,
+        self._history.append(ConversationMessage(
+            order_id=self._conversation_order_id,
             message=message,
-            owner=owner or [],
             tags=tags or {}
         ))
-        self.__conversation_order_id += 1
+        if len(self._history) >= self._history_queue_rebuild_length:
+            self._rebuild_history()
+        self._conversation_order_id += 1
 
     def get_messages(self,
                      num: int,
-                     owner: Optional[ContextOwner] = None,
                      tags: Optional[Dict[str, str]] = None) -> List[BaseMessage]:
-        num = num if num > 0 else DEFAULT_HISTORY_LENGTH
+        num = num if num >= 0 else DEFAULT_HISTORY_LENGTH
         filtered_history = []
-        for message in self.__history:
-            if not message.is_owner(owner):
-                continue
+        for i in range(len(self._history) - 1, -1, -1):
+            if len(filtered_history) >= num:
+                break
+            message = self._history[i]
             matched = True
             if tags:
                 for key, value in tags.items():
@@ -68,34 +56,30 @@ class ConversationHistory:
             if not matched:
                 continue
             filtered_history.append(message.message)
-        return filtered_history[-1 * num:]
+        filtered_history.reverse()
+        return filtered_history
 
     def batch_add_messages(self,
                            messages: List[BaseMessage],
-                           owner: Optional[List[ContextOwner]] = None,
                            tags: Optional[Dict[str, str]] = None
                            ):
         """batch add conversation messages"""
         for msg in messages:
-            if isinstance(msg, ConversationMessage):
-                self.__history.append(msg)
-            elif isinstance(msg, BaseMessage):
-                self.__history.append(ConversationMessage(
-                    order_id=self.__conversation_order_id,
-                    message=msg,
-                    owner=owner or [],
-                    tags=tags or {}
-                ))
+            self.add_message(msg, tags)
 
     def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
-        if len(self.__history) == 0:
+        if len(self._history) == 0:
             return None
 
         if role is None:
-            return self.__history[-1].message
+            return self._history[-1].message
 
-        for msg in reversed(self.__history):
+        for msg in reversed(self._history):
             if msg.message.role == role:
                 return msg.message
 
         return None
+
+    def _rebuild_history(self):
+        msg_to_reserve = max(self._history_queue_rebuild_length - self._history_queue_length, 1)
+        self._history = self._history[msg_to_reserve:]

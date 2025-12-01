@@ -4,7 +4,6 @@
 
 from typing import Optional, Dict, Union, List
 
-from openjiuwen.core.context_engine.accessor.history import ConversationMessage
 from openjiuwen.core.context_engine.base import Context, ContextOwner
 from openjiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from openjiuwen.core.utils.llm.messages import BaseMessage
@@ -20,25 +19,26 @@ class ContextImpl(Context):
     def batch_add_messages(self,
                      messages:List[BaseMessage],
                      tags: Optional[Dict[str, str]] = None):
-        history = self._accessor.history()
-        history.batch_add_messages(messages=messages, owner=[self._owner], tags=tags)
+        history = self._accessor.history(self._owner)
+        history.batch_add_messages(messages=messages, tags=tags)
 
     def add_message(self,
                     message: BaseMessage,
                     tags: Optional[Dict[str, str]] = None):
-        history = self._accessor.history()
-        history.add_message(message, owner=[self._owner], tags=tags)
+        history = self._accessor.history(self._owner)
+        history.add_message(message, tags=tags)
 
     def get_messages(self,
                     num: int = -1,
                     tags: Optional[Dict[str, str]] = None) -> List[BaseMessage]:
-        history = self._accessor.history()
-        messages = history.get_messages(num, owner=self._owner, tags=tags)
+        history = self._accessor.history(self._owner)
+        messages = history.get_messages(num, tags=tags)
         return messages
 
     def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
-        history = self._accessor.history()
+        history = self._accessor.history(self._owner)
         return history.get_latest_message(role=role)
+
 
 class AgentContext(ContextImpl):
     def __init__(self,

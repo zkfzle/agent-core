@@ -2,23 +2,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from enum import Enum
 from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
-from typing import Union, Dict, Any, Optional, List
+from typing import Union, Dict, Optional, List
 
 from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.utils.prompt.template.template import Template
-
-
-class ContextVariable(BaseModel):
-    name: str = Field(default=...)
-    description: str = Field(default="")
-    value: Optional[str] = Field(default=None)
-    default_value: Optional[str] = Field(default=None)
-
-    def get_value(self):
-        return self.value if self.value else self.default_value
 
 
 class ContextOwner(BaseModel):
@@ -69,22 +57,3 @@ class Context(ABC):
                            role: str = None) -> Union[BaseMessage, None]:
         pass
 
-
-class ContextType(Enum):
-    USER_INPUT = "user_input"
-    SYSTEM_PROMPT = "system_prompt"
-    VARIABLES = "variables"
-    CHAT_HISTORY = "chat_history"
-    MEMORY = "memory"
-    TOOLS = "tools"
-    FULL_PROMPT = "full_prompt"
-
-
-class ContextWindow(BaseModel):
-    user_input: Union[str, Dict] = Field(default="")
-    prompt: Template = Field(default=Template(content=""))
-    variables: Dict[str, ContextVariable] = Field(default={})
-    chat_history: Union[str, List[BaseMessage]] = Field(default="")
-    memory: Optional[Any] = Field(default=None)
-    tools: Union[str, Dict] = Field(default="")
-    full_prompt: Union[str, BaseMessage, List[BaseMessage]] = Field(default="")

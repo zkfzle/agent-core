@@ -70,20 +70,21 @@ class Runner:
 
     async def add_agent_group(self, agent_group_id: str, agent_group: Union[AgentGroup, AgentGroupProvider]):
         self._agent_group_mgr.add_agent_group(agent_group_id, agent_group)
-        if isinstance(agent_group, AgentGroup):
+        # Only subscribe to message queue for AgentGroup with get_topic method
+        # BaseGroup (HierarchicalGroup etc.) uses different message mechanism
+        if hasattr(agent_group, 'get_topic') and callable(agent_group.get_topic):
             topic = agent_group.get_topic()
-            subscription = await self._message_queue.subscribe(topic)
-            agent_group.set_subscription(subscription)
-        else:
-            topic = agent_group.get_topic()
-            subscription = await self._message_queue.subscribe(topic)
-            agent_group.set_subscription(subscription)
+            if topic is not None:
+                subscription = await self._message_queue.subscribe(topic)
+                agent_group.set_subscription(subscription)
 
     async def remove_agent_group(self, agent_group_id: str) -> Union[AgentGroup, AgentGroupProvider]:
         agent_group = self._agent_group_mgr.remove_agent_group(agent_group_id)
-        if agent_group:
+        # Only unsubscribe for AgentGroup with get_topic method and subscription
+        if agent_group and hasattr(agent_group, 'get_topic') and callable(agent_group.get_topic):
             topic = agent_group.get_topic()
-            await self._message_queue.unsubscribe(topic, agent_group._subscription)
+            if topic is not None and hasattr(agent_group, '_subscription'):
+                await self._message_queue.unsubscribe(topic, agent_group._subscription)
         return agent_group
 
     def add_agent(self, agent_id, agent: Union[Agent, AgentProvider]):

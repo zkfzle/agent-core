@@ -7,7 +7,7 @@ from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 
 
 class DataIdManager:
-    SEPARATOR = "\x1F"
+    SEPARATOR = "/"
     ID_KEY = f'id_manager{SEPARATOR}next_id'
 
     def __init__(self, kv_store: BaseKVStore):

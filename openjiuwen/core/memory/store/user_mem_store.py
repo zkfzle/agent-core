@@ -16,7 +16,7 @@ class UserMemStore:
     KEY_PREFIX_STR: str = "UMD"
     MEM_TYPE_FIELD_KEY: str = "mem_type"
     TOPIC_FIELD_KEY: str = "profile_type"
-    SEPARATOR: str = "\x1F"
+    SEPARATOR: str = "/"
 
     def __init__(self, kv_store_instance: BaseKVStore):
         if kv_store_instance is None:

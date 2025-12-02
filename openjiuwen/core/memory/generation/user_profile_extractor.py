@@ -2,11 +2,10 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.generation.categorizer import Categorizer
 from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_EXTRACTOR_PROMPT
 
@@ -36,13 +35,12 @@ class UserProfileExtractor:
         pass
 
     @staticmethod
-    def get_user_profile(
-        messages: List[BaseMessage],
-        history_messages: List[BaseMessage],
-        base_chat_model: BaseModelClient,
-        config: Config,
-        user_define: Dict[str, str] = None,
-        retries: int = 3
+    async def get_user_profile(
+            messages: List[BaseMessage],
+            history_messages: List[BaseMessage],
+            base_chat_model: Tuple[str, BaseModelClient],
+            user_define: Dict[str, str] = None,
+            retries: int = 3
     ) -> Dict[str, str]:
         sym_prompt = _get_message(user_define)
         model_input = Categorizer.get_model_input(
@@ -50,41 +48,11 @@ class UserProfileExtractor:
             history_messages,
             sym_prompt
         )
-        logger.debug(f"Start to get user profile, model_input: {model_input}")
+        model_name, model_client = base_chat_model
         for attempt in range(retries):
             try:
-                response = base_chat_model.invoke(config.model_name, model_input).content
-                result = json.loads(response)
-                logger.debug(f"Succeed to get user profile, output: {result}")
-                if isinstance(result, dict):
-                    return result
-            except json.JSONDecodeError as e:
-                if attempt < retries - 1:
-                    continue
-                logger.error(f"user profile extractor model output format error: {e.msg}")
-        return {}
-
-    @staticmethod
-    async def aget_user_profile(
-        messages: List[BaseMessage],
-        history_messages: List[BaseMessage],
-        base_chat_model: BaseModelClient,
-        config: Config,
-        user_define: Dict[str, str] = None,
-        retries: int = 3
-    ) -> Dict[str, str]:
-        sym_prompt = _get_message(user_define)
-        model_input = Categorizer.get_model_input(
-            messages,
-            history_messages,
-            sym_prompt
-        )
-        logger.debug(f"Start to get user profile, model_input: {model_input}")
-        for attempt in range(retries):
-            try:
-                response = await base_chat_model.ainvoke(config.model_name, model_input)
+                response = await model_client.ainvoke(model_name, model_input)
                 result = json.loads(response.content)
-                logger.debug(f"Succeed to get user profile, output: {result}")
                 if isinstance(result, dict):
                     return result
             except json.JSONDecodeError as e:

@@ -3,10 +3,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from enum import Enum
-from typing import List
+from typing import List, Tuple
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.config.config import Config
 from openjiuwen.core.memory.prompt.conflict_resolution import (
     CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER)
 
@@ -41,58 +40,34 @@ def _get_message(old_messages: List[str], new_message: str) -> list[dict]:
 class ConflictResolution:
     def __init__(self):
         pass
-    
+
     @staticmethod
-    def check_conflict(
-        old_messages: List[str],
-        new_message: str,
-        base_chat_model: BaseModelClient,
-        config: Config,
-        retries: int = 3
+    async def check_conflict(
+            old_messages: List[str],
+            new_message: str,
+            base_chat_model: Tuple[str, BaseModelClient],
+            retries: int = 3
     ) -> list[dict]:
         """
         Check for conflicts between old messages and a new message.
-        
+
         Args:
             old_messages (List[str]): List of old messages.
             new_message (str): The new message to check against old messages.
-            base_chat_model (BaseModelClient): The chat model to use for processing.
-            config (Config): Configuration for the chat model.
+            base_chat_model (Tuple[str, BaseModelClient]): The chat model to use for processing.
             retries (int, optional): Number of retries for the operation. Defaults to 3.
-        
+
         Returns:
             list[dict]: A list of dictionaries representing the conflict resolution results.
         """
+        model_name, model_client = base_chat_model
         messages = _get_message(old_messages, new_message)
-        logger.debug(f"start to check conflict, input: {messages}")
+        logger.debug(f"Start checking conflict, input messages: {messages}")
         for attempt in range(retries):
             try:
-                response = base_chat_model.invoke(model_name=config.model_name, messages=messages).content
-                result = json.loads(str(response).strip().replace("'", '"'))
-                logger.debug(f"Succeed to check conflict, output: {result}")
-                if isinstance(result, list):
-                    return result
-            except json.JSONDecodeError as e:
-                if attempt <= retries - 1:
-                    continue
-                logger.error(f"categories model output format error: {e.msg}")
-        return []
-    
-    @staticmethod
-    async def acheck_conflict(
-        old_messages: List[str],
-        new_message: str,
-        base_chat_model: BaseModelClient,
-        config: Config,
-        retries: int = 3
-    ) -> list[dict]:
-        messages = _get_message(old_messages, new_message)
-        logger.debug(f"Start to check conflict, input: {messages}")
-        for attempt in range(retries):
-            try:
-                response = await base_chat_model.ainvoke(model_name=config.model_name, messages=messages)
+                response = await model_client.ainvoke(model_name, messages=messages)
                 result = json.loads(str(response.content).strip().replace("'", '"'))
-                logger.debug(f"Succeed to check conflict, output: {result}")
+                logger.debug(f"Succeed to check conflict, result: {result}")
                 if isinstance(result, list):
                     return result
             except json.JSONDecodeError as e:

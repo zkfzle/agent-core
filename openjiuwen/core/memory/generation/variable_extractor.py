@@ -2,10 +2,10 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
-from typing import Any
+from typing import Any, Tuple
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.memory.config.config import Config
+from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.memory.generation.memory_info import (
     ExtractedData,
     ExtractedDataType
@@ -22,16 +22,17 @@ from openjiuwen.core.memory.prompt.variable_extractor import (
 
 from openjiuwen.core.common.logging import logger
 
+
 class ComprehensionExtractor:
     def __init__(self):
         pass
 
     @staticmethod
-    def extract(
-        messages: list[BaseMessage],
-        history_summary: BaseMessage,
-        base_chat_model: BaseModelClient,
-        config: Config
+    async def extract(
+            messages: list[BaseMessage],
+            history_summary: BaseMessage,
+            base_chat_model: Tuple[str, BaseModelClient],
+            config: MemoryConfig
     ) -> list[ExtractedData]:
         """Extract variables from the given messages using LLM.
         
@@ -39,31 +40,31 @@ class ComprehensionExtractor:
             messages (list[BaseMessage]): The current messages to extract variables from.
             history_summary (BaseMessage): The summary of historical messages.
             base_chat_model (BaseModelClient): The chat model to use for extraction.
-            config (Config): Configuration for the extraction process.
+            config (MemoryConfig): Configuration for the extraction process.
         
         Returns:
             list[ExtractedData]: A list of extracted data objects.
         """
-        if config.variables_key is None or config.variables_key == {}:
+        if config.mem_variables is None or len(config.mem_variables) == 0:
+            logger.info("Memory variables not set.")
             return []
         variables_dict = {
             "variables_enum": "",
             "variables_str": "",
             "variables_user": set()
         }
-        if 'user' in config.variables_key:
-            for var in config.variables_key['user']:
-                variables_dict["variables_user"].add(var['name'])
-                variables_dict["variables_str"] += f"{var['name']}({var['description']}),"
-                variables_dict["variables_enum"] += "{\"" + var['name'] + "\": {\"value\": \"string\"}}\n"
+        for key in config.mem_variables:
+            description = config.mem_variables[key]
+            variables_dict["variables_user"].add(key)
+            variables_dict["variables_str"] += f"{key}({description}),"
+            variables_dict["variables_enum"] += "{\"" + key + "\": {\"value\": \"string\"}}\n"
         conversation = ""
         for msg in messages:
             conversation += f"{msg.role}: {msg.content}\n"
 
         # Construct prompts
         if history_summary.content != "":
-            user_message = EXTRACT_VARIABLES_USER_SUMMARY_zh_CN if config.language == "zh-CN"\
-                else EXTRACT_VARIABLES_USER_SUMMARY
+            user_message = EXTRACT_VARIABLES_USER_SUMMARY_zh_CN
             user_message = user_message.format(
                 conversation=conversation,
                 summary=history_summary.content,
@@ -71,26 +72,31 @@ class ComprehensionExtractor:
                 variables_enum=variables_dict["variables_enum"]
             )
         else:
-            user_message = EXTRACT_VARIABLES_USER_zh_CN if config.language == "zh-CN" else EXTRACT_VARIABLES_USER
+            user_message = EXTRACT_VARIABLES_USER_zh_CN
             user_message = user_message.format(
                 conversation=conversation,
                 variables=variables_dict["variables_str"],
                 variables_enum=variables_dict["variables_enum"]
             )
-        sys_message = EXTRACT_VARIABLES_SYS_zh_CN if config.language == "zh-CN" else EXTRACT_VARIABLES_SYS
-        logger.debug(f"Start to extract variable, input user_message: {user_message}, sys_message: {sys_message}")
-        response = base_chat_model.invoke(
-            config.model_name,
-            [{
+        sys_message = EXTRACT_VARIABLES_SYS_zh_CN
+
+        model_input = [
+            {
                 "role": "system",
                 "content": sys_message
             },
             {
                 "role": "user",
                 "content": user_message
-            }]
+            }
+        ]
+        logger.debug(f"Start to extract variables, input: {model_input}")
+        model_name, model_client = base_chat_model
+        response = await model_client.ainvoke(
+            model_name,
+            model_input
         )
-        logger.debug(f"variable extractor output: {response.content}")
+        logger.debug(f"Succeed to call llm, content: {response.content}")
         # Parse response
         extract_result = []
         try:
@@ -111,12 +117,12 @@ class ComprehensionExtractor:
                                 value=value
                             )
                         )
-            logger.debug(f"Succeed to extract variable, result: {extract_result}")
+            logger.debug(f"Succeed to extract variables, result: {extract_result}")
             return extract_result
         except Exception as e:
             logger.error(f"LLM返回的json格式有误: {e}")
             return []
-        
+
     @staticmethod
     def _check_value(value: Any) -> bool:
         if (value is None or not isinstance(value, dict) or value.get("value", "") is None

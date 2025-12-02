@@ -11,7 +11,7 @@ from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 
 
 class VariableManager(BaseMemoryManager):
-    SEPARATOR = "\x1F"
+    SEPARATOR = "/"
 
     def __init__(self, kv_store: BaseKVStore):
         self.kv_store = kv_store

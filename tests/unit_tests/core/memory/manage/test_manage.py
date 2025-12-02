@@ -1,3 +1,4 @@
+import asyncio
 import unittest
 from enum import StrEnum
 from typing import List, Tuple
@@ -13,8 +14,8 @@ from openjiuwen.core.memory.manage.write_manager import WriteManager
 from openjiuwen.core.memory.mem_unit.memory_unit import UserProfileUnit, VariableUnit, MemoryType, ConflictType
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
+from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore as MockKVStore
-from openjiuwen.core.memory.config.config import Config
 
 
 class ContextStoreColumnType(StrEnum):
@@ -31,7 +32,7 @@ CONTEXT_CONFIG = {
         'message_id': ContextStoreColumnType.TEXT,
         'user_id': ContextStoreColumnType.TEXT,
         'session_id': ContextStoreColumnType.TEXT,
-        'app_id': ContextStoreColumnType.TEXT,
+        'group_id': ContextStoreColumnType.TEXT,
         'role': ContextStoreColumnType.TEXT,
         'content': ContextStoreColumnType.TEXT,
         'timestamp': ContextStoreColumnType.TEXT,
@@ -57,19 +58,9 @@ def create(conn: engine.Engine, table: str, columns: dict[str, ContextStoreColum
     except Exception as e:
         logger.error("Failed to create table", exc_info=e)
 
-config = Config(
-    variables_key={"key":["value"]},
-    model_api_base="http://test.com",
-    model_api_key="test_key",
-    model_name="test_model",
-    model_provider="test_provider",
-    strategy=["test_strategy"],
-    vector_store_dir=".",
-    kv_store_dir="."
-)
 
 # Mock语义存储实现，避免实际模型加载
-class MockSemanticStore:
+class MockSemanticStore(BaseSemanticStore):
     """Mock语义存储，用于测试环境，不依赖实际模型"""
     
     def __init__(self, config, model_config):
@@ -77,7 +68,7 @@ class MockSemanticStore:
         self.config = config
         self.model_config = model_config
     
-    def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
+    async def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
         """模拟添加记忆"""
         if table_name not in self.memory_store:
             self.memory_store[table_name] = {}
@@ -88,14 +79,14 @@ class MockSemanticStore:
             }
         return True
 
-    def delete_docs(self, ids: List[str], table_name: str) -> bool:
+    async def delete_docs(self, ids: List[str], table_name: str) -> bool:
         """模拟删除记忆"""
         if table_name in self.memory_store:
             for id_to_remove in ids:
                 self.memory_store[table_name].pop(id_to_remove, None)
         return True
     
-    def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
+    async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
         """模拟搜索功能，返回匹配的记忆"""
         if table_name not in self.memory_store:
             return []
@@ -112,19 +103,19 @@ class MockSemanticStore:
         # 返回top_k个结果
         return results[-5:]
 
-    def delete_table(self, table_name: str) -> bool:
+    async def delete_table(self, table_name: str) -> bool:
         """模拟删除索引功能"""
         if table_name in self.memory_store:
             del self.memory_store[table_name]
         return True
 
 class TestManage(unittest.TestCase):
-    def test_basic(self):
+    async def _test_basic(self):
         mock_kv_store = MockKVStore("kv_db")
         data_id_generator = DataIdManager(mock_kv_store)
         
         # 使用Mock语义存储替代实际模型
-        mock_semantic_recall = MockSemanticStore(config, None)
+        mock_semantic_recall = MockSemanticStore(None, None)
 
         # path = Path("./sql_db.db")
         # conn = create_engine(
@@ -148,60 +139,64 @@ class TestManage(unittest.TestCase):
         managers = {"user_profile": user_profile_manager, "variable": variable_manager}
         write_manager = WriteManager(managers, mock_mem_store)
         test_all_data = [
-            {"user_id": "usrZH2025", "app_id": "fitnesstrackerv3", "profile_type": "interests_hobbies",
+            {"user_id": "usrZH2025", "group_id": "fitnesstrackerv3", "profile_type": "interests_hobbies",
              "profile_mem": "用户非常喜欢川菜，尤其是水煮鱼和麻婆豆腐"},
-            {"user_id": "usrZH2025", "app_id": "fitnesstrackerv3", "profile_type": "personal_information",
+            {"user_id": "usrZH2025", "group_id": "fitnesstrackerv3", "profile_type": "personal_information",
              "profile_mem": "用户的职业是软件工程师，居住在北京市"},
-            {"user_id": "usrZH2025", "app_id": "fitnesstrackerv3", "profile_type": "personal_information",
+            {"user_id": "usrZH2025", "group_id": "fitnesstrackerv3", "profile_type": "personal_information",
              "profile_mem": "用户的副业是抖音直播"},
-            {"user_id": "usrZH2025", "app_id": "fitnesstrackerv3", "profile_type": "assert_information",
+            {"user_id": "usrZH2025", "group_id": "fitnesstrackerv3", "profile_type": "assert_information",
              "profile_mem": "用户的银行账户余额为10000元"},
-            {"user_id": "usrZH2025", "app_id": "fitnesstrackerv3", "profile_type": "social_information",
+            {"user_id": "usrZH2025", "group_id": "fitnesstrackerv3", "profile_type": "social_information",
              "profile_mem": "用户的朋友圈中有50个好友"},
-            {"user_id": "usrZH2025", "app_id": "fitnesstrackerv3", "profile_type": "other_information",
+            {"user_id": "usrZH2025", "group_id": "fitnesstrackerv3", "profile_type": "other_information",
              "profile_mem": "用户的宠物是一只金毛犬"},
-            {"user_id": "usrZH2026", "app_id": "fitnesstrackerv3", "profile_type": "interests_hobbies",
+            {"user_id": "usrZH2026", "group_id": "fitnesstrackerv3", "profile_type": "interests_hobbies",
              "profile_mem": "用户喜欢打篮球和阅读历史小说"},
-            {"user_id": "usrZH2026", "app_id": "fitnesstrackerv3", "profile_type": "personal_information",
+            {"user_id": "usrZH2026", "group_id": "fitnesstrackerv3", "profile_type": "personal_information",
              "profile_mem": "用户的生日是1990年1月1日"},
-            {"user_id": "usrZH2026", "app_id": "fitnesstrackerv3", "profile_type": "assert_information",
+            {"user_id": "usrZH2026", "group_id": "fitnesstrackerv3", "profile_type": "assert_information",
              "profile_mem": "用户的汽车型号是特斯拉Model 3"},
-            {"user_id": "usrZH2026", "app_id": "fitnesstrackerv3", "profile_type": "interests_hobbies",
+            {"user_id": "usrZH2026", "group_id": "fitnesstrackerv3", "profile_type": "interests_hobbies",
              "profile_mem": "用户在Twitter上有200个关注者"},
         ]
 
         for item in test_all_data:
             conflict_info = {'id': '-1', "event": ConflictType.ADD.value, "text": item["profile_mem"]}
             mem_unit = UserProfileUnit(mem_type=MemoryType.USER_PROFILE, conflict_info=[conflict_info], **item)
-            write_manager.add_mem([mem_unit])
+            await write_manager.add_mem([mem_unit])
             mem_unit = VariableUnit(mem_type=MemoryType.VARIABLE, variable_name=item['profile_type'],
-                                    variable_mem=item['profile_mem'], user_id=item['user_id'], app_id=item['app_id'])
-            write_manager.add_mem([mem_unit])
-            # message_manager.add(user_id=item['user_id'], app_id=item['app_id'], role='user', content=item['profile_mem'])
+                                    variable_mem=item['profile_mem'], user_id=item['user_id'], group_id=item['group_id'])
+            await write_manager.add_mem([mem_unit])
+            # message_manager.add(user_id=item['user_id'], group_id=item['group_id'], role='user', content=item['profile_mem'])
 
-        # message = message_manager.get(user_id=test_all_data[0]['user_id'], app_id=test_all_data[0]['app_id'], message_len=3)
+        # message = message_manager.get(user_id=test_all_data[0]['user_id'], group_id=test_all_data[0]['group_id'], message_len=3)
         query = "用户的职业"
-        res = variable_manager.query_variable(user_id=test_all_data[0]['user_id'], app_id=test_all_data[0]['app_id'])
-        res = user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
+        res = await variable_manager.query_variable(user_id=test_all_data[0]['user_id'], group_id=test_all_data[0]['group_id'])
+        res = await user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
         self.assertEqual(5, len(res))
         # message_by_id = message_manager.get_by_id("15")
 
-        user_profile_manager.update(res[0]['user_id'], res[0]['app_id'], res[0]['id'], "用户不是软件工程师，是系统")
-        self.assertEqual("用户不是软件工程师，是系统", user_profile_manager.get(res[0]['user_id'], res[0]['app_id'], res[0]['id'])['mem'])
+        await user_profile_manager.update(res[0]['user_id'], res[0]['group_id'], res[0]['id'], "用户不是软件工程师，是系统")
+        ret = await user_profile_manager.get(res[0]['user_id'], res[0]['group_id'], res[0]['id'])
+        self.assertEqual("用户不是软件工程师，是系统", ret['mem'])
 
-        res = user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3")
+        res = await user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3")
         self.assertEqual(6, len(res))
 
-        res = user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3", "personal_information")
+        res = await user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3", "personal_information")
         self.assertEqual(2, len(res))
         for rr in res:
-            write_manager.delete_mem_by_id(rr["user_id"], rr["app_id"], rr["id"])
+            await write_manager.delete_mem_by_id(rr["user_id"], rr["group_id"], rr["id"])
 
-        res = user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
+        res = await user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
         self.assertEqual(4, len(res))
-        write_manager.delete_mem_by_user_id("usrZH2026", "fitnesstrackerv3")
-        res = user_profile_manager.search("usrZH2026", "fitnesstrackerv3", query, 5)
+        await write_manager.delete_mem_by_user_id("usrZH2026", "fitnesstrackerv3")
+        res = await user_profile_manager.search("usrZH2026", "fitnesstrackerv3", query, 5)
         self.assertEqual(0, len(res))
+
+    def test_basic(self):
+        asyncio.run(self._test_basic())
 
 if __name__ == '__main__':
     unittest.main()

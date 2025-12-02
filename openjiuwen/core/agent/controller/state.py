@@ -36,10 +36,7 @@ class ControllerState:
 
         workflow_id = task.input.target_id if task.input else None
         if workflow_id:
-            self.interrupted_tasks = [
-                t for t in self.interrupted_tasks
-                if not (t.input and t.input.target_id == workflow_id)
-            ]
+            self.clear_interrupted_task(workflow_id)
         self.interrupted_tasks.append(task)
 
     def get_interrupted_task(self, workflow_id: Optional[str] = None) -> Optional[Task]:

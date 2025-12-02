@@ -198,8 +198,8 @@ class BaseController(ABC):
         Returns:
             dict: Processing result
         """
-        message = request["message"]
-        runtime = request["runtime"]
+        message = request.get("message")
+        runtime = request.get("runtime")
         try:
             result = await self.handle_message(message, runtime)
             result_type = type(result)

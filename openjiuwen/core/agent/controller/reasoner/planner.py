@@ -2,10 +2,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-from typing import List, Optional, Dict, Any
+from typing import List
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent.task.task import Task
-from openjiuwen.core.common.logging import logger
+from openjiuwen.agent.common.enum import TaskType, TaskStatus
 
 
 class Planner:
@@ -26,6 +27,19 @@ class Planner:
 
         logger.info("Planner initialized")
 
+    @staticmethod
+    def _create_default_task(message: Message) -> Task:
+        # 临时实现：返回一个默认任务
+        return Task(
+            task_type=TaskType.UNDEFINED,
+            description=f"Planner task for message: {message.content.get_query() if message.content else 'No content'}",
+            status=TaskStatus.PENDING,
+            metadata={
+                "original_message_id": message.msg_id,
+                "task_source": "planner"
+            }
+        )
+
     async def process_message(self, message: Message) -> List[Task]:
         """
         处理消息，进行任务规划并生成任务列表
@@ -43,19 +57,4 @@ class Planner:
         # 4. 返回任务列表
 
         logger.debug(f"Processing message {message.msg_id} with Planner")
-
-        # 临时实现：返回一个默认任务
-        from openjiuwen.core.agent.task.task import Task
-        from openjiuwen.agent.common.enum import TaskType, TaskStatus
-
-        default_task = Task(
-            task_type=TaskType.UNDEFINED,
-            description=f"Planner task for message: {message.content.get_query() if message.content else 'No content'}",
-            status=TaskStatus.PENDING,
-            metadata={
-                "original_message_id": message.msg_id,
-                "task_source": "planner"
-            }
-        )
-
-        return [default_task]
+        return [self._create_default_task(message)]

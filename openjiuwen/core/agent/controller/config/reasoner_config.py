@@ -62,7 +62,7 @@ class ReflectorConfig:
 
 @dataclass
 class ReasonerConfig:
-    """决策器配置类 - 使用子模块配置"""
+    """config of Resoner Componet - using sub module configuration"""
     intent_detection: IntentDetectionConfig = field(default_factory=IntentDetectionConfig)
     planner: PlannerConfig = field(default_factory=PlannerConfig)
     proactive_identifier: ProactiveIdentifierConfig = field(default_factory=ProactiveIdentifierConfig)

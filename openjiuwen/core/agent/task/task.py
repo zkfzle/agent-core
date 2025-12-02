@@ -4,7 +4,7 @@
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, Dict, Any, Union, Set, List
+from typing import Optional, Dict, Any, Set, List
 from pydantic import BaseModel, Field
 from openjiuwen.agent.common.enum import TaskStatus, TaskType
 
@@ -22,7 +22,7 @@ class TaskDependency:
     """任务依赖关系"""
     dependency_id: str  # 依赖的任务ID
     dependency_type: DependencyType = DependencyType.SEQUENTIAL
-    condition: Optional[str] = None  # 条件表达式（用于条件依赖）
+    condition: Optional[str] = Field(default=None)  # 条件表达式（用于条件依赖）
     data_mapping: Dict[str, str] = field(default_factory=dict)  # 数据映射：{源字段: 目标字段}
     required: bool = True  # 是否为必需依赖
 

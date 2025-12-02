@@ -92,16 +92,14 @@ class IntentDetection:
         # 如果没有 workflows，直接用 intent_id 作为 target
         workflows = getattr(self.agent_config, 'workflows', None) or []
         if not workflows:
-            tasks.append(Task(
+            task_input = TaskInput(target_id=workflow.id, target_name=workflow.name, arguments=message.content)
+            task = Task(
                 agent_id=self.agent_config.id,
                 task_id=task_unique_id,
                 task_type=TaskType.WORKFLOW,
-                input=TaskInput(
-                    target_id=intent_id,
-                    target_name=intent_id,
-                    arguments=message.content
-                )
-            ))
+                input=task_input
+            )
+            tasks.append(task)
             logger.info(
                 f"[%s] success to create task for intent (direct): %s",
                 session_id, intent_id
@@ -111,16 +109,14 @@ class IntentDetection:
         # 有 workflows 时，匹配 workflow
         for workflow in workflows:
             if workflow.id == intent_id:
-                tasks.append(Task(
+                task_input = TaskInput(target_id=workflow.id, target_name=workflow.name, arguments=message.content)
+                task = Task(
                     agent_id=self.agent_config.id,
                     task_id=task_unique_id,
                     task_type=TaskType.WORKFLOW,
-                    input=TaskInput(
-                        target_id=workflow.id,
-                        target_name=workflow.name,
-                        arguments=message.content
-                    )
-                ))
+                    input=task_input
+                )
+                tasks.append(task)
                 logger.info(
                     f"[%s] success to create task for intent: %s",
                     session_id, intent_id

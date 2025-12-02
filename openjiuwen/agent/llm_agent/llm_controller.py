@@ -15,7 +15,6 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.security.json_utils import JsonUtils
-from openjiuwen.core.memory.engine.memory_engine_factory import get_memengine_instance
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utlis.hash_util import generate_key
@@ -26,7 +25,7 @@ from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.utils.llm.messages import AIMessage
-from openjiuwen.core.memory.config.config import Config
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 
 
 class LLMController(BaseController):
@@ -1011,32 +1010,30 @@ class LLMController(BaseController):
 
     async def _get_keywords_from_memory(self, inputs: Any, user_id: str):
         result = {}
-        # app_id = f"{self._config.id}_{self._config.version}"
-        app_id = f"{self._config.id}"
+        group_id = f"{self._config.id}"
         if isinstance(inputs, str):
             query = inputs
         elif isinstance(inputs, dict):
             query = inputs.get("query", "")
         else:
             query = ""
-        logger.info(f"app_id: {app_id} | user_id: {user_id} | inputs: {inputs}")
+        logger.info(f"group_id: {group_id} | user_id: {user_id} | inputs: {inputs}")
         mem_manager_config = {}
-        config = Config(**mem_manager_config)
-        memory_engine = get_memengine_instance(config)
+        memory_engine = MemoryEngine.get_mem_engine_instance()
         if not memory_engine:
             return result
-        if user_id and app_id:
-            memory_variables = memory_engine.list_user_variables(
+        if user_id and group_id:
+            memory_variables = await memory_engine.list_user_variables(
                 user_id=user_id,
-                app_id=app_id
+                group_id=group_id
             )
             if memory_variables:
                 result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables)})
             logger.info(f"memory_variables: {memory_variables}")
 
-            long_term_memory = memory_engine.search_user_mem(
+            long_term_memory = await memory_engine.search_user_mem(
                 user_id=user_id,
-                app_id=app_id,
+                group_id=group_id,
                 query=query,
                 num=1
             )

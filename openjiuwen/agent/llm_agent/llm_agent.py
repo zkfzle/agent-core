@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMAgent - ReAct style Agent based on ControllerAgent"""
-
+import datetime
 from typing import Dict, List, Any, AsyncIterator
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
@@ -16,8 +16,7 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.memory.config.config import Config
-from openjiuwen.core.memory.engine.memory_engine_factory import get_memengine_instance
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 import asyncio
 
 
@@ -194,18 +193,16 @@ class LLMAgent(ControllerAgent):
         self.controller.set_llm_controller_prompt_template(prompt_template)
 
     def _init_memory_config(self, memory_config):
-        app_id = f"{self._agent_config.id}_{self._agent_config.version}"
-        logger.info(f"When init Memory Engine, app_id: {app_id}")
+        group_id = f"{self._agent_config.id}"
+        logger.info(f"When init Memory Engine, group_id: {group_id}")
         if memory_config is not None:
-            mem_manager_config = {}
-            config = Config(**mem_manager_config)
-            self._memory_engine = get_memengine_instance(config)
+            self._memory_engine = MemoryEngine.get_mem_engine_instance()
             if self._memory_engine:
-                self._memory_engine.set_app_config(app_id, memory_config)
+                self._memory_engine.set_group_config(group_id, memory_config)
 
     async def _write_messages_to_memory(self, inputs, result = None):
         user_id = inputs.get("user_id")
-        app_id = inputs.get("app_id","default_app_id")
+        group_id = inputs.get("group_id","default_group_id")
 
         if not user_id or not self._memory_engine:
             return
@@ -213,7 +210,12 @@ class LLMAgent(ControllerAgent):
         if result is not None:
             assistant_message = _convert_response_to_message(result)
             if assistant_message is not None and assistant_message.content != "":
-                await self._memory_engine.aadd_conversation_messages(user_id, app_id,[assistant_message])
+                await self._memory_engine.add_conversation_messages(
+                    user_id=user_id,
+                    group_id=group_id,
+                    messages = [assistant_message],
+                    timestamp=datetime.datetime.now(),
+                )
             return
 
         #add user message
@@ -223,5 +225,10 @@ class LLMAgent(ControllerAgent):
         if query is not None and isinstance(query, str):
             user_message = HumanMessage(content=query)
             if user_message and user_message.content != "":
-                await self._memory_engine.aadd_conversation_messages(user_id, app_id,[user_message])
+                await self._memory_engine.add_conversation_messages(
+                    user_id=user_id,
+                    group_id=group_id,
+                    messages=[user_message],
+                    timestamp=datetime.datetime.now(),
+                )
 

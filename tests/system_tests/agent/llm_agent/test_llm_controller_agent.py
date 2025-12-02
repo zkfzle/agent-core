@@ -1,11 +1,14 @@
+import asyncio
 import os
 import time
 import unittest
 from datetime import datetime
+from pathlib import Path
 
 from openjiuwen.agent.common.schema import PluginSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.memory.store.impl.default_semantic_store import DefaultSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
@@ -19,14 +22,12 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMet
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-
-from pathlib import Path
-from sqlalchemy import QueuePool, create_engine
-from openjiuwen.core.memory.config.config import Config
-from openjiuwen.core.memory.engine.memory_engine_factory import register_kv_db, register_semantic_recall, register_relation_db
-from openjiuwen.memory.store.dbm_kv_store import DbmKVStore
-from openjiuwen.memory.store.default_semantic_store import DefaultSemanticStore
-from openjiuwen.core.memory.engine.memory_engine_factory import get_memengine_instance
+from openjiuwen.core.memory.config.config import SysMemConfig
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
+from openjiuwen.core.memory.store.impl.default_semantic_store import DefaultSemanticStore
+from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
+from sqlalchemy.ext.asyncio import create_async_engine
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -297,26 +298,17 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         if not os.path.exists(resource_dir):
             os.makedirs(resource_dir)
         message_path = os.path.join(resource_dir, 'message_db')
+        path = Path(message_path)
         kv_db_path = os.path.join(resource_dir, 'dbmstore')
 
-        mem_manager_config = {}
-        config = Config(**mem_manager_config)
-        register_kv_db(DbmKVStore(kv_db_path))
-        register_semantic_recall(
-            DefaultSemanticStore(vector_store_dir=resource_dir, embedding_addr=os.getenv("EMBEDDING_MODEL_ADDR"),
-                                 embedding_dims=int(os.getenv("EMBEDDING_MODEL_DIMENTION", 384))))
-        path = Path(message_path)
-        db_engine_instance = create_engine(
-            f"sqlite:///{path.resolve()}",
-            poolclass=QueuePool,
-            pool_size=10,
-            max_overflow=10,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-        )
-        register_relation_db(db_engine_instance)
-        memory_engine = get_memengine_instance(config)
-        memory_engine.set_llm_model(self._create_model_config())
+        semantic_store = DefaultSemanticStore(vector_store_dir=resource_dir,
+                                              embedding_addr=os.getenv("EMBEDDING_MODEL_ADDR"),
+                                              embedding_dims=int(os.getenv("EMBEDDING_MODEL_DIMENTION", 384)))
+        db_store = DefaultDbStore(create_async_engine(
+            f"sqlite+aiosqlite:///{path.resolve()}"
+        ))
+        MemoryEngine.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
+        memory_engine = asyncio.run(MemoryEngine.create_mem_engine_instance(SysMemConfig()))
         print("✅ Memory engine created")
 
     @unittest.skip("require network")
@@ -533,7 +525,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
                                          "app_id": app_id})
         print(f"LLMAgent 输出结果：{result}")
         time.sleep(10) # wait for add memory task complete
-        memory_engine = get_memengine_instance(Config())
+        memory_engine = MemoryEngine.get_mem_engine_instance()
         result = memory_engine.search_user_mem(user_id=user_id, app_id=app_id, query="我叫什么名字", num=1)
         self.assertEqual(len(result), 1) # may be [] is llm_agent.invoke return too fast
         print("memory result:", result[0])

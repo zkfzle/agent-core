@@ -14,7 +14,7 @@ class MessageMixin:
     """Definition of public Field"""
     message_id = Column(String, primary_key=True)
     user_id = Column(String, nullable=False)
-    app_id = Column(String, nullable=False)
+    group_id = Column(String, nullable=False)
     content = Column(String, nullable=False)
     session_id = Column(String, nullable=True)
     role = Column(String, nullable=True)

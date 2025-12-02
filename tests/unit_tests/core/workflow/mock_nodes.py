@@ -1,15 +1,16 @@
 import asyncio
-from typing import AsyncIterator, Any
+from typing import Any, AsyncIterator
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.base import Graph
+from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.utils import is_ref_path, extract_origin_key
+from openjiuwen.core.runtime.utils import extract_origin_key, is_ref_path
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.workflow.base import Workflow
 
@@ -310,3 +311,99 @@ class MockStreamNode(ComponentExecutable, WorkflowComponent):
             context: Context = None
     ):
         yield inputs
+
+class ComputeComponent2(WorkflowComponent):
+    def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
+        graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
+
+    def to_executable(self) -> Executable:
+        return ComputeExecutor2()
+
+class ComputeExecutor2(ComponentExecutable):
+    def __init__(self):
+        super().__init__()
+
+    @staticmethod
+    async def _iter_collect_field(iterator: AsyncIterator, data_source_key, data_key, step = 1):
+        result = 0
+        async for data in iterator:
+            print(f"collect step: {step}, {data_source_key}: {data_key} = {data}")
+            if data_key == "result":
+                result += int(data)
+        return result
+
+    @staticmethod
+    async def _iter_transform_field(iterator: AsyncIterator, data_source_key, data_key="", step = 1):
+        results = []
+        async for data in iterator:
+            if not data_key:
+                print(f"transform step: {step}, {data_source_key}: {data}")
+                results.append({data_source_key: data})
+            else:
+                print(f"transform step: {step}, {data_source_key}: {data_key} = {data}")
+                results.append({data_key: data})
+        return results
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        exec_id = runtime.executable_id()
+        a = int(inputs.get("a"))
+        b = int(inputs.get("b"))
+        return {"result": a + b}
+
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        exec_id = runtime.executable_id()
+        logger.info(f"{exec_id} start")
+
+        inputs_a = inputs.get("a")
+        if isinstance(inputs_a, list):
+            await asyncio.sleep(0.1)
+            yield {'b': inputs.get("b")}
+            await asyncio.sleep(0.1)
+            yield {'op': '+'}
+            for a in inputs_a:
+                yield {'a': a}
+                await asyncio.sleep(0.1)
+                yield {'result': int(a) + int(inputs.get("b"))}
+        else:
+            await asyncio.sleep(0.1)
+            yield {'a': inputs_a}
+            await asyncio.sleep(0.1)
+            yield {'op': '+'}
+            await asyncio.sleep(0.1)
+            yield {'b': inputs.get("b")}
+            yield {'result': int(inputs_a) + int(inputs.get("b"))}
+        logger.info(f"{exec_id} stream done")
+
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        exec_id = runtime.executable_id()
+        step = 1
+        tasks = []
+        for data_source_key, obj in inputs.items():
+            if isinstance(obj, dict):
+                for data_key, iterator in obj.items():
+                    tasks.append(self._iter_collect_field(iterator, data_source_key, data_key, step))
+                    step += 1
+            else:
+                tasks.append(self._iter_collect_field(obj, data_source_key, "result", step))
+                step += 1
+        results = await asyncio.gather(*tasks)
+        result = sum(results)
+        return {'result_collect':  result}
+
+    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        exec_id = runtime.executable_id()
+        step = 1
+        tasks = []
+        for data_source_key, obj in inputs.items():
+            if isinstance(obj, dict):
+                for data_key, iterator in obj.items():
+                    tasks.append(self._iter_transform_field(iterator, data_source_key, data_key, step))
+                    step += 1
+            else:
+                tasks.append(self._iter_transform_field(obj, data_source_key, "",  step))
+                step += 1
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+            for item in result:
+                yield item
+        print(f"{exec_id} transform done")

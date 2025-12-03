@@ -44,6 +44,7 @@ class MetaTemplateBuilder(BasePromptBuilder):
               template_type: Literal["general", "plan", "other"] = "general",
               custom_template_name: Optional[str] = None
               ) -> Optional[str]:
+        prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_meta_template(prompt, tools, template_type, custom_template_name)
         response = self._model.invoke(self._model_name, messages)
         if response is None:
@@ -56,13 +57,14 @@ class MetaTemplateBuilder(BasePromptBuilder):
                      template_type: Literal["general", "plan", "other"] = "general",
                      custom_template_name: Optional[str] = None
                      ) -> Generator:
+        prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_meta_template(prompt, tools, template_type, custom_template_name)
         chunks = self._model.stream(self._model_name, messages)
         for chunk in chunks:
             yield chunk.content
 
     def _format_meta_template(self,
-                              prompt: str | Template,
+                              prompt: str,
                               tools: Optional[List[ToolInfo]] = None,
                               template_type: Literal["general", "plan", "other"] = "general",
                               custom_template_name: Optional[str] = None
@@ -74,7 +76,7 @@ class MetaTemplateBuilder(BasePromptBuilder):
 
     @staticmethod
     def _format_predefined_meta_template(template_type: str,
-                                         prompt: str | Template,
+                                         prompt: str,
                                          tools: Optional[List[ToolInfo]] = None
                                          ):
         if template_type == "plan":
@@ -94,7 +96,7 @@ class MetaTemplateBuilder(BasePromptBuilder):
 
     def _format_custom_meta_template(self,
                                      custom_meta_template_name: str,
-                                     prompt: str | Template,
+                                     prompt: str,
                                      tools: Optional[List[ToolInfo]] = None
                                      ):
         if not custom_meta_template_name:

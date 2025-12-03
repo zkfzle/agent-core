@@ -33,6 +33,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
               start_pos: Optional[int] = None,
               end_pos: Optional[int] = None,
               ) -> Optional[str]:
+        prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)
         response = self._model.invoke(self._model_name, messages)
         if response is None:
@@ -46,13 +47,14 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                      start_pos: Optional[int] = None,
                      end_pos: Optional[int] = None,
                      ) -> Optional[str]:
+        prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)
         chunks = self._model.stream(self._model_name, messages)
         for chunk in chunks:
             yield chunk.content
 
     def _format_feedback_template(self,
-                              prompt: str | Template,
+                              prompt: str,
                               feedback: str,
                               mode: Literal[MODE_GENERAL, MODE_INSERT, MODE_SELECT] = MODE_GENERAL,
                               start_pos: Optional[int] = None,
@@ -69,7 +71,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
             return self._format_feedback_template_general(prompt, feedback)
 
     def _format_feedback_template_general(self,
-                                         prompt: str | Template,
+                                         prompt: str,
                                          feedback: str,
                                          ) -> List[BaseMessage]:
         feedback_general_template = TEMPLATE.PROMPT_FEEDBACK_GENERAL_TEMPLATE
@@ -81,7 +83,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
         return messages
 
     def _format_feedback_template_insert(self,
-                                         prompt: str | Template,
+                                         prompt: str,
                                          feedback: str,
                                          start_pos: Optional[int] = None,
                                          ) -> List[BaseMessage]:
@@ -97,7 +99,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
         return messages
 
     def _format_feedback_template_select(self,
-                                         prompt: str | Template,
+                                         prompt: str,
                                          feedback: str,
                                          start_pos: Optional[int] = None,
                                          end_pos: Optional[int] = None,
@@ -137,30 +139,47 @@ class FeedbackPromptBuilder(BasePromptBuilder):
             logger.warning(f"Intent recognition failed, using original feedback instead")
             return feedback
         if not intent or not optimized_feedback.strip():
+            logger.warning(f"Intent recognition failed, using original feedback instead")
             return feedback
         return optimized_feedback.strip()
 
     def _is_index_within_bounds(self, prompt: str, mode, start_pos: int, end_pos: Optional[int] = None) -> bool:
         if mode == MODE_SELECT:
+            if not isinstance(start_pos, int) or not isinstance(end_pos, int):
+                raise JiuWenBaseException(
+                    StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
+                    StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
+                        error_msg=f"start_pos and end_pos must be provided for int type"
+                    )
+                )
             if start_pos is not None and end_pos is not None:
-                if 0 <= start_pos < end_pos < len(prompt):
+                if 0 <= start_pos < end_pos <= len(prompt):
                     return True
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
                 StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
                     error_msg=f"start_pos and end_pos must be provided for select mode. "
-                              f"Additionally, they must satisfy the conditions: 0 <= start_pos < end_pos < len(prompt)."
+                              f"Additionally, they must satisfy the conditions: "
+                              f"0 <= start_pos < end_pos <= len(prompt)."
                 )
             )
         elif mode == MODE_INSERT:
+            if not isinstance(start_pos, int):
+                raise JiuWenBaseException(
+                    StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
+                    StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
+                        error_msg=f"start_pos must be provided for int type"
+                    )
+                )
             if start_pos is not None:
-                if 0 <= start_pos < len(prompt):
+                if 0 <= start_pos <= len(prompt):
                     return True
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
                 StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
                     error_msg=f"start_pos must be provided for insert mode. "
-                              f"Additionally, it must satisfy the conditions: 0 <= start_pos < len(prompt)."
+                              f"Additionally, it must satisfy the conditions: "
+                              f"0 <= start_pos <= len(prompt)."
                 )
             )
         return False

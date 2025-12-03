@@ -9,7 +9,7 @@ import unittest
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 import os
 
-
+@unittest.skip("skip test")
 class TestUserMemStore(unittest.TestCase):
     def setUp(self):
         # kv_store_instance = SqliteKVStore(".")

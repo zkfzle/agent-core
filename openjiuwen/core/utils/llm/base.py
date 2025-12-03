@@ -123,7 +123,8 @@ class BaseModelClient:
     @staticmethod
     def clean_tools(tools):
         """
-        Remove non-standard fields (such as "results") from each dictionary in the tool list, and retain only the OpenAI format.
+        Remove non-standard fields (such as "results") from each dictionary in the tool list,
+        and retain only the OpenAI format.
         """
         cleaned = []
         for tool in tools:
@@ -158,18 +159,16 @@ class BaseModelClient:
 
         if isinstance(messages, str):
             return [{"role": "user", "content": messages}]
-        else:
-            if all(isinstance(item, Dict) for item in messages):
-                return messages
-            result = []
-            for item in messages:
-                item_dict = item.model_dump(exclude_none=True)
-                if item.role == "assistant":
-                    if "usage_metadata" in item_dict:
-                        item_dict.pop("usage_metadata")
-                result.append(item_dict)
-
-            return result
+        if all(isinstance(item, Dict) for item in messages):
+            return messages
+        result = []
+        for item in messages:
+            item_dict = item.model_dump(exclude_none=True)
+            if item.role == "assistant":
+                if "usage_metadata" in item_dict:
+                    item_dict.pop("usage_metadata")
+            result.append(item_dict)
+        return result
 
     def post_process(self, model_output):
         pass

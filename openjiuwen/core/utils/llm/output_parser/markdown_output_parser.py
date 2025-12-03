@@ -227,7 +227,7 @@ class MarkdownOutputParser(BaseOutputParser):
         table_start_pos = -1
         list_start_pos = -1
 
-        for i, line in enumerate(lines):
+        for _, line in enumerate(lines):
             line_start_pos = current_pos
             line_end_pos = current_pos + len(line)
             current_pos = line_end_pos + 1

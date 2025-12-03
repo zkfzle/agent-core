@@ -29,6 +29,7 @@ class SslUtils:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
             adapter = SSLAdapter(ssl_context)
             return adapter
+        return None
 
     @staticmethod
     def get_ssl_config(verify_switch_env:str, ssl_cert_env:str, trigger_value: list):

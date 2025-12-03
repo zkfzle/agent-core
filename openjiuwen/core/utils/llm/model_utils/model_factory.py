@@ -30,7 +30,7 @@ class ModelFactory(metaclass=Singleton):
         model_dict = {}
         if not os.path.exists(model_dir):
             if UserConfig.is_sensitive():
-                logger.warning(f"Model directory not found")
+                logger.warning("Model directory not found")
             else:
                 logger.warning(f"Model directory not found: {model_dir}")
             return model_dict
@@ -51,22 +51,22 @@ class ModelFactory(metaclass=Singleton):
                     module = importlib.util.module_from_spec(spec)
                     spec.loader.exec_module(module)
 
-                    for name, obj in module.__dict__.items():
-                        if (isinstance(obj, type) and issubclass(obj, BaseModelClient) and obj != BaseModelClient):
+                    for _, obj in module.__dict__.items():
+                        if isinstance(obj, type) and issubclass(obj, BaseModelClient) and obj != BaseModelClient:
                             model_dict[module_name] = obj
                             if UserConfig.is_sensitive():
-                                logger.info(f"Loaded model")
+                                logger.info("Loaded model")
                             else:
                                 logger.info(f"Loaded model: {module_name} -> {obj.__name__}")
                 except Exception as e:
                     if UserConfig.is_sensitive():
-                        logger.error(f"Error loading module.")
+                        logger.error("Error loading module.")
                     else:
                         logger.error(f"Error loading module {py_file}: {str(e)}")
                     continue
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.error(f"Error loading module.")
+                logger.error("Error loading module.")
             else:
                 logger.error(f"Error loading module: {str(e)}")
             raise Exception(f"module load error")

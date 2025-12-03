@@ -59,7 +59,8 @@ class JsonOutputParser(BaseOutputParser):
                 logger.error(f"An unexpected error occurred during JSON parsing: {e}\nContent: {json_str}")
             return None
 
-    async def stream_parse(self, streaming_inputs: Iterator[Union[str, AIMessageChunk]]) -> Iterator[Optional[Dict[str, Any]]]:
+    async def stream_parse(self, streaming_inputs: Iterator[Union[str, AIMessageChunk]]) -> Iterator[
+        Optional[Dict[str, Any]]]:
         """
         stream_parse json
         """
@@ -115,11 +116,10 @@ class JsonOutputParser(BaseOutputParser):
 
                 except Exception as e:
                     if UserConfig.is_sensitive():
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing (direct)")
+                        logger.error("An unexpected error occurred during streaming JSON parsing (direct)")
                     else:
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing (direct): {e}\nContent: {buffer}")
+                        logger.error(f"An unexpected error occurred during streaming JSON parsing (direct): {e}\n"
+                                     f"Content: {buffer}")
                     buffer = ""
 
         if buffer.strip():

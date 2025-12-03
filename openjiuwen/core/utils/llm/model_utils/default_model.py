@@ -37,7 +37,7 @@ class RequestChatModel(BaseModelClient):
         self._setup_ssl_adapter()
 
     def close_session(self):
-        if  self.sync_client is not None:
+        if self.sync_client is not None:
             self.sync_client.close()
 
     def model_provider(self) -> str:
@@ -107,8 +107,9 @@ class RequestChatModel(BaseModelClient):
                 data = await response.json()
                 return self._parse_response(model_name, data)
 
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[
+        AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
         self._reset_stream_state()
 
@@ -142,8 +143,8 @@ class RequestChatModel(BaseModelClient):
 
 
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AsyncIterator[
-        AIMessageChunk]:
+                       temperature: Optional[float] = None, top_p: Optional[float] = None,
+                       **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
         self._reset_stream_state()
 
@@ -283,7 +284,7 @@ class RequestChatModel(BaseModelClient):
             data = json.loads(line.decode("utf-8"))
             choice = data.get("choices", [{}])[0]
             finish_reason = choice.get("finish_reason")
-            usage = data.get("usage", dict())
+            usage = data.get("usage", {})
             usage.update(dict(finish_reason=finish_reason or ""))
             self._usage = usage
             delta = choice.get("delta", {})
@@ -325,8 +326,7 @@ class RequestChatModel(BaseModelClient):
             return None
 
     async def close(self):
-        if self.aiohttp_session:
-            await self.aiohttp_session.close()
+        pass
 
     @staticmethod
     def _convert_tool_call_format(tool_calls: List[Dict]):
@@ -357,6 +357,7 @@ class OpenAIChatModel(BaseModelClient):
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
+        sync_client = None
         try:
             sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
             response = sync_client.chat.completions.create(**params)
@@ -367,13 +368,15 @@ class OpenAIChatModel(BaseModelClient):
             else:
                 raise Exception(f"OpenAI API error: {str(e)}")
         finally:
-            sync_client.close()
+            if sync_client is not None:
+                sync_client.close()
 
     async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         """Async call OpenAI API"""
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
+        async_client = None
         try:
             async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
             response = await async_client.chat.completions.create(**params)
@@ -384,13 +387,16 @@ class OpenAIChatModel(BaseModelClient):
             else:
                 raise Exception(f"OpenAI API async error: {str(e)}")
         finally:
-            await async_client.close()
+            if async_client is not None:
+                await async_client.close()
 
-
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[
+        AIMessageChunk]:
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
-        params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, stream=True, **model_params)
+        params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, stream=True,
+                                            **model_params)
+        sync_client = None
         try:
             sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
             stream = sync_client.chat.completions.create(**params)
@@ -404,14 +410,17 @@ class OpenAIChatModel(BaseModelClient):
             else:
                 raise Exception(f"OpenAI API stream error: {str(e)}")
         finally:
-            sync_client.close()
+            if sync_client is not None:
+                sync_client.close()
 
     async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AsyncIterator[
-        AIMessageChunk]:
+                       temperature: Optional[float] = None, top_p: Optional[float] = None,
+                       **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
         """Async stream call OpenAI API"""
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
-        params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, stream=True,**model_params)
+        params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, stream=True,
+                                            **model_params)
+        async_client = None
         try:
             async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
             stream = await async_client.chat.completions.create(**params)
@@ -425,7 +434,8 @@ class OpenAIChatModel(BaseModelClient):
             else:
                 raise Exception(f"OpenAI API async stream error: {str(e)}")
         finally:
-            await async_client.close()
+            if async_client is not None:
+                await async_client.close()
 
 
     def _build_request_params(self, model_name:str, messages: List[Dict],

@@ -24,7 +24,7 @@ class BaseMemoryUnit:
     """a single memory data item"""
     mem_type: MemoryType
     user_id: str
-    app_id: str
+    group_id: str
 
 @dataclass
 class UserProfileUnit(BaseMemoryUnit):

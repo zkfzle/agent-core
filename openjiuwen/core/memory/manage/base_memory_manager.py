@@ -15,31 +15,31 @@ class BaseMemoryManager(ABC):
     """
 
     @abstractmethod
-    def add(self, memory: BaseMemoryUnit):
-        """add memory."""
+    async def add(self, memory: BaseMemoryUnit):
+        """async add memory."""
         pass
 
     @abstractmethod
-    def update(self, mem_id: str, new_memory: str, **kwargs):
-        """update memory by its id."""
+    async def update(self, user_id: str, group_id: str, mem_id: str, new_memory: str, **kwargs):
+        """async update memory by its id."""
         pass
 
     @abstractmethod
-    def delete(self, mem_id: str, **kwargs):
-        """delete memory by its id."""
+    async def delete(self, user_id: str, group_id: str, mem_id: str, **kwargs):
+        """async delete memory by its id."""
         pass
 
     @abstractmethod
-    def delete_by_user_id(self, user_id: str, app_id: str):
-        """delete memory by user id and app id."""
+    async def delete_by_user_id(self, user_id: str, group_id: str):
+        """async delete memory by user id and app id."""
         pass
 
     @abstractmethod
-    def get(self, mem_id: str) -> dict[str, Any] | None:
-        """get memory by its id."""
+    async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
+        """async get memory by its id."""
         pass
 
     @abstractmethod
-    def search(self, query: str, top_k: int, **kwargs):
-        """query memory, return top k results"""
+    async def search(self, user_id: str, group_id: str, query: str, top_k: int, **kwargs):
+        """async query memory, return top k results"""
         pass

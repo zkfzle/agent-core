@@ -199,7 +199,7 @@ class BaseModelInfo(BaseModel):
     temperature: float = Field(default=0.95)
     top_p: float = Field(default=0.1)
     streaming: bool = Field(default=False, alias="stream")
-    timeout: int = Field(default=60)
+    timeout: int = Field(default=60, gt=0)
     model_config = ConfigDict(extra='allow')
 
     @field_validator('model_name', mode='before')

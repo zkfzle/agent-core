@@ -1,154 +1,514 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-import asyncio
+from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Tuple
-from sqlalchemy.engine import Engine
 
-from openjiuwen.core.memory.manage.write_manager import WriteManager
-from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
-from openjiuwen.core.memory.manage.variable_manager import VariableManager
-from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
-from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
-from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
-from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
-from openjiuwen.core.memory.engine.memory_engine_base import MemoryEngineBase
-from openjiuwen.core.memory.config.config import Config, MemoryConfig
-from openjiuwen.core.memory.config.config_manager import ConfigManger
-from openjiuwen.core.memory.generation.generation import Generator
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
+from openjiuwen.core.memory.generation.generation import Generator
+from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
+from openjiuwen.core.memory.manage.message_manager import MessageManager
+from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
+from openjiuwen.core.memory.manage.variable_manager import VariableManager
+from openjiuwen.core.memory.manage.write_manager import WriteManager
+from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
+from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
+from openjiuwen.core.memory.store.base_db_store import BaseDbStore
+from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
+from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
+from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
-from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
-from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
-from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
-def _check_user_and_app_id(user_id: str, app_id: str, context="Operation"):
-    if not user_id or user_id.strip() == "":
-        raise ValueError(f"{context} failed: user_id is empty.")
-    if not app_id or app_id.strip() == "":
-        raise ValueError(f"{context} failed: app_id is empty.")
+class BaseMemoryEngine(ABC):
+    """
+    Abstract base class for memory engine.
+
+    Defines the core interface for memory storage and retrieval operations.
+    Provides unified memory management functionality including conversation memory,
+    user variables, semantic search, and persistence.
+
+    Concrete implementations should handle memory operations across multiple storage
+    backends (KV store, semantic store, database store).
+    """
+
+    def __init__(self, config: SysMemConfig, kv_store: BaseKVStore, semantic_store: BaseSemanticStore,
+                 db_store: BaseDbStore, **kwargs):
+        """
+        Initialize the memory engine with required storage components.
+
+        Args:
+            config: System memory configuration parameters
+            kv_store: Key-value store for fast structured data access
+            semantic_store: Semantic storage for vector-based similarity search
+            db_store: Database store for persistent data storage
+            **kwargs: Additional keyword arguments
+        """
+        pass
+
+    @abstractmethod
+    def init_base_llm(self, llm_config: ModelConfig) -> bool:
+        """
+        Initialize the default LLM for memory processing tasks.
+
+        Args:
+            llm_config: Language model client configuration
+        Returns:
+            True if initialization succeeded
+        """
+        pass
+
+    @abstractmethod
+    def set_group_config(self, group_id: str, config: MemoryConfig) -> bool:
+        """
+        Set memory configuration for a specific group.
+
+        Allows different groups to have customized memory retention policies,
+        storage limits, and behavior settings.
+
+        Args:
+            group_id: Unique identifier for the group
+            config: Group-specific memory configuration
+        Returns:
+            True if setting succeeded
+        """
+        pass
+
+    @abstractmethod
+    def set_group_llm_config(self, group_id: str, llm_config: ModelConfig) -> bool:
+        """
+        Set a dedicated LLM for a specific group.
+
+        Enables groups to use different language models tailored to their
+        specific needs or domains.
+
+        Args:
+            group_id: Unique identifier for the group
+            llm_config: Language model client instance configuration
+        Returns:
+            True if setting succeeded
+        """
+        pass
+
+    @abstractmethod
+    def set_group_llm(self, group_id: str, model_name: str, llm: BaseModelClient) -> bool:
+        """
+        Set a dedicated LLM for a specific group.
+
+        Enables groups to use different language models tailored to their
+        specific needs or domains.
+
+        Args:
+            group_id: Unique identifier for the group
+            model_name: LLM model identifier for this group
+            llm: Language model client instance
+        Returns:
+            True if setting succeeded
+        """
+        pass
+
+    @abstractmethod
+    async def add_conversation_messages(
+            self,
+            user_id: str,
+            group_id: str,
+            messages: list[BaseMessage],
+            timestamp: datetime,
+            request_config: dict[str, Any] = None,
+            session_id: str | None = None
+    ) -> str | None:
+        """
+        Add conversation messages to memory storage.
+
+        Stores conversation history with metadata for future retrieval and context.
+        May generate embeddings for semantic search capabilities.
+
+        Args:
+            user_id: Unique identifier for the user
+            group_id: Unique identifier for the group/chat
+            messages: List of message objects to store
+            timestamp: When the messages were created
+            request_config: Additional configuration for memory processing
+            session_id: Optional session identifier for grouping related messages
+
+        Returns:
+            Memory ID if successful, "-1" if failed, None when not record message
+        """
+        pass
+
+    @abstractmethod
+    async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
+        """
+        Retrieve a specific message by its unique identifier.
+
+        Args:
+            msg_id: Unique identifier of the message to retrieve
+
+        Returns:
+            Tuple of (message object, creation timestamp)
+        """
+        pass
+
+    @abstractmethod
+    async def delete_mem_by_id(self, user_id: str, group_id: str, mem_id: str) -> bool:
+        """
+        Delete a specific memory entry(messages, variables, profiles)  by its ID.
+
+        Args:
+            user_id: Unique identifier for the user
+            group_id: Unique identifier for the group
+            mem_id: Unique identifier of the memory to delete
+
+        Returns:
+            True if deletion was successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def delete_mem_by_user_id(self, user_id: str, group_id: str) -> bool:
+        """
+        Delete all memories(messages, variables, profiles) for a specific user in a group.
+
+        Useful for implementing "forget me" functionality or cleaning up user data.
+
+        Args:
+            user_id: User identifier whose memories should be deleted
+            group_id: Group identifier to scope the deletion
+
+        Returns:
+            True if deletion was successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def update_mem_by_id(self, user_id: str, group_id: str, mem_id: str, memory: str) -> bool:
+        """
+        Update the content of an existing memory entry.
+
+        Args:
+            user_id: Unique identifier for the user
+            group_id: Unique identifier for the group
+            mem_id: Unique identifier of the memory to update
+            memory: New content for the memory
+
+        Returns:
+            True if update was successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    async def get_user_variable(self, user_id: str, group_id: str, name: str) -> str:
+        """
+        Retrieve a specific user variable by name.
+
+        User variables store persistent user preferences, settings, or context
+        that should be maintained across conversations.
+
+        Args:
+            user_id: User identifier
+            group_id: Group identifier
+            name: Name of the variable to retrieve
+
+        Returns:
+            Value of the user variable as string
+
+        Raises:
+            VariableNotFoundError: If the variable doesn't exist
+        """
+        pass
+
+    @abstractmethod
+    async def list_user_variables(self, user_id: str, group_id: str) -> dict[str, str]:
+        """
+        Retrieve all variables for a specific user in a group.
+
+        Args:
+            user_id: User identifier
+            group_id: Group identifier
+
+        Returns:
+            Dictionary mapping variable names to their values
+        """
+        pass
+
+    @abstractmethod
+    async def search_user_mem(self, user_id: str, group_id: str, query: str, num: int,
+                              threshold: float = 0.3) -> list[dict[str, Any]]:
+        """
+        Search user memories using semantic similarity.
+
+        Performs vector-based similarity search to find relevant memories
+        based on the query content rather than exact keyword matching.
+
+        Args:
+            user_id: User identifier to search within
+            group_id: Group identifier to scope the search
+            query: Search query text
+            num: Maximum number of results to return
+            threshold: Similarity threshold (0.0-1.0) for filtering results
+
+        Returns:
+            List of memory dictionaries with similarity scores and metadata
+        """
+        pass
+
+    @abstractmethod
+    async def list_user_mem(self, user_id: str, group_id: str, num: int, page: int) -> list[dict[str, Any]]:
+        """
+        List user memories with pagination support.
+
+        Retrieves memories in chronological order, suitable for displaying
+        conversation history or memory browsing interfaces.
+
+        Args:
+            user_id: User identifier
+            group_id: Group identifier
+            num: Number of memories per page
+            page: Page number (0-indexed)
+
+        Returns:
+            List of memory dictionaries with content and metadata
+        """
+        pass
+
+    @abstractmethod
+    async def update_user_variable(self, user_id: str, group_id: str, name: str, value: str):
+        """
+        Create or update a user variable.
+
+        Args:
+            user_id: User identifier
+            group_id: Group identifier
+            name: Name of the variable to set
+            value: New value for the variable
+        """
+        pass
+
+    @abstractmethod
+    async def delete_user_variable(self, user_id: str, group_id: str, name: str):
+        """
+        Delete a specific user variable.
+
+        Args:
+            user_id: User identifier
+            group_id: Group identifier
+            name: Name of the variable to delete
+        """
+        pass
 
 
-class MemoryEngine(MemoryEngineBase):
-    def __init__(self, config: Config, llm_base: BaseModelClient = None):
-        super().__init__(config, llm_base)
-        self.config_manager = ConfigManger(config)
-        self.llm_base = llm_base
-        self.user_profile_manager: UserProfileManager = None
-        self.write_manager: WriteManager = None
-        self.variable_manager: VariableManager = None
-        self.message_manager: MessageManager = None
-        self.generator: Generator = None
-        self.search_manager: SearchManager = None
+class MemoryEngine(BaseMemoryEngine):
+    _mem_engine_instance: BaseMemoryEngine | None = None
+    _kv_store_instance: BaseKVStore | None = None
+    _semantic_store_instance: BaseSemanticStore | None = None
+    _db_store_instance: BaseDbStore | None = None
 
-    def init_mem_store(self,
-                       semantic_db_instance: BaseSemanticStore,
-                       db_engine_instance: Engine,
-                       kv_db_instance: BaseKVStore):
-        if db_engine_instance is not None:
-            create_tables(db_engine_instance)
-        data_id_generator = DataIdManager(kv_db_instance)
-        user_mem_store = UserMemStore(kv_db_instance)
+    def __init__(self, config: SysMemConfig, kv_store: BaseKVStore, semantic_store: BaseSemanticStore,
+                 db_store: BaseDbStore, **kwargs):
+        super().__init__(config=config, kv_store=kv_store, semantic_store=semantic_store, db_store=db_store)
+        data_id_generator = DataIdManager(kv_store)
+        user_mem_store = UserMemStore(kv_store)
         self.user_profile_manager = UserProfileManager(
-            semantic_db_instance,
-            user_mem_store,
-            data_id_generator
+            semantic_recall_instance=semantic_store,
+            user_mem_store=user_mem_store,
+            data_id_generator=data_id_generator
         )
-        self.variable_manager = VariableManager(kv_db_instance)
-        sql_db_store = SqlDbStore(db_engine_instance)
-        self.message_manager = MessageManager(sql_db_store, data_id_generator)
+        self.variable_manager = VariableManager(kv_store)
         managers = {
             MemoryType.USER_PROFILE.value: self.user_profile_manager,
             MemoryType.VARIABLE.value: self.variable_manager
         }
+        self.write_manager = WriteManager(managers, user_mem_store)
+        sql_db_store = SqlDbStore(db_store)
+        self.message_manager = MessageManager(sql_db_store, data_id_generator)
         self.search_manager = SearchManager(managers, user_mem_store)
         self.generator = Generator(self.search_manager)
-        self.write_manager = WriteManager(managers, user_mem_store)
+        # config
+        self._sys_mem_config = config  # sys mem config
+        self._group_config: dict[str, MemoryConfig] = {}  # group mem config map
+        # llm
+        self._base_llm: Tuple[str, BaseModelClient] | None = None
+        self._group_llm: dict[str, Tuple[str, BaseModelClient]] = {}
 
-    def set_app_config(self, app_id: str, config: MemoryConfig):
-        if app_id is None or app_id.strip() == "":
-            logger.warning("set_app_config failed: app_id is empty.")
-            return False
-        if config is None:
-            logger.warning("set_app_config failed: config is empty.")
-            return False
-        self.config_manager.set_app_config(app_id, config)
+    def init_base_llm(self, llm_config: ModelConfig) -> bool:
+        llm = MemoryEngine._get_llm_from_config(llm_config)
+        self._base_llm = (llm_config.model_info.model_name, llm)
         return True
 
-    def set_llm_model(self, config: ModelConfig):
-        request_config = {'model_name': config.model_info.model_name}
-        all_config = self.config_manager.get_config(request_config=request_config)
-        self.config_manager = ConfigManger(all_config)
-        self.llm_base = ModelFactory().get_model(
-            model_provider=config.model_provider,
-            api_key=config.model_info.api_key,
-            api_base=config.model_info.api_base
-        )
+    def set_group_config(self, group_id: str, config: MemoryConfig) -> bool:
+        self._group_config[group_id] = config
+        return True
 
-    def add_conversation_messages(
+    def set_group_llm(self, group_id: str, model_name: str, llm: BaseModelClient) -> bool:
+        self._group_llm[group_id] = (model_name, llm)
+        return True
+
+    def set_group_llm_config(self, group_id: str, llm_config: ModelConfig) -> bool:
+        llm = MemoryEngine._get_llm_from_config(llm_config)
+        return self.set_group_llm(group_id=group_id, model_name=llm_config.model_info.model_name, llm=llm)
+
+    async def add_conversation_messages(
             self,
             user_id: str,
-            app_id: str,
+            group_id: str,
             messages: list[BaseMessage],
-            timestamp: datetime = None,
+            timestamp: datetime,
             request_config: dict[str, Any] = None,
-            session_id: str = None,
-            llm: BaseModelClient = None
-    ) -> str:
-        llm = llm if llm else self.llm_base
-        if not self.message_manager:
-            raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
-        config = self.config_manager.get_config(app_id, request_config)
-        user_profile_custom_define = config.realtime_process_config.user_profile_custom_define
-        history_messages = self._get_history_messages(user_id=user_id,
-                                                      app_id=app_id,
-                                                      session_id=session_id,
-                                                      config=config)
-        message_mem_id = "-1"
-        # when multi messages, use last message_mem_id
-        for msg in messages:
-            message_mem_id = self.message_manager.add(
-                user_id=user_id,
-                app_id=app_id,
-                role=msg.role,
-                content=msg.content,
-                session_id=session_id,
-                timestamp=timestamp
-            )
+            session_id: str | None = None
+    ) -> str | None:
+        msg_id = "-1"
+        llm = self._get_group_llm(group_id)
+        if not llm:
+            logger.error("llm is not initialized.")
+            return msg_id
+        history_messages = await self._get_history_messages(user_id=user_id,
+                                                            group_id=group_id,
+                                                            session_id=session_id,
+                                                            config=self._sys_mem_config)
+        # when multi messages, use last msg_id
+        if self._sys_mem_config.record_message:
+            for msg in messages:
+                msg_id = await self.message_manager.add(
+                    user_id=user_id,
+                    group_id=group_id,
+                    role=msg.role,
+                    content=msg.content,
+                    session_id=session_id,
+                    timestamp=timestamp
+                )
+        else:
+            msg_id = None
+
         if not MemoryEngine._check_messages(messages):
             logger.info("Memory engine no need to process messages.")
-            return message_mem_id
-        all_memory: list[BaseMemoryUnit] = self.generator.gen_all_memory(
-            app_id=app_id,
+            return msg_id
+
+        group_mem_config = self._get_group_config(group_id)
+
+        all_memory: list[BaseMemoryUnit] = await self.generator.gen_all_memory(
+            group_id=group_id,
             user_id=user_id,
             messages=messages,
             history_messages=history_messages,
-            config=config,
+            session_id=session_id,
+            config=group_mem_config,
             base_chat_model=llm,
-            message_mem_id=message_mem_id,
-            user_define=user_profile_custom_define
+            message_mem_id=msg_id
         )
-        self.write_manager.add_mem(all_memory)
-        return message_mem_id
+        await self.write_manager.add_mem(all_memory)
+        return msg_id
 
-    def _get_history_messages(self,
-                              user_id: str,
-                              app_id: str,
-                              session_id: str,
-                              config: Config,
-                              ) -> list[BaseMessage]:
-        threshold = config.realtime_process_config.window_size
-        history_message_length_limit = config.realtime_process_config.history_message_length_limit
-        history_messages_tuple = self.message_manager.get(
+    async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
+        if not self.message_manager:
+            raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
+        return await self.message_manager.get_by_id(msg_id)
+
+    async def delete_mem_by_id(self, user_id: str, group_id: str, mem_id: str) -> bool:
+        if not self.write_manager:
+            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+        await self.write_manager.delete_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id)
+        return True
+
+    async def delete_mem_by_user_id(self, user_id: str, group_id: str) -> bool:
+        if not self.write_manager:
+            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+        await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=group_id)
+        return True
+
+    async def delete_user_profile_by_user_id(self, user_id: str, group_id: str) -> bool:
+        if not self.write_manager:
+            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+        await self.user_profile_manager.delete_by_user_id(user_id=user_id, group_id=group_id)
+        return True
+
+    async def update_mem_by_id(self, user_id: str, group_id: str, mem_id: str, memory: str) -> bool:
+        if not self.write_manager:
+            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+        await self.write_manager.update_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id, memory=memory)
+        return True
+
+    async def get_user_variable(self, user_id: str, group_id: str, name: str) -> str:
+        if not self.search_manager:
+            raise ValueError("Search Manager is not initialized")
+        return await self.search_manager.get_user_variable(user_id, group_id, name)
+
+    async def list_user_variables(self, user_id: str, group_id: str) -> dict[str, str]:
+        if not self.search_manager:
+            raise ValueError("Search Manager is not initialized")
+        return await self.search_manager.get_all_user_variable(user_id, group_id)
+
+    async def search_user_mem(self, user_id: str, group_id: str, query: str, num: int,
+                              threshold: float = 0.3) -> list[dict[str, Any]]:
+        if not self.search_manager:
+            raise ValueError("Search Manager is not initialized")
+        return await self.search_manager.search(query=query,
+                                                group_id=group_id,
+                                                top_k=num,
+                                                user_id=user_id,
+                                                threshold=threshold)
+
+    async def list_user_mem(self, user_id: str, group_id: str, num: int, page: int) -> list[dict[str, Any]]:
+        if not self.search_manager:
+            raise ValueError("Search Manager is not initialized")
+        return await self.search_manager.list_user_mem(user_id=user_id, group_id=group_id, nums=num, pages=page)
+
+    async def update_user_variable(self, user_id: str, group_id: str, name: str, value: str):
+        if not self.variable_manager:
+            raise ValueError("Variable Manager is not initialized")
+        await self.variable_manager.update_user_variable(user_id=user_id, group_id=group_id, var_name=name,
+                                                         var_mem=value)
+        return True
+
+    async def delete_user_variable(self, user_id: str, group_id: str, name: str):
+        if not self.variable_manager:
+            raise ValueError("Variable Manager is not initialized")
+        await self.variable_manager.delete_user_variable(user_id=user_id, group_id=group_id, var_name=name)
+        return True
+
+    @staticmethod
+    def _get_llm_from_config(model_config: ModelConfig) -> BaseModelClient:
+        return ModelFactory().get_model(
+            model_provider=model_config.model_provider,
+            api_key=model_config.model_info.api_key,
+            api_base=model_config.model_info.api_base,
+        )
+
+    def _get_group_config(self, group_id: str) -> MemoryConfig:
+        if group_id not in self._group_config.keys():
+            return MemoryConfig()
+        return self._group_config[group_id]
+
+    def _get_group_llm(self, group_id: str) -> Tuple[str, BaseModelClient] | None:
+        if group_id not in self._group_llm.keys():
+            return self._base_llm
+        return self._group_llm[group_id]
+
+    @staticmethod
+    def _check_messages(messages: list[BaseMessage]) -> bool:
+        human_message: HumanMessage = HumanMessage()
+        for msg in messages:
+            if msg.role == human_message.role:
+                return True
+        return False
+
+    async def _get_history_messages(self,
+                                    user_id: str,
+                                    group_id: str,
+                                    session_id: str,
+                                    config: SysMemConfig,
+                                    ) -> list[BaseMessage]:
+        threshold = config.history_window_size_to_gen_mem
+        history_message_length_limit = config.ai_msg_gen_max_len
+        history_messages_tuple = await self.message_manager.get(
             user_id=user_id,
-            app_id=app_id,
+            group_id=group_id,
             session_id=session_id,
             message_len=threshold
         )
@@ -162,114 +522,39 @@ class MemoryEngine(MemoryEngineBase):
                 history_messages.append(msg)
         return history_messages
 
-    @staticmethod
-    def _check_messages(messages: list[BaseMessage]) -> bool:
-        human_message: HumanMessage = HumanMessage()
-        for msg in messages:
-            if msg.role == human_message.role:
-                return True
-        return False
+    @classmethod
+    def register_store(cls, kv_store: BaseKVStore, semantic_store: BaseSemanticStore | None = None,
+                       db_store: BaseDbStore | None = None):
+        if issubclass(kv_store.__class__, BaseKVStore):
+            cls._kv_store_instance = kv_store
+        else:
+            logger.error("kv_store must be subclass of BaseKVStore")
 
-    async def aadd_conversation_messages(
-            self,
-            user_id: str,
-            app_id: str,
-            messages: list[BaseMessage],
-            timestamp: datetime = None,
-            request_config: dict[str, Any] = None,
-            session_id: str = None,
-            llm: BaseModelClient = None
-    ) -> str:
-        loop = asyncio.get_event_loop()
-        message_mem_id = await loop.run_in_executor(None, self.add_conversation_messages,
-                                                    user_id, app_id, messages, timestamp,
-                                                    request_config, session_id, llm)
-        return message_mem_id
+        if semantic_store is not None:
+            if issubclass(semantic_store.__class__, BaseSemanticStore):
+                cls._semantic_store_instance = semantic_store
+            else:
+                logger.error("semantic_store must be subclass of BaseSemanticStore")
 
-    def get_recent_message(self, user_id: str, app_id: str, session_id: str = None) -> list[
-        Tuple[BaseMessage, datetime]]:
-        if not self.message_manager:
-            raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
-        return self.message_manager.get(
-            user_id=user_id,
-            app_id=app_id,
-            session_id=session_id
-        )
+        if db_store is not None:
+            if issubclass(db_store.__class__, BaseDbStore):
+                cls._db_store_instance = db_store
+            else:
+                logger.error("db_store must be subclass of BaseDBStore")
 
-    def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
-        if not self.message_manager:
-            raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
-        return self.message_manager.get_by_id(msg_id)[0]
+        return cls
 
-    def delete_mem_by_id(self, mem_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        self.write_manager.delete_mem_by_id(mem_id)
-        return True
+    @classmethod
+    def get_mem_engine_instance(cls) -> BaseMemoryEngine|None:
+        return cls._mem_engine_instance
 
-    def delete_mem_by_user_id(self, user_id: str, app_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        self.write_manager.delete_mem_by_user_id(user_id=user_id, app_id=app_id)
-        return True
-
-    def delete_user_profile_by_user_id(self, user_id: str, app_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        self.user_profile_manager.delete_by_user_id(user_id=user_id, app_id=app_id)
-        return True
-
-    def update_mem_by_id(self, mem_id: str, memory: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        self.write_manager.update_mem_by_id(mem_id, memory)
-        return True
-
-    def get_user_variable(self, user_id: str, app_id: str, name: str) -> str:
-        _check_user_and_app_id(user_id, app_id, "Query Variable")
-        if not name or name.strip() == "":
-            raise ValueError("Query Variable failed: variable name is empty.")
-        return self.search_manager.get_user_variable(user_id, app_id, name)
-
-    def update_user_variable(self, user_id: str, app_id: str, name: str, value: str):
-        if not self.variable_manager:
-            raise ValueError("Variable Manager is not initialized")
-        self.variable_manager.update_user_variable(user_id=user_id, app_id=app_id, var_name=name, var_mem=value)
-        return True
-
-    def delete_user_variable(self, user_id: str, app_id: str, name: str):
-        if not self.variable_manager:
-            raise ValueError("Variable Manager is not initialized")
-        self.variable_manager.delete_user_variable(user_id=user_id, app_id=app_id, var_name=name)
-        return True
-
-    def search_user_mem(self, user_id: str, app_id: str, query: str, num: int, threshold: float = 0.3) \
-            -> list[dict[str, Any]]:
-        _check_user_and_app_id(user_id, app_id, "Search User Memory")
-        if not query or query.strip() == "":
-            raise ValueError("Search User Memory failed: query is empty.")
-        if num is None or num <= 0:
-            raise ValueError("Search User Memory failed: num must be greater than 0.")
-        return self.search_manager.search(query=query, app_id=app_id, top_k=num, user_id=user_id, threshold=threshold)
-
-    def list_user_variables(self, user_id: str, app_id: str) -> dict[str, str]:
-        _check_user_and_app_id(user_id, app_id, "List User Variables")
-        return self.search_manager.get_all_user_variable(user_id, app_id)
-
-    def list_user_mem(self, user_id: str, app_id: str, num: int, page: int) -> list[dict[str, Any]]:
-        if num is None or num <= 0:
-            raise ValueError("List User Memory failed: num must be greater than 0.")
-        if page is None or page <= 0:
-            raise ValueError("List User Memory failed: page must be greater than 0.")
-        _check_user_and_app_id(user_id, app_id, "List User Memory")
-        return self.search_manager.list_user_mem(user_id=user_id, app_id=app_id, nums=num, pages=page)
-
-    def get_user_profile_by_topics(self, user_id: str, app_id: str, topics: list[str]) -> dict[str, str]:
-        result = {}
-        for topic in topics:
-            user_profile_mem_topic = []
-            res = self.search_manager.list_user_profile(user_id=user_id, app_id=app_id, profile_type=topic)
-            for item in res:
-                user_profile_mem_topic.append(item["mem"])
-            result[topic] = "\n".join(user_profile_mem_topic)
-        return result
+    @classmethod
+    async def create_mem_engine_instance(cls, config: SysMemConfig):
+        if cls._kv_store_instance is None:
+            logger.error("Failed to create memory engine instance, you need resister kv store")
+            return None
+        if cls._db_store_instance is not None:
+            await create_tables(cls._db_store_instance)
+        cls._mem_engine_instance = cls(config=config, kv_store=cls._kv_store_instance, semantic_store=cls._semantic_store_instance,
+                   db_store=cls._db_store_instance)
+        return cls._mem_engine_instance

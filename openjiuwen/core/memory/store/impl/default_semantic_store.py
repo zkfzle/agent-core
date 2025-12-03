@@ -3,41 +3,27 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import threading
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 from collections import defaultdict
-import re
 import faiss
 import numpy as np
-from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.common.base import generate_idx_name
-from openjiuwen.memory.store.faiss_semantic_utils import SearchType, TimeUtil
-from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore, SearchHit
-from urllib.parse import urljoin
 import requests
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.store.impl.faiss_semantic_utils import SearchType, TimeUtil
+from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
+from urllib.parse import urljoin
 
-def match_index_name(match_list: List[str], cur_index: str) -> bool:
-    cur_parts = re.split(r'\^', cur_index)
-    if len(cur_parts) != 5 and len(cur_parts) != 4:
-        logger.warning(f"find")
-        return False
-    result = True
-    for match_part, cur_part in zip(match_list, cur_parts):
-        if match_part == "*" or match_part == cur_part:
-            continue
-        else:
-            result = False
-            break
-    return result
 
-def convert_faiss_result(distance: np.ndarray, ids: np.ndarray) -> List[List[SearchHit]]:
+def convert_faiss_result(distance: np.ndarray, ids: np.ndarray) -> List[List[Tuple[str, float]]]:
     result = []
     for i in range(distance.shape[0]):
         hits = [
-            SearchHit(id=str(ids[i][j]), distance=float(distance[i][j]))
+            (str(ids[i][j]), float(distance[i][j]))
             for j in range(distance.shape[1]) if int(ids[i][j]) != -1
         ]
         result.append(hits)
     return result
+
 
 class DefaultSemanticStore(BaseSemanticStore):
     vector_persist_interval = 1 * 24 * 60 * 60
@@ -86,40 +72,42 @@ class DefaultSemanticStore(BaseSemanticStore):
             logger.error(f"[get_embeddings] request failed: {e}")
             return None
 
-    def add(self, mem: List[str], memory_id: List[str], user_id: str, app_id: str, mem_type: str | None = None) -> None:
-        index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        embeddings = self._get_embeddings(texts=mem)
+    async def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
+        memory_ids, memories = zip(*docs)
+        memory_ids = list(memory_ids)
+        memories = list(memories)
+        embeddings = self._get_embeddings(texts=memories)
         dimension = len(embeddings[0])
-        if len(memory_id) != len(embeddings):
-            raise ValueError(f"ids and embeddings must have same length, len of mem_id={len(memory_id)}, "
+        if len(memory_ids) != len(embeddings):
+            raise ValueError(f"memory_ids and embeddings must have same length, len of docs={len(memory_ids)}, "
                              f"len of embeddings={len(embeddings)}")
-        with self.__with_lock(index_name):
-            index = self.__get_faiss_index(index_name, dimension, True)
+        with self.__with_lock(table_name):
+            index = self.__get_faiss_index(table_name, dimension, True)
             vectors_arr = np.array(embeddings, dtype=np.float32)
-            ids_arr = np.array(memory_id, dtype=np.int64)
+            ids_arr = np.array(memory_ids, dtype=np.int64)
             if self.normalize_L2:
                 faiss.normalize_L2(vectors_arr)
             index.add_with_ids(vectors_arr, ids_arr)
-            self.mod_cnt[index_name] += 1
-            self.__flush(index_name)
+            self.mod_cnt[table_name] += 1
+            self.__flush(table_name)
+        return True
 
-    def remove(self, ids: List[str], user_id: str, app_id: str, mem_type: str | None = None) -> None:
-        index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        cur_index = self.__get_faiss_index(index_name)
+    async def delete_docs(self, ids: List[str], table_name: str) -> bool:
+        cur_index = self.__get_faiss_index(table_name)
         if cur_index is None:
-            return
+            return True
         # need thread safe
-        with self.__with_lock(index_name):
+        with self.__with_lock(table_name):
             ids_arr = np.array(ids, dtype=np.int64)
             cur_index.remove_ids(ids_arr)
-            self.mod_cnt[index_name] += 1
-            self.__flush(index_name)
+            self.mod_cnt[table_name] += 1
+            self.__flush(table_name)
+        return True
 
-    def search(self, query: List[str], user_id: str, app_id: str, mem_type: str | None = None, top_k: int = 5):
-        index_name = generate_idx_name(usr_id=user_id, app_id=app_id, mem_type=mem_type)
-        embedding = self._get_embeddings(texts=query)
-        with self.__with_lock(index_name):
-            cur_index = self.__get_faiss_index(index_name)
+    async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
+        embedding = self._get_embeddings(texts=[query])
+        with self.__with_lock(table_name):
+            cur_index = self.__get_faiss_index(table_name)
             if cur_index is None:
                 return []
             search_vectors_arr = np.array(embedding, dtype=np.float32)
@@ -153,20 +141,17 @@ class DefaultSemanticStore(BaseSemanticStore):
         return index
 
     def __persist_all(self):
-        for index_name, index in self.index_store.items():
+        for index_name, _ in self.index_store.items():
             with self.__with_lock(index_name):
                 self.__flush(index_name)
 
-    def delete_index_by_match(self, match_str: str) -> None:
-        match_list = re.split(r'\^', match_str)
-        if len(match_list) != 4:
-            logger.error(f"invalid match_str: {match_str}")
-            return
-        del_list = [k for k, v in self.index_store.items() if match_index_name(match_list, k)]
-        for k in del_list:
-            with self.__with_lock(k):
-                del self.index_store[k]
+    async def delete_table(self, table_name: str) -> bool:
+        if table_name not in self.index_store:
+            return True
+        with self.__with_lock(table_name):
+            del self.index_store[table_name]
 
         for filename in Path(self.fold_path).rglob(f"*{self.suffix}"):
-            if match_index_name(match_list, filename.stem):
+            if table_name == filename.stem:
                 filename.unlink()
+        return True

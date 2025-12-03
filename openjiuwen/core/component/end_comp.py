@@ -51,7 +51,7 @@ class End(ComponentExecutable, WorkflowComponent):
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self.template is not None:
             if inputs is None:
-                return
+                inputs = {}
             return await self._render(inputs, runtime.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))
         else:
             if inputs is not None:
@@ -64,24 +64,32 @@ class End(ComponentExecutable, WorkflowComponent):
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
         if inputs is None:
-            return
+            logger.debug("end component stream method received None inputs, using empty dict")
+            inputs = {}
         try:
             if self.template is not None:
+                logger.debug(f"end component has template, inputs: {inputs}")
                 generator = self.template.render_stream(inputs,
                                                         runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
+                frame_count = 0
                 async for frame in generator:
                     logger.debug(f"rendering stream frame: {frame}")
+                    frame_count += 1
                     yield OutputSchema(type=END_NODE_STREAM, index=frame.get("index"),
                                        payload=dict(answer=frame.get("data")))
+                logger.debug(f"end component stream method yielded {frame_count} frames")
             else:
-                for key, value in inputs.items():
-                    yield dict(output={key: value})
+                if isinstance(inputs, dict):
+                    for key, value in inputs.items():
+                        yield dict(output={key: value})
+                else:
+                    yield dict(output=inputs)
 
         except Exception as e:
             if UserConfig.is_sensitive():
                 logger.info("stream output error")
             else:
-                logger.error("stream output error: {}".format(e))
+                logger.error("stream output error: {}".format(e), exc_info=True)
 
     async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component transform method inputs: {inputs}")
@@ -167,9 +175,11 @@ class TemplateProcessor:
     def _need_render(self, inputs) -> bool:
         if not isinstance(inputs, dict):
             return False
-        for seg in self._segments:
-            if get_value_by_nested_path(seg, inputs) is not None:
-                return True
+        # Only check variable segments, not static text segments
+        for pos, seg in enumerate(self._segments):
+            if pos in self._variables_positions:
+                if get_value_by_nested_path(seg, inputs) is not None:
+                    return True
         return False
 
     def _get_segment(self, pos: int) -> str:
@@ -203,8 +213,9 @@ class TemplateProcessor:
                 self.reset()
 
     async def _render_stream(self, inputs: dict, timeout: float) -> AsyncGenerator:
-        if not self._need_render(inputs):
-            return
+        # Even if _need_render returns False, static text segments should still be output
+        # If all variables are None, at least output the static text segments
+        has_any_value = self._need_render(inputs)
         should_wait = False
         while True:
             if should_wait:
@@ -222,13 +233,20 @@ class TemplateProcessor:
 
                 segment = self.get_current_segment()
                 if not self.should_render():
+                    # Static text segment, output directly
                     yield {"data": segment, "index": self._chunk_index}
                     self._chunk_index += 1
                     self.advance_position()
                     continue
 
+                # Variable segment, render and output
                 value = get_value_by_nested_path(segment, inputs)
                 if value is None:
+                    # If no other values exist, skip None values but continue outputting static text segments
+                    if not has_any_value:
+                        logger.debug(f"current segment [{segment}] is None and no other values exist, skipping")
+                        self.advance_position()
+                        continue
                     logger.debug(f"current segment [{segment}] should wait for other method")
                     should_wait = True
                     continue

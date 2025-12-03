@@ -19,26 +19,27 @@ class DbmKVStore(BaseKVStore):
         key_b = key.encode("utf-8")
         return self.db.get(key_b, None)
 
-    def set(self, key: str, value: str):
+    async def set(self, key: str, value: str):
         self.db[key.encode()] = value.encode()
         self._cached_get.cache_clear()
 
-    def get(self, key: str, default: Any = None) -> str:
+    async def get(self, key: str) -> str | None:
         v = self._cached_get(key)
         if v is None:
-            return default
+            return None
         return v.decode("utf-8")
 
-    def exists(self, key: str) -> bool:
+    async def exists(self, key: str) -> bool:
         return self._cached_get(key) is not None
 
-    def delete(self, key: str):
+    async def delete(self, key: str):
         key_b = key.encode()
         if key_b in self.db:
             del self.db[key_b]
             self._cached_get.cache_clear()
 
-    def get_by_regex(self, regex_str: str):
+    async def get_by_prefix(self, prefix: str) -> dict[str, str]:
+        regex_str = re.escape(prefix) + ".*"
         pat = re.compile(regex_str)
         result = {}
         for key_b in self.db.keys():
@@ -47,7 +48,8 @@ class DbmKVStore(BaseKVStore):
                 result[k] = self.db[key_b].decode()
         return result
 
-    def delete_by_regex(self, regex_str: str):
+    async def delete_by_prefix(self, prefix: str):
+        regex_str = re.escape(prefix) + ".*"
         pat = re.compile(regex_str)
         delete_keys = []
         for key_b in self.db.keys():
@@ -59,11 +61,11 @@ class DbmKVStore(BaseKVStore):
                 del self.db[key_b]
             self._cached_get.cache_clear()
 
-    def mget(self, keys: List[str], default: Any = None) -> List[str]:
+    async def mget(self, keys: List[str]) -> List[str | None]:
         result = []
         for k in keys:
             v = self._cached_get(k)
-            result.append(v.decode() if v else default)
+            result.append(v.decode() if v else None)
         return result
 
     def close(self):

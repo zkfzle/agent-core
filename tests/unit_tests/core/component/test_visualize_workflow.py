@@ -618,11 +618,57 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED.errmsg.format(
             node_id=node_id))
 
-        # to mermaid failed
-        with self.assertRaises(JiuWenBaseException) as cm:
-            drawable.to_mermaid(expand_subgraph=-1)
-        self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code)
-        self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
+        # to mermaid failed, title is not str
+        invalid_titles = [-1, {}, {"a": "b"}, [], [1, 2]]
+        for invalid_title in invalid_titles:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid(title=invalid_title)
+            self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.code)
+            self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.errmsg)
+
+        # to mermaid failed, expand_subgraph is not boolean or non-negative integer
+        invalid_expand_subgraphs = [-1, "", "true", "xxx", {}, {"a": "b"}, [], [1, 2]]
+        for invalid_expand_subgraph in invalid_expand_subgraphs:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid(expand_subgraph=invalid_expand_subgraph)
+            self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code)
+            self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
+
+        # to mermaid failed, enable_animation is not boolean
+        invalid_enable_animations = ["", "true", "xxx", 1, 0, {}, {"a": "b"}, [], [1, 2]]
+        for invalid_enable_animation in invalid_enable_animations:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid(expand_subgraph=1, enable_animation=invalid_enable_animation)
+            self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION.code)
+            self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION.errmsg)
+
+        # to mermaid svg failed, expand_subgraph is non-negative integer
+        for invalid_expand_subgraph in invalid_expand_subgraphs:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid_svg(expand_subgraph=invalid_expand_subgraph)
+                self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code)
+                self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
+
+        # to mermaid svg failed, title is not str
+        for invalid_title in invalid_titles:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid_svg(title=invalid_title)
+            self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.code)
+            self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.errmsg)
+
+        # to mermaid png failed, expand_subgraph is non-negative integer
+        for invalid_expand_subgraph in invalid_expand_subgraphs:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid_png(expand_subgraph=invalid_expand_subgraph)
+                self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code)
+                self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
+
+        # to mermaid png failed, title is not str
+        for invalid_title in invalid_titles:
+            with self.assertRaises(JiuWenBaseException) as cm:
+                drawable.to_mermaid_png(title=invalid_title)
+            self.assertEqual(cm.exception.error_code, StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.code)
+            self.assertEqual(cm.exception.message, StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.errmsg)
 
     @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
     def test_visualize_simple_stream_workflow_animation(self):

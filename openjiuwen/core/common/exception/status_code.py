@@ -108,8 +108,11 @@ class StatusCode(Enum):
                                                     "node id: {node_id}")
     DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED = (110023, "Drawable Graph create error, caused by break node set failed, "\
                                                     "node id: {node_id}")
-    DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH = (110024, "Invalid value of argument 'expand_subgraph', "\
+    DRAWABLE_GRAPH_INVALID_TITLE = (110024, "Invalid value of argument 'title', expected a str")
+    DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH = (110025, "Invalid value of argument 'expand_subgraph', "\
                                               "expected a boolean or a non-negative integer")
+    DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION = (110026, "Invalid value of argument 'enable_animation', "\
+                                              "expected a boolean")
 
     # Workflow - Exception Handling 111000 - 111999
     # Agent Orchestration 120000 - 129999

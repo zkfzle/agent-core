@@ -1,15 +1,16 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from .memory_info import ExtractedData
+from typing import Tuple
+from openjiuwen.core.memory.generation.memory_info import ExtractedData
 from openjiuwen.core.memory.generation.variable_extractor import ComprehensionExtractor
-from ..search.search_manager.search_manager import SearchManager
-from ..mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit
+from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
+from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit
 from openjiuwen.core.memory.generation.categorizer import Categorizer
 from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
 from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
 from openjiuwen.core.common.logging import logger
-from ..config.config import Config
+from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
@@ -18,16 +19,16 @@ category_to_class = {
 }
 
 
-def _generate_extract(
-    config: Config,
-    history_messages: list[BaseMessage],
-    messages: list[BaseMessage],
-    base_chat_model: BaseModelClient
+async def _generate_extract(
+        config: MemoryConfig,
+        history_messages: list[BaseMessage],
+        messages: list[BaseMessage],
+        base_chat_model: Tuple[str, BaseModelClient]
 ) -> list[ExtractedData]:
     history_summary = ""
     for msg in history_messages:
         history_summary += f"{msg.role}: {msg.content}\n"
-    return ComprehensionExtractor.extract(
+    return await ComprehensionExtractor.extract(
         messages,
         BaseMessage(content=history_summary, role=""),
         base_chat_model,
@@ -35,35 +36,33 @@ def _generate_extract(
     )
 
 
-def _generate_user_profile(
-    config: Config,
-    history_messages: list[BaseMessage],
-    messages: list[BaseMessage],
-    base_chat_model: BaseModelClient,
-    user_define: dict[str, str] = None
+async def _generate_user_profile(
+        history_messages: list[BaseMessage],
+        messages: list[BaseMessage],
+        base_chat_model: Tuple[str, BaseModelClient],
+        user_define: dict[str, str] = None
 ) -> dict[str, str]:
-    return UserProfileExtractor.get_user_profile(
+    return await UserProfileExtractor.get_user_profile(
         messages,
         history_messages,
         base_chat_model,
-        config,
         user_define
     )
 
 
-def _get_conflict_input(
-    user_id: str,
-    app_id: str,
-    new_message: str,
-    search_manager: SearchManager
+async def _get_conflict_input(
+        user_id: str,
+        group_id: str,
+        new_message: str,
+        search_manager: SearchManager
 ):
     historical_profiles = []
-    search_results = search_manager.search(
-        new_message,
-        top_k=5,
-        search_type=MemoryType.USER_PROFILE.value,
+    search_results = await search_manager.search(
         user_id=user_id,
-        app_id=app_id
+        group_id=group_id,
+        query=new_message,
+        top_k=5,
+        search_type=MemoryType.USER_PROFILE.value
     )
     for search_result in search_results:
         historical_profiles.append((
@@ -107,61 +106,62 @@ def _process_conflict_info(conflict_info: list[dict], input_memory_ids_map: dict
 class Generator:
     def __init__(self, search_manager: SearchManager) -> None:
         self._search_manager = search_manager
-        
-    def gen_all_memory(self, **kwargs) -> list[BaseMemoryUnit]:
+
+    async def gen_all_memory(self, **kwargs) -> list[BaseMemoryUnit]:
         """Generate all memory units based on input"""
         messages = kwargs.get("messages")
         config = kwargs.get("config")
         model = kwargs.get("base_chat_model")
         user_define = kwargs.get("user_define", None)
         user_id = kwargs.get("user_id")
-        app_id = kwargs.get("app_id")
+        group_id = kwargs.get("group_id")
         history_messages = kwargs.get("history_messages")
         message_mem_id = kwargs.get("message_mem_id")
-        if not all([messages, config, user_id, app_id, model]) :
-            logger.error("messages, config, user_id, app_id, model are required parameters")
+        if not all([messages, config, user_id, group_id, model]):
+            logger.error("messages, config, user_id, group_id, model are required parameters")
         categorizer = Categorizer()
         all_memory_results = []
-        variable_units = self.gen_extracted_data(
+        variable_units = await self.gen_extracted_data(
             messages=messages,
             user_id=user_id,
-            app_id=app_id,
+            group_id=group_id,
             history_messages=history_messages,
             config=config,
             base_chat_model=model
         )
         all_memory_results += variable_units
-        categories = categorizer.get_categories(
+        if not config.enable_long_term_mem:
+            logger.info("Not enable long term memory")
+            return all_memory_results
+        categories = await categorizer.get_categories(
             messages,
             history_messages,
             model,
-            config
         )
-        merged_units = self._categories_to_memory_unit(
+        merged_units = await self._categories_to_memory_unit(
             categories=categories,
             history_messages=history_messages,
             messages=messages,
             user_id=user_id,
-            app_id=app_id,
-            config=config,
+            group_id=group_id,
             base_chat_model=model,
             message_mem_id=message_mem_id,
             user_define=user_define
         )
         all_memory_results += merged_units
         return all_memory_results
-    
-    def gen_extracted_data(
-        self,
-        user_id: str,
-        app_id: str,
-        messages: list[BaseMessage],
-        history_messages: list[BaseMessage],
-        config: Config,
-        base_chat_model: BaseModelClient
+
+    async def gen_extracted_data(
+            self,
+            user_id: str,
+            group_id: str,
+            messages: list[BaseMessage],
+            history_messages: list[BaseMessage],
+            config: MemoryConfig,
+            base_chat_model: Tuple[str, BaseModelClient]
     ) -> list[VariableUnit]:
         """Generate extracted variable memory units based on input"""
-        extracted_data = _generate_extract(
+        extracted_data = await _generate_extract(
             config,
             history_messages,
             messages,
@@ -170,28 +170,26 @@ class Generator:
         variable_units = []
         for tmp_data in extracted_data:
             variable_units.append(VariableUnit(
-                    user_id=user_id,
-                    app_id=app_id,
-                    mem_type=MemoryType.VARIABLE,
-                    variable_name=tmp_data.key,
-                    variable_mem=tmp_data.value
-                ))
+                user_id=user_id,
+                group_id=group_id,
+                mem_type=MemoryType.VARIABLE,
+                variable_name=tmp_data.key,
+                variable_mem=tmp_data.value
+            ))
         return variable_units
-        
-    def gen_user_profile(
-        self,
-        user_id: str,
-        app_id: str,
-        messages: list[BaseMessage],
-        history_messages: list[BaseMessage],
-        config: Config,
-        base_chat_model: BaseModelClient,
-        message_mem_id: str,
-        user_define: dict[str, str] = None
+
+    async def gen_user_profile(
+            self,
+            user_id: str,
+            group_id: str,
+            messages: list[BaseMessage],
+            history_messages: list[BaseMessage],
+            base_chat_model: Tuple[str, BaseModelClient],
+            message_mem_id: str,
+            user_define: dict[str, str] = None
     ) -> list[UserProfileUnit]:
         """Generate user profile memory unit based on input"""
-        user_profile_memory = _generate_user_profile(
-            config,
+        user_profile_memory = await _generate_user_profile(
             history_messages,
             messages,
             base_chat_model,
@@ -203,20 +201,19 @@ class Generator:
                 logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
                 continue
             for profile in profile_list:
-                input_memories, input_memory_ids_map = _get_conflict_input(
+                input_memories, input_memory_ids_map = await _get_conflict_input(
                     user_id,
-                    app_id,
+                    group_id,
                     profile,
                     self._search_manager
                 )
-                tmp_conflict_info = ConflictResolution.check_conflict(old_messages=input_memories,
-                                                                      new_message=profile,
-                                                                      base_chat_model=base_chat_model,
-                                                                      config=config)
+                tmp_conflict_info = await ConflictResolution.check_conflict(old_messages=input_memories,
+                                                                            new_message=profile,
+                                                                            base_chat_model=base_chat_model)
                 conflict_info = _process_conflict_info(tmp_conflict_info, input_memory_ids_map)
                 user_profile_data.append(UserProfileUnit(
                     user_id=user_id,
-                    app_id=app_id,
+                    group_id=group_id,
                     profile_type=profile_type,
                     profile_mem=profile,
                     conflict_info=conflict_info,
@@ -225,17 +222,16 @@ class Generator:
                 ))
         return user_profile_data
 
-    def _categories_to_memory_unit(self,
-                                   categories: list[str],
-                                   history_messages: list[BaseMessage],
-                                   messages: list[BaseMessage],
-                                   user_id: str,
-                                   app_id: str,
-                                   config: Config,
-                                   base_chat_model: BaseModelClient,
-                                   message_mem_id: str,
-                                   user_define: dict[str, str] = None
-                                   ) -> list[BaseMemoryUnit]:
+    async def _categories_to_memory_unit(self,
+                                         categories: list[str],
+                                         history_messages: list[BaseMessage],
+                                         messages: list[BaseMessage],
+                                         user_id: str,
+                                         group_id: str,
+                                         base_chat_model: Tuple[str, BaseModelClient],
+                                         message_mem_id: str,
+                                         user_define: dict[str, str] = None
+                                         ) -> list[BaseMemoryUnit]:
         memory_units = []
         for category in categories:
             if category not in category_to_class.keys():
@@ -243,12 +239,11 @@ class Generator:
                 continue
             mem_class = category_to_class[category]
             if mem_class == MemoryType.USER_PROFILE:
-                user_profile_units = self.gen_user_profile(
+                user_profile_units = await self.gen_user_profile(
                     user_id=user_id,
-                    app_id=app_id,
+                    group_id=group_id,
                     history_messages=history_messages,
                     messages=messages,
-                    config=config,
                     base_chat_model=base_chat_model,
                     message_mem_id=message_mem_id,
                     user_define=user_define

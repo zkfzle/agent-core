@@ -367,12 +367,16 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     ) -> Self:
         wait_for_all = False
         if response_mode is not None and "streaming" == response_mode:
-            comp_ability = [ComponentAbility.STREAM]
             self._is_streaming = True
+            comp_ability = []
+            if inputs_schema is not None:
+                comp_ability.append(ComponentAbility.STREAM)
             if stream_inputs_schema is not None:
                 comp_ability.append(ComponentAbility.TRANSFORM)
                 if isinstance(component, End):
                     component.set_mix()
+            if not comp_ability:
+                comp_ability = [ComponentAbility.STREAM]
             wait_for_all = True
         else:
             comp_ability = [ComponentAbility.INVOKE]

@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMAgent - ReAct style Agent based on ControllerAgent"""
-
+import datetime
 from typing import Dict, List, Any, AsyncIterator
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
@@ -16,8 +16,7 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.memory.config.config import Config
-from openjiuwen.core.memory.engine.memory_engine_factory import get_memengine_instance
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 import asyncio
 
 
@@ -49,6 +48,31 @@ def create_llm_agent(agent_config: ReActAgentConfig,
     agent.add_workflows(workflows)
     agent.add_tools(tools or [])
     return agent
+
+
+def _memory_log_task_exception(task: asyncio.Task) -> None:
+    task_name = task.get_name()
+    try:
+        task.result()
+        logger.info("add memory task [%s] completed successfully", task_name)
+    except asyncio.CancelledError:
+        logger.warning("add memory task: [%s] cancelled", task_name)
+    except Exception as e:
+        logger.exception("add memory task: [%s] failed: %s", task_name, e)
+
+
+def _convert_response_to_message(result) -> AIMessage | None:
+    assistant_message = None
+    if isinstance(result, OutputSchema) and result.type == "answer" and isinstance(result.payload, dict):
+        response = result.payload.get("output")
+        if response and isinstance(response, str):
+            assistant_message = AIMessage(content=response)
+    elif (isinstance(result, dict) and result.get("result_type") == 'answer'
+          and isinstance(result.get("output"), str)):
+        assistant_message = AIMessage(content=result.get("output"))
+    elif isinstance(result, str):
+        assistant_message = AIMessage(content=result)
+    return assistant_message
 
 
 class LLMAgent(ControllerAgent):
@@ -96,10 +120,18 @@ class LLMAgent(ControllerAgent):
             Execution result
         """
         # async write user message memory
-        self._write_messages_to_memory(inputs)
+        user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
+        user_memory_task.set_name("user_memory_task")
+
         # Fully delegate to ControllerAgent implementation
         result = await super().invoke(inputs, runtime)
-        await self._write_messages_to_memory(inputs, result)
+
+        # async write AI result message memory
+        agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result))
+        agent_memory_task.set_name("agent_memory_task")
+        # register call back, print log if complete or failed
+        for t in (user_memory_task, agent_memory_task):
+            t.add_done_callback(_memory_log_task_exception)
         return result
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
@@ -137,19 +169,21 @@ class LLMAgent(ControllerAgent):
 
         # async write user message memory
         user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
+        user_memory_task.set_name("user_memory_task")
 
         task = asyncio.create_task(stream_process())
         result_for_memory = ""
         async for result in agent_runtime.stream_iterator():
-            if (isinstance(result.payload, dict) and result.payload.get("result_type") == 'answer' and
-                    isinstance(result.payload.get("output"), str)):
+            if (hasattr(result, 'payload') and isinstance(result.payload, dict) and
+                    result.payload.get("result_type") == 'answer' and isinstance(result.payload.get("output"), str)):
                 result_for_memory += result.payload.get("output")
             yield result
         await task
-        await user_memory_task
-        if result_for_memory != "":
-            agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
-            await agent_memory_task
+        agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
+        agent_memory_task.set_name("agent_memory_task")
+        # register call back, print log if complete or failed
+        for t in (user_memory_task, agent_memory_task):
+            t.add_done_callback(_memory_log_task_exception)
 
 
     def set_prompt_template(self, prompt_template: List[Dict]):
@@ -159,33 +193,29 @@ class LLMAgent(ControllerAgent):
         self.controller.set_llm_controller_prompt_template(prompt_template)
 
     def _init_memory_config(self, memory_config):
-        app_id = f"{self._agent_config.id}_{self._agent_config.version}"
-        logger.info(f"When init Memory Engine, app_id: {app_id}")
+        group_id = f"{self._agent_config.id}"
+        logger.info(f"When init Memory Engine, group_id: {group_id}")
         if memory_config is not None:
-            mem_manager_config = {}
-            config = Config(**mem_manager_config)
-            self._memory_engine = get_memengine_instance(config)
+            self._memory_engine = MemoryEngine.get_mem_engine_instance()
             if self._memory_engine:
-                self._memory_engine.set_app_config(app_id, memory_config)
+                self._memory_engine.set_group_config(group_id, memory_config)
 
     async def _write_messages_to_memory(self, inputs, result = None):
         user_id = inputs.get("user_id")
-        session_id = inputs.get("conversation_id", "default_session")
-        app_id = inputs.get("app_id","default_app_id")
+        group_id = inputs.get("group_id","default_group_id")
 
         if not user_id or not self._memory_engine:
             return
-
-        # add ai response if exist
+        # add ai response message if exist
         if result is not None:
-            if isinstance(result, OutputSchema) and result.type == "answer":
-                response = result.payload.get("output")
-                if response:
-                    assistant_message = AIMessage(content=response)
-            elif isinstance(result, str):
-                assistant_message = AIMessage(content=result)
+            assistant_message = _convert_response_to_message(result)
             if assistant_message is not None and assistant_message.content != "":
-                await self._memory_engine.aadd_conversation_messages(user_id, app_id,[assistant_message])
+                await self._memory_engine.add_conversation_messages(
+                    user_id=user_id,
+                    group_id=group_id,
+                    messages = [assistant_message],
+                    timestamp=datetime.datetime.now(),
+                )
             return
 
         #add user message
@@ -194,6 +224,11 @@ class LLMAgent(ControllerAgent):
         query = inputs.get("query")
         if query is not None and isinstance(query, str):
             user_message = HumanMessage(content=query)
-        if user_message and user_message.content != "":
-            await self._memory_engine.aadd_conversation_messages(user_id, app_id,[user_message])
+            if user_message and user_message.content != "":
+                await self._memory_engine.add_conversation_messages(
+                    user_id=user_id,
+                    group_id=group_id,
+                    messages=[user_message],
+                    timestamp=datetime.datetime.now(),
+                )
 

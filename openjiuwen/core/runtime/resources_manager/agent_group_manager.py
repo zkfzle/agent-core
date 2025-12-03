@@ -4,6 +4,7 @@ from typing import Optional, Union
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.runner.agent_group import AgentGroup
+from openjiuwen.core.agent_group.agent_group import BaseGroup
 
 class AgentGroupProvider(ABC):
     def __init__(self):
@@ -33,9 +34,13 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
         self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_ADD_FAILED, "agent_group")
         
         # Define validation function for non-callable agent groups
+        # Support both AgentGroup (legacy) and BaseGroup (new architecture)
         def validate_agent_group(group):
-            if not isinstance(group, AgentGroup):
-                raise TypeError(f"agent_group must be either AgentGroup instance or callable, got {type(group)}")
+            if not isinstance(group, (AgentGroup, BaseGroup)):
+                raise TypeError(
+                    f"agent_group must be AgentGroup/BaseGroup instance "
+                    f"or callable, got {type(group)}"
+                )
             return group
         
         self._add_resource(agent_group_id, agent_group, StatusCode.RUNTIME_AGENT_GROUP_ADD_FAILED, validate_agent_group)
@@ -49,10 +54,14 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
         self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_GET_FAILED, "agent_group")
         
         # Define function to create agent group from provider
+        # Support both AgentGroup (legacy) and BaseGroup (new architecture)
         def create_group_from_provider(provider):
             group = provider()
-            if not isinstance(group, AgentGroup):
-                raise TypeError(f"Provider did not return AgentGroup instance, got {type(group)}")
+            if not isinstance(group, (AgentGroup, BaseGroup)):
+                raise TypeError(
+                    f"Provider did not return AgentGroup/BaseGroup instance, "
+                    f"got {type(group)}"
+                )
             return group
         
         return self._get_resource(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_GET_FAILED, create_group_from_provider)

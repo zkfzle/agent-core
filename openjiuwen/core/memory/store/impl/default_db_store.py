@@ -7,8 +7,8 @@ from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 
 
 class DefaultDbStore(BaseDbStore):
-    def __init__(self, async_engine: AsyncEngine):
-        self.async_engine = async_engine
+    def __init__(self, async_conn: AsyncEngine):
+        self.async_conn = async_conn
 
     def get_async_engine(self) -> AsyncEngine:
-        return self.async_engine
+        return self.async_conn

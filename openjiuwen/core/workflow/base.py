@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 import asyncio
 import inspect
 import os
@@ -22,7 +22,7 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.runtime.constants import WORKFLOW_INVOKE_TIMEOUT, WORKFLOW_STREAM_TIMEOUT, \
+from openjiuwen.core.runtime.constants import WORKFLOW_EXECUTE_TIMEOUT, \
     WORKFLOW_STREAM_FRAME_TIMEOUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
@@ -409,7 +409,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             messages = []
             while True:
                 frame = await actor_manager.sub_workflow_stream().receive(
-                    runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT))
+                    runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
                 if frame is None:
                     logger.warning("no frame received")
                     continue
@@ -437,7 +437,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
         if self._is_streaming:
             frame_count = 0
-            stream_timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
+            stream_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
             index = 2
             while True:
                 logger.debug(f"waiting for frame {frame_count} with timeout {stream_timeout}")
@@ -478,7 +478,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             logger.info("end to invoke, results=%s", output)
             return output
 
-        invoke_timeout = runtime.config().get_env(WORKFLOW_INVOKE_TIMEOUT)
+        invoke_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
         return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
 
     async def stream(
@@ -491,7 +491,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         self._validate_and_init_runtime(runtime, stream_modes, context)
         # workflow start tracer info
         await TracerWorkflowUtils.workflow_trace_inputs(runtime, inputs)
-        timeout = runtime.config().get_env(WORKFLOW_STREAM_TIMEOUT)
+        timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
         frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
         if timeout is not None and 0 < timeout <= frame_timeout:
             frame_timeout = timeout

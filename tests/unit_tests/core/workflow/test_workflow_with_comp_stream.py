@@ -15,8 +15,7 @@ from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
-from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_INVOKE_TIMEOUT, \
-    WORKFLOW_STREAM_TIMEOUT
+from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
@@ -60,13 +59,13 @@ async def test_no_stream_called():
         flow.add_connection("start", "stream")
         flow.add_stream_connection("stream", "end")
         runtime = WorkflowRuntime()
-        runtime.config().set_envs({WORKFLOW_INVOKE_TIMEOUT:0.2})
+        runtime.config().set_envs({WORKFLOW_EXECUTE_TIMEOUT: 0.2})
         await flow.invoke({"a": "生成markdown回复"}, runtime)
 
     assert error.value.error_code == StatusCode.WORKFLOW_INVOKE_TIMEOUT.code
     with pytest.raises(JiuWenBaseException) as error:
         runtime = WorkflowRuntime()
-        runtime.config().set_envs({WORKFLOW_STREAM_TIMEOUT:0.2})
+        runtime.config().set_envs({WORKFLOW_EXECUTE_TIMEOUT: 0.2})
         async for chunk in flow.stream({"a": "生成markdown回复"}, runtime,
                                        stream_modes=[BaseStreamMode.OUTPUT]):
             print(chunk)

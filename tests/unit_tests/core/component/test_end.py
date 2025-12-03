@@ -248,6 +248,7 @@ async def test_end_no_streaming_no_template():
     result = await workflow.invoke(user_input, WorkflowRuntime())
     assert result.result == {'responseContent': '', 'collect_output': [{'a': 1}, {'b': 2}], 'output': None}
 
+
 async def test_end_template_001():
     """
     Test End component with responseTemplate in streaming mode using invoke().
@@ -278,8 +279,10 @@ async def test_end_template_001():
     assert len(result.result) > 0, f"Expected non-empty result, got: {result.result}"
     assert result.state == WorkflowExecutionState.COMPLETED, f"Expected COMPLETED state, got: {result.state}"
     assert result.result[0].type == END_NODE_STREAM, f"Expected END_NODE_STREAM type, got: {result.result[0].type}"
-    assert result.result[0].payload['answer'] == "输出:", f"Expected '输出:' as first answer, got: {result.result[0].payload['answer']}"
+    assert result.result[0].payload['answer'] == "输出:", \
+        f"Expected '输出:' as first answer, got: {result.result[0].payload['answer']}"
     print(result.result)
+
 
 async def test_end_template_002():
     """
@@ -314,7 +317,9 @@ async def test_end_template_002():
     
     assert len(stream_chunks) > 0, f"Expected at least 1 chunk, got: {len(stream_chunks)}"
     assert stream_chunks[0].type == END_NODE_STREAM, f"Expected END_NODE_STREAM type, got: {stream_chunks[0].type}"
-    assert stream_chunks[0].payload['answer'] == "输出是:", f"Expected '输出是:' as first answer, got: {stream_chunks[0].payload['answer']}"
+    assert stream_chunks[0].payload['answer'] == "输出是:", \
+        f"Expected '输出是:' as first answer, got: {stream_chunks[0].payload['answer']}"
+
 
 async def test_end_template_013():
     """
@@ -343,7 +348,8 @@ async def test_end_template_013():
     
     assert result.state == WorkflowExecutionState.COMPLETED, f"Expected COMPLETED state, got: {result.state}"
     assert result.result is not None, f"Expected non-None result, got: {result.result}"
-    assert result.result.get('responseContent') == "输出:", f"Expected '输出:' as responseContent, got: {result.result.get('responseContent')}"
+    assert result.result.get('responseContent') == "输出:", \
+        f"Expected '输出:' as responseContent, got: {result.result.get('responseContent')}"
     print(result)
 
 
@@ -371,13 +377,18 @@ async def test_end_template_014():
     flow.add_connection("custom", "end")
 
     stream_result = []
-    async for chunk in flow.stream({"user_input": {"a": 1, "b": 2}}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+    async for chunk in flow.stream(
+            {"user_input": {"a": 1, "b": 2}}, WorkflowRuntime(),
+            stream_modes=[BaseStreamMode.OUTPUT]):
         stream_result.append(chunk)
-    
+
     assert len(stream_result) > 0, f"Expected at least 1 chunk, got: {len(stream_result)}"
-    assert stream_result[0].type == "workflow_final", f"Expected 'workflow_final' type, got: {stream_result[0].type}"
-    assert stream_result[0].payload.get('responseContent') == "输出:", f"Expected '输出:' as responseContent, got: {stream_result[0].payload.get('responseContent')}"
+    assert stream_result[0].type == "workflow_final", \
+        f"Expected 'workflow_final' type, got: {stream_result[0].type}"
+    assert stream_result[0].payload.get('responseContent') == "输出:", \
+        f"Expected '输出:' as responseContent, got: {stream_result[0].payload.get('responseContent')}"
     print(stream_result)
+
 
 async def test_end_template_017():
     """
@@ -398,19 +409,27 @@ async def test_end_template_017():
     flow = Workflow()
     flow.set_start_comp("start", Start(), inputs_schema={"a": "${user_input.a}", "b": "${user_input.b}"})
     flow.add_workflow_comp("custom", ComputeComponent2(), inputs_schema={"a": "${start.a}", "b": "${start.b}"})
-    flow.set_end_comp("end", End({"responseTemplate": "输出:{{a}}{{op}}{{b}}={{end_result}}"}),
-                      stream_inputs_schema={'op': '${custom.op}', 'a': '${custom.a}', 'b': '${custom.b}', 'end_result': '${custom.result}'})
+    flow.set_end_comp(
+        "end", End({"responseTemplate": "输出:{{a}}{{op}}{{b}}={{end_result}}"}),
+        stream_inputs_schema={
+            'op': '${custom.op}', 'a': '${custom.a}',
+            'b': '${custom.b}', 'end_result': '${custom.result}'
+        })
 
     flow.add_connection("start", "custom")
     flow.add_stream_connection("custom", "end")
 
     stream_result = []
-    async for chunk in flow.stream({"user_input": {"a": 1, "b": 2, "op": "+"}}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+    async for chunk in flow.stream(
+            {"user_input": {"a": 1, "b": 2, "op": "+"}}, WorkflowRuntime(),
+            stream_modes=[BaseStreamMode.OUTPUT]):
         stream_result.append(chunk)
 
     assert len(stream_result) > 0, f"Expected at least 1 chunk, got: {len(stream_result)}"
-    assert stream_result[0].type == "workflow_final", f"Expected 'workflow_final' type, got: {stream_result[0].type}"
-    assert stream_result[0].payload.get('responseContent') == "输出:1+2=3", f"Expected '输出:1+2=3' as responseContent, got: {stream_result[0].payload.get('responseContent')}"
+    assert stream_result[0].type == "workflow_final", \
+        f"Expected 'workflow_final' type, got: {stream_result[0].type}"
+    assert stream_result[0].payload.get('responseContent') == "输出:1+2=3", \
+        f"Expected '输出:1+2=3' as responseContent, got: {stream_result[0].payload.get('responseContent')}"
     print(stream_result)
 
 
@@ -433,14 +452,20 @@ async def test_end_template_019():
     flow = Workflow()
     flow.set_start_comp("start", Start(), inputs_schema={"a": "${user_input.a}", "b": "${user_input.b}"})
     flow.add_workflow_comp("custom", ComputeComponent2(), inputs_schema={"a": "${start.a}", "b": "${start.b}"})
-    flow.set_end_comp("end", End({"responseTemplate": "输出:{{a}}{{op}}{{b}}={{end_result}}"}),
-                      stream_inputs_schema={'op': '${custom.op}', 'a': '${custom.a}', 'b': '${custom.b}', 'end_result': '${custom.result}'})
+    flow.set_end_comp(
+        "end", End({"responseTemplate": "输出:{{a}}{{op}}{{b}}={{end_result}}"}),
+        stream_inputs_schema={
+            'op': '${custom.op}', 'a': '${custom.a}',
+            'b': '${custom.b}', 'end_result': '${custom.result}'
+        })
     flow.add_connection("start", "custom")
     flow.add_stream_connection("custom", "end")
 
     result = await flow.invoke({"user_input": {"a": 1, "b": 2, "op": "+"}}, WorkflowRuntime())
-    
-    assert result.state == WorkflowExecutionState.COMPLETED, f"Expected COMPLETED state, got: {result.state}"
+
+    assert result.state == WorkflowExecutionState.COMPLETED, \
+        f"Expected COMPLETED state, got: {result.state}"
     assert result.result is not None, f"Expected non-None result, got: {result.result}"
-    assert result.result.get('responseContent') == "输出:1+2=3", f"Expected '输出:1+2=3' as responseContent, got: {result.result.get('responseContent')}"
+    assert result.result.get('responseContent') == "输出:1+2=3", \
+        f"Expected '输出:1+2=3' as responseContent, got: {result.result.get('responseContent')}"
     print(result)

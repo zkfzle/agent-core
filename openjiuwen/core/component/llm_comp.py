@@ -440,8 +440,12 @@ class LLMExecutable(ComponentExecutable):
                 model_name=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
         except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR,
-                                           "Failed to invoke", e)
+            if UserConfig.is_sensitive():
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR,
+                                               "invoke llm failed", e)
+            else:
+                ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
+
         if UserConfig.is_sensitive():
             logger.info("[%s] model outputs", self._runtime.executable_id())
         else:

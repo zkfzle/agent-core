@@ -592,6 +592,92 @@ class WorkflowTest(unittest.TestCase):
             """).lstrip()
         self.assertEqual(flow.to_mermaid("jiuwen workflow", expand_subgraph=True), mermaid_script)
 
+    @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
+    def test_visualize_workflow_with_loop_unset_end_nodes(self):
+        flow = Workflow()
+        flow.set_start_comp("s", MockStartNode("s"), inputs_schema={"a": "${input_number}"})
+        flow.add_workflow_comp("a", CommonNode("a"),
+                               inputs_schema={"array": "${input_array}"})
+
+        # create  loop: (1->2->3)
+        loop_group = LoopGroup()
+        loop_group.add_workflow_comp("1", AddTenNode("1", {"check": "${s.a}"}),
+                                     inputs_schema={"source": "${l.item}", "check": "${s.a}"})
+        loop_group.add_workflow_comp("2", AddTenNode("2"), inputs_schema={"source": "${l.user_var}"})
+        set_variable_component = SetVariableComponent({"${l.user_var}": "${2.result}"})
+        loop_group.add_workflow_comp("3", set_variable_component)
+        loop_group.add_workflow_comp("4", CommonNode("4"), inputs_schema={"index": "${l.index}"})
+        loop_group.start_comp("1")
+        loop_group.add_connection("1", "2")
+        loop_group.add_connection("2", "3")
+        loop_group.add_connection("3", "4")
+
+        loop_component = LoopComponent(loop_group, {"results": "${1.result}", "user_var": "${l.user_var}",
+                                                    "index_collect": "${4.index}"})
+
+        flow.add_workflow_comp("l", loop_component, inputs_schema={"loop_type": "array",
+                                                                   "loop_array": {"item": "${a.array}"},
+                                                                   "intermediate_var": {"user_var": "${s.a}"}})
+
+        flow.add_workflow_comp("b", CommonNode("b"),
+                               inputs_schema={"array_result": "${l.results}", "user_var": "${l.user_var}"})
+        flow.set_end_comp("e", MockEndNode("e"),
+                          inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}",
+                                         "index": "${l.index_collect}"})
+
+        # s->a->(1->2->3)->b->e
+        flow.add_connection("s", "a")
+        flow.add_connection("a", "l")
+        flow.add_connection("l", "b")
+        flow.add_connection("b", "e")
+
+        # no expand loop
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("s")
+            \tnode_2["a"]
+            \tnode_3["l"]
+            \tnode_4["b"]
+            \tnode_5("e")
+            \tnode_3 -.-> node_3
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_3 -.-> node_4
+            \tnode_4 --> node_5
+            """).lstrip()
+        self.assertEqual(flow.to_mermaid("jiuwen workflow"), mermaid_script)
+
+        # expand loop
+        mermaid_script = textwrap.dedent("""
+            ---
+            title: jiuwen workflow
+            ---
+            flowchart TB
+            \tnode_1("s")
+            \tnode_2["a"]
+            \tnode_8["b"]
+            \tnode_9("e")
+            \tsubgraph node_7 ["l"]
+            \tdirection TB
+            \tnode_3("1")
+            \tnode_4["2"]
+            \tnode_5["3"]
+            \tnode_6("4")
+            end
+            \tnode_6 -.-> node_3
+            \tnode_1 --> node_2
+            \tnode_2 --> node_3
+            \tnode_6 -.-> node_8
+            \tnode_8 --> node_9
+            \tnode_3 --> node_4
+            \tnode_4 --> node_5
+            \tnode_5 --> node_6
+            """).lstrip()
+        self.assertEqual(flow.to_mermaid("jiuwen workflow", expand_subgraph=True), mermaid_script)
+
     def test_drawable_exception(self):
         drawable = Drawable()
         # set start node failed

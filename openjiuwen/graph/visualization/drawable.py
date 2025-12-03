@@ -53,6 +53,16 @@ class Drawable:
         if isinstance(component, LoopComponent) or isinstance(component, AdvancedLoopComponent):
             subgraph = component.loop_group.drawable.get_graph()\
                 if isinstance(component, LoopComponent) else component.body.drawable.get_graph()
+            # If end nodes are unset, the graph is traversed to discover all end nodes.
+            if len(subgraph.end_nodes) == 0:
+                out_degrees = {subgraph_node_id: 0 for subgraph_node_id in subgraph.nodes}
+                for edge in subgraph.edges:
+                    if edge.source not in out_degrees:
+                        out_degrees[edge.source] = 0
+                    out_degrees[edge.source] += 1
+                for subgraph_node_id, out_degree in out_degrees.items():
+                    if out_degree == 0:
+                        subgraph.end_nodes.append(subgraph.nodes[subgraph_node_id])
             self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id, subgraph=subgraph)
             self._loop_nodes.add(node_id)
             self.add_edge(node_id, node_id)

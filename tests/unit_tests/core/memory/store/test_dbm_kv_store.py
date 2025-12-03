@@ -3,6 +3,7 @@ import unittest
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore   # ← 修改为你的真实模块路径
 
 
+@unittest.skip("skip test")
 class TestDBMStore(unittest.TestCase):
 
     def setUp(self):

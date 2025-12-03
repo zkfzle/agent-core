@@ -3,27 +3,31 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
 import random
-from datetime import datetime
+import shutil
+from datetime import datetime, timezone
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 import unittest
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 import os
 
 
-class TestUserMemStore(unittest.TestCase):
-    def setUp(self):
-        # kv_store_instance = SqliteKVStore(".")
-        test_dir = "test_dbm"
-        os.makedirs(test_dir, exist_ok=True)
-        db_path = os.path.join(test_dir, "testdb")
-        kv_store_instance = DbmKVStore(db_path)
-        self.store = UserMemStore(kv_store_instance=kv_store_instance)
+class TestUserMemStore(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.test_dir = "test_dbm"
+        os.makedirs(self.test_dir, exist_ok=True)
+        db_path = os.path.join(self.test_dir, "testdb")
+        self.kv_store = DbmKVStore(db_path)
+        self.store = UserMemStore(kv_store_instance=self.kv_store)
+
+    async def asyncTearDown(self):
+        self.kv_store.close()
+        shutil.rmtree(self.test_dir)
 
     @staticmethod
     def _generate_next_id() -> str:
         return str(random.randint(0, 2 ** 31 - 1))
 
-    async def basic(self):
+    async def test_basic(self):
         user_profile_mem_type = "user_profile"
         episodic_mem_type = "episodic_mem"
 
@@ -39,7 +43,7 @@ class TestUserMemStore(unittest.TestCase):
             "profile_type": profile_type1,
             "profile_mem": "user profile1",
             "mem_type": user_profile_mem_type,
-            "time": str(datetime.now()),
+            "time": str(datetime.now(timezone.utc)),
         }
         self.assertTrue(await self.store.write(user_id1, app_id1, mem_id1, data1))
         user_profile_data1 = await self.store.get(user_id1, app_id1, mem_id1)
@@ -52,7 +56,7 @@ class TestUserMemStore(unittest.TestCase):
             "app_id": app_id1,
             "content": "episodic memory 1",
             "mem_type": episodic_mem_type,
-            "time": str(datetime.now()),
+            "time": str(datetime.now(timezone.utc)),
         }
         self.assertTrue(await self.store.write(user_id1, app_id1, mem_id2, data2))
 
@@ -65,7 +69,7 @@ class TestUserMemStore(unittest.TestCase):
             "app_id": app_id2,
             "content": "episodic memory 2",
             "mem_type": episodic_mem_type,
-            "time": str(datetime.now()),
+            "time": str(datetime.now(timezone.utc)),
         }
         self.assertTrue(await self.store.write(user_id2, app_id2, mem_id3, data3))
 
@@ -110,9 +114,6 @@ class TestUserMemStore(unittest.TestCase):
         await self.store.delete(user_id2, app_id2, mem_id3)
         self.assertEqual(await self.store.get_all(user_id1, app_id1), None)
         self.assertEqual(await self.store.get_all(user_id2, app_id2), None)
-
-    def test_basic(self):
-        asyncio.run(self.basic())
 
 if __name__ == "__main__":
     unittest.main()

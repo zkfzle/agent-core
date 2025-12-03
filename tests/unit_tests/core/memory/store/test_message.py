@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
 from pathlib import Path
 import unittest

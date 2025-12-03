@@ -1,4 +1,8 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
+import shutil
 import unittest
 from enum import StrEnum
 from typing import List, Tuple
@@ -111,7 +115,10 @@ class MockSemanticStore(BaseSemanticStore):
 
 class TestManage(unittest.TestCase):
     async def _test_basic(self):
-        mock_kv_store = MockKVStore("kv_db")
+        test_dir = "test_dbm"
+        os.makedirs(test_dir, exist_ok=True)
+        test_file = os.path.join(test_dir, "test_kv_db")
+        mock_kv_store = MockKVStore(test_file)
         data_id_generator = DataIdManager(mock_kv_store)
         
         # 使用Mock语义存储替代实际模型
@@ -194,6 +201,10 @@ class TestManage(unittest.TestCase):
         await write_manager.delete_mem_by_user_id("usrZH2026", "fitnesstrackerv3")
         res = await user_profile_manager.search("usrZH2026", "fitnesstrackerv3", query, 5)
         self.assertEqual(0, len(res))
+
+        # release resource
+        mock_kv_store.close()
+        shutil.rmtree(test_dir)
 
     def test_basic(self):
         asyncio.run(self._test_basic())

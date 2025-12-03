@@ -5,7 +5,7 @@ from typing import Iterable, List, Optional, Tuple, Union
 
 from llama_index.core.schema import TextNode
 
-from openjiuwen.core.common.logging import LogManager
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
 from openjiuwen.integrations.retriever.retrieval.llms.client import get_llm_client, get_model_name
@@ -30,7 +30,6 @@ from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import 
 )
 from openjiuwen.integrations.retriever.retrieval.utils import deduplicate
 
-_LOGGER = LogManager.get_logger(__name__)
 
 
 class SearchAgent(_BaseRetriever):
@@ -98,7 +97,7 @@ class SearchAgent(_BaseRetriever):
         triples = triple_memory.memory if triple_memory is not None else None
         prompt = get_read_prompt(query=query, passages=passages, triples=triples)
         completion = self._llm_call(prompt)
-        _LOGGER.debug("READ\nprompt=%r\ncompletion=%r", prompt, completion)
+        logger.debug("READ\nprompt=%r\ncompletion=%r", prompt, completion)
         return postproc_read(completion=completion)
 
     async def retrieve(self, query: str) -> List[TextNode]:
@@ -118,7 +117,7 @@ class SearchAgent(_BaseRetriever):
 
         prompt = get_reason_prompt(query=query, triples=triple_memory.memory)
         completion = self._llm_call(prompt)
-        _LOGGER.debug("REASON\nprompt=%r\ncompletion=%r", prompt, completion)
+        logger.debug("REASON\nprompt=%r\ncompletion=%r", prompt, completion)
         return postproc_reason(completion=completion)
 
     async def rewrite(self, query: str, triple_memory: Union[TripleMemory, None], reason: str) -> str:
@@ -137,7 +136,7 @@ class SearchAgent(_BaseRetriever):
         triples = triple_memory.memory if len(triple_memory) > 0 else None
         prompt = get_rewrite_prompt(query=query, triples=triples, reason=reason)
         completion = self._llm_call(prompt)
-        _LOGGER.debug("QUERY RE-WRITE\nprompt=%r\ncompletion=%r", prompt, completion)
+        logger.debug("QUERY RE-WRITE\nprompt=%r\ncompletion=%r", prompt, completion)
         return postproc_rewrite(completion=completion)
 
     async def link_passages(self, triple_memory: TripleMemory) -> List[List[TextNode]]:
@@ -189,9 +188,9 @@ class SearchAgent(_BaseRetriever):
             running_triples = None
             if self.use_sync:
                 proximal_triples = await self.read(query=running_query, passages=passages, triple_memory=None)
-                _LOGGER.debug("After the first-read in turn=%r we get proximal_triples=%r", turn, proximal_triples)
+                logger.debug("After the first-read in turn=%r we get proximal_triples=%r", turn, proximal_triples)
                 if len(proximal_triples) == 0:
-                    _LOGGER.warning(
+                    logger.warning(
                         "self.use_sync=%r but no proximal triples are returned. Falling back to NaiveGE ...",
                         self.use_sync,
                     )
@@ -208,9 +207,9 @@ class SearchAgent(_BaseRetriever):
                 return passages
 
             triples = await self.read(query, passages=passages, triple_memory=memory)
-            _LOGGER.debug("After the second-read in turn=%r we get triples=%r", turn, triples)
+            logger.debug("After the second-read in turn=%r we get triples=%r", turn, triples)
             memory.batch_extend_memory(triples)
-            _LOGGER.debug("After extending memory in turn=%r we get memory.memory=%r", turn, memory.memory)
+            logger.debug("After extending memory in turn=%r we get memory.memory=%r", turn, memory.memory)
             all_passages.append(passages)
 
             answer_or_reason = ""
@@ -219,7 +218,7 @@ class SearchAgent(_BaseRetriever):
                 is_answerable, answer_or_reason = await self.reason(query, triple_memory=memory)
 
                 if is_answerable:
-                    _LOGGER.info(f"Success at turn=%r for query=%r", turn, query)
+                    logger.info(f"Success at turn=%r for query=%r", turn, query)
                     break
             if turn >= self.max_iter:
                 break

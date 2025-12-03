@@ -2,9 +2,8 @@
 import re
 from typing import List, Tuple
 
-from openjiuwen.core.common.logging import LogManager
+from openjiuwen.core.common.logging import logger
 
-_LOGGER = LogManager.get_logger(__name__)
 
 _REASON_PROMPT = """
 # Task Description:
@@ -40,12 +39,12 @@ def postproc_reason(completion: str) -> Tuple[bool, str]:
     """ """
     tmp_match = _PATTERN.search(completion)
     if not tmp_match:
-        _LOGGER.warning("%s: no matching pattern from completion=%r", postproc_reason.__name__, completion)
+        logger.warning("%s: no matching pattern from completion=%r", postproc_reason.__name__, completion)
         return False, ""
 
     answerable = tmp_match.group("answerable")
     if answerable is None:
-        _LOGGER.warning("%s: failed to match `Answerable` from completion=%r", postproc_reason.__name__, completion)
+        logger.warning("%s: failed to match `Answerable` from completion=%r", postproc_reason.__name__, completion)
         return False, ""
 
     is_answerable = answerable.lower() == "yes"

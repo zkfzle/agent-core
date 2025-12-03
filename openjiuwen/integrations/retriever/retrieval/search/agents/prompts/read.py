@@ -4,11 +4,10 @@ from typing import List, Union
 
 from llama_index.core.schema import TextNode
 
-from openjiuwen.core.common.logging import LogManager
+from openjiuwen.core.common.logging import logger
 
 from .utils import chunks2str, triples2str
 
-_LOGGER = LogManager.get_logger(__name__)
 
 _READ_PROMPT = """
 Your task is to find facts that help answer an input question.
@@ -59,11 +58,11 @@ def postproc_read(completion: str) -> List[tuple[str, ...]]:
             triple = tuple(map(str, triple))  # converted each element in triple to string -- just in case
             triples_set.add(triple)
         except Exception as e:
-            _LOGGER.warning("%s: fail to extract triple; error: %r", postproc_read.__name__, e)
+            logger.warning("%s: fail to extract triple; error: %r", postproc_read.__name__, e)
             continue
 
     triples = list(triples_set)
     if not triples:
-        _LOGGER.warning("%s: no triples exacted from %r", postproc_read.__name__, completion)
+        logger.warning("%s: no triples exacted from %r", postproc_read.__name__, completion)
 
     return triples

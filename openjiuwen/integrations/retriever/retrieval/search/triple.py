@@ -8,10 +8,9 @@ import numpy as np
 from llama_index.core.schema import TextNode
 from llama_index.core.vector_stores import VectorStoreQuery
 
-from openjiuwen.core.common.logging import LogManager
+from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.retrieval.search import BaseRetriever
 
-_LOGGER = LogManager.get_logger(__name__)
 
 
 class TripleBeam:
@@ -96,7 +95,7 @@ class TripleBeamSearch:
     async def _beam_search(self, query: str, triples: list[TextNode]) -> list[TripleBeam]:
 
         if not triples:
-            _LOGGER.warning("beam search got empty input triples, query=%r", query)
+            logger.warning("beam search got empty input triples, query=%r", query)
             return []
 
         texts = [self._format_triple(x) for x in triples] + [query]
@@ -199,6 +198,6 @@ class TripleBeamSearch:
             ret.append(x)
 
         if not ret:
-            _LOGGER.warning("empty candidates for beam: %r", self._format_triples(beam))
+            logger.warning("empty candidates for beam: %r", self._format_triples(beam))
 
         return ret

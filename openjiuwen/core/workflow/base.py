@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
+# Copyright (c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 import asyncio
 import inspect
 import os
 import re
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from dataclasses import dataclass
 from enum import Enum
 from typing import Self, Any, Union, AsyncIterator, List
 
@@ -45,6 +46,31 @@ from openjiuwen.graph.visualization.drawable import Drawable
 
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
+
+class ConnectionType(Enum):
+    """Type of workflow connection."""
+    CONNECTION = "connection"
+    STREAM_CONNECTION = "stream_connection"
+
+
+@dataclass
+class EdgeTopology:
+    """Edge topology context for ability inference."""
+    source_map: dict[str, list[str]]
+    target_map: dict[str, list[str]]
+    source_stream_map: dict[str, list[str]]
+    target_stream_map: dict[str, list[str]]
+
+    def all_edge_nodes(self) -> set[str]:
+        """Get all nodes referenced in edges."""
+        return (
+            set(self.source_map.keys()) |
+            set(self.target_map.keys()) |
+            set(self.source_stream_map.keys()) |
+            set(self.target_stream_map.keys())
+        )
+
+
 class WorkflowExecutionState(Enum):
     COMPLETED = "COMPLETED"
     INPUT_REQUIRED = "INPUT_REQUIRED"
@@ -81,6 +107,29 @@ class BaseWorkFlow:
         if not re.match(r'^[A-Za-z0-9_-]+$', comp_id):
             raise JiuWenBaseException(-1, "workflow component id must contain only letters (a–z, A–Z), "
                                           "digits (0–9), underscores (_) or hyphens (-)")
+
+    def _validate_connection_comp_ids(self, src_comp_id: str, target_comp_id: str,
+                                       connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
+        """Validate that component IDs exist in comp_configs before adding connection.
+
+        This prevents KeyError in _auto_complete_abilities when edges reference non-existent components.
+        """
+        registered_comps = set(self._workflow_spec.comp_configs.keys())
+
+        missing_comps = []
+        if src_comp_id not in registered_comps:
+            missing_comps.append(f"source '{src_comp_id}'")
+        if target_comp_id not in registered_comps:
+            missing_comps.append(f"target '{target_comp_id}'")
+
+        if missing_comps:
+            raise JiuWenBaseException(
+                StatusCode.WORKFLOW_COMPONENT_CONFIG_ERROR.code,
+                f"Cannot add {connection_type.value} from '{src_comp_id}' to '{target_comp_id}': "
+                f"component(s) {', '.join(missing_comps)} not registered. "
+                f"Please call add_workflow_comp/set_start_comp/set_end_comp first. "
+                f"Currently registered components: {sorted(registered_comps) if registered_comps else '(none)'}"
+            )
 
     def add_workflow_comp(
             self,
@@ -226,63 +275,112 @@ class BaseWorkFlow:
         return b""
 
     def _auto_complete_abilities(self):
-        conf = self._workflow_spec.comp_configs
-        source_map = self._workflow_spec.edges
-        target_map = self._source_to_target_map(source_map)
-        source_stream_map = self._workflow_spec.stream_edges
-        target_stream_map = self._source_to_target_map(source_stream_map)
+        """Auto-complete component abilities based on edge topology."""
+        edge_topology = self._build_edge_topology()
+        self._validate_edge_nodes(edge_topology)
 
-        # Create a dictionary to indicate whether the user has provided ability configuration for components
-        user_provided_abilities = {
+        user_provided = self._get_user_provided_abilities()
+
+        self._complete_loop_node_abilities(edge_topology, user_provided)
+        self._complete_stream_node_abilities(edge_topology, user_provided)
+        self._complete_invoke_abilities(edge_topology, user_provided)
+
+    def _build_edge_topology(self) -> EdgeTopology:
+        """Build edge topology context for ability inference."""
+        source_map = self._workflow_spec.edges
+        source_stream_map = self._workflow_spec.stream_edges
+        return EdgeTopology(
+            source_map=source_map,
+            target_map=self._source_to_target_map(source_map),
+            source_stream_map=source_stream_map,
+            target_stream_map=self._source_to_target_map(source_stream_map),
+        )
+
+    def _validate_edge_nodes(self, edge_topology: EdgeTopology) -> None:
+        """DFX: Validate all nodes in edges exist in comp_configs."""
+        registered_comps = set(self._workflow_spec.comp_configs.keys())
+        all_edge_nodes = edge_topology.all_edge_nodes()
+        missing_nodes = all_edge_nodes - registered_comps
+        if not missing_nodes:
+            return
+
+        edge_details = self._collect_problematic_edges(edge_topology, missing_nodes)
+        raise JiuWenBaseException(
+            StatusCode.WORKFLOW_COMPONENT_CONFIG_ERROR.code,
+            f"Component ID mismatch: nodes {sorted(missing_nodes)} are referenced in edges "
+            f"but not registered via add_workflow_comp/set_start_comp/set_end_comp.\n"
+            f"Registered components: {sorted(registered_comps)}\n"
+            f"Problematic edges:\n" + "\n".join(edge_details)
+        )
+
+    @staticmethod
+    def _collect_problematic_edges(edge_topology: EdgeTopology, missing_nodes: set) -> list[str]:
+        """Collect edge details that reference missing nodes."""
+        edge_details = []
+        for connection_type, edge_map in [(ConnectionType.CONNECTION, edge_topology.source_map),
+                                          (ConnectionType.STREAM_CONNECTION, edge_topology.source_stream_map)]:
+            for src, targets in edge_map.items():
+                for tgt in targets:
+                    if src in missing_nodes or tgt in missing_nodes:
+                        edge_details.append(f"  - {connection_type.value}: '{src}' -> '{tgt}'")
+        return edge_details
+
+    def _get_user_provided_abilities(self) -> dict[str, bool]:
+        """Check which components have user-provided ability configurations."""
+        return {
             comp_id: len(comp_conf.abilities) > 0
-            for comp_id, comp_conf in conf.items()
+            for comp_id, comp_conf in self._workflow_spec.comp_configs.items()
         }
 
-        # Handle special abilities for loop nodes
-        loop_start_nodes = getattr(self, '_start_nodes', None)
-        loop_end_nodes = getattr(self, '_end_nodes', None)
+    def _complete_loop_node_abilities(self, edge_topology: EdgeTopology, user_provided: dict[str, bool]) -> None:
+        """Complete abilities for loop start/end nodes."""
+        loop_start_nodes = getattr(self, '_start_nodes', None) or []
+        loop_end_nodes = getattr(self, '_end_nodes', None) or []
 
-        if loop_start_nodes is not None:
-            for start_node in loop_start_nodes:
-                # Automatically add only when the user has not provided ability configuration 
-                # and the node is in streaming connections
-                if not user_provided_abilities[start_node] and start_node in source_stream_map:
-                    self._add_ability(conf, start_node, ComponentAbility.STREAM)
+        for node in loop_start_nodes:
+            if not user_provided[node] and node in edge_topology.source_stream_map:
+                self._add_ability_to_node(node, ComponentAbility.STREAM)
 
-        if loop_end_nodes is not None:
-            for end_node in loop_end_nodes:
-                # Automatically add only when the user has not provided ability configuration 
-                # and the node is in streaming connection targets
-                if not user_provided_abilities[end_node] and end_node in target_stream_map:
-                    self._add_ability(conf, end_node, ComponentAbility.COLLECT)
+        for node in loop_end_nodes:
+            if not user_provided[node] and node in edge_topology.target_stream_map:
+                self._add_ability_to_node(node, ComponentAbility.COLLECT)
 
-        # Handle abilities for regular streaming connections
-        for source in source_stream_map:
-            if not user_provided_abilities[source]:
-                # If the node has both regular input and streaming output, it's STREAM ability
-                if source in target_map:
-                    self._add_ability(conf, source, ComponentAbility.STREAM)
-                # If the node has both streaming input and streaming output, it's TRANSFORM ability
-                if source in target_stream_map:
-                    self._add_ability(conf, source, ComponentAbility.TRANSFORM)
-        for target in target_stream_map:
-            if not user_provided_abilities[target]:
-                # If the node has both streaming input and regular output, it's COLLECT ability
-                if target in source_map:
-                    self._add_ability(conf, target, ComponentAbility.COLLECT)
+    def _complete_stream_node_abilities(self, edge_topology: EdgeTopology, user_provided: dict[str, bool]) -> None:
+        """Complete abilities for stream connection nodes (STREAM/TRANSFORM/COLLECT)."""
+        # Nodes that output stream
+        for node in edge_topology.source_stream_map:
+            if user_provided[node]:
+                continue
+            # Has regular input + streaming output -> STREAM
+            if node in edge_topology.target_map:
+                self._add_ability_to_node(node, ComponentAbility.STREAM)
+            # Has streaming input + streaming output -> TRANSFORM
+            if node in edge_topology.target_stream_map:
+                self._add_ability_to_node(node, ComponentAbility.TRANSFORM)
 
-        for target in target_map:
-            if not user_provided_abilities[target]:
-                if target in source_map:
-                    self._add_ability(conf, target, ComponentAbility.INVOKE)
+        # Nodes that receive stream
+        for node in edge_topology.target_stream_map:
+            if user_provided[node]:
+                continue
+            # Has streaming input + regular output -> COLLECT
+            if node in edge_topology.source_map:
+                self._add_ability_to_node(node, ComponentAbility.COLLECT)
+
+    def _complete_invoke_abilities(self, edge_topology: EdgeTopology, user_provided: dict[str, bool]) -> None:
+        """Complete INVOKE ability for regular connection nodes."""
+        for node in edge_topology.target_map:
+            if not user_provided[node] and node in edge_topology.source_map:
+                self._add_ability_to_node(node, ComponentAbility.INVOKE)
+
+    def _add_ability_to_node(self, comp_id: str, ability: ComponentAbility) -> None:
+        """Add ability to a component if not already present."""
+        abilities = self._workflow_spec.comp_configs[comp_id].abilities
+        if ability not in abilities:
+            abilities.append(ability)
 
     @staticmethod
-    def _add_ability(conf: dict[str, NodeSpec], comp: str, ability: ComponentAbility):
-        if ability not in conf[comp].abilities:
-            conf[comp].abilities.append(ability)
-
-    @staticmethod
-    def _source_to_target_map(source_map: dict[str, list[str]]):
+    def _source_to_target_map(source_map: dict[str, list[str]]) -> dict[str, list[str]]:
+        """Convert source->targets map to target->sources map."""
         target_map = {}
         for source, targets in source_map.items():
             for target in targets:
@@ -449,7 +547,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     index -= 1
                     logger.debug(f"received end frame of sub_stream after {frame_count} frames")
                     if index == 0:
-                       break
+                        break
                 frame_count += 1
                 logger.debug(f"yielding frame {frame_count}: {frame}")
                 yield frame
@@ -547,9 +645,12 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 if isinstance(task.exception(), JiuWenBaseException):
                     raise task.exception()
                 else:
-                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code, StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=task.exception()))
+                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
+                                              StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+                                                  error=task.exception())) from e
             else:
-                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code, StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
+                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
+                                          StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e)) from e
         finally:
             if not task.done():
                 task.cancel()

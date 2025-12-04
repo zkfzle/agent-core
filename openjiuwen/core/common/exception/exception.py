@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-MAGIC_CODE = "\t"
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 
 
 class JiuWenBaseException(Exception):
@@ -12,7 +10,7 @@ class JiuWenBaseException(Exception):
         self._message = message
 
     def __str__(self):
-        return f"[{self._error_code}] {self._message}{MAGIC_CODE}"
+        return f"[{self._error_code}] {self._message}"
 
     @property
     def error_code(self) -> int:

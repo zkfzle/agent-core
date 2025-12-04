@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 
 
 DEFAULT_INNER_LOG_CONFIG = {
@@ -15,7 +15,8 @@ DEFAULT_INNER_LOG_CONFIG = {
                 'performance_output': ['console', 'file'],
                 'backup_count': 20,
                 'max_bytes': 20971520,
-                'format': '%(asctime)s | %(log_type)s | %(filename)s | %(lineno)d | %(funcName)s | %(trace_id)s | %(levelname)s | %(message)s'
+                'format': ('%(asctime)s | %(log_type)s | %(filename)s | %(lineno)d | '
+                          '%(funcName)s | %(levelname)s | %(message)s')
             }
 
 DEFAULT_LOG_CONFIG = {

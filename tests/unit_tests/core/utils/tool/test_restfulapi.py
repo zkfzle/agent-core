@@ -67,7 +67,7 @@ class TestRestFulApi:
         os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
         with pytest.raises(JiuWenBaseException) as e:
             mock_data.invoke({})
-        assert "[182000] restful api only support ainvoke\t" == str(e.value)
+        assert "[182000] restful api only support ainvoke" == str(e.value)
         del os.environ["RESTFUL_SSL_CERT"]
 
     def test_get_tool_info(self):

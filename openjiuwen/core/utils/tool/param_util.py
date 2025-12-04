@@ -36,8 +36,6 @@ class ParamUtil:
     @staticmethod
     def _assign_format_default_value(params: List[Param], inputs: dict):
         for param in params:
-            if not param.required:
-                continue
             if ValueTypeEnum.is_object(param.type):
                 if not inputs.get(param.name) and param.default_value:
                     inputs[param.name] = param.default_value

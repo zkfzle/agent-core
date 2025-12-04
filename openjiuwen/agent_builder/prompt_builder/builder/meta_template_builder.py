@@ -45,6 +45,7 @@ class MetaTemplateBuilder(BasePromptBuilder):
               custom_template_name: Optional[str] = None
               ) -> Optional[str]:
         prompt = TEMPLATE.get_string_prompt(prompt)
+        self._is_valid_prompt(prompt)
         messages = self._format_meta_template(prompt, tools, template_type, custom_template_name)
         response = self._model.invoke(self._model_name, messages)
         if response is None:
@@ -58,6 +59,7 @@ class MetaTemplateBuilder(BasePromptBuilder):
                      custom_template_name: Optional[str] = None
                      ) -> Generator:
         prompt = TEMPLATE.get_string_prompt(prompt)
+        self._is_valid_prompt(prompt)
         messages = self._format_meta_template(prompt, tools, template_type, custom_template_name)
         chunks = self._model.stream(self._model_name, messages)
         for chunk in chunks:
@@ -118,3 +120,19 @@ class MetaTemplateBuilder(BasePromptBuilder):
         return custom_meta_template.format(
             dict(instruction=prompt, tools=str(tools))
         ).to_messages()
+
+    def _is_valid_prompt(self, prompt: str) -> bool:
+        if prompt is None:
+            raise JiuWenBaseException(
+                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
+                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
+                    error_msg=f"prompt cannot be None"
+                )
+            )
+        if not prompt.strip():
+            raise JiuWenBaseException(
+                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
+                StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.errmsg.format(
+                    error_msg=f"prompt cannot be empty"
+                )
+            )

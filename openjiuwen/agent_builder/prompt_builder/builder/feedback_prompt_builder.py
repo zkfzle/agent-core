@@ -34,6 +34,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
               end_pos: Optional[int] = None,
               ) -> Optional[str]:
         prompt = TEMPLATE.get_string_prompt(prompt)
+        self._is_valid_prompt(prompt, feedback)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)
         response = self._model.invoke(self._model_name, messages)
         if response is None:
@@ -48,6 +49,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                      end_pos: Optional[int] = None,
                      ) -> Optional[str]:
         prompt = TEMPLATE.get_string_prompt(prompt)
+        self._is_valid_prompt(prompt, feedback)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)
         chunks = self._model.stream(self._model_name, messages)
         for chunk in chunks:
@@ -199,7 +201,6 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                     error_msg=f"prompt or feedback cannot be empty"
                 )
             )
-        return False
 
     def _extract_intent_from_respones(self, input_json: str):
         pattern = rf"```json(.{{1,{JSON_STRING_MAX_LENGTH}}}?)```"

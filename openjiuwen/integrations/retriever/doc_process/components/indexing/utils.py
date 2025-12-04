@@ -43,7 +43,7 @@ def prepare_triples(
 
         triples = chunk2triples.get(chunk, None)
         if triples is None:
-            _LOGGER.warning("chunk=%r not found", chunk)
+            logger.warning("chunk=%r not found", chunk)
             continue
 
         if not triples:
@@ -67,4 +67,4 @@ def prepare_triples(
                     "file_id": file_id,  # Add file_id for deletion queries
                 },
             }
-        _LOGGER.debug("number of empty triples: %d", empty_triples_count)
+        logger.debug("number of empty triples: %d", empty_triples_count)

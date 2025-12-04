@@ -30,7 +30,8 @@ class StatusCode(Enum):
     COMPONENT_NOT_EXECUTABLE_ERROR = (100002, "workflow component should implement Executable")
     CONTROLLER_INTERRUPTED_ERROR = (100003, "controller interrupted error")
     INTERACTIVE_NOT_SUPPORT_STREAM_ERROR = (100004, "streaming process interface(transform or collect) does not support interact operations")
-    COMPONENT_EXECUTE_ERROR = (100005, "component [{node_id}] encountered an exception while executing ability [{ability}], error detail {error}")
+    COMPONENT_EXECUTE_ERROR = (100005, "component [{node_id}] encountered an exception while executing ability [{"
+                                       "ability}], error detail: {error}")
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 

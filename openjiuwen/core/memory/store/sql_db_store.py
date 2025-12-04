@@ -2,12 +2,12 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Any, Dict, List
+
 from sqlalchemy import insert, update, select, delete, Table, MetaData, and_, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-from openjiuwen.core.memory.store import BaseDbStore
-import logging
 
-logger = logging.getLogger(__name__)
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.store import BaseDbStore
 
 
 class SqlDbStore:

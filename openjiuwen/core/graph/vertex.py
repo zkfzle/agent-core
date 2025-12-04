@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 import asyncio
 from typing import Any, Optional, AsyncIterator, Literal
 
@@ -189,7 +189,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             else:
                 message_stream_data = {
                     "type": END_NODE_STREAM,
-                    "index": ++end_stream_index,
+                    "index": end_stream_index,
                     "payload": message
                 }
             await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)

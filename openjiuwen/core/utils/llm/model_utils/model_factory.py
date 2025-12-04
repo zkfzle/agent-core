@@ -81,9 +81,7 @@ class ModelFactory(metaclass=Singleton):
         model_cls = self.model_map.get(model_provider.lower())
         if not model_cls:
             available_models = ", ".join(self.model_map.keys())
-            if UserConfig.is_sensitive():
-                raise ValueError("Unavailable model provider.")
-            else:
+            if not UserConfig.is_sensitive():
                 raise ValueError(f"Unavailable model provider: {model_provider}. Available models: {available_models}")
         params = {
             "max_retries": max_retries,

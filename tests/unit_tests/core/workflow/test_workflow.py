@@ -947,3 +947,69 @@ class WorkflowTest(unittest.TestCase):
         flow.add_connection("g", "end")
 
         self.assert_workflow_invoke({"a": 1}, WorkflowRuntime(), flow, expect_results={"result": 3})
+
+    def test_auto_complete_abilities_detects_unregistered_edge_nodes(self):
+        """Test that _auto_complete_abilities raises exception when edges reference unregistered components."""
+        flow = Workflow()
+        flow.set_start_comp("start", MockStartNode("start"))
+        flow.add_workflow_comp("a", Node1("a"))
+        flow.set_end_comp("end", MockEndNode("end"))
+
+        # Use mock to inject an edge with an unregistered target node to simulate configuration error
+        # This bypasses add_connection validation to test _auto_complete_abilities defensive check
+        workflow_spec = flow.config().spec
+        original_edges = workflow_spec.edges.copy()
+        workflow_spec.edges["a"] = ["unregistered_node"]
+
+        try:
+            # _auto_complete_abilities is called during invoke/stream, which should detect the issue
+            with self.assertRaises(JiuWenBaseException) as context:
+                self.loop.run_until_complete(flow.invoke({"a": 1}, WorkflowRuntime()))
+
+            error_msg = str(context.exception)
+            # Verify error message contains useful debug info
+            self.assertIn("unregistered_node", error_msg)
+            self.assertIn("start", error_msg)  # Should show registered components
+            self.assertIn("end", error_msg)
+        finally:
+            # Restore original edges
+            workflow_spec.edges = original_edges
+
+    def test_invoke_validates_unregistered_edge_nodes(self):
+        """Test that invoke validates unregistered edge nodes."""
+        # Test unregistered target in connection
+        flow1 = Workflow()
+        flow1.set_start_comp("start", MockStartNode("start"))
+        flow1.add_workflow_comp("a", Node1("a"))
+        flow1.set_end_comp("end", MockEndNode("end"))
+        flow1.add_connection("start", "a")
+        flow1.add_connection("a", "unknown_target")  # No validation at add_connection time
+
+        with self.assertRaises(JiuWenBaseException) as context:
+            self.loop.run_until_complete(flow1.invoke({"a": 1}, WorkflowRuntime()))
+        error_msg = str(context.exception)
+        self.assertIn("unknown_target", error_msg)
+        self.assertIn("start", error_msg)  # Should show registered components
+
+        # Test unregistered source in connection
+        flow2 = Workflow()
+        flow2.set_start_comp("start", MockStartNode("start"))
+        flow2.add_workflow_comp("a", Node1("a"))
+        flow2.set_end_comp("end", MockEndNode("end"))
+        flow2.add_connection("unknown_source", "a")  # No validation at add_connection time
+        flow2.add_connection("a", "end")
+
+        with self.assertRaises(JiuWenBaseException) as context:
+            self.loop.run_until_complete(flow2.invoke({"a": 1}, WorkflowRuntime()))
+        error_msg = str(context.exception)
+        self.assertIn("unknown_source", error_msg)
+
+        # Test that valid connections still work by actually executing the workflow
+        flow3 = Workflow()
+        flow3.set_start_comp("start", MockStartNode("start"))
+        flow3.add_workflow_comp("a", Node1("a"))
+        flow3.set_end_comp("end", MockEndNode("end"))
+        flow3.add_connection("start", "a")
+        flow3.add_connection("a", "end")
+        result = self.loop.run_until_complete(flow3.invoke({"a": 1}, WorkflowRuntime()))
+        self.assertIsNotNone(result)

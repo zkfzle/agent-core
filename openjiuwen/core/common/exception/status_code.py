@@ -102,6 +102,7 @@ class StatusCode(Enum):
     GRAPH_ADD_EDGE_FAILED = (110004, "Graph create error, caused by add edge failed, detail: {detail}")
     GRAPH_ADD_CONDITION_EDGE_FAILED = (110005,
                                        "Graph create error, caused by add conditional edge failed, detail: {detail}")
+    WORKFLOW_COMPONENT_CONFIG_ERROR = (110006, "Workflow component config error: {error_msg}")
     DRAWABLE_GRAPH_SET_START_NODE_FAILED = (110021, "Drawable Graph create error, caused by start node set failed, "\
                                                     "node id: {node_id}")
     DRAWABLE_GRAPH_SET_END_NODE_FAILED = (110022, "Drawable Graph create error, caused by end node set failed, "\

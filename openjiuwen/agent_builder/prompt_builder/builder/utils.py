@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
-
+from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage, BaseMessage
 
 PROMPT_BUILD_GENERAL_META_SYSTEM_TEMPLATE = Template(content=[SystemMessage(content="""
 以下是markdown的元模板：
@@ -286,3 +286,19 @@ FORMAT_BAD_CASE_TEMPLATE = Template(content="""
 [reason]: {{reason}}
 === 
 """)
+
+
+def get_string_prompt(prompt: str | Template):
+    if isinstance(prompt, str):
+        return prompt
+    elif isinstance(prompt, Template):
+        if isinstance(prompt.content, str):
+            return prompt.content
+        elif isinstance(prompt.content, list) and all(isinstance(item, BaseMessage) for item in prompt.content):
+            return "\n".join(str(msg.content) for msg in prompt.content)
+        else:
+            return "\n".join("\n".join(item.values()) for item in prompt.content)
+    else:
+        raise JiuWenBaseException(StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.code,
+                                StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.errmsg.format(
+                                    error_msg=f"Prompt type {str(type(prompt))} is not supported"))

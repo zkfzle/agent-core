@@ -9,7 +9,8 @@ from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
-from openjiuwen.core.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, decorate_model_with_trace
+from openjiuwen.core.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, \
+    decorate_model_with_trace
 from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.tool.schema import ToolInfo
@@ -18,6 +19,30 @@ from openjiuwen.core.utils.tool.constant import Input, Output
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 
 pytestmark = pytest.mark.asyncio
+
+
+def get_llm_config():
+    model_config = ModelConfig(model_provider="siliconflow",
+                               model_info=BaseModelInfo(
+                                   model="Qwen/Qwen3-32B",
+                                   api_base="sk",
+                                   api_key="http://",
+                                   temperature=0.7,
+                                   top_p=0.9,
+                                   timeout=30
+                               ))
+
+    return LLMCompConfig(
+        model=model_config,
+        template_content=[{"role": "user", "content": "hello"}],
+        response_format={"type": "json"},
+        output_config={
+            "location": {"type": "string", "description": "地点（英文）", "required": True},
+            "date": {"type": "string", "description": "日期（YYYY-MM-DD）", "required": True},
+            "query": {"type": "string", "description": "改写后的query", "required": True}
+        },
+    )
+
 
 class MockTool(Tool):
     def __init__(self):
@@ -64,25 +89,7 @@ class MockModel(BaseModelClient):
         self.api_base = 'api_base'
         self.max_retrie = 'max_retrie'
         self.timeout = 2
-        model_config = ModelConfig(model_provider="siliconflow",
-                                   model_info=BaseModelInfo(
-                                       model="Qwen/Qwen3-32B",
-                                       api_base="sk",
-                                       api_key="http://",
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30
-                                   ))
-        self._config = LLMCompConfig(
-            model=model_config,
-            template_content=[{"role": "user", "content": "hello"}],
-            response_format={"type": "json"},
-            output_config={
-                "location": {"type": "string", "description": "地点（英文）", "required": True},
-                "date": {"type": "string", "description": "日期（YYYY-MM-DD）", "required": True},
-                "query": {"type": "string", "description": "改写后的query", "required": True}
-            },
-        )
+        self._config = get_llm_config()
         super().__init__("api_key", "")
 
     def _invoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
@@ -96,6 +103,13 @@ class MockModel(BaseModelClient):
                 top_p: float = 0.1, **kwargs: Any):
         logger.info(messages)
         logger.info(f"begin to ainvoke , inputs={messages}")
+        yield messages
+
+    async def _astream(self, model_name: str, messages: Union[List[str], List[Dict], str],
+                       tools: Union[List[ToolInfo], List[Dict]] = None, temperature: float = 0.1,
+                       top_p: float = 0.1, **kwargs: Any):
+        logger.info(messages)
+        logger.info(f"begin to astream , inputs={messages}")
         yield messages
 
     async def _ainvoke(self, model_name: str, messages: Union[List[str], List[Dict], str],
@@ -189,9 +203,12 @@ class TestDecator:
 
     async def test_decorate_model(self):
         model = MagicMock(LLMExecutable)
-        model._llm = MockModel()
-        model._config = model._llm._config
-        model.ainvoke = model._llm.ainvoke
+        type(model).llm = property(lambda self: self._llm, lambda self, val: setattr(self, '_llm', val))
+        type(model).config = property(lambda self: self._config, lambda self, val: setattr(self, '_config', val))
+        model.llm = MockModel()
+        model.config = get_llm_config()
+        model.ainvoke = model.llm.ainvoke
+        model.astream = model.llm.astream
         results = []
 
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):

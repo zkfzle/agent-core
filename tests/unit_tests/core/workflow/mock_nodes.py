@@ -312,6 +312,7 @@ class MockStreamNode(ComponentExecutable, WorkflowComponent):
     ):
         yield inputs
 
+
 class ComputeComponent2(WorkflowComponent):
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
         graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
@@ -319,12 +320,13 @@ class ComputeComponent2(WorkflowComponent):
     def to_executable(self) -> Executable:
         return ComputeExecutor2()
 
+
 class ComputeExecutor2(ComponentExecutable):
     def __init__(self):
         super().__init__()
 
     @staticmethod
-    async def _iter_collect_field(iterator: AsyncIterator, data_source_key, data_key, step = 1):
+    async def _iter_collect_field(iterator: AsyncIterator, data_source_key, data_key, step=1):
         result = 0
         async for data in iterator:
             print(f"collect step: {step}, {data_source_key}: {data_key} = {data}")
@@ -333,7 +335,7 @@ class ComputeExecutor2(ComponentExecutable):
         return result
 
     @staticmethod
-    async def _iter_transform_field(iterator: AsyncIterator, data_source_key, data_key="", step = 1):
+    async def _iter_transform_field(iterator: AsyncIterator, data_source_key, data_key="", step=1):
         results = []
         async for data in iterator:
             if not data_key:
@@ -388,7 +390,7 @@ class ComputeExecutor2(ComponentExecutable):
                 step += 1
         results = await asyncio.gather(*tasks)
         result = sum(results)
-        return {'result_collect':  result}
+        return {'result_collect': result}
 
     async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         exec_id = runtime.executable_id()
@@ -400,7 +402,7 @@ class ComputeExecutor2(ComponentExecutable):
                     tasks.append(self._iter_transform_field(iterator, data_source_key, data_key, step))
                     step += 1
             else:
-                tasks.append(self._iter_transform_field(obj, data_source_key, "",  step))
+                tasks.append(self._iter_transform_field(obj, data_source_key, "", step))
                 step += 1
         for coro in asyncio.as_completed(tasks):
             result = await coro

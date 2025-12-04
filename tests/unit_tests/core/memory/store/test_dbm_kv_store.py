@@ -1,16 +1,23 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import os
+import shutil
 import unittest
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore   # ← 修改为你的真实模块路径
 
-@unittest.skip("skip test")
-class TestDBMStore(unittest.TestCase):
 
-    def setUp(self):
+class TestDBMStore(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
         # 测试前创建临时目录
         self.test_dir = "test_dbm"
         os.makedirs(self.test_dir, exist_ok=True)
         self.db_path = os.path.join(self.test_dir, "testdb")
         self.store = DbmKVStore(self.db_path, cache_size=4)
+
+    async def asyncTearDown(self):
+        self.store.close()
+        shutil.rmtree(self.test_dir)
 
     async def test_set_and_get(self):
         await self.store.set("a", "123")

@@ -25,6 +25,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
               prompt: str | Template,
               cases: List[EvaluatedCase],
               ) -> Optional[str]:
+        prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_bad_case_template(prompt, cases)
         response = self._model.invoke(self._model_name, messages)
         return response.content
@@ -33,13 +34,14 @@ class BadCasePromptBuilder(BasePromptBuilder):
                      prompt: str | Template,
                      cases: List[EvaluatedCase],
                      ) -> Optional[str]:
+        prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_bad_case_template(prompt, cases)
         chunks = self._model.stream(self._model_name, messages)
         for chunk in chunks:
             yield chunk.content
 
     def _format_bad_case_template(self,
-                                 prompt: str | Template,
+                                 prompt: str,
                                  cases: List[EvaluatedCase],
                                  ) -> str:
         feedback = self._get_feedback_from_bad_case(prompt, cases)
@@ -104,6 +106,13 @@ class BadCasePromptBuilder(BasePromptBuilder):
                 StatusCode.AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR.code,
                 StatusCode.AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR.errmsg.format(
                     error_msg=f"prompt cannot be empty"
+                )
+            )
+        if not cases:
+            raise JiuWenBaseException(
+                StatusCode.AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR.code,
+                StatusCode.AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR.errmsg.format(
+                    error_msg=f"The cases cannot be empty"
                 )
             )
         if len(cases) > MAX_CASES_LIMIT:

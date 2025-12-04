@@ -9,6 +9,7 @@ from typing import Dict, Optional
 from openjiuwen.agent.common.enum import TaskStatus, TaskType
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.agent.utils import MessageUtils
 from openjiuwen.core.agent.controller.config.reasoner_config import (
     IntentDetectionConfig
 )
@@ -27,6 +28,7 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.workflow.base import WorkflowExecutionState
 
 
@@ -240,7 +242,10 @@ class WorkflowController(IntentDetectionController):
                 workflow_stream = await Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
-                    runtime=workflow_runtime
+                    runtime=workflow_runtime,
+                    context=self._context_engine.get_workflow_context(
+                        session_id=conversation_id, workflow_id=workflow_id
+                    )
                 )
                 chunks = []
                 has_interaction = False
@@ -262,7 +267,13 @@ class WorkflowController(IntentDetectionController):
                     else:
                         await runtime.write_stream(chunk)
                     chunks.append(chunk)
-                
+
+                # add messages to context
+                if chunks:
+                    workflow_content = "".join([
+                        chunk.payload.get("answer", "") for chunk in chunks if isinstance(chunk, OutputSchema)])
+                    MessageUtils.add_ai_message(AIMessage(content=workflow_content), self._context_engine, runtime)
+
                 # 构造 WorkflowOutput
                 if has_interaction:
                     return WorkflowOutput(

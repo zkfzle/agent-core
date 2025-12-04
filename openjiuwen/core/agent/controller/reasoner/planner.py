@@ -2,10 +2,10 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-import logging
 from typing import List, Optional, Dict, Any
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent.task.task import Task
+from openjiuwen.core.common.logging import logger
 
 
 class Planner:

@@ -11,6 +11,7 @@ from openjiuwen.core.agent.agent import Agent, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
 from openjiuwen.core.runtime.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runtime.resources_manager.agent_manager import AgentProvider, AgentMgr
@@ -100,9 +101,9 @@ class Runner:
 
     async def run_workflow_streaming(self, workflow: Union[str, Workflow], inputs: Any,
                                      *, runtime: Union[Runtime, WorkflowRuntime] = None,
-                                     stream_modes: list[BaseStreamMode] = None):
+                                     stream_modes: list[BaseStreamMode] = None, context: Context = None):
         workflow_instance, workflow_runtime = self._prepare_workflow(workflow, runtime)
-        return workflow_instance.stream(inputs, runtime=workflow_runtime, stream_modes=stream_modes)
+        return workflow_instance.stream(inputs, runtime=workflow_runtime, stream_modes=stream_modes, context=context)
 
     async def run_agent(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)

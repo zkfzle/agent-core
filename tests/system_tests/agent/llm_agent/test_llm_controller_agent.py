@@ -8,7 +8,6 @@ from pathlib import Path
 from openjiuwen.agent.common.schema import PluginSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.memory.store.impl.default_semantic_store import DefaultSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
@@ -25,7 +24,6 @@ from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.memory.config.config import SysMemConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
-from openjiuwen.core.memory.store.impl.default_semantic_store import DefaultSemanticStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from sqlalchemy.ext.asyncio import create_async_engine
 

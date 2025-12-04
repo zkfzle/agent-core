@@ -1,27 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-import asyncio
-from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
+import struct
+import secrets
+import time
 
 
 class DataIdManager:
-    SEPARATOR = "/"
-    ID_KEY = f'id_manager{SEPARATOR}next_id'
 
-    def __init__(self, kv_store: BaseKVStore):
-        self.kv_store = kv_store
-        self.async_lock = asyncio.Lock()
-
-    async def generate_next_id(self) -> int:
-        """async generate a unique ID and store it in the KV"""
-        async with self.async_lock:
-            current_id = await self.kv_store.get(DataIdManager.ID_KEY)
-            if not current_id:
-                current_id = 0
-            current_id = int(current_id)
-
-            next_id = current_id + 1
-            await self.kv_store.set(DataIdManager.ID_KEY, str(next_id))
-            return current_id
+    async def generate_next_id(self, user_id: str) -> str:
+        t = int(time.time() * 1000) & 0xFFFFFFFFFFFF
+        r = secrets.token_bytes(3)
+        h = hash(user_id) & 0xFFFFFF
+        t_bytes = struct.pack(">Q", t)[2:]
+        h_bytes = struct.pack(">I", h)[1:]
+        raw = t_bytes + r + h_bytes
+        return raw.hex()

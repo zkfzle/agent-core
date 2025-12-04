@@ -17,12 +17,13 @@ dependencies = [
     "cacheout==0.16.0",
     "mermaid-py==0.8.0",
     "numpy==1.26.0",
-    "faiss-cpu==1.7.4",
     "pymupdf==1.26.4",
     "elasticsearch==8.17.1",
     "llama-index==0.12.36",
     "llama-index-vector-stores-elasticsearch==0.4.3", 
     "transformers==4.52.4",
+    "portalocker==3.2.0",
+    "pymilvus==2.6.4"
 ]
 
 [tool.uv]

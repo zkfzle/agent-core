@@ -52,7 +52,7 @@ class UserProfileManager(BaseMemoryManager):
                                                            mem=conf_mem)
             elif conf_event == ConflictType.NONE.value:
                 logger.info(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
-            elif conf_event ==ConflictType.UPDATE.value:
+            elif conf_event == ConflictType.UPDATE.value:
                 logger.info(f"update conflict info: {conflict}, update_profile: {memory.profile_mem}")
                 await self.update(memory.user_id, memory.group_id, conf_id, memory.profile_mem)
             elif conf_event == ConflictType.DELETE.value:
@@ -139,7 +139,7 @@ class UserProfileManager(BaseMemoryManager):
             reasoning: Optional[str] = None,
             context_summary: Optional[str] = ""
     ) -> str:
-        mem_id = str(await self.date_user_profile_id.generate_next_id())
+        mem_id = str(await self.date_user_profile_id.generate_next_id(user_id=user_id))
         time = datetime.now(timezone.utc)
         data = {
             'id': mem_id,

@@ -19,7 +19,7 @@ class MessageManager:
 
     async def add(self, user_id: str = None, group_id: str = None, content: str = None,
                   role: str = None, session_id: str = None, timestamp: datetime = None) -> str:
-        message_id = str(await self.data_id.generate_next_id())
+        message_id = str(await self.data_id.generate_next_id(user_id=user_id))
         if user_id is None:
             raise ValueError('Must provide user_id')
         if group_id is None:

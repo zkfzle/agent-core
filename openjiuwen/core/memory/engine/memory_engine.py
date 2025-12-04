@@ -25,6 +25,7 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.memory.common.distributed_lock import DistributedLock
 
 
 class BaseMemoryEngine(ABC):
@@ -311,7 +312,8 @@ class MemoryEngine(BaseMemoryEngine):
     def __init__(self, config: SysMemConfig, kv_store: BaseKVStore, semantic_store: BaseSemanticStore,
                  db_store: BaseDbStore, **kwargs):
         super().__init__(config=config, kv_store=kv_store, semantic_store=semantic_store, db_store=db_store)
-        data_id_generator = DataIdManager(kv_store)
+        self.kv_store = kv_store
+        data_id_generator = DataIdManager()
         user_mem_store = UserMemStore(kv_store)
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=semantic_store,
@@ -362,44 +364,48 @@ class MemoryEngine(BaseMemoryEngine):
     ) -> str | None:
         msg_id = "-1"
         llm = self._get_group_llm(group_id)
-        if not llm:
-            logger.error("llm is not initialized.")
+        # user level distributed lock
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not llm:
+                logger.error("llm is not initialized.")
+                return msg_id
+            history_messages = await self._get_history_messages(user_id=user_id,
+                                                                group_id=group_id,
+                                                                session_id=session_id,
+                                                                config=self._sys_mem_config)
+            # when multi messages, use last msg_id
+            if self._sys_mem_config.record_message:
+                for msg in messages:
+                    msg_id = await self.message_manager.add(
+                        user_id=user_id,
+                        group_id=group_id,
+                        role=msg.role,
+                        content=msg.content,
+                        session_id=session_id,
+                        timestamp=timestamp
+                    )
+            else:
+                msg_id = None
+
+            if not MemoryEngine._check_messages(messages):
+                logger.info("Memory engine no need to process messages.")
+                return msg_id
+
+            group_mem_config = self._get_group_config(group_id)
+
+            all_memory: list[BaseMemoryUnit] = await self.generator.gen_all_memory(
+                group_id=group_id,
+                user_id=user_id,
+                messages=messages,
+                history_messages=history_messages,
+                session_id=session_id,
+                config=group_mem_config,
+                base_chat_model=llm,
+                message_mem_id=msg_id
+            )
+            await self.write_manager.add_mem(all_memory)
             return msg_id
-        history_messages = await self._get_history_messages(user_id=user_id,
-                                                            group_id=group_id,
-                                                            session_id=session_id,
-                                                            config=self._sys_mem_config)
-        # when multi messages, use last msg_id
-        if self._sys_mem_config.record_message:
-            for msg in messages:
-                msg_id = await self.message_manager.add(
-                    user_id=user_id,
-                    group_id=group_id,
-                    role=msg.role,
-                    content=msg.content,
-                    session_id=session_id,
-                    timestamp=timestamp
-                )
-        else:
-            msg_id = None
-
-        if not MemoryEngine._check_messages(messages):
-            logger.info("Memory engine no need to process messages.")
-            return msg_id
-
-        group_mem_config = self._get_group_config(group_id)
-
-        all_memory: list[BaseMemoryUnit] = await self.generator.gen_all_memory(
-            group_id=group_id,
-            user_id=user_id,
-            messages=messages,
-            history_messages=history_messages,
-            config=group_mem_config,
-            base_chat_model=llm,
-            message_mem_id=msg_id
-        )
-        await self.write_manager.add_mem(all_memory)
-        return msg_id
 
     async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
         if not self.message_manager:
@@ -407,22 +413,36 @@ class MemoryEngine(BaseMemoryEngine):
         return await self.message_manager.get_by_id(msg_id)
 
     async def delete_mem_by_id(self, user_id: str, group_id: str, mem_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        await self.write_manager.delete_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id)
-        return True
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not self.write_manager:
+                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+            await self.write_manager.delete_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id)
+            return True
 
     async def delete_mem_by_user_id(self, user_id: str, group_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=group_id)
-        return True
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not self.write_manager:
+                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+            await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=group_id)
+            return True
+
+    async def delete_user_profile_by_user_id(self, user_id: str, group_id: str) -> bool:
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not self.write_manager:
+                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+            await self.user_profile_manager.delete_by_user_id(user_id=user_id, group_id=group_id)
+            return True
 
     async def update_mem_by_id(self, user_id: str, group_id: str, mem_id: str, memory: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        await self.write_manager.update_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id, memory=memory)
-        return True
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not self.write_manager:
+                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+            await self.write_manager.update_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id, memory=memory)
+            return True
 
     async def get_user_variable(self, user_id: str, group_id: str, name: str) -> str:
         if not self.search_manager:
@@ -450,17 +470,21 @@ class MemoryEngine(BaseMemoryEngine):
         return await self.search_manager.list_user_mem(user_id=user_id, group_id=group_id, nums=num, pages=page)
 
     async def update_user_variable(self, user_id: str, group_id: str, name: str, value: str):
-        if not self.variable_manager:
-            raise ValueError("Variable Manager is not initialized")
-        await self.variable_manager.update_user_variable(user_id=user_id, group_id=group_id, var_name=name,
-                                                         var_mem=value)
-        return True
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not self.variable_manager:
+                raise ValueError("Variable Manager is not initialized")
+            await self.variable_manager.update_user_variable(user_id=user_id, group_id=group_id, var_name=name,
+                                                             var_mem=value)
+            return True
 
     async def delete_user_variable(self, user_id: str, group_id: str, name: str):
-        if not self.variable_manager:
-            raise ValueError("Variable Manager is not initialized")
-        await self.variable_manager.delete_user_variable(user_id=user_id, group_id=group_id, var_name=name)
-        return True
+        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        async with lock:
+            if not self.variable_manager:
+                raise ValueError("Variable Manager is not initialized")
+            await self.variable_manager.delete_user_variable(user_id=user_id, group_id=group_id, var_name=name)
+            return True
 
     @staticmethod
     def _get_llm_from_config(model_config: ModelConfig) -> BaseModelClient:
@@ -545,8 +569,7 @@ class MemoryEngine(BaseMemoryEngine):
             return None
         if cls._db_store_instance is not None:
             await create_tables(cls._db_store_instance)
-        cls._mem_engine_instance = cls(config=config,
-                                       kv_store=cls._kv_store_instance,
+        cls._mem_engine_instance = cls(config=config, kv_store=cls._kv_store_instance,
                                        semantic_store=cls._semantic_store_instance,
                                        db_store=cls._db_store_instance)
         return cls._mem_engine_instance

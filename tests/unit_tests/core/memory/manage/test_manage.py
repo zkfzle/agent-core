@@ -2,15 +2,14 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
-import shutil
 import unittest
 from enum import StrEnum
 from typing import List, Tuple
-
+import shutil
 from sqlalchemy import engine, text
 import os
 
-os.environ['HF_ENDPOINT']= "https://hf-mirror.com"
+os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
@@ -43,6 +42,7 @@ CONTEXT_CONFIG = {
     }
 }
 
+
 def create(conn: engine.Engine, table: str, columns: dict[str, ContextStoreColumnType]):
     try:
         with conn.connect() as conn:
@@ -66,17 +66,17 @@ def create(conn: engine.Engine, table: str, columns: dict[str, ContextStoreColum
 # Mock语义存储实现，避免实际模型加载
 class MockSemanticStore(BaseSemanticStore):
     """Mock语义存储，用于测试环境，不依赖实际模型"""
-    
+
     def __init__(self, config, model_config):
         self.memory_store = {}
         self.config = config
         self.model_config = model_config
-    
+
     async def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
         """模拟添加记忆"""
         if table_name not in self.memory_store:
             self.memory_store[table_name] = {}
-        
+
         for mid, m in docs:
             self.memory_store[table_name][mid] = {
                 'content': m
@@ -89,12 +89,12 @@ class MockSemanticStore(BaseSemanticStore):
             for id_to_remove in ids:
                 self.memory_store[table_name].pop(id_to_remove, None)
         return True
-    
+
     async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
         """模拟搜索功能，返回匹配的记忆"""
         if table_name not in self.memory_store:
             return []
-        
+
         # 简单的文本匹配搜索
         results: List[Tuple[str, float]] = []
         for memory_id, memory_data in self.memory_store[table_name].items():
@@ -103,7 +103,7 @@ class MockSemanticStore(BaseSemanticStore):
             if any(q in content for q in query):
                 # 模拟返回SearchHit对象
                 results.append((memory_id, 0.0))
-        
+
         # 返回top_k个结果
         return results[-5:]
 
@@ -113,14 +113,15 @@ class MockSemanticStore(BaseSemanticStore):
             del self.memory_store[table_name]
         return True
 
+
 class TestManage(unittest.TestCase):
     async def _test_basic(self):
         test_dir = "test_dbm"
         os.makedirs(test_dir, exist_ok=True)
         test_file = os.path.join(test_dir, "test_kv_db")
         mock_kv_store = MockKVStore(test_file)
-        data_id_generator = DataIdManager(mock_kv_store)
-        
+        data_id_generator = DataIdManager()
+
         # 使用Mock语义存储替代实际模型
         mock_semantic_recall = MockSemanticStore(None, None)
 
@@ -138,7 +139,7 @@ class TestManage(unittest.TestCase):
         # message_manager = MessageManager(mock_db_store, data_id_generator)
         mock_mem_store = UserMemStore(mock_kv_store)
         user_profile_manager = UserProfileManager(
-            semantic_recall_instance=mock_semantic_recall, 
+            semantic_recall_instance=mock_semantic_recall,
             user_mem_store=mock_mem_store,
             data_id_generator=data_id_generator
         )
@@ -173,18 +174,21 @@ class TestManage(unittest.TestCase):
             mem_unit = UserProfileUnit(mem_type=MemoryType.USER_PROFILE, conflict_info=[conflict_info], **item)
             await write_manager.add_mem([mem_unit])
             mem_unit = VariableUnit(mem_type=MemoryType.VARIABLE, variable_name=item['profile_type'],
-                                    variable_mem=item['profile_mem'], user_id=item['user_id'], group_id=item['group_id'])
+                                    variable_mem=item['profile_mem'], user_id=item['user_id'],
+                                    group_id=item['group_id'])
             await write_manager.add_mem([mem_unit])
             # message_manager.add(user_id=item['user_id'], group_id=item['group_id'], role='user', content=item['profile_mem'])
 
         # message = message_manager.get(user_id=test_all_data[0]['user_id'], group_id=test_all_data[0]['group_id'], message_len=3)
         query = "用户的职业"
-        res = await variable_manager.query_variable(user_id=test_all_data[0]['user_id'], group_id=test_all_data[0]['group_id'])
+        res = await variable_manager.query_variable(user_id=test_all_data[0]['user_id'],
+                                                    group_id=test_all_data[0]['group_id'])
         res = await user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
         self.assertEqual(5, len(res))
         # message_by_id = message_manager.get_by_id("15")
 
-        await user_profile_manager.update(res[0]['user_id'], res[0]['group_id'], res[0]['id'], "用户不是软件工程师，是系统")
+        await user_profile_manager.update(res[0]['user_id'], res[0]['group_id'], res[0]['id'],
+                                          "用户不是软件工程师，是系统")
         ret = await user_profile_manager.get(res[0]['user_id'], res[0]['group_id'], res[0]['id'])
         self.assertEqual("用户不是软件工程师，是系统", ret['mem'])
 
@@ -202,12 +206,12 @@ class TestManage(unittest.TestCase):
         res = await user_profile_manager.search("usrZH2026", "fitnesstrackerv3", query, 5)
         self.assertEqual(0, len(res))
 
-        # release resource
-        mock_kv_store.close()
+        #release resource
         shutil.rmtree(test_dir)
 
     def test_basic(self):
         asyncio.run(self._test_basic())
+
 
 if __name__ == '__main__':
     unittest.main()

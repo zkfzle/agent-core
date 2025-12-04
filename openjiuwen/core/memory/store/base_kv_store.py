@@ -21,6 +21,19 @@ class BaseKVStore(ABC):
         pass
 
     @abstractmethod
+    async def exclusive_set(self, key: str, value: str, expiry: int | None = None) -> bool:
+        """
+        Atomically set a key-value pair only if the key does not already exist.
+        Args:
+            key (str): the string key to set.
+            value (str): The string value to associate with the key.
+            expiry (int | None): Optional expiry time for the key-value pair.
+        Returns:
+            bool: True if the key-value pair was successfully set, False if the key already existed.
+        """
+        pass
+
+    @abstractmethod
     async def get(self, key: str) -> str | None:
         """
         Retrieve the value associated with the given key.

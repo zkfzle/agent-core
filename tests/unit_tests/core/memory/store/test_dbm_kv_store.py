@@ -1,23 +1,22 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-import os
 import shutil
+import os
 import unittest
-from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore   # ← 修改为你的真实模块路径
+from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 
 
 class TestDBMStore(unittest.IsolatedAsyncioTestCase):
+
     async def asyncSetUp(self):
-        # 测试前创建临时目录
         self.test_dir = "test_dbm"
         os.makedirs(self.test_dir, exist_ok=True)
         self.db_path = os.path.join(self.test_dir, "testdb")
-        self.store = DbmKVStore(self.db_path, cache_size=4)
+        self.store = DbmKVStore(self.db_path)
 
     async def asyncTearDown(self):
-        self.store.close()
-        shutil.rmtree(self.test_dir)
+        shutil.rmtree(self.test_dir, ignore_errors=True)
 
     async def test_set_and_get(self):
         await self.store.set("a", "123")
@@ -41,16 +40,8 @@ class TestDBMStore(unittest.IsolatedAsyncioTestCase):
         res = await self.store.mget(["k1", "k2", "k3"])
         self.assertEqual(res, ["v1", "v2", None])
 
-    async def test_lru_cache_is_cleared(self):
-        await self.store.set("x", "1")
-        v1 = await self.store.get("x")  # cached
-        await self.store.set("x", "2")  # should clear cache
-        v2 = await self.store.get("x")
-        self.assertEqual(v2, "2")
-
     async def test_db_files_created(self):
         await self.store.set("a", "1")
-        self.store.close()
         files = os.listdir(self.test_dir)
         self.assertTrue(len(files) > 0, "dbm files should be created")
 
@@ -77,6 +68,7 @@ class TestDBMStore(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(await self.store.exists("session_summary\x1Fuser1+\x1Fapp2\x1Fsession2"))
         self.assertFalse(await self.store.exists("session_summary\x1Fuser1\x1Fapp1\x1Fsession3"))
         self.assertTrue(await self.store.exists("session_summary\x1Fuser2\x1Fapp1\x1Fsession4"))
+
 
 if __name__ == "__main__":
     unittest.main()

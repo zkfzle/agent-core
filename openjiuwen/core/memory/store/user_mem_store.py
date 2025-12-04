@@ -10,7 +10,7 @@ from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
 
 
 class UserMemStore:
-    HEX_NUM_PER_INT: int = 8
+    BYTE_NUM_PER_ID: int = 24
     IDS_STR: str = "ids"
     USER_PROFILE_TOPIC_STR: str = "UPT"
     KEY_PREFIX_STR: str = "UMD"
@@ -36,7 +36,7 @@ class UserMemStore:
         if UserMemStore.MEM_TYPE_FIELD_KEY in data.keys():
             user_mem_ids_key = self.__get_user_ids_key(user_id, group_id, data[UserMemStore.MEM_TYPE_FIELD_KEY])
             user_mem_ids_value = await self.kv_store.get(user_mem_ids_key) or ""
-            await self.kv_store.set(user_mem_ids_key, self.__write_int(user_mem_ids_value, int(mem_id)))
+            await self.kv_store.set(user_mem_ids_key, self.__write_id(user_mem_ids_value, mem_id))
 
             # Append id to user profile topic ids
             if (data[UserMemStore.MEM_TYPE_FIELD_KEY] == MemoryType.USER_PROFILE.value and
@@ -46,12 +46,12 @@ class UserMemStore:
                                                                    UserMemStore.USER_PROFILE_TOPIC_STR,
                                                                    data[UserMemStore.TOPIC_FIELD_KEY]])
                 user_mem_topic_value = await self.kv_store.get(user_mem_topic_key) or ""
-                await self.kv_store.set(user_mem_topic_key, self.__write_int(user_mem_topic_value, int(mem_id)))
+                await self.kv_store.set(user_mem_topic_key, self.__write_id(user_mem_topic_value, mem_id))
 
         # Append id to user ids
         user_ids_key = self.__get_user_ids_key(user_id, group_id)
         user_ids_value = await self.kv_store.get(user_ids_key) or ""
-        await self.kv_store.set(user_ids_key, self.__write_int(user_ids_value, int(mem_id)))
+        await self.kv_store.set(user_ids_key, self.__write_id(user_ids_value, mem_id))
 
         # Set user mem id
         await self.kv_store.set(user_mem_key, json.dumps(data))
@@ -104,23 +104,25 @@ class UserMemStore:
         user_ids_value = await self.kv_store.get(user_ids_key) or ""
         if not user_ids_value:
             return None
-        all_ids = self.__get_all_ints(user_ids_value)
+        all_ids = self.__get_all_ids(user_ids_value)
         mem_ids = [str(mem_id) for mem_id in all_ids]
         return await self.batch_get(user_id, group_id, mem_ids)
-    
+
     async def get_by_topic(self, user_id: str, group_id: str, topic: str) -> list[dict[str, Any]] | None:
         """async get data from given user_id|group_id|topic"""
-        user_mem_topic_key = self.__get_concatenation_key([user_id, group_id, UserMemStore.USER_PROFILE_TOPIC_STR, topic])
+        user_mem_topic_key = self.__get_concatenation_key(
+            [user_id, group_id, UserMemStore.USER_PROFILE_TOPIC_STR, topic])
         if not await self.kv_store.exists(user_mem_topic_key):
             return None
         user_mem_topic_value = await self.kv_store.get(user_mem_topic_key) or ""
         if not user_mem_topic_value:
             return None
-        all_ids = self.__get_all_ints(user_mem_topic_value)
+        all_ids = self.__get_all_ids(user_mem_topic_value)
         mem_ids = [str(mem_id) for mem_id in all_ids]
         return await self.batch_get(user_id, group_id, mem_ids)
 
-    async def get_in_range(self, user_id: str, group_id: str, start_idx: int, end_idx: int) -> list[dict[str, Any]] | None:
+    async def get_in_range(self, user_id: str, group_id: str, start_idx: int, end_idx: int) -> list[dict[
+        str, Any]] | None:
         user_ids_key = self.__get_user_ids_key(user_id, group_id)
         if not await self.kv_store.exists(user_ids_key):
             return None
@@ -179,7 +181,7 @@ class UserMemStore:
     async def __delete_mem_id(self, ids_key: str, mem_id: str):
         if await self.kv_store.exists(ids_key):
             ids_value = await self.kv_store.get(ids_key) or ""
-            new_ids_value = self.__delete_int_by_value(ids_value, int(mem_id))
+            new_ids_value = self.__delete_id_by_value(ids_value, mem_id)
             if new_ids_value != "":
                 await self.kv_store.set(ids_key, new_ids_value)
             else:
@@ -191,38 +193,32 @@ class UserMemStore:
             return None
         return json.loads(mem_value)
 
-    def __write_int(self, data_list: str, num: int) -> str:
+    @classmethod
+    def __write_id(cls, data_list: str, num: str) -> str:
         """append an integer to data_list"""
-        return data_list + struct.pack('i', num).hex()
+        return data_list + num
 
-    def __delete_int_by_value(self, data_list: str, value: int) -> str:
-        """delete the integer by value."""
-        total = len(data_list) // self.HEX_NUM_PER_INT
+    def __delete_id_by_value(self, data_list: str, id_str: str) -> str:
+        """Delete an ID by value"""
+        total = len(data_list) // self.BYTE_NUM_PER_ID
         for i in range(total):
-            bytes_chunk = bytes.fromhex(data_list[i * self.HEX_NUM_PER_INT:(i+1) * self.HEX_NUM_PER_INT])
-            num = struct.unpack('i', bytes_chunk)[0]
-            if num == value:
-                return data_list[:i * self.HEX_NUM_PER_INT] + data_list[(i+1) * self.HEX_NUM_PER_INT:]
+            chunk = data_list[i * self.BYTE_NUM_PER_ID:(i + 1) * self.BYTE_NUM_PER_ID]
+            if chunk == id_str:
+                return data_list[:i * self.BYTE_NUM_PER_ID] + data_list[(i + 1) * self.BYTE_NUM_PER_ID:]
         return data_list
 
-    def __get_all_ints(self, data_list: str) -> list[int]:
-        """return all integers in data_list."""
-        ints = []
-        total = len(data_list) // self.HEX_NUM_PER_INT
-        for i in range(total):
-            bytes_chunk = bytes.fromhex(data_list[i * self.HEX_NUM_PER_INT:(i+1) * self.HEX_NUM_PER_INT])
-            value = struct.unpack('i', bytes_chunk)[0]
-            ints.append(value)
-        return ints
+    def __get_all_ids(self, data_list: str) -> list[str]:
+        """Return all IDs in data_list"""
+        total = len(data_list) // self.BYTE_NUM_PER_ID
+        return [data_list[i * self.BYTE_NUM_PER_ID:(i + 1) * self.BYTE_NUM_PER_ID] for i in range(total)]
 
     def __get_ids_in_range(self, data_list: str, start_idx: int, end_idx: int) -> list[str]:
-        total = len(data_list) // self.HEX_NUM_PER_INT
+        total = len(data_list) // self.BYTE_NUM_PER_ID
         start_idx = max(start_idx, 0)
         end_idx = min(end_idx, total)
         if start_idx >= end_idx:
             return []
-        nums = []
-        for idx in range(start_idx, end_idx):
-            bytes_chunk = bytes.fromhex(data_list[idx * self.HEX_NUM_PER_INT:(idx+1) * self.HEX_NUM_PER_INT])
-            nums.append(str(struct.unpack('i', bytes_chunk)[0]))
-        return nums
+        return [
+            data_list[i * self.BYTE_NUM_PER_ID:(i + 1) * self.BYTE_NUM_PER_ID]
+            for i in range(start_idx, end_idx)
+        ]

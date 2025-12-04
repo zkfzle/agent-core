@@ -87,7 +87,7 @@ class RestfulApi(Tool):
                     request_arg=request_params.request_arg,
                 )
             )
-        except (aiohttp.ClientTimeout, asyncio.TimeoutError):
+        except asyncio.TimeoutError:
             return {
                 constant.ERR_CODE: StatusCode.PLUGIN_REQUEST_TIMEOUT_ERROR.code,
                 constant.ERR_MESSAGE: StatusCode.PLUGIN_REQUEST_TIMEOUT_ERROR.errmsg,

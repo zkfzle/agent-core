@@ -43,7 +43,7 @@ async def delete_triple_entries(doc_id: str) -> dict:
     """
     try:
         # Delete from triple index
-        logger.info(f"🔍 Deleting from triple index...")
+        logger.info("Deleting from triple index...")
         triple_indexer = TripleIndexer(
             es_index=CONFIG.triple_es_index,
             es_url=CONFIG.es_url,
@@ -80,7 +80,7 @@ async def index_triples(
         embed_model=embed_model,
     )
 
-    logger.info(f"🔍 正在构建三元组索引...")
+    logger.info("正在构建三元组索引...")
     logger.info(f"   数据文件: {data_path}")
     logger.info(f"   三元组ES URL: {cfg.es_url}")
     logger.info(f"   三元组ES 索引: {cfg.triple_es_index}")

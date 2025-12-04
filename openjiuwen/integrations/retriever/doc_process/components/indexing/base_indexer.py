@@ -224,25 +224,32 @@ class BaseIndexer(BaseESWrapper, metaclass=ABCMeta):
             datastream = itertools.islice(dataset, 100)
 
         cache = []
-        logger.debug("Indexing documents...")
+        processed_nodes = 0
+        processed_docs = 0
+        log_interval = max(1, int(batch_size))
+        logger.info("开始写入索引数据 ...")
         for doc in datastream:
             cache.extend(self.preprocess(doc, self.splitter))
+            processed_docs += 1
 
             if len(cache) > batch_size:
-                logger.debug("Adding %d nodes to index", len(cache))
                 nodes = cache[:batch_size]
                 cache = cache[batch_size:]
                 if self.embed_model is None:
                     await self._bulk_text_nodes(nodes)
                 else:
                     await self._add_with_retry(self.embed_nodes(nodes, batch_size))
+                processed_nodes += len(nodes)
+                if processed_nodes % log_interval == 0:
+                    logger.info("索引进度: 已处理文档 %d 个，节点 %d 个", processed_docs, processed_nodes)
 
         if cache:
-            logger.debug("Adding %d nodes to index", len(cache))
             if self.embed_model is None:
                 await self._bulk_text_nodes(cache)
             else:
                 await self._add_with_retry(self.embed_nodes(cache, batch_size))
+            processed_nodes += len(cache)
+            logger.info("索引进度: 已处理文档 %d 个，节点 %d 个", processed_docs, processed_nodes)
 
         # Final refresh once after all batches
         try:

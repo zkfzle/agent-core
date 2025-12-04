@@ -8,8 +8,14 @@ from llama_index.core.schema import TextNode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
-from openjiuwen.integrations.retriever.retrieval.llms.client import get_llm_client, get_model_name
-from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.read import get_read_prompt, postproc_read
+from openjiuwen.integrations.retriever.retrieval.llms.client import (
+    get_llm_client,
+    get_model_name,
+)
+from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.read import (
+    get_read_prompt,
+    postproc_read,
+)
 from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.reason import (
     get_reason_prompt,
     postproc_reason,
@@ -18,10 +24,14 @@ from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.rewrite i
     get_rewrite_prompt,
     postproc_rewrite,
 )
-from openjiuwen.integrations.retriever.retrieval.search.agents.triple_memory import TripleMemory
+from openjiuwen.integrations.retriever.retrieval.search.agents.triple_memory import (
+    TripleMemory,
+)
 from openjiuwen.integrations.retriever.retrieval.search.es import rrf_nodes
 from openjiuwen.integrations.retriever.retrieval.search.fusion import GraphRetriever
-from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import BaseRetriever as _BaseRetriever
+from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
+    BaseRetriever as _BaseRetriever,
+)
 from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
     Dataset,
     Document,
@@ -29,7 +39,6 @@ from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import 
     TextChunk,
 )
 from openjiuwen.integrations.retriever.retrieval.utils import deduplicate
-
 
 
 class SearchAgent(_BaseRetriever):
@@ -48,7 +57,9 @@ class SearchAgent(_BaseRetriever):
         cfg = config_obj or CONFIG
         if llm_client is None:
             if cfg is None:
-                raise ValueError("llm_client is required for SearchAgent (no default config)")
+                raise ValueError(
+                    "llm_client is required for SearchAgent (no default config)"
+                )
             llm_client = get_llm_client(config=cfg)
         self.llm: BaseModelClient = llm_client
         self._config = cfg
@@ -61,7 +72,9 @@ class SearchAgent(_BaseRetriever):
         self._graph_exp_config = retriever_config.get("graph_expansion_config", {})
         self._retrieval_mode = mode
 
-    def __call__(self, query: Union[str, Iterable[str]], batch_size: int = 8, *args, **kwargs):
+    def __call__(
+        self, query: Union[str, Iterable[str]], batch_size: int = 8, *args, **kwargs
+    ):
         """Not yet implemented"""
         pass
 
@@ -76,11 +89,16 @@ class SearchAgent(_BaseRetriever):
             str: completion output coming from the LLM of choice
         """
         messages = [{"role": "user", "content": prompt}]
-        response = self.llm.invoke(model_name=get_model_name(self._config), messages=messages, temperature=0.0)
+        response = self.llm.invoke(
+            model_name=get_model_name(self._config), messages=messages, temperature=0.0
+        )
         return response.content
 
     async def read(
-        self, query: str, passages: List[TextNode], triple_memory: Union[TripleMemory, None] = None
+        self,
+        query: str,
+        passages: List[TextNode],
+        triple_memory: Union[TripleMemory, None] = None,
     ) -> List[Tuple[str, ...]]:
         """
         Function responsible for running the `read` step within GeAR.
@@ -103,7 +121,9 @@ class SearchAgent(_BaseRetriever):
     async def retrieve(self, query: str) -> List[TextNode]:
         return await self.retriever.async_search(query=query, mode=self._retrieval_mode)
 
-    async def reason(self, query: str, triple_memory: Union[TripleMemory, None]) -> Tuple[bool, str]:
+    async def reason(
+        self, query: str, triple_memory: Union[TripleMemory, None]
+    ) -> Tuple[bool, str]:
         """
         Function responsible for running the `reason` step within GeAR.
 
@@ -120,7 +140,9 @@ class SearchAgent(_BaseRetriever):
         logger.debug("REASON\nprompt=%r\ncompletion=%r", prompt, completion)
         return postproc_reason(completion=completion)
 
-    async def rewrite(self, query: str, triple_memory: Union[TripleMemory, None], reason: str) -> str:
+    async def rewrite(
+        self, query: str, triple_memory: Union[TripleMemory, None], reason: str
+    ) -> str:
         """
         Function responsible for running the query `rewrite` step within GeAR.
 
@@ -146,12 +168,10 @@ class SearchAgent(_BaseRetriever):
 
         return await asyncio.gather(
             *[
-                self.retriever.async_search(
+                self.chunk_retriever.async_search(
                     query=" ".join(tmp_triple),
-                    source="hybrid",
                     mode="hybrid",
                     topk=5,
-                    graph_expansion=False,
                 )
                 for tmp_triple in triples
             ]
@@ -161,7 +181,9 @@ class SearchAgent(_BaseRetriever):
 
         nodes = await asyncio.gather(
             *[
-                self.retriever.triple_retriever.async_search(query=" ".join(tmp_triple), mode="hybrid", topk=1)
+                self.retriever.triple_retriever.async_search(
+                    query=" ".join(tmp_triple), mode="hybrid", topk=1
+                )
                 for tmp_triple in triples
             ]
         )
@@ -187,8 +209,14 @@ class SearchAgent(_BaseRetriever):
 
             running_triples = None
             if self.use_sync:
-                proximal_triples = await self.read(query=running_query, passages=passages, triple_memory=None)
-                logger.debug("After the first-read in turn=%r we get proximal_triples=%r", turn, proximal_triples)
+                proximal_triples = await self.read(
+                    query=running_query, passages=passages, triple_memory=None
+                )
+                logger.debug(
+                    "After the first-read in turn=%r we get proximal_triples=%r",
+                    turn,
+                    proximal_triples,
+                )
                 if len(proximal_triples) == 0:
                     logger.warning(
                         "self.use_sync=%r but no proximal triples are returned. Falling back to NaiveGE ...",
@@ -207,28 +235,68 @@ class SearchAgent(_BaseRetriever):
                 return passages
 
             triples = await self.read(query, passages=passages, triple_memory=memory)
-            logger.debug("After the second-read in turn=%r we get triples=%r", turn, triples)
+            logger.debug("第二次抽取后，turn=%r 得到 triples=%r", turn, triples)
             memory.batch_extend_memory(triples)
-            logger.debug("After extending memory in turn=%r we get memory.memory=%r", turn, memory.memory)
+            logger.debug(
+                "扩展记忆后，turn=%r memory=%r",
+                turn,
+                memory.memory,
+            )
             all_passages.append(passages)
+            logger.info(
+                "Agent 检索回合=%d：本轮候选chunk=%d，累计候选组数=%d",
+                turn,
+                len(passages),
+                len(all_passages),
+            )
 
             answer_or_reason = ""
 
             if len(memory) > 0:
-                is_answerable, answer_or_reason = await self.reason(query, triple_memory=memory)
+                is_answerable, answer_or_reason = await self.reason(
+                    query, triple_memory=memory
+                )
 
                 if is_answerable:
-                    logger.info(f"Success at turn=%r for query=%r", turn, query)
+                    logger.info("Agent 在 turn=%r 成功回答 query=%r", turn, query)
                     break
             if turn >= self.max_iter:
                 break
 
-            next_query = await self.rewrite(query, triple_memory=memory, reason=answer_or_reason)
+            next_query = await self.rewrite(
+                query, triple_memory=memory, reason=answer_or_reason
+            )
             if not next_query:
                 break
             queries.append(next_query)
         ret = await self.link_passages(memory)
-        return rrf_nodes(ret + all_passages)[: self.topk]
+        # 如果 agent 没有返回引用节点，至少回退到已检索到的 chunk 结果，避免空结果
+        combined = rrf_nodes(ret + all_passages)[: self.topk]
+        logger.info(
+            "Agent 结束：引用节点=%d，候选组数=%d，融合后=%d",
+            sum(len(g) for g in ret),
+            len(all_passages),
+            len(combined),
+        )
+        if combined:
+            return combined
+
+        if all_passages:
+            logger.warning(
+                "Agent 未返回引用节点，回退到检索到的 chunk 结果（组数=%d，每组示例大小=%s）",
+                len(all_passages),
+                [len(g) for g in all_passages[:3]],
+            )
+            # rrf_nodes 的参数是 k（融合超参），这里先融合再截断 topk
+            fallback = rrf_nodes(all_passages)[: self.topk]
+            if fallback:
+                return fallback
+            # 保险兜底：简单平铺 chunk
+            flat = [n for group in all_passages for n in group][: self.topk]
+            return flat
+
+        logger.warning("Agent 未检索到任何 chunk，返回空结果")
+        return []
 
     def list_datasets(self, *args, **kwargs):
         return self.retriever.list_datasets(*args, **kwargs)
@@ -242,11 +310,15 @@ class SearchAgent(_BaseRetriever):
         if datasets is None:
             datasets = []
         dataset_set = {(dataset.title, dataset.uri) for dataset in datasets}
-        self_dataset_set = {(dataset.title, dataset.uri) for dataset in self.list_datasets()}
+        self_dataset_set = {
+            (dataset.title, dataset.uri) for dataset in self.list_datasets()
+        }
         if dataset_set and dataset_set != self_dataset_set:
             return []
 
-        results = asyncio.get_event_loop().run_until_complete(self.search(query=question))
+        results = asyncio.get_event_loop().run_until_complete(
+            self.search(query=question)
+        )
         result = RetrievalResult(
             query=question,
             datasets=self.list_datasets(),

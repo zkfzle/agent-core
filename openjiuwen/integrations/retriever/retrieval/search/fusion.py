@@ -10,9 +10,15 @@ from llama_index.core.schema import TextNode
 from llama_index.core.vector_stores import VectorStoreQuery
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
-from openjiuwen.integrations.retriever.retrieval.search.es import BaseRetriever, rrf_nodes
-from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import BaseRetriever as _BaseRetriever
+from openjiuwen.integrations.retriever.retrieval.search.es import (
+    BaseRetriever,
+    rrf_nodes,
+)
+from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
+    BaseRetriever as _BaseRetriever,
+)
 from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
     Dataset,
     Document,
@@ -47,6 +53,7 @@ class GraphRetriever(_BaseRetriever):
         """
         self.chunk_retriever = chunk_retriever
         self.triple_retriever = triple_retriever
+        self._closed = False
 
     def search(
         self,
@@ -74,17 +81,28 @@ class GraphRetriever(_BaseRetriever):
             )
         )
 
+    async def close(self) -> None:
+        """关闭内部 retriever 的 ES 客户端，避免连接未释放。"""
+        if self._closed:
+            return
+        for r in (self.chunk_retriever, self.triple_retriever):
+            if r and hasattr(r, "close"):
+                try:
+                    await r.close()
+                except Exception:
+                    logger.exception("关闭 GraphRetriever 内部连接失败")
+        self._closed = True
+
     async def async_search(
         self,
         query: str | VectorStoreQuery,
         topk: int = 5,
         mode: str | VectorStoreQueryMode = "default",
-        source: Literal["hybrid", "chunks", "triples"] = "hybrid",
-        topk_triples: int | None = None,
         *,
         query_config: dict | None = None,
         graph_expansion: bool = False,
         graph_expansion_config: dict | None = None,
+        score_threshold_vector: float | None = None,
     ) -> list[TextNode]:
         """Search passages.
 
@@ -96,11 +114,6 @@ class GraphRetriever(_BaseRetriever):
                 "default" -> Dense Retrieval;
                 "text_search" -> BM25;
                 "hybrid" -> Dense Retrieval + BM25;
-
-            source (Literal["hybrid", "chunks", "triples"], optional): Data source to retrieve. Defaults to "hybrid".
-                "chunks" -> Search chunks directly;
-                "triples" -> Search chunks by matching triples;
-                "hybrid" -> Search both chunks and triples;
 
             topk_triples (int | None, optional): Number of triples to match. Defaults to `5 * topk`.
             graph_expansion (bool, optional): Whether to do graph expansion. Defaults to False.
@@ -115,27 +128,33 @@ class GraphRetriever(_BaseRetriever):
         Returns:
             list[TextNode]: `topk` chunks.
         """
-        query = self.chunk_retriever.make_query(query, topk=topk, mode=mode, query_config=query_config)
-        if source == "chunks":
-            nodes = await self.chunk_retriever.async_search(query)
+        query = self.chunk_retriever.make_query(
+            query, topk=topk, mode=mode, query_config=query_config
+        )
+        # source 参数向后兼容，目前统一按 chunks + graph 执行
+        nodes = await self.chunk_retriever.async_search(
+            query, score_threshold=score_threshold_vector
+        )
 
-        elif source == "hybrid":
-            nodes, _ = await self._search_hybrid_source(query, topk_triples)
-            nodes = nodes[:topk]
-
-        elif source == "triples":
-            nodes, _ = await self._search_by_triples(query, topk_triples)
-            nodes = nodes[:topk]
-
-        else:
-            raise ValueError(f"unknown {source=}")
-
+        logger.warning(
+            "[graph] 图检索入口：graph_expansion=%s chunk命中=%d topk=%d mode=%s",
+            graph_expansion,
+            len(nodes),
+            topk,
+            mode,
+        )
         if graph_expansion:
+            logger.info(
+                "[graph] 图扩展开启：query=%s 初始chunk数=%d",
+                query.query_str,
+                len(nodes),
+            )
             nodes = await self.graph_expansion(
                 query=query.query_str,
                 chunks=nodes,
                 **(graph_expansion_config or {}),
             )
+            logger.info("[graph] 图扩展完成：扩展后chunk数=%d", len(nodes))
 
         return nodes
 
@@ -151,8 +170,16 @@ class GraphRetriever(_BaseRetriever):
             # initial triples
             chunk_id2triples = await self._fetch_triples(chunks)
             triples = list(itertools.chain.from_iterable(chunk_id2triples.values()))
+            logger.info(
+                "[graph] 从 chunk 索引取三元组：chunks=%d triples=%d (无三元组=%d)",
+                len(chunk_id2triples),
+                len(triples),
+                sum(1 for v in chunk_id2triples.values() if not v),
+            )
 
-        beams = TripleBeamSearch(retriever=self.triple_retriever, **kwargs)(query, triples)
+        beams = TripleBeamSearch(retriever=self.triple_retriever, **kwargs)(
+            query, triples
+        )
 
         if not beams:
             return chunks[:topk] if topk else chunks
@@ -166,6 +193,11 @@ class GraphRetriever(_BaseRetriever):
                 triples.append(beam[col])
 
         new_chunks = await self._fetch_chunks(triples)
+        logger.info(
+            "[graph] 图扩展 beam 结果：三元组=%d 补充chunk=%d",
+            len(triples),
+            len(new_chunks),
+        )
 
         nodes = rrf_nodes([new_chunks, chunks]) if new_chunks else chunks
 
@@ -175,11 +207,16 @@ class GraphRetriever(_BaseRetriever):
         self,
         query: VectorStoreQuery,
         topk_triples: int | None = None,
+        score_threshold_vector: float | None = None,
     ) -> tuple[list[TextNode], list[TextNode]]:
         """Search via hybrid data source and return (chunks, triples)."""
         chunks, (_chunks, triples) = await asyncio.gather(
-            self.chunk_retriever.async_search(query),
-            self._search_by_triples(copy.copy(query), topk_triples),  # shallow copy is enough
+            self.chunk_retriever.async_search(
+                query, score_threshold=score_threshold_vector
+            ),
+            self._search_by_triples(
+                copy.copy(query), topk_triples
+            ),  # shallow copy is enough
         )
         chunks = rrf_nodes([chunks, _chunks])
         return chunks, triples
@@ -256,7 +293,9 @@ class GraphRetriever(_BaseRetriever):
         name: Optional[str] = None,
         dataset_id: Optional[str] = None,
     ):
-        return self.chunk_retriever.list_datasets(name=name) + self.triple_retriever.list_datasets(name=name)
+        return self.chunk_retriever.list_datasets(
+            name=name
+        ) + self.triple_retriever.list_datasets(name=name)
 
     def list_documents(self, dataset_id: str, document_id: str):
         if dataset_id == self.chunk_retriever.es_index:
@@ -266,16 +305,24 @@ class GraphRetriever(_BaseRetriever):
         return []
 
     def search_relevant_documents(
-        self, question: str, datasets: Optional[List[Dataset]] = None, top_k: int = 5, graph_expansion: bool = False
+        self,
+        question: str,
+        datasets: Optional[List[Dataset]] = None,
+        top_k: int = 5,
+        graph_expansion: bool = False,
     ) -> RetrievalResult:
         if datasets is None:
             datasets = []
         dataset_set = {(dataset.title, dataset.uri) for dataset in datasets}
-        self_dataset_set = {(dataset.title, dataset.uri) for dataset in self.list_datasets()}
+        self_dataset_set = {
+            (dataset.title, dataset.uri) for dataset in self.list_datasets()
+        }
         if dataset_set and dataset_set != self_dataset_set:
             return []
 
-        results = self.search(query=question, topk=top_k, graph_expansion=graph_expansion)
+        results = self.search(
+            query=question, topk=top_k, graph_expansion=graph_expansion
+        )
         result = RetrievalResult(
             query=question,
             datasets=self.list_datasets(),

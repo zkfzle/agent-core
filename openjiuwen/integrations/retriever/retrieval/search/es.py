@@ -3,6 +3,7 @@
 import asyncio
 import copy
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any, List, Optional
 
 from elasticsearch import AsyncElasticsearch
@@ -46,6 +47,29 @@ except Exception:  # pragma: no cover
         @property
         def es(self) -> ElasticsearchStore:
             return self._es
+
+
+@dataclass
+class SearchOptions:
+    """检索可选项，便于规整参数数量。"""
+
+    custom_query: Callable[[dict[str, Any], str | None], dict[str, Any]] | None = None
+    query_config: dict | None = None
+    score_threshold: float | None = None
+
+
+def _merge_legacy_options(options: SearchOptions | None, legacy_kwargs: dict[str, Any]) -> SearchOptions:
+    """兼容旧参数写法，将 legacy kwargs 合并到 SearchOptions。"""
+    opts = options or SearchOptions()
+    if "custom_query" in legacy_kwargs:
+        opts.custom_query = legacy_kwargs.pop("custom_query")
+    if "query_config" in legacy_kwargs:
+        opts.query_config = legacy_kwargs.pop("query_config")
+    if "score_threshold" in legacy_kwargs:
+        opts.score_threshold = legacy_kwargs.pop("score_threshold")
+    if legacy_kwargs:
+        logger.warning("unused search kwargs: %r", legacy_kwargs)
+    return opts
 
 
 def rrf_nodes(rankings: list[list[TextNode]], k: int = 60) -> list[TextNode]:
@@ -189,9 +213,8 @@ class BaseRetriever(BaseESWrapper, _BaseRetriever):
         query: str | VectorStoreQuery,
         topk: int = 5,
         mode: str | VectorStoreQueryMode = VectorStoreQueryMode.DEFAULT,
-        custom_query: Callable[[dict[str, Any], str | None], dict[str, Any]] = None,
-        *,
-        query_config: dict | None = None,
+        options: SearchOptions | None = None,
+        **legacy_kwargs: Any,
     ) -> list[TextNode]:
         """Search.
 
@@ -213,14 +236,9 @@ class BaseRetriever(BaseESWrapper, _BaseRetriever):
             list[TextNode]: Top K retrieval results.
 
         """
+        opts = _merge_legacy_options(options, legacy_kwargs)
         return asyncio.get_event_loop().run_until_complete(
-            self.async_search(
-                query=query,
-                topk=topk,
-                mode=mode,
-                custom_query=custom_query,
-                query_config=query_config,
-            )
+            self.async_search(query=query, topk=topk, mode=mode, options=opts)
         )
 
     async def async_search(
@@ -228,11 +246,12 @@ class BaseRetriever(BaseESWrapper, _BaseRetriever):
         query: str | VectorStoreQuery,
         topk: int = 5,
         mode: str | VectorStoreQueryMode = VectorStoreQueryMode.DEFAULT,
-        custom_query: Callable[[dict[str, Any], str | None], dict[str, Any]] = None,
-        query_config: dict | None = None,
+        options: SearchOptions | None = None,
+        **legacy_kwargs: Any,
     ) -> list[TextNode]:
         """Asynchronous search."""
-        query = self.make_query(query, topk=topk, mode=mode, query_config=query_config)
+        opts = _merge_legacy_options(options, legacy_kwargs)
+        query = self.make_query(query, topk=topk, mode=mode, query_config=opts.query_config)
         logger.debug(
             "[BaseRetriever.async_search] index=%r mode=%r topk=%r has_embed=%r",
             self.es_index,
@@ -242,9 +261,11 @@ class BaseRetriever(BaseESWrapper, _BaseRetriever):
         )
 
         if query.mode == VectorStoreQueryMode.DEFAULT:
-            res = await self.es_dense.aquery(query, custom_query=custom_query)
+            res = await self.es_dense.aquery(query, custom_query=opts.custom_query)
             nodes = _attach_scores(_extract_nodes(res.nodes), getattr(res, "similarities", None))
             logger.debug("[BaseRetriever.async_search] vector hits=%d", len(nodes))
+            if opts.score_threshold is not None:
+                nodes = [n for n in nodes if float(n.metadata.get("score", 0.0) or 0.0) >= opts.score_threshold]
             # 若向量检索为空，自动降级 BM25 兜底，避免调用侧拿到空列表
             if not nodes:
                 res_bm25 = await self.es_bm25.aquery(
@@ -253,26 +274,36 @@ class BaseRetriever(BaseESWrapper, _BaseRetriever):
                         similarity_top_k=query.similarity_top_k,
                         mode=VectorStoreQueryMode.TEXT_SEARCH,
                     ),
-                    custom_query=custom_query,
+                    custom_query=opts.custom_query,
                 )
                 nodes = _attach_scores(_extract_nodes(res_bm25.nodes), getattr(res_bm25, "similarities", None))
                 logger.debug("[BaseRetriever.async_search] vector empty, bm25 fallback hits=%d", len(nodes))
             return nodes
 
         if query.mode == VectorStoreQueryMode.TEXT_SEARCH:
-            res = await self.es_bm25.aquery(query, custom_query=custom_query)
+            res = await self.es_bm25.aquery(query, custom_query=opts.custom_query)
             logger.debug("[BaseRetriever.async_search] bm25 hits=%d", len(res.nodes))
             return _attach_scores(_extract_nodes(res.nodes), getattr(res, "similarities", None))
 
         if query.mode == VectorStoreQueryMode.HYBRID:
-            return await self._hybrid_search(query, custom_query=custom_query)
+            # hybrid 下不对阈值做过滤
+            return await self._hybrid_search(query, custom_query=opts.custom_query, score_threshold_vector=None)
 
         raise NotImplementedError(f"unsupported {query.mode=}")
+
+    async def close(self) -> None:
+        """Release underlying ES client (aiohttp session)."""
+        try:
+            if self.es_client:
+                await self.es_client.close()
+        except Exception:
+            logger.exception("Failed to close ES client for index %s", self.es_index)
 
     async def _hybrid_search(
         self,
         query: VectorStoreQuery,
         custom_query: Callable[[dict[str, Any], str | None], dict[str, Any]] = None,
+        score_threshold_vector: float | None = None,
     ) -> list[TextNode]:
         _query_mode = query.mode  # backup
 
@@ -292,6 +323,10 @@ class BaseRetriever(BaseESWrapper, _BaseRetriever):
         # 写入各自分数，便于后续阈值过滤
         nodes_dense = _attach_scores(nodes_dense, getattr((await task_dense), "similarities", None))
         nodes_bm25 = _attach_scores(nodes_bm25, getattr((await task_bm25), "similarities", None))
+        if score_threshold_vector is not None:
+            nodes_dense = [
+                n for n in nodes_dense if float(n.metadata.get("score", 0.0) or 0.0) >= score_threshold_vector
+            ]
         logger.debug("[BaseRetriever._hybrid_search] dense_hits=%d bm25_hits=%d", len(nodes_dense), len(nodes_bm25))
 
         query.mode = _query_mode  # restore
@@ -390,20 +425,22 @@ class BaseChunkRetriever(BaseRetriever):
         query: str | VectorStoreQuery,
         topk: int = 5,
         mode: str | VectorStoreQueryMode = VectorStoreQueryMode.DEFAULT,
-        custom_query: Callable[[dict[str, Any], str | None], dict[str, Any]] = None,
-        **kwargs: Any,
+        options: SearchOptions | None = None,
+        custom_query: Callable[[dict[str, Any], str | None], dict[str, Any]] | None = None,
+        **legacy_kwargs: Any,
     ) -> list[TextNode]:
-        if custom_query is None:
+        opts = self._merge_legacy_options(legacy_kwargs, custom_query=custom_query, options=options)
+
+        # 默认在 TEXT/HYBRID 模式下对标题做匹配
+        if opts.custom_query is None:
             if isinstance(query, VectorStoreQuery):
                 mode = query.mode
-
             if mode in [VectorStoreQueryMode.TEXT_SEARCH, VectorStoreQueryMode.HYBRID]:
-                custom_query = self.should_match_title
+                opts.custom_query = self.should_match_title
 
         return await super().async_search(
             query=query,
             topk=topk,
             mode=mode,
-            custom_query=custom_query,
-            **kwargs,
+            options=opts,
         )

@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.doc_process.components.chunking.text_preprocessor import (
     PreprocessingPipeline,
     URLEmailRemover,
@@ -47,6 +48,7 @@ def _split_text(text: str, chunk_size: int, chunk_overlap: int) -> List[Dict]:
     if chunk_overlap < 0:
         raise ValueError("chunk_overlap 不能为负数")
     step = max(1, chunk_size - chunk_overlap)
+    progress_step = max(1, chunk_size // 10)
     chunks = []
     start = 0
     while start < len(text):
@@ -61,6 +63,8 @@ def _split_text(text: str, chunk_size: int, chunk_overlap: int) -> List[Dict]:
                     "end_char_idx": end,
                 }
             )
+            if len(chunks) % progress_step == 0:
+                logger.info("分块进度: 已生成 %d 块", len(chunks))
         start += step
     return chunks
 
@@ -91,6 +95,13 @@ async def chunk_doc(
 
     if not doc_id:
         raise ValueError("doc_id is required for chunk_doc")
+    logger.info(
+        "开始分块: doc_id=%s paragraphs=%d chunk_size=%d overlap%%=%.1f",
+        doc_id,
+        len(paragraphs or []),
+        chunk_size,
+        chunk_overlap_percent,
+    )
     # 计算重叠字符数
     overlap = int(max(0.0, min(chunk_overlap_percent, 100.0)) * float(chunk_size) / 100.0)
     overlap = min(overlap, max(chunk_size - 1, 0))
@@ -108,6 +119,7 @@ async def chunk_doc(
     resolved_doc_id = doc_id
     for c in chunks:
         c["doc_id"] = resolved_doc_id
+    logger.info("分块完成: doc_id=%s chunks=%d", doc_id, len(chunks))
     return chunks
 
 

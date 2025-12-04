@@ -98,6 +98,11 @@ async def build_doc_index_from_chunks(
     if index_config.use_graph and getattr(cfg, "llm_client_instance", None) is None and llm_client is None:
         raise ValueError("llm_client is required when use_graph=True (SDK 不再自动创建 LLM 客户端)")
 
+    # 索引名派生并检查冲突（忽略 YAML）
+    chk_idx, tpl_idx = _index_names(index_config.kb_id, index_config.chunk_index, index_config.triple_index)
+    if chk_idx == tpl_idx:
+        raise ValueError("chunk_index and triple_index cannot be the same")
+
     logger.info(
         "Start indexing kb_id=%s doc_id=%s index_type=%s use_graph=%s chunk_count=%s",
         index_config.kb_id,
@@ -112,8 +117,8 @@ async def build_doc_index_from_chunks(
         kb_id=index_config.kb_id,
         index_type=index_config.index_type,
         use_graph=index_config.use_graph,
-        chunk_index=index_config.chunk_index,
-        triple_index=index_config.triple_index,
+        chunk_index=chk_idx,
+        triple_index=tpl_idx,
         external_config=cfg,
     )
 
@@ -152,7 +157,7 @@ async def build_doc_index_from_chunks(
         )
         await build_mod.build_grag_index(config=grag_config_obj)
         logger.info(
-            "✅ 索引构建完成 kb_id=%s doc_id=%s (use_graph=%s)", index_config.kb_id, doc_id, index_config.use_graph
+            "索引构建完成 kb_id=%s doc_id=%s (use_graph=%s)", index_config.kb_id, doc_id, index_config.use_graph
         )
         return True
     finally:

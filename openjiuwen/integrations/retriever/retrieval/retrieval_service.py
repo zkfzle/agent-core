@@ -129,6 +129,7 @@ async def search_kb(kb_id: str, query: KBQuery) -> List[str]:
     )
     graph_ret = GraphRetriever(chunk_ret, triple_ret)
 
+    score_thr = None if mode in {"text_search", "hybrid"} else query.score_threshold
     if query.use_agent:
         agent = SearchAgent(
             retriever=graph_ret,
@@ -147,11 +148,16 @@ async def search_kb(kb_id: str, query: KBQuery) -> List[str]:
     nodes = await graph_ret.async_search(
         query=query.query,
         topk=query.topk,
-        source=source,
         mode=mode,
         graph_expansion=query.graph_expansion,
+        score_threshold_vector=score_thr,
     )
-    logger.debug("[search_kb] graph hits=%d", len(nodes))
+    logger.debug(
+        "[search_kb] graph search done: use_graph=%s graph_expansion=%s hits=%d",
+        query.use_graph,
+        query.graph_expansion,
+        len(nodes),
+    )
     nodes = _filter_by_score(nodes)
     return [n.text for n in nodes[: query.topk]]
 
@@ -192,17 +198,16 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
         raise ValueError("config_obj (GraphRAGConfig) is required for search")
     chunk_idx, triple_idx = _attach_indices(cfg, kb_id, index_type="hybrid", use_graph=query.use_graph)
     mode = _mode_from_retrieval_type(query.retrieval_type)
-    source = _normalize_source(query.use_graph, query.source)
     logger.debug(
-        "[_search_kb_nodes] kb_id=%r retrieval_type=%s mode=%s use_graph=%r source=%s topk=%d",
+        "[_search_kb_nodes] kb_id=%r retrieval_type=%s mode=%s use_graph=%r topk=%d",
         kb_id,
         query.retrieval_type,
         mode,
         query.use_graph,
-        source,
         query.topk,
     )
     logger.debug("[_search_kb_nodes] chunk_idx=%r triple_idx=%r", chunk_idx, triple_idx)
+    logger.debug("[_search_kb_nodes] graph_expansion=%s use_agent=%s", query.graph_expansion, query.use_agent)
 
     embed = query.embed_model or getattr(cfg, "embed_model_instance", None)
     logger.debug("[_search_kb_nodes] embed_model provided=%r", embed is not None)
@@ -213,7 +218,8 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
     )
 
     def _filter_by_score(nodes):
-        if query.score_threshold is None:
+        # bm25 / hybrid 不使用阈值
+        if query.score_threshold is None or mode in {"text_search", "hybrid"}:
             return nodes
         return [n for n in nodes if _score_val(n) >= query.score_threshold]
 
@@ -224,15 +230,22 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
                 return []
             return []
 
+        # bm25 / hybrid 均不传阈值
+        score_thr = None if mode in {"text_search", "hybrid"} else query.score_threshold
+
         if not query.use_graph:
-            nodes = await chunk_ret.async_search(query=query.query, topk=query.topk, mode=mode)
+            nodes = await chunk_ret.async_search(
+                query=query.query, topk=query.topk, mode=mode, score_threshold=score_thr
+            )
             logger.debug("[_search_kb_nodes] chunk-only hits=%d", len(nodes))
             return _filter_by_score(nodes)
 
         # 图检索前也检查 triple 索引
         if not await _index_exists(cfg.es_url, triple_idx):
             # triple 不存在，降级为 chunk
-            nodes = await chunk_ret.async_search(query=query.query, topk=query.topk, mode=mode)
+            nodes = await chunk_ret.async_search(
+                query=query.query, topk=query.topk, mode=mode, score_threshold=score_thr
+            )
             logger.debug("[_search_kb_nodes] triple missing, chunk fallback hits=%d", len(nodes))
             return _filter_by_score(nodes)
 
@@ -255,14 +268,21 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
             logger.debug("[_search_kb_nodes] agent hits=%d", len(nodes))
             return _filter_by_score(nodes)
 
+        logger.warning(
+            "[graph] 进入图检索：kb_id=%s graph_expansion=%s use_graph=%s mode=%s",
+            kb_id,
+            query.graph_expansion,
+            query.use_graph,
+            mode,
+        )
         nodes = await graph_ret.async_search(
             query=query.query,
             topk=query.topk,
-            source=source,
             mode=mode,
             graph_expansion=query.graph_expansion,
+            score_threshold_vector=score_thr,
         )
-        logger.debug("[_search_kb_nodes] graph hits=%d", len(nodes))
+        logger.debug("[_search_kb_nodes] 图检索命中=%d", len(nodes))
         return _filter_by_score(nodes)
 
     except NotFoundError:
@@ -275,6 +295,21 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
             except Exception:
                 return []
         return []
+    finally:
+        # 释放 ES 连接
+        try:
+            await chunk_ret.close()
+        except Exception:
+            logger.debug("关闭 chunk retriever 连接失败", exc_info=True)
+        if query.use_graph:
+            try:
+                await triple_ret.close()
+            except Exception:
+                logger.debug("关闭 triple retriever 连接失败", exc_info=True)
+            try:
+                await graph_ret.close()
+            except Exception:
+                logger.debug("关闭 graph retriever 连接失败", exc_info=True)
 
 
 async def search_kb_multi(kb_ids: List[str], query: KBQuery) -> List[str]:

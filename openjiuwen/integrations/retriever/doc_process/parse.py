@@ -27,6 +27,7 @@ await parse_doc(doc, parsing_strategy=None, doc_id=None)
 import os
 from typing import Any, Dict, List, Optional
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.doc_process.components.parsing import local_file_parser
 
 
@@ -52,12 +53,18 @@ async def parse_doc(
     if not doc_id:
         raise ValueError("doc_id is required for parse_doc")
 
+    logger.info("开始解析文件: path=%s doc_id=%s", doc, doc_id)
+
     rows = await local_file_parser.parse_file(doc, fname, doc_id)
     # 规范字段：透传 doc_id，不再返回 space_id/title
-    for r in rows:
+    total = len(rows)
+    for idx, r in enumerate(rows, start=1):
         r.pop("title", None)
         r.pop("space_id", None)
         r["doc_id"] = doc_id
+        if idx % 100 == 0:
+            logger.info("解析进度: %d/%d", idx, total)
+    logger.info("解析完成: doc_id=%s paragraphs=%d", doc_id, len(rows))
     return rows
 
 

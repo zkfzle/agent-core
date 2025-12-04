@@ -59,7 +59,10 @@ class APIEmbedModel(EmbedModel):
             raise ValueError(f"{len(texts) - len(non_empty)} chunks are empty while embedding")
         if not non_empty:
             raise ValueError("All texts are empty after filtering")
+        # Respect caller batch_size but never exceed configured max_batch_size (helps avoid 413 errors).
         bsz = batch_size or self.max_batch_size or 1
+        if self.max_batch_size:
+            bsz = min(bsz, self.max_batch_size)
         all_embeddings: list[list[float]] = []
         for i in range(0, len(non_empty), bsz):
             j = i + bsz

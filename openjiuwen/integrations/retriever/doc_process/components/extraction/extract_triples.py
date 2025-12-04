@@ -85,14 +85,20 @@ async def extract_triples(
     config_obj=None,
     llm_client: BaseModelClient | None = None,
 ):
-    logger.info(f"🔍 正在提取三元组...")
+    logger.info("正在提取三元组...")
     cfg = config_obj or CONFIG
     if cfg is None:
         raise ValueError("config_obj (GraphRAGConfig) is required")
     logger.info(f"   ES URL: {cfg.es_url}")
     logger.info(f"   ES 索引: {cfg.chunk_es_index}")
-    logger.info(f"   Chunk文件: {chunk_file_path}")
-    logger.info(f"   输出文件: {output_path}")
+    chunk_src = (
+        f"ES 索引 {cfg.chunk_es_index}（未指定 chunk_file_path）"
+        if chunk_file_path is None
+        else f"chunk 文件: {chunk_file_path}"
+    )
+    out_desc = "写入 ES triple 索引" if output_path is None else f"输出文件: {output_path}"
+    logger.info(f"   Chunk来源: {chunk_src}")
+    logger.info(f"   输出去向: {out_desc}")
     logger.info("")
 
     llm_client = llm_client or getattr(cfg, "llm_client_instance", None)
@@ -110,5 +116,5 @@ async def extract_triples(
         model_name=model_name,
     )
 
-    logger.info("✅ 三元组提取完成！")
+    logger.info("三元组提取完成。")
     return chunk2triples

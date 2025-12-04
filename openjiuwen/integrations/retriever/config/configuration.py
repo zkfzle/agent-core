@@ -90,8 +90,9 @@ class GraphRAGConfig:
         self.data_dir = cfg.get("data_dir")
         self.input_data_file = cfg.get("input_data_file")
 
-        self.chunk_es_index = cfg.get("chunk_es_index")
-        self.triple_es_index = cfg.get("triple_es_index")
+        # 索引名由调用侧/IndexConfig 决定，忽略 YAML 中的同名字段
+        self.chunk_es_index = None
+        self.triple_es_index = None
 
         self.precomputed_chunks = _to_bool(cfg.get("precomputed_chunks"), default=False)
 

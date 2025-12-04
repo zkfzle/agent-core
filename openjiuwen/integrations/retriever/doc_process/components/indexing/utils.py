@@ -48,6 +48,7 @@ def prepare_triples(
 
         if not triples:
             empty_triples_count += 1
+            logger.debug("chunk_id=%s has no extracted triples (empty so far: %d)", chunk_id, empty_triples_count)
             continue
 
         for triple in triples:
@@ -67,4 +68,3 @@ def prepare_triples(
                     "file_id": file_id,  # Add file_id for deletion queries
                 },
             }
-        logger.debug("number of empty triples: %d", empty_triples_count)

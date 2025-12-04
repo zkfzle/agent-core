@@ -1,8 +1,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
-import time
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from openjiuwen.core.common.logging import logger
@@ -26,83 +24,6 @@ class GRAGConfig:
     llm_client: Optional[BaseModelClient] = field(default=None)
 
 
-class EnvironmentChecker:
-    """环境检查器"""
-
-    def __init__(self, config_obj):
-        self.config = config_obj
-
-    def check_elasticsearch(self) -> bool:
-        """检查Elasticsearch连接"""
-        try:
-            import requests
-
-            response = requests.get(f"{self.config.es_url}/_cluster/health", timeout=5)
-            if response.status_code == 200:
-                logger.info("✅ Elasticsearch连接正常")
-                return True
-            else:
-                logger.error("❌ Elasticsearch连接失败: %r", response.status_code)
-                return False
-        except ImportError:
-            logger.error("❌ 缺少requests库，请安装: pip install requests")
-            raise
-        except Exception as e:
-            logger.error("❌ Elasticsearch连接失败: %r", e)
-            raise
-
-    def check_input_file(self) -> bool:
-        """检查输入文件"""
-        input_file = self.config.get_full_data_path(self.config.input_data_file)
-        if not input_file.exists():
-            logger.error("❌ 输入文件不存在: %r", input_file)
-            return False
-        logger.info("✅ 输入文件存在: %r", input_file)
-        return True
-
-    def check_data_directory(self, project_root: Path) -> bool:
-        """检查数据目录"""
-        data_dir = project_root / self.config.data_dir
-        if not data_dir.exists():
-            logger.error("❌ 数据目录不存在: %r", data_dir)
-            return False
-        logger.info("✅ 数据目录存在: %r", data_dir)
-        return True
-
-    def run_all_checks(self, project_root: Path) -> bool:
-        """运行所有环境检查"""
-        logger.info("🔍 检查环境配置...")
-
-        checks = [
-            self.check_elasticsearch,
-            self.check_input_file,
-            lambda: self.check_data_directory(project_root),
-        ]
-
-        return all(check() for check in checks)
-
-
-async def run_function(func: callable, description: str, parameters: Optional[dict] = None) -> bool:
-    """运行函数并显示结果"""
-    logger.info("\n🔄 %r", description)
-    logger.info("   函数: %r", func.__name__)
-
-    if parameters:
-        logger.info("   参数: %r", parameters)
-
-    start_time = time.time()
-    try:
-        # 调用函数，如果有参数则传递参数
-        result = await func(**parameters)
-        end_time = time.time()
-        log_msg = f"✅ {description} 成功 (耗时: {end_time - start_time:.2f}秒)"
-        logger.info(log_msg)
-    except Exception as e:
-        logger.exception("❌ %r 执行异常", description)
-        raise
-
-    return result
-
 
 class ResultVerifier:
     """结果验证器"""
@@ -112,7 +33,7 @@ class ResultVerifier:
 
     def verify_indices(self) -> None:
         """验证索引构建结果"""
-        logger.info("\n🔍 验证构建结果...")
+        logger.info("\n验证构建结果...")
 
         try:
             import requests
@@ -123,14 +44,14 @@ class ResultVerifier:
                 response = requests.get(f"{self.config.es_url}/{index_name}/_count")
                 if response.status_code == 200:
                     count = response.json()["count"]
-                    logger.info("✅ {index_desc}文档数: %r", count)
+                    logger.info("{index_desc}文档数: %r", count)
                 else:
-                    logger.error("❌ {index_desc}检查失败: %r", response.status_code)
+                    logger.error("{index_desc}检查失败: %r", response.status_code)
 
         except ImportError:
-            logger.warning("⚠️ 缺少requests库，无法验证结果")
+            logger.warning("缺少requests库，无法验证结果")
         except Exception as e:
-            logger.warning("⚠️ 验证结果时出错: %r", e)
+            logger.warning("验证结果时出错: %r", e)
 
 
 class GraphRAGIndexBuilder:
@@ -142,27 +63,12 @@ class GraphRAGIndexBuilder:
         if self.config is None:
             raise ValueError("config_obj (GraphRAGConfig) is required")
         self.file = file
-
-        # 自动找到项目根目录
-        self.project_root = self._find_project_root()
-
         # 初始化组件
-        self.env_checker = EnvironmentChecker(self.config)
         self.result_verifier = ResultVerifier(self.config)
-
-    @staticmethod
-    def _find_project_root() -> Path:
-        """自动找到项目根目录（包含 pyproject.toml 的目录）"""
-        current_dir = Path(__file__).parent
-        while current_dir != current_dir.parent:
-            if (current_dir / "pyproject.toml").exists():
-                return current_dir
-            current_dir = current_dir.parent
-        raise RuntimeError("找不到项目根目录（包含 pyproject.toml 的目录）")
 
     def print_header(self) -> None:
         """打印脚本头部信息"""
-        logger.info("🚀 索引构建脚本")
+        logger.info("索引构建脚本")
         logger.info("=" * 60)
         self.config.print_config()
 
@@ -176,11 +82,6 @@ class GraphRAGIndexBuilder:
         if not getattr(self.config, "use_graph_index", True):
             skip_triple_extraction = True
             skip_triple_index = True
-
-        # 检查环境
-        # if not self.env_checker.run_all_checks(self.project_root):
-        #     logger.error("❌ 环境检查失败，退出构建")
-        #     return False
 
         async def build_text_index():
             await index(
@@ -216,7 +117,7 @@ class GraphRAGIndexBuilder:
         # 验证结果
         self.result_verifier.verify_indices()
 
-        logger.info("\n🎉 索引构建完成！")
+        logger.info("索引构建完成！")
         logger.info("=" * 60)
 
 
@@ -251,8 +152,8 @@ async def build_grag_index(config: GRAGConfig) -> bool:
         )
 
     except KeyboardInterrupt:
-        logger.info("\n⚠️ 构建被用户中断")
+        logger.info("\n 构建被用户中断")
         raise
     except Exception as e:
-        logger.exception("❌ 构建过程中发生未预期的错误")
+        logger.exception("构建过程中发生未预期的错误", e)
         raise

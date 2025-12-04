@@ -130,5 +130,19 @@ class KnowledgeBaseRetriever:
         )
         return await retrieval_service.search_kb_multi_with_source(kb_ids=kb_ids, query=query_obj)
 
+    async def close(self) -> None:
+        """Release underlying ES clients of internal retrievers, if any."""
+        try:
+            # Base retrievers expose async close
+            for r in (
+                getattr(self, "chunk_retriever", None),
+                getattr(self, "triple_retriever", None),
+                getattr(self, "graph_retriever", None),
+            ):
+                if r and hasattr(r, "close"):
+                    await r.close()
+        except Exception:
+            logger.exception("Failed to close KnowledgeBaseRetriever resources")
+
 
 __all__ = ["KnowledgeBaseRetriever", "KBQuery"]

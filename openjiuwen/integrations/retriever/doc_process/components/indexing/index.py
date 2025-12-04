@@ -84,7 +84,7 @@ async def delete_text_entries(doc_id: str):
     """
     try:
         # Delete from text index
-        logger.info(f"🔍 Deleting from text index...")
+        logger.info("删除文本索引中的旧数据...")
         text_indexer = TextIndexer(
             es_index=CONFIG.chunk_es_index,
             es_url=CONFIG.es_url,
@@ -92,11 +92,10 @@ async def delete_text_entries(doc_id: str):
         text_deleted_count = await text_indexer.async_delete_nodes(doc_id)
 
         # Log results
-        logger.info(f"✅ Text chunk deletion completed successfully:")
-        logger.info(f"   Text index: {text_deleted_count} chunks deleted")
+        logger.info("文本索引删除完成: 删除条数=%s", text_deleted_count)
 
     except Exception as e:
-        logger.error(f"❌ Error during text chunk deletion: {e}")
+        logger.error("删除文本索引时出错: %s", e)
         raise e
 
 
@@ -128,7 +127,7 @@ async def index(
     chunk_unit = getattr(cfg, "chunk_unit", None) or "token"
 
     logger.info(
-        "Building text index: chunk_size=%s overlap=%s unit=%s index_type=%s",
+        "开始构建文本索引: chunk_size=%s overlap=%s unit=%s index_type=%s",
         chunk_size,
         chunk_overlap,
         chunk_unit,
@@ -154,14 +153,13 @@ async def index(
         if tokenizer and hasattr(tokenizer, "model_max_length") and tokenizer.model_max_length < float("inf"):
             chunk_size = tokenizer.model_max_length
             logger.info(
-                "Input files are configured to be read as precomputed chunks; "
-                f"setting chunk size to tokenizer max length: {chunk_size}"
+                "已配置为预生成分块，自动将 chunk_size 调整为 tokenizer 上限: %s",
+                chunk_size,
             )
         else:
             chunk_size = 100000
             logger.warning(
-                "Input files are configured to be read as precomputed chunks; setting chunk size to 100000, overlap 0; "
-                "ensure that the chunks fit your embedding model/tokenizer."
+                "已配置为预生成分块；将 chunk_size 设为 100000、overlap=0；请确认与 embedding/tokenizer 限制兼容。"
             )
 
     # 初始化分块器（即使 bm25 也需要 tokenizer）
@@ -180,27 +178,34 @@ async def index(
     # 初始化文本预处理管道
     preprocessing_pipeline = None
     if cfg.enable_text_preprocessing and not cfg.precomputed_chunks:
-        logger.info("📝 Configuring text preprocessing pipeline...")
+        logger.info("Configuring text preprocessing pipeline...")
         preprocessing_pipeline = PreprocessingPipeline()
 
         if cfg.remove_urls or cfg.remove_emails:
             url_email_remover = URLEmailRemover(remove_urls=cfg.remove_urls, remove_emails=cfg.remove_emails)
             preprocessing_pipeline.add_preprocessor(url_email_remover)
-            logger.info(f"   ✓ URL/Email remover added (URLs: {cfg.remove_urls}, Emails: {cfg.remove_emails})")
+            logger.info(
+                "   URL/Email remover added (URLs: %s, Emails: %s)",
+                cfg.remove_urls,
+                cfg.remove_emails,
+            )
 
         if cfg.normalize_special_characters:
             special_char_normalizer = SpecialCharacterNormalizer()
             preprocessing_pipeline.add_preprocessor(special_char_normalizer)
-            logger.info(f"   ✓ Special character normalizer added")
+            logger.info("   Special character normalizer added")
 
         if cfg.normalize_whitespace:
             whitespace_normalizer = WhitespaceNormalizer(preserve_single_newline=cfg.preserve_single_newline)
             preprocessing_pipeline.add_preprocessor(whitespace_normalizer)
-            logger.info(f"   ✓ Whitespace normalizer added (preserve newlines: {cfg.preserve_single_newline})")
+            logger.info(
+                "   Whitespace normalizer added (preserve newlines: %s)",
+                cfg.preserve_single_newline,
+            )
 
         logger.info(f"   Total preprocessors: {len(preprocessing_pipeline)}")
     else:
-        logger.info("📝 Text preprocessing is disabled")
+        logger.info("未开启文本预处理")
 
     # 初始化索引器
     es = TextIndexer(
@@ -215,12 +220,12 @@ async def index(
     if index_type == "vector":
         setattr(es, "vector_only", True)
 
-    logger.info("Reading data...")
+    logger.info("读取输入数据...")
     if from_file is not None:
         if cfg.precomputed_chunks:
             dataset = process_precomputed_chunks(from_file)
             logger.info(
-                "✅ Loaded %d precomputed chunks from file: %s (ID: %s)",
+                "读取预生成分块 %d 条，文件: %s (ID: %s)",
                 len(dataset),
                 from_file["filepath"],
                 from_file["id"],
@@ -228,18 +233,21 @@ async def index(
         else:
             dataset = await parse_file(from_file["filepath"], from_file["filename"], from_file["id"])
             logger.info(
-                "✅ Loaded %d documents from file: %s (ID: %s)", len(dataset), from_file["filepath"], from_file["id"]
+                "读取原始文档 %d 条，文件: %s (ID: %s)",
+                len(dataset),
+                from_file["filepath"],
+                from_file["id"],
             )
     else:
         # 获取数据文件路径
         data_path = cfg.get_data_path(cfg.input_data_file)
         dataset = load_jsonl(data_path)
 
-    logger.info("Building text index...")
+    logger.info("开始写入文本索引...")
     await es.build_index(
         dataset,
         batch_size=cfg.batch_size,
         debug=False,
     )
 
-    logger.info("Text index build completed.")
+    logger.info("文本索引构建完成。")

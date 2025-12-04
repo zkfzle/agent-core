@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, Optional
 
+from openjiuwen.agent.utils import MessageUtils
 from openjiuwen.core.agent.controller.controller import BaseController
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent.task.task import Task, TaskStatus
@@ -168,6 +169,8 @@ class IntentDetectionController(BaseController):
         """
         # 1. Intent detection
         intent = await self.intent_detection(message, runtime)
+
+        MessageUtils.add_user_message(message.get_display_content(), self._context_engine, runtime)
 
         # 2. Route processing based on intent type
         if intent.intent_type == IntentType.ExecNewTask:

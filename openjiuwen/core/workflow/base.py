@@ -511,19 +511,22 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             self._execute_with_timeout(stream_process, timeout, StatusCode.WORKFLOW_STREAM_TIMEOUT))
 
         interaction_chuck_list = []
+        chunks = []
         async for chunk in runtime.stream_writer_manager().stream_output(frame_timeout):
             yield chunk
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 interaction_chuck_list.append(chunk)
+            chunks.append(chunk)
         try:
             await task
             results = runtime.state().get_outputs(self._end_comp_id)
-            self._add_messages_to_context(inputs, interaction_chuck_list, context)
             if results:
                 self._add_messages_to_context(inputs, results, context)
                 yield OutputSchema(type="workflow_final", index=0, payload=results)
             elif interaction_chuck_list:
                 self._add_messages_to_context(inputs, interaction_chuck_list, context)
+            else:
+                self._add_messages_to_context(inputs, chunks, context)
         except JiuWenBaseException as e:
             raise e
         except Exception as e:
@@ -595,7 +598,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         return self.tool_info
 
     @staticmethod
-    def _add_messages_to_context(inputs, results: Union[dict, List[OutputSchema]], context):
+    def _add_messages_to_context(inputs: Input, results: Union[dict, List[OutputSchema]], context):
         if context is None:
             return
 
@@ -609,14 +612,23 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
         assistant_messages = []
         if isinstance(results, dict):
-            workflow_result = results.get("responseContent") or results.get("output")
+            workflow_result = results.get("responseContent", "") or results.get("output", "")
             assistant_messages.append({"role": "assistant", "content": workflow_result})
         elif isinstance(results, list):
             sorted_user_feedback = OrderedDict()
+            assistant_reply = ""
+            questions = ""
             for item in results:
-                if isinstance(item, OutputSchema):
+                if not isinstance(item, OutputSchema):
+                    continue
+                if item.type == INTERACTION:
                     sorted_user_feedback.update({item.payload.id: item.payload.value})
-            questions = "\n".join([question for _, question in sorted_user_feedback.items()])
-            assistant_messages.append({"role": "assistant", "content": questions})
+                    questions = "\n".join([question for _, question in sorted_user_feedback.items()])
+                else:
+                    assistant_reply += item.payload.get("answer", "")
+            if questions:
+                assistant_messages.append({"role": "assistant", "content": questions})
+            if assistant_reply:
+                assistant_messages.append({"role": "assistant", "content": assistant_reply})
 
         context.batch_add_messages(user_messages + assistant_messages)

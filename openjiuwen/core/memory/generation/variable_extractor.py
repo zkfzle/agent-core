@@ -12,9 +12,6 @@ from openjiuwen.core.memory.generation.memory_info import (
 )
 
 from openjiuwen.core.memory.prompt.variable_extractor import (
-    EXTRACT_VARIABLES_USER_SUMMARY,
-    EXTRACT_VARIABLES_USER,
-    EXTRACT_VARIABLES_SYS,
     EXTRACT_VARIABLES_USER_SUMMARY_zh_CN,
     EXTRACT_VARIABLES_USER_zh_CN,
     EXTRACT_VARIABLES_SYS_zh_CN

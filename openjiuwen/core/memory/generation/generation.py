@@ -112,7 +112,6 @@ class Generator:
         messages = kwargs.get("messages")
         config = kwargs.get("config")
         model = kwargs.get("base_chat_model")
-        user_define = kwargs.get("user_define", None)
         user_id = kwargs.get("user_id")
         group_id = kwargs.get("group_id")
         history_messages = kwargs.get("history_messages")
@@ -145,8 +144,7 @@ class Generator:
             user_id=user_id,
             group_id=group_id,
             base_chat_model=model,
-            message_mem_id=message_mem_id,
-            user_define=user_define
+            message_mem_id=message_mem_id
         )
         all_memory_results += merged_units
         return all_memory_results

@@ -120,8 +120,7 @@ class BaseMemoryEngine(ABC):
             user_id: str,
             group_id: str,
             messages: list[BaseMessage],
-            timestamp: datetime,
-            request_config: dict[str, Any] = None,
+            timestamp: datetime | None = None,
             session_id: str | None = None
     ) -> str | None:
         """
@@ -135,7 +134,6 @@ class BaseMemoryEngine(ABC):
             group_id: Unique identifier for the group/chat
             messages: List of message objects to store
             timestamp: When the messages were created
-            request_config: Additional configuration for memory processing
             session_id: Optional session identifier for grouping related messages
 
         Returns:
@@ -359,8 +357,7 @@ class MemoryEngine(BaseMemoryEngine):
             user_id: str,
             group_id: str,
             messages: list[BaseMessage],
-            timestamp: datetime,
-            request_config: dict[str, Any] = None,
+            timestamp: datetime | None = None,
             session_id: str | None = None
     ) -> str | None:
         msg_id = "-1"
@@ -397,7 +394,6 @@ class MemoryEngine(BaseMemoryEngine):
             user_id=user_id,
             messages=messages,
             history_messages=history_messages,
-            session_id=session_id,
             config=group_mem_config,
             base_chat_model=llm,
             message_mem_id=msg_id
@@ -420,12 +416,6 @@ class MemoryEngine(BaseMemoryEngine):
         if not self.write_manager:
             raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
         await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=group_id)
-        return True
-
-    async def delete_user_profile_by_user_id(self, user_id: str, group_id: str) -> bool:
-        if not self.write_manager:
-            raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-        await self.user_profile_manager.delete_by_user_id(user_id=user_id, group_id=group_id)
         return True
 
     async def update_mem_by_id(self, user_id: str, group_id: str, mem_id: str, memory: str) -> bool:
@@ -545,7 +535,7 @@ class MemoryEngine(BaseMemoryEngine):
         return cls
 
     @classmethod
-    def get_mem_engine_instance(cls) -> BaseMemoryEngine|None:
+    def get_mem_engine_instance(cls) -> BaseMemoryEngine | None:
         return cls._mem_engine_instance
 
     @classmethod
@@ -555,6 +545,8 @@ class MemoryEngine(BaseMemoryEngine):
             return None
         if cls._db_store_instance is not None:
             await create_tables(cls._db_store_instance)
-        cls._mem_engine_instance = cls(config=config, kv_store=cls._kv_store_instance, semantic_store=cls._semantic_store_instance,
-                   db_store=cls._db_store_instance)
+        cls._mem_engine_instance = cls(config=config,
+                                       kv_store=cls._kv_store_instance,
+                                       semantic_store=cls._semantic_store_instance,
+                                       db_store=cls._db_store_instance)
         return cls._mem_engine_instance

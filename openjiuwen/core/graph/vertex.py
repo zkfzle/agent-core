@@ -19,7 +19,6 @@ from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.utils import get_by_schema
 from openjiuwen.core.runtime.workflow import NodeRuntime
 from openjiuwen.core.stream.base import StreamSchemas, OutputSchema
-from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream_actor.base import StreamConsumer
 from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
@@ -177,10 +176,9 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 message = actor_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
             await self._process_chunk(message, is_end_node, end_stream_index, is_sub_graph)
             end_stream_index += 1
-        if is_end_node and is_sub_graph:
-            await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
-        else:
-            await self._runtime.actor_manager().end_message(self._node_id)
+
+        # Notify ActorManager that a stream ability has completed
+        await actor_manager.notify_stream_ability_done(self._node_id, is_end_node, is_sub_graph)
 
     async def _process_chunk(self, message, is_end_node: bool, end_stream_index: int, is_sub_graph: bool):
         if is_end_node and not is_sub_graph:

@@ -409,3 +409,58 @@ class ComputeExecutor2(ComponentExecutable):
             for item in result:
                 yield item
         print(f"{exec_id} transform done")
+
+
+class DualAbilityWithErrorComponent(WorkflowComponent):
+    """
+    A component with dual stream abilities (TRANSFORM + STREAM) that can be configured
+    to raise exceptions in specific abilities for testing error handling.
+    """
+    def __init__(self, error_in_stream: bool = False, error_in_transform: bool = False):
+        super().__init__()
+        self._error_in_stream = error_in_stream
+        self._error_in_transform = error_in_transform
+
+    def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
+        graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
+
+    def to_executable(self) -> Executable:
+        return DualAbilityWithErrorExecutor(
+            error_in_stream=self._error_in_stream,
+            error_in_transform=self._error_in_transform
+        )
+
+
+class DualAbilityWithErrorExecutor(ComponentExecutable):
+    """Executor that can raise exceptions in specific abilities."""
+    def __init__(self, error_in_stream: bool = False, error_in_transform: bool = False):
+        super().__init__()
+        self._error_in_stream = error_in_stream
+        self._error_in_transform = error_in_transform
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        a = int(inputs.get("a", 0))
+        b = int(inputs.get("b", 0))
+        return {"result": a + b}
+
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        if self._error_in_stream:
+            raise RuntimeError("Simulated error in STREAM ability")
+        a = inputs.get("a", 0)
+        b = inputs.get("b", 0)
+        yield {'a': a}
+        yield {'op': '+'}
+        yield {'b': b}
+        yield {'result': int(a) + int(b)}
+
+    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        if self._error_in_transform:
+            raise RuntimeError("Simulated error in TRANSFORM ability")
+        for data_source_key, obj in inputs.items():
+            if isinstance(obj, dict):
+                for data_key, iterator in obj.items():
+                    async for data in iterator:
+                        yield {data_key: data}
+            else:
+                async for data in obj:
+                    yield {data_source_key: data}

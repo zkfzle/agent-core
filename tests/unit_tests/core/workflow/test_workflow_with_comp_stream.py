@@ -21,7 +21,8 @@ from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowChunk
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, ComponentAbility
+from tests.unit_tests.core.workflow.mock_nodes import ComputeComponent2, DualAbilityWithErrorComponent
 
 pytestmark = pytest.mark.asyncio
 
@@ -547,3 +548,231 @@ async def test_workflow_stream_with_exception():
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, runtime=WorkflowRuntime())
     assert result.result == {'responseContent': '', 'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
 
+
+async def test_node_with_dual_stream_abilities_transform_and_stream():
+    """
+    Test a node with both TRANSFORM and STREAM abilities can correctly merge
+    stream input and batch input, then output combined stream to downstream.
+
+    Workflow structure:
+        start --> A (STREAM)  --stream--> C (TRANSFORM + STREAM) --stream--> end
+        start --> B (INVOKE)  --batch---> C
+
+    Node behaviors:
+        - A: Receives batch input {a=1, b=2}, streams out {a, op, b, result}
+        - B: Receives batch input {a=1, b=2}, returns {result: 3}
+        - C: Has dual abilities:
+            * TRANSFORM: Consumes A's stream, outputs {a_A, op_A, b_A, result_A}
+            * STREAM: Uses B's result as input {a=3, b=3}, streams out {a, op, b, result}
+        - end: Collects all stream data from C
+
+    This test verifies:
+        1. Node C correctly executes both TRANSFORM and STREAM abilities
+        2. All stream outputs from C (both abilities) are received by end node
+        3. End message is sent only after ALL stream abilities complete (not prematurely)
+    """
+    flow = Workflow()
+
+    # Setup start node
+    flow.set_start_comp("start", Start(),
+                        inputs_schema={'a': '${user_inputs.a}', 'b': '${user_inputs.b}'})
+
+    # Setup end node to collect all stream fields from C
+    flow.set_end_comp("end", End(), response_mode="streaming",
+                      stream_inputs_schema={
+                          'a': '${C.a}', 'op': '${C.op}', 'b': '${C.b}', 'result': '${C.result}',
+                          'a_A': '${C.a_A}', 'op_A': '${C.op_A}', 'b_A': '${C.b_A}', 'result_A': '${C.result_A}'
+                      })
+
+    # Node A: STREAM ability - batch in, stream out
+    flow.add_workflow_comp('A', ComputeComponent2(),
+                           inputs_schema={'a': '${start.a}', 'b': '${start.b}'},
+                           comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+
+    # Node B: INVOKE ability - batch in, batch out
+    flow.add_workflow_comp('B', ComputeComponent2(),
+                           inputs_schema={'a': '${start.a}', 'b': '${start.b}'},
+                           comp_ability=[ComponentAbility.INVOKE], wait_for_all=True)
+
+    # Node C: TRANSFORM + STREAM abilities
+    # - TRANSFORM: stream in (from A), stream out
+    # - STREAM: batch in (from B), stream out
+    flow.add_workflow_comp('C', ComputeComponent2(),
+                           inputs_schema={'a': '${B.result}', 'b': '${B.result}'},
+                           stream_inputs_schema={'data': {
+                               'a_A': '${A.a}', 'op_A': '${A.op}',
+                               'b_A': '${A.b}', 'result_A': '${A.result}'
+                           }},
+                           comp_ability=[ComponentAbility.TRANSFORM, ComponentAbility.STREAM],
+                           wait_for_all=True)
+
+    # Setup connections
+    flow.add_connection('start', 'A')
+    flow.add_connection('start', 'B')
+    flow.add_stream_connection('A', 'C')
+    flow.add_connection('B', 'C')
+    flow.add_stream_connection('C', 'end')
+
+    # Execute workflow
+    user_inputs = {'user_inputs': {'a': 1, 'b': 2}}
+    stream_chunks = []
+
+    async for chunk in flow.stream(user_inputs, runtime=WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+        stream_chunks.append(chunk)
+
+    # Verify results
+    assert len(stream_chunks) > 0, "Should receive stream chunks from workflow"
+
+    # Extract payload outputs for verification
+    output_payloads = []
+    for chunk in stream_chunks:
+        if hasattr(chunk, 'payload'):
+            output_payloads.append(chunk.payload.get('output', {}))
+
+    # Verify STREAM ability output from C (uses B.result=3 as input: a=3, b=3, result=6)
+    stream_keys = {'a', 'op', 'b', 'result'}
+    stream_outputs = {}
+    for payload in output_payloads:
+        for key, value in payload.items():
+            if key in stream_keys:
+                stream_outputs[key] = value
+    assert 'a' in stream_outputs, "Should have 'a' from C's STREAM ability"
+    assert 'op' in stream_outputs, "Should have 'op' from C's STREAM ability"
+    assert 'b' in stream_outputs, "Should have 'b' from C's STREAM ability"
+    assert 'result' in stream_outputs, "Should have 'result' from C's STREAM ability"
+    # B.result = 1 + 2 = 3, so C's STREAM input is {a=3, b=3}, output result = 3 + 3 = 6
+    stream_result = stream_outputs.get('result')
+    assert stream_result == 6, f"C's STREAM result should be 6 (3+3), got {stream_result}"
+
+    # Verify TRANSFORM ability output from C (transforms A's stream)
+    transform_keys = {'a_A', 'op_A', 'b_A', 'result_A'}
+    transform_outputs = {}
+    for payload in output_payloads:
+        for key, value in payload.items():
+            if key in transform_keys:
+                transform_outputs[key] = value
+    assert 'a_A' in transform_outputs, "Should have 'a_A' from C's TRANSFORM ability"
+    assert 'op_A' in transform_outputs, "Should have 'op_A' from C's TRANSFORM ability"
+    assert 'b_A' in transform_outputs, "Should have 'b_A' from C's TRANSFORM ability"
+    assert 'result_A' in transform_outputs, "Should have 'result_A' from C's TRANSFORM ability"
+    # A's input is {a=1, b=2}, so A's stream output result = 1 + 2 = 3
+    transform_result = transform_outputs.get('result_A')
+    assert transform_result == 3, f"C's TRANSFORM result_A should be 3 (1+2), got {transform_result}"
+
+    # Verify we received outputs from BOTH abilities (8 total fields)
+    all_output_keys = set()
+    for p in output_payloads:
+        all_output_keys.update(p.keys())
+    expected_keys = {'a', 'op', 'b', 'result', 'a_A', 'op_A', 'b_A', 'result_A'}
+    assert expected_keys == all_output_keys, f"Should have all 8 output fields, got {all_output_keys}"
+
+
+async def test_dual_ability_node_with_stream_error():
+    """
+    Test that when one stream ability (STREAM) fails, the error is properly propagated
+    and the workflow fails gracefully.
+
+    This test verifies error handling in dual-ability nodes:
+    - When STREAM ability raises an exception, the workflow should fail
+    - The exception should be wrapped in COMPONENT_EXECUTE_ERROR
+    """
+    flow = Workflow()
+
+    # Setup start node
+    flow.set_start_comp("start", Start(),
+                        inputs_schema={'a': '${user_inputs.a}', 'b': '${user_inputs.b}'})
+
+    # Setup end node
+    flow.set_end_comp("end", End(), response_mode="streaming",
+                      stream_inputs_schema={'result': '${C.result}'})
+
+    # Node A: STREAM ability - will provide stream input to C
+    flow.add_workflow_comp('A', ComputeComponent2(),
+                           inputs_schema={'a': '${start.a}', 'b': '${start.b}'},
+                           comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+
+    # Node B: INVOKE ability - will provide batch input to C
+    flow.add_workflow_comp('B', ComputeComponent2(),
+                           inputs_schema={'a': '${start.a}', 'b': '${start.b}'},
+                           comp_ability=[ComponentAbility.INVOKE], wait_for_all=True)
+
+    # Node C: TRANSFORM + STREAM abilities, with STREAM configured to fail
+    flow.add_workflow_comp('C', DualAbilityWithErrorComponent(error_in_stream=True),
+                           inputs_schema={'a': '${B.result}', 'b': '${B.result}'},
+                           stream_inputs_schema={'data': {'a_A': '${A.a}'}},
+                           comp_ability=[ComponentAbility.TRANSFORM, ComponentAbility.STREAM],
+                           wait_for_all=True)
+
+    # Setup connections
+    flow.add_connection('start', 'A')
+    flow.add_connection('start', 'B')
+    flow.add_stream_connection('A', 'C')
+    flow.add_connection('B', 'C')
+    flow.add_stream_connection('C', 'end')
+
+    # Execute workflow and expect exception
+    user_inputs = {'user_inputs': {'a': 1, 'b': 2}}
+
+    with pytest.raises(JiuWenBaseException) as exc_info:
+        async for _ in flow.stream(user_inputs, runtime=WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+            pass
+
+    # Verify the exception is properly wrapped
+    assert exc_info.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
+    assert "C" in exc_info.value.message  # Node ID should be in the message
+    assert "stream" in exc_info.value.message.lower()  # Ability name should be in the message
+
+
+async def test_dual_ability_node_with_transform_error():
+    """
+    Test that when TRANSFORM ability fails, the error is properly propagated.
+
+    This test verifies:
+    - When TRANSFORM ability raises an exception, the workflow should fail
+    - The exception should be wrapped in COMPONENT_EXECUTE_ERROR
+    """
+    flow = Workflow()
+
+    # Setup start node
+    flow.set_start_comp("start", Start(),
+                        inputs_schema={'a': '${user_inputs.a}', 'b': '${user_inputs.b}'})
+
+    # Setup end node
+    flow.set_end_comp("end", End(), response_mode="streaming",
+                      stream_inputs_schema={'result': '${C.result}'})
+
+    # Node A: STREAM ability - will provide stream input to C
+    flow.add_workflow_comp('A', ComputeComponent2(),
+                           inputs_schema={'a': '${start.a}', 'b': '${start.b}'},
+                           comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+
+    # Node B: INVOKE ability - will provide batch input to C
+    flow.add_workflow_comp('B', ComputeComponent2(),
+                           inputs_schema={'a': '${start.a}', 'b': '${start.b}'},
+                           comp_ability=[ComponentAbility.INVOKE], wait_for_all=True)
+
+    # Node C: TRANSFORM + STREAM abilities, with TRANSFORM configured to fail
+    flow.add_workflow_comp('C', DualAbilityWithErrorComponent(error_in_transform=True),
+                           inputs_schema={'a': '${B.result}', 'b': '${B.result}'},
+                           stream_inputs_schema={'data': {'a_A': '${A.a}'}},
+                           comp_ability=[ComponentAbility.TRANSFORM, ComponentAbility.STREAM],
+                           wait_for_all=True)
+
+    # Setup connections
+    flow.add_connection('start', 'A')
+    flow.add_connection('start', 'B')
+    flow.add_stream_connection('A', 'C')
+    flow.add_connection('B', 'C')
+    flow.add_stream_connection('C', 'end')
+
+    # Execute workflow and expect exception
+    user_inputs = {'user_inputs': {'a': 1, 'b': 2}}
+
+    with pytest.raises(JiuWenBaseException) as exc_info:
+        async for _ in flow.stream(user_inputs, runtime=WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
+            pass
+
+    # Verify the exception is properly wrapped
+    assert exc_info.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
+    assert "C" in exc_info.value.message  # Node ID should be in the message
+    assert "transform" in exc_info.value.message.lower()  # Ability name should be in the message

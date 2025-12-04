@@ -54,10 +54,10 @@ class UserProfileManager(BaseMemoryManager):
                 logger.info(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
             elif conf_event ==ConflictType.UPDATE.value:
                 logger.info(f"update conflict info: {conflict}, update_profile: {memory.profile_mem}")
-                await self.update(conf_id, memory.profile_mem)
+                await self.update(memory.user_id, memory.group_id, conf_id, memory.profile_mem)
             elif conf_event == ConflictType.DELETE.value:
                 logger.info(f"delete conflict info: {conflict}, new_profile: {memory.profile_mem}")
-                await self.delete(conf_id)
+                await self.delete(memory.user_id, memory.group_id, conf_id)
 
     async def update(self, user_id: str, group_id: str, mem_id: str, new_memory: str, **kwargs) -> bool:
         time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')

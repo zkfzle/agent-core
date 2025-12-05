@@ -714,6 +714,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         assistant_messages = []
         if isinstance(results, dict):
             workflow_result = results.get("responseContent", "") or results.get("output", "")
+            if not isinstance(workflow_result, str):
+                workflow_result = json.dumps(workflow_result)
             assistant_messages.append({"role": "assistant", "content": workflow_result})
         elif isinstance(results, list):
             sorted_user_feedback = OrderedDict()
@@ -726,9 +728,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     sorted_user_feedback.update({item.payload.id: item.payload.value})
                     questions = "\n".join([question for _, question in sorted_user_feedback.items()])
                 else:
-                    answer = item.payload.get("answer", "")
-                    if answer is not None:
-                        assistant_reply += str(answer)
+                    if isinstance(item.payload, dict) and item.payload.get("answer") is not None:
+                        assistant_reply += item.payload.get("answer", "")
             if questions:
                 assistant_messages.append({"role": "assistant", "content": questions})
             if assistant_reply:

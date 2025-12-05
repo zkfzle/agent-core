@@ -25,8 +25,6 @@ class Planner:
         self.context_engine = context_engine
         self.runtime = runtime
 
-        logger.info("Planner initialized")
-
     @staticmethod
     def _create_default_task(message: Message) -> Task:
         # 临时实现：返回一个默认任务

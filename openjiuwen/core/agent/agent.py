@@ -716,8 +716,13 @@ class ControllerAgent(BaseAgent):
                 res = await self.controller.invoke(inputs, agent_runtime)
                 final_result_holder["result"] = res
                 # 中断情况：list 包含 __interaction__ 等 OutputSchema
-                # 流式数据（包括 workflow_final）已由 controller 层写入 runtime
-                if isinstance(res, list):
+                # 只有 WorkflowController 才需要在这里写入 runtime
+                # 其他 Controller（如 HierarchicalMainController）只是转发下层 agent 的结果
+                # 下层 agent 已经把 __interaction__ 写入了共享的 runtime，不需要再写一次
+                from openjiuwen.agent.workflow_agent.workflow_controller import (
+                    WorkflowController
+                )
+                if isinstance(res, list) and isinstance(self.controller, WorkflowController):
                     for item in res:
                         await agent_runtime.write_stream(item)
             finally:

@@ -245,42 +245,66 @@ class IntentDetectionController(BaseController):
 
         logger.info(f"Handling resume task: task_id={task.task_id}")
 
+        # Get target workflow's interrupted component_id
+        workflow_id = task.input.target_id
+        state = runtime.get_state("workflow_controller")
+        target_component_id = "questioner"  # Default value
+
+        if state:
+            state_key = workflow_id.replace('.', '_')
+            interrupted_tasks = state.get("interrupted_tasks", {})
+            interrupted_info = interrupted_tasks.get(state_key)
+            if interrupted_info:
+                target_component_id = interrupted_info.get(
+                    "component_id",
+                    "questioner"
+                )
+
+        logger.info(
+            f"Target workflow interrupted component_id: {target_component_id}"
+        )
+
         # Check if InteractiveInput is already provided
         if (hasattr(message.content, 'interactive_input') and 
                 message.content.interactive_input is not None):
-            # Use the provided InteractiveInput directly
-            interactive_input = message.content.interactive_input
+            provided_input = message.content.interactive_input
             logger.info(
-                f"Using provided InteractiveInput for resume: {interactive_input}"
+                f"Provided InteractiveInput: {provided_input}"
             )
+
+            # Check if provided input's component_id matches target workflow
+            if provided_input.user_inputs:
+                provided_keys = list(provided_input.user_inputs.keys())
+                if target_component_id not in provided_keys:
+                    # Mismatch: Remap user input value to target component_id
+                    # Get user input value from the first key
+                    user_value = list(provided_input.user_inputs.values())[0]
+                    logger.info(
+                        f"Component ID mismatch: provided={provided_keys}, "
+                        f"target={target_component_id}. "
+                        f"Remapping user value '{user_value}' to "
+                        f"target component."
+                    )
+                    interactive_input = InteractiveInput()
+                    interactive_input.update(target_component_id, user_value)
+                else:
+                    # Match: Use provided input directly
+                    interactive_input = provided_input
+            else:
+                # No user_inputs, use provided input directly
+                interactive_input = provided_input
         else:
             # Create InteractiveInput from user query text
             if hasattr(message.content, 'query'):
                 query_text = message.content.query
             else:
                 query_text = ""
-            
+
             interactive_input = InteractiveInput()
-
-            # Get component ID at interruption from workflow_controller
-            workflow_id = task.input.target_id
-            state = runtime.get_state("workflow_controller")
-            component_id = "questioner"  # Default value
-
-            if state:
-                state_key = workflow_id.replace('.', '_')
-                interrupted_tasks = state.get("interrupted_tasks", {})
-                interrupted_info = interrupted_tasks.get(state_key)
-                if interrupted_info:
-                    component_id = interrupted_info.get(
-                        "component_id",
-                        "questioner"
-                    )
-
-            interactive_input.update(component_id, query_text)
+            interactive_input.update(target_component_id, query_text)
             logger.info(
                 f"Created InteractiveInput for resume: "
-                f"component_id={component_id}, query={query_text}"
+                f"component_id={target_component_id}, query={query_text}"
             )
 
         # Key: Update task input parameters to InteractiveInput

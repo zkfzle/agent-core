@@ -256,8 +256,9 @@ class WorkflowController(IntentDetectionController):
                     if isinstance(chunk, OutputSchema):
                         if chunk.type == INTERACTION:
                             has_interaction = True
-                            # 透传 __interaction__
-                            await runtime.write_stream(chunk)
+                            # 不在这里透传 __interaction__
+                            # 由上层 ControllerAgent.stream 在 controller.invoke 完成后统一写入
+                            # 确保 __interaction__ 在所有 tracer 事件之后
                         elif chunk.type == "workflow_final":
                             # 不透传原始的 workflow_final
                             # 后面会构造正确格式的 workflow_final
@@ -275,8 +276,11 @@ class WorkflowController(IntentDetectionController):
                     for chunk in chunks:
                         if isinstance(chunk, OutputSchema):
                             if isinstance(chunk.payload, dict):
-                                content_parts.append(chunk.payload.get("answer", ""))
+                                answer = chunk.payload.get("answer", "")
+                                if answer is not None:
+                                    content_parts.append(str(answer))
                             elif isinstance(chunk.payload, InteractionOutput):
+                                # 保留交互中断的输出内容
                                 content_parts.append(str(chunk.payload.value) if chunk.payload.value else "")
                     workflow_content = "".join(content_parts)
                     MessageUtils.add_ai_message(AIMessage(content=workflow_content), self._context_engine, runtime)

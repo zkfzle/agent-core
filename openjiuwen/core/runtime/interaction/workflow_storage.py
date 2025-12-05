@@ -2,19 +2,17 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from langgraph.checkpoint.serde.base import SerializerProtocol
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
-
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.interaction.storage import Storage
+from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.workflow import NodeRuntime
+from openjiuwen.graph.checkpoint.serde import Serializer, PickleSerializer
 
 
 class WorkflowStorage(Storage):
     def __init__(self):
-        self.serde: SerializerProtocol = JsonPlusSerializer()
+        self.serde: Serializer = PickleSerializer()
         self.state_blobs: dict[
             str,
             tuple[str, bytes],

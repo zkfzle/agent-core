@@ -4,11 +4,9 @@
 from abc import ABC, abstractmethod
 from typing import Self, Union, Any, AsyncIterator, Hashable, Callable, Awaitable
 
-from langchain_core.runnables import Runnable
-
 from openjiuwen.core.common.constants.constant import INPUTS_KEY, CONFIG_KEY
-from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.graph.executable import Executable, Output, Input
+from openjiuwen.core.runtime.runtime import BaseRuntime
 
 
 class ExecutableGraph(Executable[Input, Output]):
@@ -35,7 +33,6 @@ class ExecutableGraph(Executable[Input, Output]):
 Router = Union[
     Callable[..., Union[Hashable, list[Hashable]]],
     Callable[..., Awaitable[Union[Hashable, list[Hashable]]]],
-    Runnable[Any, Union[Hashable, list[Hashable]]],
 ]
 
 

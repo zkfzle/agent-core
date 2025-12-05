@@ -1,0 +1,190 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
+
+from __future__ import annotations
+
+import asyncio
+from typing import Dict, Optional, Union, Callable, Any, Coroutine, List
+
+from openjiuwen.graph.checkpoint.base import Checkpoint, PendingNode, create_checkpoint
+from openjiuwen.graph.checkpoint.gragh_checkpoiter import GraphCheckpointer
+from openjiuwen.graph.pregel.channels import Channel, ChannelManager
+from openjiuwen.graph.pregel.config import PregelConfig, DEFAULT_PREGEL_CONFIG, InnerPregelConfig, \
+    create_inner_config
+from openjiuwen.graph.pregel.constants import END, GraphInterrupt, Interrupt, TASK_STATUS_INTERRUPT, START, \
+    PARENT_NS, NS, SESSION_ID, RECURSION_LIMIT
+from openjiuwen.graph.pregel.messages import TriggerMessage
+from openjiuwen.graph.pregel.nodes import PregelNode
+from openjiuwen.graph.pregel.task import TaskExecutorPool
+
+
+class PregelLoop:
+    def __init__(self, graph: Pregel, config: PregelConfig, durability="exit"):
+        self.graph = graph
+        self.manager = ChannelManager(graph.channels)
+        self.step: int = 0
+        self.max_step: int = 0
+        self.config: PregelConfig = config
+        self.saver = graph.checkpointer
+        self.active_nodes: List[str] = []
+        self.executor: TaskExecutorPool | None = None
+        self._retry_pending_nodes: Dict[str, PendingNode] = {}
+
+    async def init(self) -> None:
+        self.executor = TaskExecutorPool(self.config)
+        self.max_step = self.config[RECURSION_LIMIT]
+        checkpoint = None
+        if self.config[SESSION_ID] and self.saver:
+            checkpoint = await self.saver.get(self.config[SESSION_ID], self.config[NS])
+        if self._is_resume(checkpoint):
+            # Restore barrier channel
+            self.manager.restore(checkpoint.channel_values)
+            # Restore step
+            self.step = checkpoint.step
+            self.max_step = checkpoint.step + self.config[RECURSION_LIMIT]
+            # Restore task result message
+            for msg in checkpoint.pending_buffer:
+                self.manager.buffer_message(msg)
+            # Pending node
+            if checkpoint.pending_node:
+                self._retry_pending_nodes = checkpoint.pending_node
+        else:
+            # Trigger start node
+            self.manager.buffer_message(TriggerMessage(sender=self.graph.initial, target=self.graph.initial))
+            self.manager.flush()
+
+    async def tick(self) -> bool:
+        try:
+            return await self._tick()
+        except Exception as e:
+            await self._save_checkpoint_on_error(e)
+            raise e
+
+    def _is_resume(self, checkpoint: Checkpoint) -> bool:
+        return checkpoint is not None and (
+                bool(checkpoint.pending_node) or bool(checkpoint.pending_buffer) or bool(checkpoint.channel_values))
+
+    async def _tick(self) -> bool:
+        # 1. Determine tasks for this round
+        tasks_to_run = []
+
+        # Retry tasks from Checkpoint
+        if self._retry_pending_nodes:
+            self.active_nodes = list(self._retry_pending_nodes.keys())
+            # Clear retry queue (scheduled this round)
+            self._retry_pending_nodes.clear()
+        else:
+            # First in
+            ready_nodes = self.manager.get_ready_nodes()
+            # Active nodes
+            self.active_nodes = [n for n in ready_nodes if n in self.graph.nodes and n != END]
+
+        if not self.active_nodes:
+            if not self.manager._buffer:
+                return False  # End
+
+            # Only flush buffer
+            self.manager.flush()
+            self.step += 1
+            return True
+
+        if self.step > self.max_step:
+            raise RecursionError(
+                f"Recursion limit of {self.max_step} reached at step {self.step} ns: {self.config[NS]}."
+            )
+
+        for name in self.active_nodes:
+            self.manager.consume(name)
+            tasks_to_run.append(self.graph.nodes[name])
+
+        # 2. Execute tasks
+        for node in tasks_to_run:
+            self.executor.submit(node)
+
+        try:
+            await self.executor.wait_all()
+        except Exception as e:
+            raise e
+
+        # 3. Summarize results
+        for msg in self.executor.routed_messages:
+            self.manager.buffer_message(msg)
+        self.manager.flush()
+        self.executor.clear()
+
+        # Hook
+        if self.graph.after_tick:
+            callback = self.graph.after_tick
+            if asyncio.iscoroutinefunction(callback):
+                await callback(self)
+            else:
+                callback(self)
+        self.step += 1
+        return True
+
+    async def _save_checkpoint_on_error(self, exception: Exception):
+        if not self.config[SESSION_ID] or not self.saver:
+            return
+        pending_buffer = []
+        pending_node = {}
+
+        if self.executor:
+            pending_buffer = getattr(self.executor, 'routed_messages', [])
+            pending_node = getattr(self.executor, 'failed', {})
+        error_checkpoint = create_checkpoint(
+            ns=self.config[NS],
+            step=self.step,
+            channel_snapshot=self.manager.snapshot(),
+            pending_buffer=pending_buffer,
+            pending_node=pending_node
+        )
+
+        await self.saver.save(
+            session_id=self.config[SESSION_ID],
+            ns=self.config[NS],
+            checkpoint=error_checkpoint
+        )
+
+
+class Pregel:
+    def __init__(
+            self,
+            nodes: Dict[str, PregelNode],
+            channels: List[Channel],
+            initial: str = START,
+            checkpointer: GraphCheckpointer | None = None,
+            after_tick: Optional[
+                Union[
+                    Callable[[PregelLoop], Any],
+                    Callable[[PregelLoop], Coroutine[Any, Any, Any]]
+                ]
+            ] = None,
+    ):
+        self.nodes = nodes
+        self.checkpointer = checkpointer
+        # key:node node_name, value:list[Channel]
+        self.channels = channels
+        self.initial = initial
+        self.after_tick = after_tick
+
+    async def ainvoke(self, config: Optional[PregelConfig] = None, durability="exit") -> None | dict[
+        Any, Any] | dict[str, Interrupt | tuple[Interrupt, ...] | None]:
+        inner_config: InnerPregelConfig = create_inner_config(config or DEFAULT_PREGEL_CONFIG)
+        is_top_level = not inner_config.get(PARENT_NS)
+        if is_top_level:
+            current_ns = inner_config.get(NS)
+            if current_ns:
+                inner_config[PARENT_NS] = current_ns
+
+        loop = PregelLoop(self, inner_config, durability)
+        try:
+            await loop.init()
+            while await loop.tick():
+                pass
+            return {}
+        except GraphInterrupt as e:
+            if is_top_level:
+                return {TASK_STATUS_INTERRUPT: e.value}
+            else:
+                raise e

@@ -2,7 +2,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-import threading
 from datetime import datetime, timezone
 from typing import Any, List, Optional
 
@@ -85,7 +84,7 @@ class UserProfileManager(BaseMemoryManager):
     async def delete(self, user_id: str, group_id: str, mem_id: str, **kwargs):
         data = await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
         if data is None:
-            logger.error(f"Delete user_profile in db failed, the mem of mem_id({mem_id}) is not exist.")
+            logger.error(f"Delete user_profile in store failed, the mem of mem_id({mem_id}) is not exist.")
             return False
         mem_type = kwargs.get("mem_type", MemoryType.USER_PROFILE.value)
         await self.mem_store.delete(mem_id=mem_id, user_id=user_id, group_id=group_id)
@@ -96,7 +95,7 @@ class UserProfileManager(BaseMemoryManager):
     async def delete_by_user_id(self, user_id: str, group_id: str):
         data = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=MemoryType.USER_PROFILE.value)
         if data is None:
-            logger.error(f"Delete user_profile in db failed, the mem of user_id({user_id}) is not exist.")
+            logger.error(f"Delete user_profile in store failed, the mem of user_id({user_id}) is not exist.")
             return False
         mem_ids = [item['id'] for item in data]
         await self.mem_store.batch_delete(user_id=user_id, group_id=group_id, mem_ids=mem_ids)
@@ -105,7 +104,7 @@ class UserProfileManager(BaseMemoryManager):
         return True
 
     async def list_user_profile(self, user_id: str, group_id: str, profile_type: Optional[str] = None,
-                          mem_type=MemoryType.USER_PROFILE) -> List[UserProfileUnit]:
+                          mem_type=MemoryType.USER_PROFILE) -> list[dict[str, Any]]:
         datas = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=mem_type.value)
         if not datas:
             logger.debug(f"End to get user profile, result is None, "

@@ -16,30 +16,30 @@ class BaseMemoryManager(ABC):
 
     @abstractmethod
     async def add(self, memory: BaseMemoryUnit):
-        """async add memory."""
+        """add memory."""
         pass
 
     @abstractmethod
     async def update(self, user_id: str, group_id: str, mem_id: str, new_memory: str, **kwargs):
-        """async update memory by its id."""
+        """update memory by its id."""
         pass
 
     @abstractmethod
     async def delete(self, user_id: str, group_id: str, mem_id: str, **kwargs):
-        """async delete memory by its id."""
+        """delete memory by its id."""
         pass
 
     @abstractmethod
     async def delete_by_user_id(self, user_id: str, group_id: str):
-        """async delete memory by user id and app id."""
+        """delete memory by user id and app id."""
         pass
 
     @abstractmethod
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
-        """async get memory by its id."""
+        """get memory by its id."""
         pass
 
     @abstractmethod
     async def search(self, user_id: str, group_id: str, query: str, top_k: int, **kwargs):
-        """async query memory, return top k results"""
+        """query memory, return top k results"""
         pass

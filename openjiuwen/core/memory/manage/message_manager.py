@@ -50,9 +50,9 @@ class MessageManager:
             filters['session_id'] = session_id
         if message_len <= 0:
             raise ValueError('message_len Must bigger than zero')
-        messages = await self.sql_db.get_with_sort(table=self.message_table, filters=filters, order="ASC",
+        messages = await self.sql_db.get_with_sort(table=self.message_table, filters=filters, order="DESC",
                                                    limit=message_len)
-        return [(BaseMessage(**message), message['timestamp']) for message in messages]
+        return [(BaseMessage(**message), message['timestamp']) for message in reversed(messages)]
 
     async def get_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime] | None:
         filters: Dict[str, Any] = {'message_id': [msg_id]}

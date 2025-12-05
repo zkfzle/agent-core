@@ -315,6 +315,8 @@ class MemoryEngine(BaseMemoryEngine):
         self.kv_store = kv_store
         data_id_generator = DataIdManager()
         user_mem_store = UserMemStore(kv_store)
+        sql_db_store = SqlDbStore(db_store)
+        self.message_manager = MessageManager(sql_db_store, data_id_generator)
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=semantic_store,
             user_mem_store=user_mem_store,
@@ -326,8 +328,6 @@ class MemoryEngine(BaseMemoryEngine):
             MemoryType.VARIABLE.value: self.variable_manager
         }
         self.write_manager = WriteManager(managers, user_mem_store)
-        sql_db_store = SqlDbStore(db_store)
-        self.message_manager = MessageManager(sql_db_store, data_id_generator)
         self.search_manager = SearchManager(managers, user_mem_store)
         self.generator = Generator(self.search_manager)
         # config
@@ -409,14 +409,14 @@ class MemoryEngine(BaseMemoryEngine):
 
     async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
         if not self.message_manager:
-            raise ValueError("Message Manager is not initialized. Please call init_mem_store first.")
+            raise ValueError("Message manager is not initialized.")
         return await self.message_manager.get_by_id(msg_id)
 
     async def delete_mem_by_id(self, user_id: str, group_id: str, mem_id: str) -> bool:
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.write_manager:
-                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+                raise ValueError("Write manager is not initialized.")
             await self.write_manager.delete_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id)
             return True
 
@@ -424,56 +424,48 @@ class MemoryEngine(BaseMemoryEngine):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.write_manager:
-                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+                raise ValueError("Write manager is not initialized.")
             await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=group_id)
-            return True
-
-    async def delete_user_profile_by_user_id(self, user_id: str, group_id: str) -> bool:
-        lock = DistributedLock(self.kv_store, f"user/{user_id}")
-        async with lock:
-            if not self.write_manager:
-                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
-            await self.user_profile_manager.delete_by_user_id(user_id=user_id, group_id=group_id)
             return True
 
     async def update_mem_by_id(self, user_id: str, group_id: str, mem_id: str, memory: str) -> bool:
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.write_manager:
-                raise ValueError("Write Manager is not initialized. Please call init_mem_store first.")
+                raise ValueError("Write manager is not initialized.")
             await self.write_manager.update_mem_by_id(user_id=user_id, group_id=group_id, mem_id=mem_id, memory=memory)
             return True
 
     async def get_user_variable(self, user_id: str, group_id: str, name: str) -> str:
         if not self.search_manager:
-            raise ValueError("Search Manager is not initialized")
+            raise ValueError("Search manager is not initialized.")
         return await self.search_manager.get_user_variable(user_id, group_id, name)
 
     async def list_user_variables(self, user_id: str, group_id: str) -> dict[str, str]:
         if not self.search_manager:
-            raise ValueError("Search Manager is not initialized")
+            raise ValueError("Search manager is not initialized.")
         return await self.search_manager.get_all_user_variable(user_id, group_id)
 
     async def search_user_mem(self, user_id: str, group_id: str, query: str, num: int,
                               threshold: float = 0.3) -> list[dict[str, Any]]:
         if not self.search_manager:
-            raise ValueError("Search Manager is not initialized")
-        return await self.search_manager.search(query=query,
+            raise ValueError("Search manager is not initialized.")
+        return await self.search_manager.search(user_id=user_id,
                                                 group_id=group_id,
+                                                query=query,
                                                 top_k=num,
-                                                user_id=user_id,
                                                 threshold=threshold)
 
     async def list_user_mem(self, user_id: str, group_id: str, num: int, page: int) -> list[dict[str, Any]]:
         if not self.search_manager:
-            raise ValueError("Search Manager is not initialized")
+            raise ValueError("Search manager is not initialized.")
         return await self.search_manager.list_user_mem(user_id=user_id, group_id=group_id, nums=num, pages=page)
 
     async def update_user_variable(self, user_id: str, group_id: str, name: str, value: str):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.variable_manager:
-                raise ValueError("Variable Manager is not initialized")
+                raise ValueError("Variable manager is not initialized.")
             await self.variable_manager.update_user_variable(user_id=user_id, group_id=group_id, var_name=name,
                                                              var_mem=value)
             return True
@@ -482,7 +474,7 @@ class MemoryEngine(BaseMemoryEngine):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.variable_manager:
-                raise ValueError("Variable Manager is not initialized")
+                raise ValueError("Variable manager is not initialized.")
             await self.variable_manager.delete_user_variable(user_id=user_id, group_id=group_id, var_name=name)
             return True
 

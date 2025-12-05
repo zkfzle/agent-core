@@ -6,11 +6,13 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 
+
 class ConflictType(Enum):
     ADD = "ADD"
     DELETE = "DELETE"
     UPDATE = "UPDATE"
     NONE = "NONE"
+
 
 class MemoryType(Enum):
     USER_PROFILE = "user_profile"
@@ -26,6 +28,7 @@ class BaseMemoryUnit:
     user_id: str
     group_id: str
 
+
 @dataclass
 class UserProfileUnit(BaseMemoryUnit):
     profile_type: str
@@ -37,6 +40,7 @@ class UserProfileUnit(BaseMemoryUnit):
     is_implicit: bool = False
     reasoning: str = ""
     context_summary: str = ""
+
 
 @dataclass
 class VariableUnit(BaseMemoryUnit):

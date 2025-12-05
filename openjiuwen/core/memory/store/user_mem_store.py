@@ -2,7 +2,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
-import struct
 from typing import Any
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.common.logging import logger
@@ -24,7 +23,7 @@ class UserMemStore:
         self.kv_store = kv_store_instance
 
     async def write(self, user_id: str, group_id: str, mem_id: str, data: dict[str, Any]) -> bool:
-        """async write data to store"""
+        """write data to store"""
         if not data:
             logger.error(f"write failed, because data is empty")
             return False
@@ -33,18 +32,24 @@ class UserMemStore:
             logger.error(f"write failed, user memory already exists for user_id={user_id}, group_id={group_id}, "
                          f"mem_id={mem_id}")
             return False
+
+        # Set user mem id
+        await self.kv_store.set(user_mem_key, json.dumps(data))
+        # Append id to mem_type ids and user profile topic ids
         if UserMemStore.MEM_TYPE_FIELD_KEY in data.keys():
+            # mem_type ids
             user_mem_ids_key = self.__get_user_ids_key(user_id, group_id, data[UserMemStore.MEM_TYPE_FIELD_KEY])
             user_mem_ids_value = await self.kv_store.get(user_mem_ids_key) or ""
             await self.kv_store.set(user_mem_ids_key, self.__write_id(user_mem_ids_value, mem_id))
 
-            # Append id to user profile topic ids
+            # user profile topic ids
             if (data[UserMemStore.MEM_TYPE_FIELD_KEY] == MemoryType.USER_PROFILE.value and
                     UserMemStore.TOPIC_FIELD_KEY in data.keys() and
                     data[UserMemStore.TOPIC_FIELD_KEY] is not None):
                 user_mem_topic_key = self.__get_concatenation_key([user_id, group_id,
                                                                    UserMemStore.USER_PROFILE_TOPIC_STR,
-                                                                   data[UserMemStore.TOPIC_FIELD_KEY]])
+                                                                   data[UserMemStore.TOPIC_FIELD_KEY],
+                                                                   self.IDS_STR])
                 user_mem_topic_value = await self.kv_store.get(user_mem_topic_key) or ""
                 await self.kv_store.set(user_mem_topic_key, self.__write_id(user_mem_topic_value, mem_id))
 
@@ -52,13 +57,10 @@ class UserMemStore:
         user_ids_key = self.__get_user_ids_key(user_id, group_id)
         user_ids_value = await self.kv_store.get(user_ids_key) or ""
         await self.kv_store.set(user_ids_key, self.__write_id(user_ids_value, mem_id))
-
-        # Set user mem id
-        await self.kv_store.set(user_mem_key, json.dumps(data))
         return True
 
     async def update(self, user_id: str, group_id: str, mem_id: str, data: dict[str, Any]) -> bool:
-        """async update the data of given id"""
+        """update the data of given id"""
         user_mem_key = self.__get_user_mem_key(user_id, group_id, mem_id)
         if not await self.kv_store.exists(user_mem_key):
             logger.error(f"update failed, user memory does not exists for user_id={user_id}, group_id={group_id}, "
@@ -75,21 +77,21 @@ class UserMemStore:
         return True
 
     async def delete(self, user_id: str, group_id: str, mem_id: str):
-        """async delete data by given id"""
+        """delete data by given id"""
         await self.__inner_delete(user_id, group_id, mem_id)
 
     async def batch_delete(self, user_id: str, group_id: str, mem_ids: list[str]):
-        """async batch delete data by given ids"""
+        """batch delete data by given ids"""
         for mem_id in mem_ids:
             await self.__inner_delete(user_id, group_id, mem_id)
 
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
-        """async get data from given id"""
+        """get data from given id"""
         user_mem_key = self.__get_user_mem_key(user_id, group_id, mem_id)
         return await self.__get(user_mem_key)
 
     async def batch_get(self, user_id: str, group_id: str, mem_ids: list[str]) -> list[dict[str, Any]] | None:
-        """async get data from given ids"""
+        """get data from given ids"""
         keys_list = [self.__get_user_mem_key(user_id, group_id, mem_id) for mem_id in mem_ids]
         value_list = await self.kv_store.mget(keys_list)
         if not value_list:
@@ -97,7 +99,7 @@ class UserMemStore:
         return [json.loads(key) for key in value_list if key is not None]
 
     async def get_all(self, user_id: str, group_id: str, mem_type: str = None) -> list[dict[str, Any]] | None:
-        """async get data from given user_id|group_id|mem_type"""
+        """get data from given user_id|group_id|mem_type"""
         user_ids_key = self.__get_user_ids_key(user_id, group_id, mem_type)
         if not await self.kv_store.exists(user_ids_key):
             return None
@@ -109,9 +111,9 @@ class UserMemStore:
         return await self.batch_get(user_id, group_id, mem_ids)
 
     async def get_by_topic(self, user_id: str, group_id: str, topic: str) -> list[dict[str, Any]] | None:
-        """async get data from given user_id|group_id|topic"""
+        """get data from given user_id|group_id|topic"""
         user_mem_topic_key = self.__get_concatenation_key(
-            [user_id, group_id, UserMemStore.USER_PROFILE_TOPIC_STR, topic])
+            [user_id, group_id, UserMemStore.USER_PROFILE_TOPIC_STR, topic, self.IDS_STR])
         if not await self.kv_store.exists(user_mem_topic_key):
             return None
         user_mem_topic_value = await self.kv_store.get(user_mem_topic_key) or ""
@@ -168,7 +170,8 @@ class UserMemStore:
                         dict_value[UserMemStore.TOPIC_FIELD_KEY] is not None):
                     user_mem_topic_key = self.__get_concatenation_key([user_id, group_id,
                                                                        UserMemStore.USER_PROFILE_TOPIC_STR,
-                                                                       dict_value[UserMemStore.TOPIC_FIELD_KEY]])
+                                                                       dict_value[UserMemStore.TOPIC_FIELD_KEY],
+                                                                       self.IDS_STR])
                     await self.__delete_mem_id(user_mem_topic_key, mem_id)
 
         # Delete user ids

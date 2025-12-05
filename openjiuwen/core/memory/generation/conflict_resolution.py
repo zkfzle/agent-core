@@ -6,8 +6,7 @@ from enum import Enum
 from typing import List, Tuple
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.prompt.conflict_resolution import (
-    CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER)
+from openjiuwen.core.memory.prompt.conflict_resolution import CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER
 
 
 class ConflictType(Enum):

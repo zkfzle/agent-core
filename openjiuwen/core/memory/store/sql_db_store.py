@@ -11,9 +11,7 @@ from openjiuwen.core.memory.store import BaseDbStore
 
 
 class SqlDbStore:
-    def __init__(self,
-                 db_store: BaseDbStore
-                 ):
+    def __init__(self, db_store: BaseDbStore):
         self.db_store = db_store
         self._async_table_cache: dict[str, Table] = {}
         self.async_session = async_sessionmaker(

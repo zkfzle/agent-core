@@ -28,7 +28,7 @@ CONTEXT_CONFIG = {
     'table': 'user_messages',
     'columns': {
         'user_id': ContextStoreColumnType.TEXT,
-        'app_id': ContextStoreColumnType.TEXT,
+        'group_id': ContextStoreColumnType.TEXT,
         'session_id': ContextStoreColumnType.TEXT,
         'message_id': ContextStoreColumnType.TEXT,
         'role': ContextStoreColumnType.TEXT,
@@ -41,7 +41,7 @@ CONTEXT_CONFIG = {
 data_list = [
     {
         "user_id": "u1",
-        "app_id": "app1",
+        "group_id": "group1",
         "session_id": "s1",
         "message_id": "m1",
         "role": "user",
@@ -50,7 +50,7 @@ data_list = [
     },
     {
         "user_id": "u1",
-        "app_id": "app1",
+        "group_id": "group1",
         "session_id": "s1",
         "message_id": "m2",
         "role": "user",
@@ -59,7 +59,7 @@ data_list = [
     },
     {
         "user_id": "u2",
-        "app_id": "app2",
+        "group_id": "group2",
         "session_id": "s2",
         "message_id": "m3",
         "role": "assistant",
@@ -120,7 +120,7 @@ class TestAsyncSqlDbStore(unittest.TestCase):
         data_list = [
             {
                 "user_id": "u1",
-                "app_id": "app1",
+                "group_id": "group1",
                 "session_id": "s1",
                 "message_id": "m1",
                 "role": "user",
@@ -129,7 +129,7 @@ class TestAsyncSqlDbStore(unittest.TestCase):
             },
             {
                 "user_id": "u1",
-                "app_id": "app1",
+                "group_id": "group1",
                 "session_id": "s1",
                 "message_id": "m2",
                 "role": "user",
@@ -138,7 +138,7 @@ class TestAsyncSqlDbStore(unittest.TestCase):
             },
             {
                 "user_id": "u2",
-                "app_id": "app2",
+                "group_id": "group2",
                 "session_id": "s2",
                 "message_id": "m3",
                 "role": "assistant",

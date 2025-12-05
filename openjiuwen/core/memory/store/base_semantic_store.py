@@ -45,7 +45,7 @@ class BaseSemanticStore(ABC):
     @abstractmethod
     async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
         """
-        Search for the top-k most similar documents based on inner-product distance.
+        Search for the top-k most similar documents.
 
         The query string is embedded internally before similarity comparison.
 
@@ -57,7 +57,7 @@ class BaseSemanticStore(ABC):
         Returns:
             List[Tuple[str, float]]: A list of (id, score) tuples where `id`
                 is the unique identifier of the matched document and `score`
-                is the inner-product similarity distance (higher is more similar).
+                is the similarity score, with higher values indicating greater similarity.
         """
         pass
 

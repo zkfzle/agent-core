@@ -28,7 +28,7 @@ class TestCreateTable(unittest.TestCase):
         async_session = async_sessionmaker(bind=engine, expire_on_commit=False)
         msg = UserMessage(
             user_id="u123",
-            app_id="app456",
+            group_id="group456",
             session_id="s789",
             message_id="m001",
             role="user",
@@ -52,7 +52,7 @@ class TestCreateTable(unittest.TestCase):
                     self.assertEqual(m.timestamp, msg.timestamp)
                     self.assertEqual(m.role, msg.role)
                     self.assertEqual(m.session_id, msg.session_id)
-                    self.assertEqual(m.app_id, msg.app_id)
+                    self.assertEqual(m.group_id, msg.group_id)
 
     @staticmethod
     async def _clear_tables(engine: AsyncEngine):

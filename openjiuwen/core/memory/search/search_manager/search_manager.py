@@ -41,8 +41,10 @@ class SearchManager:
                                                           **kwargs)
             if res:
                 result = res
-
-        return [item for item in result if item["score"] >= threshold]
+        # sort and truncate multiple search_type results based on score
+        if len(result) > top_k:
+            result.sort(key=lambda item: item["score"], reverse=True)
+        return [item for item in result if item["score"] >= threshold][:top_k]
 
     async def list_user_mem(self, user_id: str, group_id: str, nums: int, pages: int) -> list[dict[str, Any]] | None:
         return await self.mem_store.get_in_range(user_id, group_id, nums * (pages - 1), nums * pages)

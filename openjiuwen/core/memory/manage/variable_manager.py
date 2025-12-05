@@ -20,6 +20,7 @@ class VariableManager(BaseMemoryManager):
         """add Variable memory"""
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
+            return
         key, value = self._make_variable_pairs(
             memory.user_id,
             False,
@@ -38,6 +39,7 @@ class VariableManager(BaseMemoryManager):
     async def update_user_variable(self, user_id: str, group_id: str, var_name: str, var_mem: str):
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
+            return
         key, value = self._make_variable_pairs(usr_id=user_id, for_deletion=False,
                                 group_id=group_id, var_name=var_name, user_var_value=var_mem)
         await self.kv_store.set(key, value)
@@ -49,6 +51,7 @@ class VariableManager(BaseMemoryManager):
     async def delete_by_user_id(self, user_id: str, group_id: str):
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
+            return
         user_prefix = f"user_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{group_id}{self.SEPARATOR}"
         session_prefix = f"session_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{group_id}{self.SEPARATOR}"
         await self.kv_store.delete_by_prefix(user_prefix)
@@ -57,6 +60,7 @@ class VariableManager(BaseMemoryManager):
     async def delete_user_variable(self, user_id: str, group_id: str, var_name: str):
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
+            return
         key, _ = self._make_variable_pairs(usr_id=user_id, for_deletion=False, group_id=group_id, var_name=var_name)
         await self.kv_store.delete(key)
 
@@ -77,7 +81,8 @@ class VariableManager(BaseMemoryManager):
             kv_ret = await self.kv_store.get_by_prefix(prefix_str)
             return {k.split(f"{self.SEPARATOR}")[-1]: v for k, v in kv_ret.items()}
         if session_id:
-            key = f"session_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{group_id}{self.SEPARATOR}{session_id}{self.SEPARATOR}{name}"
+            key = (f"session_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{group_id}{self.SEPARATOR}"
+                   f"{session_id}{self.SEPARATOR}{name}")
         else:
             key = f"user_var{self.SEPARATOR}{user_id}{self.SEPARATOR}{group_id}{self.SEPARATOR}{name}"
         kv_ret = await self.kv_store.get(key)
@@ -103,7 +108,7 @@ class VariableManager(BaseMemoryManager):
                     f"{VariableManager.SEPARATOR}{var_name}"
                 )
                 value = None if for_deletion else user_var_value
-            # 2# session_var
+            # 2) session_var
             else:
                 key = (
                     f"session_var{VariableManager.SEPARATOR}{usr_id}"
@@ -119,4 +124,4 @@ class VariableManager(BaseMemoryManager):
         if not user_id or not user_id.strip():
             logger.error(f"{context} failed, user ID is empty")
         if not group_id or not group_id.strip():
-            logger.error(f"{context} failed, app ID is empty")
+            logger.error(f"{context} failed, group ID is empty")

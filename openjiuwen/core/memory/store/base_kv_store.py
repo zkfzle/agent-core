@@ -4,6 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+
 class BaseKVStore(ABC):
     """
     Abstract base class defining a unified interface for a key-value storage.
@@ -98,7 +99,7 @@ class BaseKVStore(ABC):
         Bulk-retrieve values for multiple keys in a single operation.
 
         Args:
-            keys (List[str]): An iterable of string keys to fetch.
+            keys (List[str]): An list of string keys to fetch.
 
         Returns:
             List[str | None]: A list of string values (or None) in the same order as the input ``keys``.

@@ -7,22 +7,29 @@ import unittest
 
 from sqlalchemy import text, inspect, select
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncEngine
+
+from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from openjiuwen.core.memory.store.message import create_tables, UserMessage
 
 
-@unittest.skip("skip test")
 class TestCreateTable(unittest.TestCase):
+    def setUp(self):
+        self.path = Path("./memory_engine.db").resolve()
+        self.engine = create_async_engine(f"sqlite+aiosqlite:///{self.path}")
+        self.db_store = DefaultDbStore(self.engine)
+        asyncio.run(create_tables(self.db_store))
+
+    def tearDown(self):
+        asyncio.run(self.engine.dispose())
+        if self.path.exists():
+            self.path.unlink()
+
     def test_table_creation(self):
-        path = Path("./memory_engine.db")
-        engine = create_async_engine(
-            f"sqlite+aiosqlite:///{path.resolve()}"
-        )
-        asyncio.run(create_tables(engine))
-        asyncio.run(self._async_check_table(engine))
+        asyncio.run(self._async_check_table(self.engine))
 
-        asyncio.run(TestCreateTable._clear_tables(engine))
+        asyncio.run(TestCreateTable._clear_tables(self.engine))
 
-        asyncio.run(self._insert_data(engine))
+        asyncio.run(self._insert_data(self.engine))
 
     async def _insert_data(self, engine: AsyncEngine):
         async_session = async_sessionmaker(bind=engine, expire_on_commit=False)

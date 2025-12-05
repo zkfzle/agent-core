@@ -37,7 +37,6 @@ CONTEXT_CONFIG = {
     }
 }
 
-
 data_list = [
     {
         "user_id": "u1",
@@ -89,30 +88,33 @@ async def create(conn: AsyncEngine, table: str, columns: dict[str, ContextStoreC
         logger.error("Failed to create table", exc_info=e)
 
 
-@unittest.skip("skip test")
 class TestAsyncSqlDbStore(unittest.TestCase):
     def setUp(self):
         time_str = datetime.now().strftime("%Y%m%d%H%M%S")
         uuid_str = uuid.uuid4().hex[:6]
-        path = Path(f"./test_sql_db_{time_str}_{uuid_str}.db")
-        db_store = DefaultDbStore(create_async_engine(
-            f"sqlite+aiosqlite:///{path.resolve()}"
-        ))
+        self.path = Path(f"./test_sql_db_{time_str}_{uuid_str}.db").resolve()
+        self.engine = create_async_engine(f"sqlite+aiosqlite:///{self.path}")
+        db_store = DefaultDbStore(self.engine)
         asyncio.run(create(db_store.get_async_engine(), CONTEXT_CONFIG['table'], CONTEXT_CONFIG['columns']))
         self.store = SqlDbStore(db_store)
 
+    def tearDown(self):
+        asyncio.run(self.engine.dispose())
+        if self.path.exists():
+            self.path.unlink()
+
     async def async_get_table_columns(self):
-        """测试 _get_table 是否能正确读取表结构"""
+        """Verify that _get_table correctly retrieves the table schema."""
         table_name = CONTEXT_CONFIG["table"]
         table = await self.store._get_table(table_name)
 
         expected_cols = list(CONTEXT_CONFIG["columns"].keys())
 
-        # 检查所有列是否存在
+        # Verify that all columns exist.
         for col in expected_cols:
             self.assertIn(col, table.c)
 
-        # 检查每个列类型能正确加载
+        # Verify that each column type is correctly loaded.
         for col in table.c:
             self.assertTrue(hasattr(col.type, "python_type"))
 
@@ -162,7 +164,7 @@ class TestAsyncSqlDbStore(unittest.TestCase):
         self.assertEqual(row[0]["user_id"], "u1")
 
     async def async_get_with_sort(self):
-        """测试 get_with_sort 查询排序是否正确"""
+        """Verify that get_with_sort correctly performs query sorting."""
 
         table = CONTEXT_CONFIG["table"]
 
@@ -215,8 +217,8 @@ class TestAsyncSqlDbStore(unittest.TestCase):
     async def async_delete(self):
         ok = await self.store.delete(CONTEXT_CONFIG["table"], {"message_id": "m1"})
         self.assertTrue(ok)
-        row = await self.store.condition_get("messages", {"id": ["m1"]})
-        self.assertIsNone(row)
+        row = await self.store.condition_get(CONTEXT_CONFIG["table"], {"id": ["m1"]})
+        self.assertEqual(row, [])
 
     def test_basic(self):
         asyncio.run(self.async_get_table_columns())

@@ -8,30 +8,17 @@ from llama_index.core.schema import TextNode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
-from openjiuwen.integrations.retriever.retrieval.llms.client import (
-    get_llm_client,
-    get_model_name,
-)
-from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.read import (
-    get_read_prompt,
-    postproc_read,
-)
-from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.reason import (
-    get_reason_prompt,
-    postproc_reason,
-)
+from openjiuwen.integrations.retriever.retrieval.llms.client import get_llm_client, get_model_name
+from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.read import get_read_prompt, postproc_read
+from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.reason import get_reason_prompt, postproc_reason
 from openjiuwen.integrations.retriever.retrieval.search.agents.prompts.rewrite import (
     get_rewrite_prompt,
     postproc_rewrite,
 )
-from openjiuwen.integrations.retriever.retrieval.search.agents.triple_memory import (
-    TripleMemory,
-)
-from openjiuwen.integrations.retriever.retrieval.search.es import rrf_nodes
+from openjiuwen.integrations.retriever.retrieval.search.agents.triple_memory import TripleMemory
 from openjiuwen.integrations.retriever.retrieval.search.fusion import GraphRetriever
-from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
-    BaseRetriever as _BaseRetriever,
-)
+from openjiuwen.integrations.retriever.retrieval.search.milvus import rrf_nodes
+from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import BaseRetriever as _BaseRetriever
 from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
     Dataset,
     Document,
@@ -57,9 +44,7 @@ class SearchAgent(_BaseRetriever):
         cfg = config_obj or CONFIG
         if llm_client is None:
             if cfg is None:
-                raise ValueError(
-                    "llm_client is required for SearchAgent (no default config)"
-                )
+                raise ValueError("llm_client is required for SearchAgent (no default config)")
             llm_client = get_llm_client(config=cfg)
         self.llm: BaseModelClient = llm_client
         self._config = cfg
@@ -72,9 +57,7 @@ class SearchAgent(_BaseRetriever):
         self._graph_exp_config = retriever_config.get("graph_expansion_config", {})
         self._retrieval_mode = mode
 
-    def __call__(
-        self, query: Union[str, Iterable[str]], batch_size: int = 8, *args, **kwargs
-    ):
+    def __call__(self, query: Union[str, Iterable[str]], batch_size: int = 8, *args, **kwargs):
         """Not yet implemented"""
         pass
 
@@ -89,9 +72,7 @@ class SearchAgent(_BaseRetriever):
             str: completion output coming from the LLM of choice
         """
         messages = [{"role": "user", "content": prompt}]
-        response = self.llm.invoke(
-            model_name=get_model_name(self._config), messages=messages, temperature=0.0
-        )
+        response = self.llm.invoke(model_name=get_model_name(self._config), messages=messages, temperature=0.0)
         return response.content
 
     async def read(
@@ -121,9 +102,7 @@ class SearchAgent(_BaseRetriever):
     async def retrieve(self, query: str) -> List[TextNode]:
         return await self.retriever.async_search(query=query, mode=self._retrieval_mode)
 
-    async def reason(
-        self, query: str, triple_memory: Union[TripleMemory, None]
-    ) -> Tuple[bool, str]:
+    async def reason(self, query: str, triple_memory: Union[TripleMemory, None]) -> Tuple[bool, str]:
         """
         Function responsible for running the `reason` step within GeAR.
 
@@ -140,9 +119,7 @@ class SearchAgent(_BaseRetriever):
         logger.debug("REASON\nprompt=%r\ncompletion=%r", prompt, completion)
         return postproc_reason(completion=completion)
 
-    async def rewrite(
-        self, query: str, triple_memory: Union[TripleMemory, None], reason: str
-    ) -> str:
+    async def rewrite(self, query: str, triple_memory: Union[TripleMemory, None], reason: str) -> str:
         """
         Function responsible for running the query `rewrite` step within GeAR.
 
@@ -168,7 +145,7 @@ class SearchAgent(_BaseRetriever):
 
         return await asyncio.gather(
             *[
-                self.chunk_retriever.async_search(
+                self.retriever.chunk_retriever.async_search(
                     query=" ".join(tmp_triple),
                     mode="hybrid",
                     topk=5,
@@ -181,9 +158,7 @@ class SearchAgent(_BaseRetriever):
 
         nodes = await asyncio.gather(
             *[
-                self.retriever.triple_retriever.async_search(
-                    query=" ".join(tmp_triple), mode="hybrid", topk=1
-                )
+                self.retriever.triple_retriever.async_search(query=" ".join(tmp_triple), mode="hybrid", topk=1)
                 for tmp_triple in triples
             ]
         )
@@ -209,9 +184,7 @@ class SearchAgent(_BaseRetriever):
 
             running_triples = None
             if self.use_sync:
-                proximal_triples = await self.read(
-                    query=running_query, passages=passages, triple_memory=None
-                )
+                proximal_triples = await self.read(query=running_query, passages=passages, triple_memory=None)
                 logger.debug(
                     "After the first-read in turn=%r we get proximal_triples=%r",
                     turn,
@@ -253,9 +226,7 @@ class SearchAgent(_BaseRetriever):
             answer_or_reason = ""
 
             if len(memory) > 0:
-                is_answerable, answer_or_reason = await self.reason(
-                    query, triple_memory=memory
-                )
+                is_answerable, answer_or_reason = await self.reason(query, triple_memory=memory)
 
                 if is_answerable:
                     logger.info("Agent 在 turn=%r 成功回答 query=%r", turn, query)
@@ -263,9 +234,7 @@ class SearchAgent(_BaseRetriever):
             if turn >= self.max_iter:
                 break
 
-            next_query = await self.rewrite(
-                query, triple_memory=memory, reason=answer_or_reason
-            )
+            next_query = await self.rewrite(query, triple_memory=memory, reason=answer_or_reason)
             if not next_query:
                 break
             queries.append(next_query)
@@ -310,15 +279,11 @@ class SearchAgent(_BaseRetriever):
         if datasets is None:
             datasets = []
         dataset_set = {(dataset.title, dataset.uri) for dataset in datasets}
-        self_dataset_set = {
-            (dataset.title, dataset.uri) for dataset in self.list_datasets()
-        }
+        self_dataset_set = {(dataset.title, dataset.uri) for dataset in self.list_datasets()}
         if dataset_set and dataset_set != self_dataset_set:
             return []
 
-        results = asyncio.get_event_loop().run_until_complete(
-            self.search(query=question)
-        )
+        results = asyncio.get_event_loop().run_until_complete(self.search(query=question))
         result = RetrievalResult(
             query=question,
             datasets=self.list_datasets(),

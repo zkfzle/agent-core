@@ -4,7 +4,6 @@ import asyncio
 import json
 
 import anyio
-from elasticsearch import Elasticsearch
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -12,7 +11,8 @@ from openjiuwen.integrations.retriever.config.configuration import CONFIG
 from openjiuwen.integrations.retriever.doc_process.components.extraction.llm_openie import PROMPT as PROMPT_TEMPLATE
 from openjiuwen.integrations.retriever.doc_process.components.extraction.llm_openie import LLMOpenIE
 from openjiuwen.integrations.retriever.retrieval.llms.client import get_model_name
-from openjiuwen.integrations.retriever.retrieval.utils import iter_index
+from openjiuwen.integrations.retriever.retrieval.utils.milvus import iter_index
+from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import milvus_manager
 
 
 def _concurrent_limit(cfg=None) -> int | float:
@@ -56,24 +56,54 @@ async def process_data(data, llm_client, limiter, save_path, model_name: str = "
     return chunk2triples
 
 
-def load_index(es_host: str, es_index: str, chunk_file_path: str = None, file_id: str = None) -> list[dict]:
-    es = Elasticsearch(es_host)
+def load_index(
+    milvus_uri: str, milvus_token: str, chunk_es_index: str, chunk_file_path: str = None, file_id: str = None
+) -> list[dict]:
+    """Load chunks from Milvus collection using MilvusClient API."""
+    client = milvus_manager.get_client(
+        uri=milvus_uri,
+        token=milvus_token,
+    )
 
-    query = None
+    # Build filter expression if file_id is provided
+    filter_expr = None
     if file_id is not None:
-        query = {"bool": {"filter": [{"term": {"metadata.file_id": file_id}}]}}
+        filter_expr = f'document_id == "{file_id}"'
 
     chunks = []
     logger.debug("Downloading chunks...")
-    for batch in iter_index(es, es_index, query=query):
-        for item in batch:
-            chunks.append({"title": item["_source"]["metadata"]["title"], "content": item["_source"]["content"]})
+
+    # Iterate over all matching records using iter_index
+    try:
+        for batch in iter_index(
+            client=client,
+            collection_name=chunk_es_index,
+            output_fields=["content", "metadata"],
+            filter_expr=filter_expr,
+            batch_size=256,
+        ):
+            for item in batch:
+                metadata = item.get("metadata", {})
+                title = metadata.get("title", "") if isinstance(metadata, dict) else ""
+                content = item.get("content", "")
+                chunks.append({"title": title, "content": content})
+
+    except Exception as e:
+        logger.error(f"Failed to query Milvus: {e}")
+        raise
 
     if chunk_file_path is not None:
         with open(chunk_file_path, "w+") as f:
             for chunk in chunks:
                 f.write(json.dumps({"title": chunk["title"], "content": chunk["content"]}, ensure_ascii=False))
                 f.write("\n")
+
+    # Release client reference
+    try:
+        milvus_manager.release()
+    except Exception:
+        """Should ignore the error"""
+        pass
 
     return chunks
 
@@ -89,8 +119,6 @@ async def extract_triples(
     cfg = config_obj or CONFIG
     if cfg is None:
         raise ValueError("config_obj (GraphRAGConfig) is required")
-    logger.info(f"   ES URL: {cfg.es_url}")
-    logger.info(f"   ES 索引: {cfg.chunk_es_index}")
     chunk_src = (
         f"ES 索引 {cfg.chunk_es_index}（未指定 chunk_file_path）"
         if chunk_file_path is None
@@ -105,7 +133,9 @@ async def extract_triples(
     if llm_client is None:
         raise ValueError("llm_client is required (SDK 不再自动创建 LLM 客户端)")
 
-    chunks = load_index(cfg.es_url, cfg.chunk_es_index, chunk_file_path=chunk_file_path, file_id=file_id)
+    chunks = load_index(
+        cfg.milvus_uri, cfg.milvus_token, cfg.chunk_es_index, chunk_file_path=chunk_file_path, file_id=file_id
+    )
     model_name = get_model_name(cfg)
     limiter = anyio.CapacityLimiter(_concurrent_limit(cfg))
     chunk2triples = await process_data(
@@ -116,5 +146,5 @@ async def extract_triples(
         model_name=model_name,
     )
 
-    logger.info("三元组提取完成。")
+    logger.info("✅ 三元组提取完成！")
     return chunk2triples

@@ -4,7 +4,6 @@ from typing import List, Tuple
 
 from openjiuwen.core.common.logging import logger
 
-
 _REASON_PROMPT = """
 # Task Description:
 You are given an input question and a set of known facts:

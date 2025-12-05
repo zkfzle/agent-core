@@ -39,7 +39,8 @@ class GraphRAGConfig:
         cfg = self.raw
 
         # 基础设施（必填）
-        self.es_url = _require(cfg, "es_url")
+        self.milvus_uri = _require(cfg, "milvus_uri")
+        self.milvus_token = cfg.get("milvus_token")  # optional
         self.embed_api_type = _require(cfg, "embed_api_type")  # e.g., custom_api/ollama
         self.embed_api_base = _require(cfg, "embed_api_base")
         self.embed_api_key = cfg.get("embed_api_key")
@@ -115,7 +116,7 @@ class GraphRAGConfig:
 
     def print_config(self) -> None:
         fields = [
-            "es_url",
+            "milvus_uri",
             "embed_api_type",
             "embed_api_base",
             "embed_model_name",

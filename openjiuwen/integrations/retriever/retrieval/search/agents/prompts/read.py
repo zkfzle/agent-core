@@ -8,7 +8,6 @@ from openjiuwen.core.common.logging import logger
 
 from .utils import chunks2str, triples2str
 
-
 _READ_PROMPT = """
 Your task is to find facts that help answer an input question.
 

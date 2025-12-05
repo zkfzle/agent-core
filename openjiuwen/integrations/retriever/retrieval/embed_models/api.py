@@ -1,10 +1,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 import os
 from typing import Any
+
 import requests
 from llama_index.embeddings.dashscope import DashScopeEmbedding
 
 from openjiuwen.core.common.logging import logger
+
 from .base import EmbedModel
 
 
@@ -76,9 +78,7 @@ class APIEmbedClient(EmbedModel):
             raise ValueError("Empty texts list provided")
         non_empty = [t for t in texts if t.strip()]
         if len(non_empty) != len(texts):
-            raise ValueError(
-                f"{len(texts) - len(non_empty)} chunks are empty while embedding"
-            )
+            raise ValueError(f"{len(texts) - len(non_empty)} chunks are empty while embedding")
         if not non_empty:
             raise ValueError("All texts are empty after filtering")
         # Respect caller batch_size but never exceed configured max_batch_size (helps avoid 413 errors).
@@ -119,17 +119,13 @@ class APIEmbedClient(EmbedModel):
                         if "embedding" in item:
                             emb.append(item["embedding"])
                     if not emb:
-                        raise ValueError(
-                            f"No embeddings field found in data items: {result}"
-                        )
+                        raise ValueError(f"No embeddings field found in data items: {result}")
                 else:
                     raise ValueError(f"No embeddings in response: {result}")
                 return emb
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
-                    raise RuntimeError(
-                        f"Failed to get embedding after {self.max_retries} attempts"
-                    ) from e
+                    raise RuntimeError(f"Failed to get embedding after {self.max_retries} attempts") from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
                     attempt + 1,
@@ -150,9 +146,7 @@ class SiliconflowEmbedClient(APIEmbedClient):
         extra_headers: dict | None = None,
         max_batch_size: int = 8,
     ):
-        super().__init__(
-            model_name=model_name, api_key=api_key, max_batch_size=max_batch_size
-        )
+        super().__init__(model_name=model_name, api_key=api_key, max_batch_size=max_batch_size)
         self.api_url = base_url
         self.timeout = timeout
         self.max_retries = max_retries
@@ -184,17 +178,13 @@ class SiliconflowEmbedClient(APIEmbedClient):
                         if "embedding" in item:
                             emb.append(item["embedding"])
                     if not emb:
-                        raise ValueError(
-                            f"No embeddings field found in data items: {result}"
-                        )
+                        raise ValueError(f"No embeddings field found in data items: {result}")
                 else:
                     raise ValueError(f"No embeddings in response: {result}")
                 return emb
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
-                    raise RuntimeError(
-                        f"Failed to get embedding after {self.max_retries} attempts"
-                    ) from e
+                    raise RuntimeError(f"Failed to get embedding after {self.max_retries} attempts") from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
                     attempt + 1,
@@ -205,12 +195,8 @@ class SiliconflowEmbedClient(APIEmbedClient):
 
 
 class QwenEmbedClient(APIEmbedClient):
-    def __init__(
-        self, model_name: str, max_batch_size: int = 8, api_key: str | None = None
-    ):
-        super().__init__(
-            model_name=model_name, api_key=api_key, max_batch_size=max_batch_size
-        )
+    def __init__(self, model_name: str, max_batch_size: int = 8, api_key: str | None = None):
+        super().__init__(model_name=model_name, api_key=api_key, max_batch_size=max_batch_size)
         os.environ["DASHSCOPE_API_KEY"] = self.api_key
         self.embedder = DashScopeEmbedding(model_name=self.model_name)
 

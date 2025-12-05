@@ -13,10 +13,9 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.common.logging import logger
-
 import openjiuwen.integrations.retriever.config.configuration as grag_config
 import openjiuwen.integrations.retriever.doc_process.components.pipeline.build_grag_index as build_mod
+from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.doc_process.components.indexing.index import delete_text_entries
 from openjiuwen.integrations.retriever.doc_process.components.indexing.index_triples import delete_triple_entries
 
@@ -128,9 +127,9 @@ async def build_doc_index_from_chunks(
 
     # 清理同一 doc_id 旧数据，避免上次失败遗留的半截索引
     try:
-        await delete_text_entries(doc_id)
+        await delete_text_entries(doc_id, config_obj=cfg)
         if index_config.use_graph:
-            await delete_triple_entries(doc_id)
+            await delete_triple_entries(doc_id, config_obj=cfg)
     except Exception as e:
         logger.warning("Failed to clean previous doc entries before re-indexing doc_id=%s: %s", doc_id, e)
 

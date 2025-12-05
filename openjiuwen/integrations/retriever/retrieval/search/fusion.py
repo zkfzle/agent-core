@@ -5,20 +5,14 @@ import copy
 import itertools
 from typing import Any, List, Literal, Optional
 
-from elasticsearch import AsyncElasticsearch
 from llama_index.core.schema import TextNode
 from llama_index.core.vector_stores import VectorStoreQuery
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
-from openjiuwen.integrations.retriever.retrieval.search.es import (
-    BaseRetriever,
-    rrf_nodes,
-)
-from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
-    BaseRetriever as _BaseRetriever,
-)
+from openjiuwen.integrations.retriever.retrieval.search.milvus import BaseRetriever, rrf_nodes
+from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import BaseRetriever as _BaseRetriever
 from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
     Dataset,
     Document,
@@ -128,13 +122,9 @@ class GraphRetriever(_BaseRetriever):
         Returns:
             list[TextNode]: `topk` chunks.
         """
-        query = self.chunk_retriever.make_query(
-            query, topk=topk, mode=mode, query_config=query_config
-        )
+        query = self.chunk_retriever.make_query(query, topk=topk, mode=mode, query_config=query_config)
         # source 参数向后兼容，目前统一按 chunks + graph 执行
-        nodes = await self.chunk_retriever.async_search(
-            query, score_threshold=score_threshold_vector
-        )
+        nodes = await self.chunk_retriever.async_search(query, score_threshold=score_threshold_vector)
 
         logger.warning(
             "[graph] 图检索入口：graph_expansion=%s chunk命中=%d topk=%d mode=%s",
@@ -177,9 +167,15 @@ class GraphRetriever(_BaseRetriever):
                 sum(1 for v in chunk_id2triples.values() if not v),
             )
 
-        beams = TripleBeamSearch(retriever=self.triple_retriever, **kwargs)(
-            query, triples
-        )
+            logger.info(
+                "[graph] 从 chunk 索引取三元组：chunks=%d triples=%d (无三元组=%d)",
+                len(chunk_id2triples),
+                len(triples),
+                sum(1 for v in chunk_id2triples.values() if not v),
+            )
+
+        triple_beam_search = TripleBeamSearch(retriever=self.triple_retriever, **kwargs)
+        beams = await triple_beam_search.beam_search(query, triples)
 
         if not beams:
             return chunks[:topk] if topk else chunks
@@ -211,12 +207,8 @@ class GraphRetriever(_BaseRetriever):
     ) -> tuple[list[TextNode], list[TextNode]]:
         """Search via hybrid data source and return (chunks, triples)."""
         chunks, (_chunks, triples) = await asyncio.gather(
-            self.chunk_retriever.async_search(
-                query, score_threshold=score_threshold_vector
-            ),
-            self._search_by_triples(
-                copy.copy(query), topk_triples
-            ),  # shallow copy is enough
+            self.chunk_retriever.async_search(query, score_threshold=score_threshold_vector),
+            self._search_by_triples(copy.copy(query), topk_triples),  # shallow copy is enough
         )
         chunks = rrf_nodes([chunks, _chunks])
         return chunks, triples
@@ -244,48 +236,97 @@ class GraphRetriever(_BaseRetriever):
         """Return a dict mapping from each chunk's id to their triples."""
         chunk_id2triples: dict[str, list[TextNode]] = {x.node_id: [] for x in chunks}
 
-        es: AsyncElasticsearch = self.triple_retriever.es.client
-        responses = await asyncio.gather(
-            *[
-                es.search(
-                    index=self.triple_retriever.es.index_name,
-                    query={"term": {"metadata.chunk_id": id_}},
-                    source_excludes=[self.triple_retriever.es.vector_field],
-                )
-                for id_ in chunk_id2triples
-            ]
-        )
+        if not chunk_id2triples:
+            return chunk_id2triples
 
-        for resp in responses:
-            hits = resp["hits"]["hits"]
-            for hit in hits:
-                node = TextNode.from_json(hit["_source"]["metadata"]["_node_content"])
-                node.text = hit["_source"][self.triple_retriever.es.text_field]
-                chunk_id2triples[node.metadata["chunk_id"]].append(node)
+        client = self.triple_retriever.client
+        collection_name = self.triple_retriever.collection_name
+        text_field = self.triple_retriever.text_field
+        metadata_field = self.triple_retriever.metadata_field
+
+        # Query triples for each chunk_id
+        async def fetch_for_chunk(chunk_id: str) -> list[TextNode]:
+            # Use filter to find triples associated with this chunk
+            filter_expr = f'metadata["chunk_id"] == "{chunk_id}"'
+            try:
+                results = await asyncio.to_thread(
+                    client.query,
+                    collection_name=collection_name,
+                    filter=filter_expr,
+                    output_fields=[text_field, metadata_field, "document_id"],
+                    limit=1000,  # Reasonable limit for triples per chunk
+                )
+
+                nodes = []
+                for item in results:
+                    metadata = item.get(metadata_field, {})
+
+                    node = TextNode(
+                        id_=str(item.get("pk", "")),
+                        text=item.get(text_field, ""),
+                        metadata=metadata,
+                    )
+                    nodes.append(node)
+                return nodes
+            except Exception as e:
+                logger.warning(f"Failed to fetch triples for chunk {chunk_id}: {e}")
+                return []
+
+        # Fetch triples for all chunks concurrently
+        tasks = [fetch_for_chunk(chunk_id) for chunk_id in chunk_id2triples]
+        results = await asyncio.gather(*tasks)
+
+        for chunk_id, triples in zip(chunk_id2triples.keys(), results):
+            chunk_id2triples[chunk_id] = triples
 
         return chunk_id2triples
 
     async def _fetch_chunks(self, triples: list[TextNode]) -> list[TextNode]:
         """Return a list of associated chunks."""
-        chunk_ids = deduplicate(node.metadata["chunk_id"] for node in triples)
-        es: AsyncElasticsearch = self.chunk_retriever.es.client
-        responses = await asyncio.gather(
-            *[
-                es.get(
-                    index=self.chunk_retriever.es.index_name,
-                    id=id_,
-                    source_excludes=[self.chunk_retriever.es.vector_field],
+        chunk_ids = deduplicate(node.metadata["chunk_id"] for node in triples if "chunk_id" in node.metadata)
+
+        if not chunk_ids:
+            return []
+
+        client = self.chunk_retriever.client
+        collection_name = self.chunk_retriever.collection_name
+        text_field = self.chunk_retriever.text_field
+        metadata_field = self.chunk_retriever.metadata_field
+
+        async def fetch_chunk(chunk_id: str) -> TextNode | None:
+            # Query by node_id or pk
+            # Try filtering by document_id or using the chunk_id as pk
+            try:
+                pk_id = int(chunk_id)
+                results = await asyncio.to_thread(
+                    client.query,
+                    collection_name=collection_name,
+                    filter=f"pk == {pk_id}",
+                    output_fields=[text_field, metadata_field, "document_id"],
+                    limit=1,
                 )
-                for id_ in chunk_ids
-            ]
-        )
+            except ValueError:
+                pass
 
-        chunks = []
-        for resp in responses:
-            node = TextNode.from_json(resp["_source"]["metadata"]["_node_content"])
-            node.text = resp["_source"][self.chunk_retriever.es.text_field]
-            chunks.append(node)
+            if not results:
+                return None
 
+            item = results[0]
+            metadata = item.get(metadata_field, {})
+
+            node = TextNode(
+                id_=chunk_id,
+                text=item.get(text_field, ""),
+                metadata=metadata,
+            )
+            return node
+
+        # Fetch all chunks concurrently
+        tasks = [fetch_chunk(chunk_id) for chunk_id in chunk_ids]
+        results = await asyncio.gather(*tasks)
+
+        # Filter out None results
+        chunks = [node for node in results if node is not None]
         return chunks
 
     def list_datasets(
@@ -293,14 +334,12 @@ class GraphRetriever(_BaseRetriever):
         name: Optional[str] = None,
         dataset_id: Optional[str] = None,
     ):
-        return self.chunk_retriever.list_datasets(
-            name=name
-        ) + self.triple_retriever.list_datasets(name=name)
+        return self.chunk_retriever.list_datasets(name=name) + self.triple_retriever.list_datasets(name=name)
 
     def list_documents(self, dataset_id: str, document_id: str):
-        if dataset_id == self.chunk_retriever.es_index:
+        if dataset_id == self.chunk_retriever.collection_name:
             return self.chunk_retriever.list_documents(document_id)
-        elif dataset_id == self.triple_retriever.es_index:
+        elif dataset_id == self.triple_retriever.collection_name:
             return self.triple_retriever.list_documents(document_id)
         return []
 
@@ -314,15 +353,11 @@ class GraphRetriever(_BaseRetriever):
         if datasets is None:
             datasets = []
         dataset_set = {(dataset.title, dataset.uri) for dataset in datasets}
-        self_dataset_set = {
-            (dataset.title, dataset.uri) for dataset in self.list_datasets()
-        }
+        self_dataset_set = {(dataset.title, dataset.uri) for dataset in self.list_datasets()}
         if dataset_set and dataset_set != self_dataset_set:
             return []
 
-        results = self.search(
-            query=question, topk=top_k, graph_expansion=graph_expansion
-        )
+        results = self.search(query=question, topk=top_k, graph_expansion=graph_expansion)
         result = RetrievalResult(
             query=question,
             datasets=self.list_datasets(),

@@ -8,16 +8,16 @@ KB 侧的检索辅助方法（agentcore 提供，agentstudio 可直接调用）�
 
 from typing import List, Literal, Optional, Tuple
 
-from elasticsearch import AsyncElasticsearch, NotFoundError
 from pydantic import BaseModel, ConfigDict, Field
 
 import openjiuwen.integrations.retriever.config.configuration as grag_config
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.integrations.retriever.retrieval.embed_models import EmbedModel
 from openjiuwen.integrations.retriever.retrieval.search.agents.base import SearchAgent
-from openjiuwen.integrations.retriever.retrieval.search.es import BaseRetriever
 from openjiuwen.integrations.retriever.retrieval.search.fusion import GraphRetriever
-from openjiuwen.core.common.logging import logger
+from openjiuwen.integrations.retriever.retrieval.search.milvus import BaseRetriever
+from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import milvus_manager
 
 
 class KBQuery(BaseModel):
@@ -43,19 +43,21 @@ class KBQuery(BaseModel):
     llm_client: Optional[BaseModelClient] = Field(default=None, description="BaseModelClient 实例，图/Agentic 检索必填")
 
 
-def _index_names(kb_id: str) -> Tuple[str, str]:
-    """生成指定知识库的 chunk/triple 索引名。"""
+def _collection_names(kb_id: str) -> Tuple[str, str]:
+    """生成指定知识库的 chunk/triple collection 名。"""
     return f"kb_{kb_id}_chunks", f"kb_{kb_id}_triples"
 
 
-def _attach_indices(cfg: grag_config.GraphRAGConfig, kb_id: str, index_type: str, use_graph: bool) -> Tuple[str, str]:
-    """写入 cfg 的索引名和开关，不再依赖 env。"""
-    chunk_idx, triple_idx = _index_names(kb_id)
-    cfg.chunk_es_index = chunk_idx
-    cfg.triple_es_index = triple_idx
+def _attach_collections(
+    cfg: grag_config.GraphRAGConfig, kb_id: str, index_type: str, use_graph: bool
+) -> Tuple[str, str]:
+    """写入 cfg 的 collection 名和开关。"""
+    chunk_col, triple_col = _collection_names(kb_id)
+    cfg.chunk_collection = chunk_col
+    cfg.triple_collection = triple_col
     cfg.index_type = (index_type or "hybrid").lower()
     cfg.use_graph_index = use_graph
-    return chunk_idx, triple_idx
+    return chunk_col, triple_col
 
 
 def _mode_from_retrieval_type(rt: str) -> str:
@@ -91,7 +93,7 @@ async def search_kb(kb_id: str, query: KBQuery) -> List[str]:
     cfg = query.config_obj or grag_config.CONFIG
     if cfg is None:
         raise ValueError("config_obj (GraphRAGConfig) is required for search_kb")
-    chunk_idx, triple_idx = _attach_indices(cfg, kb_id, index_type="hybrid", use_graph=query.use_graph)
+    chunk_col, triple_col = _attach_collections(cfg, kb_id, index_type="hybrid", use_graph=query.use_graph)
     mode = _mode_from_retrieval_type(query.retrieval_type)
     source = _normalize_source(query.use_graph, query.source)
     logger.debug(
@@ -103,14 +105,17 @@ async def search_kb(kb_id: str, query: KBQuery) -> List[str]:
         source,
         query.topk,
     )
-    logger.debug("[search_kb] chunk_idx=%r triple_idx=%r", chunk_idx, triple_idx)
+    logger.debug("[search_kb] chunk_col=%r triple_col=%r", chunk_col, triple_col)
 
     embed = query.embed_model or getattr(cfg, "embed_model_instance", None)
     logger.debug("[search_kb] embed_model provided=%r", embed is not None)
     if mode != "text_search" and embed is None:
         raise ValueError("embed_model_instance is required for vector/hybrid search")
     chunk_ret = BaseRetriever(
-        es_index=chunk_idx, es_url=cfg.es_url, embed_model=None if mode == "text_search" else embed
+        collection_name=chunk_col,
+        milvus_uri=cfg.milvus_uri,
+        milvus_token=getattr(cfg, "milvus_token", None),
+        embed_model=None if mode == "text_search" else embed,
     )
 
     def _filter_by_score(nodes):
@@ -125,11 +130,14 @@ async def search_kb(kb_id: str, query: KBQuery) -> List[str]:
         return [n.text for n in nodes]
 
     triple_ret = BaseRetriever(
-        es_index=triple_idx, es_url=cfg.es_url, embed_model=None if mode == "text_search" else embed
+        collection_name=triple_col,
+        milvus_uri=cfg.milvus_uri,
+        milvus_token=getattr(cfg, "milvus_token", None),
+        embed_model=None if mode == "text_search" else embed,
     )
     graph_ret = GraphRetriever(chunk_ret, triple_ret)
-
     score_thr = None if mode in {"text_search", "hybrid"} else query.score_threshold
+
     if query.use_agent:
         agent = SearchAgent(
             retriever=graph_ret,
@@ -180,15 +188,13 @@ def _score_val(node) -> float:
         return 0.0
 
 
-async def _index_exists(es_url: str, index: str) -> bool:
-    """轻量检查索引是否存在，避免向不存在的索引发起查询。"""
-    aes = AsyncElasticsearch(es_url)
+async def _collection_exists(milvus_uri: str, collection_name: str) -> bool:
+    """轻量检查 Milvus collection 是否存在。"""
     try:
-        return await aes.indices.exists(index=index)
+        client = milvus_manager.get_client(uri=milvus_uri)
+        return client.has_collection(collection_name=collection_name)
     except Exception:
         return False
-    finally:
-        await aes.close()
 
 
 async def _search_kb_nodes(kb_id: str, query: KBQuery):
@@ -196,7 +202,7 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
     cfg = query.config_obj or grag_config.CONFIG
     if cfg is None:
         raise ValueError("config_obj (GraphRAGConfig) is required for search")
-    chunk_idx, triple_idx = _attach_indices(cfg, kb_id, index_type="hybrid", use_graph=query.use_graph)
+    chunk_col, triple_col = _attach_collections(cfg, kb_id, index_type="hybrid", use_graph=query.use_graph)
     mode = _mode_from_retrieval_type(query.retrieval_type)
     logger.debug(
         "[_search_kb_nodes] kb_id=%r retrieval_type=%s mode=%s use_graph=%r topk=%d",
@@ -206,7 +212,7 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
         query.use_graph,
         query.topk,
     )
-    logger.debug("[_search_kb_nodes] chunk_idx=%r triple_idx=%r", chunk_idx, triple_idx)
+    logger.debug("[_search_kb_nodes] chunk_col=%r triple_col=%r", chunk_col, triple_col)
     logger.debug("[_search_kb_nodes] graph_expansion=%s use_agent=%s", query.graph_expansion, query.use_agent)
 
     embed = query.embed_model or getattr(cfg, "embed_model_instance", None)
@@ -214,7 +220,10 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
     if mode != "text_search" and embed is None:
         raise ValueError("embed_model_instance is required for vector/hybrid search")
     chunk_ret = BaseRetriever(
-        es_index=chunk_idx, es_url=cfg.es_url, embed_model=None if mode == "text_search" else embed
+        collection_name=chunk_col,
+        milvus_uri=cfg.milvus_uri,
+        milvus_token=getattr(cfg, "milvus_token", None),
+        embed_model=None if mode == "text_search" else embed,
     )
 
     def _filter_by_score(nodes):
@@ -224,8 +233,8 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
         return [n for n in nodes if _score_val(n) >= query.score_threshold]
 
     try:
-        # 若 chunk 索引不存在，直接返回空或降级逻辑
-        if not await _index_exists(cfg.es_url, chunk_idx):
+        # 若 chunk collection 不存在，直接返回空或降级逻辑
+        if not await _collection_exists(cfg.milvus_uri, chunk_col):
             if query.use_graph:
                 return []
             return []
@@ -241,7 +250,7 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
             return _filter_by_score(nodes)
 
         # 图检索前也检查 triple 索引
-        if not await _index_exists(cfg.es_url, triple_idx):
+        if not await _collection_exists(cfg.milvus_uri, triple_col):
             # triple 不存在，降级为 chunk
             nodes = await chunk_ret.async_search(
                 query=query.query, topk=query.topk, mode=mode, score_threshold=score_thr
@@ -250,7 +259,10 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
             return _filter_by_score(nodes)
 
         triple_ret = BaseRetriever(
-            es_index=triple_idx, es_url=cfg.es_url, embed_model=None if mode == "text_search" else embed
+            collection_name=triple_col,
+            milvus_uri=cfg.milvus_uri,
+            milvus_token=getattr(cfg, "milvus_token", None),
+            embed_model=None if mode == "text_search" else embed,
         )
         graph_ret = GraphRetriever(chunk_ret, triple_ret)
 
@@ -285,7 +297,7 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
         logger.debug("[_search_kb_nodes] 图检索命中=%d", len(nodes))
         return _filter_by_score(nodes)
 
-    except NotFoundError:
+    except Exception as e:
         # 当索引不存在时，若请求 use_graph=True，降级为 chunk 检索；否则返回空
         if query.use_graph:
             try:
@@ -295,21 +307,6 @@ async def _search_kb_nodes(kb_id: str, query: KBQuery):
             except Exception:
                 return []
         return []
-    finally:
-        # 释放 ES 连接
-        try:
-            await chunk_ret.close()
-        except Exception:
-            logger.debug("关闭 chunk retriever 连接失败", exc_info=True)
-        if query.use_graph:
-            try:
-                await triple_ret.close()
-            except Exception:
-                logger.debug("关闭 triple retriever 连接失败", exc_info=True)
-            try:
-                await graph_ret.close()
-            except Exception:
-                logger.debug("关闭 graph retriever 连接失败", exc_info=True)
 
 
 async def search_kb_multi(kb_ids: List[str], query: KBQuery) -> List[str]:
@@ -343,8 +340,9 @@ async def search_kb_multi(kb_ids: List[str], query: KBQuery) -> List[str]:
     for kid in kb_ids:
         try:
             nodes = await _search_kb_nodes(kb_id=kid, query=query)
-        except NotFoundError:
-            # 若指定 use_graph=True 但无三元组索引，自动降级为 chunk 检索
+        except Exception as e:
+            # 若检索失败，若指定 use_graph=True，尝试降级为 chunk 检索
+            logger.warning("[search_kb_multi] kid=%r failed: %s", kid, e)
             if query.use_graph:
                 if query_no_graph is None:
                     query_no_graph = query.model_copy()
@@ -398,7 +396,8 @@ async def search_kb_multi_with_source(kb_ids: List[str], query: KBQuery) -> List
     for kid in kb_ids:
         try:
             nodes = await _search_kb_nodes(kb_id=kid, query=query)
-        except NotFoundError:
+        except Exception as e:
+            logger.warning("[search_kb_multi_with_source] kid=%r failed: %s", kid, e)
             if query.use_graph:
                 if query_no_graph is None:
                     query_no_graph = query.model_copy()
@@ -409,8 +408,6 @@ async def search_kb_multi_with_source(kb_ids: List[str], query: KBQuery) -> List
                     nodes = []
             else:
                 nodes = []
-        except Exception:
-            nodes = []
 
         logger.debug("[search_kb_multi_with_source] kid=%r hits=%d", kid, len(nodes))
         for n in nodes:

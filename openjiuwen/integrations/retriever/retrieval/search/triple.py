@@ -12,7 +12,6 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.retrieval.search import BaseRetriever
 
 
-
 class TripleBeam:
     def __init__(self, nodes: list[TextNode], score: float) -> None:
         self._beam = nodes
@@ -60,9 +59,6 @@ class TripleBeamSearch:
         self.encoder_batch_size = encoder_batch_size
         self.embed_model = retriever.embed_model
 
-    def __call__(self, query: str, triples: list[TextNode]) -> list[TripleBeam]:
-        return asyncio.get_event_loop().run_until_complete(self._beam_search(query, triples))
-
     @staticmethod
     def _cosine_scores(query_vec: np.ndarray, cand_vecs: np.ndarray) -> np.ndarray:
         """Compute cosine similarity between query (d,) and candidates (N, d)."""
@@ -92,7 +88,7 @@ class TripleBeamSearch:
     def _format_triples(self, triples: Iterable[TextNode]) -> str:
         return "; ".join(self._format_triple(x) for x in triples)
 
-    async def _beam_search(self, query: str, triples: list[TextNode]) -> list[TripleBeam]:
+    async def beam_search(self, query: str, triples: list[TextNode]) -> list[TripleBeam]:
 
         if not triples:
             logger.warning("beam search got empty input triples, query=%r", query)

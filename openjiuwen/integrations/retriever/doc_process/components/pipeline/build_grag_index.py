@@ -4,12 +4,13 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.integrations.retriever.config.configuration import CONFIG as default_config
 from openjiuwen.integrations.retriever.doc_process.components.extraction.extract_triples import extract_triples
 from openjiuwen.integrations.retriever.doc_process.components.indexing.index import index
 from openjiuwen.integrations.retriever.doc_process.components.indexing.index_triples import index_triples
 from openjiuwen.integrations.retriever.retrieval.embed_models.base import EmbedModel
+from openjiuwen.integrations.retriever.retrieval.llms.client import BaseModelClient
+from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import milvus_manager
 
 
 @dataclass
@@ -24,7 +25,6 @@ class GRAGConfig:
     llm_client: Optional[BaseModelClient] = field(default=None)
 
 
-
 class ResultVerifier:
     """结果验证器"""
 
@@ -36,20 +36,27 @@ class ResultVerifier:
         logger.info("\n验证构建结果...")
 
         try:
-            import requests
+            client = milvus_manager.get_client(
+                uri=self.config.milvus_uri,
+                token=self.config.milvus_token,
+            )
 
-            indices_info = [(self.config.chunk_es_index, "文本索引"), (self.config.triple_es_index, "三元组索引")]
+            indices_info = [
+                (self.config.chunk_es_index, "文本索引"),
+                (self.config.triple_es_index, "三元组索引"),
+            ]
 
-            for index_name, index_desc in indices_info:
-                response = requests.get(f"{self.config.es_url}/{index_name}/_count")
-                if response.status_code == 200:
-                    count = response.json()["count"]
-                    logger.info("{index_desc}文档数: %r", count)
+            for collection_name, index_desc in indices_info:
+                if client.has_collection(collection_name):
+                    # Get collection stats
+                    stats = client.get_collection_stats(collection_name)
+                    count = stats.get("row_count", 0)
+                    logger.info(f"✅ {index_desc} ({collection_name}) 文档数: {count}")
                 else:
-                    logger.error("{index_desc}检查失败: %r", response.status_code)
+                    logger.warning(f"⚠️ {index_desc} ({collection_name}) 不存在")
 
-        except ImportError:
-            logger.warning("缺少requests库，无法验证结果")
+            milvus_manager.release()
+
         except Exception as e:
             logger.warning("验证结果时出错: %r", e)
 

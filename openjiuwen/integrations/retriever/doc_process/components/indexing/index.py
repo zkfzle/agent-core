@@ -5,6 +5,7 @@ import uuid
 from typing import Any, Dict, Optional
 
 from llama_index.core.schema import Document, TextNode
+from pymilvus import MilvusException
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
@@ -19,13 +20,13 @@ from openjiuwen.integrations.retriever.doc_process.components.chunking.text_spli
     LlamaindexSplitter,
     TextSplitter,
 )
-from openjiuwen.integrations.retriever.doc_process.components.indexing.base_indexer import BaseIndexer
+from openjiuwen.integrations.retriever.doc_process.components.indexing.milvus_wrapper import BaseMilvusIndexer
 from openjiuwen.integrations.retriever.doc_process.components.parsing.local_file_parser import parse_file
 from openjiuwen.integrations.retriever.retrieval.utils import load_jsonl, load_jsonl_as_iterator
+from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import milvus_manager
 
 
-
-class TextIndexer(BaseIndexer):
+class MilvusTextIndexer(BaseMilvusIndexer):
     def __init__(self, *args, preprocessing_pipeline: Optional[PreprocessingPipeline] = None, **kwargs):
         """
         Initialize TextIndexer with optional text preprocessing pipeline.
@@ -74,25 +75,37 @@ class TextIndexer(BaseIndexer):
         }
 
 
-async def delete_text_entries(doc_id: str):
+async def delete_text_entries(doc_id: str, config_obj=None):
     """
     Delete text entries from the text index for a given document ID
-    This function handles the deletion process for text chunks in the ES index
+    This function handles the deletion process for text chunks
 
     Args:
         doc_id: The document ID to delete
     """
-    try:
-        # Delete from text index
-        logger.info("删除文本索引中的旧数据...")
-        text_indexer = TextIndexer(
-            es_index=CONFIG.chunk_es_index,
-            es_url=CONFIG.es_url,
-        )
-        text_deleted_count = await text_indexer.async_delete_nodes(doc_id)
+    cfg = config_obj or CONFIG
 
-        # Log results
-        logger.info("文本索引删除完成: 删除条数=%s", text_deleted_count)
+    client = milvus_manager.get_client(
+        uri=cfg.milvus_uri,
+        token=getattr(cfg, "milvus_token", None),
+    )
+
+    try:
+        logger.info(f"🔍 Deleting from text index...")
+
+        filter_expr = f'document_id == "{doc_id}"'
+        try:
+            result = client.delete(
+                collection_name=cfg.chunk_es_index,
+                filter=filter_expr,
+            )
+            # MilvusClient.delete returns dict with delete count or int
+            if isinstance(result, dict):
+                return result.get("delete_count", 0)
+            return int(result) if result else 0
+        except MilvusException as exc:
+            logger.error("Failed to delete document %s from Milvus: %s", doc_id, exc)
+            return 0
 
     except Exception as e:
         logger.error("删除文本索引时出错: %s", e)
@@ -125,6 +138,7 @@ async def index(
     chunk_size = cfg.chunk_size
     chunk_overlap = cfg.chunk_overlap
     chunk_unit = getattr(cfg, "chunk_unit", None) or "token"
+    batch_size = cfg.batch_size or 128
 
     logger.info(
         "开始构建文本索引: chunk_size=%s overlap=%s unit=%s index_type=%s",
@@ -208,9 +222,10 @@ async def index(
         logger.info("未开启文本预处理")
 
     # 初始化索引器
-    es = TextIndexer(
-        es_index=cfg.chunk_es_index,
-        es_url=cfg.es_url,
+    text_indexer = MilvusTextIndexer(
+        collection_name=cfg.chunk_es_index,
+        uri=cfg.milvus_uri,
+        token=cfg.milvus_token,
         embed_model=embed_model,
         splitter=splitter,
         preprocessing_pipeline=preprocessing_pipeline,
@@ -218,14 +233,16 @@ async def index(
     # vector-only 时关闭倒排（仅向量）；bm25/hybrid 默认保留文本索引
     index_type = (cfg.index_type or "hybrid").lower()
     if index_type == "vector":
-        setattr(es, "vector_only", True)
+        setattr(text_indexer, "vector_only", True)
+    else:
+        setattr(text_indexer, "vector_only", False)
 
     logger.info("读取输入数据...")
     if from_file is not None:
         if cfg.precomputed_chunks:
             dataset = process_precomputed_chunks(from_file)
             logger.info(
-                "读取预生成分块 %d 条，文件: %s (ID: %s)",
+                "✅ 读取预生成分块 %d 条，文件: %s (ID: %s)",
                 len(dataset),
                 from_file["filepath"],
                 from_file["id"],
@@ -233,7 +250,7 @@ async def index(
         else:
             dataset = await parse_file(from_file["filepath"], from_file["filename"], from_file["id"])
             logger.info(
-                "读取原始文档 %d 条，文件: %s (ID: %s)",
+                "✅ 读取原始文档 %d 条，文件: %s (ID: %s)",
                 len(dataset),
                 from_file["filepath"],
                 from_file["id"],
@@ -244,9 +261,10 @@ async def index(
         dataset = load_jsonl(data_path)
 
     logger.info("开始写入文本索引...")
-    await es.build_index(
+    await asyncio.to_thread(
+        text_indexer.build_index,
         dataset,
-        batch_size=cfg.batch_size,
+        batch_size=batch_size,
         debug=False,
     )
 

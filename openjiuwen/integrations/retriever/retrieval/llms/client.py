@@ -7,7 +7,6 @@ from openjiuwen.core.utils.llm.model_library.openai import OpenAILLM
 from openjiuwen.core.utils.llm.model_library.siliconflow import Siliconflow
 
 
-
 def get_llm_client(config: Any = None, llm_client: Optional[BaseModelClient] = None) -> BaseModelClient:
     """
     Create or reuse LLM client.

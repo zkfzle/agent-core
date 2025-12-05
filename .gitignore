@@ -216,3 +216,16 @@ __marimo__/
 *_tracer.json
 **/logs/
 tests/**/report/
+
+
+# macOS system files
+.DS_Store
+
+# Ignore recursive DS_Store
+**/.DS_Store
+
+# Ignore retriever service config
+openjiuwen/integrations/retriever/service.yaml
+
+# Ignore upload directory
+openjiuwen/integrations/retriever/upload/

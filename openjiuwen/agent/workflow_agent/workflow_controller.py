@@ -27,6 +27,7 @@ from openjiuwen.core.agent.task.task import Task, TaskInput
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.workflow.base import WorkflowExecutionState
@@ -270,8 +271,14 @@ class WorkflowController(IntentDetectionController):
 
                 # add messages to context
                 if chunks:
-                    workflow_content = "".join([
-                        chunk.payload.get("answer", "") for chunk in chunks if isinstance(chunk, OutputSchema)])
+                    content_parts = []
+                    for chunk in chunks:
+                        if isinstance(chunk, OutputSchema):
+                            if isinstance(chunk.payload, dict):
+                                content_parts.append(chunk.payload.get("answer", ""))
+                            elif isinstance(chunk.payload, InteractionOutput):
+                                content_parts.append(str(chunk.payload.value) if chunk.payload.value else "")
+                    workflow_content = "".join(content_parts)
                     MessageUtils.add_ai_message(AIMessage(content=workflow_content), self._context_engine, runtime)
 
                 # 构造 WorkflowOutput

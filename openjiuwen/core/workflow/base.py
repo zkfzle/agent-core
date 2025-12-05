@@ -726,7 +726,8 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     sorted_user_feedback.update({item.payload.id: item.payload.value})
                     questions = "\n".join([question for _, question in sorted_user_feedback.items()])
                 else:
-                    assistant_reply += item.payload.get("answer", "")
+                    if isinstance(item.payload, dict):
+                        assistant_reply += item.payload.get("answer", "")
             if questions:
                 assistant_messages.append({"role": "assistant", "content": questions})
             if assistant_reply:

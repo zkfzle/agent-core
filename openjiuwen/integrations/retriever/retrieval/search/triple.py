@@ -9,7 +9,7 @@ from llama_index.core.schema import TextNode
 from llama_index.core.vector_stores import VectorStoreQuery
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.integrations.retriever.retrieval.search import BaseRetriever
+from openjiuwen.integrations.retriever.retrieval.search.milvus import BaseRetriever
 
 
 class TripleBeam:

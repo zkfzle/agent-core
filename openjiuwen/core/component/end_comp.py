@@ -242,7 +242,15 @@ class TemplateProcessor:
                 # Variable segment, render and output
                 value = get_value_by_nested_path(segment, inputs)
                 if value is None:
-                    # If no other values exist, skip None values but continue outputting static text segments
+                    # In mixed mode (concurrent render_stream calls), should wait instead of skipping
+                    if self._count > 1:
+                        logger.debug(
+                            f"current segment [{segment}] should wait for other method "
+                            f"(concurrent render_stream)"
+                        )
+                        should_wait = True
+                        continue
+                    # If only one call and no other values exist, skip None values
                     if not has_any_value:
                         logger.debug(f"current segment [{segment}] is None and no other values exist, skipping")
                         self.advance_position()

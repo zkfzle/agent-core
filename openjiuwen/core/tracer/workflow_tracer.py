@@ -24,7 +24,7 @@ class TracerWorkflowUtils:
         index = state.get_global(loop_id + NESTED_PATH_SPLIT + INDEX)
         component_metadata.update({
             "loop_node_id": loop_id,
-            "loop_index": index + 1
+            "loop_index": index
         })
         runtime.tracer().pop_workflow_span(executable_id, runtime.parent_id())
         return component_metadata

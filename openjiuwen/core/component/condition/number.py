@@ -17,7 +17,7 @@ class NumberCondition(Condition):
         self._limit = limit
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(INDEX) + 1
+        current_idx = runtime.state().get(INDEX)
         limit_num = inputs
         return current_idx < limit_num
 
@@ -28,7 +28,7 @@ class NumberConditionInRuntime(Condition):
         self._limit = limit
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(INDEX) + 1
+        current_idx = runtime.state().get(INDEX)
         limit_num = self._limit
         if limit_num is None:
             raise JiuWenBaseException(StatusCode.NUMBER_CONDITION_ERROR.code, "loop_number variable not found or is None")

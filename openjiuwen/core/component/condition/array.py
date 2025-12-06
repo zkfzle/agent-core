@@ -19,7 +19,7 @@ class ArrayCondition(Condition):
         self._arrays = arrays
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(INDEX) + 1
+        current_idx = runtime.state().get(INDEX)
         min_length = DEFAULT_MAX_LOOP_NUMBER
         updates: dict[str, Any] = {}
         for key, array_info in self._arrays.items():
@@ -40,7 +40,7 @@ class ArrayConditionInRuntime(Condition):
         self._min_length = self._check_arrays(arrays)
 
     def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(INDEX) + 1
+        current_idx = runtime.state().get(INDEX)
         if current_idx >= self._min_length:
             return False
 

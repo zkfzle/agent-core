@@ -7,7 +7,7 @@ from typing import Self, Union, Callable, Any, Optional, Dict
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID
+from openjiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID, FINISH_INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.base import WorkflowComponent
@@ -40,6 +40,29 @@ class EmptyExecutable(Executable):
 
     def skip_trace(self) -> bool:
         return True
+
+
+class PostLoopBody(Executable):
+    def __init__(self):
+        self._finish_index = -1
+
+    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        finish_index = runtime.state().get(FINISH_INDEX)
+        if finish_index is not None:
+            self._finish_index = finish_index
+        self._finish_index += 1
+        runtime.state().update({FINISH_INDEX: self._finish_index})
+        runtime.state().commit()
+        return None
+
+    def skip_trace(self) -> bool:
+        return True
+
+    def get_finish_index(self) -> int:
+        return self._finish_index
+
+    def set_finish_index(self, finish_index: int) -> None:
+        self._finish_index = finish_index
 
 
 class LoopGroup(BaseWorkFlow, Executable):
@@ -127,6 +150,7 @@ FIRST_IN_LOOP = "_first_in_loop"
 
 CONDITION_NODE_ID = "condition"
 BODY_NODE_ID = "body"
+POST_BODY_NODE_ID = "post_body"
 
 
 class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
@@ -137,6 +161,7 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
         super().__init__()
         self._node_id = None
         self._body = body
+        self._post_body = PostLoopBody()
 
         self._condition: Condition
         if condition is None:
@@ -160,8 +185,10 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
         self._graph = new_graph if new_graph is not None else PregelGraph()
         self._graph.add_node(BODY_NODE_ID, self._body)
         self._graph.add_node(CONDITION_NODE_ID, EmptyExecutable())
+        self._graph.add_node(POST_BODY_NODE_ID, self._post_body)
         self._graph.add_edge(START, CONDITION_NODE_ID)
-        self._graph.add_edge(BODY_NODE_ID, CONDITION_NODE_ID)
+        self._graph.add_edge(BODY_NODE_ID, POST_BODY_NODE_ID)
+        self._graph.add_edge(POST_BODY_NODE_ID, CONDITION_NODE_ID)
         self._graph.add_conditional_edges(CONDITION_NODE_ID, self)
 
         self._in_loop = [BODY_NODE_ID]
@@ -187,29 +214,36 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
     def _condition_invoke(self, runtime: BaseRuntime) -> Output:
         index = runtime.state().get(INDEX)
         if index is None:
-            runtime.state().update({BROKEN: False, INDEX: -1})
+            runtime.state().update({BROKEN: False, INDEX: 0})
+            runtime.state().set_outputs({INDEX: 0})
             runtime.state().commit()
-            index = -1
+            index = 0
 
-        runtime.state().set_outputs({INDEX: index + 1})
-        runtime.state().commit()
+        finish_index = self._post_body.get_finish_index()
+        if finish_index + 1 < index or finish_index > index:
+            # resume from checkpoint
+            finish_index = index - 1
+
+        if finish_index == index:
+            runtime.state().update({INDEX: index + 1})
+            runtime.state().set_outputs({INDEX: index + 1})
+            runtime.state().commit()
+
 
         continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
         for callback in self._callbacks:
-            if index < 0:
+            if finish_index < 0:
                 callback(FIRST_LOOP, runtime)
-            else:
-                callback(END_ROUND, runtime)
+            elif finish_index == index:
+                callback(END_ROUND, runtime, index + 1)
             if continue_loop:
                 callback(START_ROUND, runtime)
             else:
                 callback(OUT_LOOP, runtime)
 
-        index = index + 1 if continue_loop else -1
         if not continue_loop:
-            runtime.state().update({INDEX: -1, BROKEN: False})
-        else:
-            runtime.state().update({INDEX: index})
+            runtime.state().update({INDEX: 0, BROKEN: False})
+            self._post_body.set_finish_index(-1)
 
         return self._in_loop if continue_loop else self._out_loop
 

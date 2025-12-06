@@ -15,18 +15,19 @@ OUT_LOOP = "out_loop"
 
 
 class LoopCallback(AtomicNode):
-    def __call__(self, input: str, runtime: BaseRuntime) -> None:
-        self.atomic_invoke(input=input, runtime=runtime)
+    def __call__(self, loop_stage: str, runtime: BaseRuntime, loop_times: int | None = None) -> None:
+        self.atomic_invoke(loop_stage=loop_stage, runtime=runtime, loop_times=loop_times)
 
     def _atomic_invoke(self, **kwargs) -> Any:
-        input = kwargs.get("input")
+        loop_stage = kwargs.get("loop_stage")
         runtime = kwargs.get("runtime")
-        if input == FIRST_LOOP:
+        loop_times = kwargs.get("loop_times")
+        if loop_stage == FIRST_LOOP:
             output = self.first_in_loop(runtime)
-        elif input == START_ROUND:
+        elif loop_stage == START_ROUND:
             output = self.start_round(runtime)
-        elif input == END_ROUND:
-            output = self.end_round(runtime)
+        elif loop_stage == END_ROUND:
+            output = self.end_round(runtime, loop_times)
         else:
             output = self.out_loop(runtime)
         if output is not None:
@@ -46,5 +47,5 @@ class LoopCallback(AtomicNode):
         raise NotImplementedError
 
     @abstractmethod
-    def end_round(self, runtime: BaseRuntime) -> Output:
+    def end_round(self, runtime: BaseRuntime, loop_times: int) -> Output:
         raise NotImplementedError

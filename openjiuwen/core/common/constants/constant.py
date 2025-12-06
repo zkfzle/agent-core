@@ -20,6 +20,7 @@ END_FRAME = "all streaming outputs finish"
 END_NODE_STREAM = "end node stream"
 LOOP_ID = "__sys_loop_id"
 INDEX = "index"
+FINISH_INDEX = "finish_index"
 
 # safe limit constants
 MAX_COLLECTION_SIZE = 100000  # maximum allowed collection size

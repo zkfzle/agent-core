@@ -55,10 +55,12 @@ class OutputCallback(LoopCallback):
     def start_round(self, runtime: BaseRuntime) -> Output:
         return None
 
-    def end_round(self, runtime: BaseRuntime) -> Output:
+    def end_round(self, runtime: BaseRuntime, loop_times: int) -> Output:
         results: list[Any] = runtime.state().get(self._round_result_root)
         if not isinstance(results, list):
             raise RuntimeError("error results in round process")
+        if len(results) >= loop_times:
+            return None
         results.append(runtime.state().get_inputs(self._outputs_format))
         runtime.state().update({self._round_result_root: results})
         return None

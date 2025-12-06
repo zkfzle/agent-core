@@ -26,5 +26,5 @@ class IntermediateLoopVarCallback(LoopCallback):
     def start_round(self, runtime: BaseRuntime) -> Output:
         return None
 
-    def end_round(self, runtime: BaseRuntime) -> Output:
+    def end_round(self, runtime: BaseRuntime, loop_times: int) -> Output:
         return None

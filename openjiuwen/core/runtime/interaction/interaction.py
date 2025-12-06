@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from langgraph.errors import GraphInterrupt
-from langgraph.types import Interrupt
 from pydantic import BaseModel
 
 from openjiuwen.core.common.constants.constant import INTERACTION
@@ -16,6 +14,8 @@ from openjiuwen.core.runtime.agent import AgentRuntime
 from openjiuwen.core.runtime.interaction.base import BaseInteraction, AgentInterrupt
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.graph.pregel.constants import GraphInterrupt
+from openjiuwen.graph.pregel.constants import Interrupt
 
 
 class InteractionOutput(BaseModel):
@@ -39,9 +39,8 @@ class WorkflowInteraction(BaseInteraction):
         if self._runtime.stream_writer_manager():
             output_writer = self._runtime.stream_writer_manager().get_output_writer()
             await output_writer.write(OutputSchema(type=INTERACTION, index=self._idx, payload=payload))
-
         raise GraphInterrupt((Interrupt(
-            value=OutputSchema(type=INTERACTION, index=self._idx, payload=None)),))
+            value=OutputSchema(type=INTERACTION, index=self._idx, payload=payload)),))
 
     async def user_latest_input(self, value: Any) -> Any:
         if res := self._latest_interactive_inputs:

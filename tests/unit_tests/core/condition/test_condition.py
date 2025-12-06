@@ -1,16 +1,17 @@
-import pytest
 from unittest.mock import MagicMock, Mock
 
-from openjiuwen.core.component.condition.condition import Condition, FuncCondition, AlwaysTrue
+import pytest
+
+from openjiuwen.core.common.constants.constant import MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.component.condition.array import ArrayCondition
-from openjiuwen.core.component.condition.number import NumberCondition
+from openjiuwen.core.component.condition.condition import Condition, FuncCondition, AlwaysTrue
 from openjiuwen.core.component.condition.expression import ExpressionCondition
-from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.runtime.workflow_state import CommitState
+from openjiuwen.core.component.condition.number import NumberCondition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.constants.constant import MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.runtime.workflow_state import CommitState
 
 
 class TestConditionBase:

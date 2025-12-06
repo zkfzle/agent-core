@@ -2,12 +2,10 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from langgraph.checkpoint.serde.base import SerializerProtocol
-from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
-
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.interaction.storage import Storage
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.graph.checkpoint.serde import Serializer, PickleSerializer
 
 
 class AgentStorage(Storage):
@@ -17,7 +15,7 @@ class AgentStorage(Storage):
             tuple[str, bytes],
         ] = {}
 
-        self.serde: SerializerProtocol = JsonPlusSerializer()
+        self.serde: Serializer = PickleSerializer()
 
     def save(self, runtime: BaseRuntime):
         agent_id = runtime.agent_id()

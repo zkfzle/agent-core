@@ -1,55 +1,47 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Union, Self, AsyncIterator, Any, Callable
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
+from __future__ import annotations
 
-from langgraph.graph import StateGraph
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.pregel._loop import PregelLoop
+from collections import defaultdict
+from dataclasses import dataclass
+from typing import Union, Self, AsyncIterator, Any, Callable, Hashable, Sequence
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.interaction.base import Checkpointer
-from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.graph.graph_state import GraphState
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.graph.vertex import Vertex
-from openjiuwen.graph.checkpoint.checkpointer import GraphCheckpointer
+from openjiuwen.core.runtime.interaction.base import Checkpointer
+from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.graph.checkpoint.gragh_checkpoiter import GraphCheckpointer
+from openjiuwen.graph.pregel.builder import PregelGraphBuilder
+from openjiuwen.graph.pregel.config import PregelConfig
+from openjiuwen.graph.pregel.constants import MAX_RECURSIVE_LIMIT, START, END
+from openjiuwen.graph.pregel.engine import Pregel
 
 
-class AfterProcessor:
-    def __init__(self, after_tick: Callable[..., Any]):
-        self._after_tick = after_tick
+def after_tick(loop):
+    runtime = loop.saver.ctx if loop.saver and hasattr(loop.saver, "ctx") else None
+    if runtime:
+        runtime.state().commit()
+    logger.debug(f"ns: {loop.config['ns']}, step: {loop.step}, active_nodes: {list(loop.active_nodes)}")
 
-    def after_tick(self, loop: PregelLoop, runtime: BaseRuntime) -> None:
-        if runtime:
-            runtime.state().commit()
-        return self._after_tick(loop)
-
-
-after_processor: AfterProcessor = AfterProcessor(PregelLoop.after_tick)
-
-
-def after_tick(self) -> None:
-    runtime = self.checkpointer.ctx if self.checkpointer and hasattr(self.checkpointer, "ctx") else None
-    return after_processor.after_tick(self, runtime)
-
-
-PregelLoop.after_tick = after_tick
-MAX_RECURSIVE_LIMIT = 10000
-
+@dataclass(slots=True)
+class Branch:
+    condition: Callable[..., Hashable | Sequence[Hashable]]
 
 class PregelGraph(Graph):
 
     def __init__(self):
-        self.pregel: StateGraph = StateGraph(GraphState)
-        self.compiledStateGraph = None
+        self.pregel: Pregel | None = None
         self.edges: list[Union[str, list[str]], str] = []
         self.waits: set[str] = set()
         self.nodes: dict[str, Vertex] = {}
+        self.branches: defaultdict[str, dict[str, Branch]] = defaultdict(dict)
         self.checkpoint_saver = None
         self._graph_checkpointer = None
 
@@ -57,7 +49,7 @@ class PregelGraph(Graph):
         if node_id is None:
             raise JiuWenBaseException(StatusCode.GRAPH_SET_START_NODE_FAILED.code,
                                       StatusCode.GRAPH_SET_START_NODE_FAILED.errmsg.format(detail="node_id is None"))
-        self.pregel.set_entry_point(node_id)
+        self.add_edge([START], node_id)
         return self
 
     def end_node(self, node_id: str) -> Self:
@@ -68,7 +60,7 @@ class PregelGraph(Graph):
         vertex = self.nodes.get(node_id)
         if vertex:
             vertex.is_end_node = True
-        self.pregel.set_finish_point(node_id)
+        self.add_edge([node_id], END)
         return self
 
     def add_node(self, node_id: str, node: Executable, *, wait_for_all: bool = False) -> Self:
@@ -85,7 +77,6 @@ class PregelGraph(Graph):
                                           detail=f"already has node {node_id}, can not add again"))
         vertex_node = Vertex(node_id, node)
         self.nodes[node_id] = vertex_node
-        self.pregel.add_node(node_id, vertex_node)
         if wait_for_all:
             self.waits.add(node_id)
         return self
@@ -120,55 +111,63 @@ class PregelGraph(Graph):
             raise JiuWenBaseException(StatusCode.GRAPH_ADD_CONDITION_EDGE_FAILED.code,
                                       StatusCode.GRAPH_ADD_CONDITION_EDGE_FAILED.errmsg.format(
                                           detail="router is None"))
-        self.pregel.add_conditional_edges(source_node_id, router)
+        name = _get_callable_name(router)
+        self.branches[source_node_id][name] = Branch(router)
         return self
 
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
         for node_id, node in self.nodes.items():
             node.init(runtime)
-        if self.compiledStateGraph is None:
-            self._pre_compile()
+        if self.pregel is None:
             self.checkpoint_saver = default_inmemory_checkpointer
             graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer())
-            self.compiledStateGraph = self.pregel.compile(checkpointer=graph_checkpointer)
+            self.pregel = self._compile(checkpointer=graph_checkpointer, step_callback=after_tick)
             self._graph_checkpointer = graph_checkpointer
         else:
             self._graph_checkpointer.reset(runtime)
-        return CompiledGraph(self.compiledStateGraph, self.checkpoint_saver)
+        return CompiledGraph(self.pregel, self.checkpoint_saver)
 
-    def _pre_compile(self):
+    def _compile(self, checkpointer=None, step_callback=None) -> Pregel:
         edges: list[Union[str, list[str]], str] = []
-        sources: dict[str, list[str]] = {}
+        sources: dict[str, set[str]] = {}
+        builder = PregelGraphBuilder()
+        for node_id, action in self.nodes.items():
+            builder.add_node(node_id, action)
+
         for (source_node_id, target_node_id) in self.edges:
             if target_node_id in self.waits:
                 if target_node_id not in sources:
-                    sources[target_node_id] = []
+                    sources[target_node_id] = set()
                 if isinstance(source_node_id, str):
-                    sources[target_node_id].append(source_node_id)
+                    sources[target_node_id].add(source_node_id)
                 elif isinstance(source_node_id, list):
-                    sources[target_node_id].extend(source_node_id)
+                    sources[target_node_id].update(source_node_id)
             else:
                 edges.append((source_node_id, target_node_id))
         for (target_node_id, source_node_id) in sources.items():
-            self.pregel.add_edge(source_node_id, target_node_id)
+            builder.add_edge(source_node_id, target_node_id)
         for (source_node_id, target_node_id) in edges:
-            self.pregel.add_edge(source_node_id, target_node_id)
+            builder.add_edge(source_node_id, target_node_id)
 
+        for start, branches in self.branches.items():
+            for name, branch in branches.items():
+                builder.add_branch(start, branch.condition)
+        return builder.build(checkpointer, after_tick=step_callback)
 
 class CompiledGraph(ExecutableGraph):
-    def __init__(self, compiled_state_graph: CompiledStateGraph,
+    def __init__(self, compiled_pregel: Pregel,
                  checkpoint_saver: Checkpointer) -> None:
-        self._compiled_state_graph = compiled_state_graph
+        self._compiled_pregel = compiled_pregel
         self._checkpoint_saver = checkpoint_saver
 
     async def _invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         is_main = False
-        thread_id = Checkpointer.get_thread_id(runtime)
-        graph_inputs = None if isinstance(inputs, InteractiveInput) else {"source_node_id": []}
+        session_id = runtime.session_id()
+        workflow_id = runtime.workflow_id()
 
         if config is None:
             is_main = True
-            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": MAX_RECURSIVE_LIMIT}
+            config = PregelConfig(session_id=session_id, ns=workflow_id, recursion_limit=MAX_RECURSIVE_LIMIT)
 
         await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
         if not isinstance(inputs, InteractiveInput):
@@ -178,9 +177,8 @@ class CompiledGraph(ExecutableGraph):
         exception = None
 
         try:
-            result = await self._compiled_state_graph.ainvoke(graph_inputs,
-                                                              config=config,
-                                                              durability="exit")
+            result = await self._compiled_pregel.ainvoke(config=config,
+                                                         durability="exit")
         except Exception as e:
             exception = e
 
@@ -190,8 +188,16 @@ class CompiledGraph(ExecutableGraph):
             raise exception
 
     async def stream(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
-        async for chunk in self._compiled_state_graph.astream({"source_node_id": []}):
-            yield chunk
+        pass
 
     async def interrupt(self, message: dict):
         return
+
+
+def _get_callable_name(func) -> str:
+    if hasattr(func, '__name__'):
+        return func.__name__
+    elif hasattr(func, '__class__'):
+        return func.__class__.__name__
+    else:
+        return repr(func)

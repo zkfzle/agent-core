@@ -4,8 +4,6 @@
 import asyncio
 from typing import Any, Optional, AsyncIterator, Literal
 
-from langgraph.errors import GraphInterrupt
-
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -22,7 +20,7 @@ from openjiuwen.core.stream.base import StreamSchemas, OutputSchema
 from openjiuwen.core.stream_actor.base import StreamConsumer
 from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
-
+from openjiuwen.graph.pregel.constants import GraphInterrupt
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"
 

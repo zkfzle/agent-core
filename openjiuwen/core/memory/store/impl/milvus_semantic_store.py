@@ -63,7 +63,7 @@ class MilvusSemanticStore(BaseSemanticStore):
             )
             index_params = {
                 "index_type": "IVF_FLAT",
-                "metric_type": "L2",
+                "metric_type": "IP",
                 "params": {"nlist": 128}
             }
             collection.create_index(field_name="embedding", index_params=index_params)
@@ -107,7 +107,7 @@ class MilvusSemanticStore(BaseSemanticStore):
             ]
             schema = CollectionSchema(fields, description="embedding collection")
             collection = Collection(name=table_name, schema=schema, using="default")
-            index_params = {"index_type": "IVF_FLAT", "metric_type": "L2", "params": {"nlist": 128}}
+            index_params = {"index_type": "IVF_FLAT", "metric_type": "IP", "params": {"nlist": 128}}
             collection.create_index("embedding", index_params)
         else:
             collection = Collection(name=table_name, using="default")
@@ -154,7 +154,7 @@ class MilvusSemanticStore(BaseSemanticStore):
             results = collection.search(
                 data=query_vector,
                 anns_field="embedding",
-                param={"metric_type": "L2", "params": {"nprobe": 10}},
+                param={"metric_type": "IP", "params": {"nprobe": 10}},
                 limit=top_k,
                 expr=expr
             )

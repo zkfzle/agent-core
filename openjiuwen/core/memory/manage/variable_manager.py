@@ -40,6 +40,9 @@ class VariableManager(BaseMemoryManager):
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
             return
+        existing_variable = await self.query_variable(user_id=user_id, group_id=group_id, name=var_name)
+        if not VariableManager._check_exist(existing_variable, var_name):
+            return
         key, value = self._make_variable_pairs(usr_id=user_id, for_deletion=False,
                                 group_id=group_id, var_name=var_name, user_var_value=var_mem)
         await self.kv_store.set(key, value)
@@ -125,3 +128,16 @@ class VariableManager(BaseMemoryManager):
             logger.error(f"{context} failed, user ID is empty")
         if not group_id or not group_id.strip():
             logger.error(f"{context} failed, group ID is empty")
+
+    @staticmethod
+    def _check_exist(variable_dict: dict[str, Any], variable_name: str) -> bool:
+        if not variable_dict:
+            return False
+
+        if variable_name not in variable_dict.keys():
+            return False
+
+        if not variable_dict[variable_name]:
+            return False
+
+        return True

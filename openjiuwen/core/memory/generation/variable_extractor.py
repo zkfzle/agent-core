@@ -12,11 +12,7 @@ from openjiuwen.core.memory.generation.memory_info import (
     ExtractedDataType
 )
 
-from openjiuwen.core.memory.prompt.variable_extractor import (
-    EXTRACT_VARIABLES_USER_SUMMARY_zh_CN,
-    EXTRACT_VARIABLES_USER_zh_CN,
-    EXTRACT_VARIABLES_SYS_zh_CN
-)
+from openjiuwen.core.memory.prompt.variable_extractor import EXTRACT_VARIABLES_PROMPT
 
 from openjiuwen.core.common.logging import logger
 
@@ -65,21 +61,11 @@ class ComprehensionExtractor:
         for msg in messages:
             conversation += f"{msg.role}: {msg.content}\n"
 
+        user_message = f"基于以下对话内容：<对话>{conversation}</对话>"
         # Construct prompts
         if history_summary.content != "":
-            user_message = EXTRACT_VARIABLES_USER_SUMMARY_zh_CN
-            user_message = user_message.format(
-                conversation=conversation,
-                summary=history_summary.content,
-
-            )
-        else:
-            user_message = EXTRACT_VARIABLES_USER_zh_CN
-            user_message = user_message.format(
-                conversation=conversation,
-            )
-        sys_message = EXTRACT_VARIABLES_SYS_zh_CN
-        sys_message = sys_message.format(
+            user_message += f"历史摘要如下<摘要>{history_summary.content}</摘要>"
+        sys_message = EXTRACT_VARIABLES_PROMPT.format(
             variables=variables_dict["variables_description"],
             variables_output_format=variables_output_format
         )

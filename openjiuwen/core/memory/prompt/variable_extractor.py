@@ -1,22 +1,4 @@
-# zh-CN prompt
-EXTRACT_VARIABLES_USER_SUMMARY_zh_CN = """
-<对话>
-{conversation}
-</对话>
-历史摘要如下
-<摘要>
-{summary}
-</摘要>
-"""
-
-EXTRACT_VARIABLES_USER_zh_CN = """
-基于以下对话内容：
-<对话>
-{conversation}
-</对话>
-"""
-
-EXTRACT_VARIABLES_SYS_zh_CN = """
+EXTRACT_VARIABLES_PROMPT = """
 # 任务描述
 假设你是信息提取领域专家。
 # 任务定义

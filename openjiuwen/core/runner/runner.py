@@ -95,9 +95,9 @@ class Runner:
         return self._agent_mgr.remove_agent(agent_id)
 
     async def run_workflow(self, workflow: Union[str, Workflow], inputs: Any,
-                           *, runtime: Union[Runtime, WorkflowRuntime] = None):
+                           *, runtime: Union[Runtime, WorkflowRuntime] = None, context: Context = None):
         workflow_instance, workflow_runtime = self._prepare_workflow(workflow, runtime)
-        return await workflow_instance.invoke(inputs, runtime=workflow_runtime)
+        return await workflow_instance.invoke(inputs, runtime=workflow_runtime, context=context)
 
     async def run_workflow_streaming(self, workflow: Union[str, Workflow], inputs: Any,
                                      *, runtime: Union[Runtime, WorkflowRuntime] = None,

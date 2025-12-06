@@ -365,7 +365,10 @@ class LLMController(BaseController):
             result = await Runner.run_workflow(
                 workflow, 
                 inputs=task.input.arguments,
-                runtime=workflow_runtime
+                runtime=workflow_runtime,
+                context=self._context_engine.get_workflow_context(
+                    session_id=runtime.session_id(), workflow_id=workflow_id
+                )
             )
             
             # Prepare stream data

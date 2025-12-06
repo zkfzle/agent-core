@@ -92,7 +92,7 @@ class IntentDetection:
         # 如果没有 workflows，直接用 intent_id 作为 target
         workflows = getattr(self.agent_config, 'workflows', None) or []
         if not workflows:
-            task_input = TaskInput(target_id=workflow.id, target_name=workflow.name, arguments=message.content)
+            task_input = TaskInput(target_id=intent_id, target_name=intent_id, arguments=message.content)
             task = Task(
                 agent_id=self.agent_config.id,
                 task_id=task_unique_id,
@@ -158,8 +158,12 @@ class IntentDetection:
                     return detected_intent_name
                 
                 # 有 workflows 时，匹配 workflow
+                # 优先通过 description 匹配，如果匹配不到再通过 name 匹配
                 for workflow in workflows:
-                    if workflow.name == detected_intent_name:
+                    workflow_label = (
+                        workflow.description if workflow.description else workflow.name
+                    )
+                    if workflow_label == detected_intent_name:
                         detected_intent_id = workflow.id
                         logger.info(
                             f"[%s] get intent: %s", session_id, detected_intent_id

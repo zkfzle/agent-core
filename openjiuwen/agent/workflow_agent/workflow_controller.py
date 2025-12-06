@@ -509,11 +509,15 @@ class WorkflowController(IntentDetectionController):
             logger.debug("Updated intent detection runtime")
             return
 
-        category_names = [workflow.name for workflow in self.agent_config.workflows]
+        # 优先使用 description 作为分类，语义更丰富；如果没有配置则回退到 name
+        category_list = [
+            workflow.description if workflow.description else workflow.name
+            for workflow in self.agent_config.workflows
+        ]
         intent_config = IntentDetectionConfig(
-            category_list=category_names,
+            category_list=category_list,
             category_info="\n".join(
-                f"- {w.name}: {w.description}"
+                f"- {w.description if w.description else w.name}"
                 for w in self.agent_config.workflows
             ),
             enable_history=True,

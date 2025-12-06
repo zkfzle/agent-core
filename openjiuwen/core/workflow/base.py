@@ -3,6 +3,7 @@
 # Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 import asyncio
 import inspect
+import json
 import os
 import re
 from abc import ABC, abstractmethod
@@ -64,10 +65,10 @@ class EdgeTopology:
     def all_edge_nodes(self) -> set[str]:
         """Get all nodes referenced in edges."""
         return (
-            set(self.source_map.keys()) |
-            set(self.target_map.keys()) |
-            set(self.source_stream_map.keys()) |
-            set(self.target_stream_map.keys())
+                set(self.source_map.keys()) |
+                set(self.target_map.keys()) |
+                set(self.source_stream_map.keys()) |
+                set(self.target_stream_map.keys())
         )
 
 
@@ -109,7 +110,7 @@ class BaseWorkFlow:
                                           "digits (0–9), underscores (_) or hyphens (-)")
 
     def _validate_connection_comp_ids(self, src_comp_id: str, target_comp_id: str,
-                                       connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
+                                      connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
         """Validate that component IDs exist in comp_configs before adding connection.
 
         This prevents KeyError in _auto_complete_abilities when edges reference non-existent components.
@@ -631,7 +632,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                                       StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
 
-
     async def _execute_with_timeout(self, func, timeout, status_code):
         task = asyncio.create_task(func())
         try:
@@ -728,8 +728,10 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     sorted_user_feedback.update({item.payload.id: item.payload.value})
                     questions = "\n".join([question for _, question in sorted_user_feedback.items()])
                 else:
-                    if isinstance(item.payload, dict) and item.payload.get("answer") is not None:
-                        assistant_reply += item.payload.get("answer", "")
+                    if isinstance(item.payload, dict):
+                        answer = item.payload.get("answer", "")
+                        if answer is not None:
+                            assistant_reply += str(answer)
             if questions:
                 assistant_messages.append({"role": "assistant", "content": questions})
             if assistant_reply:

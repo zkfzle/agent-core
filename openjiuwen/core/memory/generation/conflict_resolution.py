@@ -5,6 +5,7 @@ import json
 from enum import Enum
 from typing import List, Tuple
 from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.prompt.conflict_resolution import CONFLICT_RESOLUTION_SYS, CONFLICT_RESOLUTION_USER
 
@@ -62,10 +63,11 @@ class ConflictResolution:
         model_name, model_client = base_chat_model
         messages = _get_message(old_messages, new_message)
         logger.debug(f"Start checking conflict, input messages: {messages}")
+        parser = JsonOutputParser()
         for attempt in range(retries):
             try:
                 response = await model_client.ainvoke(model_name, messages=messages)
-                result = json.loads(str(response.content).strip().replace("'", '"'))
+                result = await parser.parse(str(response.content).strip().replace("'", '"'))
                 logger.debug(f"Succeed to check conflict, result: {result}")
                 if isinstance(result, list):
                     return result

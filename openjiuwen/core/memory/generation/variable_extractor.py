@@ -5,6 +5,7 @@ import json
 from typing import Any, Tuple
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.memory.generation.memory_info import (
     ExtractedData,
@@ -46,15 +47,20 @@ class ComprehensionExtractor:
             logger.info("Memory variables not set.")
             return []
         variables_dict = {
-            "variables_enum": "",
-            "variables_str": "",
+            "variables_description": "",
             "variables_user": set()
         }
+        variables_output_format = "{"
+        cnt = 0
         for key in config.mem_variables:
             description = config.mem_variables[key]
             variables_dict["variables_user"].add(key)
-            variables_dict["variables_str"] += f"{key}({description}),"
-            variables_dict["variables_enum"] += "{\"" + key + "\": {\"value\": \"string\"}}\n"
+            variables_dict["variables_description"] += f"{key}({description}),"
+            if cnt != 0:
+                variables_output_format += ","
+            variables_output_format += f'"{key}": ' + '{"value": "string"}'
+            cnt += 1
+        variables_output_format += "}"
         conversation = ""
         for msg in messages:
             conversation += f"{msg.role}: {msg.content}\n"
@@ -65,17 +71,18 @@ class ComprehensionExtractor:
             user_message = user_message.format(
                 conversation=conversation,
                 summary=history_summary.content,
-                variables=variables_dict["variables_str"],
-                variables_enum=variables_dict["variables_enum"]
+
             )
         else:
             user_message = EXTRACT_VARIABLES_USER_zh_CN
             user_message = user_message.format(
                 conversation=conversation,
-                variables=variables_dict["variables_str"],
-                variables_enum=variables_dict["variables_enum"]
             )
         sys_message = EXTRACT_VARIABLES_SYS_zh_CN
+        sys_message = sys_message.format(
+            variables=variables_dict["variables_description"],
+            variables_output_format=variables_output_format
+        )
 
         model_input = [
             {
@@ -97,9 +104,11 @@ class ComprehensionExtractor:
         # Parse response
         extract_result = []
         try:
-            if len(str(response.content).strip()) == 0:
+            parser = JsonOutputParser()
+            response = await parser.parse(response.content)
+            if not response:
+                logger.error(f"Failed to extract variables, response None")
                 return []
-            response = json.loads(str(response.content).strip())
             for key, value in response.items():
                 key = str(key).strip()
                 if not ComprehensionExtractor._check_value(value):
@@ -117,7 +126,7 @@ class ComprehensionExtractor:
             logger.debug(f"Succeed to extract variables, result: {extract_result}")
             return extract_result
         except Exception as e:
-            logger.error(f"LLM返回的json格式有误: {e}")
+            logger.error(f"Failed to extract variables, with error: {str(e)}")
             return []
 
     @staticmethod

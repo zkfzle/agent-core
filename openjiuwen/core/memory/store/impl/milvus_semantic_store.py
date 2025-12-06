@@ -1,12 +1,12 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import threading
-from typing import List, Tuple
-from urllib.parse import urljoin
-import requests
+from typing import List, Tuple, Any
 import numpy as np
 from pymilvus import MilvusClient, FieldSchema, CollectionSchema, DataType, Collection, connections, utility
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
-
 
 
 TABLE_NAME_LENGTH = 128
@@ -27,8 +27,8 @@ def convert_milvus_result(results) -> List[List[Tuple[str, float]]]:
 
 class MilvusSemanticStore(BaseSemanticStore):
     def __init__(self, milvus_host: str, milvus_port: str, token: str | None,
-                collection_name: str, embedding_addr: str, embedding_dims: int):
-        self.embedding_addr = embedding_addr
+                collection_name: str, embed_model: Any, embedding_dims: int):
+        self.embed_model = embed_model
         self.embedding_dims = embedding_dims
         uri = f"http://{milvus_host}:{milvus_port}"
         self.milvus_client = MilvusClient(uri=uri, token=token)
@@ -71,30 +71,6 @@ class MilvusSemanticStore(BaseSemanticStore):
         else:
             logger.info(f"Collection {self.collection_name} already exists.")
 
-    def _get_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """
-        embedding_addr: embedding server addr, example: "http://127.0.0.1:8000"
-        texts: List[str], text list
-        return: List[List[float]], embedding list
-        """
-        url = urljoin(self.embedding_addr, "/embedding")
-        payload = {"texts": texts}
-        try:
-            resp = requests.post(url, json=payload, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
-            if "embeddings" not in data:
-                raise ValueError(f"response missing 'embeddings': {data}")
-            embs = data["embeddings"]
-            if len(embs[0]) != self.embedding_dims:
-                raise ValueError(
-                    f"embeddings dimension mismatch: expected {self.embedding_dims}, got {len(embs[0])}"
-                )
-            return embs
-        except Exception as e:
-            logger.error(f"[get_embeddings] request failed: {e}")
-            return None
-
     def get_collection(self, table_name: str) -> Collection:
         if table_name in self.collections:
             return self.collections[table_name]
@@ -120,7 +96,7 @@ class MilvusSemanticStore(BaseSemanticStore):
             memory_ids, memories = zip(*docs)
             memory_ids = list(memory_ids)
             memories = list(memories)
-            embeddings = self._get_embeddings(texts=memories)
+            embeddings = await self.embed_model.embed_queries(texts=memories)
             if len(memory_ids) != len(embeddings):
                 raise ValueError(f"memory_ids and embeddings must have same length")
             collection = self.get_collection(self.collection_name)
@@ -146,7 +122,7 @@ class MilvusSemanticStore(BaseSemanticStore):
         if self.collection_name not in self.collections:
             return []
         collection = self.collections[self.collection_name]
-        query_vector = self._get_embeddings(texts=[query])
+        query_vector = await self.embed_model.embed_queries(texts=[query])
         expr = f'table_name == "{table_name}"'
         with self._lock:
             results = collection.search(

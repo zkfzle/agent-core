@@ -15,8 +15,8 @@ class AsyncStreamQueue:
     # Maximum number of retries for sending data
     DEFAULT_MAX_SEND_RETRIES = 5
 
-    # Default timeout for receiving data in seconds
-    DEFAULT_RECEIVE_TIMEOUT = 0.2
+    # Default timeout for receiving data in seconds, -1 means no timeout
+    DEFAULT_RECEIVE_TIMEOUT = -1
 
     # Default timeout for closing the queue in seconds
     DEFAULT_CLOSE_TIMEOUT = 5.0
@@ -64,16 +64,11 @@ class AsyncStreamQueue:
         if self._closed:
             raise RuntimeError("StreamQueue is already closed")
 
-        try:
-            stream_item = await asyncio.wait_for(self._stream_queue.get(),
-                                                 timeout if timeout and timeout > 0 else None)
-            self._stream_queue.task_done()
-            logger.debug(f"Receiving stream data success, stream frame: {stream_item}")
-            return stream_item
-        except asyncio.TimeoutError:
-            logger.error(
-                f"Receiving stream data timeout error, timeout: {timeout}")
-            return None
+        stream_item = await asyncio.wait_for(self._stream_queue.get(),
+                                             timeout if timeout and timeout > 0 else None)
+        self._stream_queue.task_done()
+        logger.debug(f"Receiving stream data success, stream frame: {stream_item}")
+        return stream_item
 
     async def close(self, timeout: float = DEFAULT_CLOSE_TIMEOUT) -> None:
         if self._closed:

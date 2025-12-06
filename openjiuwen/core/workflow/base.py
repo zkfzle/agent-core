@@ -25,7 +25,7 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.runtime.constants import WORKFLOW_EXECUTE_TIMEOUT, \
-    WORKFLOW_STREAM_FRAME_TIMEOUT
+    WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from openjiuwen.core.runtime.state import Transformer
@@ -595,6 +595,10 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         if timeout is not None and 0 < timeout <= frame_timeout:
             frame_timeout = timeout
         runtime.config().set_envs({WORKFLOW_STREAM_FRAME_TIMEOUT: frame_timeout})
+        first_frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT)
+        if timeout is not None and 0 < timeout <= first_frame_timeout:
+            first_frame_timeout = timeout
+        runtime.config().set_envs({WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT: first_frame_timeout})
 
         async def stream_process():
             compiled_graph = self.compile(runtime)
@@ -611,7 +615,9 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
         interaction_chuck_list = []
         chunks = []
-        async for chunk in runtime.stream_writer_manager().stream_output(frame_timeout):
+        async for chunk in runtime.stream_writer_manager().stream_output(first_frame_timeout=first_frame_timeout,
+                                                                         timeout=frame_timeout,
+                                                                         need_close=True):
             yield chunk
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
                 interaction_chuck_list.append(chunk)

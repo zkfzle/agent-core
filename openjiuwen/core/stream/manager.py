@@ -10,6 +10,8 @@ from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream.writer import StreamWriter, OutputStreamWriter, TraceStreamWriter, CustomStreamWriter
 from openjiuwen.core.common.security.user_config import UserConfig
 
+_DEFAULT_FRAME_TIMEOUT = -1
+
 
 class StreamWriterManager:
 
@@ -33,10 +35,15 @@ class StreamWriterManager:
     def stream_emitter(self) -> StreamEmitter:
         return self._stream_emitter
 
-    async def stream_output(self, timeout=0.2, need_close: bool = True) -> AsyncIterator[Any]:
+    async def stream_output(self, first_frame_timeout=_DEFAULT_FRAME_TIMEOUT, timeout=_DEFAULT_FRAME_TIMEOUT,
+                            need_close: bool = True) -> AsyncIterator[Any]:
+        is_first_frame = True
         while True:
-            data = await self._stream_emitter.stream_queue.receive(
-                timeout=timeout)
+            if is_first_frame:
+                data = await self._stream_emitter.stream_queue.receive(timeout=first_frame_timeout)
+                is_first_frame = False
+            else:
+                data = await self._stream_emitter.stream_queue.receive(timeout=timeout)
             if data is not None:
                 if data == StreamEmitter.END_FRAME:
                     logger.info("Received END_FRAME, stopping stream output.")

@@ -68,12 +68,13 @@ class ResultVerifier:
                     else:
                         logger.warning(f"{index_desc} ({collection_name}) 不存在")
 
-                milvus_manager.release()
-
             except Exception as e:
                 logger.warning("验证结果时出错: %r", e)
+            
+            finally:
+                if client is not None:
+                    milvus_manager.release()
 
-        # 在线程池中执行同步 Milvus 调用，避免阻塞事件循环
         await asyncio.to_thread(_run)
 
 

@@ -139,7 +139,7 @@ class BaseMilvusIndexer(BaseMilvusWrapper, metaclass=ABCMeta):
             datatype=DataType.VARCHAR,
             max_length=text_max_length,
             enable_analyzer=self.enable_bm25,  # Enable text analysis for BM25
-            analyzer_params={"type": "standard"},  # Use default analyzer
+            analyzer_params={"tokenizer": "jieba"},  # Require jieba analyzer (environment must provide plugin)
         )
 
         # Metadata JSON field

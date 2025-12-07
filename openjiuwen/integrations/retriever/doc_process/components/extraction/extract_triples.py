@@ -50,9 +50,14 @@ async def process_data(data, llm_client, limiter, save_path, model_name: str = "
         for chunk in data
     ]
 
+    total = len(tasks)
+    step = max(1, min(100, total))  # 每 100 个（或更小总量时每批次）打印一次
     chunk2triples = {}
-    for task in await asyncio.gather(*tasks):
-        chunk2triples.update(task)
+    for idx, task in enumerate(asyncio.as_completed(tasks), start=1):
+        res = await task
+        chunk2triples.update(res)
+        if idx % step == 0 or idx == total:
+            logger.info("三元组抽取进度: %d/%d chunks", idx, total)
     return chunk2triples
 
 
@@ -146,5 +151,5 @@ async def extract_triples(
         model_name=model_name,
     )
 
-    logger.info("✅ 三元组提取完成！")
+    logger.info("三元组提取完成！")
     return chunk2triples

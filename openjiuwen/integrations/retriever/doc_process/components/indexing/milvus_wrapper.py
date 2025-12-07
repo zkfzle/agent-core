@@ -139,7 +139,7 @@ class BaseMilvusIndexer(BaseMilvusWrapper, metaclass=ABCMeta):
             datatype=DataType.VARCHAR,
             max_length=text_max_length,
             enable_analyzer=self.enable_bm25,  # Enable text analysis for BM25
-            analyzer_params={"type": "standard"},  # Use standard analyzer
+            analyzer_params={"type": "standard"},  # Use default analyzer
         )
 
         # Metadata JSON field
@@ -215,13 +215,24 @@ class BaseMilvusIndexer(BaseMilvusWrapper, metaclass=ABCMeta):
     def build_index(
         self,
         dataset: Iterable[dict],
-        batch_size: int = 128,
+        batch_size: int | None = 128,
         distance_strategy: Literal["L2", "IP", "COSINE"] = "COSINE",
         *,
         debug: bool = False,
     ) -> None:
+        # 防御：配置缺省时回落到默认值，避免 None 参与比较
+        if batch_size is None or batch_size <= 0:
+            batch_size = 128
+
         self._ensure_collection(distance_strategy=distance_strategy)
         datastream = dataset if not debug else list(dataset)[:100]
+        total = None
+        if hasattr(datastream, "__len__"):
+            try:
+                total = len(datastream)
+            except Exception:
+                total = None
+        processed = 0
 
         cache: list[TextNode] = []
         for doc in datastream:
@@ -230,8 +241,19 @@ class BaseMilvusIndexer(BaseMilvusWrapper, metaclass=ABCMeta):
                 nodes = cache[:batch_size]
                 cache = cache[batch_size:]
                 self._insert_nodes(nodes, batch_size=batch_size)
+                processed += len(nodes)
+                if processed % 100 == 0:
+                    if total:
+                        logger.info("已写入 %d/%d 条记录到 %s", processed, total, self.collection_name)
+                    else:
+                        logger.info("已写入 %d 条记录到 %s", processed, self.collection_name)
         if cache:
             self._insert_nodes(cache, batch_size=batch_size)
+            processed += len(cache)
+        if total:
+            logger.info("写入完成，累计 %d/%d 条记录到 %s", processed, total, self.collection_name)
+        else:
+            logger.info("写入完成，累计 %d 条记录到 %s", processed, self.collection_name)
 
         # Flush using client API
         self._client.flush(self.collection_name)

@@ -64,7 +64,7 @@ def _split_text(text: str, chunk_size: int, chunk_overlap: int) -> List[Dict]:
                 }
             )
             if len(chunks) % progress_step == 0:
-                logger.info("✂️ 分块进度: 已生成 %d 块", len(chunks))
+                logger.info("分块进度: 已生成 %d 块", len(chunks))
         start += step
     return chunks
 
@@ -96,7 +96,7 @@ async def chunk_doc(
     if not doc_id:
         raise ValueError("doc_id is required for chunk_doc")
     logger.info(
-        "✂️ 开始分块: doc_id=%s paragraphs=%d chunk_size=%d overlap%%=%.1f",
+        "开始分块: doc_id=%s paragraphs=%d chunk_size=%d overlap%%=%.1f",
         doc_id,
         len(paragraphs or []),
         chunk_size,
@@ -119,7 +119,7 @@ async def chunk_doc(
     resolved_doc_id = doc_id
     for c in chunks:
         c["doc_id"] = resolved_doc_id
-    logger.info("✂️ 分块完成: doc_id=%s chunks=%d", doc_id, len(chunks))
+    logger.info("分块完成: doc_id=%s chunks=%d", doc_id, len(chunks))
     return chunks
 
 

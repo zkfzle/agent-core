@@ -11,8 +11,13 @@ from llama_index.core.vector_stores.types import VectorStoreQueryMode
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.config.configuration import CONFIG
-from openjiuwen.integrations.retriever.retrieval.search.milvus import BaseRetriever, rrf_nodes
-from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import BaseRetriever as _BaseRetriever
+from openjiuwen.integrations.retriever.retrieval.search.milvus import (
+    BaseRetriever,
+    rrf_nodes,
+)
+from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
+    BaseRetriever as _BaseRetriever,
+)
 from openjiuwen.integrations.retriever.retrieval.search.retrieval_models import (
     Dataset,
     Document,
@@ -54,7 +59,6 @@ class GraphRetriever(_BaseRetriever):
         query: str | VectorStoreQuery,
         topk: int = 5,
         mode: str | VectorStoreQueryMode = "default",
-        source: Literal["hybrid", "chunks", "triples"] = "hybrid",
         topk_triples: int | None = None,
         *,
         query_config: dict | None = None,
@@ -67,7 +71,6 @@ class GraphRetriever(_BaseRetriever):
                 query=query,
                 topk=topk,
                 mode=mode,
-                source=source,
                 topk_triples=topk_triples,
                 query_config=query_config,
                 graph_expansion=graph_expansion,
@@ -117,14 +120,15 @@ class GraphRetriever(_BaseRetriever):
                 See: `grag.search.triple.TripleBeamSearch`
 
         Raises:
-            ValueError: If `source` is invalid.
-
         Returns:
             list[TextNode]: `topk` chunks.
         """
-        query = self.chunk_retriever.make_query(query, topk=topk, mode=mode, query_config=query_config)
-        # source 参数向后兼容，目前统一按 chunks + graph 执行
-        nodes = await self.chunk_retriever.async_search(query, score_threshold=score_threshold_vector)
+        query = self.chunk_retriever.make_query(
+            query, topk=topk, mode=mode, query_config=query_config
+        )
+        nodes = await self.chunk_retriever.async_search(
+            query, score_threshold=score_threshold_vector
+        )
 
         logger.warning(
             "[graph] 图检索入口：graph_expansion=%s chunk命中=%d topk=%d mode=%s",
@@ -142,9 +146,25 @@ class GraphRetriever(_BaseRetriever):
             nodes = await self.graph_expansion(
                 query=query.query_str,
                 chunks=nodes,
+                query_embedding=query.query_embedding,
                 **(graph_expansion_config or {}),
             )
             logger.info("[graph] 图扩展完成：扩展后chunk数=%d", len(nodes))
+
+        # 如果是纯向量检索且传入了阈值，使用原始相似度(raw_score)过滤
+        if mode == "default" and score_threshold_vector is not None:
+            filtered = []
+            for n in nodes:
+                raw = n.metadata.get("raw_score", None)
+                if "raw_score_scaled" not in n.metadata:
+                    # 线性映射到 0-1，方便阈值
+                    n.metadata["raw_score_scaled"] = (
+                        (float(raw) + 1.0) / 2.0 if raw is not None else None
+                    )
+                scaled = n.metadata.get("raw_score_scaled", None)
+                if scaled is not None and scaled >= score_threshold_vector:
+                    filtered.append(n)
+            nodes = filtered
 
         return nodes
 
@@ -154,6 +174,7 @@ class GraphRetriever(_BaseRetriever):
         chunks: list[TextNode],
         triples: list[TextNode] | None = None,
         topk: int | None = None,
+        query_embedding: list[float] | None = None,
         **kwargs: Any,
     ) -> list[TextNode]:
         if not triples:
@@ -195,6 +216,43 @@ class GraphRetriever(_BaseRetriever):
             len(new_chunks),
         )
 
+        # 为补充的 chunk 计算原始向量分数，便于 score_threshold 生效
+        if query_embedding and new_chunks:
+            # chunk_id 为 uuid，使用 metadata["chunk_id"] 过滤
+            chunk_ids = [c.node_id for c in new_chunks if c.node_id]
+            if not chunk_ids:
+                return nodes[:topk] if topk else nodes
+
+            ids_expr = ",".join([f'"{cid}"' for cid in chunk_ids])
+            expr = f'metadata["chunk_id"] in [{ids_expr}]'
+            try:
+                res = await asyncio.to_thread(
+                    self.chunk_retriever.client.search,
+                    collection_name=self.chunk_retriever.collection_name,
+                    data=[query_embedding],
+                    anns_field=self.chunk_retriever.vector_field,
+                    limit=len(chunk_ids),
+                    output_fields=[self.chunk_retriever.metadata_field],
+                    filter=expr,
+                    search_params={"metric_type": "COSINE", "params": {}},
+                )
+                if res and len(res) > 0:
+                    scored = {
+                        str(item.get("id", item.get("pk", ""))): float(
+                            item.get("score", 0.0)
+                        )
+                        for item in res[0]
+                    }
+                    for c in new_chunks:
+                        if c.node_id in scored:
+                            c.metadata = c.metadata or {}
+                            c.metadata["raw_score"] = scored[c.node_id]
+                            c.metadata["raw_score_scaled"] = (
+                                scored[c.node_id] + 1.0
+                            ) / 2.0
+            except Exception as e:
+                logger.warning("[graph] 为扩展 chunk 计算向量分数失败: %s", e)
+
         nodes = rrf_nodes([new_chunks, chunks]) if new_chunks else chunks
 
         return nodes[:topk] if topk else nodes
@@ -207,8 +265,12 @@ class GraphRetriever(_BaseRetriever):
     ) -> tuple[list[TextNode], list[TextNode]]:
         """Search via hybrid data source and return (chunks, triples)."""
         chunks, (_chunks, triples) = await asyncio.gather(
-            self.chunk_retriever.async_search(query, score_threshold=score_threshold_vector),
-            self._search_by_triples(copy.copy(query), topk_triples),  # shallow copy is enough
+            self.chunk_retriever.async_search(
+                query, score_threshold=score_threshold_vector
+            ),
+            self._search_by_triples(
+                copy.copy(query), topk_triples
+            ),  # shallow copy is enough
         )
         chunks = rrf_nodes([chunks, _chunks])
         return chunks, triples
@@ -228,6 +290,42 @@ class GraphRetriever(_BaseRetriever):
         triples = await self.triple_retriever.async_search(query)
         # Note: len(chunks) <= len(triples) after deduplication
         chunks = await self._fetch_chunks(triples)
+        # 为基于三元组反查的 chunks 计算原始向量分数
+        if query.query_embedding is not None and chunks:
+            # chunk_id 为 uuid，使用 metadata.chunk_id 过滤
+            chunk_ids = [c.node_id for c in chunks if c.node_id]
+            if chunk_ids:
+                ids_expr = ",".join([f'"{cid}"' for cid in chunk_ids])
+                expr = f'metadata["chunk_id"] in [{ids_expr}]'
+                try:
+                    res = await asyncio.to_thread(
+                        self.chunk_retriever.client.search,
+                        collection_name=self.chunk_retriever.collection_name,
+                        data=[query.query_embedding],
+                        anns_field=self.chunk_retriever.vector_field,
+                        limit=len(chunk_ids),
+                        output_fields=[self.chunk_retriever.metadata_field],
+                        filter=expr,
+                        search_params={"metric_type": "COSINE", "params": {}},
+                    )
+                    if res and len(res) > 0:
+                        scored = {
+                            str(item.get("id", item.get("pk", ""))): float(
+                                item.get("score", 0.0)
+                            )
+                            for item in res[0]
+                        }
+                        for c in chunks:
+                            if c.node_id in scored:
+                                c.metadata = c.metadata or {}
+                                c.metadata["raw_score"] = scored[c.node_id]
+                                c.metadata["raw_score_scaled"] = (
+                                    scored[c.node_id] + 1.0
+                                ) / 2.0
+                except Exception as e:
+                    logger.warning(
+                        "[hybrid] 为三元组补充的 chunk 计算向量分数失败: %s", e
+                    )
         query.similarity_top_k = _topk  # restore
 
         return chunks, triples
@@ -283,7 +381,9 @@ class GraphRetriever(_BaseRetriever):
 
     async def _fetch_chunks(self, triples: list[TextNode]) -> list[TextNode]:
         """Return a list of associated chunks."""
-        chunk_ids = deduplicate(node.metadata["chunk_id"] for node in triples if "chunk_id" in node.metadata)
+        chunk_ids = deduplicate(
+            node.metadata["chunk_id"] for node in triples if "chunk_id" in node.metadata
+        )
 
         if not chunk_ids:
             return []
@@ -312,7 +412,17 @@ class GraphRetriever(_BaseRetriever):
                 return None
 
             item = results[0]
-            metadata = item.get(metadata_field, {})
+            metadata = item.get(metadata_field, {}) or {}
+            if isinstance(metadata, str):
+                import json
+
+                try:
+                    metadata = json.loads(metadata)
+                except Exception:
+                    metadata = {}
+            # 保留原始分数，避免后续覆盖
+            # 对于通过三元组反查的 chunk，这里没有原始向量分数，不做回退
+            metadata.setdefault("raw_score", None)
 
             node = TextNode(
                 id_=chunk_id,
@@ -334,7 +444,9 @@ class GraphRetriever(_BaseRetriever):
         name: Optional[str] = None,
         dataset_id: Optional[str] = None,
     ):
-        return self.chunk_retriever.list_datasets(name=name) + self.triple_retriever.list_datasets(name=name)
+        return self.chunk_retriever.list_datasets(
+            name=name
+        ) + self.triple_retriever.list_datasets(name=name)
 
     def list_documents(self, dataset_id: str, document_id: str):
         if dataset_id == self.chunk_retriever.collection_name:
@@ -353,11 +465,15 @@ class GraphRetriever(_BaseRetriever):
         if datasets is None:
             datasets = []
         dataset_set = {(dataset.title, dataset.uri) for dataset in datasets}
-        self_dataset_set = {(dataset.title, dataset.uri) for dataset in self.list_datasets()}
+        self_dataset_set = {
+            (dataset.title, dataset.uri) for dataset in self.list_datasets()
+        }
         if dataset_set and dataset_set != self_dataset_set:
             return []
 
-        results = self.search(query=question, topk=top_k, graph_expansion=graph_expansion)
+        results = self.search(
+            query=question, topk=top_k, graph_expansion=graph_expansion
+        )
         result = RetrievalResult(
             query=question,
             datasets=self.list_datasets(),

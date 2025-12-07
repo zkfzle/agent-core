@@ -1,16 +1,28 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
+import asyncio
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.integrations.retriever.config.configuration import CONFIG as default_config
-from openjiuwen.integrations.retriever.doc_process.components.extraction.extract_triples import extract_triples
-from openjiuwen.integrations.retriever.doc_process.components.indexing.index import index
-from openjiuwen.integrations.retriever.doc_process.components.indexing.index_triples import index_triples
+from openjiuwen.integrations.retriever.config.configuration import (
+    CONFIG as default_config,
+)
+from openjiuwen.integrations.retriever.doc_process.components.extraction.extract_triples import (
+    extract_triples,
+)
+from openjiuwen.integrations.retriever.doc_process.components.indexing.index import (
+    index,
+)
+from openjiuwen.integrations.retriever.doc_process.components.indexing.index_triples import (
+    index_triples,
+)
 from openjiuwen.integrations.retriever.retrieval.embed_models.base import EmbedModel
 from openjiuwen.integrations.retriever.retrieval.llms.client import BaseModelClient
-from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import milvus_manager
+from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import (
+    milvus_manager,
+)
 
 
 @dataclass
@@ -31,40 +43,49 @@ class ResultVerifier:
     def __init__(self, config_obj):
         self.config = config_obj
 
-    def verify_indices(self) -> None:
-        """验证索引构建结果"""
-        logger.info("\n验证构建结果...")
+    async def verify_indices(self) -> None:
+        """异步验证索引构建结果，避免阻塞事件循环"""
+        logger.info("验证构建结果...")
 
-        try:
-            client = milvus_manager.get_client(
-                uri=self.config.milvus_uri,
-                token=self.config.milvus_token,
-            )
+        def _run():
+            try:
+                client = milvus_manager.get_client(
+                    uri=self.config.milvus_uri,
+                    token=self.config.milvus_token,
+                )
 
-            indices_info = [
-                (self.config.chunk_es_index, "文本索引"),
-                (self.config.triple_es_index, "三元组索引"),
-            ]
+                indices_info = [
+                    (self.config.chunk_es_index, "文本索引"),
+                    (self.config.triple_es_index, "三元组索引"),
+                ]
 
-            for collection_name, index_desc in indices_info:
-                if client.has_collection(collection_name):
-                    # Get collection stats
-                    stats = client.get_collection_stats(collection_name)
-                    count = stats.get("row_count", 0)
-                    logger.info(f"✅ {index_desc} ({collection_name}) 文档数: {count}")
-                else:
-                    logger.warning(f"⚠️ {index_desc} ({collection_name}) 不存在")
+                for collection_name, index_desc in indices_info:
+                    if client.has_collection(collection_name):
+                        stats = client.get_collection_stats(collection_name)
+                        count = stats.get("row_count", 0)
+                        label = "chunk 数量" if index_desc == "文本索引" else "三元组数量"
+                        logger.info(f"{index_desc} ({collection_name}) {label}: {count}")
+                    else:
+                        logger.warning(f"{index_desc} ({collection_name}) 不存在")
 
-            milvus_manager.release()
+                milvus_manager.release()
 
-        except Exception as e:
-            logger.warning("验证结果时出错: %r", e)
+            except Exception as e:
+                logger.warning("验证结果时出错: %r", e)
+
+        # 在线程池中执行同步 Milvus 调用，避免阻塞事件循环
+        await asyncio.to_thread(_run)
 
 
 class GraphRAGIndexBuilder:
     """索引构建器"""
 
-    def __init__(self, config_obj=None, config_file: Optional[str] = None, file: Optional[Dict[str, str]] = None):
+    def __init__(
+        self,
+        config_obj=None,
+        config_file: Optional[str] = None,
+        file: Optional[Dict[str, str]] = None,
+    ):
         self.config_file = config_file
         self.config = config_obj or default_config
         if self.config is None:
@@ -80,7 +101,10 @@ class GraphRAGIndexBuilder:
         self.config.print_config()
 
     async def build(
-        self, skip_text_index: bool = False, skip_triple_extraction: bool = False, skip_triple_index: bool = False
+        self,
+        skip_text_index: bool = False,
+        skip_triple_extraction: bool = False,
+        skip_triple_index: bool = False,
     ) -> bool:
         """执行完整的索引构建流程"""
         self.print_header()
@@ -114,18 +138,46 @@ class GraphRAGIndexBuilder:
 
         # 执行构建阶段
         chunk2triples = None
+        metrics = {
+            "text_index_s": None,
+            "triple_extract_s": None,
+            "triple_index_s": None,
+        }
+        t_total = time.perf_counter()
         if not skip_text_index:
+            t = time.perf_counter()
+            logger.info("[步骤 1/3] 开始构建文本索引")
             await build_text_index()
+            metrics["text_index_s"] = time.perf_counter() - t
+            logger.info("[步骤 1/3] 文本索引完成，用时 %.2fs", metrics["text_index_s"])
         if not skip_triple_extraction:
+            t = time.perf_counter()
+            logger.info("[步骤 2/3] 开始抽取三元组")
             chunk2triples = await build_triple_extraction()
+            metrics["triple_extract_s"] = time.perf_counter() - t
+            logger.info(
+                "[步骤 2/3] 三元组抽取完成，用时 %.2fs", metrics["triple_extract_s"]
+            )
         if not skip_triple_index:
+            t = time.perf_counter()
+            logger.info("[步骤 3/3] 开始写入三元组索引")
             await build_triple_index(chunk2triples=chunk2triples)
+            metrics["triple_index_s"] = time.perf_counter() - t
+            logger.info(
+                "[步骤 3/3] 三元组索引完成，用时 %.2fs", metrics["triple_index_s"]
+            )
 
-        # 验证结果
-        self.result_verifier.verify_indices()
+        # 验证结果，超时则跳过以免卡住
+        verify_timeout = getattr(self.config, "verify_timeout", 3)  # 秒
+        try:
+            await asyncio.wait_for(self.result_verifier.verify_indices(), timeout=verify_timeout)
+        except asyncio.TimeoutError:
+            logger.warning("验证构建结果超时(>%ss)，跳过 verify_indices", verify_timeout)
 
+        metrics["total_s"] = time.perf_counter() - t_total
         logger.info("索引构建完成！")
         logger.info("=" * 60)
+        return metrics
 
 
 async def build_grag_index(config: GRAGConfig) -> bool:
@@ -149,10 +201,12 @@ async def build_grag_index(config: GRAGConfig) -> bool:
             raise ValueError("config_obj is required (GraphRAGConfig)")
 
         builder = GraphRAGIndexBuilder(
-            config_obj=config.config_obj or default_config, config_file=config.config_file, file=config.file
+            config_obj=config.config_obj or default_config,
+            config_file=config.config_file,
+            file=config.file,
         )
 
-        await builder.build(
+        return await builder.build(
             skip_text_index=config.skip_text_index,
             skip_triple_extraction=config.skip_triple_extraction,
             skip_triple_index=config.skip_triple_index,
@@ -162,5 +216,5 @@ async def build_grag_index(config: GRAGConfig) -> bool:
         logger.info("\n 构建被用户中断")
         raise
     except Exception as e:
-        logger.exception("构建过程中发生未预期的错误", e)
+        logger.exception("构建过程中发生未预期的错误: %s", e)
         raise

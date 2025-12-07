@@ -32,7 +32,6 @@ class KnowledgeBaseRetriever:
         kb_ids: 知识库标识列表（必填）。
         retrieval_type: 检索模式 text/vector/hybrid（可选，默认 hybrid）。
         use_graph: 是否启用三元组索引（可选，默认 False）。
-        source: GraphRetriever 源（可选，默认 hybrid）。
         topk: 返回条数上限（可选，默认 5）。
         score_threshold: 分数过滤阈值（可选，默认 None）。
         graph_expansion: 是否启用图扩展（可选，默认 False）。
@@ -45,7 +44,6 @@ class KnowledgeBaseRetriever:
         kb_ids: Iterable[str],
         retrieval_type: str = "hybrid",
         use_graph: bool = False,
-        source: str = "hybrid",
         topk: int = 5,
         score_threshold: float | None = None,
         graph_expansion: bool = False,
@@ -61,7 +59,6 @@ class KnowledgeBaseRetriever:
             kb_ids: 统一使用列表，即使单 KB 也传 ["kb-id"]。
             retrieval_type: vector / bm25 / hybrid。
             use_graph: 是否走图索引（需提前建 triple）。
-            source: GraphRetriever 源，默认 hybrid。
             topk: 最大返回数量。
             score_threshold: 分数阈值过滤。
             graph_expansion: 是否图扩展。
@@ -71,7 +68,6 @@ class KnowledgeBaseRetriever:
         self.kb_ids = list(kb_ids)
         self.retrieval_type = retrieval_type
         self.use_graph = use_graph
-        self.source = source
         self.topk = topk
         self.score_threshold = score_threshold
         self.graph_expansion = graph_expansion
@@ -90,7 +86,6 @@ class KnowledgeBaseRetriever:
         kb_ids = list(override.get("kb_ids", self.kb_ids))
         retrieval_type = override.get("retrieval_type", self.retrieval_type)
         use_graph = override.get("use_graph", self.use_graph)
-        source = override.get("source", self.source)
         topk = override.get("topk", self.topk)
         score_threshold = override.get("score_threshold", self.score_threshold)
         graph_expansion = override.get("graph_expansion", self.graph_expansion)
@@ -104,12 +99,11 @@ class KnowledgeBaseRetriever:
             raise ValueError("kb_ids 不能为空；单 KB 也请传 ['kb-id']。")
 
         logger.debug(
-            "[KnowledgeBaseRetriever.invoke] kb_ids=%r retrieval_type=%s use_graph=%r source=%s topk=%d "
+            "[KnowledgeBaseRetriever.invoke] kb_ids=%r retrieval_type=%s use_graph=%r topk=%d "
             "embed_model_provided=%r llm_client_provided=%r",
             kb_ids,
             retrieval_type,
             use_graph,
-            source,
             topk,
             embed_model is not None,
             llm_client is not None,
@@ -118,7 +112,6 @@ class KnowledgeBaseRetriever:
             query=query,
             retrieval_type=retrieval_type,
             use_graph=use_graph,
-            source=source,
             topk=topk,
             score_threshold=score_threshold,
             graph_expansion=graph_expansion,

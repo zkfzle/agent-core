@@ -91,7 +91,7 @@ async def delete_text_entries(doc_id: str, config_obj=None):
     )
 
     try:
-        logger.info(f"🔍 Deleting from text index...")
+        logger.info("Deleting from text index...")
 
         filter_expr = f'document_id == "{doc_id}"'
         try:
@@ -242,7 +242,7 @@ async def index(
         if cfg.precomputed_chunks:
             dataset = process_precomputed_chunks(from_file)
             logger.info(
-                "✅ 读取预生成分块 %d 条，文件: %s (ID: %s)",
+                "读取预生成分块 %d 条，文件: %s (ID: %s)",
                 len(dataset),
                 from_file["filepath"],
                 from_file["id"],
@@ -250,7 +250,7 @@ async def index(
         else:
             dataset = await parse_file(from_file["filepath"], from_file["filename"], from_file["id"])
             logger.info(
-                "✅ 读取原始文档 %d 条，文件: %s (ID: %s)",
+                "读取原始文档 %d 条，文件: %s (ID: %s)",
                 len(dataset),
                 from_file["filepath"],
                 from_file["id"],

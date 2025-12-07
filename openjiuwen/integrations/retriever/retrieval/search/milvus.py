@@ -35,7 +35,8 @@ def rrf_nodes(rankings: list[list[TextNode]], k: int = 60) -> list[TextNode]:
     for ranking in rankings:
         ids = []
         for node in ranking:
-            id2node[node.node_id] = node
+            if node.node_id not in id2node:
+                id2node[node.node_id] = node
             ids.append(node.node_id)
         id_rankings.append(ids)
 
@@ -58,6 +59,13 @@ def rrf_nodes(rankings: list[list[TextNode]], k: int = 60) -> list[TextNode]:
     return fused
 
 
+def _scale_cosine(score: float | None) -> float | None:
+    """Linearly map cosine similarity from [-1, 1] to [0, 1]."""
+    if score is None:
+        return None
+    return (float(score) + 1.0) / 2.0
+
+
 def _milvus_result_to_nodes(
     results: list[dict], text_field: str = "content", metadata_field: str = "metadata"
 ) -> list[TextNode]:
@@ -78,6 +86,11 @@ def _milvus_result_to_nodes(
 
         # Get score (distance for vector search, score for BM25)
         score = item.get("score", item.get("distance", 0.0))
+
+        # Ensure raw_score记录原始检索分数
+        raw_score = float(score) if score is not None else None
+        metadata.setdefault("raw_score", raw_score)
+        metadata.setdefault("raw_score_scaled", _scale_cosine(raw_score))
 
         node = TextNode(
             id_=node_id,

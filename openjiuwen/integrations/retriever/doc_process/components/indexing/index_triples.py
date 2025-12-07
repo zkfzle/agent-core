@@ -48,7 +48,7 @@ async def delete_triple_entries(doc_id: str, config_obj=None) -> dict:
     )
 
     try:
-        logger.info(f"🔍 Deleting from text index...")
+        logger.info("Deleting from text index...")
 
         filter_expr = f'document_id == "{doc_id}"'
         try:
@@ -65,7 +65,7 @@ async def delete_triple_entries(doc_id: str, config_obj=None) -> dict:
             return 0
 
     except Exception as e:
-        logger.error(f"❌ Error during text chunk deletion: {e}")
+        logger.error("Error during text chunk deletion: %s", e)
         raise e
 
 
@@ -98,7 +98,7 @@ async def index_triples(
     else:
         setattr(triple_indexer, "vector_only", False)
 
-    logger.info(f"🔍 正在构建三元组索引...")
+    logger.info("正在构建三元组索引...")
     logger.info(f"   数据文件: {data_path}")
     logger.info(f"   三元组ES 索引: {cfg.triple_es_index}")
     logger.info(f"   文本ES 索引: {cfg.chunk_es_index}")
@@ -115,4 +115,4 @@ async def index_triples(
 
     await asyncio.to_thread(triple_indexer.build_index, datastream, batch_size=cfg.batch_size, debug=False)
 
-    logger.info("✅ 三元组索引构建完成！")
+    logger.info("三元组索引构建完成！")

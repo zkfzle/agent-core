@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import tempfile
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
@@ -16,8 +17,12 @@ from pydantic import BaseModel, Field
 import openjiuwen.integrations.retriever.config.configuration as grag_config
 import openjiuwen.integrations.retriever.doc_process.components.pipeline.build_grag_index as build_mod
 from openjiuwen.core.common.logging import logger
-from openjiuwen.integrations.retriever.doc_process.components.indexing.index import delete_text_entries
-from openjiuwen.integrations.retriever.doc_process.components.indexing.index_triples import delete_triple_entries
+from openjiuwen.integrations.retriever.doc_process.components.indexing.index import (
+    delete_text_entries,
+)
+from openjiuwen.integrations.retriever.doc_process.components.indexing.index_triples import (
+    delete_triple_entries,
+)
 
 
 class IndexConfig(BaseModel):
@@ -27,10 +32,18 @@ class IndexConfig(BaseModel):
     index_type: Literal["hybrid", "bm25", "vector"] = Field(
         default="hybrid", description="索引类型 hybrid/bm25/vector（可选，默认 hybrid）"
     )
-    use_graph: bool = Field(default=True, description="是否抽取并写入三元组（可选，默认 True）")
-    chunk_index: Optional[str] = Field(default=None, description="显式指定 chunk 索引名（可选，默认按 kb_id 派生）")
-    triple_index: Optional[str] = Field(default=None, description="显式指定 triple 索引名（可选，默认按 kb_id 派生）")
-    external_config: Optional[Any] = Field(default=None, description="可选外部传入的配置对象（SDK 模式）")
+    use_graph: bool = Field(
+        default=True, description="是否抽取并写入三元组（可选，默认 True）"
+    )
+    chunk_index: Optional[str] = Field(
+        default=None, description="显式指定 chunk 索引名（可选，默认按 kb_id 派生）"
+    )
+    triple_index: Optional[str] = Field(
+        default=None, description="显式指定 triple 索引名（可选，默认按 kb_id 派生）"
+    )
+    external_config: Optional[Any] = Field(
+        default=None, description="可选外部传入的配置对象（SDK 模式）"
+    )
 
 
 def _index_names(
@@ -46,7 +59,9 @@ def _index_names(
 
 def _set_env_for_index(index_config: IndexConfig):
     """设置索引名：优先直接写入 cfg（SDK 注入）。"""
-    chunk_idx, triple_idx = _index_names(index_config.kb_id, index_config.chunk_index, index_config.triple_index)
+    chunk_idx, triple_idx = _index_names(
+        index_config.kb_id, index_config.chunk_index, index_config.triple_index
+    )
     cfg = index_config.external_config
     if cfg is not None:
         cfg.chunk_es_index = chunk_idx
@@ -94,11 +109,19 @@ async def build_doc_index_from_chunks(
         setattr(cfg, "embed_model_instance", embed_model)
     if llm_client is not None:
         setattr(cfg, "llm_client_instance", llm_client)
-    if index_config.use_graph and getattr(cfg, "llm_client_instance", None) is None and llm_client is None:
-        raise ValueError("llm_client is required when use_graph=True (SDK 不再自动创建 LLM 客户端)")
+    if (
+        index_config.use_graph
+        and getattr(cfg, "llm_client_instance", None) is None
+        and llm_client is None
+    ):
+        raise ValueError(
+            "llm_client is required when use_graph=True (SDK 不再自动创建 LLM 客户端)"
+        )
 
     # 索引名派生并检查冲突（忽略 YAML）
-    chk_idx, tpl_idx = _index_names(index_config.kb_id, index_config.chunk_index, index_config.triple_index)
+    chk_idx, tpl_idx = _index_names(
+        index_config.kb_id, index_config.chunk_index, index_config.triple_index
+    )
     if chk_idx == tpl_idx:
         raise ValueError("chunk_index and triple_index cannot be the same")
 
@@ -110,6 +133,7 @@ async def build_doc_index_from_chunks(
         index_config.use_graph,
         len(chunks),
     )
+    t_total = time.perf_counter()
 
     # 保留调用方传入的 external_config，避免索引名无法写回配置
     index_config = IndexConfig(
@@ -126,21 +150,30 @@ async def build_doc_index_from_chunks(
     cfg.chunk_unit = "char"
 
     # 清理同一 doc_id 旧数据，避免上次失败遗留的半截索引
+    t_clean = time.perf_counter()
     try:
         await delete_text_entries(doc_id, config_obj=cfg)
         if index_config.use_graph:
             await delete_triple_entries(doc_id, config_obj=cfg)
     except Exception as e:
-        logger.warning("Failed to clean previous doc entries before re-indexing doc_id=%s: %s", doc_id, e)
+        logger.warning(
+            "Failed to clean previous doc entries before re-indexing doc_id=%s: %s",
+            doc_id,
+            e,
+        )
+    clean_dur = time.perf_counter() - t_clean
 
     tmp_path = ""
+    t_prep = time.perf_counter()
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as tmp:
             for c in chunks:
                 json.dump({"content": c.get("chunk_text", "")}, tmp)
                 tmp.write("\n")
             tmp_path = tmp.name
+        prep_dur = time.perf_counter() - t_prep
 
+        t_build = time.perf_counter()
         file_info = {
             "id": doc_id,
             "filename": f"{doc_id}.jsonl",
@@ -154,11 +187,37 @@ async def build_doc_index_from_chunks(
             embed_model=embed_model,
             llm_client=llm_client,
         )
-        await build_mod.build_grag_index(config=grag_config_obj)
+        build_metrics = await build_mod.build_grag_index(config=grag_config_obj)
+        build_dur = time.perf_counter() - t_build
+        if isinstance(build_metrics, dict) and "total_s" in build_metrics:
+            build_dur = build_metrics.get("total_s", build_dur)
+        total_dur = time.perf_counter() - t_total
         logger.info(
-            "索引构建完成 kb_id=%s doc_id=%s (use_graph=%s)", index_config.kb_id, doc_id, index_config.use_graph
+            "索引构建完成 kb_id=%s doc_id=%s (use_graph=%s) | clean=%.2fs prep=%.2fs build=%.2fs total=%.2fs",
+            index_config.kb_id,
+            doc_id,
+            index_config.use_graph,
+            clean_dur,
+            prep_dur,
+            build_dur,
+            total_dur,
         )
-        return True
+        return {
+            "clean_s": clean_dur,
+            "prep_s": prep_dur,
+            "build_s": build_dur,
+            "total_s": total_dur,
+            **(build_metrics or {}),
+        }
+    except Exception as e:
+        logger.exception(
+            "索引构建失败 kb_id=%s doc_id=%s (use_graph=%s): %s",
+            index_config.kb_id,
+            doc_id,
+            index_config.use_graph,
+            e,
+        )
+        raise
     finally:
         if tmp_path and os.path.exists(tmp_path):
             try:

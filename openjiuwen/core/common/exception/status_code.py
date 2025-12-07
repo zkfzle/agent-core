@@ -10,28 +10,21 @@ class StatusCode(Enum):
     SUCCESS = (0, "success")
     ERROR = (-1, "error")
 
-    # Runner 1 - 100
-    WORKFLOW_NOT_BOUND_TO_AGENT = (1, "workflow not bound to agent")
-    TOOL_NOT_BOUND_TO_AGENT = (2, "tool not bound to agent")
-
-
-    # Workflow 101 - 200
-    WORKFLOW_EXECUTE_INNER_ERROR = (100, "workflow execute inner error : {error}")
-    WORKFLOW_INVOKE_TIMEOUT=(101, "workflow invoke exceeded {timeout}s")
-    WORKFLOW_STREAM_TIMEOUT=(102, "workflow stream exceeded {timeout}s")
-
-
     # Workflow Component  100000 - 109999
 
-    # Workflow Component - Component Development:  100000 - 100999
-    # Workflow Component - Component Development: Interactive And Recovery 100000 - 100029
+    # Workflow: Interactive And Recovery 100000 - 100029
     INTERACTIVE_INVALID_INPUT_ERROR = (100000, "value of interactive_input is invalid")
     INTERACTIVE_UPDATE_FAILED = (100001, "raw_inputs existed, update is invalid")
     COMPONENT_NOT_EXECUTABLE_ERROR = (100002, "workflow component should implement Executable")
     CONTROLLER_INTERRUPTED_ERROR = (100003, "controller interrupted error")
     INTERACTIVE_NOT_SUPPORT_STREAM_ERROR = (100004, "streaming process interface(transform or collect) does not support interact operations")
     COMPONENT_EXECUTE_ERROR = (100005, "component [{node_id}] encountered an exception while executing ability [{"
-                                       "ability}], error detail: {error}")
+                                           "ability}], error detail: {error}")
+
+    # Workflow: Execution 100100 - 100199
+    WORKFLOW_EXECUTE_INNER_ERROR = (100100, "workflow execute inner error: {error}")
+    WORKFLOW_INVOKE_TIMEOUT = (100101, "workflow invoke exceeded {timeout}s")
+    WORKFLOW_STREAM_TIMEOUT = (100102, "workflow stream exceeded {timeout}s")
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 
@@ -213,7 +206,7 @@ class StatusCode(Enum):
     RUNTIME_WORKFLOW_ADD_FAILED = (190002, "failed to add workflow, reason: {reason}")
     RUNTIME_WORKFLOW_CONFIG_ADD_FAILED = (190011, "failed to add workflow config, reason: {reason}")
     RUNTIME_WORKFLOW_CONFIG_GET_FAILED = (190012, "failed to get workflow config, reason: {reason}")
-    RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (19021, "failed to get toolInfo of workflow, reason: {reason}")
+    RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (190013, "failed to get toolInfo of workflow, reason: {reason}")
 
     # Runtime - Resource Management - Agent Group 190040 - 190049
     RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add agent group, reason: {reason}")
@@ -230,7 +223,7 @@ class StatusCode(Enum):
 
     RUNTIME_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
     RUNTIME_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")
-    RUNTIME_TOOL_TOOL_INFO_GET_FAILED = (19121, "failed to get toolInfo of tool, reason: {reason}")
+    RUNTIME_TOOL_TOOL_INFO_GET_FAILED = (190103, "failed to get toolInfo of tool, reason: {reason}")
 
     RUNTIME_PROMPT_GET_FAILED = (190201, "failed to get prompt template, reason: {reason}")
     RUNTIME_PROMPT_ADD_FAILED = (190202, "failed to add prompt template, reason: {reason}")
@@ -258,6 +251,10 @@ class StatusCode(Enum):
     RUNTIME_COMPONENT_INVALID_RUNTIME_TYPE = (196100, "runtime should be NodeRuntime instance")
     RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' method is not implemented. Please implement the '{method}' method in your component class '{class_name}'.")
     RUNTIME_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
+
+    # Runner 196200 - 196299
+    WORKFLOW_NOT_BOUND_TO_AGENT = (196200, "workflow not bound to agent")
+    TOOL_NOT_BOUND_TO_AGENT = (196201, "tool not bound to agent")
 
 
     @property

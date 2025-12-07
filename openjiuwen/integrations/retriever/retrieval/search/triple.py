@@ -11,6 +11,7 @@ from llama_index.core.vector_stores import VectorStoreQuery
 from openjiuwen.core.common.logging import logger
 from openjiuwen.integrations.retriever.retrieval.search.milvus import BaseRetriever
 
+
 class TripleBeam:
     def __init__(self, nodes: list[TextNode], score: float) -> None:
         self._beam = nodes

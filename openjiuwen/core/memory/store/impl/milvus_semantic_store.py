@@ -130,7 +130,6 @@ class MilvusSemanticStore(BaseSemanticStore):
                 vectors_arr.tolist(),
                 [table_name] * len(memory_ids)
             ])
-            collection.flush()
         return True
 
     async def delete_docs(self, ids: List[str], table_name: str) -> bool:
@@ -141,7 +140,6 @@ class MilvusSemanticStore(BaseSemanticStore):
             ids_str = ','.join([f'"{i}"' for i in ids])
             expr = f'memory_id in [{ids_str}] && table_name == "{table_name}"'
             collection.delete(expr)
-            collection.flush()
             return True
 
     async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
@@ -168,5 +166,4 @@ class MilvusSemanticStore(BaseSemanticStore):
         collection = self.collections[collection_name]
         expr = f'table_name == "{table_name}"'
         collection.delete(expr)
-        collection.flush()
         return True

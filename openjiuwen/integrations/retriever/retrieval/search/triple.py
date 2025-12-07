@@ -87,24 +87,33 @@ class TripleBeamSearch:
     def _format_triples(self, triples: Iterable[TextNode]) -> str:
         return "; ".join(self._format_triple(x) for x in triples)
 
-    async def beam_search(self, query: str, triples: list[TextNode]) -> list[TripleBeam]:
+    async def beam_search(
+        self, query: str, triples: list[TextNode]
+    ) -> list[TripleBeam]:
 
         if not triples:
             logger.warning("beam search got empty input triples, query=%r", query)
             return []
 
         texts = [self._format_triple(x) for x in triples] + [query]
-        embeddings = self.embed_model.embed_docs(texts, batch_size=self.encoder_batch_size)
+        embeddings = self.embed_model.embed_docs(
+            texts, batch_size=self.encoder_batch_size
+        )
         embeddings = np.asarray(embeddings, dtype=np.float32)
         query_embedding = embeddings[-1]  # shape (emb_size,)
         embeddings = embeddings[:-1]  # shape (N, emb_size)
 
         scores = self._cosine_scores(query_embedding, embeddings)  # shape (N,)
         topk_indices, topk_scores = self._topk(scores, k=self.num_beams)
-        beams = [TripleBeam([triples[idx]], score) for idx, score in zip(topk_indices, topk_scores)]
+        beams = [
+            TripleBeam([triples[idx]], score)
+            for idx, score in zip(topk_indices, topk_scores)
+        ]
 
         for _ in range(self.max_length - 1):
-            candidates_per_beam = await asyncio.gather(*[self._search_candidates(x) for x in beams])
+            candidates_per_beam = await asyncio.gather(
+                *[self._search_candidates(x) for x in beams]
+            )
             beams = self._expand_beams(
                 beams=beams,
                 candidates_per_beam=candidates_per_beam,
@@ -137,7 +146,9 @@ class TripleBeamSearch:
         if not texts:
             return beams
 
-        embeddings = self.embed_model.embed_docs(texts, batch_size=self.encoder_batch_size)
+        embeddings = self.embed_model.embed_docs(
+            texts, batch_size=self.encoder_batch_size
+        )
         embeddings = np.asarray(embeddings, dtype=np.float32)
         next_scores = self._cosine_scores(query_embedding, embeddings)  # shape (N, )
 
@@ -159,7 +170,11 @@ class TripleBeamSearch:
                 _beams.append(beam)
                 continue
 
-            _beams.append(TripleBeam(beam.triples + [next_triple], float(next_scores[original_idx])))
+            _beams.append(
+                TripleBeam(
+                    beam.triples + [next_triple], float(next_scores[original_idx])
+                )
+            )
 
         return _beams
 

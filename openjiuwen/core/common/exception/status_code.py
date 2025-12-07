@@ -75,6 +75,9 @@ class StatusCode(Enum):
     LOOP_COMPONENT_MISSING_INPUT_KEY_ERROR = (101154, "Invalid inputs: missing required key {key}")
     LOOP_COMPONENT_INVALID_LOOP_TYPE_ERROR = (101155, "Invalid loop type '{loop_type}' for LoopComponent")
 
+    ## BreakComponent  101180 - 101189
+    BREAK_COMPONENT_INIT_ERROR = (101180, "Failed to initialize loop controller")
+
     ## ToolComponent  102000 - 102019
     TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
     TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
@@ -120,7 +123,7 @@ class StatusCode(Enum):
     # Agent Orchestration - Custom Agent Interface 122000 - 122999
     # Agent Controller 123000 - 123999
     INVOKE_LLM_FAILED = (123000, "Failed to call model")
-    AGENT_SUB_TASK_TYPE_ERROR = (123032, "SubTask type {msg} is not supported")
+    AGENT_SUB_TASK_TYPE_ERROR = (123001, "SubTask type {msg} is not supported")
 
     # Multi-Agent Orchestration 130000 - 139999
     # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999
@@ -134,6 +137,8 @@ class StatusCode(Enum):
 
     # Runner 134000 - 134999
     AGENT_NOT_FOUND = (134002, "Agent {} is not found")
+    WORKFLOW_NOT_BOUND_TO_AGENT = (134003, "workflow not bound to agent")
+    TOOL_NOT_BOUND_TO_AGENT = (134004, "tool not bound to agent")
 
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999
@@ -233,6 +238,8 @@ class StatusCode(Enum):
 
     # Runtime - Tracer 191000 - 191999
     RUNTIME_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
+    RUNTIME_TRACE_AGENT_UNDEFINED_FAILED = (191002, "Failed to handle undefined exception")
+
     # Runtime - State 192000 - 192999
     RUNTIME_STATE_RUNTIME_NONE = (192000, "Runtime is None, expected BaseRuntime instance")
     RUNTIME_STATE_INVALID_RUNTIME_TYPE = (192001, "Invalid runtime type: {runtime_type}, expected BaseRuntime")
@@ -251,10 +258,6 @@ class StatusCode(Enum):
     RUNTIME_COMPONENT_INVALID_RUNTIME_TYPE = (196100, "runtime should be NodeRuntime instance")
     RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' method is not implemented. Please implement the '{method}' method in your component class '{class_name}'.")
     RUNTIME_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
-
-    # Runner 196200 - 196299
-    WORKFLOW_NOT_BOUND_TO_AGENT = (196200, "workflow not bound to agent")
-    TOOL_NOT_BOUND_TO_AGENT = (196201, "tool not bound to agent")
 
 
     @property

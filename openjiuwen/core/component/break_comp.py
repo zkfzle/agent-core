@@ -30,6 +30,7 @@ class BreakComponent(WorkflowComponent, Executable):
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         if self._loop_controller is None:
-            raise JiuWenBaseException(StatusCode.ERROR.code, "Loop controller not initialized")
+            raise JiuWenBaseException(StatusCode.BREAK_COMPONENT_INIT_ERROR.code,
+                                      StatusCode.BREAK_COMPONENT_INIT_ERROR.errmsg)
         self._loop_controller.break_loop()
         return {}

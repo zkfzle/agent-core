@@ -365,9 +365,8 @@ async def test_end_template_014():
         - Using stream() method to consume output chunks
     
     Expected behavior:
-        - At least one chunk should be yielded from the stream
-        - The chunk should be an OutputSchema with type 'workflow_final'
-        - The payload should contain responseContent with the static text "输出:"
+        - First chunk should be 'end node stream' with the rendered content
+        - Last chunk should be 'workflow_final'
     """
     flow = Workflow()
     flow.set_start_comp("start", Start(), inputs_schema={"a": "${user_input.a}", "b": "${user_input.b}"})
@@ -382,11 +381,15 @@ async def test_end_template_014():
             stream_modes=[BaseStreamMode.OUTPUT]):
         stream_result.append(chunk)
 
-    assert len(stream_result) > 0, f"Expected at least 1 chunk, got: {len(stream_result)}"
-    assert stream_result[0].type == "workflow_final", \
-        f"Expected 'workflow_final' type, got: {stream_result[0].type}"
-    assert stream_result[0].payload.get('responseContent') == "输出:", \
-        f"Expected '输出:' as responseContent, got: {stream_result[0].payload.get('responseContent')}"
+    assert len(stream_result) >= 2, f"Expected at least 2 chunks, got: {len(stream_result)}"
+    # End 组件批输出时也会发送 end node stream
+    assert stream_result[0].type == "end node stream", \
+        f"Expected 'end node stream' type, got: {stream_result[0].type}"
+    assert stream_result[0].payload.get('answer') == "输出:", \
+        f"Expected '输出:' as answer, got: {stream_result[0].payload.get('answer')}"
+    # 最后一个 chunk 是 workflow_final
+    assert stream_result[-1].type == "workflow_final", \
+        f"Expected 'workflow_final' type for last chunk, got: {stream_result[-1].type}"
     print(stream_result)
 
 
@@ -402,9 +405,9 @@ async def test_end_template_017():
         - Using stream() method to consume output chunks
     
     Expected behavior:
-        - The template should be fully rendered with all variables: "输出:1+2=3"
-        - At least one chunk should be yielded from the stream
-        - The chunk should be an OutputSchema with type 'workflow_final'
+        - First chunk should be 'end node stream' with the rendered content
+        - Last chunk should be 'workflow_final'
+        - The rendered content should be "输出:1+2=3"
     """
     flow = Workflow()
     flow.set_start_comp("start", Start(), inputs_schema={"a": "${user_input.a}", "b": "${user_input.b}"})
@@ -425,11 +428,15 @@ async def test_end_template_017():
             stream_modes=[BaseStreamMode.OUTPUT]):
         stream_result.append(chunk)
 
-    assert len(stream_result) > 0, f"Expected at least 1 chunk, got: {len(stream_result)}"
-    assert stream_result[0].type == "workflow_final", \
-        f"Expected 'workflow_final' type, got: {stream_result[0].type}"
-    assert stream_result[0].payload.get('responseContent') == "输出:1+2=3", \
-        f"Expected '输出:1+2=3' as responseContent, got: {stream_result[0].payload.get('responseContent')}"
+    assert len(stream_result) >= 2, f"Expected at least 2 chunks, got: {len(stream_result)}"
+    # End 组件配置了 stream_inputs_schema，批输出时也会发送 end node stream
+    assert stream_result[0].type == "end node stream", \
+        f"Expected 'end node stream' type, got: {stream_result[0].type}"
+    assert stream_result[0].payload.get('answer') == "输出:1+2=3", \
+        f"Expected '输出:1+2=3' as answer, got: {stream_result[0].payload.get('answer')}"
+    # 最后一个 chunk 是 workflow_final
+    assert stream_result[-1].type == "workflow_final", \
+        f"Expected 'workflow_final' type for last chunk, got: {stream_result[-1].type}"
     print(stream_result)
 
 

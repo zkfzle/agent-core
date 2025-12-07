@@ -499,3 +499,129 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print("\n🎉 实时打断测试完成！验证了 TaskQueue 取消机制！")
 
+    @unittest.skip
+    async def test_simple_llm_workflow_with_streaming_end(self):
+        """
+        测试简单的 start -> llm -> end 工作流，End 组件使用批输出模式。
+        
+        目的：验证 End 组件批输出时也能发送 end node stream 消息。
+        """
+        from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
+        from openjiuwen.core.stream.base import OutputSchema
+        
+        print("=== 测试 Start -> LLM -> End (批输出模式) 工作流 ===")
+
+        # 创建工作流配置
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name="简单LLM工作流",
+                id="simple_llm_flow",
+                version="1.0",
+                description="测试LLM节点和批输出End"
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+
+        # 1. Start 组件
+        start = self._create_start_component()
+
+        # 2. LLM 组件 - 使用 INVOKE 模式（批输出）
+        llm_config = LLMCompConfig(
+            model=self._create_model_config(),
+            template_content=[
+                {"role": "system", "content": "你是一个AI助手，回答简洁。"},
+                {"role": "user", "content": "{{query}}"}
+            ],
+            response_format={"type": "text"},
+            output_config={
+                "answer": {"type": "string", "description": "AI回复内容", "required": True}
+            },
+        )
+        llm = LLMComponent(llm_config)
+
+        # 3. End 组件 - 批输出模式
+        end = End({"responseTemplate": "{{answer}}"})
+
+        # 注册组件 - 全部使用普通模式
+        flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
+        flow.add_workflow_comp("llm", llm, inputs_schema={"query": "${start.query}"})
+        # 即使使用 inputs_schema（批输出），也会发送 end node stream
+        flow.set_end_comp("end", end, inputs_schema={"answer": "${llm.answer}"})
+
+        # 连接拓扑 - 使用普通连接
+        flow.add_connection("start", "llm")
+        flow.add_connection("llm", "end")
+
+        # 创建 Agent
+        config = WorkflowAgentConfig(
+            id="test_simple_llm_agent",
+            version="0.1.0",
+            description="简单LLM工作流测试",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([flow])
+
+        conversation_id = "test-simple-llm-001"
+
+        # ========== 流式调用 ==========
+        print("\n【流式调用】发送 query: 输出包100字作文")
+        print("-" * 60)
+        
+        chunk_count = 0
+        all_chunks = []
+        
+        try:
+            async for chunk in agent.stream({
+                "query": "输出100字作文",
+                "conversation_id": conversation_id
+            }):
+                chunk_count += 1
+                all_chunks.append(chunk)
+                
+                # 详细打印每个 chunk 的信息
+                print(f"\n【Chunk #{chunk_count}】")
+                print(f"  类型: {type(chunk).__name__}")
+                
+                if isinstance(chunk, OutputSchema):
+                    print(f"  OutputSchema.type: {chunk.type}")
+                    print(f"  OutputSchema.index: {chunk.index}")
+                    print(f"  OutputSchema.payload: {chunk.payload}")
+                elif isinstance(chunk, dict):
+                    print(f"  dict 内容: {chunk}")
+                    if 'type' in chunk:
+                        print(f"    type: {chunk['type']}")
+                    if 'payload' in chunk:
+                        print(f"    payload: {chunk['payload']}")
+                else:
+                    print(f"  原始内容: {chunk}")
+                    
+        except Exception as e:
+            print(f"❌ 流式调用出错: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
+
+        print("-" * 60)
+        print(f"\n【汇总】共收到 {chunk_count} 个 chunk")
+        
+        # 统计各类型 chunk 数量
+        type_counts = {}
+        for chunk in all_chunks:
+            if isinstance(chunk, OutputSchema):
+                chunk_type = chunk.type
+            elif isinstance(chunk, dict) and 'type' in chunk:
+                chunk_type = chunk['type']
+            else:
+                chunk_type = type(chunk).__name__
+            type_counts[chunk_type] = type_counts.get(chunk_type, 0) + 1
+        
+        print(f"【类型统计】")
+        for t, count in type_counts.items():
+            print(f"  {t}: {count} 个")
+
+        # 断言至少收到了一些数据
+        self.assertGreater(chunk_count, 0, "应该收到至少一个流式数据块")
+        print("\n✅ 测试完成！")
+

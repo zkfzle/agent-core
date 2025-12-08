@@ -69,6 +69,7 @@ class MilvusSemanticStore(BaseSemanticStore):
             collection.create_index(field_name="embedding", index_params=index_params)
             logger.info(f"Index created for collection {self.collection_name}")
         else:
+            self.get_collection(self.collection_name)
             logger.info(f"Collection {self.collection_name} already exists.")
 
     def get_collection(self, table_name: str) -> Collection:

@@ -33,7 +33,7 @@ PROMPT_BUILD_GENERAL_META_SYSTEM_TEMPLATE = Template(content=[SystemMessage(cont
 1. 仅生成模板内容，避免添加不必要的信息。
 2. 确保模板中包含用户要求中的关键信息。
 3. 直接输出markdown内容，不要包含```markdown```代码块标记。
-
+4. 不对占位符本身进行增加、删除或修改，占位符以双花括弧的形式展现。
 """)])
 
 PROMPT_BUILD_GENERAL_META_USER_TEMPLATE = Template(content=[HumanMessage(content="""
@@ -71,6 +71,7 @@ PROMPT_BUILD_PLAN_META_SYSTEM_TEMPLATE = Template(content=[SystemMessage(content
 1. 仅生成模板内容，避免添加不必要的信息。
 2. 确保模板中包含用户要求中的关键信息。
 3. 直接输出markdown内容，不要包含```markdown```代码块标记。
+4. 不对占位符本身进行增加、删除或修改，占位符以双花括弧的形式展现。
 """)])
 
 PROMPT_BUILD_PLAN_META_USER_TEMPLATE = Template(content=[HumanMessage(content="""
@@ -155,6 +156,7 @@ PROMPT_FEEDBACK_SELECT_TEMPLATE = Template(content=[HumanMessage(content="""
 5. **语言风格统一**：对部分片段修改后的Prompt应与原Prompt的语言风格一致，避免过于突兀的风格变化。
 6. **优化而非过度改动**：修改应关注改进与优化，请避免过度修改，以免偏离原意。
 7. **内容保留**：对修改部分的内容，如果里面有一些与反馈优化信息无关，那么这些内容保持不变，不能丢失
+8. **占位符一致性**：不对占位符本身进行增加、删除或修改，占位符以双花括弧的形式展现。
 
 [原始Prompt开始]
 {{original_prompt}}
@@ -235,6 +237,12 @@ PROMPT_BAD_CASE_ANALYZE_TEMPLATE = Template(content=[HumanMessage(content="""
 {{original_prompt}}
 </original_prompt>
 
+##反例结构介绍说明：
+[question] 用户侧输入。
+[expected answer] 希望模型给出的理想答案,若该这段为空，请主要分析assistant answer错误的原因并结合reason生成反馈。
+[assistant answer] 模型在原始提示词下实际返回的完整内容。
+[reason] 模型输出与期望不符的原因或用户的反馈。
+
 反例如下：
 
 <bad_cases>
@@ -275,6 +283,7 @@ PROMPT_BAD_CASE_OPTIMIZE_TEMPLATE = Template(content=[HumanMessage(content="""
 *   保持提示词的原始意图，除非反馈明确建议更改意图。
 *   尽可能清晰、简洁且无歧义。
 *   考虑边缘情况和潜在的误解。
+*   不对占位符本身进行增加、删除或修改，占位符以双花括弧的形式展现。
 
 仅返回改进后的提示词内容,不要输出其他多余的标签。
 """)])

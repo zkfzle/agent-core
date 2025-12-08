@@ -186,7 +186,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
             )
         return False
 
-    def _is_valid_prompt(self, prompt: str, feedback: str) -> bool:
+    def _is_valid_prompt(self, prompt: str, feedback: str):
         if prompt is None or feedback is None:
             raise JiuWenBaseException(
                 StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,

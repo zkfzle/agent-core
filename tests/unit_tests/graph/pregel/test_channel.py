@@ -7,7 +7,8 @@ from openjiuwen.graph.pregel.messages import TriggerMessage, BarrierMessage
 
 
 class TestChannelManager:
-    def test_trigger_channel_reset(self):
+    @classmethod
+    def test_trigger_channel_reset(cls):
         """Test that TriggerChannel correctly resets Ready state after consume"""
 
         # Setup: Create Manager and Channels
@@ -55,7 +56,8 @@ class TestChannelManager:
         assert "start" not in ready_step2
         assert len(ready_step2) == 0
 
-    def test_barrier_lifecycle(self):
+    @classmethod
+    def test_barrier_lifecycle(cls):
         """
         Test complete lifecycle of BarrierChannel in ChannelManager:
         Waiting -> Partial arrival -> All arrived (Ready) -> Consumed (Reset) -> Waiting again
@@ -122,7 +124,8 @@ class TestChannelManager:
         assert barrier_ch.is_ready() is False
         assert barrier_target_node not in manager.get_ready_nodes()
 
-    def test_barrier_duplicate_signals(self):
+    @classmethod
+    def test_barrier_duplicate_signals(cls):
         """Test that the same sender sending signals multiple times in one superstep (idempotency)"""
         barrier_ch = BarrierChannel("collect", {"A", "B"})
         manager = ChannelManager([barrier_ch])

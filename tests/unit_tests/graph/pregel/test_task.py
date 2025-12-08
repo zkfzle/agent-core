@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.graph.pregel.config import PregelConfig
 from openjiuwen.graph.pregel.constants import GraphInterrupt, Interrupt, PARENT_NS, NS
 from openjiuwen.graph.pregel.nodes import PregelNode
@@ -15,33 +16,33 @@ from openjiuwen.graph.pregel.task import TaskExecutorPool
 
 async def task_a_slow(config):
     # Slow task, needs 1 second
-    print(">>> Node A start")
+    logger.debug(">>> Node A start")
     await asyncio.sleep(1)
     print(">>> Node A end")
     assert config[NS] == 'root:A'
 
 
 async def task_b_interrupt(config):
-    print(">>> Node b_interrupt start")
+    logger.debug(">>> Node b_interrupt start")
     await asyncio.sleep(0.2)
     assert config[NS] == 'root:B'
-    print(">>> Node b_interrupt end")
+    logger.debug(">>> Node b_interrupt end")
     raise GraphInterrupt(Interrupt("B_Interrupt"))
 
 
 async def task_b_value_error(config):
-    print(">>> Node B value_error start")
+    logger.debug(">>> Node B value_error start")
     await asyncio.sleep(0.2)
     assert config[NS] == 'root:B'
-    print(">>> Node B value_error end")
+    logger.debug(">>> Node B value_error end")
     raise ValueError("Simulated Runtime Error in B")
 
 
 async def task_c_fast(config):
     # Fast task
-    print(">>> Node C start")
+    logger.debug(">>> Node C start")
     assert config[NS] == 'root:C'
-    print(">>> Node C end")
+    logger.debug(">>> Node C end")
     return
 
 

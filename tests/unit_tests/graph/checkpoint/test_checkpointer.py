@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 from unittest.mock import MagicMock
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.graph.checkpoint.base import create_checkpoint, PendingNode
 from openjiuwen.graph.checkpoint.gragh_checkpoiter import GraphCheckpointer
@@ -13,6 +14,7 @@ from openjiuwen.graph.checkpoint.memory_checkpoint_saver import MemoryCheckpoint
 class Message:
     value: Any
 
+
 class DummyChannel:
     def __init__(self, value):
         self.value = value
@@ -22,6 +24,7 @@ class DummyChannel:
 
     def snapshot(self):
         return self.value
+
 
 async def _test_memory_checkpoint_saver():
 
@@ -44,7 +47,7 @@ async def _test_memory_checkpoint_saver():
     # ---- Save checkpoint ----
 
     await saver.save(conversation_id, ns, checkpoint)
-    print("[TEST] save() executed.")
+    logger.debug("[TEST] save() executed.")
 
     # ---- Get checkpoint ----
     loaded = await saver.get(conversation_id, ns)
@@ -54,15 +57,16 @@ async def _test_memory_checkpoint_saver():
     assert loaded.pending_buffer[0].value == "pending msg"
     assert loaded.pending_node["node1"].status == "running"
     assert loaded.pending_node["node1"].node_name == "n1"
-    print("[TEST] get() verified values OK.")
+    logger.debug("[TEST] get() verified values OK.")
 
     # ---- Delete conversation ----
     await saver.delete(conversation_id)
     deleted = await saver.get(conversation_id, ns)
     assert deleted is None, "After delete, checkpoint should be None."
 
-    print("[TEST] delete() OK.")
-    print("\nAll MemoryCheckpointSaver tests passed!")
+    logger.debug("[TEST] delete() OK.")
+    logger.debug("\nAll MemoryCheckpointSaver tests passed!")
+
 
 async def _test_memory_graph_checkpointer():
     saver = MemoryCheckpointSaver()
@@ -99,8 +103,9 @@ async def _test_memory_graph_checkpointer():
     await saver.delete(conversation_id, ns)
     deleted = await saver.get(conversation_id, ns)
     assert deleted is None, "After delete, checkpoint should be None."
-    print("[TEST] delete() OK.")
-    print("\nAll test_memory_graph_checkpointer tests passed!")
+    logger.debug("[TEST] delete() OK.")
+    logger.debug("\nAll test_memory_graph_checkpointer tests passed!")
+
 
 def test_memory_checkpoint_saver_basic():
     asyncio.run(_test_memory_checkpoint_saver())

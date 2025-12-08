@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.graph.pregel.builder import PregelGraphBuilder
 from openjiuwen.graph.pregel.channels import TriggerChannel, BarrierChannel
@@ -75,10 +76,11 @@ def basic_nodes_and_channels_builder():
     """
 
     def fn_pass():
-        print("pass!!!")
+        logger.debug("pass!!!")
         return "pass"
 
-    def fn_slow(): return "slow_data"
+    def fn_slow():
+        return "slow_data"
 
     builder = PregelGraphBuilder()
     builder.add_node("start", fn_pass)
@@ -145,9 +147,11 @@ def conditional_routing_builder():
     def pick_target():
         return "D"
 
-    def fn_int(): return 42
+    def fn_int():
+        return 42
 
-    def fn_receive(): return "received"
+    def fn_receive():
+        return "received"
 
     builder = PregelGraphBuilder()
     builder.add_node("A", fn_int)
@@ -180,7 +184,7 @@ def multi_routing_direct():
         return 2
 
     def fn_end():
-        print("END")
+        logger.debug("END")
 
     def pick_target():
         # Simple condition: if value > 0, go to E, otherwise go to F
@@ -278,13 +282,17 @@ def multi_routing_builder():
     """Fixture providing multi-routing graph using builder."""
 
     # Define node functions
-    def fn_int(): return 1
+    def fn_int():
+        return 1
 
-    def fn_receive(): return 2
+    def fn_receive():
+        return 2
 
-    def fn_end(): print("END")
+    def fn_end():
+        logger.debug("END")
 
-    def pick_target(): return "E"
+    def pick_target():
+        return "E"
 
     builder = PregelGraphBuilder()
 
@@ -345,8 +353,8 @@ def nested_subgraph_builder():
         try:
             await asyncio.sleep(1)
         except asyncio.CancelledError:
-            raise
-        return
+            logger.warning("Task was cancelled")
+            return "cancelled"
 
     def fn_a3_fast(config):
         return "a3_done"
@@ -369,7 +377,7 @@ def nested_subgraph_builder():
     inner_nodes, inner_channels = inner_builder.nodes, inner_builder.channels
 
     def inner_logger(loop):
-        print(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
+        logger.debug(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     inner_app = Pregel(inner_nodes, inner_channels, initial="start1",
                        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
@@ -380,7 +388,7 @@ def nested_subgraph_builder():
             self.inner_app = inner_app
 
         async def __call__(self, state, config):
-            print(f"[{config.get(NS)}] Subgraph Invoked.")
+            logger.debug(f"[{config.get(NS)}] Subgraph Invoked.")
             return await self.inner_app.ainvoke(config, durability="exit")
 
     builder = PregelGraphBuilder()
@@ -529,7 +537,7 @@ def linear_nested_subgraph_setup():
             "active_nodes": list(loop.active_nodes),
             "ns": loop.config['ns']
         })
-        print(f"[{loop.config['ns']}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
+        logger.debug(f"[{loop.config['ns']}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     inner_builder = PregelGraphBuilder()
     inner_builder.add_node("start1", fn_generic_pass)
@@ -557,7 +565,7 @@ def linear_nested_subgraph_setup():
             self.inner_app = inner_app
 
         async def __call__(self, state, config):
-            print(f"[{config['ns']}] Subgraph Invoked by C.")
+            logger.debug(f"[{config['ns']}] Subgraph Invoked by C.")
             return await self.inner_app.ainvoke(config, durability="exit")
 
     outer_builder = PregelGraphBuilder()
@@ -583,17 +591,17 @@ def linear_nested_subgraph_setup():
 
     execution_trace = []
 
-    def logger(loop):
+    def log_loop(loop):
         execution_trace.append({
             "step": loop.step,
             "active_nodes": list(loop.active_nodes),
             "ns": loop.config['ns']
         })
-        print(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
+        logger.debug(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     graph = outer_builder.build(
         checkpointer=checkpointer,
-        after_tick=logger)
+        after_tick=log_loop)
     return graph, execution_trace
 
 
@@ -613,14 +621,14 @@ class TestPregelV2:
         # Track execution steps and active nodes
         execution_trace = []
 
-        def logger(loop):
+        def log_loop(loop):
             execution_trace.append({
                 "step": loop.step,
                 "active_nodes": list(loop.active_nodes),
             })
 
         # Create and run the graph
-        app = Pregel(nodes, channels, initial="start", after_tick=logger)
+        app = Pregel(nodes, channels, initial="start", after_tick=log_loop)
         await app.ainvoke()
 
         # Verify execution trace
@@ -653,13 +661,13 @@ class TestPregelV2:
         # Track execution steps and active nodes
         execution_trace = []
 
-        def logger(loop):
+        def log_loop(loop):
             execution_trace.append({
                 "step": loop.step,
                 "active_nodes": list(loop.active_nodes),
             })
 
-        app = Pregel(nodes, channels, initial="A", after_tick=logger)
+        app = Pregel(nodes, channels, initial="A", after_tick=log_loop)
         await app.ainvoke()
 
         # Verify execution trace
@@ -690,19 +698,19 @@ class TestPregelV2:
         # Track execution steps and active nodes
         execution_trace = []
 
-        def logger(loop):
+        def log_loop(loop):
             execution_trace.append({
                 "step": loop.step,
                 "active_nodes": list(loop.active_nodes),
             })
-            print(f"step:{loop.step}, nodes:{list(loop.active_nodes)}")
+            logger.debug(f"step:{loop.step}, nodes:{list(loop.active_nodes)}")
 
         # Build Pregel graph
         graph = Pregel(
             nodes=nodes,
             channels=channels,
             initial="START",
-            after_tick=logger
+            after_tick=log_loop
         )
 
         await graph.ainvoke()
@@ -720,23 +728,23 @@ class TestPregelV2:
         nodes, channels = nested_subgraph_builder
         execution_trace = []
 
-        def logger(loop):
+        def log_loop(loop):
             execution_trace.append({
                 "step": loop.step,
                 "active_nodes": list(loop.active_nodes),
                 "ns": loop.config.get(NS)
             })
-            print(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
+            logger.debug(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
 
         graph = Pregel(
             nodes=nodes,
             channels=channels,
             initial="start",
             checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
-            after_tick=logger
+            after_tick=log_loop
         )
         config = PregelConfig(session_id="test_parallel_fail", ns="start-a-end")
-        print("\n=============== Invoke 1 (Failure) ===============")
+        logger.debug("\n=============== Invoke 1 (Failure) ===============")
 
         with pytest.raises(RuntimeError, match="a1 exception"):
             await graph.ainvoke(config)
@@ -744,13 +752,13 @@ class TestPregelV2:
         assert checkpoint is not None
         assert checkpoint.pending_node is not None
 
-        print("\n=============== Invoke 2 (Resume) ===============")
+        logger.debug("\n=============== Invoke 2 (Resume) ===============")
         execution_trace.clear()
         with pytest.raises(RuntimeError, match="a1 exception"):
             await graph.ainvoke(config)
         assert len(execution_trace) == 0
 
-        print("\n=============== Invoke 3/4 (No sessionId) ===============")
+        logger.debug("\n=============== Invoke 3/4 (No sessionId) ===============")
         config_stateless = PregelConfig()
         execution_trace.clear()
         with pytest.raises(RuntimeError, match="a1 exception"):
@@ -767,41 +775,41 @@ class TestPregelV2:
         Inner Subgraph (c): start1 -> a1 -> b1| -> c1 -> end1
         """
         graph, execution_trace = linear_nested_subgraph_setup
-        RECURSION_LIMIT = 3
-        SESSION_ID = "test_recursion_limit_nested"
-        NS_OUTER = "outer-linear-test"
+        recursion_limit = 3
+        session_id = "test_recursion_limit_nested"
+        ns_outer = "outer-linear-test"
 
         config = PregelConfig(
-            session_id=SESSION_ID,
-            ns=NS_OUTER,
-            recursion_limit=RECURSION_LIMIT
+            session_id=session_id,
+            ns=ns_outer,
+            recursion_limit=recursion_limit
         )
 
-        print("\n=============== Invoke 1 (Failure at Step 4 / Node C) ===============")
+        logger.debug("\n=============== Invoke 1 (Failure at Step 4 / Node C) ===============")
 
         with pytest.raises(RecursionError) as excinfo:
             await graph.ainvoke(config)
 
-        assert f"Recursion limit of {RECURSION_LIMIT} reached" in str(excinfo.value)
+        assert f"Recursion limit of {recursion_limit} reached" in str(excinfo.value)
 
         assert execution_trace[-1]['active_nodes'] == ['b']
 
-        checkpoint = await graph.checkpointer.get(SESSION_ID, config['ns'])
+        checkpoint = await graph.checkpointer.get(session_id, config['ns'])
         assert checkpoint is not None
         assert checkpoint.step == 4
         assert not checkpoint.pending_node
-        print("Channel Values:", checkpoint.channel_values)
-        print("pending_buffer:", checkpoint.pending_buffer)
-        print("\n=============== Invoke 2 (Resume from Node C) ===============")
+        logger.debug("Channel Values:", checkpoint.channel_values)
+        logger.debug("pending_buffer:", checkpoint.pending_buffer)
+        logger.debug("\n=============== Invoke 2 (Resume from Node C) ===============")
 
         execution_trace.clear()
         with pytest.raises(RecursionError) as excinfo:
             await graph.ainvoke(config)
-        assert f"Recursion limit of {RECURSION_LIMIT} reached" in str(excinfo.value)
+        assert f"Recursion limit of {recursion_limit} reached" in str(excinfo.value)
         assert execution_trace[-1]['active_nodes'] == ['b1']
-        checkpoint = await graph.checkpointer.get(SESSION_ID, config['ns'])
+        checkpoint = await graph.checkpointer.get(session_id, config['ns'])
 
-        print("\n=============== Invoke 3 (Resume from Node b1) ===============")
+        logger.debug("\n=============== Invoke 3 (Resume from Node b1) ===============")
 
         execution_trace.clear()
         await graph.ainvoke(config)

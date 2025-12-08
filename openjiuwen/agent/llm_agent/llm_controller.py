@@ -613,7 +613,8 @@ class LLMController(BaseController):
                 api_key=self.config.model.model_info.api_key,
                 timeout=self.config.model.model_info.timeout,
                 temperature=self.config.model.model_info.temperature,
-                top_p=self.config.model.model_info.top_p
+                top_p=self.config.model.model_info.top_p,
+                **self.config.model.model_info.model_extra
             )
             runtime.add_model(model_id=model_id, model=model)
         

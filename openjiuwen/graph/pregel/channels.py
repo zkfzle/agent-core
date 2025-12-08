@@ -23,7 +23,7 @@ class ChannelManager:
         # updated node
         self._ready_node_names: Set[str] = set()
         # message to next tick
-        self._buffer: list[Message] = []
+        self.buffer: list[Message] = []
 
         for ch in channels:
             self.map_key_to_channel[ch.key] = ch
@@ -33,15 +33,15 @@ class ChannelManager:
                 self._ready_node_names.add(ch.node_name)
 
     def buffer_message(self, msg: Message) -> None:
-        self._buffer.append(msg)
+        self.buffer.append(msg)
 
     def is_empty(self) -> bool:
-        return len(self._buffer) == 0
+        return len(self.buffer) == 0
 
     def flush(self) -> None:
         updated_nodes = set()
 
-        for msg in self._buffer:
+        for msg in self.buffer:
             ch = self.map_key_to_channel.get(msg.target)
             if not ch:
                 raise ValueError(f"Channel not found for target key: '{msg.target}'")
@@ -51,7 +51,7 @@ class ChannelManager:
             if changed:
                 updated_nodes.add(ch.node_name)
 
-        self._buffer.clear()
+        self.buffer.clear()
 
         for node_name in updated_nodes:
             channels = self.map_node_to_channels[node_name]

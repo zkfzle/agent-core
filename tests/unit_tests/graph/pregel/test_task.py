@@ -15,8 +15,9 @@ from openjiuwen.graph.pregel.task import TaskExecutorPool
 
 async def task_a_slow(config):
     # Slow task, needs 1 second
-    print(">>> Node A 启动")
+    print(">>> Node A start")
     await asyncio.sleep(1)
+    print(">>> Node A end")
     assert config[NS] == 'root:A'
 
 
@@ -126,12 +127,9 @@ class TestTaskExecutorPool:
         assert pool.failed['B'].status == '__interrupt__'
         assert isinstance(pool.failed['B'].exception[0], GraphInterrupt)
 
-        # 2. A is cancelled, recorded as __error__
-        assert 'A' in pool.failed
-        assert pool.failed['A'].status == '__error__'
-        assert isinstance(pool.failed['A'].exception[0], asyncio.CancelledError)
-
         # 3. C succeeds, message is collected
         assert 'C' not in pool.failed
-        assert len(pool.succeed_messages) == 1
-        assert pool.succeed_messages[0].sender == 'C'
+        assert 'A' not in pool.failed
+        assert len(pool.succeed_messages) == 2
+        senders = [msg.sender for msg in pool.succeed_messages]
+        assert set(senders) == {"A", "C"}

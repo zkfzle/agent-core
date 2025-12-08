@@ -127,11 +127,10 @@ class PregelLoop:
     async def _save_checkpoint_on_error(self, exception: Exception):
         if not self.config.get(SESSION_ID) or not self.config.get(NS) or not self.saver:
             return
-        pending_buffer = []
+        pending_buffer = self.manager.buffer
         pending_node = {}
-
         if self.executor:
-            pending_buffer = self.executor.succeed_messages
+            pending_buffer.extend(self.executor.succeed_messages)
             pending_node = self.executor.failed
         error_checkpoint = create_checkpoint(
             ns=self.config[NS],

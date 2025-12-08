@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union
 
 from openjiuwen.graph.checkpoint.base import PendingNode
 from openjiuwen.graph.pregel.config import PregelConfig, InnerPregelConfig, \
@@ -21,12 +21,12 @@ class TaskExecutorPool:
         self.config = config
         self.succeed_messages: List[Message] = []
         self.failed: Dict[str, PendingNode] = {}
-        self._tasks: Dict[asyncio.Task, PregelNode] = {}
+        self.running_tasks: Dict[asyncio.Task, PregelNode] = {}
 
     def submit(self, node: PregelNode) -> None:
         """Submit node's execution task"""
         async_task = asyncio.create_task(NodeTask(node, self.config).run())
-        self._tasks[async_task] = node
+        self.running_tasks[async_task] = node
 
     def _commit_failure(self, node: PregelNode, exc: Exception):
         """Record failed node and exception"""
@@ -37,45 +37,53 @@ class TaskExecutorPool:
 
     async def wait_all(self) -> None:
         """Wait and process all tasks with FIRST_EXCEPTION semantics"""
-        if not self._tasks:
+        if not self.running_tasks:
             return
 
-        tasks = list(self._tasks.keys())
+        tasks = list(self.running_tasks.keys())
 
         done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
 
-        # Collect done results & exceptions
-        first_exc: Optional[Exception] = None
+        first_err_exc: Optional[Exception] = None
+        interrupt_exc: Optional[GraphInterrupt] = None
 
         for t in done:
-            node = self._tasks.pop(t)
+            node = self.running_tasks.pop(t)
 
             exc = t.exception()
-            if exc is None:
-                # Success - collect messages
-                msgs: List[Message] = t.result()
-                self.succeed_messages.extend(msgs)
-            else:
-                # Failure
+
+            if exc:
                 self._commit_failure(node, exc)
-                if first_exc is None:
-                    first_exc = exc
-
-        # Cancel remaining tasks
-        for t in pending:
-            node = self._tasks.pop(t)
+                if first_err_exc is None:
+                    first_err_exc = exc
+            else:
+                res = t.result()
+                if isinstance(res, GraphInterrupt):
+                    self._commit_failure(node, res)
+                    if interrupt_exc is None:
+                        interrupt_exc = res
+                else:
+                    msgs: List[Message] = res
+                    self.succeed_messages.extend(msgs)
+        tasks_to_cancel = list(pending)
+        for t in tasks_to_cancel:
             t.cancel()
-            await asyncio.gather(t, return_exceptions=True)
-            # Cancellation is not a failure, only mark in pending nodes
-            self._commit_failure(node, asyncio.CancelledError())
+        await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+        for t in tasks_to_cancel:
+            if t in self.running_tasks:
+                node = self.running_tasks.pop(t)
+                self._commit_failure(node, asyncio.CancelledError())
 
-        if first_exc:
-            raise first_exc
+        # Priority: normal exception > interrupt exception
+        if first_err_exc:
+            raise first_err_exc
+        elif interrupt_exc:
+            raise interrupt_exc
 
     def clear(self):
         self.succeed_messages.clear()
         self.failed.clear()
-        self._tasks.clear()
+        self.running_tasks.clear()
 
 
 class NodeTask:
@@ -84,34 +92,45 @@ class NodeTask:
         self.config = config
         self.messages: List[Message] = []
 
-    async def run(self) -> List[Message]:
-        func = self.node.func
-        target_func = func.__call__ if hasattr(func, "__call__") else func
-        sig = inspect.signature(func)
-        kwargs = {}
-        if 'config' in sig.parameters:
-            # Create namespace for current node
-            inner_config: InnerPregelConfig = create_inner_config(self.config)
-            current_parent_ns = inner_config.get(PARENT_NS)
-            current_node_name = self.node.name
-            if current_parent_ns:
-                new_full_ns = f"{current_parent_ns}:{current_node_name}"
-                inner_config[NS] = new_full_ns
-                inner_config[PARENT_NS] = new_full_ns
-            kwargs['config'] = inner_config
-        if 'state' in sig.parameters:
-            kwargs['state'] = None
+    async def run(self) -> Union[List[Message], GraphInterrupt]:
+        """
+        Execute the node.
+        Returns:
+            List[Message]: If success.
+            GraphInterrupt: If interrupted (caught internally).
+        Raises:
+            Exception: If any other error occurs (propagates to cancel others).
+        """
+        try:
+            func = self.node.func
+            target_func = func.__call__ if hasattr(func, "__call__") else func
+            sig = inspect.signature(func)
+            kwargs = {}
+            if 'config' in sig.parameters:
+                inner_config: InnerPregelConfig = create_inner_config(self.config)
+                current_parent_ns = inner_config.get(PARENT_NS)
+                current_node_name = self.node.name
+                if current_parent_ns:
+                    new_full_ns = f"{current_parent_ns}:{current_node_name}"
+                    inner_config[NS] = new_full_ns
+                    inner_config[PARENT_NS] = new_full_ns
+                kwargs['config'] = inner_config
+            if 'state' in sig.parameters:
+                kwargs['state'] = None
 
-        if inspect.iscoroutinefunction(func) or asyncio.iscoroutinefunction(target_func):
-            await target_func(**kwargs)
-        else:
-            target_func(**kwargs)
+            if inspect.iscoroutinefunction(func) or asyncio.iscoroutinefunction(target_func):
+                await target_func(**kwargs)
+            else:
+                target_func(**kwargs)
 
-        # Route messages
-        self.messages = []
-        for r in self.node.routers:
-            # Assume IRouter.route is an async method
-            msgs = await r.dispatch(source_node=self.node.name)
-            self.messages.extend(msgs)
+            # Route messages
+            self.messages = []
+            for r in self.node.routers:
+                msgs = await r.dispatch(source_node=self.node.name)
+                self.messages.extend(msgs)
 
-        return self.messages
+            return self.messages
+
+        except GraphInterrupt as e:
+            # cast exception to return value
+            return e

@@ -10,7 +10,7 @@ from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_ch
 from openjiuwen.graph.pregel.builder import PregelGraphBuilder
 from openjiuwen.graph.pregel.channels import TriggerChannel, BarrierChannel
 from openjiuwen.graph.pregel.config import PregelConfig
-from openjiuwen.graph.pregel.constants import START, END, NS
+from openjiuwen.graph.pregel.constants import START, END, NS, GraphInterrupt, Interrupt
 from openjiuwen.graph.pregel.engine import Pregel
 from openjiuwen.graph.pregel.nodes import PregelNode
 from openjiuwen.graph.pregel.router import StaticRouter, BarrierRouter, ConditionalRouter
@@ -395,6 +395,125 @@ def nested_subgraph_builder():
 
 
 @pytest.fixture
+def nested_subgraph_interrupt_with_outer_parallel_builder():
+    """
+    Outer Graph: start -> [a, b] -> end
+
+    - a: nested subgraph
+      Inner: start1 -> [a1, a2, a3] -> end1
+        a1: interrupts twice then passes (0.2s)
+        a2: slow completes (1.0s)
+        a3: fast completes (0s)
+    - b: outer parallel node; interrupts twice then passes (0.1s)
+    """
+
+    execution_trace = []
+
+    # --- Inner subgraph nodes ---
+    async def fn_a1_fail(config):
+        if not hasattr(fn_a1_fail, "call_count"):
+            fn_a1_fail.call_count = 0
+        fn_a1_fail.call_count += 1
+
+        await asyncio.sleep(0.2)
+        if fn_a1_fail.call_count > 2:
+            print("a1 done")
+            return "a1_done"
+        else:
+            print("a1 interrupt", fn_a1_fail.call_count)
+            raise GraphInterrupt(Interrupt("a1_Interrupt"))
+
+    async def fn_a2_slow(config):
+        await asyncio.sleep(1.0)
+        print("a2 done")
+        return "a2_done"
+
+    def fn_a3_fast(config):
+        print("a3 done")
+        return "a3_done"
+
+    def fn_pass(config=None):
+        return "pass"
+
+    inner_builder = PregelGraphBuilder()
+    inner_builder.add_node("start1", fn_pass)
+    inner_builder.add_node("a1", fn_a1_fail)
+    inner_builder.add_node("a2", fn_a2_slow)
+    inner_builder.add_node("a3", fn_a3_fast)
+    inner_builder.add_node("end1", fn_pass)
+
+    inner_builder.add_edge("start1", ("a1", "a2", "a3"))
+    inner_builder.add_edge(("a1", "a2", "a3"), "end1")
+
+    inner_nodes, inner_channels = inner_builder.nodes, inner_builder.channels
+
+    def inner_logger(loop):
+        execution_trace.append({
+            "step": loop.step,
+            "active_nodes": list(loop.active_nodes),
+            "ns": loop.config.get(NS)
+        })
+        print(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
+
+    inner_app = Pregel(
+        inner_nodes,
+        inner_channels,
+        initial="start1",
+        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+        after_tick=inner_logger
+    )
+
+    class RunInner:
+        def __init__(self, inner_app):
+            self.inner_app = inner_app
+
+        async def __call__(self, state, config):
+            print(f"[{config.get(NS)}] Subgraph Invoked.")
+            return await self.inner_app.ainvoke(config, durability="exit")
+
+    # --- Outer parallel node b: interrupts twice then passes ---
+    async def fn_b_interrupt_then_pass(config):
+        if not hasattr(fn_b_interrupt_then_pass, "call_count"):
+            fn_b_interrupt_then_pass.call_count = 0
+        fn_b_interrupt_then_pass.call_count += 1
+
+        await asyncio.sleep(0.1)
+        if fn_b_interrupt_then_pass.call_count > 2:
+            print("b done")
+            return "b_done"
+        else:
+            print("b interrupt", fn_b_interrupt_then_pass.call_count)
+            raise GraphInterrupt(Interrupt("b_Interrupt"))
+
+    # --- Outer graph assembly: start -> [a, b] -> end ---
+    builder = PregelGraphBuilder()
+    builder.add_node("start", fn_pass)
+    builder.add_node("a", RunInner(inner_app))
+    builder.add_node("b", fn_b_interrupt_then_pass)
+    builder.add_node("end", fn_pass)
+
+    builder.add_edge("start", ("a", "b"))
+    builder.add_edge(("a", "b"), "end")
+
+    def outer_logger(loop):
+        execution_trace.append({
+            "step": loop.step,
+            "active_nodes": list(loop.active_nodes),
+            "ns": loop.config.get(NS)
+        })
+        print(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
+
+    graph = Pregel(
+        nodes=builder.nodes,
+        channels=builder.channels,
+        initial="start",
+        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+        after_tick=outer_logger
+    )
+    return graph, execution_trace
+
+
+@pytest.fixture
 def linear_nested_subgraph_setup():
     async def fn_a1_fail(config):
         pass
@@ -687,3 +806,50 @@ class TestPregelV2:
         execution_trace.clear()
         await graph.ainvoke(config)
         assert execution_trace[-1]['active_nodes'] == ['end']
+
+    @pytest.mark.asyncio
+    async def test_subgraph_with_interrupt(self, nested_subgraph_interrupt_with_outer_parallel_builder):
+        graph, execution_trace = nested_subgraph_interrupt_with_outer_parallel_builder
+        config = PregelConfig(session_id="test_parallel_interrupt", ns="start-a-end")
+
+        print("\n=============== Invoke 1 (Interrupt Failure) ===============")
+
+        result = await graph.ainvoke(config)
+        assert result["__interrupt__"] is not None
+
+        checkpoint = await graph.checkpointer.get(config.get("session_id"), config.get('ns'))
+        assert checkpoint is not None
+        assert "a" in checkpoint.pending_node
+        assert "b" in checkpoint.pending_node
+        checkpoint_inner = await graph.checkpointer.get(config.get("session_id"), config.get('ns') + ":a")
+        assert "a1" in checkpoint_inner.pending_node
+        assert "a2" not in checkpoint_inner.pending_node
+        assert "a3" not in checkpoint_inner.pending_node
+        print("Channel Values:", checkpoint.channel_values)
+        print("pending_buffer:", checkpoint.pending_buffer)
+        print("\n=============== Invoke 2 (Resume, a1 Interrupt Again) ===============")
+        execution_trace.clear()
+        result = await graph.ainvoke(config)
+        assert result["__interrupt__"] is not None
+
+        assert len(execution_trace) == 0
+        checkpoint = await graph.checkpointer.get(config.get("session_id"), config.get('ns'))
+        assert checkpoint is not None
+        assert "a" in checkpoint.pending_node
+        assert "b" in checkpoint.pending_node
+        checkpoint_inner = await graph.checkpointer.get(config.get("session_id"), config.get('ns') + ":a")
+        assert "a1" in checkpoint_inner.pending_node
+        assert "a2" not in checkpoint_inner.pending_node
+        assert "a3" not in checkpoint_inner.pending_node
+
+        print("\n=============== Invoke 3 (Resume to End) ===============")
+        execution_trace.clear()
+        await graph.ainvoke(config)
+
+        flat = [n for trace in execution_trace for n in trace['active_nodes']]
+        assert "end" in flat
+        assert "end1" in flat
+        assert "a" in flat
+        assert "b" in flat
+
+

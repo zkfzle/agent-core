@@ -20,9 +20,6 @@ from openjiuwen.integrations.retriever.doc_process.components.indexing.index_tri
 )
 from openjiuwen.integrations.retriever.retrieval.embed_models.base import EmbedModel
 from openjiuwen.integrations.retriever.retrieval.llms.client import BaseModelClient
-from openjiuwen.integrations.retriever.retrieval.utils.milvus_client import (
-    milvus_manager,
-)
 
 
 @dataclass
@@ -35,61 +32,6 @@ class GRAGConfig:
     config_obj: Optional[Any] = field(default=None)
     embed_model: Optional[EmbedModel] = field(default=None)
     llm_client: Optional[BaseModelClient] = field(default=None)
-
-
-class ResultVerifier:
-    """结果验证器"""
-
-    def __init__(self, config_obj):
-        self.config = config_obj
-
-    async def verify_indices(self) -> None:
-        """异步验证索引构建结果，避免阻塞事件循环"""
-        logger.info("验证构建结果...")
-
-        def _run():
-            client = None
-            try:
-                # 设置较短的超时，避免长时间阻塞
-                client = milvus_manager.get_client(
-                    uri=self.config.milvus_uri,
-                    token=self.config.milvus_token,
-                    timeout=5.0,  # 减少超时时间，避免长时间阻塞
-                )
-
-                indices_info = [
-                    (self.config.chunk_es_index, "文本索引"),
-                    (self.config.triple_es_index, "三元组索引"),
-                ]
-
-                for collection_name, index_desc in indices_info:
-                    try:
-                        # 对每个操作单独捕获异常，避免一个失败影响其他
-                        if client.has_collection(collection_name):
-                            stats = client.get_collection_stats(collection_name)
-                            count = stats.get("row_count", 0)
-                            label = "chunk 数量" if index_desc == "文本索引" else "三元组数量"
-                            logger.info(f"{index_desc} ({collection_name}) {label}: {count}")
-                        else:
-                            logger.warning(f"{index_desc} ({collection_name}) 不存在")
-                    except Exception as e:
-                        # 单个集合验证失败不影响其他集合
-                        logger.warning(f"验证 {index_desc} ({collection_name}) 时出错: %r", e)
-
-            except Exception as e:
-                logger.warning("验证结果时出错（获取客户端或初始化失败）: %r", e)
-            
-            finally:
-                # 确保 client 变量已定义后再释放
-                if client is not None:
-                    try:
-                        milvus_manager.release()
-                    except Exception as e:
-                        logger.warning(f"释放 Milvus 客户端时出错: {e}")
-
-        # 外层已经有 asyncio.wait_for 超时控制（默认3秒）
-        # 这里直接使用 to_thread，让外层超时机制生效
-        await asyncio.to_thread(_run)
 
 
 class GraphRAGIndexBuilder:
@@ -106,8 +48,6 @@ class GraphRAGIndexBuilder:
         if self.config is None:
             raise ValueError("config_obj (GraphRAGConfig) is required")
         self.file = file
-        # 初始化组件
-        self.result_verifier = ResultVerifier(self.config)
 
     def print_header(self) -> None:
         """打印脚本头部信息"""
@@ -181,13 +121,6 @@ class GraphRAGIndexBuilder:
             logger.info(
                 "[步骤 3/3] 三元组索引完成，用时 %.2fs", metrics["triple_index_s"]
             )
-
-        # 验证结果，超时则跳过以免卡住
-        verify_timeout = getattr(self.config, "verify_timeout", 3)  # 秒
-        try:
-            await asyncio.wait_for(self.result_verifier.verify_indices(), timeout=verify_timeout)
-        except asyncio.TimeoutError:
-            logger.warning("验证构建结果超时(>%ss)，跳过 verify_indices", verify_timeout)
 
         metrics["total_s"] = time.perf_counter() - t_total
         logger.info("索引构建完成！")

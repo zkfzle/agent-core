@@ -48,10 +48,13 @@ class ResultVerifier:
         logger.info("验证构建结果...")
 
         def _run():
+            client = None
             try:
+                # 设置较短的超时，避免长时间阻塞
                 client = milvus_manager.get_client(
                     uri=self.config.milvus_uri,
                     token=self.config.milvus_token,
+                    timeout=5.0,  # 减少超时时间，避免长时间阻塞
                 )
 
                 indices_info = [
@@ -60,21 +63,32 @@ class ResultVerifier:
                 ]
 
                 for collection_name, index_desc in indices_info:
-                    if client.has_collection(collection_name):
-                        stats = client.get_collection_stats(collection_name)
-                        count = stats.get("row_count", 0)
-                        label = "chunk 数量" if index_desc == "文本索引" else "三元组数量"
-                        logger.info(f"{index_desc} ({collection_name}) {label}: {count}")
-                    else:
-                        logger.warning(f"{index_desc} ({collection_name}) 不存在")
+                    try:
+                        # 对每个操作单独捕获异常，避免一个失败影响其他
+                        if client.has_collection(collection_name):
+                            stats = client.get_collection_stats(collection_name)
+                            count = stats.get("row_count", 0)
+                            label = "chunk 数量" if index_desc == "文本索引" else "三元组数量"
+                            logger.info(f"{index_desc} ({collection_name}) {label}: {count}")
+                        else:
+                            logger.warning(f"{index_desc} ({collection_name}) 不存在")
+                    except Exception as e:
+                        # 单个集合验证失败不影响其他集合
+                        logger.warning(f"验证 {index_desc} ({collection_name}) 时出错: %r", e)
 
             except Exception as e:
-                logger.warning("验证结果时出错: %r", e)
+                logger.warning("验证结果时出错（获取客户端或初始化失败）: %r", e)
             
             finally:
+                # 确保 client 变量已定义后再释放
                 if client is not None:
-                    milvus_manager.release()
+                    try:
+                        milvus_manager.release()
+                    except Exception as e:
+                        logger.warning(f"释放 Milvus 客户端时出错: {e}")
 
+        # 外层已经有 asyncio.wait_for 超时控制（默认3秒）
+        # 这里直接使用 to_thread，让外层超时机制生效
         await asyncio.to_thread(_run)
 
 

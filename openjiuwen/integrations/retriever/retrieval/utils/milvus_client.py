@@ -41,22 +41,24 @@ class MilvusClientManager:
         Get or create a MilvusClient. Reuses existing client.
         """
         with self._lock:
-            if self._client is not None:
-                # Validate same URI
-                if self._uri != uri:
-                    logger.warning(f"Requested URI '{uri}' differs from existing '{self._uri}'. Reusing existing.")
-                self._ref_count += 1
-                logger.debug(f"Reusing MilvusClient (refs={self._ref_count})")
-                return self._client
+            # Ensure client exists and matches URI
+            if self._client is None or self._uri != uri:
+                if self._client is not None:
+                    logger.info(
+                        f"Closing old client at: {self._uri=} since URI changed to {uri=}"
+                    )
+                    try:
+                        self._client.close()
+                    except Exception as e:
+                        logger.warning(
+                            f"Issue with closing old client at: {self._uri=}!"
+                        )
+                self._client = MilvusClient(uri=uri, token=token, timeout=timeout)
+                self._uri = uri
+                self._ref_count = 0
 
-            logger.info(f"Creating new MilvusClient -> {uri}")
-            self._client = MilvusClient(
-                uri=uri,
-                token=token,
-                timeout=timeout,
-            )
-            self._uri = uri
-            self._ref_count = 1
+            self._ref_count += 1
+            logger.debug(f"Re-using MilvusClient (refs={self._ref_count})")
             return self._client
 
     def release(self) -> None:

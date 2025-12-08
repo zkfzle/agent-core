@@ -68,6 +68,49 @@ async def _test_memory_checkpoint_saver():
     logger.debug("\nAll MemoryCheckpointSaver tests passed!")
 
 
+async def _test_delete_checkpoint_by_ns_prefix():
+    saver = MemoryCheckpointSaver()
+    conversation_id = "conv_123"
+
+    ns1 = "apple"
+    checkpoint1 = create_checkpoint(
+        ns=ns1,
+        step=1,
+        channel_snapshot={"ch1": 12},
+        pending_buffer=[Message("pending msg")],
+        pending_node={
+            "node1": PendingNode(node_name="n1", status="running1")
+        }
+    )
+
+    ns2 = "apple:orange"
+    checkpoint2 = create_checkpoint(
+        ns=ns2,
+        step=2,
+        channel_snapshot={"ch2": 123},
+        pending_buffer=[Message("pending msg")],
+        pending_node={
+            "node1": PendingNode(node_name="n2", status="running2")
+        }
+    )
+
+    # ---- Save checkpoint ----
+    await saver.save(conversation_id, ns1, checkpoint1)
+    await saver.save(conversation_id, ns2, checkpoint2)
+
+    loaded1 = await saver.get(conversation_id, ns1)
+    assert loaded1 is not None, "Loaded1 checkpoint should not be None."
+    loaded2 = await saver.get(conversation_id, ns2)
+    assert loaded2 is not None, "Loaded2 checkpoint should not be None."
+
+    await saver.delete(conversation_id, ns1)
+
+    loaded1 = await saver.get(conversation_id, ns1)
+    assert loaded1 is None, "After delete, loaded1 checkpoint should be None."
+    loaded2 = await saver.get(conversation_id, ns2)
+    assert loaded2 is None, "After delete, loaded2 checkpoint should be None."
+    print("\nAll _test_delete_checkpoint_by_ns_prefix tests passed!")
+
 async def _test_memory_graph_checkpointer():
     saver = MemoryCheckpointSaver()
     mock_runtime = MagicMock(spec=BaseRuntime)
@@ -110,6 +153,7 @@ async def _test_memory_graph_checkpointer():
 def test_memory_checkpoint_saver_basic():
     asyncio.run(_test_memory_checkpoint_saver())
     asyncio.run(_test_memory_graph_checkpointer())
+    asyncio.run(_test_delete_checkpoint_by_ns_prefix())
 
 
 if __name__ == "__main__":

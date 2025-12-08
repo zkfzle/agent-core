@@ -31,10 +31,18 @@ class MemoryCheckpointSaver(CheckpointerSaver):
             # Delete all namespaces for this session_id
             del self.store_ck[session_id]
         else:
-            # Delete specific namespace under session_id
-            if ns in self.store_ck[session_id]:
-                del self.store_ck[session_id][ns]
+            # Delete specific namespace by prefix under session_id
+            MemoryCheckpointSaver._delete_ns_by_prefix(self.store_ck[session_id], ns)
 
             # If session_id becomes empty after deletion, clean it up
             if not self.store_ck[session_id]:
                 del self.store_ck[session_id]
+
+    @staticmethod
+    def _delete_ns_by_prefix(sub_map: Dict[str, Checkpoint], prefix: str) -> None:
+        ns_to_delete_list = [ns_to_delete for ns_to_delete in sub_map.keys() if ns_to_delete.startswith(prefix)]
+        if not ns_to_delete_list:
+            return
+
+        for ns in ns_to_delete_list:
+            del sub_map[ns]

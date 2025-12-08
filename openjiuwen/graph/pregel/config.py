@@ -4,7 +4,7 @@
 
 from typing import TypedDict, Optional
 
-from openjiuwen.graph.pregel.constants import MAX_RECURSIVE_LIMIT
+from openjiuwen.graph.pregel.constants import MAX_RECURSIVE_LIMIT, RECURSION_LIMIT
 
 
 class PregelConfig(TypedDict, total=False):
@@ -21,6 +21,8 @@ class InnerPregelConfig(PregelConfig, total=False):
 
 def create_inner_config(config: PregelConfig) -> InnerPregelConfig:
     inner_config: InnerPregelConfig = config.copy()
+    if not inner_config.get(RECURSION_LIMIT):
+        inner_config[RECURSION_LIMIT] = MAX_RECURSIVE_LIMIT
     return inner_config
 
 

@@ -10,7 +10,7 @@ from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_ch
 from openjiuwen.graph.pregel.builder import PregelGraphBuilder
 from openjiuwen.graph.pregel.channels import TriggerChannel, BarrierChannel
 from openjiuwen.graph.pregel.config import PregelConfig
-from openjiuwen.graph.pregel.constants import START, END
+from openjiuwen.graph.pregel.constants import START, END, NS
 from openjiuwen.graph.pregel.engine import Pregel
 from openjiuwen.graph.pregel.nodes import PregelNode
 from openjiuwen.graph.pregel.router import StaticRouter, BarrierRouter, ConditionalRouter
@@ -369,9 +369,9 @@ def nested_subgraph_builder():
     inner_nodes, inner_channels = inner_builder.nodes, inner_builder.channels
 
     def inner_logger(loop):
-        print(f"[{loop.config['ns']}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
+        print(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
 
-    inner_app = Pregel(inner_nodes, inner_channels,
+    inner_app = Pregel(inner_nodes, inner_channels, initial="start1",
                        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
                        after_tick=inner_logger)
 
@@ -380,7 +380,7 @@ def nested_subgraph_builder():
             self.inner_app = inner_app
 
         async def __call__(self, state, config):
-            print(f"[{config['ns']}] Subgraph Invoked.")
+            print(f"[{config.get(NS)}] Subgraph Invoked.")
             return await self.inner_app.ainvoke(config, durability="exit")
 
     builder = PregelGraphBuilder()
@@ -605,7 +605,7 @@ class TestPregelV2:
             execution_trace.append({
                 "step": loop.step,
                 "active_nodes": list(loop.active_nodes),
-                "ns": loop.config['ns']
+                "ns": loop.config.get(NS)
             })
             print(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
 
@@ -616,23 +616,31 @@ class TestPregelV2:
             checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
             after_tick=logger
         )
-        config = PregelConfig(session_id="test_parallel_fail", ns="start-a-end", recursion_limit=10)
+        config = PregelConfig(session_id="test_parallel_fail", ns="start-a-end")
         print("\n=============== Invoke 1 (Failure) ===============")
 
-        try:
+        with pytest.raises(RuntimeError, match="a1 exception"):
             await graph.ainvoke(config)
-        except RuntimeError as e:
-            assert "a1 exception" in str(e)
+        checkpoint = await graph.checkpointer.get(config.get("session_id"), config.get('ns'))
+        assert checkpoint is not None
+        assert checkpoint.pending_node is not None
 
         print("\n=============== Invoke 2 (Resume) ===============")
-
-        try:
+        execution_trace.clear()
+        with pytest.raises(RuntimeError, match="a1 exception"):
             await graph.ainvoke(config)
-        except RuntimeError as e:
-            print("second exception:", e)
+        assert len(execution_trace) == 0
 
-        assert 'start' not in [d['active_nodes'] for d in execution_trace if
-                               d['ns'] == 'start-a-end' and d['step'] > 1]
+        print("\n=============== Invoke 3/4 (No sessionId) ===============")
+        config_stateless = PregelConfig()
+        execution_trace.clear()
+        with pytest.raises(RuntimeError, match="a1 exception"):
+            await graph.ainvoke(config_stateless)
+        assert execution_trace[0]["active_nodes"] == ["start"]
+        execution_trace.clear()
+        with pytest.raises(RuntimeError, match="a1 exception"):
+            await graph.ainvoke(config_stateless)
+        assert execution_trace[0]["active_nodes"] == ["start"]
 
     async def test_recursion_limit_recovery(self, linear_nested_subgraph_setup):
         """

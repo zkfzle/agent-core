@@ -19,7 +19,7 @@ from openjiuwen.graph.pregel.nodes import PregelNode
 class TaskExecutorPool:
     def __init__(self, config: PregelConfig):
         self.config = config
-        self.routed_messages: List[Message] = []
+        self.succeed_messages: List[Message] = []
         self.failed: Dict[str, PendingNode] = {}
         self._tasks: Dict[asyncio.Task, PregelNode] = {}
 
@@ -54,7 +54,7 @@ class TaskExecutorPool:
             if exc is None:
                 # Success - collect messages
                 msgs: List[Message] = t.result()
-                self.routed_messages.extend(msgs)
+                self.succeed_messages.extend(msgs)
             else:
                 # Failure
                 self._commit_failure(node, exc)
@@ -73,7 +73,7 @@ class TaskExecutorPool:
             raise first_exc
 
     def clear(self):
-        self.routed_messages.clear()
+        self.succeed_messages.clear()
         self.failed.clear()
         self._tasks.clear()
 

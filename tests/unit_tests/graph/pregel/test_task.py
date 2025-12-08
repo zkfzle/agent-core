@@ -88,9 +88,9 @@ class TestTaskExecutorPool:
 
         # 3. C succeeds, message is collected
         assert 'C' not in pool.failed
-        assert len(pool.routed_messages) == 1
-        assert pool.routed_messages[0].sender == 'C'
-        assert pool.routed_messages[0].target == 'Target_C'
+        assert len(pool.succeed_messages) == 1
+        assert pool.succeed_messages[0].sender == 'C'
+        assert pool.succeed_messages[0].target == 'Target_C'
 
     @pytest.mark.asyncio
     async def test_pool_interrupt_exception(self):
@@ -133,5 +133,5 @@ class TestTaskExecutorPool:
 
         # 3. C succeeds, message is collected
         assert 'C' not in pool.failed
-        assert len(pool.routed_messages) == 1
-        assert pool.routed_messages[0].sender == 'C'
+        assert len(pool.succeed_messages) == 1
+        assert pool.succeed_messages[0].sender == 'C'

@@ -35,7 +35,7 @@ class PregelLoop:
         self.executor = TaskExecutorPool(self.config)
         self.max_step = self.config[RECURSION_LIMIT]
         checkpoint = None
-        if self.config[SESSION_ID] and self.saver:
+        if self.config.get(SESSION_ID) and self.config.get(NS) and self.saver:
             checkpoint = await self.saver.get(self.config[SESSION_ID], self.config[NS])
         if self._is_resume(checkpoint):
             # Restore barrier channel
@@ -108,7 +108,7 @@ class PregelLoop:
             raise e
 
         # 3. Summarize results
-        for msg in self.executor.routed_messages:
+        for msg in self.executor.succeed_messages:
             self.manager.buffer_message(msg)
         self.manager.flush()
         self.executor.clear()
@@ -124,14 +124,14 @@ class PregelLoop:
         return True
 
     async def _save_checkpoint_on_error(self, exception: Exception):
-        if not self.config[SESSION_ID] or not self.saver:
+        if not self.config.get(SESSION_ID) or not self.config.get(NS) or not self.saver:
             return
         pending_buffer = []
         pending_node = {}
 
         if self.executor:
-            pending_buffer = getattr(self.executor, 'routed_messages', [])
-            pending_node = getattr(self.executor, 'failed', {})
+            pending_buffer = self.executor.succeed_messages
+            pending_node = self.executor.failed
         error_checkpoint = create_checkpoint(
             ns=self.config[NS],
             step=self.step,

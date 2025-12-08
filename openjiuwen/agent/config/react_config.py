@@ -31,7 +31,6 @@ class IntentDetectionConfig(BaseModel):
 
 class ReActAgentConfig(AgentConfig):
     controller_type: ControllerType = Field(default=ControllerType.ReActController)
-    model: Optional[ModelConfig] = Field(default=None)
     prompt_template_name: str = Field(default="react_system_prompt")
     prompt_template: List[Dict] = Field(default_factory=list)
     constrain: ConstrainConfig = Field(default=ConstrainConfig())

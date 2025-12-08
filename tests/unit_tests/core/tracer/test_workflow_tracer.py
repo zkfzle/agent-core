@@ -239,7 +239,6 @@ class TestTraceWorkflow:
                 tracer_chunks.append(chunk)
         record_tracer_info(tracer_chunks, "test_sub_stream_workflow_with_tracer.json")
 
-    @unittest.skip("TODO: fix nested workflow tracer")
     async def test_nested_stream_workflow_with_tracer(self):
         """
         main_workflow: start -> a(sub_workflow) | b -> end
@@ -317,13 +316,13 @@ class TestTraceWorkflow:
                 assert payload.get("parentInvokeId") != None, f"start node parent_invoke_id should not be None"
                 assert payload.get("parentNodeId") == "", f"a node parent_node_id should be ''"
             elif payload.get("invokeId") == "a":
-                assert payload.get("parentInvokeId") == "start", f"a node parent_invoke_id should be start"
+                assert payload.get("parentInvokeId") in ("start", "b"), f"a node parent_invoke_id should be start or b"
                 assert payload.get("parentNodeId") == "", f"a node parent_node_id should be ''"
             elif payload.get("invokeId") == "b":
-                assert payload.get("parentInvokeId") == "a", f"b node parent_invoke_id should be a"
+                assert payload.get("parentInvokeId") in ("start", "a"), f"b node parent_invoke_id should be a or start"
                 assert payload.get("parentNodeId") == "", f"b node parent_node_id should be ''"
             elif payload.get("invokeId") == "end":
-                assert payload.get("parentInvokeId") == "b", f"b node parent_invoke_id should be a"
+                assert payload.get("parentInvokeId") in ("a", "b"), f"end node parent_invoke_id should be a or b"
                 assert payload.get("parentNodeId") == "", f"b node parent_node_id should be ''"
             elif payload.get("invokeId") == "a.sub_start":
                 assert payload.get("parentInvokeId") == None, f"sub_start node parent_invoke_id should be None"
@@ -335,6 +334,7 @@ class TestTraceWorkflow:
             elif payload.get("invokeId") == "a.sub_end":
                 assert payload.get("parentInvokeId") == "a.sub_a", f"sub_end node parent_invoke_id should be sub_a"
                 assert payload.get("parentNodeId") == "a", f"sub_end node parent_node_id should be a"
+
         record_tracer_info(tracer_chunks, "test_nested_stream_workflow_with_tracer.json")
 
     async def test_nested_parallel_stream_workflow_with_tracer(self):

@@ -29,15 +29,19 @@ class Checkpoint:
     pending_buffer: List[Message]
     pending_node: Dict[str, PendingNode]
 
+
 class CheckpointerSaver(ABC):
     @abstractmethod
-    async def get(self, session_id: str, ns: str) -> Optional[Checkpoint]: ...
+    async def get(self, session_id: str, ns: str) -> Optional[Checkpoint]:
+        ...
 
     @abstractmethod
-    async def save(self, session_id: str, ns: str, checkpoint: Checkpoint) -> None: ...
+    async def save(self, session_id: str, ns: str, checkpoint: Checkpoint) -> None:
+        ...
 
     @abstractmethod
-    async def delete(self, session_id: str, ns : str | None = None) -> None: ...
+    async def delete(self, session_id: str, ns: str | None = None) -> None:
+        ...
 
 
 def create_checkpoint(

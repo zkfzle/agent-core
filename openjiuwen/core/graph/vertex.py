@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
+
 import asyncio
 from typing import Any, Optional, AsyncIterator, Literal
 

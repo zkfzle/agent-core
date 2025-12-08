@@ -15,10 +15,11 @@ TASK_STATUS_ERROR = "__error__"
 NS_SEPARATOR = ":"
 NS_REPLACE_CHAR = "#"
 
-NS : str = "ns"
+NS: str = "ns"
 PARENT_NS: str = "parent_ns"
 SESSION_ID: str = "session_id"
 RECURSION_LIMIT: str = "recursion_limit"
+
 
 class Interrupt:
     value: Any

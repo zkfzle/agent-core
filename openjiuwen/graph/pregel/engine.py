@@ -61,7 +61,8 @@ class PregelLoop:
             await self._save_checkpoint_on_error(e)
             raise e
 
-    def _is_resume(self, checkpoint: Checkpoint) -> bool:
+    @staticmethod
+    def _is_resume(checkpoint: Checkpoint) -> bool:
         return checkpoint is not None and (
                 bool(checkpoint.pending_node) or bool(checkpoint.pending_buffer) or bool(checkpoint.channel_values))
 
@@ -81,7 +82,7 @@ class PregelLoop:
             self.active_nodes = [n for n in ready_nodes if n in self.graph.nodes and n != END]
 
         if not self.active_nodes:
-            if not self.manager._buffer:
+            if self.manager.is_empty():
                 return False  # End
 
             # Only flush buffer

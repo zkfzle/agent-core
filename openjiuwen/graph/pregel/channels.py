@@ -35,6 +35,9 @@ class ChannelManager:
     def buffer_message(self, msg: Message) -> None:
         self._buffer.append(msg)
 
+    def is_empty(self) -> bool:
+        return len(self._buffer) == 0
+
     def flush(self) -> None:
         updated_nodes = set()
 
@@ -126,10 +129,12 @@ class Channel(ABC):
         ...
 
     @abstractmethod
-    def snapshot(self) -> Any: return None
+    def snapshot(self) -> Any:
+        return None
 
     @abstractmethod
-    def restore(self, snapshot: Any) -> None: pass
+    def restore(self, snapshot: Any) -> None:
+        pass
 
 
 class TriggerChannel(Channel):
@@ -150,9 +155,11 @@ class TriggerChannel(Channel):
         # node result payloads are mostly empty
         self.messages.clear()
 
-    def snapshot(self): return list(self.messages)
+    def snapshot(self):
+        return list(self.messages)
 
-    def restore(self, state): self.messages = list(state)
+    def restore(self, state):
+        self.messages = list(state)
 
 
 class BarrierChannel(Channel):

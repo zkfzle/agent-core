@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -30,9 +31,11 @@ def after_tick(loop):
         runtime.state().commit()
     logger.debug(f"ns: {loop.config['ns']}, step: {loop.step}, active_nodes: {list(loop.active_nodes)}")
 
+
 @dataclass(slots=True)
 class Branch:
     condition: Callable[..., Hashable | Sequence[Hashable]]
+
 
 class PregelGraph(Graph):
 
@@ -153,6 +156,7 @@ class PregelGraph(Graph):
             for name, branch in branches.items():
                 builder.add_branch(start, branch.condition)
         return builder.build(checkpointer, after_tick=step_callback)
+
 
 class CompiledGraph(ExecutableGraph):
     def __init__(self, compiled_pregel: Pregel,

@@ -23,7 +23,7 @@ class MemoryCheckpointSaver(CheckpointerSaver):
         # store the checkpoint object directly
         self.store_ck[session_id][ns] = checkpoint
 
-    async def delete(self, session_id: str, ns : str | None = None) -> None:
+    async def delete(self, session_id: str, ns: str | None = None) -> None:
         if session_id not in self.store_ck:
             return  # Conversation ID doesn't exist, nothing to delete
 

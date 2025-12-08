@@ -714,14 +714,12 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             user_messages.append({"role": "user", "content": inputs.get("query", "")})
         elif isinstance(inputs, InteractiveInput):
             sorted_user_feedback = OrderedDict(inputs.user_inputs)
-            user_feedback = "\n".join([feedback for _, feedback in sorted_user_feedback.items()])
+            user_feedback = "\n".join([str(feedback) for _, feedback in sorted_user_feedback.items()])
             user_messages.append({"role": "user", "content": user_feedback})
 
         assistant_messages = []
         if isinstance(results, dict):
-            workflow_result = results.get("responseContent", "") or results.get("output", "")
-            if not isinstance(workflow_result, str):
-                workflow_result = json.dumps(workflow_result)
+            workflow_result = json.dumps(results, ensure_ascii=False)
             assistant_messages.append({"role": "assistant", "content": workflow_result})
         elif isinstance(results, list):
             sorted_user_feedback = OrderedDict()
@@ -732,7 +730,12 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                     continue
                 if item.type == INTERACTION:
                     sorted_user_feedback.update({item.payload.id: item.payload.value})
-                    questions = "\n".join([question for _, question in sorted_user_feedback.items()])
+                    for _, question in sorted_user_feedback.items():
+                        if isinstance(question, str):
+                            questions += f"{question}\n"
+                        elif isinstance(question, dict) and question.get("value", ""):
+                            questions += f"{str(question.get('value'))}\n"
+                    questions = questions.strip()
                 else:
                     if isinstance(item.payload, dict):
                         answer = item.payload.get("answer", "")

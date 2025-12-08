@@ -543,19 +543,23 @@ class QuestionerExecutable(ComponentExecutable):
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         state_from_runtime = self._load_state_from_runtime(runtime)
         if state_from_runtime.is_undergoing_interaction():
-            self._state = state_from_runtime
+            current_state = state_from_runtime  # 恢复交互，使用 runtime 中的状态
+        else:
+            current_state = QuestionerState()  # 新调用，创建独立的 state 实例
 
-        if self._state is None:
-            ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_INIT_STATE_ERROR)
-        self._state = self._state.handle_event(QuestionerEvent.START_EVENT)
+        current_state = current_state.handle_event(QuestionerEvent.START_EVENT)
 
         invoke_result = dict()
         if self._config.response_type == ResponseType.ReplyDirectly.value:
-            invoke_result = await self._handle_questioner_direct_reply(inputs, runtime, context)
+            invoke_result = await self._handle_questioner_direct_reply_safe(
+                inputs, runtime, context, current_state
+            )
+            # handler 可能更新了 state
+            current_state = invoke_result.pop('_state', current_state)
 
-        self._store_state_to_runtime(self._state, runtime)
+        self._store_state_to_runtime(current_state, runtime)
 
-        if self._state.is_undergoing_interaction():
+        if current_state.is_undergoing_interaction():
             await runtime.interact(invoke_result.get("question", ""))
 
         return invoke_result
@@ -579,6 +583,17 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = handler.get_state()
         return result
 
+    async def _handle_questioner_direct_reply_safe(
+            self, inputs: Input, runtime: Runtime, context, current_state: QuestionerState
+    ):
+        """并发安全版本：使用传入的 state 而不是实例变量"""
+        handler = (QuestionerDirectReplyHandler()
+                   .config(self._config).model(self._llm).state(current_state).prompt(self._prompt))
+        result = await handler.handle(inputs, runtime, context)
+        # 返回更新后的 state，由调用者管理
+        result['_state'] = handler.get_state()
+        return result
+
     def _validate_config(self, config: QuestionerConfig):
         self._validate_response_type_config(config.response_type)
         self._validate_extract_key_fields_config(config.extract_fields_from_response, config.field_names)
@@ -589,8 +604,7 @@ class QuestionerComponent(WorkflowComponent):
     def __init__(self, questioner_comp_config: QuestionerConfig = None):
         super().__init__()
         self._questioner_config = questioner_comp_config
-        self._questioner_state = QuestionerState()
         self._executable = None
 
     def to_executable(self) -> Executable:
-        return QuestionerExecutable(self._questioner_config).state(self._questioner_state)
+        return QuestionerExecutable(self._questioner_config).state(QuestionerState())

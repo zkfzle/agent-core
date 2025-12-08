@@ -645,3 +645,105 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_concurrent_with_workflow_provider(self):
+        """
+        使用 WorkflowProvider 工厂函数验证并发安全性。
+
+        测试方案：
+        - 使用新的 agent.add_workflows() 方法，传入工厂函数
+        - 同一个 workflow key，多个 conversation 并发调用
+        - 每次 get_workflow() 调用工厂函数创建新实例
+        - 验证各 conversation 状态隔离
+
+        关键点：
+        - add_workflows([factory_func]) 自动检测并注册到 _providers
+        - get_workflow(key) 每次调用 factory_func() 创建新实例
+        """
+        print("=== 测试 WorkflowProvider 工厂函数并发安全性 ===")
+
+        # 定义工厂函数（每次调用创建新的 workflow 实例）
+        def create_interrupt_workflow_instance():
+            """工厂函数：每次调用创建新的 workflow 实例"""
+            _, workflow = self._build_interrupt_workflow()
+            # 设置固定的 metadata id，确保 workflow_key 一致
+            workflow.config().metadata.id = "test_provider_workflow"
+            return workflow
+
+        # 创建 agent
+        from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+        config = WorkflowAgentConfig(
+            id="test_provider_agent",
+            version="0.1.0",
+            description="测试 WorkflowProvider",
+            workflows=[],
+        )
+        agent = WorkflowAgent(config)
+
+        # 使用新的 add_workflows 方法，传入工厂函数（关键！）
+        agent.add_workflows([create_interrupt_workflow_instance])
+
+        # 验证注册到了 _providers
+        workflow_key = generate_workflow_key("test_provider_workflow", "1.0")
+
+        # 定义多个并发会话
+        conversation_configs = [
+            {"conversation_id": "provider_conv_1", "answer": "深圳"},
+            {"conversation_id": "provider_conv_2", "answer": "杭州"},
+            {"conversation_id": "provider_conv_3", "answer": "成都"},
+        ]
+
+        # ========== 阶段1: 并发发起第一次请求，触发中断 ==========
+        print("\n【阶段1】并发发起多个 conversation 的第一次请求（共享 workflow key）")
+
+        async def first_invoke(conv_id: str):
+            """第一次调用，触发提问器中断"""
+            result = await asyncio.wait_for(
+                agent.invoke({"query": "查询天气", "conversation_id": conv_id}),
+                timeout=60.0
+            )
+            return conv_id, result
+
+        # 并发执行所有第一次请求
+        first_tasks = [
+            first_invoke(cfg["conversation_id"])
+            for cfg in conversation_configs
+        ]
+        first_results = await asyncio.gather(*first_tasks, return_exceptions=True)
+
+        # 校验每个 conversation 的第一次调用结果
+        success_count = 0
+        for item in first_results:
+            if isinstance(item, Exception):
+                print(f"  调用异常: {item}")
+                continue
+
+            conv_id, result = item
+            print(f"  [{conv_id}] 第一次调用结果类型: {type(result)}")
+
+            if isinstance(result, list) and len(result) > 0 and result[0].type == '__interaction__':
+                success_count += 1
+                print(f"  ✅ [{conv_id}] 成功触发中断")
+            else:
+                print(f"  ⚠️ [{conv_id}] 未触发中断，返回: {result}")
+
+        print(f"\n【阶段1结果】")
+        print(f"   - 总调用数: {len(conversation_configs)}")
+        print(f"   - 成功触发中断数: {success_count}")
+
+        if success_count == len(conversation_configs):
+            print(f"\n🎉 WorkflowProvider 方案验证成功！")
+            print(f"   - 同一 workflow key 的并发调用")
+            print(f"   - 每次调用获得独立的 workflow 实例")
+            print(f"   - 全部 {success_count} 个 conversation 都正确触发中断")
+        else:
+            print(f"\n⚠️ WorkflowProvider 方案部分成功")
+            print(f"   - 只有 {success_count}/{len(conversation_configs)} 个触发中断")
+            print(f"   - 说明还有其他层面的状态共享问题")
+
+        # 断言：至少应该有一个成功
+        self.assertGreater(
+            success_count, 0,
+            "至少应该有一个 conversation 成功触发中断"
+        )

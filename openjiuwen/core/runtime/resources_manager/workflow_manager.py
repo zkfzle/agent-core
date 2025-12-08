@@ -16,7 +16,37 @@ Workflow = TypeVar("Workflow", contravariant=True)
 def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:
     return f"{workflow_id}_{workflow_version}"
 
-WorkflowProvider = Callable[[], Workflow]
+
+class WorkflowProvider:
+    """Workflow factory class that creates a new workflow instance on each call (concurrency-safe).
+    
+    Usage:
+        def build_workflow():
+            return MyWorkflow(...)
+        
+        provider = WorkflowProvider(build_workflow)
+        agent.add_workflows([provider])
+    
+    Features:
+        - Callable: provider() returns a new workflow instance each time
+        - Provides config() method: returns workflow config for registration
+    """
+    
+    def __init__(self, factory: Callable[[], Workflow]):
+        """
+        Args:
+            factory: Factory function that returns a new Workflow instance on each call
+        """
+        self._factory = factory
+        self._config = factory().config()
+    
+    def __call__(self) -> Workflow:
+        """Return a new workflow instance on each call."""
+        return self._factory()
+    
+    def config(self):
+        """Return workflow config."""
+        return self._config
 
 class WorkflowMgr(AbstractManager[Workflow]):
     def __init__(self):

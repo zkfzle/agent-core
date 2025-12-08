@@ -5,7 +5,7 @@
 import asyncio
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, AsyncIterator, Dict, Iterator, List, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Union
 
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -465,17 +465,56 @@ class BaseAgent(ABC):
             # 4. Sync to runtime (auto register)
             self._runtime.add_tools([(tool.name, tool)])
 
-    def add_workflows(self, workflows: List[Workflow]) -> None:
-        """Add workflows (update config, runtime, and self._workflows simultaneously)
+    def add_workflows(
+            self,
+            workflows: List[Union[Workflow, 'WorkflowProvider', Callable[[], Workflow]]]
+    ) -> None:
+        """Add workflows (update config and runtime simultaneously).
+        
+        Supports three registration methods:
+        1. Workflow instance - registered directly (note: does not support concurrent calls)
+        2. WorkflowProvider object - registered directly (concurrency-safe, recommended)
+        3. Callable[[], Workflow] factory function - auto-wrapped as WorkflowProvider (concurrency-safe)
         
         Args:
-            workflows: List of workflow instances
+            workflows: List of workflow instances, WorkflowProvider objects, or factory functions
+        
+        Concurrency Notes:
+            - Instance: multiple conversations share the same instance, not concurrency-safe
+            - WorkflowProvider or factory: creates new instance on each get_workflow(), concurrency-safe
+            
+        Recommended Usage (concurrent scenarios):
+            # Method 1: Use WorkflowProvider
+            provider = WorkflowProvider(lambda: build_my_workflow())
+            agent.add_workflows([provider])
+            
+            # Method 2: Pass factory function (auto-wrapped)
+            def create_workflow():
+                return build_my_workflow()
+            agent.add_workflows([create_workflow])
         """
+        from openjiuwen.core.runtime.resources_manager.workflow_manager import WorkflowProvider
+        
         logger.info(f"BaseAgent.add_workflows called with {len(workflows)} workflows")
 
-        for workflow in workflows:
-            # Generate WorkflowSchema
-            workflow_config = workflow.config()
+        for item in workflows:
+            if isinstance(item, WorkflowProvider):
+                # WorkflowProvider object: use directly
+                provider = item
+                workflow_config = provider.config()
+                is_provider = True
+            elif callable(item) and not hasattr(item, 'config'):
+                # Factory function: wrap as WorkflowProvider
+                provider = WorkflowProvider(item)
+                workflow_config = provider.config()
+                is_provider = True
+            else:
+                # Workflow instance: use directly
+                workflow = item
+                workflow_config = workflow.config()
+                provider = None
+                is_provider = False
+
             workflow_key = generate_workflow_key(
                 workflow_config.metadata.id,
                 workflow_config.metadata.version
@@ -487,9 +526,11 @@ class BaseAgent(ABC):
                 for w in self._agent_config.workflows
             }
             logger.info(
-                f"Workflow {workflow_key}: existing_keys={existing_keys}, exists={workflow_key in existing_keys}")
+                f"Workflow {workflow_key}: existing_keys={existing_keys}, "
+                f"exists={workflow_key in existing_keys}, is_provider={is_provider}"
+            )
 
-            # Even if schema exists, still need to add workflow instance
+            # Even if schema exists, still need to add workflow
             if workflow_key not in existing_keys:
                 # 1. Update config.workflows
                 workflow_schema = WorkflowSchema(
@@ -501,19 +542,17 @@ class BaseAgent(ABC):
                 )
                 self._agent_config.workflows.append(workflow_schema)
 
-            # 2. Add to self._workflows (if not exists)
-            if workflow not in self._workflows:
-                self._workflows.append(workflow)
+            # 2. Sync to runtime (provider or instance)
+            to_register = provider if is_provider else workflow
+            self._runtime.add_workflows([(workflow_key, to_register)])
 
-            # 3. Sync to runtime (auto register)
-            self._runtime.add_workflows([(workflow_key, workflow)])
-
-            # 4. Also add to global Runner.resource_mgr (for cross-runtime access)
+            # 3. Also add to global resource_mgr (for cross-runtime access)
             try:
                 from openjiuwen.core.runner.runner import resource_mgr
-                logger.info(f"Adding workflow {workflow_key} to global resource_mgr")
-                resource_mgr.workflow().add_workflow(workflow_key, workflow)
-                logger.info(f"Successfully added workflow {workflow_key} to global resource_mgr")
+                logger.info(f"Adding workflow {'provider' if is_provider else 'instance'} "
+                            f"{workflow_key} to global resource_mgr")
+                resource_mgr.workflow().add_workflow(workflow_key, to_register)
+                logger.info(f"Successfully added workflow {'provider' if is_provider else 'instance'} {workflow_key}")
             except Exception as e:
                 logger.error(f"Failed to add workflow to global resource_mgr: {e}")
 

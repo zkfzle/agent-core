@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
+import asyncio
 from typing import Dict, Optional, List, AsyncIterator, Any
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
 from openjiuwen.core.stream.emitter import StreamEmitter
@@ -40,10 +42,20 @@ class StreamWriterManager:
         is_first_frame = True
         while True:
             if is_first_frame:
-                data = await self._stream_emitter.stream_queue.receive(timeout=first_frame_timeout)
-                is_first_frame = False
+                try:
+                    data = await self._stream_emitter.stream_queue.receive(timeout=first_frame_timeout)
+                    is_first_frame = False
+                except asyncio.TimeoutError:
+                    raise JiuWenBaseException(StatusCode.STREAM_FIRST_FRAME_TIMEOUT_FAILED.code,
+                                              StatusCode.STREAM_FIRST_FRAME_TIMEOUT_FAILED.errmsg.format(
+                                                  timeout=first_frame_timeout)) from asyncio.TimeoutError
             else:
-                data = await self._stream_emitter.stream_queue.receive(timeout=timeout)
+                try:
+                    data = await self._stream_emitter.stream_queue.receive(timeout=timeout)
+                except asyncio.TimeoutError:
+                    raise JiuWenBaseException(StatusCode.STREAM_FRAME_TIMEOUT_FAILED.code,
+                                              StatusCode.STREAM_FRAME_TIMEOUT_FAILED.errmsg.format(
+                                                  timeout=timeout)) from asyncio.TimeoutError
             if data is not None:
                 if data == StreamEmitter.END_FRAME:
                     logger.info("Received END_FRAME, stopping stream output.")

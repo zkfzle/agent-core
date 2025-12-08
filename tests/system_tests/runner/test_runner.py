@@ -364,7 +364,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # -------------------- 预置数据 --------------------
         mock_tools = [
             McpToolInfo(
-                name="browser-use-server.browser_navigate",
+                name="browser_navigate",
                 description="Navigate to a URL",
                 schema={
                     "type": "object",
@@ -373,7 +373,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 },
             ),
             McpToolInfo(
-                name="browser-use-server.browser_extract_text",
+                name="browser_extract_text",
                 description="Extract text from the current page",
                 schema={
                     "type": "object",
@@ -393,7 +393,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # -------------------- 服务器配置 --------------------
             mcp_server_config = ToolServerConfig(
                 server_name="browser-use-server",
-                params="http://127.0.0.1:8930/sse",
+                server_path="http://127.0.0.1:8930/sse",
                 client_type="sse",
             )
 
@@ -418,7 +418,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
-                tool_name="browser-use-server.browser_navigate",
+                tool_name="browser_navigate",
                 arguments=test_inputs,
             )
 
@@ -443,7 +443,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # -------------------- 预置数据 --------------------
         mock_tools = [
             McpToolInfo(
-                name="doubter-mcp-server.doubter",
+                name="doubter",
                 description="Doubter tool via stdio",
                 schema={
                     "type": "object",
@@ -454,7 +454,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 },
             ),
             McpToolInfo(
-                name="doubter-mcp-server.checker",
+                name="checker",
                 description="Checker tool via stdio",
                 schema={
                     "type": "object",
@@ -477,7 +477,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # 参数内容可以是任意占位符，真实值不会被用到
             mcp_server_config = ToolServerConfig(
                 server_name="doubter-mcp-server",
-                params=StdioServerParameters(command="python", args=["dummy.py"]),
+                server_path="",
+                params=dict(StdioServerParameters(command="python", args=["dummy.py"])),
                 client_type="stdio",
             )
 
@@ -502,7 +503,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
-                tool_name="doubter-mcp-server.doubter",
+                tool_name="doubter",
                 arguments=test_inputs,
             )
 
@@ -527,7 +528,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # -------------------- 预置数据 --------------------
         mock_tools = [
             McpToolInfo(
-                name="playwright-mcp-server.browser_navigate",
+                name="browser_navigate",
                 description="Navigate to a URL via Playwright",
                 schema={
                     "type": "object",
@@ -536,7 +537,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 },
             ),
             McpToolInfo(
-                name="playwright-mcp-server.browser_click",
+                name="browser_click",
                 description="Click an element via Playwright",
                 schema={
                     "type": "object",
@@ -558,7 +559,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # 可以是 URL 或 StdioServerParameters，PlaywrightClient 内部自动识别
             mcp_server_config = ToolServerConfig(
                 server_name="playwright-mcp-server",
-                params="http://127.0.0.1:8931/sse",  # 实际不会发起网络，仅占位
+                server_path="http://127.0.0.1:8931/sse",  # 实际不会发起网络，仅占位
                 client_type="playwright",
             )
 
@@ -583,7 +584,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
-                tool_name="playwright-mcp-server.browser_navigate",
+                tool_name="browser_navigate",
                 arguments=test_inputs,
             )
 

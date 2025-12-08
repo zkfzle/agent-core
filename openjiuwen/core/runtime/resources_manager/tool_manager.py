@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
+from copy import deepcopy
 from typing import List, Optional, Tuple, Union, Callable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -23,12 +23,13 @@ from openjiuwen.core.common.logging import logger
 
 ToolProvider = Callable[[], Tool]
 
+
 class ToolMgr(AbstractManager[Tool]):
     def __init__(self) -> None:
         super().__init__()
         self._tool_infos: dict[str, ToolInfo] = {}
-        self._server_tool_infos : dict[str, List[McpToolInfo]] = {}
-        self._server_configs : dict[str, ToolServerConfig] = {}
+        self._server_tool_infos: dict[str, List[McpToolInfo]] = {}
+        self._server_configs: dict[str, ToolServerConfig] = {}
         self._mcp_clients: dict[str, McpToolClient] = {}
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
@@ -52,7 +53,14 @@ class ToolMgr(AbstractManager[Tool]):
         for id, tool in tools:
             self.add_tool(id, tool)
 
-    def find_tool_by_name(self, name: str) -> Optional[Tool]:
+    def _get_all_tool_ids(self, name: str):
+        yield name
+        for server_name in self._server_configs.keys():
+            if name.startswith(server_name) and len(name) > len(server_name):
+                new_tool_key = server_name + "." + name[len(server_name) + 1:]
+                yield new_tool_key
+
+    def _find_tool_by_name(self, name: str) -> Optional[Tool]:
         self._validate_id(name, StatusCode.RUNTIME_TOOL_GET_FAILED, "name")
 
         # Define function to create tool from provider
@@ -65,14 +73,18 @@ class ToolMgr(AbstractManager[Tool]):
                 self._tool_infos[name] = ToolInfo()
             return tool
 
-        return self._get_resource(name, StatusCode.RUNTIME_TOOL_GET_FAILED, create_tool_from_provider)
+        for tool_id in self._get_all_tool_ids(name):
+            resource = self._get_resource(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, create_tool_from_provider)
+            if resource:
+                return resource
+        return None
 
     def get_tool(self, tool_id: str, runtime=None) -> Optional[Tool]:
         # Validate ID using base class method
         self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool")
 
         try:
-            tool = self.find_tool_by_name(tool_id)
+            tool = self._find_tool_by_name(tool_id)
             return decorate_tool_with_trace(tool, runtime)
         except JiuWenBaseException:
             raise
@@ -90,12 +102,24 @@ class ToolMgr(AbstractManager[Tool]):
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "remove")
 
-    def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None) -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
+    def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None) \
+            -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
         try:
             if tool_server_name:
                 server_tools = self._server_tool_infos.get(tool_server_name)
-                return list(server_tools) if server_tools is not None else None
-
+                if server_tools:
+                    result = []
+                    delimiter = name_delimiter if name_delimiter else '.'
+                    if len(delimiter) > 1:
+                        logger.warning(f"Invalid delimiter '{delimiter}', expected single character, using default '.")
+                        delimiter = '.'
+                    for tool in server_tools:
+                        copy_tool = deepcopy(tool)
+                        copy_tool.name = f'{tool_server_name}{delimiter}{tool.name}'
+                        result.append(copy_tool)
+                    return result
+                else:
+                    return None
             if not tool_ids:
                 return [info for info in self._tool_infos.values()]
 
@@ -108,6 +132,7 @@ class ToolMgr(AbstractManager[Tool]):
             raise
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED, "get_tool_info")
+            return None
 
     async def add_tool_servers(self, server_config: Union[ToolServerConfig, List[ToolServerConfig]]) -> List[bool]:
         """
@@ -121,6 +146,10 @@ class ToolMgr(AbstractManager[Tool]):
         results: List[bool] = []
         for cfg in configs:
             try:
+                if self._server_configs.get(cfg.server_name) is not None:
+                    results.append(False)
+                    logger.exception(f"Register MCP server {cfg.server_name} failed: already added")
+                    continue
                 await self._connect_and_register_server(cfg)
                 results.append(True)
             except Exception as e:
@@ -143,7 +172,7 @@ class ToolMgr(AbstractManager[Tool]):
             self._server_tool_infos[config.server_name] = tools
 
             for tool_info in tools:
-                tool_id = tool_info.name
+                tool_id = f'{config.server_name}.{tool_info.name}'
                 mcp_tool = MCPTool(
                     mcp_client=client,
                     tool_name=tool_info.name,
@@ -158,11 +187,11 @@ class ToolMgr(AbstractManager[Tool]):
 
     def _create_client(self, config: ToolServerConfig) -> McpToolClient:
         if config.client_type == "sse":
-            return SseClient(config.params, config.server_name)
+            return SseClient(config.server_path, config.server_name)
         elif config.client_type == "stdio":
-            return StdioClient(config.params, config.server_name)
+            return StdioClient(config.server_path, config.server_name, config.params)
         elif config.client_type == "playwright":
-            return PlaywrightClient(config.params, config.server_name)
+            return PlaywrightClient(config.server_path, config.server_name)
         else:
             raise ValueError(f"Unsupported MCP client type: {config.client_type}")
 

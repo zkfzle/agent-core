@@ -28,8 +28,8 @@ from openjiuwen.core.utils.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.runner.agent_group import AgentGroup
 
-
 AGENT_ADAPTER = "agent_adapter_"
+
 
 # mock
 class LocalMessageQueue:
@@ -165,14 +165,14 @@ class Runner:
         tool_instance = self._prepare_tool(tool, runtime)
         return tool_instance.astream(inputs, runtime=runtime)
 
-    async def list_tools(self, tool_server_name: Union[str, List[str]]) -> Union[
+    async def list_tools(self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None) -> Union[
         Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
         if not tool_server_name:
             return None
         tool_mgr = self._resource_manager.tool()
         single = isinstance(tool_server_name, str)
         names = [tool_server_name] if single else tool_server_name
-        results = [tool_mgr.get_tool_infos(tool_server_name=n) for n in names]
+        results = [tool_mgr.get_tool_infos(tool_server_name=n, name_delimiter=name_delimiter) for n in names]
         return results[0] if single else results
 
     async def release(self, session_id: str):

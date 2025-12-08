@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Dict
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
+from pydantic import BaseModel, ConfigDict, Field
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.utils.tool.constant import Input, Output
@@ -10,13 +11,12 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 
-from pydantic import BaseModel
-
 
 class ToolServerConfig(BaseModel):
     server_name: str
-    params: Any
-    client_type: str
+    server_path: str
+    client_type: str = 'sse'
+    params: Dict[str, Any] = Field(default_factory=ConfigDict)
 
 
 NO_TIMEOUT = -1
@@ -25,7 +25,7 @@ NO_TIMEOUT = -1
 class McpToolInfo(BaseModel):
     name: str
     description: str = ''
-    schema: dict
+    schema: dict = {}
 
 
 class MCPTool(Tool):
@@ -87,6 +87,7 @@ class MCPTool(Tool):
 
         return self._tool_info
 
+
 class McpToolClient(ABC):
     def __init__(self, server_path: str):
         self._server_path = server_path
@@ -110,6 +111,7 @@ class McpToolClient(ABC):
     @abstractmethod
     async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[McpToolInfo]:
         pass
+
 
 class SseClient(McpToolClient):
     """SSE (Server-Sent Events) transport based MCP client"""
@@ -168,7 +170,7 @@ class SseClient(McpToolClient):
             tools_response = await self._session.list_tools()
             tools_list = [
                 McpToolInfo(
-                    name=f"{self._name}.{tool.name}",
+                    name=tool.name,
                     description=getattr(tool, "description", ""),
                     schema=getattr(tool, "inputSchema", {})
                 )
@@ -208,25 +210,27 @@ class SseClient(McpToolClient):
         logger.warning(f"Tool '{tool_name}' not found via SSE")
         return None
 
+
 class StdioClient(McpToolClient):
     """Stdio transport based MCP client"""
 
-    def __init__(self, server_path: str, name: str):
+    def __init__(self, server_path: str, name: str, params: Dict):
         super().__init__(server_path)
         self._name = name
         self._client = None
         self._session = None
         self._read = None
         self._write = None
+        self._params = params
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Establish Stdio connection to the tool server"""
         try:
             # server_path should be StdioServerParameters for stdio client
-            if not isinstance(self._server_path, StdioServerParameters):
+            if not isinstance(self._params, StdioServerParameters):
                 raise ValueError("StdioClient requires StdioServerParameters as server_path")
 
-            self._client = stdio_client(self._server_path)
+            self._client = stdio_client(self._params)
             self._read, self._write = await self._client.__aenter__()
             self._session = ClientSession(self._read, self._write, sampling_callback=None)
             await self._session.__aenter__()
@@ -266,7 +270,7 @@ class StdioClient(McpToolClient):
             tools_response = await self._session.list_tools()
             tools_list = [
                 McpToolInfo(
-                    name=f"{self._name}.{tool.name}",
+                    name=tool.name,
                     description=getattr(tool, "description", ""),
                     schema=getattr(tool, "inputSchema", {})
                 )
@@ -305,6 +309,7 @@ class StdioClient(McpToolClient):
                 return tool
         logger.warning(f"Tool '{tool_name}' not found via Stdio")
         return None
+
 
 class PlaywrightClient(McpToolClient):
     """Playwright browser session based MCP client"""
@@ -369,7 +374,7 @@ class PlaywrightClient(McpToolClient):
             tools_response = await self._session.list_tools()
             tools_list = [
                 McpToolInfo(
-                    name=f"{self._name}.{tool.name}",
+                    name=tool.name,
                     description=getattr(tool, "description", ""),
                     schema=getattr(tool, "inputSchema", {})
                 )

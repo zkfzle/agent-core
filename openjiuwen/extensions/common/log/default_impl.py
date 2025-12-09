@@ -6,6 +6,7 @@ import os
 import sys
 import inspect
 import logging
+from datetime import datetime, timezone
 from typing import Dict, Any
 from logging.handlers import RotatingFileHandler
 
@@ -15,16 +16,58 @@ from openjiuwen.core.common.security.path_checker import is_sensitive_path
 
 
 class SafeRotatingFileHandler(RotatingFileHandler):
-    def __init__(self, filename, *args, **kwargs):
-        pid = os.getpid()
-        filename = f"{filename}-{pid}"
+    def __init__(self, filename, *args, log_file_pattern=None, backup_file_pattern=None, **kwargs):
+        """初始化安全轮转文件处理器"""
+        if log_file_pattern:
+            filename = self._format_filename(filename, log_file_pattern)
+
         super().__init__(filename, *args, **kwargs)
+        self.backup_file_pattern = backup_file_pattern or "{baseFilename}.{index}"
         os.chmod(self.baseFilename, 0o640)
+
+    def _format_filename(self, base_filename: str, pattern: str) -> str:
+        """根据模式格式化文件名"""
+        dir_path = os.path.dirname(base_filename)
+        file_name = os.path.basename(base_filename)
+
+        if '.' in file_name:
+            name_part, ext_part = file_name.rsplit('.', 1)
+            ext = '.' + ext_part
+        else:
+            name_part = file_name
+            ext = ''
+
+        now = datetime.now(tz=timezone.utc)
+        replacements = {
+            'name': name_part,
+            'ext': ext,
+            'pid': str(os.getpid()),
+            'timestamp': now.strftime('%Y%m%d%H%M%S'),
+            'date': now.strftime('%Y%m%d'),
+            'time': now.strftime('%H%M%S'),
+            'datetime': now.strftime('%Y-%m-%d_%H-%M-%S'),
+        }
+
+        try:
+            formatted_name = pattern.format(**replacements)
+
+            if '{ext}' not in pattern and ext and not formatted_name.endswith(ext):
+                formatted_name = formatted_name + ext
+
+            if dir_path:
+                return os.path.join(dir_path, formatted_name)
+            else:
+                return formatted_name
+        except KeyError as e:
+            return base_filename
 
     def doRollover(self):
         super().doRollover()
         for i in range(self.backupCount, 0, -1):
-            sfn = f"{self.baseFilename}.{i}"
+            sfn = self.backup_file_pattern.format(
+                baseFilename=self.baseFilename,
+                index=i
+            )
             if os.path.exists(sfn):
                 os.chmod(sfn, 0o440)
         os.chmod(self.baseFilename, 0o640)
@@ -81,14 +124,14 @@ class CallerAwareFormatter(logging.Formatter):
                 func_name = frame_info.function
 
                 if (filename and
-                    not filename.endswith('.pyc') and
-                    not filename.endswith('.pyo') and
-                    'log_handlers.py' not in filename and
-                    'logger_impl.py' not in filename and
-                    'log_manager.py' not in filename and
-                    'default_impl.py' not in filename and
-                    'test_' not in filename and
-                    'logging' not in filename):  # 跳过logging模块
+                        not filename.endswith('.pyc') and
+                        not filename.endswith('.pyo') and
+                        'log_handlers.py' not in filename and
+                        'logger_impl.py' not in filename and
+                        'log_manager.py' not in filename and
+                        'default_impl.py' not in filename and
+                        'test_' not in filename and
+                        'logging' not in filename):  # 跳过logging模块
                     return {
                         'filename': os.path.basename(filename),
                         'lineno': lineno,
@@ -128,7 +171,7 @@ class DefaultLogger(LoggerProtocol):
             level = level_config
         else:
             level = logging.WARNING
-            
+
         self._logger.setLevel(level)
 
         output = self.config.get('output', ['console'])
@@ -142,7 +185,7 @@ class DefaultLogger(LoggerProtocol):
             self._logger.removeHandler(handler)
 
         if 'console' in output:
-            stream_handler = logging.StreamHandler(stream=sys.stdout)  
+            stream_handler = logging.StreamHandler(stream=sys.stdout)
             stream_handler.addFilter(ThreadContextFilter(self.log_type))
             stream_handler.setFormatter(self._get_formatter())
             self._logger.addHandler(stream_handler)
@@ -154,12 +197,16 @@ class DefaultLogger(LoggerProtocol):
 
             backup_count = self.config.get('backup_count', 20)
             max_bytes = get_log_max_bytes(self.config.get('max_bytes', 20 * 1024 * 1024))
+            log_file_pattern = self.config.get('log_file_pattern', None)
+            backup_file_pattern = self.config.get('backup_file_pattern', None)
 
             file_handler = SafeRotatingFileHandler(
                 filename=log_file,
                 maxBytes=max_bytes,
                 backupCount=backup_count,
-                encoding='utf-8'
+                encoding='utf-8',
+                log_file_pattern=log_file_pattern,
+                backup_file_pattern=backup_file_pattern
             )
             file_handler.addFilter(ThreadContextFilter(self.log_type))
             file_handler.setFormatter(self._get_formatter())

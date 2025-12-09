@@ -10,7 +10,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 _thread_log_instance = threading.local()
 
 
-def set_thread_session(trace_id: str) -> None:
+def set_thread_session(trace_id: str = "default_trace_id") -> None:
     _thread_log_instance.trace_id = trace_id
 
 

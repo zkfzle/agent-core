@@ -16,7 +16,7 @@ DEFAULT_INNER_LOG_CONFIG = {
                 'backup_count': 20,
                 'max_bytes': 20971520,
                 'format': ('%(asctime)s | %(log_type)s | %(filename)s | %(lineno)d | '
-                          '%(funcName)s | %(levelname)s | %(message)s')
+                          '%(funcName)s | %(trace_id)s | %(levelname)s | %(message)s')
             }
 
 DEFAULT_LOG_CONFIG = {

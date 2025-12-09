@@ -43,7 +43,9 @@ class LogConfig:
                 'performance_log_file': 'performance/jiuwen_performance.log',
                 'backup_count': 20,
                 'max_bytes': 20971520,
-                'format': '%(asctime)s | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s'
+                'format': '%(asctime)s | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s',
+                'log_file_pattern': None,
+                'backup_file_pattern': None
             }
         except yaml.YAMLError as e:
             raise ValueError(f"YAML配置文件格式错误: {e}")
@@ -67,7 +69,10 @@ class LogConfig:
             'level': level_value,
             'backup_count': self._log_config.get('backup_count', 20),
             'max_bytes': self._log_config.get('max_bytes', 20971520),
-            'format': self._log_config.get('format', '%(asctime)s | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s')
+            'format': self._log_config.get('format',
+                                           '%(asctime)s | %(log_type)s | %(trace_id)s | %(levelname)s | %(message)s'),
+            'log_file_pattern': self._log_config.get('log_file_pattern', None),
+            'backup_file_pattern': self._log_config.get('backup_file_pattern', None)
         }
 
     def get_common_config(self) -> Dict[str, Any]:

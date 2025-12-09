@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMController - ReAct style controller based on BaseController"""
 
+from datetime import datetime, timezone
 from typing import Dict, Optional, List, Any
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.common.enum import TaskType
@@ -26,6 +27,17 @@ from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+
+
+def convert_timestamp(utc_timestamp: str) -> str:
+    local_dt = utc_timestamp
+    if utc_timestamp:
+        try:
+            utc_dt = datetime.strptime(utc_timestamp, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+            local_dt = utc_dt.astimezone().strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            logger.warning(f"timestamp format invalid: {utc_timestamp}, skip convert")
+    return local_dt
 
 
 class LLMController(BaseController):
@@ -1032,7 +1044,7 @@ class LLMController(BaseController):
                 group_id=group_id
             )
             if memory_variables:
-                result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables)})
+                result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables, ensure_ascii=False)})
             logger.info(f"memory_variables: {memory_variables}")
 
             long_term_memory = await memory_engine.search_user_mem(
@@ -1042,6 +1054,10 @@ class LLMController(BaseController):
                 num=1
             )
             if long_term_memory:
-                result.update({"sys_long_term_memory": JsonUtils.safe_json_dumps(long_term_memory)})
+                memory_contents = [{
+                    "mem": mem.get("mem", ""),
+                    "timestamp": convert_timestamp(mem.get("timestamp", "")),
+                } for mem in long_term_memory]
+                result.update({"sys_long_term_memory": JsonUtils.safe_json_dumps(memory_contents, ensure_ascii=False)})
             logger.info(f"long_term_memory: {long_term_memory}")
         return result

@@ -35,7 +35,6 @@ class MilvusSemanticStore(BaseSemanticStore):
         self.collection_name = collection_name
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
-        self._lock = threading.Lock()
         self.collections = {}
         self._init_collection()
 
@@ -93,31 +92,29 @@ class MilvusSemanticStore(BaseSemanticStore):
         return collection
 
     async def add_docs(self, docs: List[Tuple[str, str]], table_name: str) -> bool:
-        with self._lock:
-            memory_ids, memories = zip(*docs)
-            memory_ids = list(memory_ids)
-            memories = list(memories)
-            embeddings = await self.embed_model.embed_queries(texts=memories)
-            if len(memory_ids) != len(embeddings):
-                raise ValueError(f"memory_ids and embeddings must have same length")
-            collection = self.get_collection(self.collection_name)
-            vectors_arr = np.array(embeddings, dtype=np.float32)
-            collection.insert([
-                memory_ids,
-                vectors_arr.tolist(),
-                [table_name] * len(memory_ids)
-            ])
+        memory_ids, memories = zip(*docs)
+        memory_ids = list(memory_ids)
+        memories = list(memories)
+        embeddings = await self.embed_model.embed_queries(texts=memories)
+        if len(memory_ids) != len(embeddings):
+            raise ValueError(f"memory_ids and embeddings must have same length")
+        collection = self.get_collection(self.collection_name)
+        vectors_arr = np.array(embeddings, dtype=np.float32)
+        collection.insert([
+            memory_ids,
+            vectors_arr.tolist(),
+            [table_name] * len(memory_ids)
+        ])
         return True
 
     async def delete_docs(self, ids: List[str], table_name: str) -> bool:
         if self.collection_name not in self.collections:
             return True  # collection not exist
-        with self._lock:
-            collection = self.collections[self.collection_name]
-            ids_str = ','.join([f'"{i}"' for i in ids])
-            expr = f'memory_id in [{ids_str}] && table_name == "{table_name}"'
-            collection.delete(expr)
-            return True
+        collection = self.collections[self.collection_name]
+        ids_str = ','.join([f'"{i}"' for i in ids])
+        expr = f'memory_id in [{ids_str}] && table_name == "{table_name}"'
+        collection.delete(expr)
+        return True
 
     async def search(self, query: str, table_name: str, top_k: int) -> List[Tuple[str, float]]:
         if self.collection_name not in self.collections:
@@ -125,15 +122,14 @@ class MilvusSemanticStore(BaseSemanticStore):
         collection = self.collections[self.collection_name]
         query_vector = await self.embed_model.embed_queries(texts=[query])
         expr = f'table_name == "{table_name}"'
-        with self._lock:
-            results = collection.search(
-                data=query_vector,
-                anns_field="embedding",
-                param={"metric_type": "IP", "params": {"nprobe": 10}},
-                limit=top_k,
-                expr=expr
-            )
-            parsed_results = convert_milvus_result(results)
+        results = collection.search(
+            data=query_vector,
+            anns_field="embedding",
+            param={"metric_type": "IP", "params": {"nprobe": 10}},
+            limit=top_k,
+            expr=expr
+        )
+        parsed_results = convert_milvus_result(results)
         return parsed_results[0] if parsed_results else []
 
     async def delete_table(self, table_name: str) -> bool:

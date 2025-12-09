@@ -151,20 +151,6 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         if self._runtime.tracer() is not None:
             await self.__trace_outputs__(results)
 
-        # End 组件批输出模式下，也发送 end node stream 消息
-        is_end_node = isinstance(self._executable, End)
-        is_sub_graph = self._runtime.parent_id() != ''
-        if is_end_node and not is_sub_graph and results is not None:
-            # 从 results 中提取 responseContent 作为流式输出
-            response_content = results.get("responseContent", "") if isinstance(results, dict) else str(results)
-            if response_content:
-                message_stream_data = OutputSchema(
-                    type=END_NODE_STREAM,
-                    index=0,
-                    payload={"answer": response_content}
-                )
-                await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)
-
         self.__clear_interactive__()
         return results
 

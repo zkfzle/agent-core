@@ -4,10 +4,9 @@
 测试场景：
 1. 多工作流意图识别路由
 2. 多工作流跳转和恢复
+3. End 节点批输出/流输出模式测试
 """
 import os
-
-from openjiuwen.core.runner.runner import Runner
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -15,16 +14,20 @@ os.environ["RESTFUL_SSL_VERIFY"] = "false"
 import asyncio
 from datetime import datetime
 import unittest
+from unittest.mock import patch, AsyncMock
 
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.runner.runner import Runner
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -169,7 +172,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             workflow_name="股票查询",
             prefix="stock:"
         )
-        
+
         # 更新 workflow 的 metadata，添加详细描述（用于意图识别）
         weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
         stock_workflow.config().metadata.description = "查询股票价格、股市行情、股票走势等金融信息"
@@ -184,7 +187,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         agent = WorkflowAgent(config)
-        
+
         # 使用 add_workflows 动态添加（自动提取 schema）
         agent.add_workflows([weather_workflow, stock_workflow])
 
@@ -242,7 +245,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             question_field="stock_code",
             question_desc="股票代码"
         )
-        
+
         # 更新 workflow 的 metadata，添加详细描述（用于意图识别）
         weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
         stock_workflow.config().metadata.description = "查询股票价格、股市行情、股票走势等金融信息"
@@ -256,7 +259,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             model=self._create_model_config(),
         )
         agent = WorkflowAgent(config)
-        
+
         # 使用 add_workflows 动态添加（自动提取 schema）
         agent.add_workflows([weather_workflow, stock_workflow])
 
@@ -392,7 +395,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             question_field="stock_code",
             question_desc="股票代码"
         )
-        
+
         # 更新 metadata 描述（用于意图识别）
         weather_workflow.config().metadata.description = (
             "查询某地的天气情况、温度、气象信息"
@@ -416,7 +419,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤1: query1 "查天气" -> workflow1 开始执行（不等待） ==========
         print("\n【步骤1】发送 query1: 查天气（不等待完成）")
-        
+
         # 创建任务但不等待（模拟用户在执行中就发送新query）
         task1 = asyncio.create_task(
             agent.invoke({
@@ -424,7 +427,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 "conversation_id": conversation_id
             })
         )
-        
+
         # 等待一小段时间，让 workflow1 开始执行
         await asyncio.sleep(1.0)
         print("workflow1 已开始执行，准备发送打断 query...")
@@ -499,129 +502,225 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print("\n🎉 实时打断测试完成！验证了 TaskQueue 取消机制！")
 
-    @unittest.skip
-    async def test_simple_llm_workflow_with_streaming_end(self):
+    def _build_start_llm_end_workflow(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            response_mode: str = None
+    ) -> Workflow:
         """
-        测试简单的 start -> llm -> end 工作流，End 组件使用批输出模式。
+        构建简单的 start -> llm -> end 工作流。
         
-        目的：验证 End 组件批输出时也能发送 end node stream 消息。
+        Args:
+            workflow_id: 工作流ID
+            workflow_name: 工作流名称
+            response_mode: End 组件的响应模式，"streaming" 表示流输出，None 表示批输出
+        
+        Returns:
+            Workflow: 构建的工作流
         """
-        from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-        from openjiuwen.core.stream.base import OutputSchema
-        
-        print("=== 测试 Start -> LLM -> End (批输出模式) 工作流 ===")
-
-        # 创建工作流配置
         workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
-                name="简单LLM工作流",
-                id="simple_llm_flow",
+                name=workflow_name,
+                id=workflow_id,
                 version="1.0",
-                description="测试LLM节点和批输出End"
             )
         )
         flow = Workflow(workflow_config=workflow_config)
 
-        # 1. Start 组件
+        # Start 组件
         start = self._create_start_component()
 
-        # 2. LLM 组件 - 使用 INVOKE 模式（批输出）
+        # LLM 组件 (会被 mock)
+        model_config = self._create_model_config()
         llm_config = LLMCompConfig(
-            model=self._create_model_config(),
+            model=model_config,
             template_content=[
-                {"role": "system", "content": "你是一个AI助手，回答简洁。"},
-                {"role": "user", "content": "{{query}}"}
+                {"role": "user", "content": "请回答: {{query}}"}
             ],
             response_format={"type": "text"},
-            output_config={
-                "answer": {"type": "string", "description": "AI回复内容", "required": True}
-            },
+            output_config={"output": {"type": "string", "required": True}},
         )
-        llm = LLMComponent(llm_config)
+        llm_comp = LLMComponent(llm_config)
 
-        # 3. End 组件 - 批输出模式
-        end = End({"responseTemplate": "{{answer}}"})
+        # End 组件
+        end = End({"responseTemplate": "结果: {{output}}"})
 
-        # 注册组件 - 全部使用普通模式
+        # 注册组件
         flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
-        flow.add_workflow_comp("llm", llm, inputs_schema={"query": "${start.query}"})
-        # 即使使用 inputs_schema（批输出），也会发送 end node stream
-        flow.set_end_comp("end", end, inputs_schema={"answer": "${llm.answer}"})
+        flow.add_workflow_comp(
+            "llm", llm_comp, inputs_schema={"query": "${start.query}"}
+        )
+        flow.set_end_comp(
+            "end",
+            end,
+            inputs_schema={"output": "${llm.output}"},
+            response_mode=response_mode
+        )
 
-        # 连接拓扑 - 使用普通连接
+        # 连接
         flow.add_connection("start", "llm")
         flow.add_connection("llm", "end")
 
-        # 创建 Agent
+        return flow
+
+    @patch(
+        "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model"
+    )
+    async def test_end_batch_output_should_have_workflow_final(self, mock_get_model):
+        """
+        测试 End 节点批输出模式：应该只收到 workflow_final 帧。
+        
+        场景：
+        - 构建 start -> llm -> end 工作流
+        - End 组件不配置 response_mode（默认批输出）
+        - 流式输出应该包含 workflow_final 帧
+        - 不应该包含 end node stream 帧
+        """
+        print("=== 测试 End 节点批输出模式 ===")
+
+        # Mock LLM 返回
+        mock_model = AsyncMock()
+        mock_model.invoke = AsyncMock(return_value="这是LLM的回答")
+        mock_get_model.return_value = mock_model
+
+        # 构建批输出工作流（不传 response_mode）
+        workflow = self._build_start_llm_end_workflow(
+            workflow_id="batch_output_flow",
+            workflow_name="批输出测试",
+            response_mode=None  # 批输出模式
+        )
+
+        # 创建 agent
         config = WorkflowAgentConfig(
-            id="test_simple_llm_agent",
+            id="test_batch_output_agent",
             version="0.1.0",
-            description="简单LLM工作流测试",
+            description="End批输出测试",
             workflows=[],
             model=self._create_model_config(),
         )
         agent = WorkflowAgent(config)
-        agent.add_workflows([flow])
+        agent.add_workflows([workflow])
 
-        conversation_id = "test-simple-llm-001"
+        conversation_id = "test-batch-output-001"
 
-        # ========== 流式调用 ==========
-        print("\n【流式调用】发送 query: 输出包100字作文")
-        print("-" * 60)
+        # 收集流式输出
+        chunks = []
+        async for chunk in agent.stream({
+            "query": "你好",
+            "conversation_id": conversation_id
+        }):
+            chunks.append(chunk)
+            print(f"收到 chunk: type={getattr(chunk, 'type', type(chunk).__name__)}")
+
+        # 检查是否有 workflow_final 帧
+        workflow_final_chunks = [
+            c for c in chunks
+            if isinstance(c, OutputSchema) and c.type == "workflow_final"
+        ]
+        end_node_stream_chunks = [
+            c for c in chunks
+            if isinstance(c, OutputSchema) and c.type == "end node stream"
+        ]
+
+        print(f"workflow_final 帧数量: {len(workflow_final_chunks)}")
+        print(f"end node stream 帧数量: {len(end_node_stream_chunks)}")
+
+        # 打印 workflow_final 的完整格式
+        for i, chunk in enumerate(workflow_final_chunks):
+            print(f"\n=== workflow_final[{i}] 完整格式 ===")
+            print(f"type: {chunk.type}")
+            print(f"index: {chunk.index}")
+            print(f"payload: {chunk.payload}")
+            print(f"payload type: {type(chunk.payload)}")
+            if hasattr(chunk, 'model_dump'):
+                print(f"model_dump: {chunk.model_dump()}")
+            print("=" * 40)
+
+        # 断言：批输出模式应该有 workflow_final，不应该有 end node stream
+        self.assertEqual(
+            len(workflow_final_chunks), 1,
+            "批输出模式应该有且只有一个 workflow_final 帧"
+        )
+        self.assertEqual(
+            len(end_node_stream_chunks), 0,
+            "批输出模式不应该有 end node stream 帧"
+        )
+
+        print("✅ 测试通过：批输出模式正确返回 workflow_final 帧")
+
+    @patch(
+        "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model"
+    )
+    async def test_end_stream_output_should_have_end_node_stream(
+            self, mock_get_model
+    ):
+        """
+        测试 End 节点流输出模式：应该收到 end node stream 帧，不应该收到 workflow_final 帧。
         
-        chunk_count = 0
-        all_chunks = []
-        
-        try:
-            async for chunk in agent.stream({
-                "query": "输出100字作文",
-                "conversation_id": conversation_id
-            }):
-                chunk_count += 1
-                all_chunks.append(chunk)
-                
-                # 详细打印每个 chunk 的信息
-                print(f"\n【Chunk #{chunk_count}】")
-                print(f"  类型: {type(chunk).__name__}")
-                
-                if isinstance(chunk, OutputSchema):
-                    print(f"  OutputSchema.type: {chunk.type}")
-                    print(f"  OutputSchema.index: {chunk.index}")
-                    print(f"  OutputSchema.payload: {chunk.payload}")
-                elif isinstance(chunk, dict):
-                    print(f"  dict 内容: {chunk}")
-                    if 'type' in chunk:
-                        print(f"    type: {chunk['type']}")
-                    if 'payload' in chunk:
-                        print(f"    payload: {chunk['payload']}")
-                else:
-                    print(f"  原始内容: {chunk}")
-                    
-        except Exception as e:
-            print(f"❌ 流式调用出错: {e}")
-            import traceback
-            traceback.print_exc()
-            raise
+        场景：
+        - 构建 start -> llm -> end 工作流
+        - End 组件配置 response_mode="streaming"（流输出）
+        - 流式输出应该包含 end node stream 帧
+        - 不应该包含 workflow_final 帧
+        """
+        print("=== 测试 End 节点流输出模式 ===")
 
-        print("-" * 60)
-        print(f"\n【汇总】共收到 {chunk_count} 个 chunk")
-        
-        # 统计各类型 chunk 数量
-        type_counts = {}
-        for chunk in all_chunks:
-            if isinstance(chunk, OutputSchema):
-                chunk_type = chunk.type
-            elif isinstance(chunk, dict) and 'type' in chunk:
-                chunk_type = chunk['type']
-            else:
-                chunk_type = type(chunk).__name__
-            type_counts[chunk_type] = type_counts.get(chunk_type, 0) + 1
-        
-        print(f"【类型统计】")
-        for t, count in type_counts.items():
-            print(f"  {t}: {count} 个")
+        # Mock LLM 返回
+        mock_model = AsyncMock()
+        mock_model.invoke = AsyncMock(return_value="这是LLM的流式回答")
+        mock_get_model.return_value = mock_model
 
-        # 断言至少收到了一些数据
-        self.assertGreater(chunk_count, 0, "应该收到至少一个流式数据块")
-        print("\n✅ 测试完成！")
+        # 构建流输出工作流
+        workflow = self._build_start_llm_end_workflow(
+            workflow_id="stream_output_flow",
+            workflow_name="流输出测试",
+            response_mode="streaming"  # 流输出模式
+        )
 
+        # 创建 agent
+        config = WorkflowAgentConfig(
+            id="test_stream_output_agent",
+            version="0.1.0",
+            description="End流输出测试",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([workflow])
+
+        conversation_id = "test-stream-output-001"
+
+        # 收集流式输出
+        chunks = []
+        async for chunk in agent.stream({
+            "query": "你好",
+            "conversation_id": conversation_id
+        }):
+            chunks.append(chunk)
+            print(f"收到 chunk: type={getattr(chunk, 'type', type(chunk).__name__)}")
+
+        # 检查帧类型
+        workflow_final_chunks = [
+            c for c in chunks
+            if isinstance(c, OutputSchema) and c.type == "workflow_final"
+        ]
+        end_node_stream_chunks = [
+            c for c in chunks
+            if isinstance(c, OutputSchema) and c.type == "end node stream"
+        ]
+
+        print(f"workflow_final 帧数量: {len(workflow_final_chunks)}")
+        print(f"end node stream 帧数量: {len(end_node_stream_chunks)}")
+
+        # 断言：流输出模式应该有 end node stream，不应该有 workflow_final
+        self.assertGreater(
+            len(end_node_stream_chunks), 0,
+            "流输出模式应该有 end node stream 帧"
+        )
+        self.assertEqual(
+            len(workflow_final_chunks), 0,
+            "流输出模式不应该有 workflow_final 帧"
+        )
+
+        print("✅ 测试通过：流输出模式正确返回 end node stream 帧")

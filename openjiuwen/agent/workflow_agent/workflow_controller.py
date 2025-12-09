@@ -260,9 +260,9 @@ class WorkflowController(IntentDetectionController):
                             # 由上层 ControllerAgent.stream 在 controller.invoke 完成后统一写入
                             # 确保 __interaction__ 在所有 tracer 事件之后
                         elif chunk.type == "workflow_final":
-                            # 不透传原始的 workflow_final
-                            # 后面会构造正确格式的 workflow_final
+                            # 直接透传 workflow 返回的 workflow_final 帧
                             final_result = chunk.payload
+                            await runtime.write_stream(chunk)
                         else:
                             # 透传其他流式数据（tracer 等）
                             await runtime.write_stream(chunk)
@@ -352,17 +352,14 @@ class WorkflowController(IntentDetectionController):
                 # Clean up interruption state (if any)
                 self._clear_interrupted_state(task, runtime)
 
-                # 写入 workflow_final 到流
-                payload = {"output": result, "result_type": "answer"}
-                final_output = OutputSchema(
-                    type="workflow_final",
-                    index=0,
-                    payload=payload
-                )
-                await runtime.write_stream(final_output)
-
+                # workflow_final 已在 run_workflow_streaming 中直接透传
+                # 如果 workflow 没有返回 workflow_final 帧，则不写入
                 # Return completion response
-                return payload
+                final_result = result.result if hasattr(result, 'result') else result
+                # 流输出模式下 result.result 可能为 None，返回默认响应
+                if final_result is None:
+                    return {"status": "completed", "result_type": "stream"}
+                return final_result
 
         except asyncio.CancelledError:
             # Task was cancelled

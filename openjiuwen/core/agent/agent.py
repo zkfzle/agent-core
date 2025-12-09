@@ -22,7 +22,7 @@ from openjiuwen.core.runtime.wrapper import (
     TaskRuntime,
     WrappedRuntime
 )
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.stream.base import OutputSchema, CustomSchema
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
@@ -763,7 +763,10 @@ class ControllerAgent(BaseAgent):
                 )
                 if isinstance(res, list) and isinstance(self.controller, WorkflowController):
                     for item in res:
-                        await agent_runtime.write_stream(item)
+                        if isinstance(item, CustomSchema):
+                            await agent_runtime.write_custom_stream(item)
+                        else:
+                            await agent_runtime.write_stream(item)
             finally:
                 if need_cleanup:
                     await agent_runtime.post_run()

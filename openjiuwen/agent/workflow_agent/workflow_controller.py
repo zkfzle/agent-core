@@ -29,6 +29,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.stream.base import CustomSchema, OutputSchema
 from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.core.workflow.base import WorkflowExecutionState
 
@@ -239,7 +240,6 @@ class WorkflowController(IntentDetectionController):
                 from openjiuwen.core.workflow.base import (
                     WorkflowOutput, WorkflowExecutionState
                 )
-                from openjiuwen.core.stream.base import OutputSchema
                 workflow_stream = await Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
@@ -266,6 +266,8 @@ class WorkflowController(IntentDetectionController):
                         else:
                             # 透传其他流式数据（tracer 等）
                             await runtime.write_stream(chunk)
+                    if isinstance(chunk, CustomSchema):
+                        await runtime.write_custom_stream(chunk)
                     else:
                         await runtime.write_stream(chunk)
                     chunks.append(chunk)
@@ -351,7 +353,6 @@ class WorkflowController(IntentDetectionController):
                 self._clear_interrupted_state(task, runtime)
 
                 # 写入 workflow_final 到流
-                from openjiuwen.core.stream.base import OutputSchema
                 payload = {"output": result, "result_type": "answer"}
                 final_output = OutputSchema(
                     type="workflow_final",

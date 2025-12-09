@@ -63,6 +63,7 @@ class Trainer:
         if progress.best_score >= self._early_stop_score:
             logger.info(f"val set score {progress.best_score} already exceed target score {self._early_stop_score}, "
                         f"skip optimization")
+            self._callbacks.on_train_end(agent, progress)
             return agent
         logger.info(f"val set baseline score: {progress.val_baseline_score}")
         parameter_searcher = ParameterSearcher(self, case_loader=val_cases)

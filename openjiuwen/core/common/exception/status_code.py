@@ -119,6 +119,7 @@ class StatusCode(Enum):
     TOOL_EXECUTION_ERROR = (120001, "Tool execution error: {msg}")
     TASK_NOT_SUPPORT_ERROR = (120002, "Get unknown task type: {msg}")
     WORKFLOW_EXECUTION_ERROR = (120003, "Workflow execution error: {msg}")
+    PROMPT_PARAMS_CHECK_ERROR = (120004, "Prompt params check error: {msg}")
     # Agent Orchestration - Workflow Agent Orchestration And Execution 121000 - 121999
     # Agent Orchestration - Custom Agent Interface 122000 - 122999
     # Agent Controller 123000 - 123999

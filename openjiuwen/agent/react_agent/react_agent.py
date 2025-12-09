@@ -8,9 +8,14 @@ ReActAgent - 极简版 ReAct Agent（无中断、无Controller）
 import json
 import asyncio
 from typing import Dict, Any, AsyncIterator, List
+
+from pydantic import ValidationError
+
 from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.tool.base import Tool
@@ -18,6 +23,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.messages import AIMessage, ToolMessage
+from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.agent.utils import MessageUtils
 
 
@@ -82,8 +88,16 @@ class ReActAgent(BaseAgent):
         # 3. 格式化 prompt
         messages = []
         # 添加系统提示
-        for prompt in self._agent_config.prompt_template:
-            messages.append(prompt)
+        try:
+            system_prompt = Template(content=self._agent_config.prompt_template).to_messages()
+            for prompt in system_prompt:
+                prompt_dict = prompt.model_dump(exclude_none=True)
+                messages.append(prompt_dict)
+        except ValidationError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.PROMPT_PARAMS_CHECK_ERROR.code,
+                message=StatusCode.PROMPT_PARAMS_CHECK_ERROR.errmsg.format(msg=str(e))
+            ) from e
 
         # 添加对话历史（需要完整转换 BaseMessage 对象）
         for msg in chat_history:

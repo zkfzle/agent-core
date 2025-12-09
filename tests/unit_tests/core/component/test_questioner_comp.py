@@ -106,7 +106,7 @@ class TestQuestionComp:
 
         result = self.invoke_workflow({"query": "查询杭州的天气"}, context, flow)
         assert result == WorkflowOutput(
-            result={'output': {}, 'responseContent': "hangzhou | today"},
+            result={'responseContent': "hangzhou | today"},
             state=WorkflowExecutionState.COMPLETED)
 
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")

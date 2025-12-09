@@ -44,7 +44,7 @@ async def test_simple_template_workflow():
     flow.add_connection("start", "a")
     flow.add_connection("a", "end")
     res = await flow.invoke({"a": 1, "b": "haha"}, WorkflowRuntime())
-    assert res.result == {'output': {}, 'responseContent': 'hello:haha'}
+    assert res.result == {'responseContent': 'hello:haha'}
 
 
 async def test_end_invoke_template():
@@ -56,7 +56,7 @@ async def test_end_invoke_template():
     flow.add_connection("s", "e")
     res = await flow.invoke({"user_inputs": {"query": "你好", "content": "杭州"}}, WorkflowRuntime())
 
-    assert res.result == {'responseContent': '渲染结果:你好,杭州', 'output': {}}
+    assert res.result == {'responseContent': '渲染结果:你好,杭州'}
 
 
 async def test_end_invoke_no_template():
@@ -67,7 +67,7 @@ async def test_end_invoke_no_template():
     flow.set_end_comp("e", End(conf=conf), inputs_schema={"param1": "${s.query}", "param2": "${s.content}"})
     flow.add_connection("s", "e")
     res = await flow.invoke({"user_inputs": {"query": "你好", "content": "杭州"}}, WorkflowRuntime())
-    assert res.result == {'output': {'param1': '你好', 'param2': '杭州'}, 'responseContent': ''}
+    assert res.result == {'output': {'param1': '你好', 'param2': '杭州'}}
 
 
 async def test_end_stream_template():
@@ -166,7 +166,7 @@ async def test_simple_output_schema_workflow():
     flow.add_connection("start", "a")
     flow.add_connection("a", "end")
     res = await flow.invoke({"a": 1, "b": "haha"}, WorkflowRuntime())
-    assert res.result == {'output': {'end_input': 'haha'}, 'responseContent': ''}
+    assert res.result == {'output': {'end_input': 'haha'}}
 
 
 async def test_end_stream_workflow():
@@ -246,7 +246,7 @@ async def test_end_no_streaming_no_template():
 
     user_input = {'user_input': {'a': 1, 'b': 2}}
     result = await workflow.invoke(user_input, WorkflowRuntime())
-    assert result.result == {'responseContent': '', 'collect_output': [{'a': 1}, {'b': 2}], 'output': None}
+    assert result.result == {'collect_output': [{'a': 1}, {'b': 2}], 'output': None}
 
 
 async def test_end_template_001():

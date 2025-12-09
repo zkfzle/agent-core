@@ -98,7 +98,7 @@ async def test_loop_number():
     inputs = {"array": [4, 5, 6], "num": -3}
 
     results = await flow.invoke(inputs, runtime=WorkflowRuntime())
-    assert results.result == {'responseContent': '', 'output': {
+    assert results.result == {'output': {
         'end_out': {'user_num': 117, 'index': 12, 'l_out1': [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21],
                     'l_out2': [7, 17, 27, 37, 47, 57, 67, 77, 87, 97, 107, 117]}}}
 

@@ -140,12 +140,11 @@ async def test_batch_multi_stream_workflow():
 
     res = await wf.invoke({"inputs": [1, 2, 3]}, WorkflowRuntime())
     print(res)
-    assert res.result == {'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123', 'output': {}}
+    assert res.result == {'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'}
 
     chunks = []
     expect_chunks = [OutputSchema(type='workflow_final', index=0,
-                                  payload={'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123',
-                                           'output': {}})]
+                                  payload={'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'})]
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None
@@ -549,7 +548,7 @@ async def test_workflow_stream_with_exception():
                                                                                error="mock error")
 
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, runtime=WorkflowRuntime())
-    assert result.result == {'responseContent': '', 'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
+    assert result.result == {'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
 
 
 async def test_node_with_dual_stream_abilities_transform_and_stream():

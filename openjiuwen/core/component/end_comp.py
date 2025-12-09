@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 import asyncio
 import re
 import string
@@ -59,7 +59,7 @@ class End(ComponentExecutable, WorkflowComponent):
             else:
                 output = None
             logger.debug(f"end component invoke method output: {output}")
-            return {"responseContent": "", "output": output}
+            return {"output": output}
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
@@ -122,7 +122,6 @@ class End(ComponentExecutable, WorkflowComponent):
                     chunks.append({format_path(path): value})
             logger.debug(f"collect chunks: {chunks}")
             return {
-                "responseContent": "",
                 "collect_output": chunks
             }
 
@@ -145,7 +144,6 @@ class End(ComponentExecutable, WorkflowComponent):
         self._batch_template = None
         return {
             "responseContent": answer,
-            "output": {}
         }
 
 

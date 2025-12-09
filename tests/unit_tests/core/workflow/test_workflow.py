@@ -863,7 +863,7 @@ class WorkflowTest(unittest.TestCase):
         flow1.add_connection("composite", "a1")
         flow1.add_connection("a1", "end")
         self.assert_workflow_invoke({"a1": 1, "a2": 2}, WorkflowRuntime(), flow1,
-                                    expect_results={'responseContent': '', 'output': {'b1': 1, 'b2': 2, 'b3': 2}})
+                                    expect_results={'output': {'b1': 1, 'b2': 2, 'b3': 2}})
 
     def test_stream_comp_workflow(self):
         # start -> a ---> b -> end

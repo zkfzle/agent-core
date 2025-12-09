@@ -266,7 +266,7 @@ class WorkflowController(IntentDetectionController):
                         else:
                             # 透传其他流式数据（tracer 等）
                             await runtime.write_stream(chunk)
-                    if isinstance(chunk, CustomSchema):
+                    elif isinstance(chunk, CustomSchema):
                         await runtime.write_custom_stream(chunk)
                     else:
                         await runtime.write_stream(chunk)

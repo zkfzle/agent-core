@@ -14,8 +14,8 @@ from openjiuwen.core.memory.config.config import MemoryConfig
 
 
 class ConstrainConfig(BaseModel):
-    reserved_max_chat_rounds: int = Field(default=10)
-    max_iteration: int = Field(default=5)
+    reserved_max_chat_rounds: int = Field(default=10, gt=0)
+    max_iteration: int = Field(default=5, gt=0)
 
 
 class IntentDetectionConfig(BaseModel):

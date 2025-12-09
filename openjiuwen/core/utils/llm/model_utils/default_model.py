@@ -481,6 +481,8 @@ class OpenAIChatModel(BaseModelClient):
                 )
                 tool_calls.append(tool_call)
 
+        reasoning_content = getattr(message, 'reasoning_content', "")
+        
         return AIMessage(
             content=message.content or "",
             tool_calls=tool_calls,
@@ -488,7 +490,8 @@ class OpenAIChatModel(BaseModelClient):
                 model_name=model_name,
                 finish_reason=choice.finish_reason or "",
                 total_latency=response.usage.total_tokens if response.usage else 0
-            )
+            ),
+            reason_content=reasoning_content
         )
 
 
@@ -501,6 +504,7 @@ class OpenAIChatModel(BaseModelClient):
         delta = choice.delta
 
         content = getattr(delta, 'content', None) or ""
+        reasoning_content = getattr(delta, 'reasoning_content', "")
         tool_calls = []
 
         # Handle tool call delta
@@ -527,6 +531,7 @@ class OpenAIChatModel(BaseModelClient):
 
         return AIMessageChunk(
             content=content,
+            reason_content=reasoning_content,
             tool_calls=tool_calls,
             usage_metadata=usage_metadata
         )

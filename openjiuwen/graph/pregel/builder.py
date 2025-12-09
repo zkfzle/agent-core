@@ -55,10 +55,10 @@ class PregelGraphBuilder:
         self.nodes[src].routers.append(ConditionalRouter(selector=selector))
         return self
 
-    def build(self, checkpointer=None, after_tick=None):
+    def build(self, store=None, after_tick=None):
         return Pregel(
             nodes=self.nodes,
             channels=self.channels,
-            checkpointer=checkpointer,
+            store=store,
             after_tick=after_tick
         )

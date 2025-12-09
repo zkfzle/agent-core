@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
 
 import asyncio
 
@@ -380,7 +382,7 @@ def nested_subgraph_builder():
         logger.debug(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     inner_app = Pregel(inner_nodes, inner_channels, initial="start1",
-                       checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+                       store=default_inmemory_checkpointer.graph_store(),
                        after_tick=inner_logger)
 
     class RunInner:
@@ -467,7 +469,7 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
         inner_nodes,
         inner_channels,
         initial="start1",
-        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+        store=default_inmemory_checkpointer.graph_store(),
         after_tick=inner_logger
     )
 
@@ -515,7 +517,7 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
         nodes=builder.nodes,
         channels=builder.channels,
         initial="start",
-        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+        store=default_inmemory_checkpointer.graph_store(),
         after_tick=outer_logger
     )
     return graph, execution_trace
@@ -556,7 +558,7 @@ def linear_nested_subgraph_setup():
     inner_app = Pregel(
         nodes=inner_builder.nodes,
         channels=inner_builder.channels,
-        checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+        store=default_inmemory_checkpointer.graph_store(),
         after_tick=inner_logger
     )
 
@@ -587,7 +589,7 @@ def linear_nested_subgraph_setup():
     outer_builder.add_edge("end", END)
 
     # Checkpointer 实例
-    checkpointer = default_inmemory_checkpointer.graph_checkpointer()
+    checkpointer = default_inmemory_checkpointer.graph_store()
 
     execution_trace = []
 
@@ -600,7 +602,7 @@ def linear_nested_subgraph_setup():
         logger.debug(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     graph = outer_builder.build(
-        checkpointer=checkpointer,
+        store=checkpointer,
         after_tick=log_loop)
     return graph, execution_trace
 
@@ -740,7 +742,7 @@ class TestPregelV2:
             nodes=nodes,
             channels=channels,
             initial="start",
-            checkpointer=default_inmemory_checkpointer.graph_checkpointer(),
+            store=default_inmemory_checkpointer.graph_store(),
             after_tick=log_loop
         )
         config = PregelConfig(session_id="test_parallel_fail", ns="start-a-end")
@@ -748,7 +750,7 @@ class TestPregelV2:
 
         with pytest.raises(RuntimeError, match="a1 exception"):
             await graph.ainvoke(config)
-        checkpoint = await graph.checkpointer.get(config.get("session_id"), config.get('ns'))
+        checkpoint = await graph.store.get(config.get("session_id"), config.get('ns'))
         assert checkpoint is not None
         assert checkpoint.pending_node is not None
 
@@ -794,7 +796,7 @@ class TestPregelV2:
 
         assert execution_trace[-1]['active_nodes'] == ['b']
 
-        checkpoint = await graph.checkpointer.get(session_id, config['ns'])
+        checkpoint = await graph.store.get(session_id, config['ns'])
         assert checkpoint is not None
         assert checkpoint.step == 4
         assert not checkpoint.pending_node
@@ -807,7 +809,7 @@ class TestPregelV2:
             await graph.ainvoke(config)
         assert f"Recursion limit of {recursion_limit} reached" in str(excinfo.value)
         assert execution_trace[-1]['active_nodes'] == ['b1']
-        checkpoint = await graph.checkpointer.get(session_id, config['ns'])
+        checkpoint = await graph.store.get(session_id, config['ns'])
 
         logger.debug("\n=============== Invoke 3 (Resume from Node b1) ===============")
 
@@ -825,11 +827,11 @@ class TestPregelV2:
         result = await graph.ainvoke(config)
         assert result["__interrupt__"] is not None
 
-        checkpoint = await graph.checkpointer.get(config.get("session_id"), config.get('ns'))
+        checkpoint = await graph.store.get(config.get("session_id"), config.get('ns'))
         assert checkpoint is not None
         assert "a" in checkpoint.pending_node
         assert "b" in checkpoint.pending_node
-        checkpoint_inner = await graph.checkpointer.get(config.get("session_id"), config.get('ns') + ":a")
+        checkpoint_inner = await graph.store.get(config.get("session_id"), config.get('ns') + ":a")
         assert "a1" in checkpoint_inner.pending_node
         assert "a2" not in checkpoint_inner.pending_node
         assert "a3" not in checkpoint_inner.pending_node
@@ -841,11 +843,11 @@ class TestPregelV2:
         assert result["__interrupt__"] is not None
 
         assert len(execution_trace) == 0
-        checkpoint = await graph.checkpointer.get(config.get("session_id"), config.get('ns'))
+        checkpoint = await graph.store.get(config.get("session_id"), config.get('ns'))
         assert checkpoint is not None
         assert "a" in checkpoint.pending_node
         assert "b" in checkpoint.pending_node
-        checkpoint_inner = await graph.checkpointer.get(config.get("session_id"), config.get('ns') + ":a")
+        checkpoint_inner = await graph.store.get(config.get("session_id"), config.get('ns') + ":a")
         assert "a1" in checkpoint_inner.pending_node
         assert "a2" not in checkpoint_inner.pending_node
         assert "a3" not in checkpoint_inner.pending_node

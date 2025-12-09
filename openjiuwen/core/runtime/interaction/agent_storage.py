@@ -5,7 +5,7 @@
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.interaction.storage import Storage
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.checkpoint.serde import Serializer, PickleSerializer
+from openjiuwen.graph.store.serde import Serializer, PickleSerializer
 
 
 class AgentStorage(Storage):

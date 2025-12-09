@@ -9,6 +9,7 @@ from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.runtime.interaction.agent_storage import AgentStorage
 from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.graph.store import Store
 
 
 class AgentInMemoryCheckpointer(Checkpointer):
@@ -45,6 +46,9 @@ class AgentInMemoryCheckpointer(Checkpointer):
             agent_store.clear(agent_id)
         else:
             self._agent_stores.pop(session_id, None)
+
+    def graph_store(self) -> Store:
+        pass
 
 
 default_agent_inmemory_checkpointer: Checkpointer = AgentInMemoryCheckpointer()

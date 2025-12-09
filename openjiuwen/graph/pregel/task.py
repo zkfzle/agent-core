@@ -8,7 +8,7 @@ import asyncio
 import inspect
 from typing import Dict, Optional, List, Union
 
-from openjiuwen.graph.checkpoint.base import PendingNode
+from openjiuwen.graph.store.base import PendingNode
 from openjiuwen.graph.pregel.config import PregelConfig, InnerPregelConfig, \
     create_inner_config
 from openjiuwen.graph.pregel.constants import GraphInterrupt, TASK_STATUS_INTERRUPT, TASK_STATUS_ERROR, PARENT_NS, NS

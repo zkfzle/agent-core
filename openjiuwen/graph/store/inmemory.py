@@ -5,25 +5,25 @@
 from collections import defaultdict
 from typing import Dict, Optional
 
-from openjiuwen.graph.checkpoint.base import (
-    CheckpointerSaver,
-    Checkpoint
+from openjiuwen.graph.store.base import (
+    Store,
+    GraphState
 )
 
 
-class MemoryCheckpointSaver(CheckpointerSaver):
+class InMemoryStore(Store):
     def __init__(self) -> None:
-        # 存储最新 checkpoint： { session_id: { ns: Checkpoint } }
-        self.store_ck: defaultdict[str, Dict[str, Checkpoint]] = defaultdict(dict)
+        # store latest graph state： { session_id: { ns: state } }
+        self.store_ck: defaultdict[str, Dict[str, GraphState]] = defaultdict(dict)
 
-    async def get(self, session_id: str, ns: str) -> Optional[Checkpoint]:
+    async def get(self, session_id: str, ns: str) -> Optional[GraphState]:
         return self.store_ck.get(session_id, {}).get(ns)
 
-    async def save(self, session_id: str, ns: str, checkpoint: Checkpoint) -> None:
-        # store the checkpoint object directly
-        self.store_ck[session_id][ns] = checkpoint
+    async def save(self, session_id: str, ns: str, state: GraphState) -> None:
+        # store the state object directly
+        self.store_ck[session_id][ns] = state
 
-    async def delete(self, session_id: str, ns: str | None = None) -> None:
+    async def delete(self, session_id: str, ns: Optional[str] = None) -> None:
         if session_id not in self.store_ck:
             return  # Conversation ID doesn't exist, nothing to delete
 
@@ -32,14 +32,14 @@ class MemoryCheckpointSaver(CheckpointerSaver):
             del self.store_ck[session_id]
         else:
             # Delete specific namespace by prefix under session_id
-            MemoryCheckpointSaver._delete_ns_by_prefix(self.store_ck[session_id], ns)
+            InMemoryStore._delete_ns_by_prefix(self.store_ck[session_id], ns)
 
             # If session_id becomes empty after deletion, clean it up
             if not self.store_ck[session_id]:
                 del self.store_ck[session_id]
 
     @staticmethod
-    def _delete_ns_by_prefix(sub_map: Dict[str, Checkpoint], prefix: str) -> None:
+    def _delete_ns_by_prefix(sub_map: Dict[str, GraphState], prefix: str) -> None:
         ns_to_delete_list = [ns_to_delete for ns_to_delete in sub_map.keys() if ns_to_delete.startswith(prefix)]
         if not ns_to_delete_list:
             return

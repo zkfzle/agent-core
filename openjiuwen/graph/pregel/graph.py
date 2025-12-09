@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Union, Self, AsyncIterator, Any, Callable, Hashable, Sequence
+from typing import Union, Self, AsyncIterator, Any, Callable, Hashable, Sequence, Tuple
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -18,7 +18,7 @@ from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.checkpoint.gragh_checkpoiter import GraphCheckpointer
+from openjiuwen.graph.store.base import GraphStore
 from openjiuwen.graph.pregel.builder import PregelGraphBuilder
 from openjiuwen.graph.pregel.config import PregelConfig
 from openjiuwen.graph.pregel.constants import MAX_RECURSIVE_LIMIT, START, END
@@ -41,12 +41,12 @@ class PregelGraph(Graph):
 
     def __init__(self):
         self.pregel: Pregel | None = None
-        self.edges: list[Union[str, list[str]], str] = []
+        self.edges: list[Tuple[str | list[str], str]] = []
         self.waits: set[str] = set()
         self.nodes: dict[str, Vertex] = {}
         self.branches: defaultdict[str, dict[str, Branch]] = defaultdict(dict)
-        self.checkpoint_saver = None
-        self._graph_checkpointer = None
+        self.checkpointer = None
+        self._graph_store = None
 
     def start_node(self, node_id: str) -> Self:
         if node_id is None:
@@ -122,16 +122,16 @@ class PregelGraph(Graph):
         for node_id, node in self.nodes.items():
             node.init(runtime)
         if self.pregel is None:
-            self.checkpoint_saver = default_inmemory_checkpointer
-            graph_checkpointer = GraphCheckpointer(runtime, self.checkpoint_saver.graph_checkpointer())
-            self.pregel = self._compile(checkpointer=graph_checkpointer, step_callback=after_tick)
-            self._graph_checkpointer = graph_checkpointer
+            self.checkpointer = default_inmemory_checkpointer
+            store = GraphStore(runtime, self.checkpointer.graph_store())
+            self.pregel = self._compile(graph_store=store, step_callback=after_tick)
+            self._graph_store = store
         else:
-            self._graph_checkpointer.reset(runtime)
-        return CompiledGraph(self.pregel, self.checkpoint_saver)
+            self._graph_store.reset(runtime)
+        return CompiledGraph(self.pregel, self.checkpointer)
 
-    def _compile(self, checkpointer=None, step_callback=None) -> Pregel:
-        edges: list[Union[str, list[str]], str] = []
+    def _compile(self, graph_store=None, step_callback=None) -> Pregel:
+        edges: list[Tuple[str | list[str], str]] = []
         sources: dict[str, set[str]] = {}
         builder = PregelGraphBuilder()
         for node_id, action in self.nodes.items():
@@ -155,14 +155,13 @@ class PregelGraph(Graph):
         for start, branches in self.branches.items():
             for name, branch in branches.items():
                 builder.add_branch(start, branch.condition)
-        return builder.build(checkpointer, after_tick=step_callback)
+        return builder.build(graph_store, after_tick=step_callback)
 
 
 class CompiledGraph(ExecutableGraph):
-    def __init__(self, compiled_pregel: Pregel,
-                 checkpoint_saver: Checkpointer) -> None:
-        self._compiled_pregel = compiled_pregel
-        self._checkpoint_saver = checkpoint_saver
+    def __init__(self, pregel: Pregel, checkpointer: Checkpointer):
+        self._pregel = pregel
+        self._checkpointer = checkpointer
 
     async def _invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
         is_main = False
@@ -173,7 +172,7 @@ class CompiledGraph(ExecutableGraph):
             is_main = True
             config = PregelConfig(session_id=session_id, ns=workflow_id, recursion_limit=MAX_RECURSIVE_LIMIT)
 
-        await self._checkpoint_saver.pre_workflow_execute(runtime, inputs)
+        await self._checkpointer.pre_workflow_execute(runtime, inputs)
         if not isinstance(inputs, InteractiveInput):
             runtime.state().commit_user_inputs(inputs)
 
@@ -181,13 +180,13 @@ class CompiledGraph(ExecutableGraph):
         exception = None
 
         try:
-            result = await self._compiled_pregel.ainvoke(config=config,
-                                                         durability="exit")
+            result = await self._pregel.ainvoke(config=config,
+                                                durability="exit")
         except Exception as e:
             exception = e
 
         if is_main:
-            await self._checkpoint_saver.post_workflow_execute(runtime, result, exception)
+            await self._checkpointer.post_workflow_execute(runtime, result, exception)
         elif exception is not None:
             raise exception
 

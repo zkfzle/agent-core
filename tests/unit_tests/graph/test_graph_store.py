@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
+
 import asyncio
 from dataclasses import dataclass
 from typing import Any
@@ -5,9 +9,8 @@ from unittest.mock import MagicMock
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.checkpoint.base import create_checkpoint, PendingNode
-from openjiuwen.graph.checkpoint.gragh_checkpoiter import GraphCheckpointer
-from openjiuwen.graph.checkpoint.memory_checkpoint_saver import MemoryCheckpointSaver
+from openjiuwen.graph.store import create_state, PendingNode, GraphStore
+from openjiuwen.graph.store.inmemory import InMemoryStore
 
 
 @dataclass
@@ -28,13 +31,13 @@ class DummyChannel:
 
 async def _test_memory_checkpoint_saver():
 
-    saver = MemoryCheckpointSaver()
+    saver = InMemoryStore()
 
     conversation_id = "conv_123"
     ns = "default"
 
     # Create a mock checkpoint
-    checkpoint = create_checkpoint(
+    checkpoint = create_state(
         ns=ns,
         step=1,
         channel_snapshot={"ch1": 42},
@@ -69,11 +72,11 @@ async def _test_memory_checkpoint_saver():
 
 
 async def _test_delete_checkpoint_by_ns_prefix():
-    saver = MemoryCheckpointSaver()
+    saver = InMemoryStore()
     conversation_id = "conv_123"
 
     ns1 = "apple"
-    checkpoint1 = create_checkpoint(
+    checkpoint1 = create_state(
         ns=ns1,
         step=1,
         channel_snapshot={"ch1": 12},
@@ -84,7 +87,7 @@ async def _test_delete_checkpoint_by_ns_prefix():
     )
 
     ns2 = "apple:orange"
-    checkpoint2 = create_checkpoint(
+    checkpoint2 = create_state(
         ns=ns2,
         step=2,
         channel_snapshot={"ch2": 123},
@@ -109,18 +112,19 @@ async def _test_delete_checkpoint_by_ns_prefix():
     assert loaded1 is None, "After delete, loaded1 checkpoint should be None."
     loaded2 = await saver.get(conversation_id, ns2)
     assert loaded2 is None, "After delete, loaded2 checkpoint should be None."
-    print("\nAll _test_delete_checkpoint_by_ns_prefix tests passed!")
+    logger.debug("All _test_delete_checkpoint_by_ns_prefix tests passed!")
 
-async def _test_memory_graph_checkpointer():
-    saver = MemoryCheckpointSaver()
+
+async def _test_memory_graph_store():
+    saver = InMemoryStore()
     mock_runtime = MagicMock(spec=BaseRuntime)
-    graph_checkpoint = GraphCheckpointer(runtime=mock_runtime, saver=saver)
+    graph_checkpoint = GraphStore(runtime=mock_runtime, saver=saver)
 
     conversation_id = "conv_321"
     ns = "default_ns"
 
     # Create a mock checkpoint
-    checkpoint = create_checkpoint(
+    checkpoint = create_state(
         ns=ns,
         step=2,
         channel_snapshot={"ch1": 25},
@@ -147,12 +151,12 @@ async def _test_memory_graph_checkpointer():
     deleted = await saver.get(conversation_id, ns)
     assert deleted is None, "After delete, checkpoint should be None."
     logger.debug("[TEST] delete() OK.")
-    logger.debug("\nAll test_memory_graph_checkpointer tests passed!")
+    logger.debug("\nAll test_memory_graph_store tests passed!")
 
 
 def test_memory_checkpoint_saver_basic():
     asyncio.run(_test_memory_checkpoint_saver())
-    asyncio.run(_test_memory_graph_checkpointer())
+    asyncio.run(_test_memory_graph_store())
     asyncio.run(_test_delete_checkpoint_by_ns_prefix())
 
 

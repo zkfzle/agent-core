@@ -7,8 +7,6 @@ from __future__ import annotations
 import asyncio
 from typing import Dict, Optional, Union, Callable, Any, Coroutine, List
 
-from openjiuwen.graph.checkpoint.base import Checkpoint, PendingNode, create_checkpoint
-from openjiuwen.graph.checkpoint.gragh_checkpoiter import GraphCheckpointer
 from openjiuwen.graph.pregel.channels import Channel, ChannelManager
 from openjiuwen.graph.pregel.config import PregelConfig, DEFAULT_PREGEL_CONFIG, InnerPregelConfig, \
     create_inner_config
@@ -17,6 +15,7 @@ from openjiuwen.graph.pregel.constants import END, GraphInterrupt, Interrupt, TA
 from openjiuwen.graph.pregel.messages import TriggerMessage
 from openjiuwen.graph.pregel.nodes import PregelNode
 from openjiuwen.graph.pregel.task import TaskExecutorPool
+from openjiuwen.graph.store import GraphState, PendingNode, create_state, Store
 
 
 class PregelLoop:
@@ -26,7 +25,7 @@ class PregelLoop:
         self.step: int = 0
         self.max_step: int = 0
         self.config: PregelConfig = config
-        self.saver = graph.checkpointer
+        self.saver = graph.store
         self.active_nodes: List[str] = []
         self.executor: TaskExecutorPool | None = None
         self._retry_pending_nodes: Dict[str, PendingNode] = {}
@@ -34,21 +33,21 @@ class PregelLoop:
     async def init(self) -> None:
         self.executor = TaskExecutorPool(self.config)
         self.max_step = self.config[RECURSION_LIMIT]
-        checkpoint = None
+        state = None
         if self.config.get(SESSION_ID) and self.config.get(NS) and self.saver:
-            checkpoint = await self.saver.get(self.config[SESSION_ID], self.config[NS])
-        if self._is_resume(checkpoint):
+            state = await self.saver.get(self.config[SESSION_ID], self.config[NS])
+        if self._is_resume(state):
             # Restore barrier channel
-            self.manager.restore(checkpoint.channel_values)
+            self.manager.restore(state.channel_values)
             # Restore step
-            self.step = checkpoint.step
-            self.max_step = checkpoint.step + self.config[RECURSION_LIMIT]
+            self.step = state.step
+            self.max_step = state.step + self.config[RECURSION_LIMIT]
             # Restore task result message
-            for msg in checkpoint.pending_buffer:
+            for msg in state.pending_buffer:
                 self.manager.buffer_message(msg)
             # Pending node
-            if checkpoint.pending_node:
-                self._retry_pending_nodes = checkpoint.pending_node
+            if state.pending_node:
+                self._retry_pending_nodes = state.pending_node
         else:
             # Trigger start node
             self.manager.buffer_message(TriggerMessage(sender=self.graph.initial, target=self.graph.initial))
@@ -58,19 +57,19 @@ class PregelLoop:
         try:
             return await self._tick()
         except Exception as e:
-            await self._save_checkpoint_on_error(e)
+            await self._save_state_on_error(e)
             raise e
 
     @staticmethod
-    def _is_resume(checkpoint: Checkpoint) -> bool:
-        return checkpoint is not None and (
-                bool(checkpoint.pending_node) or bool(checkpoint.pending_buffer) or bool(checkpoint.channel_values))
+    def _is_resume(state: GraphState) -> bool:
+        return state is not None and (
+                bool(state.pending_node) or bool(state.pending_buffer) or bool(state.channel_values))
 
     async def _tick(self) -> bool:
         # 1. Determine tasks for this round
         tasks_to_run = []
 
-        # Retry tasks from Checkpoint
+        # Retry tasks from graph state
         if self._retry_pending_nodes:
             self.active_nodes = list(self._retry_pending_nodes.keys())
             # Clear retry queue (scheduled this round)
@@ -124,7 +123,7 @@ class PregelLoop:
         self.step += 1
         return True
 
-    async def _save_checkpoint_on_error(self, exception: Exception):
+    async def _save_state_on_error(self, exception: Exception):
         if not self.config.get(SESSION_ID) or not self.config.get(NS) or not self.saver:
             return
         pending_buffer = self.manager.buffer
@@ -132,7 +131,7 @@ class PregelLoop:
         if self.executor:
             pending_buffer.extend(self.executor.succeed_messages)
             pending_node = self.executor.failed
-        error_checkpoint = create_checkpoint(
+        error_state = create_state(
             ns=self.config[NS],
             step=self.step,
             channel_snapshot=self.manager.snapshot(),
@@ -143,7 +142,7 @@ class PregelLoop:
         await self.saver.save(
             session_id=self.config[SESSION_ID],
             ns=self.config[NS],
-            checkpoint=error_checkpoint
+            state=error_state
         )
 
 
@@ -153,7 +152,7 @@ class Pregel:
             nodes: Dict[str, PregelNode],
             channels: List[Channel],
             initial: str = START,
-            checkpointer: GraphCheckpointer | None = None,
+            store: Store | None = None,
             after_tick: Optional[
                 Union[
                     Callable[[PregelLoop], Any],
@@ -162,7 +161,7 @@ class Pregel:
             ] = None,
     ):
         self.nodes = nodes
-        self.checkpointer = checkpointer
+        self.store = store
         # key:node node_name, value:list[Channel]
         self.channels = channels
         self.initial = initial

@@ -9,7 +9,8 @@ from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.interaction.workflow_storage import WorkflowStorage
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.checkpoint.memory_checkpoint_saver import MemoryCheckpointSaver
+from openjiuwen.graph.store import Store
+from openjiuwen.graph.store.inmemory import InMemoryStore
 from openjiuwen.graph.pregel.constants import TASK_STATUS_INTERRUPT
 
 
@@ -17,7 +18,7 @@ class InMemoryCheckpointer(Checkpointer):
     def __init__(self):
         self._agent_stores = {}
         self._workflow_stores = {}
-        self._graph_state = MemoryCheckpointSaver()
+        self._graph_store = InMemoryStore()
 
     async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
         self._workflow_stores.setdefault(runtime.session_id(), WorkflowStorage())
@@ -32,7 +33,7 @@ class InMemoryCheckpointer(Checkpointer):
             raise exception
 
         if result.get(TASK_STATUS_INTERRUPT) is None:
-            await self._graph_state.delete(runtime.session_id(), runtime.workflow_id())
+            await self._graph_store.delete(runtime.session_id(), runtime.workflow_id())
             workflow_store.clear(runtime.workflow_id())
             if runtime.config().get_agent_config() is None:
                 self._workflow_stores.pop(runtime.session_id(), None)
@@ -61,8 +62,8 @@ class InMemoryCheckpointer(Checkpointer):
             self._workflow_stores.pop(session_id, None)
             self._agent_stores.pop(session_id, None)
 
-    def graph_checkpointer(self):
-        return self._graph_state
+    def graph_store(self) -> Store:
+        return self._graph_store
 
 
 default_inmemory_checkpointer: Checkpointer = InMemoryCheckpointer()

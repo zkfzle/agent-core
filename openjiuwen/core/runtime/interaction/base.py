@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Any
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.graph.store import Store
 
 
 class BaseInteraction(ABC, metaclass=ABCMeta):
@@ -56,27 +57,31 @@ class Checkpointer(ABC):
 
     @abstractmethod
     async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
-        pass
+        ...
 
     @abstractmethod
     async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
-        pass
+        ...
 
     @abstractmethod
     async def pre_agent_execute(self, runtime: BaseRuntime, inputs):
-        pass
+        ...
 
     @abstractmethod
     async def interrupt_agent_execute(self, runtime: BaseRuntime):
-        pass
+        ...
 
     @abstractmethod
     async def post_agent_execute(self, runtime: BaseRuntime):
-        pass
+        ...
 
     @abstractmethod
     async def release(self, session_id: str):
-        pass
+        ...
+
+    @abstractmethod
+    def graph_store(self) -> Store:
+        ...
 
 
 class AgentInterrupt(Exception):

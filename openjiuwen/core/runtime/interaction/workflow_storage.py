@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.interaction.storage import Storage
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.workflow import NodeRuntime
-from openjiuwen.graph.checkpoint.serde import Serializer, PickleSerializer
+from openjiuwen.graph.store.serde import Serializer, PickleSerializer
 
 
 class WorkflowStorage(Storage):

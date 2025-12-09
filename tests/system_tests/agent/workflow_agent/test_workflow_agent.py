@@ -491,13 +491,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 else:
                     self.fail(f"工作流执行失败: {error_msg}")
 
-            # 校验正常响应
-            self.assertEqual(workflow_final_chunk.payload['result_type'], 'answer', "应该返回answer类型")
-
-            # 校验工作流完成状态
-            output = workflow_final_chunk.payload['output']
-            self.assertEqual(output.state.value, 'COMPLETED', "工作流应该完成")
-            self.assertEqual(output.result['responseContent'], '上海', "应该返回上海")
+            # 校验正常响应 - 透传模式下 payload 是 End 组件的直接输出
+            # payload 格式: {'responseContent': '...', 'output': {}}
+            self.assertIn('responseContent', workflow_final_chunk.payload, "应该包含responseContent")
+            self.assertEqual(workflow_final_chunk.payload['responseContent'], '上海', "应该返回上海")
             print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
             return first_chunks, second_chunks  # 返回结果用于比对
@@ -632,13 +629,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 else:
                     self.fail(f"工作流执行失败: {error_msg}")
 
-            # 校验正常响应
-            self.assertEqual(workflow_final_chunk.payload['result_type'], 'answer', "应该返回answer类型")
-
-            # 校验工作流完成状态
-            output = workflow_final_chunk.payload['output']
-            self.assertEqual(output.state.value, 'COMPLETED', "工作流应该完成")
-            self.assertEqual(output.result['responseContent'], '上海', "应该返回上海")
+            # 校验正常响应 - 透传模式下 payload 是 End 组件的直接输出
+            # payload 格式: {'responseContent': '...', 'output': {}}
+            self.assertIn('responseContent', workflow_final_chunk.payload, "应该包含responseContent")
+            self.assertEqual(workflow_final_chunk.payload['responseContent'], '上海', "应该返回上海")
             print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
             return first_chunks, second_chunks  # 返回结果用于比对

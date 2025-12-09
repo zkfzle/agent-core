@@ -355,11 +355,8 @@ class WorkflowController(IntentDetectionController):
                 # workflow_final 已在 run_workflow_streaming 中直接透传
                 # 如果 workflow 没有返回 workflow_final 帧，则不写入
                 # Return completion response
-                final_result = result.result if hasattr(result, 'result') else result
-                # 流输出模式下 result.result 可能为 None，返回默认响应
-                if final_result is None:
-                    return {"status": "completed", "result_type": "stream"}
-                return final_result
+                # 返回值保持与原格式兼容，包含 output 和 result_type
+                return {"output": result, "result_type": "answer"}
 
         except asyncio.CancelledError:
             # Task was cancelled

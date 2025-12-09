@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025. All rights reserved.
 
 import asyncio
 from abc import ABC, abstractmethod
@@ -52,7 +52,7 @@ class StreamActor:
                 f"discard message [{message}], because current component [{self._node_id}] can not handle message")
             return
         if self._task is None or self._task.done():
-            if self._task_error and self._task_error.exception():
+            if self._task_error and self._task_error.done() and self._task_error.exception():
                 logger.warning(
                     f"discard message [{message}], because current component [{self._node_id}] has error [{self._task_error.exception()}], can not handle message ")
                 return

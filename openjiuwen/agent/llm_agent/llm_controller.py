@@ -54,10 +54,12 @@ class LLMController(BaseController):
             self,
             config: ReActAgentConfig,
             context_engine,
-            runtime
+            runtime,
+            enable_memory=False
     ):
         super().__init__(config, context_engine, runtime)
         self.config = config
+        self.enable_memory = enable_memory
 
     async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
         """Handle Message - only handles user input
@@ -1022,8 +1024,9 @@ class LLMController(BaseController):
 
     async def _get_system_prompt_keywords(self, inputs: Any, user_id: str):
         result = {}
-        memory_keywords = await self._get_keywords_from_memory(inputs, user_id)
-        result.update(memory_keywords)
+        if self.enable_memory:
+            memory_keywords = await self._get_keywords_from_memory(inputs, user_id)
+            result.update(memory_keywords)
         return result
 
     async def _get_keywords_from_memory(self, inputs: Any, user_id: str):

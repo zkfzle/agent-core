@@ -102,11 +102,14 @@ class LLMAgent(ControllerAgent):
         super().__init__(agent_config, controller=None)
 
         self._init_memory_config(agent_config.memory_config)
+        self._enable_memory = (agent_config.memory_config.enable_long_term_mem or
+                               len(agent_config.memory_config.mem_variables) > 0)
 
         self.controller = LLMController(
             config=agent_config,
             context_engine=self.context_engine,
-            runtime=self._runtime
+            runtime=self._runtime,
+            enable_memory=self._enable_memory
         )
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
@@ -119,19 +122,20 @@ class LLMAgent(ControllerAgent):
         Returns:
             Execution result
         """
-        # async write user message memory
-        user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
-        user_memory_task.set_name("user_memory_task")
+        if self._enable_memory:
+            # async write user message memory
+            user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
+            user_memory_task.set_name("user_memory_task")
+            user_memory_task.add_done_callback(_memory_log_task_exception)
 
         # Fully delegate to ControllerAgent implementation
         result = await super().invoke(inputs, runtime)
 
-        # async write AI result message memory
-        agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result))
-        agent_memory_task.set_name("agent_memory_task")
-        # register call back, print log if complete or failed
-        for t in (user_memory_task, agent_memory_task):
-            t.add_done_callback(_memory_log_task_exception)
+        if self._enable_memory:
+            # async write AI result message memory
+            agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result))
+            agent_memory_task.set_name("agent_memory_task")
+            agent_memory_task.add_done_callback(_memory_log_task_exception)
         return result
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
@@ -167,9 +171,11 @@ class LLMAgent(ControllerAgent):
                 if need_cleanup:
                     await agent_runtime.post_run()
 
-        # async write user message memory
-        user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
-        user_memory_task.set_name("user_memory_task")
+        if self._enable_memory:
+            # async write user message memory
+            user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
+            user_memory_task.set_name("user_memory_task")
+            user_memory_task.add_done_callback(_memory_log_task_exception)
 
         task = asyncio.create_task(stream_process())
         result_for_memory = ""
@@ -179,11 +185,12 @@ class LLMAgent(ControllerAgent):
                 result_for_memory += result.payload.get("output")
             yield result
         await task
-        agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
-        agent_memory_task.set_name("agent_memory_task")
-        # register call back, print log if complete or failed
-        for t in (user_memory_task, agent_memory_task):
-            t.add_done_callback(_memory_log_task_exception)
+
+        if self._enable_memory:
+            # async write AI result message memory
+            agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
+            agent_memory_task.set_name("agent_memory_task")
+            agent_memory_task.add_done_callback(_memory_log_task_exception)
 
 
     def set_prompt_template(self, prompt_template: List[Dict]):

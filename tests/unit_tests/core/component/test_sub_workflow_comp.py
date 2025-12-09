@@ -42,8 +42,9 @@ class TestSubWorkflowComp:
             main_workflow = self.create_nesting_workflow(3, workflow_config)
             await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
         assert err.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="sub2",
-             ability="invoke", error=JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
-             StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(detail='workflow nesting hierarchy is too big, must <= 1')))
+             ability="invoke",
+             error=StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
+                 detail='workflow nesting hierarchy is too big, must <= 1'))
 
         workflow_config = WorkflowConfig(workflow_max_nesting_depth=3)
         main_workflow = self.create_nesting_workflow(3, workflow_config)

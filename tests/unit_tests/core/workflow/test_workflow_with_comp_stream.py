@@ -548,7 +548,8 @@ async def test_workflow_stream_with_exception():
         await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}},
                                        runtime=WorkflowRuntime())
     assert e.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
-    assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="transform", ability="transform", error=JiuWenBaseException(-1, "mock error"))
+    assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="transform", ability="transform",
+                                                                               error="mock error")
 
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, runtime=WorkflowRuntime())
     assert result.result == {'responseContent': '', 'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}

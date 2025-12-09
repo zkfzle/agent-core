@@ -101,7 +101,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
                                           StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
                                                                                            ability=ability.name,
-                                                                                           error=e))
+                                                                                           error=e.message))
         except Exception as e:
             raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
                                       StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,

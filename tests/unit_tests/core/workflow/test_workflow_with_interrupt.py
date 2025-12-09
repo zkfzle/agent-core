@@ -644,8 +644,7 @@ async def test_collect_node_interactive_workflow():
         res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
     assert e.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
     assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="b", ability="collect",
-        error=JiuWenBaseException(StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.code,
-                                  StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.errmsg))
+        error=StatusCode.INTERACTIVE_NOT_SUPPORT_STREAM_ERROR.errmsg)
 
 
 async def test_simple_concurrent_interactive_workflow():

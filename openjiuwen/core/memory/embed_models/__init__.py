@@ -4,6 +4,5 @@
 
 from openjiuwen.core.memory.embed_models.api import APIEmbedModel
 from openjiuwen.core.memory.embed_models.base import EmbedModel
-from openjiuwen.core.memory.embed_models.ollama import OllamaEmbedModel
 
-__all__ = ["APIEmbedModel", "EmbedModel", "OllamaEmbedModel"]
+__all__ = ["APIEmbedModel", "EmbedModel"]

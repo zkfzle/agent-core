@@ -111,10 +111,24 @@ class LoopGroup(BaseWorkFlow, Executable):
         self._start_nodes = nodes
         return self
 
+    def start_comp(self, start_comp_id: str) -> Self:
+        """Record start nodes even if caller uses BaseWorkFlow API directly."""
+        super().start_comp(start_comp_id)
+        if start_comp_id not in self._start_nodes:
+            self._start_nodes.append(start_comp_id)
+        return self
+
     def end_nodes(self, nodes: list[str]) -> Self:
         for node in nodes:
             self.end_comp(node)
         self._end_nodes = nodes
+        return self
+
+    def end_comp(self, end_comp_id: str) -> Self:
+        """Record end nodes even if caller uses BaseWorkFlow API directly."""
+        super().end_comp(end_comp_id)
+        if end_comp_id not in self._end_nodes:
+            self._end_nodes.append(end_comp_id)
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:

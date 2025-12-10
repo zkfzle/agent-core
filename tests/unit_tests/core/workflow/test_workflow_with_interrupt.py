@@ -981,8 +981,9 @@ async def test_simple_interactive_workflow_checkpointer():
     """
     graph : start->a->end
     """
+    workflow_id = "test_simple_interactive_workflow_checkpointer"
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow_checkpointer")))
+    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id=workflow_id)))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -1007,9 +1008,8 @@ async def test_simple_interactive_workflow_checkpointer():
                                              'payload': InteractionOutput.model_validate(
                                                  {'id': 'a', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
-    config = {"configurable": {"thread_id": f"{session_id}:test_simple_interactive_workflow_checkpointer"}}
-    # checkpoint = await default_inmemory_checkpointer.graph_store().aget(config)
-    # assert checkpoint is not None
+    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    assert state is not None
     first_time_workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
     assert first_time_workflow_store is not None
 
@@ -1023,8 +1023,8 @@ async def test_simple_interactive_workflow_checkpointer():
              'type': INTERACTION})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     assert start_node.runtime == 1
-    # checkpoint = await default_inmemory_checkpointer.graph_store().aget(config)
-    # assert checkpoint is not None
+    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    assert state is not None
     workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
     assert workflow_store is not None
     assert workflow_store is first_time_workflow_store
@@ -1034,7 +1034,7 @@ async def test_simple_interactive_workflow_checkpointer():
         result={'result': "any key"},
         state=WorkflowExecutionState.COMPLETED)
     # checkpoint will be deleted when completed
-    # checkpoint = await default_inmemory_checkpointer.graph_store().aget(config)
-    # assert checkpoint is None
+    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    assert state is None
     workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
     assert workflow_store is None

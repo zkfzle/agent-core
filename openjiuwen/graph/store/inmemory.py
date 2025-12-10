@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
-
+import copy
 from collections import defaultdict
 from typing import Dict, Optional
 
@@ -17,11 +17,11 @@ class InMemoryStore(Store):
         self.store_ck: defaultdict[str, Dict[str, GraphState]] = defaultdict(dict)
 
     async def get(self, session_id: str, ns: str) -> Optional[GraphState]:
-        return self.store_ck.get(session_id, {}).get(ns)
+        return copy.deepcopy(self.store_ck.get(session_id, {}).get(ns))
 
     async def save(self, session_id: str, ns: str, state: GraphState) -> None:
         # store the state object directly
-        self.store_ck[session_id][ns] = state
+        self.store_ck[session_id][ns] = copy.deepcopy(state)
 
     async def delete(self, session_id: str, ns: Optional[str] = None) -> None:
         if session_id not in self.store_ck:

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from typing import Dict, Optional, Union, Callable, Any, Coroutine, List
 
 from openjiuwen.graph.pregel.channels import Channel, ChannelManager
@@ -29,6 +30,8 @@ class PregelLoop:
         self.active_nodes: List[str] = []
         self.executor: TaskExecutorPool | None = None
         self._retry_pending_nodes: Dict[str, PendingNode] = {}
+        # loop subgraph version
+        self.node_version: Dict[str, int] = defaultdict(int)
 
     async def init(self) -> None:
         self.executor = TaskExecutorPool(self.config)
@@ -39,6 +42,8 @@ class PregelLoop:
         if self._is_resume(state):
             # Restore barrier channel
             self.manager.restore(state.channel_values)
+            # restore loop node version
+            self.node_version = state.node_version
             # Restore step
             self.step = state.step
             self.max_step = state.step + self.config[RECURSION_LIMIT]
@@ -78,7 +83,11 @@ class PregelLoop:
             # First in
             ready_nodes = self.manager.get_ready_nodes()
             # Active nodes
-            self.active_nodes = [n for n in ready_nodes if n in self.graph.nodes and n != END]
+            self.active_nodes = []
+            for n in ready_nodes:
+                if n in self.graph.nodes and n != END:
+                    self.active_nodes.append(n)
+                    self.node_version[n] += 1
 
         if not self.active_nodes:
             if self.manager.is_empty():
@@ -100,7 +109,7 @@ class PregelLoop:
 
         # 2. Execute tasks
         for node in tasks_to_run:
-            self.executor.submit(node)
+            self.executor.submit(node, self.node_version[node.name])
 
         try:
             await self.executor.wait_all()
@@ -136,9 +145,9 @@ class PregelLoop:
             step=self.step,
             channel_snapshot=self.manager.snapshot(),
             pending_buffer=pending_buffer,
-            pending_node=pending_node
+            pending_node=pending_node,
+            node_version=self.node_version
         )
-
         await self.saver.save(
             session_id=self.config[SESSION_ID],
             ns=self.config[NS],

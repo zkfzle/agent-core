@@ -23,9 +23,9 @@ class TaskExecutorPool:
         self.failed: Dict[str, PendingNode] = {}
         self.running_tasks: Dict[asyncio.Task, PregelNode] = {}
 
-    def submit(self, node: PregelNode) -> None:
+    def submit(self, node: PregelNode, version: int) -> None:
         """Submit node's execution task"""
-        async_task = asyncio.create_task(NodeTask(node, self.config).run())
+        async_task = asyncio.create_task(NodeTask(node, self.config, version).run())
         self.running_tasks[async_task] = node
 
     def _commit_failure(self, node: PregelNode, exc: Exception):
@@ -87,10 +87,11 @@ class TaskExecutorPool:
 
 
 class NodeTask:
-    def __init__(self, node: PregelNode, config: PregelConfig):
+    def __init__(self, node: PregelNode, config: PregelConfig, version: int):
         self.node = node
         self.config = config
         self.messages: List[Message] = []
+        self.version = version
 
     async def run(self) -> Union[List[Message], GraphInterrupt]:
         """
@@ -111,7 +112,7 @@ class NodeTask:
                 current_parent_ns = inner_config.get(PARENT_NS)
                 current_node_name = self.node.name
                 if current_parent_ns:
-                    new_full_ns = f"{current_parent_ns}:{current_node_name}"
+                    new_full_ns = f"{current_parent_ns}:{current_node_name}:{self.version}"
                     inner_config[NS] = new_full_ns
                     inner_config[PARENT_NS] = new_full_ns
                 kwargs['config'] = inner_config

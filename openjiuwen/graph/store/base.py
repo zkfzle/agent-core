@@ -30,6 +30,7 @@ class GraphState:
     channel_values: Dict[str, Any]
     pending_buffer: List[Message]
     pending_node: Dict[str, PendingNode]
+    node_version: Dict[str, int]
 
 
 class Store(ABC):
@@ -53,6 +54,8 @@ def create_state(
         *,
         pending_buffer: Optional[List[Message]] = None,
         pending_node: Optional[Dict[str, PendingNode]] = None,
+        node_version: Dict[str, int] = None
+
 ) -> GraphState:
     return GraphState(
         ns=ns,
@@ -60,6 +63,7 @@ def create_state(
         channel_values=channel_snapshot,
         pending_buffer=pending_buffer or [],
         pending_node=pending_node or {},
+        node_version=node_version or {},
     )
 
 

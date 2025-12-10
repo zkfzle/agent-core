@@ -19,13 +19,13 @@ async def task_a_slow(config):
     logger.debug(">>> Node A start")
     await asyncio.sleep(1)
     print(">>> Node A end")
-    assert config[NS] == 'root:A'
+    assert config[NS] == 'root:A:1'
 
 
 async def task_b_interrupt(config):
     logger.debug(">>> Node b_interrupt start")
     await asyncio.sleep(0.2)
-    assert config[NS] == 'root:B'
+    assert config[NS] == 'root:B:1'
     logger.debug(">>> Node b_interrupt end")
     raise GraphInterrupt(Interrupt("B_Interrupt"))
 
@@ -33,7 +33,7 @@ async def task_b_interrupt(config):
 async def task_b_value_error(config):
     logger.debug(">>> Node B value_error start")
     await asyncio.sleep(0.2)
-    assert config[NS] == 'root:B'
+    assert config[NS] == 'root:B:1'
     logger.debug(">>> Node B value_error end")
     raise ValueError("Simulated Runtime Error in B")
 
@@ -41,7 +41,7 @@ async def task_b_value_error(config):
 async def task_c_fast(config):
     # Fast task
     logger.debug(">>> Node C start")
-    assert config[NS] == 'root:C'
+    assert config[NS] == 'root:C:1'
     logger.debug(">>> Node C end")
     return
 
@@ -69,9 +69,9 @@ class TestTaskExecutorPool:
 
         # Execution
         pool = TaskExecutorPool(root_config)
-        pool.submit(node_a)
-        pool.submit(node_b)
-        pool.submit(node_c)
+        pool.submit(node_a, 1)
+        pool.submit(node_b, 1)
+        pool.submit(node_c, 1)
 
         # Verify B's runtime exception is propagated
         with pytest.raises(ValueError, match="Simulated Runtime Error in B"):
@@ -114,9 +114,9 @@ class TestTaskExecutorPool:
 
         # Execution
         pool = TaskExecutorPool(root_config)
-        pool.submit(node_a)
-        pool.submit(node_b)
-        pool.submit(node_c)
+        pool.submit(node_a, 1)
+        pool.submit(node_b, 1)
+        pool.submit(node_c, 1)
 
         # Verify GraphInterrupt is propagated
         with pytest.raises(GraphInterrupt):

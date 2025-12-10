@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
 # Copyright c) Huawei Technologies Co. Ltd. 2025-2025
 
 import asyncio
@@ -524,6 +522,155 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
 
 
 @pytest.fixture
+def nested_loop_with_inner_parallel_builder():
+    """
+    start -> loop -> end
+    subgraph loop:
+        start1 -> body -> condition -> end2
+                  ↖______↑
+    subgraph body:
+    start3 -> [a|b|c] -> end3
+    """
+    execution_trace = []
+
+    def outer_logger(loop):
+        execution_trace.append({
+            "step": loop.step,
+            "active_nodes": list(loop.active_nodes),
+            "ns": loop.config.get("ns")
+        })
+        print(f"ns: {loop.config[NS]} Step {loop.step}, Active: {list(loop.active_nodes)}")
+
+    def fn_pass(config=None):
+        return "pass"
+
+    async def fn_a_interrupt(config):
+        if not hasattr(fn_a_interrupt, "call_count"):
+            fn_a_interrupt.call_count = 0
+        fn_a_interrupt.call_count += 1
+        await asyncio.sleep(0.1)
+
+        # Calls 1, 2: interrupt
+        if fn_a_interrupt.call_count <= 2:
+            print("a interrupt", fn_a_interrupt.call_count)
+            raise GraphInterrupt(Interrupt("a_interrupt"))
+        # Calls 3, 5, 7...: success
+        elif fn_a_interrupt.call_count % 2 == 1:
+            print("a done")
+            return "a_done"
+        # Calls 4, 6, 8...: interrupt
+        else:
+            print("a interrupt", fn_a_interrupt.call_count)
+            raise GraphInterrupt(Interrupt("a_interrupt"))
+
+    async def fn_b_interrupt(config):
+        if not hasattr(fn_b_interrupt, "call_count"):
+            fn_b_interrupt.call_count = 0
+        fn_b_interrupt.call_count += 1
+        await asyncio.sleep(0.1)
+
+        # Calls 1, 2: interrupt
+        if fn_b_interrupt.call_count <= 2:
+            print("b interrupt", fn_b_interrupt.call_count)
+            raise GraphInterrupt(Interrupt("b_interrupt"))
+        # Calls 3, 5, 7...: success
+        elif fn_b_interrupt.call_count % 2 == 1:
+            print("b done")
+            return "b_done"
+        # Calls 4, 6, 8...: interrupt
+        else:
+            print("b interrupt", fn_b_interrupt.call_count)
+            raise GraphInterrupt(Interrupt("b_interrupt"))
+
+    def fn_c_normal(config):
+        print("c done")
+        return "c_done"
+
+    def build_body_subgraph():
+        builder = PregelGraphBuilder()
+        builder.add_node("start3", fn_pass)
+        builder.add_node("a", fn_a_interrupt)
+        builder.add_node("b", fn_b_interrupt)
+        builder.add_node("c", fn_c_normal)
+        builder.add_node("end3", fn_pass)
+
+        builder.add_edge("start3", ("a", "b", "c"))
+        builder.add_edge(("a", "b", "c"), "end3")
+        builder.add_edge(START, "start3")
+        builder.add_edge("end3", END)
+        return builder.build(
+            store=default_inmemory_checkpointer.graph_store(),
+            after_tick=outer_logger
+        )
+
+    class RunBody:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, state, config):
+            print(f"[{config.get('ns')}] Body Subgraph Invoked.")
+            return await self.app.ainvoke(config, durability="exit")
+
+    # --- loop: start1 -> body -> condition -> end2 ---
+    def build_loop_subgraph():
+        body_app = build_body_subgraph()
+
+        # condition
+        def fn_condition():
+            if not hasattr(fn_condition, "count"):
+                fn_condition.count = 0
+            fn_condition.count += 1
+            print("condition check", fn_condition.count)
+            if fn_condition.count < 4:
+                return "body"
+            else:
+                return "end1"
+
+        builder = PregelGraphBuilder()
+        builder.add_node("start1", fn_pass)
+        builder.add_node("body", RunBody(body_app))
+        builder.add_node("condition", fn_condition)
+        builder.add_node("end1", fn_pass)
+
+        builder.add_edge("start1", "body")
+        builder.add_edge("body", "condition")
+        builder.add_branch("condition", fn_condition)
+        builder.add_edge(START, "start1")
+        builder.add_edge("end1", END)
+
+        return builder.build(
+            store=default_inmemory_checkpointer.graph_store(),
+            after_tick=outer_logger
+        )
+
+    class RunLoop:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, state, config):
+            print(f"[{config.get('ns')}] Loop Subgraph Invoked.")
+            return await self.app.ainvoke(config, durability="exit")
+
+    loop_app = build_loop_subgraph()
+
+    builder = PregelGraphBuilder()
+    builder.add_node("start", fn_pass)
+    builder.add_node("loop", RunLoop(loop_app))
+    builder.add_node("end", fn_pass)
+
+    builder.add_edge("start", "loop")
+    builder.add_edge("loop", "end")
+    builder.add_edge(START, "start")
+    builder.add_edge("end", END)
+
+    graph = builder.build(
+        store=default_inmemory_checkpointer.graph_store(),
+        after_tick=outer_logger
+    )
+    return graph, execution_trace
+
+
+@pytest.fixture
 def linear_nested_subgraph_setup():
     async def fn_a1_fail(config):
         pass
@@ -831,7 +978,7 @@ class TestPregelV2:
         assert checkpoint is not None
         assert "a" in checkpoint.pending_node
         assert "b" in checkpoint.pending_node
-        checkpoint_inner = await graph.store.get(config.get("session_id"), config.get('ns') + ":a")
+        checkpoint_inner = await graph.store.get(config.get("session_id"), config.get('ns') + ":a:1")
         assert "a1" in checkpoint_inner.pending_node
         assert "a2" not in checkpoint_inner.pending_node
         assert "a3" not in checkpoint_inner.pending_node
@@ -847,7 +994,7 @@ class TestPregelV2:
         assert checkpoint is not None
         assert "a" in checkpoint.pending_node
         assert "b" in checkpoint.pending_node
-        checkpoint_inner = await graph.store.get(config.get("session_id"), config.get('ns') + ":a")
+        checkpoint_inner = await graph.store.get(config.get("session_id"), config.get('ns') + ":a:1")
         assert "a1" in checkpoint_inner.pending_node
         assert "a2" not in checkpoint_inner.pending_node
         assert "a3" not in checkpoint_inner.pending_node
@@ -862,4 +1009,79 @@ class TestPregelV2:
         assert "a" in flat
         assert "b" in flat
 
+    @pytest.mark.asyncio
+    async def test_nested_loop_with_inner_parallel(self, nested_loop_with_inner_parallel_builder):
+        graph, execution_trace = nested_loop_with_inner_parallel_builder
+        config = PregelConfig(session_id="test_loop_interrupt", ns="start-loop-end")
 
+        print("\n=============== Invoke 1 (Interrupt Failure, loop iteration 1) ===============")
+        result = await graph.ainvoke(config)
+        assert result["__interrupt__"] is not None
+
+        outer_state = await graph.store.get(config.get("session_id"), config.get("ns"))
+        assert outer_state is not None
+        assert "loop" in outer_state.pending_node
+
+        # loop checkpoint
+        loop_state = await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1")
+        assert "body" in loop_state.pending_node
+        # body checkpoint
+        body_state = await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1:body:1")
+        assert "a" in body_state.pending_node
+        assert "b" in body_state.pending_node
+        assert body_state.pending_buffer[0].sender == "c"
+
+        print("\n=============== Invoke 2 (Resume, a/b Interrupt Again, loop iteration 1) ===============")
+        execution_trace.clear()
+        result = await graph.ainvoke(config)
+        assert result["__interrupt__"] is not None
+
+        # 确认 trace 没有重复执行 c
+        flat = [n for trace in execution_trace for n in trace['active_nodes']]
+        assert "c" not in flat
+
+        outer_state = await graph.store.get(config.get("session_id"), config.get("ns"))
+        assert outer_state is not None
+        assert "loop" in outer_state.pending_node
+
+        # loop checkpoint
+        loop_state = await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1")
+        assert "body" in loop_state.pending_node
+        # body checkpoint
+        body_state = await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1:body:1")
+        assert "a" in body_state.pending_node
+        assert "b" in body_state.pending_node
+        assert body_state.pending_buffer[0].sender == "c"
+
+        print("\n=============== Invoke 3 (Resume loop iteration 2 a/b Interrupt) ===============")
+        execution_trace.clear()
+        result = await graph.ainvoke(config)
+        assert "__interrupt__" in result
+
+        flat = [n for trace in execution_trace for n in trace['active_nodes']]
+        # ab resume
+        assert 'a' in flat
+        assert 'b' in flat
+        # next loop
+        assert 'start3' in flat
+        # body checkpoint
+        body_state = await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1:body:2")
+        assert "a" in body_state.pending_node
+        assert "b" in body_state.pending_node
+        assert body_state.pending_buffer[0].sender == "c"
+
+        print("\n=============== Invoke 4 (Resume loop iteration 3 condition to end ===============")
+        execution_trace.clear()
+        result = await graph.ainvoke(config)
+        assert "__interrupt__" not in result
+
+        flat = [n for trace in execution_trace for n in trace['active_nodes']]
+        assert 'end3' in flat
+        assert 'end1' in flat
+        assert 'end' in flat
+
+        await graph.store.delete(config.get("session_id"), config.get("ns"))
+        assert await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1:body:2") is None
+        assert await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1:body:1") is None
+        assert await graph.store.get(config.get("session_id"), config.get("ns") + ":loop:1") is None
+        assert await graph.store.get(config.get("session_id"), config.get("ns")) is None

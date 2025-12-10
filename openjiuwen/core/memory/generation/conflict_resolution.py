@@ -60,6 +60,15 @@ class ConflictResolution:
         Returns:
             list[dict]: A list of dictionaries representing the conflict resolution results.
         """
+        if len(old_messages) == 0:
+            logger.debug("No old messages to check conflict, ADD new message.")
+            return [
+                {
+                    "id": "0",
+                    "text": new_message,
+                    "event": ConflictType.ADD.value,
+                }
+            ]
         model_name, model_client = base_chat_model
         messages = _get_message(old_messages, new_message)
         logger.debug(f"Start checking conflict, input messages: {messages}")

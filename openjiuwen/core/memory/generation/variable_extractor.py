@@ -61,10 +61,12 @@ class ComprehensionExtractor:
         for msg in messages:
             conversation += f"{msg.role}: {msg.content}\n"
 
-        user_message = f"基于以下对话内容：<对话>{conversation}</对话>"
         # Construct prompts
+        user_message = ""
         if history_summary.content != "":
             user_message += f"历史摘要如下<摘要>{history_summary.content}</摘要>"
+        user_message += f"基于以下对话内容提取变量：<对话>{conversation}</对话>"
+
         sys_message = EXTRACT_VARIABLES_PROMPT.format(
             variables=variables_dict["variables_description"],
             variables_output_format=variables_output_format

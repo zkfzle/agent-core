@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
@@ -42,7 +42,7 @@ class UserProfileExtractor:
             base_chat_model: Tuple[str, BaseModelClient],
             user_define: Dict[str, str] = None,
             retries: int = 3
-    ) -> Dict[str, str]:
+    ) -> Dict[str, Any]:
         sym_prompt = _get_message(user_define)
         model_input = Categorizer.get_model_input(
             messages,

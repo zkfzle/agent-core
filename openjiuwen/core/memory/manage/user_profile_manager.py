@@ -40,6 +40,7 @@ class UserProfileManager(BaseMemoryManager):
             if not conf_mem or conf_mem == "":
                 continue
             if conf_id == "-1" and conf_event == ConflictType.ADD.value:
+                logger.debug(f"add conflict info: {conflict}")
                 mem_id = await self._add_user_profile_memory(user_id=memory.user_id,
                                                              group_id=memory.group_id,
                                                              profile_type=memory.profile_type,
@@ -159,9 +160,6 @@ class UserProfileManager(BaseMemoryManager):
     async def _add_vector_user_profile_memory(
             self, user_id: str, group_id: str, memory_id: str,
             mem: str, mem_type: str = MemoryType.USER_PROFILE.value):
-        dimension = len(mem[0])
-        if dimension == 0:
-            raise ValueError('dimension must not be zero')
         if self.semantic_recall:
             table_name = generate_idx_name(user_id, group_id, mem_type)
             await self.semantic_recall.add_docs([(memory_id, mem)], table_name)

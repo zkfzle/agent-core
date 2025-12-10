@@ -470,14 +470,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(final_chunk2, "步骤2应该有 workflow_final chunk")
 
         payload2 = final_chunk2.payload
-        self.assertIsInstance(payload2, dict, "步骤2 payload 应该是字典")
-        self.assertEqual(
-            payload2['result_type'], 'answer', "步骤2应该返回 answer 类型"
-        )
-        self.assertEqual(
-            payload2['output'].state.value, 'COMPLETED', "步骤2工作流应该完成"
-        )
-        response_content = payload2['output'].result.get('responseContent', '')
+        response_content = payload2.get('responseContent', '')
         self.assertIn('200', response_content, "步骤2应该包含转账金额")
         print(f"✅ 步骤2成功：转账工作流完成，返回: {response_content}")
 
@@ -660,14 +653,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNotNone(final_chunk3, "步骤3应该有 workflow_final chunk")
         payload3 = final_chunk3.payload
-        self.assertEqual(
-            payload3['result_type'], 'answer', "步骤3应该返回 answer 类型"
-        )
-        self.assertEqual(
-            payload3['output'].state.value, 'COMPLETED',
-            "步骤3 transfer 工作流应该完成"
-        )
-        response_content3 = payload3['output'].result.get('responseContent', '')
+        response_content3 = payload3.get('responseContent', '')
         self.assertIn('100', response_content3, "步骤3应该包含转账金额")
         print(f"✅ 步骤3成功：transfer_agent 恢复并完成，返回: {response_content3}")
 
@@ -704,14 +690,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNotNone(final_chunk4, "步骤4应该有 workflow_final chunk")
         payload4 = final_chunk4.payload
-        self.assertEqual(
-            payload4['result_type'], 'answer', "步骤4应该返回 answer 类型"
-        )
-        self.assertEqual(
-            payload4['output'].state.value, 'COMPLETED',
-            "步骤4 invest 工作流应该完成"
-        )
-        response_content4 = payload4['output'].result.get('responseContent', '')
+        response_content4 = payload4.get('responseContent', '')
         self.assertIn('稳健', response_content4, "步骤4应该包含理财产品名称")
         print(f"✅ 步骤4成功：invest_agent 恢复并完成，返回: {response_content4}")
 

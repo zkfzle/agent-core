@@ -130,7 +130,7 @@ class LLMController(BaseController):
         workflow_id: Optional[str],
         runtime: Runtime
     ):
-        """Post-processing after task completion: write stream, add history, clear state
+        """Post-processing after task completion: add history, clear state
         
         Args:
             task: Completed task
@@ -138,9 +138,6 @@ class LLMController(BaseController):
             workflow_id: Workflow ID (if applicable)
             runtime: Runtime context
         """
-        # Write task completion stream data
-        await self._write_message_stream_data(output, runtime)
-
         # Add tool call result to history
         if output and len(output) > 0:
             if output[0].type in ("plugin_final", "workflow_final"):

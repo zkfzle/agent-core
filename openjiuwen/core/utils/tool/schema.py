@@ -24,3 +24,4 @@ class ToolCall(BaseModel):
     type: str
     name: str
     arguments: str
+    index: Optional[int] = None

@@ -27,12 +27,6 @@ class RequestChatModel(BaseModelClient):
 
     def __init__(self, api_key: str, api_base: str, max_retries: int = 3, timeout: int = 60, **kwargs):
         super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout, **kwargs)
-        self._stream_state = {
-            'current_tool_call_id': '',
-            'current_tool_name': '',
-            'current_tool_args': '',
-            'tool_calls': []
-        }
         self._usage = dict()
         self._setup_ssl_adapter()
 
@@ -111,7 +105,6 @@ class RequestChatModel(BaseModelClient):
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[
         AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
-        self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
@@ -146,7 +139,6 @@ class RequestChatModel(BaseModelClient):
                        temperature: Optional[float] = None, top_p: Optional[float] = None,
                        **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
-        self._reset_stream_state()
 
         messages = self.sanitize_tool_calls(messages)
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
@@ -203,6 +195,7 @@ class RequestChatModel(BaseModelClient):
                 cleaned.append({
                     "id": tc.get("id", ""),
                     "type": "function",
+                    "index": tc.get("index"),
                     "function": {
                         "name": func.get("name", ""),
                         "arguments": func.get("arguments", "")
@@ -243,39 +236,15 @@ class RequestChatModel(BaseModelClient):
             )
         )
 
-    def _reset_stream_state(self):
-        """Reset stream processing state"""
-        self._stream_state = {
-            'current_tool_call_id': '',
-            'current_tool_name': '',
-            'current_tool_args': '',
-            'tool_calls': []
-        }
-
     def _parse_stream_line(self, line: bytes) -> Optional[AIMessageChunk]:
         if line.startswith(b"data: "):
             line = line[6:]
 
         if line.strip() == b"[DONE]":
-            # Handle stream end, return final tool call info
-            tool_calls = []
-            if (self._stream_state['current_tool_name'] and
-                    self._stream_state['current_tool_args']):
-                tool_call = ToolCall(
-                    id=self._stream_state['current_tool_call_id'],
-                    type="function_call",
-                    name=self._stream_state['current_tool_name'],
-                    arguments=self._stream_state['current_tool_args']
-                )
-                tool_calls.append(tool_call)
-
-            # Add previously completed tool calls
-            tool_calls.extend(self._stream_state['tool_calls'])
-
             chunk = AIMessageChunk(
                 content="",
                 reason_content="",
-                tool_calls=tool_calls,
+                tool_calls=[],
                 usage_metadata=UsageMetadata(**self._usage)
             )
             return chunk
@@ -300,18 +269,16 @@ class RequestChatModel(BaseModelClient):
                     index = tool_call_delta.get("index", 0)
                     tool_call_id = tool_call_delta.get("id", "")
                     function_delta = tool_call_delta.get("function", {})
+                    name_delta = function_delta.get("name", "")
+                    args_delta = function_delta.get("arguments", "")
 
-                    if index == 0:
-                        if tool_call_id:
-                            self._stream_state['current_tool_call_id'] = tool_call_id
-
-                        name_delta = function_delta.get("name", "")
-                        if name_delta:
-                            self._stream_state['current_tool_name'] += name_delta
-
-                        args_delta = function_delta.get("arguments", "")
-                        if args_delta:
-                            self._stream_state['current_tool_args'] += args_delta
+                    tool_calls.append(ToolCall(
+                        id=tool_call_id or "",
+                        type="function",
+                        name=name_delta,
+                        arguments=args_delta,
+                        index=index
+                    ))
 
             if not content and not reasoning_content and not tool_calls:
                 return None
@@ -338,7 +305,8 @@ class RequestChatModel(BaseModelClient):
                 id=tool_call.get("id", ""),
                 type=tool_call.get("type", ""),
                 name=tool_call.get("function", {}).get("name", ""),
-                arguments=tool_call.get("function", {}).get("arguments", "")
+                arguments=tool_call.get("function", {}).get("arguments", ""),
+                index=tool_call.get("index"),
             ))
         return result
 
@@ -470,14 +438,15 @@ class OpenAIChatModel(BaseModelClient):
         # Parse tool calls
         tool_calls = []
         if hasattr(message, 'tool_calls') and message.tool_calls:
-            for tc in message.tool_calls:
+            for idx, tc in enumerate(message.tool_calls):
                 function_name = getattr(getattr(tc, 'function', None), 'name', None) or ""
                 function_arguments = getattr(getattr(tc, 'function', None), 'arguments', None) or ""
                 tool_call = ToolCall(
                     id=getattr(tc, 'id', '') or "",
                     type="function",
                     name=function_name,
-                    arguments=function_arguments
+                    arguments=function_arguments,
+                    index=getattr(tc, 'index', idx)
                 )
                 tool_calls.append(tool_call)
 
@@ -511,13 +480,16 @@ class OpenAIChatModel(BaseModelClient):
         if hasattr(delta, 'tool_calls') and delta.tool_calls:
             for tc_delta in delta.tool_calls:
                 if hasattr(tc_delta, 'function') and tc_delta.function:
+                    index = getattr(tc_delta, 'index', None)
+                    
                     function_name = getattr(tc_delta.function, 'name', None) or ""
                     function_arguments = getattr(tc_delta.function, 'arguments', None) or ""
                     tool_call = ToolCall(
                         id=getattr(tc_delta, 'id', '') or "",
                         type="function",
                         name=function_name,
-                        arguments=function_arguments
+                        arguments=function_arguments,
+                        index=index
                     )
                     tool_calls.append(tool_call)
 

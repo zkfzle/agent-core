@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Dict
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.utils.tool.constant import Input, Output
@@ -16,7 +16,7 @@ class ToolServerConfig(BaseModel):
     server_name: str
     server_path: str
     client_type: str = 'sse'
-    params: Dict[str, Any] = Field(default_factory=ConfigDict)
+    params: Dict[str, Any] = Field(default_factory=dict)
 
 
 NO_TIMEOUT = -1
@@ -214,23 +214,31 @@ class SseClient(McpToolClient):
 class StdioClient(McpToolClient):
     """Stdio transport based MCP client"""
 
-    def __init__(self, server_path: str, name: str, params: Dict):
+    def __init__(self, server_path: str, name: str, params: Dict = None):
         super().__init__(server_path)
         self._name = name
         self._client = None
         self._session = None
         self._read = None
         self._write = None
-        self._params = params
+        self._params = params if params else {}
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Establish Stdio connection to the tool server"""
         try:
             # server_path should be StdioServerParameters for stdio client
-            if not isinstance(self._params, StdioServerParameters):
-                raise ValueError("StdioClient requires StdioServerParameters as server_path")
+            valid_handlers = {"strict", "ignore", "replace"}
+            handler = self._params.get('encoding_error_handler', 'strict')
+            if handler not in valid_handlers:
+                handler = 'strict'
+            params = StdioServerParameters(command=self._params.get('command'),
+                                           args=self._params.get('args'),
+                                           env=self._params.get('env'),
+                                           cwd=self._params.get('cwd'),
+                                           encoding_error_handler=handler
+                                           )
 
-            self._client = stdio_client(self._params)
+            self._client = stdio_client(params)
             self._read, self._write = await self._client.__aenter__()
             self._session = ClientSession(self._read, self._write, sampling_callback=None)
             await self._session.__aenter__()

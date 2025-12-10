@@ -192,15 +192,23 @@ class BaseWorkFlow:
             self._drawable.set_end_node(end_comp_id)
         return self
 
-    def add_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
+    def add_connection(self, src_comp_id: Union[str, list[str]], target_comp_id: str) -> Self:
         self._graph.add_edge(src_comp_id, target_comp_id)
-        if src_comp_id not in self._workflow_spec.edges:
-            self._workflow_spec.edges[src_comp_id] = [target_comp_id]
+        if isinstance(src_comp_id, list):
+            for source_id in src_comp_id:
+                if source_id not in self._workflow_spec.edges:
+                    self._workflow_spec.edges[source_id] = [target_comp_id]
+                else:
+                    self._workflow_spec.edges[source_id].append(target_comp_id)
+                if self._drawable:
+                    self._drawable.add_edge(source_id, target_comp_id)
         else:
-            self._workflow_spec.edges[src_comp_id].append(target_comp_id)
-
-        if self._drawable:
-            self._drawable.add_edge(src_comp_id, target_comp_id)
+            if src_comp_id not in self._workflow_spec.edges:
+                self._workflow_spec.edges[src_comp_id] = [target_comp_id]
+            else:
+                self._workflow_spec.edges[src_comp_id].append(target_comp_id)
+            if self._drawable:
+                self._drawable.add_edge(src_comp_id, target_comp_id)
         return self
 
     def add_stream_connection(self, src_comp_id: str, target_comp_id: str) -> Self:

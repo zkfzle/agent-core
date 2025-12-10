@@ -150,40 +150,37 @@ class ToolMgr(AbstractManager[Tool]):
                     results.append(False)
                     logger.exception(f"Register MCP server {cfg.server_name} failed: already added")
                     continue
-                await self._connect_and_register_server(cfg)
-                results.append(True)
+                result = await self._connect_and_register_server(cfg)
+                results.append(result)
             except Exception as e:
                 logger.exception(f"Register MCP server {cfg.server_name} failed: {e}")
                 results.append(False)
         return results
 
-    async def _connect_and_register_server(self, config: ToolServerConfig):
-        try:
-            client = self._create_client(config)
-            connected = await client.connect()
-            if not connected:
-                logger.error(f"Failed to connect to MCP server: {config.server_name}")
-                return
+    async def _connect_and_register_server(self, config: ToolServerConfig) -> bool:
+        client = self._create_client(config)
+        connected = await client.connect()
+        if not connected:
+            logger.error(f"Failed to connect to MCP server: {config.server_name}")
+            return connected
 
-            self._mcp_clients[config.server_name] = client
-            self._server_configs[config.server_name] = config
+        self._mcp_clients[config.server_name] = client
+        self._server_configs[config.server_name] = config
 
-            tools = await client.list_tools()
-            self._server_tool_infos[config.server_name] = tools
+        tools = await client.list_tools()
+        self._server_tool_infos[config.server_name] = tools
 
-            for tool_info in tools:
-                tool_id = f'{config.server_name}.{tool_info.name}'
-                mcp_tool = MCPTool(
-                    mcp_client=client,
-                    tool_name=tool_info.name,
-                    server_name=config.server_name,
-                )
-                # 注册到 ToolMgr
-                self.add_tool(tool_id, mcp_tool)
-                logger.info(f"Registered MCP tool: {tool_id}")
-
-        except Exception as e:
-            logger.exception(f"Error registering MCP server {config.server_name}: {e}")
+        for tool_info in tools:
+            tool_id = f'{config.server_name}.{tool_info.name}'
+            mcp_tool = MCPTool(
+                mcp_client=client,
+                tool_name=tool_info.name,
+                server_name=config.server_name,
+            )
+            # 注册到 ToolMgr
+            self.add_tool(tool_id, mcp_tool)
+            logger.info(f"Registered MCP tool: {tool_id}")
+        return True
 
     def _create_client(self, config: ToolServerConfig) -> McpToolClient:
         if config.client_type == "sse":

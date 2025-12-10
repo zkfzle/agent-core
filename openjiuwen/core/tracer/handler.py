@@ -19,6 +19,7 @@ from openjiuwen.core.tracer.data import InvokeType, NodeStatus
 from openjiuwen.core.tracer.span import Span, TraceAgentSpan, TraceWorkflowSpan
 
 from openjiuwen.core.tracer.span import SpanManager
+from openjiuwen.graph.pregel.constants import GraphInterrupt
 
 
 class TracerHandlerName(Enum):
@@ -286,6 +287,8 @@ class TraceWorkflowHandler(TraceBaseHandler):
         if exception is not None:
             if isinstance(exception, JiuWenBaseException):
                 span.error = {"error_code": exception.error_code, "message": exception.message}
+            elif isinstance(exception, GraphInterrupt):
+                span.error = {}
             else:
                 span.error = {"error_code": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                               "message": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(

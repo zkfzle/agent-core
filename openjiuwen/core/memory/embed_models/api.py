@@ -5,6 +5,7 @@ from typing import Any
 import aiohttp
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.embed_models.base import EmbedModel
+from openjiuwen.core.common.security.url_utils import UrlUtils
 
 
 class APIEmbedModel(EmbedModel):
@@ -30,7 +31,7 @@ class APIEmbedModel(EmbedModel):
         self.api_key = api_key
         self.api_url = base_url
         self.timeout = timeout
-        self.max_retries = max_retries
+        self.max_attempts = max_retries
         self._headers = {"Content-Type": "application/json"}
         if self.api_key:
             self._headers["Authorization"] = f"Bearer {self.api_key}"
@@ -38,13 +39,15 @@ class APIEmbedModel(EmbedModel):
             self._headers.update(extra_headers)
         self._session: aiohttp.ClientSession | None = None
 
-    async def _ensure_session(self) -> aiohttp.ClientSession:
+    async def _fetch_session(self) -> aiohttp.ClientSession:
         """Return an active aiohttp session, recreate on demand."""
         session = getattr(self, "_session", None)
+        proxy_url = UrlUtils.get_global_proxy_url(self.api_url)
         if not session or session.closed:
             self._session = aiohttp.ClientSession(
                 timeout=aiohttp.ClientTimeout(total=self.timeout),
                 headers=self._headers,
+                proxy=proxy_url
             )
         return self._session
 
@@ -56,9 +59,9 @@ class APIEmbedModel(EmbedModel):
 
     async def _get_embeddings(self, text: str | list[str], **kwargs):
         payload = {"model": self.model_name, "input": text, **kwargs}
-        for attempt in range(self.max_retries):
+        for attempt in range(self.max_attempts):
             try:
-                session = await self._ensure_session()
+                session = await self._fetch_session()
                 async with session.post(self.api_url, json=payload) as resp:
                     result = await resp.json()
                 if "embedding" in result:
@@ -72,9 +75,9 @@ class APIEmbedModel(EmbedModel):
 
             except Exception as e:
                 logger.warning(
-                    f"Embedding request failed (attempt {attempt+1}/{self.max_retries}): {e}"
+                    f"Embedding request failed (attempt {attempt+1}/{self.max_attempts}): {e}"
                 )
-                if attempt == self.max_retries - 1:
+                if attempt == self.max_attempts - 1:
                     raise
 
         raise RuntimeError("Unreachable")

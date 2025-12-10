@@ -35,7 +35,7 @@ class ContextImpl(Context):
         messages = history.get_messages(num, tags=tags)
         return messages
 
-    def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
+    def get_latest_message(self, role: str = None) -> Optional[BaseMessage]:
         history = self._accessor.history(self._owner)
         return history.get_latest_message(role=role)
 

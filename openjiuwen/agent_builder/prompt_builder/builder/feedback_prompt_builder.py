@@ -17,9 +17,7 @@ import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
 
 INSERT_STR: str = "[用户要插入的位置]"
-MODE_GENERAL: str = "general"
-MODE_SELECT: str = "select"
-MODE_INSERT: str = "insert"
+
 JSON_STRING_MAX_LENGTH: int = 10000
 
 
@@ -30,7 +28,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
     def build(self,
               prompt: str | Template,
               feedback: str,
-              mode: Literal[MODE_GENERAL, MODE_INSERT, MODE_SELECT] = MODE_GENERAL,
+              mode: Literal["general", "insert", "select"] = "general",
               start_pos: Optional[int] = None,
               end_pos: Optional[int] = None,
               ) -> Optional[str]:
@@ -45,7 +43,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
     def stream_build(self,
                      prompt: str | Template,
                      feedback: str,
-                     mode: Literal[MODE_GENERAL, MODE_INSERT, MODE_SELECT] = MODE_GENERAL,
+                     mode: Literal["general", "insert", "select"] = "general",
                      start_pos: Optional[int] = None,
                      end_pos: Optional[int] = None,
                      ) -> Generator:
@@ -59,17 +57,17 @@ class FeedbackPromptBuilder(BasePromptBuilder):
     def _format_feedback_template(self,
                               prompt: str,
                               feedback: str,
-                              mode: Literal[MODE_GENERAL, MODE_INSERT, MODE_SELECT] = MODE_GENERAL,
+                              mode: Literal["general", "insert", "select"] = "general",
                               start_pos: Optional[int] = None,
                               end_pos: Optional[int] = None,
                               ) -> List[BaseMessage]:
 
-        if mode == MODE_INSERT:
+        if mode == "insert":
             return self._format_feedback_template_insert(prompt, feedback, start_pos)
-        elif mode == MODE_SELECT:
+        elif mode == "select":
             return self._format_feedback_template_select(prompt, feedback, start_pos, end_pos)
         else:
-            if mode != MODE_GENERAL:
+            if mode != "general":
                 logger.warning(f"Invalid mode: {mode}, using `general` instead")
             return self._format_feedback_template_general(prompt, feedback)
 
@@ -90,7 +88,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                                          feedback: str,
                                          start_pos: Optional[int] = None,
                                          ) -> List[BaseMessage]:
-        self._is_index_within_bounds(prompt, MODE_INSERT, start_pos)
+        self._is_index_within_bounds(prompt, "insert", start_pos)
         optimized_feedback = self._is_feedback_valid(prompt, feedback)
         tagged_prompt = self._insert_sting(prompt, start_pos)
         feedback_insert_template = TEMPLATE.PROMPT_FEEDBACK_INSERT_TEMPLATE
@@ -107,7 +105,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                                          start_pos: Optional[int] = None,
                                          end_pos: Optional[int] = None,
                                          ) -> List[BaseMessage]:
-        self._is_index_within_bounds(prompt, MODE_SELECT, start_pos, end_pos)
+        self._is_index_within_bounds(prompt, "select", start_pos, end_pos)
         optimized_feedback = self._is_feedback_valid(prompt, feedback)
         prompt_to_modify = prompt[start_pos:end_pos]
         feedback_select_template = TEMPLATE.PROMPT_FEEDBACK_SELECT_TEMPLATE
@@ -147,7 +145,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
         return optimized_feedback.strip()
 
     def _is_index_within_bounds(self, prompt: str, mode, start_pos: int, end_pos: Optional[int] = None) -> bool:
-        if mode == MODE_SELECT:
+        if mode == "select":
             if not isinstance(start_pos, int) or not isinstance(end_pos, int):
                 raise JiuWenBaseException(
                     StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,
@@ -166,7 +164,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                               f"0 <= start_pos < end_pos <= len(prompt)."
                 )
             )
-        elif mode == MODE_INSERT:
+        elif mode == "insert":
             if not isinstance(start_pos, int):
                 raise JiuWenBaseException(
                     StatusCode.AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR.code,

@@ -37,7 +37,7 @@ class ContextOwner(BaseModel):
 class Context(ABC):
     @abstractmethod
     def batch_add_messages(self,
-                           messages: Union[List[Dict], List[BaseMessage]],
+                           messages: List[BaseMessage],
                            tags: Optional[Dict[str, str]] = None):
         pass
 
@@ -55,6 +55,6 @@ class Context(ABC):
 
     @abstractmethod
     def get_latest_message(self,
-                           role: str = None) -> Union[BaseMessage, None]:
+                           role: str = None) -> Optional[BaseMessage]:
         pass
 

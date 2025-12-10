@@ -3,6 +3,8 @@ from typing import AsyncIterator
 import pytest
 from sphinx.addnodes import index
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.loop_comp import LoopGroup, LoopComponent
@@ -18,6 +20,30 @@ from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowC
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode
 
 pytestmark = pytest.mark.asyncio
+
+
+async def test_loop_number_exceeds_max_limit():
+    flow = Workflow()
+    flow.set_start_comp("start", Start(), inputs_schema={"input_num": "${num}"})
+    flow.set_end_comp("end", End(), inputs_schema={"end_out": "${loop}"})
+
+    loop_group = LoopGroup()
+    loop_group.add_workflow_comp("loop_1", AddTenNode("loop_1"), inputs_schema={"source": "${loop.index}"})
+    loop_group.start_nodes(["loop_1"])
+    loop_group.end_nodes(["loop_1"])
+
+    loop_component = LoopComponent(loop_group, output_schema={"l_out": "${loop_1.result}"})
+    flow.add_workflow_comp("loop", loop_component,
+                           inputs_schema={"loop_type": "number", "loop_number": 1001})
+
+    flow.add_connection("start", "loop")
+    flow.add_connection("loop", "end")
+
+    with pytest.raises(JiuWenBaseException) as exc_info:
+        await flow.invoke(inputs={"num": 0}, runtime=WorkflowRuntime())
+
+    assert exc_info.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
+    assert "exceeds maximum limit" in exc_info.value.message
 
 class CustomStream(ComponentExecutable, WorkflowComponent):
     def __init__(self):

@@ -27,6 +27,7 @@ from openjiuwen.core.graph.executable import Output, Input, Executable
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
+from openjiuwen.core.runtime.constants import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
@@ -323,6 +324,22 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
             if loop_input.loop_type == LoopType.Array.value:
                 condition = ArrayConditionInRuntime(loop_input.loop_array)
             elif loop_input.loop_type == LoopType.Number.value:
+                max_loop_limit = runtime.get_env(LOOP_NUMBER_MAX_LIMIT_KEY) or LOOP_NUMBER_MAX_LIMIT_DEFAULT
+                try:
+                    max_loop_limit = int(max_loop_limit)
+                except (TypeError, ValueError):
+                    max_loop_limit = LOOP_NUMBER_MAX_LIMIT_DEFAULT
+
+                if loop_input.loop_number is None:
+                    raise JiuWenBaseException(StatusCode.NUMBER_CONDITION_ERROR.code,
+                                              "loop_number variable not found or is None")
+
+                if loop_input.loop_number > max_loop_limit:
+                    raise JiuWenBaseException(
+                        StatusCode.NUMBER_CONDITION_ERROR.code,
+                        f"loop_number exceeds maximum limit {max_loop_limit}"
+                    )
+
                 condition = NumberConditionInRuntime(loop_input.loop_number)
             elif loop_input.loop_type == LoopType.AlwaysTrue.value:
                 condition = AlwaysTrue()

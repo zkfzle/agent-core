@@ -18,3 +18,9 @@ class ContextAccessor:
             history = ConversationHistory(self._config)
             self._chat_history_manager[owner] = history
         return history
+
+    def clear_context(self, owner: ContextOwner):
+        """clear history messages by owner"""
+        for own in list(self._chat_history_manager.keys()):
+            if own.agent_id == owner.agent_id and own.session_id == owner.session_id:
+                del self._chat_history_manager[own]

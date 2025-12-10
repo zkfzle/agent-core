@@ -29,3 +29,8 @@ class ContextEngine:
     def get_workflow_context(self, workflow_id: str, session_id: str) -> WorkflowContext:
         context_owner = ContextOwner(agent_id=self._agent_id, workflow_id=workflow_id, session_id=session_id)
         return WorkflowContext(context_owner, self._context_accessor)
+
+    def clear_context(self, session_id: str):
+        """clear context by session_id"""
+        context_owner = ContextOwner(agent_id=self._agent_id, session_id=session_id)
+        self._context_accessor.clear_context(context_owner)

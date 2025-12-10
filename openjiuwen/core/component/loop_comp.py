@@ -118,6 +118,12 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+        if not self._start_nodes:
+            raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_MISSING_START_NODES_ERROR.code,
+                                      StatusCode.LOOP_COMPONENT_MISSING_START_NODES_ERROR.errmsg)
+        if not self._end_nodes:
+            raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_MISSING_END_NODES_ERROR.code,
+                                      StatusCode.LOOP_COMPONENT_MISSING_END_NODES_ERROR.errmsg)
         self._auto_complete_abilities()
         actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, runtime=runtime)
         loop_runtime = SubWorkflowRuntime(runtime.parent(), self._workflow_config.metadata.id, actor_manager)

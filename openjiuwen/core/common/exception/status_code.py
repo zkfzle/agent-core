@@ -74,6 +74,8 @@ class StatusCode(Enum):
     LOOP_COMPONENT_INPUT_TYPE_ERROR = (101153, "Inputs must be a dictionary, got {type}")
     LOOP_COMPONENT_MISSING_INPUT_KEY_ERROR = (101154, "Invalid inputs: missing required key {key}")
     LOOP_COMPONENT_INVALID_LOOP_TYPE_ERROR = (101155, "Invalid loop type '{loop_type}' for LoopComponent")
+    LOOP_COMPONENT_MISSING_START_NODES_ERROR = (101156, "LoopGroup must have start_nodes configured")
+    LOOP_COMPONENT_MISSING_END_NODES_ERROR = (101157, "LoopGroup must have end_nodes configured")
 
     ## BreakComponent  101180 - 101189
     BREAK_COMPONENT_INIT_ERROR = (101180, "Failed to initialize loop controller")

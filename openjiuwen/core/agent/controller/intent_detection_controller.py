@@ -138,6 +138,7 @@ class IntentDetectionController(BaseController):
     2. Message routing: Route to different handlers based on Intent type
     3. Task execution: Call exec_task() to execute tasks
     4. Interruption handling: Call interrupt_task() to handle interruptions
+    5. Real-time interruption: Cancel running tasks when new request arrives
     """
 
     def __init__(self, config=None, context_engine=None, runtime=None):
@@ -156,9 +157,60 @@ class IntentDetectionController(BaseController):
         
         # Initialize task queue for managing running tasks
         self.task_queue = TaskQueue()
+        
+        # Track currently processing handlers (conversation_id -> asyncio.Task)
+        # This tracks at handle_message level, earlier than TaskQueue
+        self._processing_handlers: Dict[str, asyncio.Task] = {}
+        self._handler_lock = asyncio.Lock()
+
+    async def invoke(self, inputs: Dict, runtime: Runtime) -> Dict:
+        """Override invoke to support real-time interruption
+        
+        Key mechanism for real-time interruption:
+        1. When new request arrives, cancel currently processing handler first
+        2. Cancelled handler will quickly return {"status": "cancelled"}
+        3. After handler returns, Subscription immediately processes new message
+        
+        Args:
+            inputs: Input dictionary containing query and conversation_id
+            runtime: Runtime context
+            
+        Returns:
+            Processing result
+        """
+        conversation_id = inputs.get("conversation_id", "default_session")
+        
+        # Key: Cancel processing handler BEFORE sending message to queue
+        # This tracks earlier than TaskQueue (which only registers in exec_task)
+        async with self._handler_lock:
+            if conversation_id in self._processing_handlers:
+                old_handler = self._processing_handlers[conversation_id]
+                if not old_handler.done():
+                    logger.info(
+                        f"[IntentDetectionController] New request received, "
+                        f"cancelling processing handler for {conversation_id}"
+                    )
+                    old_handler.cancel()
+                    # Don't wait here - let it be cancelled asynchronously
+        
+        # Also check TaskQueue for running workflow tasks
+        if self.task_queue.has_running_task(conversation_id):
+            logger.info(
+                f"[IntentDetectionController] Also cancelling workflow task "
+                f"for {conversation_id}"
+            )
+            await self.task_queue.cancel_running_task(conversation_id)
+        
+        # Call parent's invoke (sends message to queue)
+        return await super().invoke(inputs, runtime)
 
     async def handle_message(self, message: Message, runtime: Runtime) -> Dict:
         """Standard message processing flow: Intent detection -> Route processing
+        
+        Supports real-time interruption:
+        - Registers current handler task at start
+        - Can be cancelled by new request in invoke()
+        - Returns cancelled status if interrupted
         
         Args:
             message: Message object
@@ -167,22 +219,53 @@ class IntentDetectionController(BaseController):
         Returns:
             Processing result
         """
-        # 1. Intent detection
-        intent = await self.intent_detection(message, runtime)
+        conversation_id = message.source.conversation_id
+        current_task = asyncio.current_task()
+        
+        # Register current handler task for cancellation tracking
+        async with self._handler_lock:
+            self._processing_handlers[conversation_id] = current_task
+            logger.debug(
+                f"[IntentDetectionController] Registered handler for {conversation_id}"
+            )
+        
+        try:
+            # 1. Intent detection
+            intent = await self.intent_detection(message, runtime)
 
-        MessageUtils.add_user_message(message.get_display_content(), self._context_engine, runtime)
+            MessageUtils.add_user_message(
+                message.get_display_content(), self._context_engine, runtime
+            )
 
-        # 2. Route processing based on intent type
-        if intent.intent_type == IntentType.ExecNewTask:
-            result = await self._handle_new_task(message, intent, runtime)
-        elif intent.intent_type == IntentType.ResumeTask:
-            result = await self._handle_resume(message, intent, runtime)
-        elif intent.intent_type == IntentType.CancelTask:
-            result = await self._handle_cancel(message, intent, runtime)
-        else:
-            result = await self._handle_unknown_intent(message, intent, runtime)
+            # 2. Route processing based on intent type
+            if intent.intent_type == IntentType.ExecNewTask:
+                result = await self._handle_new_task(message, intent, runtime)
+            elif intent.intent_type == IntentType.ResumeTask:
+                result = await self._handle_resume(message, intent, runtime)
+            elif intent.intent_type == IntentType.CancelTask:
+                result = await self._handle_cancel(message, intent, runtime)
+            else:
+                result = await self._handle_unknown_intent(message, intent, runtime)
 
-        return result
+            return result
+            
+        except asyncio.CancelledError:
+            # Handler was cancelled by new request - return cancelled status
+            logger.info(
+                f"[IntentDetectionController] Handler cancelled for {conversation_id}"
+            )
+            return {"status": "cancelled", "conversation_id": conversation_id}
+            
+        finally:
+            # Unregister handler task
+            async with self._handler_lock:
+                if conversation_id in self._processing_handlers:
+                    if self._processing_handlers[conversation_id] is current_task:
+                        del self._processing_handlers[conversation_id]
+                        logger.debug(
+                            f"[IntentDetectionController] Unregistered handler "
+                            f"for {conversation_id}"
+                        )
 
     async def _handle_new_task(
             self,

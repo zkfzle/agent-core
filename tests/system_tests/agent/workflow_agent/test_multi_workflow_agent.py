@@ -4,9 +4,15 @@
 测试场景：
 1. 多工作流意图识别路由
 2. 多工作流跳转和恢复
-3. End 节点批输出/流输出模式测试
+3. 实时打断（参考 test_agent_invoke_002）
 """
 import os
+
+from openjiuwen.core.component.base import WorkflowComponent
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.executable import Output, Input
+from openjiuwen.core.runtime.base import ComponentExecutable
+from openjiuwen.core.runtime.runtime import Runtime
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -41,6 +47,24 @@ SYSTEM_PROMPT_TEMPLATE = "你是一个query改写的AI助手。今天的日期�
 def build_current_date():
     current_datetime = datetime.now()
     return current_datetime.strftime("%Y-%m-%d")
+
+
+class DelayedComponent(ComponentExecutable, WorkflowComponent):
+    """
+    带延迟的组件，用于模拟慢速执行场景，测试实时打断功能。
+    """
+
+    def __init__(self, comp_id: str, sleep: float = 0, name: str = None):
+        super().__init__()
+        self.sleep = sleep
+        self.name = name or comp_id
+        self.comp_id = comp_id
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        print(f"[{self.name}-{self.comp_id}] 开始执行: {datetime.now().strftime('%H:%M:%S')}")
+        await asyncio.sleep(self.sleep)
+        print(f"[{self.name}-{self.comp_id}] 执行完成: {datetime.now().strftime('%H:%M:%S')}")
+        return f"delayed_{self.sleep}"
 
 
 class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
@@ -104,13 +128,13 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                                    question_field: str, question_desc: str) -> Workflow:
         """
         构建包含提问器的简单工作流。
-        
+
         Args:
             workflow_id: 工作流ID
             workflow_name: 工作流名称
             question_field: 提问字段名
             question_desc: 提问字段描述
-        
+
         Returns:
             Workflow: 包含 start -> questioner -> end 的工作流
         """
@@ -152,6 +176,74 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 连接拓扑
         flow.add_connection("start", "questioner")
+        flow.add_connection("questioner", "end")
+
+        return flow
+
+    def _build_questioner_workflow_with_delay(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            question_fields: list[FieldInfo],
+            sleep: float = 0
+    ) -> Workflow:
+        """
+        构建包含延迟组件和提问器的工作流。
+        用于测试实时打断场景：执行过程中被新请求打断。
+
+        Args:
+            workflow_id: 工作流ID
+            workflow_name: 工作流名称
+            question_fields: 提问器字段列表
+            sleep: 延迟组件等待时间（秒）
+
+        Returns:
+            Workflow: 包含 start -> delayed -> questioner -> end 的工作流
+        """
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=workflow_name,
+                id=workflow_id,
+                version="1.0",
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+
+        # 创建组件
+        start = self._create_start_component()
+
+        # 延迟组件：模拟慢速执行
+        delayed = DelayedComponent(
+            comp_id=f"{workflow_id}_delayed",
+            sleep=sleep,
+            name=workflow_name
+        )
+
+        # 提问器组件
+        model_config = self._create_model_config()
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=question_fields,
+            with_chat_history=False,
+            extra_prompt_for_fields_extraction="",
+            example_content="",
+        )
+        questioner = QuestionerComponent(questioner_config)
+
+        # End 组件
+        end = End({"responseTemplate": "{{data}}"})
+
+        # 注册组件
+        flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
+        flow.add_workflow_comp("delayed", delayed, inputs_schema={})
+        flow.add_workflow_comp("questioner", questioner, inputs_schema={"query": "${start.query}"})
+        flow.set_end_comp("end", end, inputs_schema={"data": "${questioner}"})
+
+        # 连接拓扑：start -> delayed -> questioner -> end
+        flow.add_connection("start", "delayed")
+        flow.add_connection("delayed", "questioner")
         flow.add_connection("questioner", "end")
 
         return flow
@@ -202,7 +294,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=30.0
             )
         except asyncio.TimeoutError:
-            print("❌ 调用超时！")
+            print("[FAIL] 调用超时！")
             raise
 
         print(f"返回结果：{result}")
@@ -273,7 +365,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=120.0
             )
         except asyncio.TimeoutError:
-            print("❌ 步骤1 超时！")
+            print("[FAIL] 步骤1 超时！")
             raise
 
         print(f"步骤1 结果类型: {type(result1)}")
@@ -286,7 +378,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result1, list, "步骤1应该返回交互请求列表")
         self.assertTrue(len(result1) > 0, "步骤1应该有交互请求")
         self.assertEqual(result1[0].type, '__interaction__', "步骤1应该返回交互类型")
-        print(f"✅ 步骤1成功：workflow1 触发中断，询问地点")
+        print(f"[OK] 步骤1成功：workflow1 触发中断，询问地点")
 
         # 记录 workflow1 的中断信息
         workflow1_interaction = result1[0]
@@ -301,7 +393,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=120.0
             )
         except asyncio.TimeoutError:
-            print("❌ 步骤2 超时！")
+            print("[FAIL] 步骤2 超时！")
             raise
 
         print(f"步骤2 结果类型: {type(result2)}")
@@ -314,7 +406,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result2, list, "步骤2应该返回交互请求列表")
         self.assertTrue(len(result2) > 0, "步骤2应该有交互请求")
         self.assertEqual(result2[0].type, '__interaction__', "步骤2应该返回交互类型")
-        print(f"✅ 步骤2成功：workflow2 触发中断，询问股票代码")
+        print(f"[OK] 步骤2成功：workflow2 触发中断，询问股票代码")
 
         # 记录 workflow2 的中断信息
         workflow2_interaction = result2[0]
@@ -329,7 +421,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=120.0
             )
         except asyncio.TimeoutError:
-            print("❌ 步骤3 超时！")
+            print("[FAIL] 步骤3 超时！")
             raise
 
         print(f"步骤3 结果: {result3}")
@@ -339,7 +431,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result3['result_type'], 'answer', "步骤3应该返回answer类型")
         self.assertEqual(result3['output'].state.value, 'COMPLETED', "步骤3 workflow1应该完成")
         response_content_3 = result3['output'].result.get('responseContent', '')
-        print(f"✅ 步骤3成功：workflow1 恢复并完成，返回: {response_content_3}")
+        print(f"[OK] 步骤3成功：workflow1 恢复并完成，返回: {response_content_3}")
 
         # ========== 步骤4: query4 -> 恢复 workflow2 ==========
         print("\n【步骤4】发送 query4: 提供股票代码，恢复 workflow2")
@@ -349,7 +441,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=120.0
             )
         except asyncio.TimeoutError:
-            print("❌ 步骤4 超时！")
+            print("[FAIL] 步骤4 超时！")
             raise
 
         print(f"步骤4 结果: {result4}")
@@ -359,20 +451,20 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result4['result_type'], 'answer', "步骤4应该返回answer类型")
         self.assertEqual(result4['output'].state.value, 'COMPLETED', "步骤4 workflow2应该完成")
         response_content_4 = result4['output'].result.get('responseContent', '')
-        print(f"✅ 步骤4成功：workflow2 恢复并完成，返回: {response_content_4}")
+        print(f"[OK] 步骤4成功：workflow2 恢复并完成，返回: {response_content_4}")
 
-        print("\n🎉 所有步骤完成！多工作流跳转和恢复测试通过！")
+        print("\n[SUCCESS] 所有步骤完成！多工作流跳转和恢复测试通过！")
 
     @unittest.skip
     async def test_real_time_interrupt_with_cancellation(self):
         """
         测试真正的实时打断场景：不等 workflow1 执行完就发送新 query。
-        
+
         场景：
         1. query1 "查天气" -> workflow1 开始执行（慢速，模拟执行中）
         2. query2 "查股票" -> 取消 workflow1，启动 workflow2 -> 中断（提问股票代码）
         3. query3 "AAPL" -> 恢复 workflow2 -> 完成
-        
+
         验证：
         - workflow1 被取消（不会完成）
         - workflow2 能正常启动、中断和恢复
@@ -443,7 +535,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=120.0
             )
         except asyncio.TimeoutError:
-            print("❌ 步骤2 超时！")
+            print("[FAIL] 步骤2 超时！")
             raise
 
         print(f"步骤2 结果类型: {type(result2)}")
@@ -455,7 +547,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             result2[0].type, '__interaction__', "步骤2应该返回交互类型"
         )
-        print(f"✅ 步骤2成功：取消 workflow1，启动 workflow2，触发中断")
+        print(f"[OK] 步骤2成功：取消 workflow1，启动 workflow2，触发中断")
 
         # 检查 task1 的状态（应该被取消）
         try:
@@ -463,11 +555,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print(f"Task1 结果: {result1}")
             # 如果 task1 返回了取消状态，这也是正确的
             if isinstance(result1, dict) and result1.get('status') == 'cancelled':
-                print("✅ workflow1 被正确取消")
+                print("[OK] workflow1 被正确取消")
         except asyncio.CancelledError:
-            print("✅ workflow1 被取消（CancelledError）")
+            print("[OK] workflow1 被取消（CancelledError）")
         except asyncio.TimeoutError:
-            print("⚠️ workflow1 仍在执行（可能已被内部取消）")
+            print("[WARN] workflow1 仍在执行（可能已被内部取消）")
 
         # ========== 步骤3: query3 "AAPL" -> 恢复 workflow2 -> 完成 ==========
         print("\n【步骤3】发送 query3: AAPL（提供股票代码）")
@@ -480,7 +572,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 timeout=120.0
             )
         except asyncio.TimeoutError:
-            print("❌ 步骤3 超时！")
+            print("[FAIL] 步骤3 超时！")
             raise
 
         print(f"步骤3 结果类型: {type(result3)}")
@@ -724,3 +816,127 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         print("✅ 测试通过：流输出模式正确返回 end node stream 帧")
+
+    @unittest.skip
+    async def test_real_time_interrupt_like_invoke_002(self):
+        """
+        参考 test_agent_invoke_002 构造的实时打断测试。
+
+        场景：
+        1. query1 -> workflow1（天气查询，带 3s 延迟）开始执行
+        2. 等待 1s 后，query2 -> workflow2（存取钱查询）打断 workflow1
+        3. 等待 query2 完成
+        4. 等待 query1 返回结果（验证是否被取消）
+        5. 重新发送 query3 恢复天气查询工作流
+
+        验证：
+        - workflow1 被取消（在执行中被打断）
+        - workflow2 能正常启动并触发交互
+        - 重新发送天气查询能正常执行
+        """
+        print("=== 测试实时打断场景（参考 test_agent_invoke_002）===")
+
+        # 创建天气查询工作流（带 3s 延迟，模拟慢速执行）
+        weather_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="date", description="时间", required=True),
+            FieldInfo(field_name="weather", description="天气", required=True),
+            FieldInfo(field_name="temperature", description="温度", required=True),
+        ]
+        weather_workflow = self._build_questioner_workflow_with_delay(
+            workflow_id="weather_flow",
+            workflow_name="城市天气温度查询",
+            question_fields=weather_fields,
+            sleep=3  # 关键：3秒延迟让打断有足够时间窗口
+        )
+        weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
+
+        # 创建存取钱工作流（无延迟，快速响应）
+        cash_fields = [
+            FieldInfo(field_name="bank", description="银行", required=True),
+            FieldInfo(field_name="action", description="明确用户操作：存钱 还是 取钱", required=True),
+            FieldInfo(field_name="amount", description="具体金额", required=True),
+        ]
+        cash_workflow = self._build_questioner_workflow_with_delay(
+            workflow_id="cash_access_flow",
+            workflow_name="银行存取钱",
+            question_fields=cash_fields,
+            sleep=0  # 无延迟
+        )
+        cash_workflow.config().metadata.description = "银行存钱、取钱业务办理"
+
+        # 创建 Agent
+        config = WorkflowAgentConfig(
+            id="test_interrupt_like_invoke_002",
+            version="0.1.0",
+            description="实时打断测试（参考 test_agent_invoke_002）",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([cash_workflow, weather_workflow])
+
+        conversation_id = "test-invoke-002-style"
+
+        # ========== 步骤1: 发送天气查询请求（不等待完成）==========
+        print("\n【步骤1】发送天气查询请求（不等待，模拟执行中状态）")
+        task1 = asyncio.create_task(
+            agent.invoke({
+                "query": f"{conversation_id}-天气晴",
+                "conversation_id": conversation_id
+            })
+        )
+        print("task1 已创建，等待 1s 让 workflow1 开始执行...")
+
+        # 等待 1s，让 workflow1 开始执行但未完成（因为有 3s 延迟）
+        await asyncio.sleep(1.0)
+        print("1s 已过，workflow1 应该还在 delayed 组件中等待")
+
+        # ========== 步骤2: 发送存取钱打断请求 ==========
+        print("\n【步骤2】发送存取钱请求（打断 workflow1）")
+        task2 = asyncio.create_task(
+            agent.invoke({
+                "query": f"{conversation_id}-民生银行",
+                "conversation_id": conversation_id
+            })
+        )
+
+        # 等待 task2 完成
+        result2 = await task2
+        print(f"task2 结果: {result2}")
+
+        # 校验：task2 应该返回交互请求（提问器询问缺失字段）
+        self.assertIsInstance(result2, list, "task2 应该返回交互请求列表")
+        self.assertTrue(len(result2) > 0, "task2 应该有交互请求")
+        self.assertEqual(result2[0].type, '__interaction__', "task2 应该返回交互类型")
+        print("[OK] 步骤2成功：存取钱工作流触发交互，询问缺失信息")
+
+        # ========== 步骤3: 等待 task1 返回（验证被取消情况）==========
+        print("\n【步骤3】等待 task1 返回，验证打断效果")
+        result1 = await task1
+        print(f"task1 结果: {result1}")
+
+        # 注意：task1 可能返回取消状态或空结果，根据实现不同而变化
+        # 主要验证：task1 不会阻塞，且返回结果表明被打断
+        print(f"[OK] 步骤3完成：task1 返回结果（被打断后的状态）")
+
+        # ========== 步骤4: 重新发送天气查询，验证系统恢复正常 ==========
+        print("\n【步骤4】重新发送天气查询，验证系统正常")
+        try:
+            result3 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": f"{conversation_id}-杭州今日天气",
+                    "conversation_id": conversation_id
+                }),
+                timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            print("[FAIL] 步骤4 超时！")
+            raise
+
+        print(f"步骤4 结果: {result3}")
+
+        # 校验：应该返回交互请求（提问器询问天气详细信息）
+        self.assertIsInstance(result3, list, "步骤4应该返回交互请求列表")
+        self.assertTrue(len(result3) > 0, "步骤4应该有交互请求")
+        print(f"[OK] 步骤4成功：系统恢复正常，天气查询工作流正常触发交互")

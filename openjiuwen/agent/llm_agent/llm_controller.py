@@ -82,8 +82,13 @@ class LLMController(BaseController):
             return await self._handle_user_input(message, runtime)
         except Exception as e:
             logger.error(f"Error in handling message: {e}")
-            error_result = await self._send_error_stream(str(e), runtime)
-            return self._unwrap_result(error_result)
+            if isinstance(e, JiuWenBaseException):
+                raise e
+            else:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.REACT_AGENT_HANDLE_USER_INPUT_ERROR.code,
+                    message=StatusCode.REACT_AGENT_HANDLE_USER_INPUT_ERROR.errmsg.format(error_msg=(str(e)))
+                ) from e
 
     async def _handle_user_input(self, message: Message, runtime: Runtime) -> Optional[Dict]:
         """Handle user input - ReAct core: LLM reasoning to generate plan

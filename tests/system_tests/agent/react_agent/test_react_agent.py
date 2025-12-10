@@ -9,7 +9,7 @@ import os
 import unittest
 from datetime import datetime
 
-from openjiuwen.agent.react_agent.react_agent import create_react_agent, ReActAgent
+from openjiuwen.agent.react_agent.react_agent import ReActAgent
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.base import BaseModelInfo
@@ -118,7 +118,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             # plugins, workflows, prompt_template, tools 都不传，使用默认空列表
         )
 
-        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+        react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # 2. 动态添加 prompt（内化配置）
         system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
@@ -150,7 +150,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             model=self._create_model()
         )
 
-        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+        react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # 2. 动态添加 prompt
         system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
@@ -183,7 +183,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             model=self._create_model()
         )
 
-        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+        react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # 2. 动态添加 prompt
         system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
@@ -210,7 +210,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             model=self._create_model()
         )
 
-        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+        react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # 2. 动态添加 prompt
         react_agent.add_prompt([
@@ -243,7 +243,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             model=self._create_model()
         )
 
-        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+        react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # 2. 动态添加 prompt
         react_agent.add_prompt([
@@ -273,7 +273,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             model=self._create_model()
         )
 
-        react_agent: ReActAgent = create_react_agent(agent_config=react_agent_config)
+        react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # 2. 动态添加 prompt
         react_agent.add_prompt([

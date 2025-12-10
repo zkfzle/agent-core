@@ -33,7 +33,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, create_react_agent, ReActAgent
+from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, ReActAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
@@ -213,17 +213,12 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
                 agent_id="react_agent_mock_test",
                 agent_version="0.0.1",
                 description="数学计算助手",
-                plugins=[],
-                workflows=[],
                 model=self._create_model(),
                 prompt_template=self._create_prompt_template()
             )
             
-            react_agent: ReActAgent = create_react_agent(
-                agent_config=react_agent_config,
-                workflows=[],
-                tools=[add_tool]
-            )
+            react_agent: ReActAgent = ReActAgent(react_agent_config)
+            react_agent.add_tools([add_tool])
             
             # ==================== 直接调用 agent.invoke() ====================
             result = await react_agent.invoke(

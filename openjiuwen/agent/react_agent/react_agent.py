@@ -33,9 +33,7 @@ class ReActAgent(BaseAgent):
 
     def __init__(
             self,
-            agent_config: ReActAgentConfig,
-            workflows: List[Workflow] = None,
-            tools: List[Tool] = None
+            agent_config: ReActAgentConfig
     ):
         """初始化 ReActAgent
         
@@ -49,12 +47,6 @@ class ReActAgent(BaseAgent):
 
         # LLM 实例（延迟创建）
         self._llm = None
-        
-        # 通过 BaseAgent 的接口添加 tools 和 workflows（自动同步）
-        if tools:
-            self.add_tools(tools)
-        if workflows:
-            self.add_workflows(workflows)
 
     def _get_llm(self):
         """获取 LLM 实例"""
@@ -258,11 +250,8 @@ def create_react_agent_config(
         agent_id: str,
         agent_version: str,
         description: str,
-        workflows: List[WorkflowSchema],
-        plugins: List[PluginSchema],
         model: ModelConfig,
-        prompt_template: List[Dict],
-        tools: List[str] = None
+        prompt_template: List[Dict]
 ) -> ReActAgentConfig:
     """创建 ReAct Agent 配置
     
@@ -283,27 +272,6 @@ def create_react_agent_config(
         id=agent_id,
         version=agent_version,
         description=description,
-        workflows=workflows,
-        plugins=plugins,
         model=model,
-        prompt_template=prompt_template,
-        tools=tools or []
+        prompt_template=prompt_template
     )
-
-
-def create_react_agent(
-        agent_config: ReActAgentConfig,
-        workflows: List[Workflow] = None,
-        tools: List[Tool] = None
-) -> ReActAgent:
-    """创建 ReAct Agent
-    
-    Args:
-        agent_config: ReAct 配置
-        workflows: 工作流列表
-        tools: 工具列表
-    
-    Returns:
-        ReActAgent 实例
-    """
-    return ReActAgent(agent_config, workflows, tools)

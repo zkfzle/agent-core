@@ -356,7 +356,7 @@ class LLMController(BaseController):
         """
         try:
             workflow_id = task.input.target_id
-            workflow = self._find_workflow_by_id(workflow_id, runtime)
+            workflow = await self._find_workflow_by_id(workflow_id, runtime)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             workflow_runtime = runtime.create_workflow_runtime()
@@ -755,7 +755,7 @@ class LLMController(BaseController):
         
         return interrupted_task
 
-    def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
+    async def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime
         
         Args:
@@ -766,7 +766,7 @@ class LLMController(BaseController):
             Workflow object, None if not found
         """
         try:
-            workflow = runtime.get_workflow(workflow_id)
+            workflow = await runtime.get_workflow(workflow_id)
             return workflow
         except Exception as e:
             logger.error(f"Failed to find workflow {workflow_id}: {e}")

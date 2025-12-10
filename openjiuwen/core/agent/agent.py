@@ -324,6 +324,38 @@ class Agent(ABC):
         raise NotImplementedError("")
 
 
+class WorkflowFactory:
+    """Workflow factory class that creates a new workflow instance on each call (concurrency-safe).
+
+    Usage:
+        def build_workflow():
+            return MyWorkflow(...)
+
+        provider = WorkflowProvider(build_workflow)
+        agent.add_workflows([provider])
+
+    Features:
+        - Callable: provider() returns a new workflow instance each time
+        - Provides config() method: returns workflow config for registration
+    """
+
+    def __init__(self, factory: Callable[[], Workflow]):
+        """
+        Args:
+            factory: Factory function that returns a new Workflow instance on each call
+        """
+        self._factory = factory
+        self._config = factory().config()
+
+    def __call__(self) -> Workflow:
+        """Return a new workflow instance on each call."""
+        return self._factory()
+
+    def config(self):
+        """Return workflow config."""
+        return self._config
+
+
 class BaseAgent(ABC):
     """Base Agent - Minimal interface definition (new architecture)
     """
@@ -493,19 +525,18 @@ class BaseAgent(ABC):
                 return build_my_workflow()
             agent.add_workflows([create_workflow])
         """
-        from openjiuwen.core.runtime.resources_manager.workflow_manager import WorkflowProvider
-        
         logger.info(f"BaseAgent.add_workflows called with {len(workflows)} workflows")
 
         for item in workflows:
-            if isinstance(item, WorkflowProvider):
+            if isinstance(item, WorkflowFactory):
                 # WorkflowProvider object: use directly
+
                 provider = item
                 workflow_config = provider.config()
                 is_provider = True
             elif callable(item) and not hasattr(item, 'config'):
                 # Factory function: wrap as WorkflowProvider
-                provider = WorkflowProvider(item)
+                provider = WorkflowFactory(item)
                 workflow_config = provider.config()
                 is_provider = True
             else:
@@ -657,21 +688,21 @@ class ControllerAgent(BaseAgent):
         """
         super().__init__(agent_config)
         self.controller = controller
-        
+
         # Auto-configure controller if provided
         if self.controller is not None:
             self._setup_controller()
-    
+
     def _setup_controller(self):
         """Setup controller with agent's config, context_engine and runtime"""
         if hasattr(self.controller, 'setup_from_agent'):
             self.controller.setup_from_agent(self)
-    
+
     @property
     def controller(self):
         """Get controller"""
         return self._controller
-    
+
     @controller.setter
     def controller(self, value):
         """Set controller and auto-configure it"""
@@ -772,15 +803,15 @@ class ControllerAgent(BaseAgent):
                     await agent_runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        
+
         if own_stream:
             # 只有自己拥有 stream 时才从 stream_iterator 读取
             # 如果传入了外部 runtime，外部调用方负责读取
             async for result in agent_runtime.stream_iterator():
                 yield result
-        
+
         await task
-        
+
         # 当 own_stream = False 时，yield 最终结果给 send_to_agent
         # 这样 send_to_agent 可以获取到 agent 的实际返回值
         if not own_stream and final_result_holder["result"] is not None:

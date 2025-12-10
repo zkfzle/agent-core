@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-from typing import List, Tuple, TypeVar, Optional, Union, Callable
+import asyncio
+from typing import List, Tuple, TypeVar, Optional, Union, Callable, Awaitable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -17,36 +17,8 @@ def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:
     return f"{workflow_id}_{workflow_version}"
 
 
-class WorkflowProvider:
-    """Workflow factory class that creates a new workflow instance on each call (concurrency-safe).
-    
-    Usage:
-        def build_workflow():
-            return MyWorkflow(...)
-        
-        provider = WorkflowProvider(build_workflow)
-        agent.add_workflows([provider])
-    
-    Features:
-        - Callable: provider() returns a new workflow instance each time
-        - Provides config() method: returns workflow config for registration
-    """
-    
-    def __init__(self, factory: Callable[[], Workflow]):
-        """
-        Args:
-            factory: Factory function that returns a new Workflow instance on each call
-        """
-        self._factory = factory
-        self._config = factory().config()
-    
-    def __call__(self) -> Workflow:
-        """Return a new workflow instance on each call."""
-        return self._factory()
-    
-    def config(self):
-        """Return workflow config."""
-        return self._config
+WorkflowProvider = Union[Callable[[], Workflow], Callable[[], Awaitable[Workflow]]]
+
 
 class WorkflowMgr(AbstractManager[Workflow]):
     def __init__(self):
@@ -57,12 +29,12 @@ class WorkflowMgr(AbstractManager[Workflow]):
         self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, "workflow")
         self._validate_resource(workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED,
                                 "workflow is invalid, can not be None")
-        
+
         # Define validation function for non-callable workflows
         def validate_workflow(workflow_obj):
             self._workflow_tool_infos[workflow_id] = workflow_obj.get_tool_info()
             return workflow_obj
-        
+
         self._add_resource(workflow_id, workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, validate_workflow)
 
     def add_workflows(self, workflows: List[Tuple[str, Union[Workflow, WorkflowProvider]]]):
@@ -71,35 +43,46 @@ class WorkflowMgr(AbstractManager[Workflow]):
         for key, workflow in workflows:
             self.add_workflow(key, workflow)
 
-    def get_workflow(self, workflow_id: str, runtime=None) -> Workflow:
-        # Validate ID using base class method
-        self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "workflow")
-        
+    def get_workflow_sync(self, workflow_id: str, runtime=None) -> Workflow:
         try:
-            workflow = self.find_workflow_by_id_and_version(workflow_id)
-            return decorate_workflow_with_trace(workflow, runtime)
-        except JiuWenBaseException:
-            raise
-        except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "get")
+            loop = asyncio.get_running_loop()
+            return asyncio.run_coroutine_threadsafe(self.get_workflow(workflow_id, runtime), loop=loop).result()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                return loop.run_until_complete(
+                    self.get_workflow(workflow_id, runtime)
+                )
+            finally:
+                loop.close()
 
-    def find_workflow_by_id_and_version(self, workflow_id: str):
+    async def get_workflow(self, workflow_id: str, runtime=None):
         # Validate ID using base class method
         self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "workflow")
-        
-        # Define function to create workflow from provider
-        def create_workflow_from_provider(provider):
-            workflow = provider()
+        try:
+            resource = self._resources.get(workflow_id)
+            if resource:
+                return resource
+            # Try to create from provider
+            provider = self._providers.get(workflow_id)
+            if provider is None:
+                return None
+            result = provider()
+            if asyncio.iscoroutine(result):
+                workflow = await result
+            else:
+                workflow = result
             if not hasattr(workflow, "get_tool_info"):
                 raise TypeError(f"Workflow must have get_tool_info method")
             self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
-            return workflow
-        
-        return self._get_resource(workflow_id, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, create_workflow_from_provider)
+            return decorate_workflow_with_trace(workflow, runtime)
+        except Exception as e:
+            self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "get")
 
     def remove_workflow(self, workflow_id: str) -> Optional[Workflow]:
         self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED, "workflow")
-        
+
         try:
             workflow = self._remove_resource(workflow_id, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED)
             self._workflow_tool_infos.pop(workflow_id, None)
@@ -111,7 +94,7 @@ class WorkflowMgr(AbstractManager[Workflow]):
         try:
             if not workflow_ids:
                 return [info for info in self._workflow_tool_infos.values()]
-            
+
             infos = []
             for workflow_id in workflow_ids:
                 self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED, "workflow")

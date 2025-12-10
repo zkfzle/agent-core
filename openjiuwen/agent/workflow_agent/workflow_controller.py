@@ -212,7 +212,7 @@ class WorkflowController(IntentDetectionController):
             task.status = TaskStatus.RUNNING
 
             # Get workflow object (from controller's agent)
-            workflow = self._find_workflow_from_agent(workflow_id, runtime)
+            workflow = await self._find_workflow_from_agent(workflow_id, runtime)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
 
@@ -708,7 +708,7 @@ class WorkflowController(IntentDetectionController):
         logger.warning("No component_id found in interaction_data, using default")
         return "questioner"  # Default value
 
-    def _find_workflow_from_agent(self, workflow_id: str, runtime: Runtime):
+    async def _find_workflow_from_agent(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime
         
         Args:
@@ -725,7 +725,7 @@ class WorkflowController(IntentDetectionController):
             all_workflows = resource_mgr.workflow()._resources
             logger.info(f"Available workflows in resource_mgr: {list(all_workflows.keys())}")
 
-            workflow = resource_mgr.workflow().get_workflow(workflow_id, runtime.base())
+            workflow = await resource_mgr.workflow().get_workflow(workflow_id, runtime.base())
             logger.info(f"Found workflow from resource_mgr: {workflow is not None}")
             if workflow:
                 return workflow
@@ -735,7 +735,7 @@ class WorkflowController(IntentDetectionController):
         # Then try to get from controller's _runtime
         try:
             logger.info(f"Trying to find workflow from controller._runtime: {workflow_id}")
-            workflow = self._runtime.get_workflow(workflow_id)
+            workflow = await self._runtime.get_workflow(workflow_id)
             logger.info(f"Found workflow from controller._runtime: {workflow is not None}")
             return workflow
         except Exception as e:
@@ -744,7 +744,7 @@ class WorkflowController(IntentDetectionController):
         logger.error(f"Workflow not found: {workflow_id}")
         return None
 
-    def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
+    async def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime
         
         Args:
@@ -755,7 +755,7 @@ class WorkflowController(IntentDetectionController):
             Workflow object, None if not found
         """
         try:
-            workflow = runtime.get_workflow(workflow_id)
+            workflow = await runtime.get_workflow(workflow_id)
             return workflow
         except Exception as e:
             logger.error(f"Failed to find workflow {workflow_id}: {e}")

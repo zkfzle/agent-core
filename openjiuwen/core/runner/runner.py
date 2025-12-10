@@ -96,13 +96,13 @@ class Runner:
 
     async def run_workflow(self, workflow: Union[str, Workflow], inputs: Any,
                            *, runtime: Union[Runtime, WorkflowRuntime] = None, context: Context = None):
-        workflow_instance, workflow_runtime = self._prepare_workflow(workflow, runtime)
+        workflow_instance, workflow_runtime = await self._prepare_workflow(workflow, runtime)
         return await workflow_instance.invoke(inputs, runtime=workflow_runtime, context=context)
 
     async def run_workflow_streaming(self, workflow: Union[str, Workflow], inputs: Any,
                                      *, runtime: Union[Runtime, WorkflowRuntime] = None,
                                      stream_modes: list[BaseStreamMode] = None, context: Context = None):
-        workflow_instance, workflow_runtime = self._prepare_workflow(workflow, runtime)
+        workflow_instance, workflow_runtime = await self._prepare_workflow(workflow, runtime)
         return workflow_instance.stream(inputs, runtime=workflow_runtime, stream_modes=stream_modes, context=context)
 
     async def run_agent(self, agent: Union[str, Agent], inputs: Any):
@@ -229,7 +229,7 @@ class Runner:
         task_runtime = TaskRuntime(inner=await agent_runtime.create_agent_runtime(session_id, inputs))
         return agent, task_runtime
 
-    def _prepare_workflow(self, workflow: Union[str, Workflow],
+    async def _prepare_workflow(self, workflow: Union[str, Workflow],
                           runtime: Union[Runtime, WorkflowRuntime]) -> tuple[Workflow, WorkflowRuntime]:
         if isinstance(workflow, str):
             workflow_key = workflow
@@ -242,7 +242,7 @@ class Runner:
 
         workflow_runtime = self._create_workflow_runtime(runtime)
         if isinstance(workflow, str):
-            workflow_instance = self._resource_manager.workflow().get_workflow(workflow_key, workflow_runtime)
+            workflow_instance = await self._resource_manager.workflow().get_workflow(workflow_key, workflow_runtime)
         else:
             workflow_instance = workflow
         return workflow_instance, workflow_runtime

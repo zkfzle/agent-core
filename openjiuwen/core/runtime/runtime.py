@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+# Copyright c) Huawei Technologies Co. Ltd. 2025-2025.
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
 
@@ -161,7 +161,10 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    async def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+        pass
+
+    def get_workflow_sync(self, workflow_id: str) -> Optional[Workflow]:
         pass
 
     @abstractmethod

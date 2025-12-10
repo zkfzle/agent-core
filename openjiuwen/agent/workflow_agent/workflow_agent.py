@@ -8,25 +8,6 @@ from openjiuwen.agent.workflow_agent.workflow_controller import WorkflowControll
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
 
 
-def create_workflow_agent_config(agent_id: str,
-                                 agent_version: str,
-                                 description: str,
-                                 workflows: List[WorkflowSchema]):
-    config = WorkflowAgentConfig(id=agent_id,
-                                 version=agent_version,
-                                 description=description,
-                                 workflows=workflows)
-    return config
-
-
-def create_workflow_agent(agent_config: WorkflowAgentConfig,
-                          workflows: List[Workflow] = None):
-    agent = WorkflowAgent(agent_config)
-    if workflows:
-        agent.bind_workflows(workflows)
-    return agent
-
-
 class WorkflowAgent(ControllerAgent):
     """Workflow-based Agent - Executes predefined workflows with multi-workflow controller
     

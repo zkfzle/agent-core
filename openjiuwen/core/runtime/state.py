@@ -104,10 +104,10 @@ class InMemoryStateLike(StateLike):
         self._state: dict = dict()
 
     def get(self, key: Union[str, list, dict]) -> Optional[Any]:
-        return get_by_schema(key, self._state)
+        return deepcopy(get_by_schema(key, self._state))
 
     def get_by_prefix(self, key: Union[str, list, dict], nested_prefix: str) -> Optional[Any]:
-        return get_by_schema(key, self._state, nested_prefix)
+        return deepcopy(get_by_schema(key, self._state, nested_prefix))
 
     def get_by_transformer(self, transformer: Callable) -> Optional[Any]:
         return transformer(self._state)

@@ -530,8 +530,6 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
 
         node_runtime = NodeRuntime(runtime, self._end_comp_id)
         output_key = self._end_comp_id
-        if isinstance(self._end_comp, End):
-            output_key = self._end_comp_id + NESTED_PATH_SPLIT + "output"
         results = node_runtime.state().get_outputs(output_key)
         logger.info(f"end to sub_invoke, result: {results}")
         return results

@@ -227,7 +227,7 @@ async def test_stream_component_in_sub_workflow_with_invoke():
                          inputs_schema={"inputs": "${main_start.array}"})
     end = End(EndConfig(responseTemplate="sub_workflow: {{sub_workflow}}"))
     wf.set_end_comp("main_end", end,
-                    inputs_schema={"sub_workflow": "${workflow.batch}"},
+                    inputs_schema={"sub_workflow": "${workflow.output.batch}"},
                     response_mode="streaming")
 
     wf.add_connection("main_start", "workflow")

@@ -482,9 +482,9 @@ class QuestionerDirectReplyHandler:
         self._update_state_of_key_fields(extracted_key_fields)
 
     async def _get_latest_human_feedback(self, runtime):
+        for _ in range(self._state.response_num + 1):
+            self._query = await runtime.interact(self._state.question)  # keep the last question, in case of no feedback
         self._increment_state_of_response_num()
-        for _ in range(self._state.response_num):
-            self._query = await runtime.interact("")
 
     def _update_questioner_states_question(self, question):
         self._state.question = question

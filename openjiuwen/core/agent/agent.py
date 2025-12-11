@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import asyncio
+import inspect
 import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Union
@@ -28,6 +29,7 @@ from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput
+from openjiuwen.core.workflow.workflow_config import WorkflowMetadata
 from openjiuwen.core.runtime.config import Config
 
 if TYPE_CHECKING:
@@ -83,7 +85,7 @@ class Agent(ABC):
             DeprecationWarning,
             stacklevel=2
         )
-        
+
         # All core attributes initialized uniformly in base class
         self._config = config
         self._runtime = AgentRuntime(config=config)
@@ -328,32 +330,83 @@ class WorkflowFactory:
     """Workflow factory class that creates a new workflow instance on each call (concurrency-safe).
 
     Usage:
-        def build_workflow():
-            return MyWorkflow(...)
+        # Method 1: Use decorator (recommended, most concise)
+        @workflow_provider(workflow_id="my_workflow", workflow_version="1.0")
+        def create_workflow():
+            return Workflow()  # No need to set metadata
 
-        provider = WorkflowProvider(build_workflow)
+        agent.add_workflows([create_workflow])
+
+        # Method 2: Direct instantiation
+        provider = WorkflowFactory("my_workflow", "1.0", lambda: build_workflow())
         agent.add_workflows([provider])
 
     Features:
         - Callable: provider() returns a new workflow instance each time
-        - Provides config() method: returns workflow config for registration
+        - Provides id/version attributes for workflow key generation
+        - Auto-sets workflow metadata on each call
     """
 
-    def __init__(self, factory: Callable[[], Workflow]):
+    def __init__(
+            self,
+            workflow_id: str,
+            workflow_version: str,
+            factory: Callable[[], Workflow]
+    ):
         """
         Args:
+            workflow_id: Workflow ID for registration
+            workflow_version: Workflow version for registration
             factory: Factory function that returns a new Workflow instance on each call
         """
         self._factory = factory
-        self._config = factory().config()
+        self.id = workflow_id
+        self.version = workflow_version
+        self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version)
 
-    def __call__(self) -> Workflow:
-        """Return a new workflow instance on each call."""
-        return self._factory()
+    def __call__(self):
+        """Return a new workflow instance on each call, with metadata auto-set.
+        
+        Supports both sync and async factory functions:
+        - Sync factory: returns Workflow directly
+        - Async factory: returns coroutine that resolves to Workflow
+        """
+        result = self._factory()
 
-    def config(self):
-        """Return workflow config."""
-        return self._config
+        # Handle async factory (returns coroutine)
+        if asyncio.iscoroutine(result) or inspect.iscoroutinefunction(self._factory):
+            async def async_wrapper():
+                workflow = await result if asyncio.iscoroutine(result) else await self._factory()
+                return workflow
+
+            return async_wrapper()
+        return result
+
+
+def workflow_provider(workflow_id: str, workflow_version: str):
+    """Decorator to create a WorkflowFactory from a factory function.
+
+    Usage:
+        @workflow_provider(workflow_id="weather_workflow", workflow_version="1.0")
+        def create_weather_workflow():
+            flow = Workflow()
+            # ... build workflow ...
+            return flow
+
+        agent.add_workflows([create_weather_workflow])
+
+    Args:
+        workflow_id: Workflow ID for registration
+        workflow_version: Workflow version for registration
+
+    Returns:
+        Decorator that wraps a factory function as WorkflowFactory
+    """
+
+    def decorator(func: Callable[[], Workflow]) -> WorkflowFactory:
+        return WorkflowFactory(workflow_id, workflow_version, func)
+
+    return decorator
 
 
 class BaseAgent(ABC):
@@ -499,57 +552,85 @@ class BaseAgent(ABC):
 
     def add_workflows(
             self,
-            workflows: List[Union[Workflow, 'WorkflowProvider', Callable[[], Workflow]]]
+            workflows: List[Union[Workflow, Callable[[], Workflow]]]
     ) -> None:
         """Add workflows (update config and runtime simultaneously).
         
         Supports three registration methods:
         1. Workflow instance - registered directly (note: does not support concurrent calls)
-        2. WorkflowProvider object - registered directly (concurrency-safe, recommended)
-        3. Callable[[], Workflow] factory function - auto-wrapped as WorkflowProvider (concurrency-safe)
+        2. WorkflowFactory object - registered directly (concurrency-safe, recommended)
+        3. Callable with id/version attributes - async/sync provider (concurrency-safe)
         
         Args:
-            workflows: List of workflow instances, WorkflowProvider objects, or factory functions
+            workflows: List of workflow instances or WorkflowFactory/provider objects
         
         Concurrency Notes:
             - Instance: multiple conversations share the same instance, not concurrency-safe
-            - WorkflowProvider or factory: creates new instance on each get_workflow(), concurrency-safe
+            - WorkflowFactory or provider with id/version: new instance on each get_workflow()
             
         Recommended Usage (concurrent scenarios):
-            # Method 1: Use WorkflowProvider
-            provider = WorkflowProvider(lambda: build_my_workflow())
+            # Method 1: Use @workflow_provider decorator (most concise)
+            @workflow_provider(workflow_id="my_wf", workflow_version="1.0")
+            def create_workflow():
+                return Workflow()
+            agent.add_workflows([create_workflow])
+            
+            # Method 2: Use WorkflowFactory directly
+            provider = WorkflowFactory("my_wf", "1.0", lambda: build_workflow())
             agent.add_workflows([provider])
             
-            # Method 2: Pass factory function (auto-wrapped)
-            def create_workflow():
-                return build_my_workflow()
-            agent.add_workflows([create_workflow])
+            # Method 3: Async provider with id/version attributes
+            async def _create_provider(wf, mgr):
+                async def provider():
+                    return await wf.compile(mgr)
+                provider.id = wf.id
+                provider.version = wf.version
+                return provider
+            providers = [await _create_provider(wf, mgr) for wf in workflows]
+            agent.add_workflows(providers)
         """
         logger.info(f"BaseAgent.add_workflows called with {len(workflows)} workflows")
 
         for item in workflows:
-            if isinstance(item, WorkflowFactory):
-                # WorkflowProvider object: use directly
+            # Extract workflow_id, workflow_version, and provider/workflow
+            workflow_id = None
+            workflow_version = None
+            workflow_name = None
+            workflow_description = None
 
+            if isinstance(item, WorkflowFactory):
+                # WorkflowFactory object: use id/version attributes
                 provider = item
-                workflow_config = provider.config()
+                workflow_id = provider.id
+                workflow_version = provider.version
                 is_provider = True
-            elif callable(item) and not hasattr(item, 'config'):
-                # Factory function: wrap as WorkflowProvider
-                provider = WorkflowFactory(item)
-                workflow_config = provider.config()
+            elif callable(item) and hasattr(item, 'id') and hasattr(item, 'version'):
+                # Callable with id/version attributes (preferred way for async providers)
+                provider = item
+                workflow_id = getattr(item, 'id')
+                workflow_version = getattr(item, 'version')
+                # Optional: get name and description if available
+                workflow_name = getattr(item, 'name', None)
+                workflow_description = getattr(item, 'description', None)
                 is_provider = True
+            elif callable(item):
+                # Bare callable without id/version: error
+                raise ValueError(
+                    f"Callable workflow provider must have 'id' and 'version' attributes. "
+                    f"Use @workflow_provider decorator or WorkflowFactory class."
+                )
             else:
                 # Workflow instance: use directly
                 workflow = item
                 workflow_config = workflow.config()
+                workflow_id = workflow_config.metadata.id
+                workflow_version = workflow_config.metadata.version
+                workflow_name = workflow_config.metadata.name
+                workflow_description = workflow_config.metadata.description
                 provider = None
                 is_provider = False
 
-            workflow_key = generate_workflow_key(
-                workflow_config.metadata.id,
-                workflow_config.metadata.version
-            )
+            workflow_key = generate_workflow_key(workflow_id, workflow_version)
 
             # Check if already exists
             existing_keys = {
@@ -565,10 +646,10 @@ class BaseAgent(ABC):
             if workflow_key not in existing_keys:
                 # 1. Update config.workflows
                 workflow_schema = WorkflowSchema(
-                    id=workflow_config.metadata.id,
-                    name=workflow_config.metadata.name,
-                    version=workflow_config.metadata.version,
-                    description=workflow_config.metadata.description,
+                    id=workflow_id,
+                    name=workflow_name or workflow_id,
+                    version=workflow_version,
+                    description=workflow_description or "",
                     inputs={}
                 )
                 self._agent_config.workflows.append(workflow_schema)

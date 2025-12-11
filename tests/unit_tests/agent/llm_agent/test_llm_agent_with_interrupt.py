@@ -226,7 +226,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         model_config = ModelConfig(model_provider="openai",
                                    model_info=BaseModelInfo(
                                        model="gpt-4",
-                                       api_base="https://api.openai.com/v1",
+                                       api_base="mock-url",
                                        api_key="mock-key",
                                        temperature=0.7,
                                        top_p=0.9,
@@ -336,7 +336,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         model_config = ModelConfig(model_provider="openai",
                                    model_info=BaseModelInfo(
                                        model="gpt-4",
-                                       api_base="https://api.openai.com/v1",
+                                       api_base="mock-url",
                                        api_key="mock-key",
                                        temperature=0.7,
                                        top_p=0.9,
@@ -435,7 +435,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         model_config = ModelConfig(model_provider="openai",
                                    model_info=BaseModelInfo(
                                        model="gpt-4",
-                                       api_base="https://api.openai.com/v1",
+                                       api_base="mock-url",
                                        api_key="mock-key",
                                        temperature=0.7,
                                        top_p=0.9,

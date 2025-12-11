@@ -126,7 +126,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
             model_provider="openai",
             model_info=BaseModelInfo(
                 model="gpt-3.5-turbo",
-                api_base="https://api.openai.com",
+                api_base="mock_url",
                 api_key="mock_key",
                 temperature=0.7,
                 top_p=0.9,
@@ -169,7 +169,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         
         # ==================== 准备 Mock LLM ====================
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+        mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_url")
         
         # 定义所有 LLM 调用的返回值（按调用顺序）
         all_llm_responses = [

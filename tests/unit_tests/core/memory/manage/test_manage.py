@@ -9,7 +9,6 @@ import shutil
 from sqlalchemy import engine, text
 import os
 
-os.environ['HF_ENDPOINT'] = "https://hf-mirror.com"
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager

@@ -95,10 +95,10 @@ class WorkflowController(IntentDetectionController):
         """Intent detection: Select workflow + Check interruption state
         
         Process:
-        1. Get available workflows
-        2. Single workflow: Use directly; Multiple workflows: LLM recognition
-        3. Check for interrupted tasks
-        4. Check if user wants to switch workflow (if detected workflow != interrupted workflow)
+        1. Check if input is InteractiveInput with node_id - skip LLM detection
+        2. Get available workflows
+        3. Single workflow: Use directly; Multiple workflows: LLM recognition
+        4. Check for interrupted tasks
         5. Return Intent (ExecNewTask or ResumeTask)
         
         Args:
@@ -112,6 +112,25 @@ class WorkflowController(IntentDetectionController):
 
         if not workflows:
             raise ValueError("No workflows configured for agent")
+
+        # 0. Fast path: InteractiveInput with node_id - directly resume workflow
+        interactive_input = getattr(message.content, 'interactive_input', None)
+        if interactive_input is not None and interactive_input.user_inputs:
+            resume_result = self._find_interrupted_task_by_node_id(
+                interactive_input, runtime
+            )
+            if resume_result:
+                workflow, task = resume_result
+                logger.info(
+                    f"InteractiveInput detected, directly resuming workflow: "
+                    f"{workflow.name}"
+                )
+                return Intent(
+                    intent_type=IntentType.ResumeTask,
+                    task=task,
+                    workflow=workflow
+                )
+            # If not found, fall through to normal detection
 
         # 1. Select workflow based on user's current query
         if len(workflows) == 1:
@@ -525,6 +544,64 @@ class WorkflowController(IntentDetectionController):
 
         self.reasoner.set_intent_detection(intent_detection)
         logger.info("Intent detection module initialized")
+
+    def _find_interrupted_task_by_node_id(
+            self,
+            interactive_input,
+            runtime: Runtime
+    ) -> Optional[tuple]:
+        """Find interrupted workflow by node_id from InteractiveInput
+        
+        When user provides InteractiveInput with user_inputs (node_id -> value),
+        we can directly find the interrupted workflow without LLM detection.
+        
+        Args:
+            interactive_input: InteractiveInput with user_inputs
+            runtime: Runtime context
+            
+        Returns:
+            tuple(WorkflowSchema, Task) if found, None otherwise
+        """
+        state = runtime.get_state("workflow_controller")
+        if not state:
+            return None
+
+        interrupted_tasks = state.get("interrupted_tasks", {})
+        if not interrupted_tasks:
+            return None
+
+        # Get node_id from InteractiveInput
+        node_ids = list(interactive_input.user_inputs.keys())
+        if not node_ids:
+            return None
+
+        target_node_id = node_ids[0]
+        logger.info(
+            f"_find_interrupted_task_by_node_id: looking for node_id={target_node_id}"
+        )
+
+        # Search through interrupted tasks to find matching component_id
+        for workflow_key, task_info in interrupted_tasks.items():
+            component_id = task_info.get("component_id")
+            if component_id == target_node_id:
+                logger.info(
+                    f"_find_interrupted_task_by_node_id: "
+                    f"found match workflow_key={workflow_key}"
+                )
+                task_data = task_info["task"]
+                task = Task.model_validate(task_data)
+
+                # Find corresponding WorkflowSchema
+                for workflow in (self.agent_config.workflows or []):
+                    base_id = f"{workflow.id}_{workflow.version.replace('.', '_')}"
+                    if workflow_key == base_id or workflow_key == workflow.id:
+                        return (workflow, task)
+
+        logger.info(
+            f"_find_interrupted_task_by_node_id: "
+            f"no match found for node_id={target_node_id}"
+        )
+        return None
 
     def _find_interrupted_task(
             self,

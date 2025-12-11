@@ -34,6 +34,7 @@ from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -124,8 +125,14 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("start", "end")
         return flow
 
-    def _build_questioner_workflow(self, workflow_id: str, workflow_name: str,
-                                   question_field: str, question_desc: str) -> Workflow:
+    def _build_questioner_workflow(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            question_field: str,
+            question_desc: str,
+            questioner_id: str = "questioner"
+    ) -> Workflow:
         """
         构建包含提问器的简单工作流。
 
@@ -134,6 +141,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             workflow_name: 工作流名称
             question_field: 提问字段名
             question_desc: 提问字段描述
+            questioner_id: 提问器组件ID，默认为 "questioner"
 
         Returns:
             Workflow: 包含 start -> questioner -> end 的工作流
@@ -171,12 +179,16 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 注册组件
         flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
-        flow.add_workflow_comp("questioner", questioner, inputs_schema={"query": "${start.query}"})
-        flow.set_end_comp("end", end, inputs_schema={question_field: f"${{questioner.{question_field}}}"})
+        flow.add_workflow_comp(
+            questioner_id, questioner, inputs_schema={"query": "${start.query}"}
+        )
+        flow.set_end_comp(
+            "end", end, inputs_schema={question_field: f"${{{questioner_id}.{question_field}}}"}
+        )
 
         # 连接拓扑
-        flow.add_connection("start", "questioner")
-        flow.add_connection("questioner", "end")
+        flow.add_connection("start", questioner_id)
+        flow.add_connection(questioner_id, "end")
 
         return flow
 
@@ -940,3 +952,281 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result3, list, "步骤4应该返回交互请求列表")
         self.assertTrue(len(result3) > 0, "步骤4应该有交互请求")
         print(f"[OK] 步骤4成功：系统恢复正常，天气查询工作流正常触发交互")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_interactive_input_skips_llm_intent_detection(self):
+        """
+        测试 InteractiveInput 类型输入跳过 LLM 意图识别。
+
+        场景：
+        1. 配置两个带提问器的工作流（多工作流场景）
+        2. 发送 query1 -> workflow1 触发中断
+        3. 使用 InteractiveInput（指定 node_id）恢复 workflow1
+        4. 验证恢复时直接恢复对应工作流，不需要再做意图识别
+
+        验证：
+        - InteractiveInput 指定 node_id 时，直接恢复对应工作流
+        - 工作流能正确完成
+        """
+        print("=== 测试 InteractiveInput 跳过 LLM 意图识别 ===")
+
+        # 创建两个带提问器的工作流
+        weather_workflow = self._build_questioner_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            question_field="location",
+            question_desc="地点"
+        )
+        stock_workflow = self._build_questioner_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            question_field="stock_code",
+            question_desc="股票代码"
+        )
+
+        weather_workflow.config().metadata.description = (
+            "查询某地的天气情况、温度、气象信息"
+        )
+        stock_workflow.config().metadata.description = (
+            "查询股票价格、股市行情、股票走势等金融信息"
+        )
+
+        # 创建 Agent
+        config = WorkflowAgentConfig(
+            id="test_interactive_skip_detection",
+            version="0.1.0",
+            description="InteractiveInput跳过意图识别测试",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([weather_workflow, stock_workflow])
+
+        conversation_id = "test-interactive-skip-001"
+
+        # ========== 步骤1: 发送天气查询，触发中断 ==========
+        print("\n【步骤1】发送天气查询，触发中断")
+
+        try:
+            result1 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "查询天气",
+                    "conversation_id": conversation_id
+                }),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 第一次调用超时！")
+            raise
+
+        print(f"步骤1 结果类型: {type(result1)}")
+
+        # 校验：应该返回交互请求
+        self.assertIsInstance(result1, list, "步骤1应该返回交互请求列表")
+        self.assertEqual(
+            result1[0].type, '__interaction__',
+            "步骤1应该返回交互类型"
+        )
+
+        # 获取中断的 node_id
+        interaction_output = result1[0]
+        node_id = interaction_output.payload.id
+        print(f"[OK] 步骤1成功：触发中断，node_id = {node_id}")
+
+        # ========== 步骤2: 使用 InteractiveInput 恢复工作流 ==========
+        print("\n【步骤2】使用 InteractiveInput 恢复工作流（应直接恢复，跳过意图识别）")
+
+        # 创建 InteractiveInput，指定 node_id
+        interactive_input = InteractiveInput()
+        interactive_input.update(node_id, "北京")
+
+        try:
+            result2 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": interactive_input,
+                    "conversation_id": conversation_id
+                }),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 第二次调用超时！")
+            raise
+
+        print(f"步骤2 结果类型: {type(result2)}")
+        print(f"步骤2 结果: {result2}")
+
+        # 校验：workflow 应该恢复并完成
+        self.assertIsInstance(result2, dict, "步骤2应该返回字典")
+        self.assertEqual(
+            result2['result_type'], 'answer',
+            "步骤2应该返回 answer 类型"
+        )
+        self.assertEqual(
+            result2['output'].state.value, 'COMPLETED',
+            "工作流应该完成"
+        )
+
+        # 验证返回的是天气查询结果（包含 location 字段值）
+        response_content = result2['output'].result.get('responseContent', '')
+        print(f"步骤2 响应内容: {response_content}")
+        self.assertIn(
+            "北京", response_content,
+            "步骤2应恢复天气查询工作流，响应应包含地点"
+        )
+
+        print("\n✅ 测试通过：InteractiveInput 成功跳过意图识别，直接恢复工作流！")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_interactive_input_resumes_correct_workflow_in_multi_workflow(
+            self
+    ):
+        """
+        测试多工作流场景下，InteractiveInput 能根据 node_id 恢复正确的工作流。
+
+        场景：
+        1. workflow1（天气查询）-> 中断，记录 node_id_1
+        2. workflow2（股票查询）-> 中断，记录 node_id_2
+        3. InteractiveInput(node_id_1) -> 应恢复 workflow1
+        4. InteractiveInput(node_id_2) -> 应恢复 workflow2
+
+        验证：
+        - 根据 node_id 精确匹配被中断的工作流
+        - 不会恢复错误的工作流
+        """
+        print("=== 测试多工作流精确恢复 ===")
+
+        # 创建两个带提问器的工作流，使用不同的 questioner_id 以区分
+        weather_workflow = self._build_questioner_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            question_field="location",
+            question_desc="地点",
+            questioner_id="weather_questioner"
+        )
+        stock_workflow = self._build_questioner_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            question_field="stock_code",
+            question_desc="股票代码",
+            questioner_id="stock_questioner"
+        )
+
+        weather_workflow.config().metadata.description = (
+            "查询某地的天气情况、温度、气象信息"
+        )
+        stock_workflow.config().metadata.description = (
+            "查询股票价格、股市行情、股票走势等金融信息"
+        )
+
+        # 创建 Agent
+        config = WorkflowAgentConfig(
+            id="test_multi_workflow_precise_resume",
+            version="0.1.0",
+            description="多工作流精确恢复测试",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([weather_workflow, stock_workflow])
+
+        conversation_id = "test-precise-resume-001"
+
+        # ========== 步骤1: 发送天气查询，触发 workflow1 中断 ==========
+        print("\n【步骤1】触发 workflow1（天气查询）中断")
+
+        try:
+            result1 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "查询天气",
+                    "conversation_id": conversation_id
+                }),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤1 超时！")
+            raise
+
+        self.assertIsInstance(result1, list, "步骤1应返回交互请求")
+        node_id_1 = result1[0].payload.id
+        print(f"[OK] workflow1 中断，node_id_1 = {node_id_1}")
+
+        # ========== 步骤2: 发送股票查询，触发 workflow2 中断 ==========
+        print("\n【步骤2】触发 workflow2（股票查询）中断")
+
+        try:
+            result2 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "查询股票",
+                    "conversation_id": conversation_id
+                }),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤2 超时！")
+            raise
+
+        self.assertIsInstance(result2, list, "步骤2应返回交互请求")
+        node_id_2 = result2[0].payload.id
+        print(f"[OK] workflow2 中断，node_id_2 = {node_id_2}")
+
+        # ========== 步骤3: 使用 InteractiveInput(node_id_1) 恢复 workflow1 ==========
+        print("\n【步骤3】使用 InteractiveInput(node_id_1) 恢复 workflow1")
+
+        interactive_input_1 = InteractiveInput()
+        interactive_input_1.update(node_id_1, "北京")
+
+        try:
+            result3 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": interactive_input_1,
+                    "conversation_id": conversation_id
+                }),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤3 超时！")
+            raise
+
+        self.assertIsInstance(result3, dict, "步骤3应返回完成结果")
+        self.assertEqual(result3['result_type'], 'answer', "步骤3应返回answer")
+
+        # 验证返回的是天气查询结果（包含 location 字段值）
+        response_content = result3['output'].result.get('responseContent', '')
+        print(f"步骤3 响应内容: {response_content}")
+        self.assertIn(
+            "北京", response_content,
+            "步骤3应恢复天气查询工作流，响应应包含地点"
+        )
+        print(f"[OK] workflow1 正确恢复并完成")
+
+        # ========== 步骤4: 使用 InteractiveInput(node_id_2) 恢复 workflow2 ==========
+        print("\n【步骤4】使用 InteractiveInput(node_id_2) 恢复 workflow2")
+
+        interactive_input_2 = InteractiveInput()
+        interactive_input_2.update(node_id_2, "AAPL")
+
+        try:
+            result4 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": interactive_input_2,
+                    "conversation_id": conversation_id
+                }),
+                timeout=60.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤4 超时！")
+            raise
+
+        self.assertIsInstance(result4, dict, "步骤4应返回完成结果")
+        self.assertEqual(result4['result_type'], 'answer', "步骤4应返回answer")
+
+        # 验证返回的是股票查询结果（包含 stock_code 字段值）
+        response_content_4 = result4['output'].result.get('responseContent', '')
+        print(f"步骤4 响应内容: {response_content_4}")
+        self.assertIn(
+            "AAPL", response_content_4,
+            "步骤4应恢复股票查询工作流，响应应包含股票代码"
+        )
+        print(f"[OK] workflow2 正确恢复并完成")
+
+        print("\n✅ 测试通过：多工作流场景下根据 node_id 精确恢复正确！")

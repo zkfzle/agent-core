@@ -1,9 +1,6 @@
 # tests/test_workflow_agent_invoke_real.py
 import os
 
-from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.runner.runner import Runner, resource_mgr
-
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
 
@@ -11,6 +8,7 @@ import asyncio
 from datetime import datetime
 import unittest
 import pytest
+from typing import List
 
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.core.runtime.wrapper import TaskRuntime
@@ -29,7 +27,10 @@ from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
-from typing import List
+from openjiuwen.core.agent.agent import workflow_provider
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -267,20 +268,20 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         return context.create_workflow_runtime(), flow
 
-    def _build_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
+    def build_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
         """
         构建包含交互式组件的工作流，用于测试中断恢复功能。
 
         返回 (context, workflow) 二元组，可直接用于 invoke。
         """
         # 1. 初始化工作流与上下文
-        id = "test_interrupt_workflow"
+        workflow_id = "test_interrupt_workflow"
         version = "1.0"
         name = "interrupt_test"
         workflow_config = WorkflowConfig(
             metadata=WorkflowMetadata(
                 name=name,
-                id=id,
+                id=workflow_id,
                 version=version,
             )
         )
@@ -318,8 +319,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         
         使用新架构的 add_workflows 方法，自动从 workflow 提取 schema。
         """
-        from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-
         # 创建最小化配置（workflows 为空列表）
         config = WorkflowAgentConfig(
             id="test_weather_agent",
@@ -368,7 +367,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     async def test_workflow_agent_runner_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
-        _, workflow = self._build_interrupt_workflow()
+        _, workflow = self.build_interrupt_workflow()
         resource_mgr.workflow().add_workflow(
             generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         agent = self._create_agent(workflow)
@@ -422,7 +421,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     async def test_workflow_agent_runner_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
-        _, workflow = self._build_interrupt_workflow()
+        _, workflow = self.build_interrupt_workflow()
         resource_mgr.workflow().add_workflow(
             generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         agent = self._create_agent(workflow)
@@ -506,7 +505,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     async def test_workflow_agent_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
-        _, workflow = self._build_interrupt_workflow()
+        _, workflow = self.build_interrupt_workflow()
         resource_mgr.workflow().add_workflow(
             generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         agent = self._create_agent(workflow)
@@ -560,7 +559,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     async def test_workflow_agent_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
-        _, workflow = self._build_interrupt_workflow()
+        _, workflow = self.build_interrupt_workflow()
         resource_mgr.workflow().add_workflow(
             generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         agent = self._create_agent(workflow)
@@ -656,17 +655,18 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         - get_workflow(key) 每次调用 factory_func() 创建新实例
         """
         print("=== 测试 WorkflowProvider 工厂函数并发安全性 ===")
+        # 使用 @workflow_provider 装饰器定义工厂函数
+        # 注意：需要用闭包捕获 self 引用
+        test_instance = self
 
-        # 定义工厂函数（每次调用创建新的 workflow 实例）
+        @workflow_provider(workflow_id="test_provider_workflow", workflow_version="1.0")
         def create_interrupt_workflow_instance():
             """工厂函数：每次调用创建新的 workflow 实例"""
-            _, workflow = self._build_interrupt_workflow()
-            # 设置固定的 metadata id，确保 workflow_key 一致
-            workflow.config().metadata.id = "test_provider_workflow"
+            _, workflow = test_instance.build_interrupt_workflow()
+            # 不再需要手动设置 metadata id，装饰器会自动处理
             return workflow
 
         # 创建 agent
-        from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
         config = WorkflowAgentConfig(
             id="test_provider_agent",
             version="0.1.0",
@@ -675,7 +675,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
         agent = WorkflowAgent(config)
 
-        # 使用新的 add_workflows 方法，传入工厂函数（关键！）
+        # 使用新的 add_workflows 方法，传入装饰器包装的 WorkflowFactory
         agent.add_workflows([create_interrupt_workflow_instance])
 
         # 验证注册到了 _providers
@@ -733,6 +733,111 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print(f"   - 全部 {success_count} 个 conversation 都正确触发中断")
         else:
             print(f"\n⚠️ WorkflowProvider 方案部分成功")
+            print(f"   - 只有 {success_count}/{len(conversation_configs)} 个触发中断")
+            print(f"   - 说明还有其他层面的状态共享问题")
+
+        # 断言：至少应该有一个成功
+        self.assertGreater(
+            success_count, 0,
+            "至少应该有一个 conversation 成功触发中断"
+        )
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_concurrent_with_async_workflow_provider(self):
+        """
+        使用 @workflow_provider 装饰器验证并发安全性。
+
+        测试方案：
+        - 使用 @workflow_provider 装饰器创建 WorkflowFactory
+        - 同一个 workflow key，多个 conversation 并发调用
+        - 每次 get_workflow() 调用工厂函数创建新实例
+        - 验证各 conversation 状态隔离
+
+        关键点：
+        - @workflow_provider 装饰器自动设置 id/version
+        - 工厂函数不需要关心 metadata
+        - get_workflow(key) 每次调用工厂创建新实例
+        """
+        print("=== 测试 @workflow_provider 装饰器并发安全性 ===")
+        workflow_id = "test_async_provider_workflow"
+        workflow_version = "1.0"
+
+        # 使用 @workflow_provider 装饰器（最简洁的方式）
+        @workflow_provider(workflow_id=workflow_id, workflow_version=workflow_version)
+        def create_interrupt_workflow():
+            """工厂函数：每次调用创建新的 workflow 实例，无需关心 metadata"""
+            _, workflow = self.build_interrupt_workflow()
+            return workflow
+
+        # 创建 agent
+        config = WorkflowAgentConfig(
+            id="test_async_provider_agent",
+            version="0.1.0",
+            description="测试 @workflow_provider 装饰器",
+            workflows=[],
+        )
+        agent = WorkflowAgent(config)
+
+        # 使用 add_workflows 方法，传入装饰器包装的 WorkflowFactory
+        agent.add_workflows([create_interrupt_workflow])
+
+        # 验证注册到了 _providers
+        workflow_key = generate_workflow_key(workflow_id, "1.0")
+
+        # 定义多个并发会话
+        conversation_configs = [
+            {"conversation_id": "async_provider_conv_1", "answer": "北京"},
+            {"conversation_id": "async_provider_conv_2", "answer": "广州"},
+            {"conversation_id": "async_provider_conv_3", "answer": "武汉"},
+        ]
+
+        # ========== 阶段1: 并发发起第一次请求，触发中断 ==========
+        print("\n【阶段1】并发发起多个 conversation 的第一次请求（使用异步 provider）")
+
+        async def first_invoke(conv_id: str):
+            """第一次调用，触发提问器中断"""
+            result = await asyncio.wait_for(
+                agent.invoke({"query": "查询天气", "conversation_id": conv_id}),
+                timeout=60.0
+            )
+            return conv_id, result
+
+        # 并发执行所有第一次请求
+        first_tasks = [
+            first_invoke(cfg["conversation_id"])
+            for cfg in conversation_configs
+        ]
+        first_results = await asyncio.gather(*first_tasks, return_exceptions=True)
+
+        # 校验每个 conversation 的第一次调用结果
+        success_count = 0
+        for item in first_results:
+            if isinstance(item, Exception):
+                print(f"  调用异常: {item}")
+                continue
+
+            conv_id, result = item
+            print(f"  [{conv_id}] 第一次调用结果类型: {type(result)}")
+
+            if (isinstance(result, list) and
+                    len(result) > 0 and
+                    result[0].type == '__interaction__'):
+                success_count += 1
+                print(f"  ✅ [{conv_id}] 成功触发中断")
+            else:
+                print(f"  ⚠️ [{conv_id}] 未触发中断，返回: {result}")
+
+        print(f"\n【阶段1结果】")
+        print(f"   - 总调用数: {len(conversation_configs)}")
+        print(f"   - 成功触发中断数: {success_count}")
+
+        if success_count == len(conversation_configs):
+            print(f"\n🎉 异步 provider 方案验证成功！")
+            print(f"   - 同一 workflow key 的并发调用")
+            print(f"   - 每次调用通过异步 provider 获得独立的 workflow 实例")
+            print(f"   - 全部 {success_count} 个 conversation 都正确触发中断")
+        else:
+            print(f"\n⚠️ 异步 provider 方案部分成功")
             print(f"   - 只有 {success_count}/{len(conversation_configs)} 个触发中断")
             print(f"   - 说明还有其他层面的状态共享问题")
 

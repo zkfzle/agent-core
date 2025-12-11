@@ -244,12 +244,14 @@ class BaseController(ABC):
     def create_message(self, inputs: Dict) -> Message:
         """Create message object (can be overridden)
 
-        Default: Extract content/query and metadata from inputs, create user input message
+        Default: Extract content/query from inputs, create user input message
+        Supports both string and InteractiveInput via query field
         """
-        # Support both content and query field names (backward compatible)
-        content = inputs.get("content") or inputs.get("query", "")
         conversation_id = inputs.get("conversation_id", "default_session")
         user_id = inputs.get("user_id")
+
+        # Unified: get content from query field (supports str or InteractiveInput)
+        content = inputs.get("query", "")
 
         return Message.create_user_message(
             content=content,

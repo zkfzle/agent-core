@@ -13,6 +13,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
+from openjiuwen.core.runtime.interaction.agent_checkpointer import default_agent_inmemory_checkpointer
 from openjiuwen.core.runtime.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runtime.resources_manager.agent_manager import AgentProvider, AgentMgr
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
@@ -177,6 +178,7 @@ class Runner:
 
     async def release(self, session_id: str):
         await default_inmemory_checkpointer.release(session_id)
+        await default_agent_inmemory_checkpointer.release(session_id)
 
     def _check_is_agent_tool(self, runtime, tool) -> bool:
         if not self._is_called_by_agent(runtime):

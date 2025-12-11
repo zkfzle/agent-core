@@ -33,8 +33,14 @@ class ActorManager:
         for consumer_id, producer_ids in consumer_dict.items():
             consumer_stream_ability = [ability for ability in workflow_spec.comp_configs[consumer_id].abilities if
                                        ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
+            sources = set()
+            for producer_id in producer_ids:
+                for ability in workflow_spec.comp_configs[producer_id].abilities:
+                    if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]:
+                        sources.add(f"{producer_id}-{ability.name}")
+
             self._streams[consumer_id] = StreamActor(consumer_id, graph.get_node(consumer_id),
-                                                     consumer_stream_ability, producer_ids,
+                                                     consumer_stream_ability, list(sources),
                                                      stream_generator_timeout=runtime.config().get_env(
                                                          STREAM_INPUT_GEN_TIMEOUT_KEY))
 
@@ -55,22 +61,27 @@ class ActorManager:
     def stream_transform(self):
         return self._streams_transform
 
-    async def produce(self, producer_id: str, message_content: Any):
+    async def produce(self, producer_id: str, message_content: Any,
+                      ability: ComponentAbility, first_frame: bool = False):
         consumer_ids = self._stream_edges.get(producer_id)
         if consumer_ids:
             for consumer_id in consumer_ids:
                 actor = self._get_actor(consumer_id)
                 logger.debug(f"send message to consumer [{consumer_id}] actor from producer [{producer_id}]")
-                await actor.send({producer_id: message_content})
+                await actor.send({producer_id: message_content}, ability, first_frame=first_frame)
 
-    async def end_message(self, producer_id: str):
+    async def end_message(self, producer_id: str, ability: ComponentAbility):
         end_message_content = f"END_{producer_id}"
-        await self.produce(producer_id, end_message_content)
+        await self.produce(producer_id, end_message_content, ability)
 
     async def consume(self, consumer_id: str, ability: ComponentAbility, schema: dict,
                       stream_callback: Callable[[dict], Awaitable[None]] = None) -> dict:
         actor = self._get_actor(consumer_id)
         return await actor.generator(ability, schema, stream_callback)
+
+    async def shutdown(self):
+        for actor in self._streams.values():
+            await actor.shutdown()
 
 
 def _build_reverse_graph(graph):

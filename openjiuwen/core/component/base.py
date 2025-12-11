@@ -11,6 +11,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode as StatusCode
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Executable
+from openjiuwen.core.runtime.base import ComponentExecutable
 
 
 @dataclass
@@ -42,3 +43,7 @@ class WorkflowComponent(ABC):
         raise JiuWenBaseException(
             StatusCode.COMPONENT_NOT_EXECUTABLE_ERROR.code, "workflow component should implement Executable"
         )
+
+
+class SimpleComponent(ComponentExecutable, WorkflowComponent):
+    ...

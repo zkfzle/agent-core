@@ -425,19 +425,19 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
 
         await asyncio.sleep(0.2)
         if fn_a1_fail.call_count > 2:
-            print("a1 done")
+            logger.info("a1 done")
             return "a1_done"
         else:
-            print("a1 interrupt", fn_a1_fail.call_count)
+            logger.info(f"a1 interrupt, {fn_a1_fail.call_count}")
             raise GraphInterrupt(Interrupt("a1_Interrupt"))
 
     async def fn_a2_slow(config):
         await asyncio.sleep(1.0)
-        print("a2 done")
+        logger.info("a2 done")
         return "a2_done"
 
     def fn_a3_fast(config):
-        print("a3 done")
+        logger.info("a3 done")
         return "a3_done"
 
     def fn_pass(config=None):
@@ -461,7 +461,7 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
             "active_nodes": list(loop.active_nodes),
             "ns": loop.config.get(NS)
         })
-        print(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
+        logger.info(f"[{loop.config.get(NS)}] Inner Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     inner_app = Pregel(
         inner_nodes,
@@ -476,7 +476,7 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
             self.inner_app = inner_app
 
         async def __call__(self, state, config):
-            print(f"[{config.get(NS)}] Subgraph Invoked.")
+            logger.info(f"[{config.get(NS)}] Subgraph Invoked.")
             return await self.inner_app.ainvoke(config, durability="exit")
 
     # --- Outer parallel node b: interrupts twice then passes ---
@@ -487,10 +487,10 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
 
         await asyncio.sleep(0.1)
         if fn_b_interrupt_then_pass.call_count > 2:
-            print("b done")
+            logger.info("b done")
             return "b_done"
         else:
-            print("b interrupt", fn_b_interrupt_then_pass.call_count)
+            logger.info(f"b interrupt, {fn_b_interrupt_then_pass.call_count}")
             raise GraphInterrupt(Interrupt("b_Interrupt"))
 
     # --- Outer graph assembly: start -> [a, b] -> end ---
@@ -509,7 +509,7 @@ def nested_subgraph_interrupt_with_outer_parallel_builder():
             "active_nodes": list(loop.active_nodes),
             "ns": loop.config.get(NS)
         })
-        print(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
+        logger.info(f"[Outer] Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     graph = Pregel(
         nodes=builder.nodes,
@@ -539,7 +539,7 @@ def nested_loop_with_inner_parallel_builder():
             "active_nodes": list(loop.active_nodes),
             "ns": loop.config.get("ns")
         })
-        print(f"ns: {loop.config[NS]} Step {loop.step}, Active: {list(loop.active_nodes)}")
+        logger.info(f"ns: {loop.config[NS]} Step {loop.step}, Active: {list(loop.active_nodes)}")
 
     def fn_pass(config=None):
         return "pass"
@@ -552,15 +552,15 @@ def nested_loop_with_inner_parallel_builder():
 
         # Calls 1, 2: interrupt
         if fn_a_interrupt.call_count <= 2:
-            print("a interrupt", fn_a_interrupt.call_count)
+            logger.info(f"a interrupt, {fn_a_interrupt.call_count}")
             raise GraphInterrupt(Interrupt("a_interrupt"))
         # Calls 3, 5, 7...: success
         elif fn_a_interrupt.call_count % 2 == 1:
-            print("a done")
+            logger.info("a done")
             return "a_done"
         # Calls 4, 6, 8...: interrupt
         else:
-            print("a interrupt", fn_a_interrupt.call_count)
+            logger.info(f"a interrupt, {fn_a_interrupt.call_count}")
             raise GraphInterrupt(Interrupt("a_interrupt"))
 
     async def fn_b_interrupt(config):
@@ -571,19 +571,19 @@ def nested_loop_with_inner_parallel_builder():
 
         # Calls 1, 2: interrupt
         if fn_b_interrupt.call_count <= 2:
-            print("b interrupt", fn_b_interrupt.call_count)
+            logger.info(f"b interrupt, {fn_b_interrupt.call_count}")
             raise GraphInterrupt(Interrupt("b_interrupt"))
         # Calls 3, 5, 7...: success
         elif fn_b_interrupt.call_count % 2 == 1:
-            print("b done")
+            logger.info("b done")
             return "b_done"
         # Calls 4, 6, 8...: interrupt
         else:
-            print("b interrupt", fn_b_interrupt.call_count)
+            logger.info(f"b interrupt, {fn_b_interrupt.call_count}")
             raise GraphInterrupt(Interrupt("b_interrupt"))
 
     def fn_c_normal(config):
-        print("c done")
+        logger.info("c done")
         return "c_done"
 
     def build_body_subgraph():
@@ -608,7 +608,7 @@ def nested_loop_with_inner_parallel_builder():
             self.app = app
 
         async def __call__(self, state, config):
-            print(f"[{config.get('ns')}] Body Subgraph Invoked.")
+            logger.info(f"[{config.get('ns')}] Body Subgraph Invoked.")
             return await self.app.ainvoke(config, durability="exit")
 
     # --- loop: start1 -> body -> condition -> end2 ---
@@ -620,7 +620,7 @@ def nested_loop_with_inner_parallel_builder():
             if not hasattr(fn_condition, "count"):
                 fn_condition.count = 0
             fn_condition.count += 1
-            print("condition check", fn_condition.count)
+            logger.info(f"condition check, {fn_condition.count}")
             if fn_condition.count < 4:
                 return "body"
             else:
@@ -648,7 +648,7 @@ def nested_loop_with_inner_parallel_builder():
             self.app = app
 
         async def __call__(self, state, config):
-            print(f"[{config.get('ns')}] Loop Subgraph Invoked.")
+            logger.info(f"[{config.get('ns')}] Loop Subgraph Invoked.")
             return await self.app.ainvoke(config, durability="exit")
 
     loop_app = build_loop_subgraph()
@@ -947,9 +947,9 @@ class TestPregelV2:
         assert checkpoint is not None
         assert checkpoint.step == 4
         assert not checkpoint.pending_node
-        logger.debug("Channel Values:", checkpoint.channel_values)
-        logger.debug("pending_buffer:", checkpoint.pending_buffer)
-        logger.debug("\n=============== Invoke 2 (Resume from Node C) ===============")
+        logger.debug(f"Channel Values: {checkpoint.channel_values}")
+        logger.debug(f"pending_buffer: {checkpoint.pending_buffer}")
+        logger.debug("=============== Invoke 2 (Resume from Node C) ===============")
 
         execution_trace.clear()
         with pytest.raises(RecursionError) as excinfo:
@@ -958,7 +958,7 @@ class TestPregelV2:
         assert execution_trace[-1]['active_nodes'] == ['b1']
         checkpoint = await graph.store.get(session_id, config['ns'])
 
-        logger.debug("\n=============== Invoke 3 (Resume from Node b1) ===============")
+        logger.debug("=============== Invoke 3 (Resume from Node b1) ===============")
 
         execution_trace.clear()
         await graph.ainvoke(config)
@@ -969,7 +969,7 @@ class TestPregelV2:
         graph, execution_trace = nested_subgraph_interrupt_with_outer_parallel_builder
         config = PregelConfig(session_id="test_parallel_interrupt", ns="start-a-end")
 
-        print("\n=============== Invoke 1 (Interrupt Failure) ===============")
+        logger.info("=============== Invoke 1 (Interrupt Failure) ===============")
 
         result = await graph.ainvoke(config)
         assert result["__interrupt__"] is not None
@@ -982,9 +982,9 @@ class TestPregelV2:
         assert "a1" in checkpoint_inner.pending_node
         assert "a2" not in checkpoint_inner.pending_node
         assert "a3" not in checkpoint_inner.pending_node
-        print("Channel Values:", checkpoint.channel_values)
-        print("pending_buffer:", checkpoint.pending_buffer)
-        print("\n=============== Invoke 2 (Resume, a1 Interrupt Again) ===============")
+        logger.info(f"Channel Values: {checkpoint.channel_values}")
+        logger.info(f"pending_buffer: {checkpoint.pending_buffer}")
+        logger.info("=============== Invoke 2 (Resume, a1 Interrupt Again) ===============")
         execution_trace.clear()
         result = await graph.ainvoke(config)
         assert result["__interrupt__"] is not None
@@ -999,7 +999,7 @@ class TestPregelV2:
         assert "a2" not in checkpoint_inner.pending_node
         assert "a3" not in checkpoint_inner.pending_node
 
-        print("\n=============== Invoke 3 (Resume to End) ===============")
+        logger.info("=============== Invoke 3 (Resume to End) ===============")
         execution_trace.clear()
         await graph.ainvoke(config)
 
@@ -1014,7 +1014,7 @@ class TestPregelV2:
         graph, execution_trace = nested_loop_with_inner_parallel_builder
         config = PregelConfig(session_id="test_loop_interrupt", ns="start-loop-end")
 
-        print("\n=============== Invoke 1 (Interrupt Failure, loop iteration 1) ===============")
+        logger.info("=============== Invoke 1 (Interrupt Failure, loop iteration 1) ===============")
         result = await graph.ainvoke(config)
         assert result["__interrupt__"] is not None
 
@@ -1031,7 +1031,7 @@ class TestPregelV2:
         assert "b" in body_state.pending_node
         assert body_state.pending_buffer[0].sender == "c"
 
-        print("\n=============== Invoke 2 (Resume, a/b Interrupt Again, loop iteration 1) ===============")
+        logger.info("=============== Invoke 2 (Resume, a/b Interrupt Again, loop iteration 1) ===============")
         execution_trace.clear()
         result = await graph.ainvoke(config)
         assert result["__interrupt__"] is not None
@@ -1053,7 +1053,7 @@ class TestPregelV2:
         assert "b" in body_state.pending_node
         assert body_state.pending_buffer[0].sender == "c"
 
-        print("\n=============== Invoke 3 (Resume loop iteration 2 a/b Interrupt) ===============")
+        logger.info("=============== Invoke 3 (Resume loop iteration 2 a/b Interrupt) ===============")
         execution_trace.clear()
         result = await graph.ainvoke(config)
         assert "__interrupt__" in result
@@ -1070,7 +1070,7 @@ class TestPregelV2:
         assert "b" in body_state.pending_node
         assert body_state.pending_buffer[0].sender == "c"
 
-        print("\n=============== Invoke 4 (Resume loop iteration 3 condition to end ===============")
+        logger.info("=============== Invoke 4 (Resume loop iteration 3 condition to end ===============")
         execution_trace.clear()
         result = await graph.ainvoke(config)
         assert "__interrupt__" not in result

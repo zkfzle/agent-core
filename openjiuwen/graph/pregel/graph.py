@@ -18,11 +18,11 @@ from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.store.base import GraphStore
 from openjiuwen.graph.pregel.builder import PregelGraphBuilder
 from openjiuwen.graph.pregel.config import PregelConfig
 from openjiuwen.graph.pregel.constants import MAX_RECURSIVE_LIMIT, START, END
 from openjiuwen.graph.pregel.engine import Pregel
+from openjiuwen.graph.store.base import GraphStore
 
 
 def after_tick(loop):
@@ -156,6 +156,10 @@ class PregelGraph(Graph):
             for name, branch in branches.items():
                 builder.add_branch(start, branch.condition)
         return builder.build(graph_store, after_tick=step_callback)
+
+    def reset(self):
+        for node in self.nodes.values():
+            node.reset()
 
 
 class CompiledGraph(ExecutableGraph):

@@ -10,6 +10,8 @@ from openjiuwen.core.common.constants.constant import END_NODE_STREAM
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.security.user_config import UserConfig
+from openjiuwen.core.common.utlis.dict_utils import extract_leaf_nodes, format_path
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input, Output
@@ -19,9 +21,6 @@ from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.utils import get_value_by_nested_path
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.common.utlis.dict_utils import extract_leaf_nodes, format_path
-from openjiuwen.core.common.security.user_config import UserConfig
-
 
 RESPONSE_TEMPLATE = "responseTemplate"
 
@@ -225,6 +224,9 @@ class TemplateProcessor:
                     except asyncio.TimeoutError as e:
                         logger.error(f"render template stream timeout {timeout}s, {e}")
                         self.advance_position()
+                    except asyncio.CancelledError as e:
+                        logger.error(f"render template stream cancelled {e}")
+                        raise e
                 should_wait = False
                 logger.debug("previous segment has been finished")
             async with self._lock:

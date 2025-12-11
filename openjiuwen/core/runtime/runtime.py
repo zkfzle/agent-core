@@ -5,17 +5,17 @@ from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
 
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.state import State
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.stream.writer import StreamWriter
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.utils.tool.base import Tool
+from openjiuwen.core.utils.tool.schema import ToolInfo
 
 ResourceManager = TypeVar("ResourceManager", contravariant=True)
 
@@ -23,31 +23,31 @@ ResourceManager = TypeVar("ResourceManager", contravariant=True)
 class BaseRuntime(ABC):
     @abstractmethod
     def config(self) -> Config:
-        pass
+        ...
 
     @abstractmethod
     def state(self) -> State:
-        pass
+        ...
 
     @abstractmethod
     def tracer(self) -> Any:
-        pass
+        ...
 
     @abstractmethod
     def stream_writer_manager(self) -> StreamWriterManager:
-        pass
+        ...
 
     @abstractmethod
     def callback_manager(self) -> CallbackManager:
-        pass
+        ...
 
     @abstractmethod
     def session_id(self) -> str:
-        pass
+        ...
 
     @abstractmethod
     def resource_manager(self) -> ResourceManager:
-        pass
+        ...
 
     @abstractmethod
     def context(self) -> Context:
@@ -55,9 +55,12 @@ class BaseRuntime(ABC):
 
     @abstractmethod
     def checkpointer(self):
-        pass
+        ...
 
     def actor_manager(self) -> ActorManager:
+        pass
+
+    async def close(self):
         pass
 
 

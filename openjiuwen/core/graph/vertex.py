@@ -35,7 +35,8 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         self._stream_called_timeout = 10
         # if stream_call is available, call should wait for it
         self._stream_done = asyncio.Future()
-        self._stream_called = False
+        self._call_count: int = 0
+        self._stream_call_count: int = 0
         self.is_end_node = False
         self._is_started = asyncio.Event()
         self._is_call_started = asyncio.Event()
@@ -74,7 +75,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 if is_subgraph:
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
                 result_iter = self._executable.on_stream(batch_inputs, runtime=self._runtime)
-                await self._post_stream(result_iter)
+                await self._post_stream(result_iter, ComponentAbility.STREAM)
 
             async def collect_strategy():
                 collect_iter = await self._pre_stream(ComponentAbility.COLLECT)
@@ -88,7 +89,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 except Exception as e:
                     logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
                 output_iter = self._executable.on_transform(transform_iter, self._runtime)
-                await self._post_stream(output_iter)
+                await self._post_stream(output_iter, ComponentAbility.TRANSFORM)
 
             ability_strategies = {
                 ComponentAbility.INVOKE: invoke_strategy,
@@ -129,14 +130,15 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 await self.atomic_invoke(config=config, runtime=self._runtime)
             else:
                 await self.call(config)
+            return {"source_node_id": [self._node_id]}
         except Exception as e:
             if self._runtime.tracer() is not None:
                 await self.__trace_error__(e)
             raise e
         finally:
+            self._call_count += 1
             self._is_started.clear()
             self._is_call_started.clear()
-        return {"source_node_id": [self._node_id]}
 
     async def _atomic_invoke(self, **kwargs) -> Any:
         return await self.call(kwargs.get("config", None))
@@ -180,7 +182,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
         return await actor_manager.consume(self._node_id, ability, inputs_schema, stream_callable)
 
-    async def _post_stream(self, results_iter: AsyncIterator) -> None:
+    async def _post_stream(self, results_iter: AsyncIterator, ability: ComponentAbility) -> None:
         is_end_node = isinstance(self._executable, End)
         is_sub_graph = self._runtime.parent_id() != ''
         actor_manager = self._runtime.actor_manager()
@@ -193,14 +195,18 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     if output_schema else chunk
             else:
                 message = actor_manager.stream_transform.get_by_defined_transformer(chunk, output_transformer)
-            await self._process_chunk(message, is_end_node, end_stream_index, is_sub_graph)
+            await self._process_chunk(message, is_end_node, end_stream_index, is_sub_graph, ability)
             end_stream_index += 1
         if is_end_node and is_sub_graph:
             await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
         else:
-            await self._runtime.actor_manager().end_message(self._node_id)
+            await self._runtime.actor_manager().end_message(self._node_id, ability)
 
-    async def _process_chunk(self, message, is_end_node: bool, end_stream_index: int, is_sub_graph: bool):
+    async def _process_chunk(self, message,
+                             is_end_node: bool,
+                             end_stream_index: int,
+                             is_sub_graph: bool,
+                             ability: ComponentAbility):
         if is_end_node and not is_sub_graph:
             if isinstance(message, StreamSchemas):
                 message_stream_data = message
@@ -218,9 +224,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             await self.__trace_component_stream_output__(message_stream_data)
             await self._runtime.actor_manager().sub_workflow_stream().send(message_stream_data)
         else:
-            logger.debug(f"sending message: {message}")
+            first_frame = end_stream_index == 0
+            logger.debug(f"sending message: {message}, first_frame: {first_frame}")
             await self.__trace_component_stream_output__(message)
-            await self._runtime.actor_manager().produce(self._node_id, message)
+            await self._runtime.actor_manager().produce(self._node_id, message, ability, first_frame=first_frame)
 
     def __clear_interactive__(self) -> None:
         if self._runtime.state().get(INTERACTIVE_INPUT):
@@ -242,7 +249,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             raise e
 
         # wait only when stream_call called
-        if self._stream_called:
+        if self._stream_called():
             try:
                 result = await asyncio.wait_for(
                     self._stream_done,
@@ -262,8 +269,16 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         await self.__trace_component_done__()
         logger.debug("node [%s] call finished", self._node_id)
 
+    def is_done(self) -> bool:
+        logger.debug(f"call_count: {self._call_count}, stream_call_count: {self._stream_call_count}")
+        return (self._call_count == self._stream_call_count
+                or self._call_count == self._stream_call_count + 1)
+
+    def _stream_called(self) -> bool:
+        return self._stream_call_count == self._call_count + 1
+
     async def stream_call(self, event: asyncio.Event, error_callback):
-        self._stream_called = True
+        self._stream_call_count += 1
         self._stream_done = asyncio.Future()
         logger.debug(f"node [{self._node_id}] stream entrypoint has been called")
         event.set()
@@ -274,19 +289,28 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             error_callback(error)
             return
         error = None
+        tasks = []
         try:
-            tasks = []
             call_ability = self._stream_abilities()
             for ability in call_ability:
                 e = asyncio.Event()
                 task = asyncio.create_task(self._run_executable(ability, event=e))
-                await e.wait()
                 tasks.append(task)
+                await e.wait()
             results = await asyncio.gather(*tasks, return_exceptions=True)
             logger.debug(f"node [{self._node_id}] all streaming tasks have been finished")
             for result in results:
                 if isinstance(result, Exception):
                     raise result
+        except asyncio.CancelledError:
+            logger.warning(f"node [{self._node_id}] all streaming tasks have been cancelled")
+            pending_tasks = []
+            for task in tasks:
+                if not task.done() and not task.cancelled():
+                    task.cancel()
+                    pending_tasks.append(task)
+                await asyncio.gather(*pending_tasks, return_exceptions=True)
+            raise
         except Exception as e:
             logger.error(f"failed to call node [{self._node_id}], error: {e}")
             error_callback(e)
@@ -346,3 +370,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             return
         if self._is_call_started.is_set():
             await TracerWorkflowUtils.trace_component_stream_input(self._runtime, {}, send=True)
+
+    def reset(self):
+        self._call_count = 0
+        self._stream_call_count = 0

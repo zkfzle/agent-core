@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Self, Any, Union, AsyncIterator, List
+from typing import Self, Any, Union, AsyncIterator, List, Tuple
 
 from pydantic import BaseModel
 
@@ -29,7 +29,6 @@ from openjiuwen.core.runtime.constants import WORKFLOW_EXECUTE_TIMEOUT, \
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from openjiuwen.core.runtime.state import Transformer
-from openjiuwen.core.runtime.utils import NESTED_PATH_SPLIT
 from openjiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
 from openjiuwen.core.runtime.wrapper import RouterRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
@@ -510,40 +509,46 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         logger.info(f"begin to sub_invoke, inputs: {inputs}")
         actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
 
-        compiled_graph = self.compile(sub_workflow_runtime)
-        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
-        if self._is_streaming:
-            messages = []
-            while True:
-                frame = await actor_manager.sub_workflow_stream().receive(
-                    runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
-                if frame is None:
-                    logger.warning("no frame received")
-                    continue
-                if frame == StreamEmitter.END_FRAME:
-                    logger.info("received end frame of sub_invoke")
-                    break
-                messages.append(frame)
-            if messages:
-                logger.debug(f"sub workflow messages: {messages}")
-                return dict(stream=messages)
+        try:
+            compiled_graph = self.compile(sub_workflow_runtime)
+            await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+            if self._is_streaming:
+                messages = []
+                while True:
+                    frame = await actor_manager.sub_workflow_stream().receive(
+                        runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
+                    if frame is None:
+                        logger.warning("no frame received")
+                        continue
+                    if frame == StreamEmitter.END_FRAME:
+                        logger.info("received end frame of sub_invoke")
+                        break
+                    messages.append(frame)
+                if messages:
+                    logger.debug(f"sub workflow messages: {messages}")
+                    return dict(stream=messages)
 
-        node_runtime = NodeRuntime(runtime, self._end_comp_id)
-        output_key = self._end_comp_id
-        results = node_runtime.state().get_outputs(output_key)
-        logger.info(f"end to sub_invoke, result: {results}")
-        return results
+            node_runtime = NodeRuntime(runtime, self._end_comp_id)
+            output_key = self._end_comp_id
+
+            results = node_runtime.state().get_outputs(output_key)
+            logger.info(f"end to sub_invoke, result: {results}")
+            return results
+        finally:
+            await sub_workflow_runtime.close()
+            self._graph.reset()
 
     async def sub_stream(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> AsyncIterator[Output]:
         logger.info(f"begin to sub_stream, input: {inputs}")
         actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
 
-        compiled_graph = self.compile(sub_workflow_runtime)
-        await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
-        if self._is_streaming:
-            frame_count = 0
-            stream_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
-            sub_end_ability = self._workflow_config.spec.comp_configs.get(self._end_comp_id).abilities
+        try:
+            compiled_graph = self.compile(sub_workflow_runtime)
+            await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+            if self._is_streaming:
+                frame_count = 0
+                stream_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+                sub_end_ability = self._workflow_config.spec.comp_configs.get(self._end_comp_id).abilities
             required_abilities = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
             stream_ability_count = sum(ability in sub_end_ability for ability in required_abilities)
             while True:
@@ -560,6 +565,9 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
                 frame_count += 1
                 logger.debug(f"yielding frame {frame_count}: {frame}")
                 yield frame
+        finally:
+            await sub_workflow_runtime.close()
+            self._graph.reset()
 
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
         async def _invoke_task():
@@ -585,8 +593,12 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             logger.info("end to invoke, results=%s", output)
             return output
 
-        invoke_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
-        return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
+        try:
+            invoke_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+            return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
+        finally:
+            await runtime.close()
+            self._graph.reset()
 
     async def stream(
             self,
@@ -645,6 +657,9 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
         except Exception as e:
             raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                                       StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
+        finally:
+            await runtime.close()
+            self._graph.reset()
 
     async def _execute_with_timeout(self, func, timeout, status_code):
         task = asyncio.create_task(func())
@@ -687,7 +702,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             tracer.init(runtime.stream_writer_manager(), runtime.callback_manager())
             runtime.set_tracer(tracer)
 
-    def _prepare_sub_workflow_runtime(self, runtime: BaseRuntime):
+    def _prepare_sub_workflow_runtime(self, runtime: BaseRuntime) -> Tuple[ActorManager, BaseRuntime]:
         """
         Prepare common components for sub workflow execution.
         

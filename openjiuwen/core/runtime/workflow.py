@@ -6,8 +6,8 @@ import uuid
 from typing import Any
 
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceManager, ResourceMgr
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.state import State
@@ -96,6 +96,10 @@ class WorkflowRuntime(BaseRuntime):
 
     def workflow_nesting_depth(self):
         return 0
+
+    async def close(self):
+        if self._actor_manager is not None:
+            await self._actor_manager.shutdown()
 
 
 def create_parent_id(runtime: BaseRuntime):
@@ -202,3 +206,7 @@ class SubWorkflowRuntime(NodeRuntime):
 
     def actor_manager(self) -> ActorManager:
         return self._actor_manager
+
+    async def close(self):
+        if self._actor_manager is not None:
+            await self._actor_manager.shutdown()

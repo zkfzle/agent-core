@@ -115,20 +115,24 @@ class LLMController(BaseController):
             return self._unwrap_result(final_result)
         
         # Check if planned task is a workflow task
+        initial_iteration = 1
         workflow_task = self._resolve_workflow_from_tasks(tasks)
         if workflow_task:
             # Check if it needs to resume interrupted task
-            interrupted_task = self._find_interrupted_task(workflow_task, runtime)
+            interrupted_task, saved_iteration = self._find_interrupted_task(workflow_task, runtime)
             if interrupted_task:
-                logger.info(f"Resuming interrupted workflow task: {workflow_task.input.target_name}")
+                logger.info(f"Resuming interrupted workflow task: {workflow_task.input.target_name}, "
+                            f"last iteration: {saved_iteration}")
                 # Create resume task
                 resume_task = self._create_resume_task(message, interrupted_task)
                 tasks = [resume_task]
+                if saved_iteration is not None:
+                    initial_iteration = saved_iteration + 1
             else:
                 logger.info(f"Creating new workflow task: {workflow_task.input.target_name}")
         
         # Execute tasks
-        return await self._execute_react_loop(tasks, runtime)
+        return await self._execute_react_loop(tasks, runtime, initial_iteration=initial_iteration)
 
     async def _post_task_completion(
         self,
@@ -159,7 +163,7 @@ class LLMController(BaseController):
         
         # Clear workflow interrupted state (if any)
         self._clear_interrupted_state(task, runtime)
-        logger.info(f"Cleared interrupt state for workflow: {workflow_id}")
+        logger.info(f"Cleared state for workflow: {workflow_id}")
     
     async def _generate_next_plan(
         self,
@@ -237,13 +241,23 @@ class LLMController(BaseController):
 
     async def _handle_task_interrupted(
         self,
+        task: Task,
         output: List,
-        runtime: Runtime
+        runtime: Runtime,
+        current_iteration: int
     ) -> Optional[Dict]:
         """Handle task interruption
         
         Note: interruption state has been saved in _execute_workflow_task, only return result here
         """
+        # Save interruption state (including iteration, resume the task here to avoid an infinite loop)
+        await self.interrupt_task(
+            task=task,
+            runtime=runtime,
+            interaction_data=output,
+            current_iteration=current_iteration
+        )
+
         # Write interrupted task stream data
         await self._write_message_stream_data(output, runtime)
 
@@ -264,7 +278,8 @@ class LLMController(BaseController):
         error_result = await self._send_error_stream(error_msg, runtime)
         return self._unwrap_result(error_result)
 
-    async def _execute_react_loop(self, tasks: list[Task], runtime: Runtime) -> Optional[Dict]:
+    async def _execute_react_loop(self, tasks: list[Task], runtime: Runtime,
+                                  initial_iteration: int = 1) -> Optional[Dict]:
         """Execute ReAct loop with explicit iteration - NO RECURSION
 
         Main loop:
@@ -280,11 +295,12 @@ class LLMController(BaseController):
         Args:
             tasks: Initial task list
             runtime: Runtime context
+            initial_iteration: Initial iteration
             
         Returns:
             Final result dictionary
         """
-        iteration = 1
+        iteration = initial_iteration
         while tasks and iteration <= self.config.constrain.max_iteration:
             logger.info(f"ReAct Iteration: {iteration} / {self.config.constrain.max_iteration}")
             task = tasks[0]
@@ -295,10 +311,12 @@ class LLMController(BaseController):
             
             # Handle interruption - stop immediately, wait for user input
             if execution_result.status == TaskStatus.INTERRUPTED:
-                logger.info("Task interrupted, stopping ReAct loop")
+                logger.info(f"Task interrupted, stopping ReAct loop at iteration: {iteration}")
                 return await self._handle_task_interrupted(
+                    task=task,
                     output=execution_result.output,
-                    runtime=runtime
+                    runtime=runtime,
+                    current_iteration=iteration
                 )
             
             # Handle error - stop immediately
@@ -406,10 +424,6 @@ class LLMController(BaseController):
                     metadata={"state": result.state.value}
                 )
                 logger.info(f"Workflow {task.input.target_name} interrupted, waiting for user input")
-                
-                # Save interruption state to state
-                interaction_data = result.result if hasattr(result, 'result') else None
-                await self.interrupt_task(task, runtime, interaction_data)
 
                 return TaskResult(
                     status=TaskStatus.INTERRUPTED,
@@ -424,9 +438,6 @@ class LLMController(BaseController):
                 )
                 await self._write_workflow_stream_output(result, runtime)
                 logger.info(f"Workflow {task.input.target_name} completed successfully")
-                
-                # Clear interrupted state (if any)
-                self._clear_interrupted_state(task, runtime)
 
                 return TaskResult(
                     status=TaskStatus.SUCCESS,
@@ -693,11 +704,14 @@ class LLMController(BaseController):
         state["llm_controller"]["interrupted_tasks"][workflow_id]
         
         Find interrupted task for specified workflow from runtime.state
+
+        Returns:
+            tuple: (interrupted_task, saved_iteration) or (None, None)
         """
         state = runtime.get_state("llm_controller")
         if not state:
             logger.info("No llm_controller state found, don't have interrupted tasks")
-            return None
+            return None, None
 
         interrupted_tasks = state.get("interrupted_tasks", {})
         logger.info(f"find interrupted_tasks {list(interrupted_tasks.keys())} from llm_controller")
@@ -706,7 +720,7 @@ class LLMController(BaseController):
         workflow_id = self._get_workflow_id_from_schema(workflow_task.input.target_name)
         if not workflow_id:
             logger.warning(f"Workflow schema not found for {workflow_task.input.target_name}")
-            return None
+            return None, None
 
         state_key = workflow_id.replace('.', '_')
         
@@ -714,10 +728,11 @@ class LLMController(BaseController):
         if state_key in interrupted_tasks:
             logger.info(f"Found interrupted task for {workflow_task.input.target_name} (key: {state_key})")
             task_data = interrupted_tasks[state_key]["task"]
-            return Task.model_validate(task_data)
+            saved_iteration = interrupted_tasks[state_key]["iteration"]
+            return Task.model_validate(task_data), saved_iteration
         
         logger.info(f"No interrupted task found for workflow {workflow_task.input.target_name}")
-        return None
+        return None, None
 
     def _create_resume_task(self, message: Message, interrupted_task: Task) -> Task:
         """Create resume task
@@ -820,7 +835,8 @@ class LLMController(BaseController):
             self,
             task: Task,
             runtime: Runtime,
-            interaction_data: Optional[list] = None
+            interaction_data: Optional[list] = None,
+            current_iteration: Optional[int] = None
     ) -> Dict:
         """Save interruption state to runtime.state
 
@@ -828,6 +844,7 @@ class LLMController(BaseController):
             task: Task object
             runtime: Runtime context
             interaction_data: Interaction data during interruption (OutputSchema list)
+            current_iteration: Current iteration
 
         Returns:
             dict: Interruption information
@@ -857,7 +874,8 @@ class LLMController(BaseController):
 
         state["interrupted_tasks"][state_key] = {
             "task": task.model_dump(),
-            "component_id": component_id
+            "component_id": component_id,
+            "iteration": current_iteration
         }
 
         runtime.update_state({"llm_controller": state})
@@ -865,7 +883,7 @@ class LLMController(BaseController):
         logger.info(
             f"Task interrupted: workflow={workflow_id}, "
             f"state_key={state_key}, component_id={component_id}, "
-            f"task_id={task.task_id}"
+            f"task_id={task.task_id}, current_iteration={current_iteration}"
         )
 
         return {

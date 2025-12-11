@@ -20,7 +20,7 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 
 
-API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")

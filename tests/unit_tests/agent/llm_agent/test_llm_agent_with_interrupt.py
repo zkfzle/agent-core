@@ -24,7 +24,7 @@ from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
-API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")

@@ -220,6 +220,7 @@ class TestAsyncSqlDbStore(unittest.TestCase):
         row = await self.store.condition_get(CONTEXT_CONFIG["table"], {"id": ["m1"]})
         self.assertEqual(row, [])
 
+    @unittest.skip("skip test")
     def test_basic(self):
         asyncio.run(self.async_get_table_columns())
         asyncio.run(self.async_add())

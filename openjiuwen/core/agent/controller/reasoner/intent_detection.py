@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
 import json
+import re
 import secrets
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
@@ -137,7 +138,9 @@ class IntentDetection:
         detected_intent_id = ""
         session_id = self.runtime.session_id()
         try:
-            output_data = json.loads(llm_output)
+            cleaned = re.sub(r'^\s*```json\s*|\s*```\s*$', '', llm_output.strip(), flags=re.IGNORECASE)
+            cleaned = re.sub(r"^\s*'''json\s*|\s*'''\s*$", '', cleaned, flags=re.IGNORECASE)
+            output_data = json.loads(cleaned, strict=False)
             detected_class_number = int(output_data.get('result', ''))
             if (detected_class_number <= 0 or
                     detected_class_number > len(self.intent_config.category_list)):

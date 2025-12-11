@@ -18,7 +18,6 @@ dependencies = [
     "mermaid-py==0.8.0",
     "numpy==1.26.0",
     "pymupdf==1.26.4",
-    "llama-index==0.12.36",
     "transformers==4.52.4",
     "portalocker==3.2.0",
     "pymilvus[milvus-lite]==2.6.2",

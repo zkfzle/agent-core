@@ -23,8 +23,8 @@ from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
 from mcp import StdioServerParameters
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
+API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "siliconflow")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")

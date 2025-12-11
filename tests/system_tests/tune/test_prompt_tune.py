@@ -20,8 +20,8 @@ from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
+API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 

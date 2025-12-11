@@ -43,6 +43,11 @@ from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
 
 USER_FIELDS = "userFields"
 
+API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+
 
 @pytest.fixture
 def fake_node_ctx():
@@ -289,11 +294,6 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,
@@ -360,10 +360,6 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,
@@ -412,10 +408,6 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,
@@ -476,10 +468,6 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,
@@ -530,10 +518,6 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,
@@ -596,11 +580,6 @@ class TestLLMExecutableInvokeNew:
             }
         )
         end_component = End({"responseTemplate": "{{output}}"})
-
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(

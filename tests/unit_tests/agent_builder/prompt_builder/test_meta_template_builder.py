@@ -84,7 +84,13 @@ class TestMetaTemplateBuilder(unittest.TestCase):
 
     def test_register_custom_template(self):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
-        config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+        config = ModelConfig(
+            model_provider="",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             # register string template
             mock_get_model.return_value = mock_llm
@@ -112,7 +118,13 @@ class TestMetaTemplateBuilder(unittest.TestCase):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
-            config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+            config = ModelConfig(
+                model_provider="",
+                model_info=BaseModelInfo(
+                    api_key="sk-fake",
+                    api_base="https://api.openai.com"
+                )
+            )
             builder = MetaTemplateBuilder(config)
             response = builder.build(prompt="你是一个旅行助手")
             self.assertEqual(response,
@@ -137,7 +149,13 @@ class TestMetaTemplateBuilder(unittest.TestCase):
         template = "you are a custom meta template"
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
-            config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+            config = ModelConfig(
+                model_provider="",
+                model_info=BaseModelInfo(
+                    api_key="sk-fake",
+                    api_base="https://api.openai.com"
+                )
+            )
             builder = MetaTemplateBuilder(config)
 
             with self.assertRaises(JiuWenBaseException) as context:

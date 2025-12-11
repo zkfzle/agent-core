@@ -84,7 +84,13 @@ class TestBadCasePromptBuilder(unittest.TestCase):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
-            config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+            config = ModelConfig(
+                model_provider="",
+                model_info=BaseModelInfo(
+                    api_key="sk-fake",
+                    api_base="https://api.openai.com"
+                )
+            )
             builder = BadCasePromptBuilder(config)
             prompt = "bad_case test prompt"
             INFORMATION_EXTRACTION_CASES = [

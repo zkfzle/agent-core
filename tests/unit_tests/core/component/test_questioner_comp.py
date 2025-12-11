@@ -25,6 +25,12 @@ from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 
+API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+
+
 class MockLLMModel:
     pass
 
@@ -86,7 +92,13 @@ class TestQuestionComp:
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        model_config = ModelConfig(model_provider="openai")
+        model_config = ModelConfig(
+            model_provider="openai",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
         questioner_config = QuestionerConfig(
             model=model_config,
             question_content="",
@@ -141,7 +153,13 @@ class TestQuestionComp:
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        model_config = ModelConfig(model_provider="openai")
+        model_config = ModelConfig(
+            model_provider="openai",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
         questioner_config = QuestionerConfig(
             model=model_config,
             question_content="查询什么城市的天气",
@@ -219,7 +237,13 @@ class TestQuestionComp:
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        model_config = ModelConfig(model_provider="openai")
+        model_config = ModelConfig(
+            model_provider="openai",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
         questioner_config = QuestionerConfig(
             model=model_config,
             question_content="",
@@ -286,7 +310,13 @@ class TestQuestionerStream:
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        model_config = ModelConfig(model_provider="openai")
+        model_config = ModelConfig(
+            model_provider="openai",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
         questioner_config = QuestionerConfig(
             model=model_config,
             question_content="",
@@ -339,10 +369,6 @@ class TestQuestionerStream:
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,
@@ -407,10 +433,6 @@ class TestQuestionerStream:
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        API_BASE = os.getenv("API_BASE", "")
-        API_KEY = os.getenv("API_KEY", "")
-        MODEL_NAME = os.getenv("MODEL_NAME", "")
-        MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
                                        model=MODEL_NAME,

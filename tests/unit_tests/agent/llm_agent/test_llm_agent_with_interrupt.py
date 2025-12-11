@@ -20,12 +20,12 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.llm.messages import AIMessage
+from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
+API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
@@ -112,7 +112,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         )
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
-        model_config = ModelConfig(model_provider="openai")
+        model_config = self._create_model()
         questioner_config = QuestionerConfig(
             model=model_config,
             question_content="查询什么城市的天气",

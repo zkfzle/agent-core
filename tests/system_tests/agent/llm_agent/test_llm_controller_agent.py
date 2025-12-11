@@ -29,8 +29,8 @@ from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from sqlalchemy.ext.asyncio import create_async_engine
 from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
+API_BASE = os.getenv("API_BASE", "https://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")

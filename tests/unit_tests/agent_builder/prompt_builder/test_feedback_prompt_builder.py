@@ -86,7 +86,13 @@ class TestFeedbackPromptBuilder(unittest.TestCase):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
-            config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+            config = ModelConfig(
+                model_provider="",
+                model_info=BaseModelInfo(
+                    api_key="sk-fake",
+                    api_base="https://api.openai.com"
+                )
+            )
             builder = FeedbackPromptBuilder(config)
             prompt = "你是一个旅行助手"
             feedback = "丰富一下"
@@ -99,7 +105,13 @@ class TestFeedbackPromptBuilder(unittest.TestCase):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
-            config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+            config = ModelConfig(
+                model_provider="",
+                model_info=BaseModelInfo(
+                    api_key="sk-fake",
+                    api_base="https://api.openai.com"
+                )
+            )
             builder = FeedbackPromptBuilder(config)
             INSERT_TAG = "[用户要插入的位置]"
             prompt = "你是一个旅行助手"
@@ -114,7 +126,13 @@ class TestFeedbackPromptBuilder(unittest.TestCase):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
-            config = ModelConfig(model_provider="", model_info=BaseModelInfo())
+            config = ModelConfig(
+                model_provider="",
+                model_info=BaseModelInfo(
+                    api_key="sk-fake",
+                    api_base="https://api.openai.com"
+                )
+            )
             builder = FeedbackPromptBuilder(config)
 
             prompt = "你是一个旅行助手"

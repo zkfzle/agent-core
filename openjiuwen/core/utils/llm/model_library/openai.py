@@ -21,6 +21,12 @@ class OpenAILLM(BaseModel, BaseModelClient):
                                              max_retries=max_retries, timeout=timeout, **kwargs)
         self._should_close_session = True
 
+    async def close(self):
+        if hasattr(self, '_openai_model') and self._openai_model:
+            if hasattr(self._openai_model, 'close'):
+                await self._openai_model.close()
+            self._openai_model = None
+
     def model_provider(self) -> str:
         return "openai"
 

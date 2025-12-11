@@ -327,7 +327,8 @@ class OpenAIChatModel(BaseModelClient):
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         sync_client = None
         try:
-            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
+            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base,
+                                        timeout=self.timeout, max_retries=0)
             response = sync_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
         except Exception as e:
@@ -346,7 +347,8 @@ class OpenAIChatModel(BaseModelClient):
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         async_client = None
         try:
-            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base,
+                                              timeout=self.timeout, max_retries=0)
             response = await async_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
         except Exception as e:
@@ -366,7 +368,8 @@ class OpenAIChatModel(BaseModelClient):
                                             **model_params)
         sync_client = None
         try:
-            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base)
+            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base,
+                                        timeout=self.timeout, max_retries=0)
             stream = sync_client.chat.completions.create(**params)
             for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
@@ -390,7 +393,8 @@ class OpenAIChatModel(BaseModelClient):
                                             **model_params)
         async_client = None
         try:
-            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base)
+            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base,
+                                              timeout=self.timeout, max_retries=0)
             stream = await async_client.chat.completions.create(**params)
             async for chunk in stream:
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)

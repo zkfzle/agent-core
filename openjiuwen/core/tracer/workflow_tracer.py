@@ -68,7 +68,32 @@ class TracerWorkflowUtils:
                              invoke_id=executable_id,
                              parent_node_id=parent_id,
                              outputs=outputs)
-        runtime.state().update_trace(tracer.get_workflow_span(executable_id, parent_id))
+
+    @staticmethod
+    async def trace_stream_output(runtime, chunk):
+        tracer = runtime.tracer()
+        if tracer is None:
+            return
+        executable_id = runtime.executable_id()
+        parent_id = runtime.parent_id()
+        if isinstance(chunk, str):
+            return
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_post_stream",
+                             invoke_id=executable_id,
+                             parent_node_id=parent_id,
+                             chunk=dict(chunk))
+
+    @staticmethod
+    async def trace_call_done(runtime):
+        tracer = runtime.tracer()
+        if tracer is None:
+            return
+        executable_id = runtime.executable_id()
+        parent_id = runtime.parent_id()
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_call_done",
+                             invoke_id=executable_id,
+                             parent_node_id=parent_id)
+
 
     @staticmethod
     async def workflow_trace_outputs(runtime, outputs: Optional[dict]):
@@ -81,6 +106,9 @@ class TracerWorkflowUtils:
                              invoke_id=executable_id,
                              parent_node_id=parent_id,
                              outputs=outputs)
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_call_done",
+                             invoke_id=executable_id,
+                             parent_node_id=parent_id)
         runtime.state().update_trace(tracer.get_workflow_span(executable_id, parent_id))
 
     @staticmethod

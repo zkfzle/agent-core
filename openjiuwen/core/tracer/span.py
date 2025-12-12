@@ -50,6 +50,11 @@ class TraceWorkflowSpan(Span):
     llm_invoke_data: Dict[str, dict] = Field(default={}, exclude=True)  # model data
     # for subworkflow
     parent_node_id: str = Field(default="", alias="parentNodeId")
+    # for component stream output
+    stream_outputs: list = Field(default=list(), alias="streamOutputs")
+
+    def append_stream(self, chunk):
+        self.stream_outputs.append(chunk)
 
 
 class SpanManager:

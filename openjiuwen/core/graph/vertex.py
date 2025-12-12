@@ -191,12 +191,18 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     "index": end_stream_index,
                     "payload": message
                 }
+            if self._runtime.tracer() is not None:
+                await self.__trace_stream__(message_stream_data)
             await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)
         elif is_end_node and is_sub_graph:
-            await self._runtime.actor_manager().sub_workflow_stream().send(
-                message.payload if isinstance(message, OutputSchema) else message)
+            message_stream_data = message.payload if isinstance(message, OutputSchema) else message
+            if self._runtime.tracer() is not None:
+                await self.__trace_stream__(message_stream_data)
+            await self._runtime.actor_manager().sub_workflow_stream().send(message_stream_data)
         else:
             logger.debug(f"sending message: {message}")
+            if self._runtime.tracer() is not None:
+                await self.__trace_stream__(message)
             await self._runtime.actor_manager().produce(self._node_id, message)
 
     def __clear_interactive__(self) -> None:
@@ -216,14 +222,11 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             raise JiuWenBaseException(1, "vertex is not initialized, node is is " + self._node_id)
 
         is_subgraph = self._executable.graph_invoker()
-        enable_end_trace = True
         try:
             component_ability = self._node_config.abilities if self._node_config else None
             component_ability = component_ability if component_ability else [ComponentAbility.INVOKE]
             call_ability = [ability for ability in component_ability if
                             ability in [ComponentAbility.INVOKE, ComponentAbility.STREAM]]
-            if ComponentAbility.INVOKE in call_ability:
-                enable_end_trace &= False
             logger.debug(f"call ability: {call_ability}, node: {self._node_id}")
             for ability in call_ability:
                 await self._run_executable(ability, is_subgraph, config)
@@ -233,8 +236,6 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
         # wait only when stream_call called
         if self._stream_called:
-            if ComponentAbility.COLLECT in self._stream_abilities():
-                enable_end_trace &= False
             try:
                 result = await asyncio.wait_for(self._stream_done,
                                                 timeout=self._stream_called_timeout if self._stream_called_timeout and self._stream_called_timeout > 0 else None)
@@ -245,8 +246,8 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                                           StatusCode.STREAM_FRAME_TIMEOUT_FAILED.errmsg.format(
                                               timeout=self._stream_called_timeout))
         # when the component output is in streaming mode, send an end tracer frame with empty outputs.
-        if enable_end_trace and self._runtime.tracer() is not None:
-            await self.__trace_outputs__()
+        if self._runtime.tracer() is not None:
+            await self.__trace_call_done__()
         logger.debug("node [%s] call finished", self._node_id)
 
     async def stream_call(self, event: asyncio.Event, error_callback):
@@ -296,6 +297,16 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         if self._executable.skip_trace():
             return
         await TracerWorkflowUtils.trace_outputs(self._runtime, outputs)
+
+    async def __trace_call_done__(self) -> None:
+        if self._executable.skip_trace():
+            return
+        await TracerWorkflowUtils.trace_call_done(self._runtime)
+
+    async def __trace_stream__(self, chunk) -> None:
+        if self._executable.skip_trace():
+            return
+        await TracerWorkflowUtils.trace_stream_output(self._runtime, chunk)
 
     async def __trace_error__(self, error: Exception) -> None:
         if self._executable.skip_trace():

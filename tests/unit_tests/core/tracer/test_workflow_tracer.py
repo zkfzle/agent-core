@@ -534,5 +534,5 @@ class TestTraceWorkflow:
                end_error_chunk.payload["error"] == {
                    'error_code': StatusCode.COMPONENT_EXECUTE_ERROR.code,
                    'message': StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="end", ability="stream",
-                                                                               error=RuntimeError(
-                                                                                   "mocked stream error"))}
+                                                                               error=str(RuntimeError(
+                                                                                   "mocked stream error")))}

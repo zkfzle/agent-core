@@ -313,22 +313,30 @@ class TraceWorkflowHandler(TraceBaseHandler):
             self._span_manager.update_span(span, {})
 
     @trigger_event
+    async def on_post_stream(self, invoke_id: str, chunk, **kwargs):
+        span = self._get_tracer_workflow_span(invoke_id)
+        span.append_stream(chunk)
+
+    @trigger_event
     async def on_post_invoke(self, invoke_id: str, outputs, inputs=None, **kwargs):
+        span = self._get_tracer_workflow_span(invoke_id)
+        update_data = {
+            "outputs": outputs,
+        }
+        if inputs and span.component_type in ["End", "Message"]:
+            span.inputs = inputs
+        self._span_manager.update_span(span, update_data)
+
+    @trigger_event
+    async def on_call_done(self, invoke_id, **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)
         elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
-        update_data = {
-            "outputs": outputs,
-            "end_time": end_time
-        }
+        update_data = {"end_time": end_time}
         if elapsed_time is not None:
             update_data["elapsed_time"] = elapsed_time
-        if inputs and span.component_type in ["End", "Message"]:
-            span.inputs = inputs
-
         self._span_manager.update_span(span, update_data)
         await self._send_data(span)
-
         if span.component_type == "LLM":
             span.llm_invoke_data.clear()
             self._span_manager.update_span(span, {})

@@ -10,18 +10,20 @@ from openjiuwen.core.runtime.state import State, CommitStateLike, DEFAULT_NODE_I
 
 
 class StateCollection(State):
+
     def __init__(
-            self,
-            io_state: CommitStateLike,
-            global_state: CommitStateLike,
-            comp_state: CommitStateLike,
-            workflow_state: CommitStateLike,
-            trace_state: dict = {},
-            parent_id: str = '',
-            node_id: str = DEFAULT_NODE_ID
+        self,
+        io_state: CommitStateLike,
+        global_state: CommitStateLike,
+        comp_state: CommitStateLike,
+        workflow_state: CommitStateLike,
+        trace_state: dict = None,
+        parent_id: str = "",
+        node_id: str = DEFAULT_NODE_ID,
     ):
         self._io_state = io_state
         self._global_state = global_state
+        trace_state = trace_state or {}
         self._trace_state = trace_state
         self._comp_state = comp_state
         self._workflow_state = workflow_state
@@ -65,14 +67,19 @@ class StateCollection(State):
 
 
 class CommitState(StateCollection):
-    def __init__(self, io_state: CommitStateLike,
-                 global_state: CommitStateLike,
-                 comp_state: CommitStateLike,
-                 workflow_state: CommitStateLike,
-                 trace_state: dict = {},
-                 parent_id: str = '',
-                 node_id: str = DEFAULT_NODE_ID,
-                 workflow_only=True):
+
+    def __init__(
+        self,
+        io_state: CommitStateLike,
+        global_state: CommitStateLike,
+        comp_state: CommitStateLike,
+        workflow_state: CommitStateLike,
+        trace_state: dict = None,
+        parent_id: str = "",
+        node_id: str = DEFAULT_NODE_ID,
+        workflow_only=True,
+    ):
+        trace_state = trace_state or {}
         super().__init__(io_state=io_state, global_state=global_state, comp_state=comp_state, trace_state=trace_state,
                          workflow_state=workflow_state, parent_id=parent_id, node_id=node_id)
         self._workflow_only = workflow_only

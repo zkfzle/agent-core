@@ -90,9 +90,9 @@ class ConfigManager:
 
 class ConfigDict(dict):
 
-    def __init__(self, config_manager: ConfigManager):
-        super().__init__(config_manager._config)
-        self._config_manager = config_manager
+    def __init__(self, local_config_manager: ConfigManager):
+        super().__init__(local_config_manager._config)
+        self._config_manager = local_config_manager
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._config_manager.get(key, default)

@@ -228,7 +228,6 @@ else:
             self._node_id_generator = self._NodeIdGenerator()
             self._link_id_generator = self._LinkIdGenerator()
 
-
         def to_mermaid(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False,
                        enable_animation: bool = False) -> str:
             """convert graph to Mermaid syntax"""
@@ -291,15 +290,18 @@ else:
                     mermaid_nodes[sub_node.id] = Node(id_=self._node_id_generator.next(), content=sub_node.id, shape=shape)
 
             links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes, enable_animation)
-            subgraph_start_nodes = [mermaid_nodes[start_node.id]
-                                    if start_node.id in mermaid_nodes
-                                    else subgraph_mermaid_nodes[start_node.id].node for start_node in graph.start_nodes]
-            subgraph_end_nodes = [mermaid_nodes[end_node.id]
-                                    if end_node.id in mermaid_nodes
-                                    else subgraph_mermaid_nodes[end_node.id].node for end_node in graph.end_nodes]
-            subgraph_break_nodes = [mermaid_nodes[break_node.id]
-                                    if break_node.id in mermaid_nodes
-                                    else subgraph_mermaid_nodes[break_node.id].node for break_node in graph.break_nodes]
+
+            def get_node_by_id(node_id):
+                if node_id in mermaid_nodes:
+                    return mermaid_nodes[node_id]
+                elif node_id in subgraph_mermaid_nodes:
+                    return subgraph_mermaid_nodes[node_id].node
+                else:
+                    return "invalid node id"
+
+            subgraph_start_nodes = [get_node_by_id(start_node.id) for start_node in graph.start_nodes]
+            subgraph_end_nodes = [get_node_by_id(end_node.id) for end_node in graph.end_nodes]
+            subgraph_break_nodes = [get_node_by_id(break_node.id) for break_node in graph.break_nodes]
             sub_nodes = ([sub_node for sub_node in mermaid_nodes.values()] +
                          [sub_node.node for sub_node in subgraph_mermaid_nodes.values()])
             subgraph_node = self._SubGraphNode(node=Node(id_=self._node_id_generator.next(), content=node.id,

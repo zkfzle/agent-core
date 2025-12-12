@@ -199,10 +199,10 @@ class RouterRuntime(StateRuntime):
     def custom_writer(self) -> Optional[StreamWriter]:
         pass
 
-    def write_stream(self, data: Union[dict, OutputSchema]):
+    async def write_stream(self, data: Union[dict, OutputSchema]):
         pass
 
-    def write_custom_stream(self, data: dict):
+    async def write_custom_stream(self, data: dict):
         pass
 
     async def trace_error(self, error: Exception):

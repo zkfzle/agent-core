@@ -84,7 +84,7 @@ class HierarchicalMainController(BaseController):
             desc = None
             if hasattr(agent, 'config') and hasattr(agent.config, 'description'):
                 desc = agent.config.description
-            elif hasattr(agent, '_agent_config'):
+            elif hasattr(agent, 'agent_config'):
                 desc = getattr(agent.agent_config, 'description', None)
             
             # Fallback: use agent_id if no description

@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMAgent - ReAct style Agent based on ControllerAgent"""
 import datetime
+from datetime import timezone
 from typing import Dict, List, Any, AsyncIterator, Optional
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
@@ -220,12 +221,17 @@ class LLMAgent(ControllerAgent):
         if result is not None:
             assistant_message = _convert_response_to_message(result)
             if assistant_message is not None and assistant_message.content != "":
-                await self._memory_engine.add_conversation_messages(
-                    user_id=user_id,
-                    group_id=group_id,
-                    messages = [assistant_message],
-                    timestamp=datetime.datetime.now(tz=TIMEZONE_NAME),
-                )
+                try:
+                    await self._memory_engine.add_conversation_messages(
+                        user_id=user_id,
+                        group_id=group_id,
+                        messages=[assistant_message],
+                        timestamp=datetime.datetime.now(tz=timezone.utc),
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Add memory failed: {e}"
+                    )
             return
 
         #add user message
@@ -235,10 +241,14 @@ class LLMAgent(ControllerAgent):
         if query is not None and isinstance(query, str):
             user_message = HumanMessage(content=query)
             if user_message and user_message.content != "":
-                await self._memory_engine.add_conversation_messages(
-                    user_id=user_id,
-                    group_id=group_id,
-                    messages=[user_message],
-                    timestamp=datetime.datetime.now(tz=TIMEZONE_NAME),
-                )
-
+                try:
+                    await self._memory_engine.add_conversation_messages(
+                        user_id=user_id,
+                        group_id=group_id,
+                        messages=[user_message],
+                        timestamp=datetime.datetime.now(tz=timezone.utc),
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Add memory failed: {e}"
+                    )

@@ -1047,17 +1047,22 @@ class LLMController(BaseController):
                 result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables, ensure_ascii=False)})
             logger.info(f"memory_variables: {memory_variables}")
 
-            long_term_memory = await memory_engine.search_user_mem(
-                user_id=user_id,
-                group_id=group_id,
-                query=query,
-                num=1
-            )
-            if long_term_memory:
-                memory_contents = [{
-                    "mem": mem.get("mem", ""),
-                    "timestamp": convert_timestamp(mem.get("timestamp", "")),
-                } for mem in long_term_memory]
-                result.update({"sys_long_term_memory": JsonUtils.safe_json_dumps(memory_contents, ensure_ascii=False)})
-            logger.info(f"long_term_memory: {long_term_memory}")
+            try:
+                long_term_memory = await memory_engine.search_user_mem(
+                    user_id=user_id,
+                    group_id=group_id,
+                    query=query,
+                    num=1
+                )
+                if long_term_memory:
+                    memory_contents = [{
+                        "mem": mem.get("mem", ""),
+                        "timestamp": convert_timestamp(mem.get("timestamp", "")),
+                    } for mem in long_term_memory]
+                    result.update(
+                        {"sys_long_term_memory": JsonUtils.safe_json_dumps(memory_contents, ensure_ascii=False)})
+                logger.info(f"long_term_memory: {long_term_memory}")
+            except Exception as e:
+                logger.error(f"[LongTermMemory] failed to search mem: {e}")
+                result.update({"sys_long_term_memory": "[]"})
         return result

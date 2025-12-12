@@ -42,7 +42,7 @@ class ToolMgr(AbstractManager[Tool]):
             if hasattr(tool_obj, "get_tool_info"):
                 self._tool_infos[tool_id] = tool_obj.get_tool_info()
             else:
-                self._tool_infos[tool_id] = ToolInfo()
+                logger.warning(f"Tool {tool_id} does not have a get_tool_info method, add tool failed")
             return tool_obj
 
         self._add_resource(tool_id, tool, StatusCode.RUNTIME_TOOL_GET_FAILED, validate_tool)

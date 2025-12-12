@@ -78,7 +78,7 @@ class BaseController(ABC):
         """
         # Get agent_config (support both _agent_config and _config.get_agent_config())
         if hasattr(agent, '_agent_config'):
-            self._config = agent._agent_config
+            self._config = agent.agent_config
         elif hasattr(agent, '_config') and hasattr(agent._config, 'get_agent_config'):
             self._config = agent._config.get_agent_config()
         else:

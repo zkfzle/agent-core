@@ -65,6 +65,16 @@ def _memory_log_task_exception(task: asyncio.Task) -> None:
         logger.exception("add memory task: [%s] failed: %s", task_name, e)
 
 
+def _extract_answer_output(result) -> str:
+    """从result中提取answer类型的output，不符合条件返回空字符串"""
+    if not (hasattr(result, 'payload') and isinstance(result.payload, dict)):
+        return ""
+    payload = result.payload
+    if payload.get("result_type") == 'answer' and isinstance(payload.get("output"), str):
+        return payload.get("output")
+    return ""
+
+
 def _convert_response_to_message(result) -> AIMessage | None:
     assistant_message = None
     if isinstance(result, OutputSchema) and result.type == "answer" and isinstance(result.payload, dict):
@@ -81,7 +91,7 @@ def _convert_response_to_message(result) -> AIMessage | None:
 
 class LLMAgent(ControllerAgent):
     """LLM Agent - ReAct style Agent based on new architecture
-    
+
     Core features:
     1. Inherits ControllerAgent, holds LLMController
     2. Uses message queue pattern to process messages
@@ -163,14 +173,20 @@ class LLMAgent(ControllerAgent):
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
+            own_stream = True  # 自己拥有 stream 的生命周期
         else:
             agent_runtime = runtime
             need_cleanup = False
+            own_stream = False  # 外部拥有 stream 的生命周期
+
+        # 用于存储最终结果，供 send_to_agent 获取
+        final_result_holder = {"result": None}
 
         # Fully delegate to controller
         async def stream_process():
             try:
-                await self.controller.invoke(inputs, agent_runtime)
+                result = await self.controller.invoke(inputs, agent_runtime)
+                final_result_holder["result"] = result
             finally:
                 if need_cleanup:
                     await agent_runtime.post_run()
@@ -183,12 +199,25 @@ class LLMAgent(ControllerAgent):
 
         task = asyncio.create_task(stream_process())
         result_for_memory = ""
-        async for result in agent_runtime.stream_iterator():
-            if (hasattr(result, 'payload') and isinstance(result.payload, dict) and
-                    result.payload.get("result_type") == 'answer' and isinstance(result.payload.get("output"), str)):
-                result_for_memory += result.payload.get("output")
-            yield result
+
+        if own_stream:
+            # 只有自己拥有 stream 时才从 stream_iterator 读取
+            # 如果传入了外部 runtime，外部调用方负责读取
+            async for result in agent_runtime.stream_iterator():
+                result_for_memory += _extract_answer_output(result)
+                yield result
+
         await task
+
+        # 当 own_stream = False 时，yield 最终结果给 send_to_agent
+        # 这样 send_to_agent 可以获取到 agent 的实际返回值
+        if not own_stream and final_result_holder["result"] is not None:
+            res = final_result_holder["result"]
+            if isinstance(res, list):
+                for item in res:
+                    yield item
+            else:
+                yield res
 
         if self._enable_memory:
             # async write AI result message memory
@@ -198,22 +227,22 @@ class LLMAgent(ControllerAgent):
 
 
     def set_prompt_template(self, prompt_template: List[Dict]):
-        self._agent_config.prompt_template = prompt_template
-        self._config_wrapper.set_agent_config(self._agent_config)
+        self.agent_config.prompt_template = prompt_template
+        self._config_wrapper.set_agent_config(self.agent_config)
         self._config = self._config_wrapper
         self.controller.set_llm_controller_prompt_template(prompt_template)
 
     def _init_memory_config(self, memory_config):
-        group_id = f"{self._agent_config.id}"
+        group_id = f"{self.agent_config.id}"
         logger.info(f"When init Memory Engine, group_id: {group_id}")
         if memory_config is not None:
             self._memory_engine = MemoryEngine.get_mem_engine_instance()
             if self._memory_engine:
                 self._memory_engine.set_group_config(group_id, memory_config)
 
-    async def _write_messages_to_memory(self, inputs, result = None):
+    async def _write_messages_to_memory(self, inputs, result=None):
         user_id = inputs.get("user_id")
-        group_id = inputs.get("group_id","default_group_id")
+        group_id = inputs.get("group_id", "default_group_id")
 
         if not user_id or not self._memory_engine:
             return

@@ -51,8 +51,8 @@ class SimpleEchoAgent(BaseAgent):
         self.received_messages.append(content)
 
         return {
-            "output": f"[{self._agent_config.id}] 收到: {content}",
-            "agent_id": self._agent_config.id,
+            "output": f"[{self.agent_config.id}] 收到: {content}",
+            "agent_id": self.agent_config.id,
             "result_type": "answer"
         }
 

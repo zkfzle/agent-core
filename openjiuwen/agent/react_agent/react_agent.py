@@ -52,8 +52,8 @@ class ReActAgent(BaseAgent):
         """获取 LLM 实例"""
         if self._llm is None:
             self._llm = ModelFactory().get_model(
-                model_provider=self._agent_config.model.model_provider,
-                **self._agent_config.model.model_info.model_dump(exclude=['model_name', 'streaming'])
+                model_provider=self.agent_config.model.model_provider,
+                **self.agent_config.model.model_info.model_dump(exclude=['model_name', 'streaming'])
             )
         return self._llm
 
@@ -74,14 +74,14 @@ class ReActAgent(BaseAgent):
 
         # 2. 获取对话历史
         chat_history = MessageUtils.get_chat_history(
-            self.context_engine, runtime, self._agent_config
+            self.context_engine, runtime, self.agent_config
         )
 
         # 3. 格式化 prompt
         messages = []
         # 添加系统提示
         try:
-            system_prompt = Template(content=self._agent_config.prompt_template).to_messages()
+            system_prompt = Template(content=self.agent_config.prompt_template).to_messages()
             for prompt in system_prompt:
                 prompt_dict = prompt.model_dump(exclude_none=True)
                 messages.append(prompt_dict)
@@ -103,7 +103,7 @@ class ReActAgent(BaseAgent):
         # 5. 调用 LLM
         llm = self._get_llm()
         llm_output = await llm.ainvoke(
-            self._agent_config.model.model_info.model_name,
+            self.agent_config.model.model_info.model_name,
             messages,
             tools
         )
@@ -175,7 +175,7 @@ class ReActAgent(BaseAgent):
 
             # 2. ReAct 循环
             iteration = 0
-            max_iteration = self._agent_config.constrain.max_iteration
+            max_iteration = self.agent_config.constrain.max_iteration
             is_first_call = True
 
             while iteration < max_iteration:

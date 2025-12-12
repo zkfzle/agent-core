@@ -422,7 +422,7 @@ class BaseAgent(ABC):
         # 1. Create Config wrapper (backward compatible)
         self._config_wrapper = Config()
         self._config_wrapper.set_agent_config(agent_config)
-        self._agent_config = agent_config
+        self.agent_config = agent_config
         self._config = self._config_wrapper  # Unified interface
 
         # 2. Create Runtime
@@ -461,9 +461,9 @@ class BaseAgent(ABC):
     def _create_context_engine(self) -> ContextEngine:
         """Create ContextEngine - Internal method, called during base class initialization"""
         # Get max conversation rounds configuration
-        if (hasattr(self._agent_config, 'constrain') and
-                hasattr(self._agent_config.constrain, 'reserved_max_chat_rounds')):
-            max_rounds = self._agent_config.constrain.reserved_max_chat_rounds
+        if (hasattr(self.agent_config, 'constrain') and
+                hasattr(self.agent_config.constrain, 'reserved_max_chat_rounds')):
+            max_rounds = self.agent_config.constrain.reserved_max_chat_rounds
         else:
             max_rounds = 10  # Default value
 
@@ -471,7 +471,7 @@ class BaseAgent(ABC):
             conversation_history_length=max_rounds * 2
         )
         return ContextEngine(
-            agent_id=self._agent_config.id,
+            agent_id=self.agent_config.id,
             config=context_config,
             model=None
         )
@@ -510,11 +510,11 @@ class BaseAgent(ABC):
         - Subclasses should override this method if they need to sync runtime
         """
         # Check if configuration has prompt_template field
-        if hasattr(self._agent_config, 'prompt_template'):
+        if hasattr(self.agent_config, 'prompt_template'):
             # Append mode: Keep original prompt, add new prompt
-            self._agent_config.prompt_template.extend(prompt_template)
+            self.agent_config.prompt_template.extend(prompt_template)
         else:
-            config_class_name = self._agent_config.__class__.__name__
+            config_class_name = self.agent_config.__class__.__name__
             logger.warning(
                 f"{config_class_name} has no prompt_template field, "
                 "add_prompt operation ignored"
@@ -529,18 +529,18 @@ class BaseAgent(ABC):
 
         for tool in tools:
             # 1. Add tool name to config.tools
-            if tool.name not in self._agent_config.tools:
-                self._agent_config.tools.append(tool.name)
+            if tool.name not in self.agent_config.tools:
+                self.agent_config.tools.append(tool.name)
 
             # 2. Generate PluginSchema (if configuration supports)
-            if hasattr(self._agent_config, 'plugins'):
+            if hasattr(self.agent_config, 'plugins'):
                 # Check if already exists
                 existing_plugin_names = {
-                    p.name for p in self._agent_config.plugins
+                    p.name for p in self.agent_config.plugins
                 }
                 if tool.name not in existing_plugin_names:
                     plugin_schema = self._tool_to_plugin_schema(tool)
-                    self._agent_config.plugins.append(plugin_schema)
+                    self.agent_config.plugins.append(plugin_schema)
 
             # 3. Add to self._tools (avoid duplication)
             existing_tool_names = {t.name for t in self._tools}
@@ -635,7 +635,7 @@ class BaseAgent(ABC):
             # Check if already exists
             existing_keys = {
                 generate_workflow_key(w.id, w.version)
-                for w in self._agent_config.workflows
+                for w in self.agent_config.workflows
             }
             logger.info(
                 f"Workflow {workflow_key}: existing_keys={existing_keys}, "
@@ -652,7 +652,7 @@ class BaseAgent(ABC):
                     description=workflow_description or "",
                     inputs={}
                 )
-                self._agent_config.workflows.append(workflow_schema)
+                self.agent_config.workflows.append(workflow_schema)
 
             # 2. Sync to runtime (provider or instance)
             to_register = provider if is_provider else workflow
@@ -686,15 +686,15 @@ class BaseAgent(ABC):
         - This method only updates plugins field in configuration
         - Subclasses should override this method if they need to sync runtime
         """
-        if hasattr(self._agent_config, 'plugins'):
+        if hasattr(self.agent_config, 'plugins'):
             # Check duplication
-            existing_names = {p.name for p in self._agent_config.plugins}
+            existing_names = {p.name for p in self.agent_config.plugins}
             for plugin in plugins:
                 if plugin.name not in existing_names:
-                    self._agent_config.plugins.append(plugin)
+                    self.agent_config.plugins.append(plugin)
                     existing_names.add(plugin.name)
         else:
-            config_class_name = self._agent_config.__class__.__name__
+            config_class_name = self.agent_config.__class__.__name__
             logger.warning(
                 f"{config_class_name} has no plugins field, "
                 "add_plugins operation ignored"

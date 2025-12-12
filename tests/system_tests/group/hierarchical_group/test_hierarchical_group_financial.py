@@ -178,6 +178,171 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         agent.add_workflows([workflow])
         return agent
 
+    def _build_questioner_workflow(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            workflow_desc: str,
+            questioner_type: str = "default"
+    ) -> Workflow:
+        """
+        构建带多字段问询组件的工作流
+
+        Args:
+            workflow_id: 工作流ID
+            workflow_name: 工作流名称
+            workflow_desc: 工作流描述
+            questioner_type: 问询类型 (cash_access/weather/default)
+
+        Returns:
+            Workflow: 包含 start -> questioner -> end 的工作流
+        """
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=workflow_name,
+                id=workflow_id,
+                version="1.0",
+                description=workflow_desc,
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+
+        # 创建组件
+        start = self._create_start_component()
+
+        # 根据类型配置不同的字段
+        if questioner_type == "cash_access":
+            key_fields = [
+                FieldInfo(field_name="bank", description="银行名称", required=True),
+                FieldInfo(field_name="action", description="操作类型（存钱/取钱）", required=True),
+                FieldInfo(field_name="amount", description="金额（数字）", required=True),
+            ]
+            response_template = "存取钱完成: bank={{bank}}, action={{action}}, amount={{amount}}"
+            end_inputs = {
+                "bank": "${questioner.bank}",
+                "action": "${questioner.action}",
+                "amount": "${questioner.amount}"
+            }
+        elif questioner_type == "weather":
+            key_fields = [
+                FieldInfo(field_name="location", description="城市名称", required=True),
+                FieldInfo(field_name="date", description="日期", required=True),
+                FieldInfo(field_name="weather", description="天气状况", required=True),
+                FieldInfo(field_name="temperature", description="温度", required=True),
+            ]
+            response_template = "天气查询完成: location={{location}}, date={{date}}, weather={{weather}}, temperature={{temperature}}"
+            end_inputs = {
+                "location": "${questioner.location}",
+                "date": "${questioner.date}",
+                "weather": "${questioner.weather}",
+                "temperature": "${questioner.temperature}"
+            }
+        else:
+            key_fields = [
+                FieldInfo(field_name="data", description="数据", required=True),
+            ]
+            response_template = "完成: {{data}}"
+            end_inputs = {"data": "${questioner.data}"}
+
+        # 创建 Questioner 组件
+        model_config = self._create_model_config()
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=False,
+        )
+        questioner = QuestionerComponent(questioner_config)
+
+        # End 组件
+        end = End({"responseTemplate": response_template})
+
+        # 注册组件
+        flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
+        flow.add_workflow_comp(
+            "questioner", questioner, inputs_schema={"query": "${start.query}"}
+        )
+        flow.set_end_comp("end", end, inputs_schema=end_inputs)
+
+        # 连接拓扑: start -> questioner -> end
+        flow.add_connection("start", "questioner")
+        flow.add_connection("questioner", "end")
+
+        return flow
+
+    def _create_llm_agent(self, agent_id: str, description: str):
+        """创建 LLM Agent
+
+        Args:
+            agent_id: Agent ID
+            description: Agent 描述
+
+        Returns:
+            LLMAgent 实例
+        """
+        from openjiuwen.agent.llm_agent.llm_agent import LLMAgent
+        from openjiuwen.agent.config.react_config import ReActAgentConfig
+
+        model_config = self._create_model_config()
+        prompt_template = [
+            {"role": "system", "content": f"你是一个{description}的AI助手。根据用户输入进行翻倍运算并输出结果。"}
+        ]
+
+        config = ReActAgentConfig(
+            id=agent_id,
+            version="1.0",
+            description=description,
+            model=model_config,
+            prompt_template=prompt_template,
+        )
+
+        return LLMAgent(config)
+
+    def _create_react_agent(self, agent_id: str, description: str):
+        """创建 ReAct Agent
+
+        Args:
+            agent_id: Agent ID
+            description: Agent 描述
+
+        Returns:
+            ReActAgent 实例
+        """
+        from openjiuwen.agent.react_agent.react_agent import ReActAgent
+        from openjiuwen.agent.config.react_config import ReActAgentConfig
+        from openjiuwen.core.utils.tool.function.function import LocalFunction
+        from openjiuwen.core.utils.tool.param import Param
+
+        model_config = self._create_model_config()
+        prompt_template = [
+            {"role": "system", "content": f"你是一个{description}的AI助手。使用提供的工具完成用户任务。"}
+        ]
+
+        config = ReActAgentConfig(
+            id=agent_id,
+            version="1.0",
+            description=description,
+            model=model_config,
+            prompt_template=prompt_template,
+        )
+
+        agent = ReActAgent(config)
+
+        # 添加求和工具
+        sum_tool = LocalFunction(
+            name="sum",
+            description="两数求和",
+            params=[
+                Param(name="a", description="第一个数", type="number", required=True),
+                Param(name="b", description="第二个数", type="number", required=True),
+            ],
+            func=lambda a, b: a + b
+        )
+        agent.add_tools([sum_tool])
+
+        return agent
+
     @unittest.skip("skip system test - requires network")
     async def test_financial_workflow_with_interrupt_invoke(self):
         """
@@ -697,6 +862,119 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print("\n🎉 多子Agent跳转恢复测试完成！")
         print("   - transfer_agent: 中断 -> 跳转 -> 恢复 -> 完成")
         print("   - invest_agent: 中断 -> 恢复 -> 完成")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_hierarchical_main_controller_001(self):
+        """
+        不指定路由，由leader_agent做意图识别
+
+        测试流程：
+        1. 创建多种类型的 agent（workflow agent、llm agent、react agent）
+        2. 创建 HierarchicalGroup，主 agent 使用 HierarchicalMainController
+        3. 不指定路由，由 leader_agent 做意图识别并分发任务
+        """
+        print("\n=== 测试 HierarchicalMainController 意图识别 ===")
+
+        conversation_id = "test_hierarchical_main_controller_001"
+
+        # 1、创建 workflow
+        cash_access_flow = self._build_questioner_workflow(
+            workflow_id="cash_access_flow",
+            workflow_name="存取钱",
+            workflow_desc="银行存取钱",
+            questioner_type="cash_access"
+        )
+        weather_flow = self._build_questioner_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气",
+            workflow_desc="城市天气查询",
+            questioner_type="weather"
+        )
+
+        # 2、创建 agent
+        cash_access_agent = self._create_workflow_agent(
+            agent_id="cash_access_agent",
+            description="银行存取钱，处理用户在指定银行进行存取钱操作",
+            workflow=cash_access_flow
+        )
+        weather_agent = self._create_workflow_agent(
+            agent_id="weather_agent",
+            description="城市天气查询，处理用户对特定城市在某个时间段的天气温度查询",
+            workflow=weather_flow
+        )
+        double_template_agent = self._create_llm_agent(
+            agent_id="double_template_agent",
+            description="进行翻倍运算并模板输出"
+        )
+        sum_agent = self._create_react_agent(
+            agent_id="sum_agent",
+            description="两数求和运算"
+        )
+
+        # 3. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="financial_group",
+            leader_agent_id="main_controller"
+        )
+        group = HierarchicalGroup(config)
+
+        # 4. 创建 Leader Agent
+        main_config = AgentConfig(
+            id="main_controller",
+            description="组合型agent group",
+            model=self._create_model_config()
+        )
+        main_controller = HierarchicalMainController()
+        leader_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 5. 添加所有 Agents 到 Group
+        group.add_agent("main_controller", leader_agent)
+        group.add_agent("cash_access_agent", cash_access_agent)
+        group.add_agent("weather_agent", weather_agent)
+        group.add_agent("double_template_agent", double_template_agent)
+        group.add_agent("sum_agent", sum_agent)
+
+        # 6-1、 与第1个agent进行交互（存取钱）
+        # message1 = Message.create_user_message(
+        #     content="民生银行存钱5000元",
+        #     conversation_id=conversation_id
+        # )
+        # result = await group.invoke(message1)
+        # print(f"agent group result: {result}")
+        # self.assertEqual(
+        #     result["output"].result,
+        #     {'output': {'data': {'bank': '民生银行', 'action': '存钱', 'amount': 5000}}}
+        # )
+
+        # 6-2、 与第2个agent进行交互（天气查询）
+        # message2 = Message.create_user_message(
+        #     content="杭州明日天气晴温度25度",
+        #     conversation_id=conversation_id
+        # )
+        # result = await group.invoke(message2)
+        # print(f"agent group result: {result}")
+        # self.assertEqual(
+        #     result["output"].result,
+        #     {'output': {'data': {'location': '杭州', 'date': '明日', 'weather': '晴', 'temperature': '25度'}}}
+        # )
+
+        # 6-3、 与第3个agent进行交互（翻倍运算）
+        # message3 = Message.create_user_message(
+        #     content="对3进行翻倍运算并模板输出",
+        #     conversation_id=conversation_id
+        # )
+        # result = await group.invoke(message3)
+        # print(f"agent group result: {result}")
+
+        # 6-4、与第4个agent进行交互（求和运算）
+        message4 = Message.create_user_message(
+            content="进行翻倍运算：对3+5进行求和",
+            conversation_id=conversation_id
+        )
+        result = await group.invoke(message4)
+        print(f"agent group result: {result}")
+
+        print("\n[PASS] HierarchicalMainController 意图识别测试完成！")
 
 
 if __name__ == "__main__":

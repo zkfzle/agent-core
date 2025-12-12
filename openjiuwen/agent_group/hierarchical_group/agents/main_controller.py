@@ -20,7 +20,7 @@ class HierarchicalMainController(BaseController):
     
     Capabilities:
     1. Auto-discover other agents in the group
-    2. LLM-based intent detection
+    2. LLM-based intent detection (using agent description)
     3. State-based interruption recovery
     4. Task dispatch via BaseController.send_to_agent
     
@@ -35,6 +35,7 @@ class HierarchicalMainController(BaseController):
     def __init__(self):
         super().__init__()
         self.reasoner = None
+        self._desc_to_agent_id = {}  # description -> agent_id 映射
     
     def _get_other_agents(self) -> dict:
         """Get all agents except self"""
@@ -75,26 +76,48 @@ class HierarchicalMainController(BaseController):
                 return
         
         # Create new reasoner and IntentDetection
-        category_names = []
-        category_lines = []
+        # Use description as category for better LLM understanding
+        category_descriptions = []
+        self._desc_to_agent_id = {}
         
         for agent_id, agent in agents.items():
-            category_names.append(agent_id)
-            desc = "No description"
+            desc = None
             if hasattr(agent, 'config') and hasattr(agent.config, 'description'):
-                desc = agent.config.description or desc
+                desc = agent.config.description
             elif hasattr(agent, '_agent_config'):
-                desc = getattr(agent._agent_config, 'description', desc) or desc
-            category_lines.append(f"- {agent_id}: {desc}")
+                desc = getattr(agent.agent_config, 'description', None)
+            
+            # Fallback: use agent_id if no description
+            if not desc:
+                desc = agent_id
+                logger.warning(
+                    f"HierarchicalMainController: Agent {agent_id} has no "
+                    f"description, using id as category"
+                )
+            
+            # Handle duplicate descriptions
+            if desc in self._desc_to_agent_id:
+                original_desc = desc
+                desc = f"{desc} ({agent_id})"
+                logger.warning(
+                    f"HierarchicalMainController: Duplicate description "
+                    f"'{original_desc}', using '{desc}'"
+                )
+            
+            category_descriptions.append(desc)
+            self._desc_to_agent_id[desc] = agent_id
         
-        category_info = "\n".join(category_lines)
+        category_info = "\n".join(
+            f"- {desc}" for desc in category_descriptions
+        )
         logger.info(
-            f"HierarchicalMainController: Init reasoner, agents={category_names}"
+            f"HierarchicalMainController: Init reasoner, "
+            f"categories={category_descriptions}"
         )
         
         try:
             intent_config = IntentDetectionConfig(
-                category_list=category_names,
+                category_list=category_descriptions,
                 category_info=category_info,
                 enable_history=True,
                 enable_input=True
@@ -116,7 +139,7 @@ class HierarchicalMainController(BaseController):
             self.reasoner.set_intent_detection(intent_detection)
             logger.info(
                 f"HierarchicalMainController: Reasoner ready, "
-                f"{len(category_names)} agents"
+                f"{len(category_descriptions)} agents"
             )
         except Exception as e:
             logger.error(f"HierarchicalMainController: Reasoner init failed: {e}")
@@ -146,7 +169,10 @@ class HierarchicalMainController(BaseController):
         return result
     
     async def _detect_intent(self, message: Message) -> str:
-        """Detect intent via reasoner"""
+        """Detect intent via reasoner
+        
+        Returns agent_id by mapping from detected description.
+        """
         agents = self._get_other_agents()
         
         if not self.reasoner:
@@ -162,7 +188,23 @@ class HierarchicalMainController(BaseController):
         try:
             tasks = await self.reasoner.use_intent_detection(message)
             if tasks and len(tasks) > 0:
-                return tasks[0].input.target_name
+                detected_desc = tasks[0].input.target_name
+                # Map description back to agent_id
+                agent_id = self._desc_to_agent_id.get(detected_desc)
+                if agent_id:
+                    logger.info(
+                        f"HierarchicalMainController: Mapped '{detected_desc}' "
+                        f"-> {agent_id}"
+                    )
+                    return agent_id
+                # Fallback if mapping not found
+                logger.warning(
+                    f"HierarchicalMainController: No mapping for "
+                    f"'{detected_desc}', trying direct match"
+                )
+                if detected_desc in agents:
+                    return detected_desc
+            
             fallback = list(agents.keys())[0]
             logger.warning(
                 f"HierarchicalMainController: No intent result, "

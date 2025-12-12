@@ -288,7 +288,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
             if isinstance(exception, JiuWenBaseException):
                 span.error = {"error_code": exception.error_code, "message": exception.message}
             elif isinstance(exception, GraphInterrupt):
-                span.error = {}
+                return
             else:
                 span.error = {"error_code": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                               "message": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(

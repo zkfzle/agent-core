@@ -15,6 +15,7 @@ from openjiuwen.agent.utils import MessageUtils
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
@@ -77,8 +78,8 @@ class LLMController(BaseController):
         """
         if message.msg_type != MessageType.USER_INPUT:
             logger.warning(f"Unexpected message type: {message.msg_type}, expected USER_INPUT")
-            await self._send_error_stream("Unexpected message type", runtime)
-            return {"output": "Unexpected message type", "result_type": "answer"}
+            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_HANDLE_USER_INPUT_ERROR.code,
+                                           f"{message.msg_type} is unexpected message type, should be USER_INPUT")
         
         try:
             return await self._handle_user_input(message, runtime)
@@ -87,10 +88,7 @@ class LLMController(BaseController):
             if isinstance(e, JiuWenBaseException):
                 raise e
             else:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.REACT_AGENT_HANDLE_USER_INPUT_ERROR.code,
-                    message=StatusCode.REACT_AGENT_HANDLE_USER_INPUT_ERROR.errmsg.format(error_msg=(str(e)))
-                ) from e
+                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_RUNTIME_ERROR, str(e), e)
 
     async def _handle_user_input(self, message: Message, runtime: Runtime) -> Optional[Dict]:
         """Handle user input - ReAct core: LLM reasoning to generate plan
@@ -534,10 +532,7 @@ class LLMController(BaseController):
             if isinstance(e, JiuWenBaseException):
                 raise e
             else:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.INVOKE_LLM_FAILED.code,
-                    message=StatusCode.INVOKE_LLM_FAILED.errmsg
-                )
+                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_INVOKE_LLM_FAILED, str(e), e)
 
         return tasks, llm_output
 
@@ -603,10 +598,8 @@ class LLMController(BaseController):
             
             # Check for empty response
             if accumulated_chunk is None:
-                raise JiuWenBaseException(
-                    StatusCode.INVOKE_LLM_FAILED.code,
-                    "LLM returned empty response"
-                )
+                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_INVOKE_LLM_FAILED,
+                                               "LLM returned empty response")
             
             # Convert accumulated chunk to AIMessage
             return AIMessage(
@@ -948,15 +941,7 @@ class LLMController(BaseController):
             return final_stream
         except Exception as e:
             logger.error(f"Failed to send final stream data: {e}")
-            return OutputSchema(
-                type="final",
-                index=0,
-                payload={
-                    "error": True,
-                    "message": str(e),
-                    "status": "failed"
-                }
-            )
+            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_SEND_STREAM_FAILED, str(e), e)
 
     async def _send_error_stream(self, error_msg: str, runtime: Runtime):
         """Send error result stream and return OutputSchema"""
@@ -974,15 +959,7 @@ class LLMController(BaseController):
             return error_stream
         except Exception as e:
             logger.error(f"Failed to send error stream: {e}")
-            return OutputSchema(
-                type="final",
-                index=0,
-                payload={
-                    "error": True,
-                    "message": str(e),
-                    "status": "failed"
-                }
-            )
+            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_SEND_STREAM_FAILED, str(e), e)
 
     def _unwrap_result(self, result):
         """Unwrap result - unify return format"""

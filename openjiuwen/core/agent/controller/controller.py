@@ -8,7 +8,10 @@ from typing import Any, Dict, List, Optional
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
@@ -133,9 +136,9 @@ class BaseController(ABC):
         # If event loop changes (e.g., multiple asyncio.run() calls), restart queue
         try:
             current_loop = asyncio.get_running_loop()
-        except RuntimeError:
+        except RuntimeError as e:
             logger.error("No running event loop")
-            raise
+            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_RUNTIME_ERROR, "no running event loop", e)
         
         if self._msg_queue_loop is not current_loop:
             # Event loop changed or first time - (re)start message queue
@@ -212,7 +215,10 @@ class BaseController(ABC):
         except Exception as e:
             error_msg = f"BaseController: handle_message raised exception: {e}"
             logger.error(error_msg, exc_info=True)
-            raise
+            if isinstance(e, JiuWenBaseException):
+                raise e
+            else:
+                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_RUNTIME_ERROR, str(e), e)
 
     # ===== Abstract methods (developers must implement) =====
     @abstractmethod

@@ -11,9 +11,9 @@ from openjiuwen.core.agent.controller.constants import IntentDetectionConstants
 from openjiuwen.core.agent.controller.utils import ReasonerUtils
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent.task.task import Task, TaskType, TaskInput
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
@@ -185,17 +185,12 @@ class IntentDetection:
         return IntentDetectionConstants.DEFAULT_CLASS
 
     async def _invoke_llm_get_output(self, llm_inputs: Union[List[BaseMessage], str]) -> str:
-        """调用大模型invoke方法获取输出"""
         try:
-            # 调用LLM
             model = ReasonerUtils.get_model(self.agent_config.model, self.runtime)
             llm_output = await model.ainvoke(self.agent_config.model.model_info.model_name, llm_inputs)
             llm_output_content = llm_output.content.strip()
         except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.INVOKE_LLM_FAILED.code,
-                message=StatusCode.INVOKE_LLM_FAILED.errmsg
-            ) from e
+            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_INVOKE_LLM_FAILED, str(e), e)
 
         return llm_output_content
 

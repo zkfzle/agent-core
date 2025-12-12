@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 import re
-from typing import Optional, Literal, List
+from typing import Optional, Literal, List, Generator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -48,7 +48,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                      mode: Literal[MODE_GENERAL, MODE_INSERT, MODE_SELECT] = MODE_GENERAL,
                      start_pos: Optional[int] = None,
                      end_pos: Optional[int] = None,
-                     ) -> Optional[str]:
+                     ) -> Generator:
         prompt = TEMPLATE.get_string_prompt(prompt)
         self._is_valid_prompt(prompt, feedback)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)

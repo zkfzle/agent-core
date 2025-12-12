@@ -79,12 +79,12 @@ class MockLLMModel(BaseModelClient):
 
 
 def test_register_custom_template():
-    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_api")
     config = ModelConfig(
         model_provider="",
         model_info=BaseModelInfo(
             api_key="sk-fake",
-            api_base="https://api.openai.com"
+            api_base="mock_api"
         )
     )
     with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
@@ -108,18 +108,18 @@ def test_register_custom_template():
         template = ("this is a invalid tuple meta template", )
         with pytest.raises(JiuWenBaseException) as context:
             builder.register_meta_template("custom_general", template)
-        assert context.value.error_code == StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code
+        assert context.value.error_code == StatusCode.AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR.code
 
 
 def test_build_with_default_meta_template():
-    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_api")
     with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         mock_get_model.return_value = mock_llm
         config = ModelConfig(
             model_provider="",
             model_info=BaseModelInfo(
                 api_key="sk-fake",
-                api_base="https://api.openai.com"
+                api_base="mock_api"
             )
         )
         builder = MetaTemplateBuilder(config)
@@ -146,7 +146,7 @@ def test_build_with_default_meta_template():
 
 
 def test_build_with_custom_meta_template():
-    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_api")
     template = "you are a custom meta template"
     with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         mock_get_model.return_value = mock_llm
@@ -154,7 +154,7 @@ def test_build_with_custom_meta_template():
             model_provider="",
             model_info=BaseModelInfo(
                 api_key="sk-fake",
-                api_base="https://api.openai.com"
+                api_base="mock_api"
             )
         )
         builder = MetaTemplateBuilder(config)

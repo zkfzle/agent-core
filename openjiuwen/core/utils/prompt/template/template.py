@@ -34,7 +34,7 @@ class Template(BaseModel):
     content: Union[List[Dict], List[BaseMessage], str]
     filters: Optional[dict] = Field(default=None)
 
-    def to_messages(self) -> Union[List[BaseMessage], str]:
+    def to_messages(self) -> List[BaseMessage]:
         """Return Template as a list of Messages."""
         messages = []
         if self.content is None or len(self.content) == 0:
@@ -60,7 +60,7 @@ class Template(BaseModel):
         self._validate_template_content_assembled()
         return messages
 
-    def format(self, keywords: dict = None):
+    def format(self, keywords: dict[str, str] = None) -> "Template":
         """format prompt"""
         assembler = Assembler(copy.deepcopy(self.content))
         input_keys = assembler.input_keys

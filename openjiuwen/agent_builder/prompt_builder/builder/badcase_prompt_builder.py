@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import re
-from typing import Optional, List
+from typing import Optional, List, Generator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -34,7 +34,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
     def stream_build(self,
                      prompt: str | Template,
                      cases: List[EvaluatedCase],
-                     ) -> Optional[str]:
+                     ) -> Generator:
         prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_bad_case_template(prompt, cases)
         chunks = self._model.stream(self._model_name, messages)

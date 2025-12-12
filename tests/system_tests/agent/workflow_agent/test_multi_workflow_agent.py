@@ -22,7 +22,10 @@ from datetime import datetime
 import unittest
 from unittest.mock import patch, AsyncMock
 
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.agent.config.workflow_config import (
+    WorkflowAgentConfig,
+    DefaultResponse
+)
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
@@ -1230,3 +1233,313 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"[OK] workflow2 正确恢复并完成")
 
         print("\n✅ 测试通过：多工作流场景下根据 node_id 精确恢复正确！")
+
+    @patch(
+        "openjiuwen.agent.workflow_agent.workflow_controller."
+        "WorkflowController._ensure_intent_detection_initialized"
+    )
+    @patch(
+        "openjiuwen.core.agent.controller.reasoner.agent_reasoner."
+        "AgentReasoner.use_intent_detection"
+    )
+    async def test_default_response_when_no_task_detected(
+            self,
+            mock_intent_detection,
+            mock_init_intent
+    ):
+        """
+        测试意图识别无法选出任务时，使用配置的 default_response.text 作为响应。
+
+        场景：
+        1. 配置两个工作流（多工作流场景会触发 LLM 意图识别）
+        2. 配置 default_response.text = "抱歉，我无法理解您的问题"
+        3. Mock 意图识别返回空结果
+        4. 验证返回的是配置的默认响应文本
+
+        验证：
+        - 当意图识别返回空时，不再使用第一个 workflow
+        - 返回配置的 default_response.text
+        """
+        print("=== 测试意图识别失败时返回默认响应 ===")
+
+        # Mock 意图识别返回空列表
+        mock_intent_detection.return_value = []
+        mock_init_intent.return_value = None
+
+        # 创建两个工作流
+        weather_workflow = self._build_prefixed_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            prefix="weather:"
+        )
+        stock_workflow = self._build_prefixed_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            prefix="stock:"
+        )
+
+        weather_workflow.config().metadata.description = (
+            "查询某地的天气情况、温度、气象信息"
+        )
+        stock_workflow.config().metadata.description = (
+            "查询股票价格、股市行情、股票走势等金融信息"
+        )
+
+        # 配置默认响应
+        default_text = "抱歉，我无法理解您的问题，请换一种方式表达"
+        config = WorkflowAgentConfig(
+            id="test_default_response_agent",
+            version="0.1.0",
+            description="默认响应测试",
+            workflows=[],
+            model=self._create_model_config(),
+            default_response=DefaultResponse(type="text", text=default_text),
+        )
+
+        agent = WorkflowAgent(config)
+        agent.add_workflows([weather_workflow, stock_workflow])
+
+        conversation_id = "test-default-response-001"
+
+        # 发送一个模糊的查询
+        print("\n发送查询：一些无法识别的内容")
+        try:
+            result = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "blahblah随机内容xyz",
+                    "conversation_id": conversation_id
+                }),
+                timeout=30.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 调用超时！")
+            raise
+
+        print(f"返回结果：{result}")
+
+        # 校验结果
+        self.assertIsInstance(result, dict, "应该返回字典类型的结果")
+        self.assertEqual(
+            result["status"], "default_response",
+            "状态应该是 default_response"
+        )
+        self.assertEqual(
+            result["result_type"], "answer",
+            "结果类型应该是 answer"
+        )
+        self.assertEqual(
+            result["output"]["answer"], default_text,
+            f"应该返回配置的默认响应文本: {default_text}"
+        )
+
+        print(f"✅ 测试通过：意图识别失败时正确返回默认响应: {default_text}")
+
+    @patch(
+        "openjiuwen.agent.workflow_agent.workflow_controller."
+        "WorkflowController._ensure_intent_detection_initialized"
+    )
+    @patch(
+        "openjiuwen.core.agent.controller.reasoner.agent_reasoner."
+        "AgentReasoner.use_intent_detection"
+    )
+    async def test_fallback_to_first_workflow_when_no_default_response(
+            self,
+            mock_intent_detection,
+            mock_init_intent
+    ):
+        """
+        测试意图识别无法选出任务且未配置 default_response.text 时，
+        仍然使用第一个 workflow（保持向后兼容）。
+
+        场景：
+        1. 配置两个工作流，但不配置 default_response.text
+        2. Mock 意图识别返回空结果
+        3. 验证回退到第一个工作流执行
+
+        验证：
+        - 当 default_response.text 未配置时，保持原有行为
+        - 使用第一个 workflow 执行
+        """
+        print("=== 测试未配置默认响应时回退到第一个工作流 ===")
+
+        # Mock 意图识别返回空列表
+        mock_intent_detection.return_value = []
+        mock_init_intent.return_value = None
+
+        # 创建两个工作流
+        weather_workflow = self._build_prefixed_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            prefix="weather:"
+        )
+        stock_workflow = self._build_prefixed_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            prefix="stock:"
+        )
+
+        weather_workflow.config().metadata.description = (
+            "查询某地的天气情况、温度、气象信息"
+        )
+        stock_workflow.config().metadata.description = (
+            "查询股票价格、股市行情、股票走势等金融信息"
+        )
+
+        # 不配置默认响应（使用默认空配置）
+        config = WorkflowAgentConfig(
+            id="test_no_default_response_agent",
+            version="0.1.0",
+            description="无默认响应测试",
+            workflows=[],
+            model=self._create_model_config(),
+            # default_response 使用默认值（text 为 None）
+        )
+
+        agent = WorkflowAgent(config)
+        agent.add_workflows([weather_workflow, stock_workflow])
+
+        conversation_id = "test-no-default-response-001"
+
+        # 发送一个模糊的查询
+        print("\n发送查询：一些无法识别的内容")
+        try:
+            result = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "blahblah随机内容xyz",
+                    "conversation_id": conversation_id
+                }),
+                timeout=30.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 调用超时！")
+            raise
+
+        print(f"返回结果：{result}")
+
+        # 校验结果：应该使用第一个工作流（天气查询）
+        self.assertIsInstance(result, dict, "应该返回字典类型的结果")
+        self.assertEqual(
+            result["result_type"], "answer",
+            "结果类型应该是 answer"
+        )
+
+        # 检查是否使用了第一个工作流（天气查询，前缀是 weather:）
+        response_content = result["output"].result["responseContent"]
+        print(f"响应内容：{response_content}")
+        self.assertIn(
+            "weather:", response_content,
+            "未配置默认响应时应回退到第一个工作流（天气查询）"
+        )
+
+        print("✅ 测试通过：未配置默认响应时正确回退到第一个工作流")
+
+    @patch(
+        "openjiuwen.agent.workflow_agent.workflow_controller."
+        "WorkflowController._ensure_intent_detection_initialized"
+    )
+    @patch(
+        "openjiuwen.core.agent.controller.reasoner.agent_reasoner."
+        "AgentReasoner.use_intent_detection"
+    )
+    async def test_default_response_stream_returns_workflow_final(
+            self,
+            mock_intent_detection,
+            mock_init_intent
+    ):
+        """
+        测试意图识别无法选出任务时，流式模式返回 workflow_final 帧。
+
+        场景：
+        1. 配置两个工作流（多工作流场景会触发 LLM 意图识别）
+        2. 配置 default_response.text
+        3. Mock 意图识别返回空结果
+        4. 使用 stream 方法调用
+        5. 验证返回的流中包含 workflow_final 帧，且内容正确
+
+        验证：
+        - 流式输出包含 workflow_final 帧
+        - workflow_final.payload.responseContent 等于配置的默认响应文本
+        """
+        print("=== 测试流式模式下意图识别失败时返回 workflow_final 帧 ===")
+
+        # Mock 意图识别返回空列表
+        mock_intent_detection.return_value = []
+        mock_init_intent.return_value = None
+
+        # 创建两个工作流
+        weather_workflow = self._build_prefixed_workflow(
+            workflow_id="weather_flow",
+            workflow_name="天气查询",
+            prefix="weather:"
+        )
+        stock_workflow = self._build_prefixed_workflow(
+            workflow_id="stock_flow",
+            workflow_name="股票查询",
+            prefix="stock:"
+        )
+
+        weather_workflow.config().metadata.description = (
+            "查询某地的天气情况、温度、气象信息"
+        )
+        stock_workflow.config().metadata.description = (
+            "查询股票价格、股市行情、股票走势等金融信息"
+        )
+
+        # 配置默认响应
+        default_text = "抱歉，我无法理解您的问题，请换一种方式表达"
+        config = WorkflowAgentConfig(
+            id="test_default_response_stream_agent",
+            version="0.1.0",
+            description="默认响应流式测试",
+            workflows=[],
+            model=self._create_model_config(),
+            default_response=DefaultResponse(type="text", text=default_text),
+        )
+
+        agent = WorkflowAgent(config)
+        agent.add_workflows([weather_workflow, stock_workflow])
+
+        conversation_id = "test-default-response-stream-001"
+
+        # 使用流式方法调用
+        print("\n使用 stream 方法发送查询：一些无法识别的内容")
+        chunks = []
+        workflow_final_chunk = None
+
+        try:
+            async for chunk in agent.stream({
+                "query": "blahblah随机内容xyz",
+                "conversation_id": conversation_id
+            }):
+                chunks.append(chunk)
+                print(f"收到 chunk: type={getattr(chunk, 'type', type(chunk).__name__)}")
+                if isinstance(chunk, OutputSchema) and chunk.type == "workflow_final":
+                    workflow_final_chunk = chunk
+        except asyncio.TimeoutError:
+            print("❌ 流式调用超时！")
+            raise
+
+        print(f"\n收到 {len(chunks)} 个 chunk")
+
+        # 校验：应该有 workflow_final 帧
+        self.assertIsNotNone(
+            workflow_final_chunk,
+            "流式输出应该包含 workflow_final 帧"
+        )
+
+        # 校验 workflow_final 的内容格式
+        self.assertIsInstance(
+            workflow_final_chunk.payload, dict,
+            "workflow_final.payload 应该是字典"
+        )
+        self.assertIn(
+            "responseContent", workflow_final_chunk.payload,
+            "workflow_final.payload 应该包含 responseContent"
+        )
+        self.assertEqual(
+            workflow_final_chunk.payload["responseContent"], default_text,
+            f"responseContent 应该等于配置的默认响应文本: {default_text}"
+        )
+
+        print(f"workflow_final 帧内容: {workflow_final_chunk.payload}")
+        print(f"✅ 测试通过：流式模式正确返回 workflow_final 帧，内容: {default_text}")

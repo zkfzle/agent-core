@@ -16,6 +16,7 @@ from openjiuwen.core.agent.task.task import Task, TaskStatus
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.stream.base import OutputSchema
 
 
 @dataclass
@@ -114,6 +115,7 @@ class IntentType(Enum):
     ExecNewTask = "exec_new_task"  # Execute new task
     ResumeTask = "resume_task"  # Resume task
     CancelTask = "cancel_task"  # Cancel task
+    DefaultResponse = "default_response"  # Return default response text
     Unknown = "unknown"  # Unknown intent
 
 
@@ -244,6 +246,8 @@ class IntentDetectionController(BaseController):
                 result = await self._handle_resume(message, intent, runtime)
             elif intent.intent_type == IntentType.CancelTask:
                 result = await self._handle_cancel(message, intent, runtime)
+            elif intent.intent_type == IntentType.DefaultResponse:
+                result = await self._handle_default_response(message, intent, runtime)
             else:
                 result = await self._handle_unknown_intent(message, intent, runtime)
 
@@ -422,6 +426,45 @@ class IntentDetectionController(BaseController):
         logger.info(f"Handling cancel task: task_id={task.task_id}")
 
         return {"status": "cancelled", "task_id": task.task_id}
+
+    async def _handle_default_response(
+            self,
+            message: Message,
+            intent: Intent,
+            runtime: Runtime
+    ) -> Dict:
+        """Handle default response when no task could be detected
+        
+        Args:
+            message: Message object
+            intent: Intent object (with default_response_text in metadata)
+            runtime: Runtime context
+            
+        Returns:
+            dict: Default response result
+        """
+        default_text = intent.metadata.get("default_response_text", "")
+        logger.info(f"Returning default response: {default_text}")
+
+        # Construct workflow_final frame payload (same format as End component)
+        final_payload = {
+            "responseContent": default_text,
+            "output": {}
+        }
+
+        # Write workflow_final frame to stream for streaming mode
+        workflow_final = OutputSchema(
+            type="workflow_final",
+            index=0,
+            payload=final_payload
+        )
+        await runtime.write_stream(workflow_final)
+
+        return {
+            "status": "default_response",
+            "output": {"answer": default_text},
+            "result_type": "answer"
+        }
 
     async def _handle_unknown_intent(
             self,

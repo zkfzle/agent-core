@@ -142,6 +142,16 @@ class WorkflowController(IntentDetectionController):
             detected_workflow = await self._detect_workflow_via_llm(
                 message, runtime
             )
+            # Check if default_response should be used
+            if detected_workflow is None:
+                default_text = self.agent_config.default_response.text
+                logger.info(
+                    f"Using default response: {default_text}"
+                )
+                return Intent(
+                    intent_type=IntentType.DefaultResponse,
+                    metadata={"default_response_text": default_text}
+                )
             logger.info(
                 f"Multi workflow mode: detected {detected_workflow.name}"
             )
@@ -450,7 +460,7 @@ class WorkflowController(IntentDetectionController):
             self,
             message: Message,
             runtime: Runtime
-    ) -> WorkflowSchema:
+    ) -> Optional[WorkflowSchema]:
         """Use LLM to detect workflow
         
         If reasoner exists and model is configured, call reasoner for intent detection
@@ -461,7 +471,8 @@ class WorkflowController(IntentDetectionController):
             runtime: Runtime context
             
         Returns:
-            WorkflowSchema: Detected workflow schema
+            Optional[WorkflowSchema]: Detected workflow schema, or None if
+                default_response should be used
         """
         # If no reasoner, return first workflow
         if not self.reasoner:
@@ -476,7 +487,21 @@ class WorkflowController(IntentDetectionController):
             detected_tasks = await self.reasoner.use_intent_detection(message)
 
             if not detected_tasks:
-                logger.warning("Intent detection returned no tasks, using first workflow")
+                # Check if default_response.text is configured
+                default_response = getattr(
+                    self.agent_config, 'default_response', None
+                )
+                if (default_response and
+                        default_response.text):
+                    logger.info(
+                        "Intent detection returned no tasks, "
+                        "using configured default_response"
+                    )
+                    return None
+
+                logger.warning(
+                    "Intent detection returned no tasks, using first workflow"
+                )
                 return self.agent_config.workflows[0]
 
             # Extract workflow from detected_tasks

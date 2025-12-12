@@ -4,6 +4,7 @@
 
 import asyncio
 import inspect
+
 import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Union
@@ -27,10 +28,12 @@ from openjiuwen.core.stream.base import OutputSchema, CustomSchema
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
+from openjiuwen.core.utils.tool.schema import ToolInfo, Parameters
+
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.workflow.base import Workflow, WorkflowOutput
-from openjiuwen.core.workflow.workflow_config import WorkflowMetadata
+from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema, WorkflowMetadata
 
 if TYPE_CHECKING:
     from openjiuwen.core.agent.controller.controller import Controller
@@ -351,7 +354,10 @@ class WorkflowFactory:
             self,
             workflow_id: str,
             workflow_version: str,
-            factory: Callable[[], Workflow]
+            factory: Callable[[], Workflow],
+            workflow_name: str = '',
+            workflow_description: str = '',
+            input_schema=None,
     ):
         """
         Args:
@@ -362,11 +368,33 @@ class WorkflowFactory:
         self._factory = factory
         self.id = workflow_id
         self.version = workflow_version
-        self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version)
+        self.name = workflow_name
+        self.input_schema = input_schema if input_schema else {}
+        self.workflow_description = workflow_description
+        self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version, name=workflow_name)
+        if self.name and self.input_schema:
+            workflow_input_schema = self.input_schema if isinstance(self.input_schema,
+                WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(self.input_schema)
+            from openjiuwen.core.runner.runner import resource_mgr
+            resource_mgr.workflow()._workflow_tool_infos[
+                generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
+                workflow_input_schema)
+
+    def _convert_to_tool_info(self, workflow_input_schema) -> ToolInfo:
+        parameters = Parameters(
+            type=workflow_input_schema.type,
+            properties=workflow_input_schema.properties,
+            required=workflow_input_schema.required
+        )
+        return ToolInfo(
+            name=self.name,
+            description=self.workflow_description,
+            parameters=parameters,
+        )
 
     def __call__(self):
         """Return a new workflow instance on each call, with metadata auto-set.
-        
+
         Supports both sync and async factory functions:
         - Sync factory: returns Workflow directly
         - Async factory: returns coroutine that resolves to Workflow
@@ -383,7 +411,8 @@ class WorkflowFactory:
         return result
 
 
-def workflow_provider(workflow_id: str, workflow_version: str):
+def workflow_provider(workflow_id: str, workflow_version: str, workflow_name: str = '', workflow_description: str = '',
+                      inputs: Union[dict, WorkflowInputsSchema] = None):
     """Decorator to create a WorkflowFactory from a factory function.
 
     Usage:
@@ -404,7 +433,7 @@ def workflow_provider(workflow_id: str, workflow_version: str):
     """
 
     def decorator(func: Callable[[], Workflow]) -> WorkflowFactory:
-        return WorkflowFactory(workflow_id, workflow_version, func)
+        return WorkflowFactory(workflow_id, workflow_version, func, workflow_name, workflow_description, inputs)
 
     return decorator
 

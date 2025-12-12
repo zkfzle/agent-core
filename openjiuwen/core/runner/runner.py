@@ -5,7 +5,6 @@
 import asyncio
 from typing import Union, Any, List, Optional
 
-from openjiuwen.agent.chat_agent import ChatAgent
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.agent import Agent, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -118,7 +117,7 @@ class Runner:
 
     async def run_agent_streaming(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        if isinstance(agent_instance, ChatAgent):
+        if agent_instance and agent_instance.__class__.__name__ == "ChatAgent":
             try:
                 async for chunk in agent_instance.stream(inputs, agent_runtime):
                     yield chunk

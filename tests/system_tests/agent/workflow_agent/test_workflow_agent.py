@@ -1,6 +1,8 @@
 # tests/test_workflow_agent_invoke_real.py
 import os
 
+
+
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
 
@@ -11,6 +13,7 @@ import pytest
 from typing import List
 
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.agent.agent import workflow_provider
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
@@ -24,10 +27,9 @@ from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.agent.agent import workflow_provider
 from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
@@ -659,7 +661,18 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 注意：需要用闭包捕获 self 引用
         test_instance = self
 
-        @workflow_provider(workflow_id="test_provider_workflow", workflow_version="1.0")
+        @workflow_provider(workflow_id="test_provider_workflow", workflow_version="1.0",
+                           workflow_name="test_provider_workflow", workflow_description="haha",
+                           inputs=WorkflowInputsSchema(
+                               type="object",
+                               properties={
+                                   "query": {
+                                       "type": "string",
+                                       "description": "用户输入",
+                                       "required": True
+                                   }
+                               },
+                               required=['query']))
         def create_interrupt_workflow_instance():
             """工厂函数：每次调用创建新的 workflow 实例"""
             _, workflow = test_instance.build_interrupt_workflow()
@@ -677,6 +690,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 使用新的 add_workflows 方法，传入装饰器包装的 WorkflowFactory
         agent.add_workflows([create_interrupt_workflow_instance])
+        toolinfos = resource_mgr.workflow().get_tool_infos(
+            [generate_workflow_key(workflow_id="test_provider_workflow", workflow_version="1.0")])
+        print(toolinfos)
 
         # 验证注册到了 _providers
         workflow_key = generate_workflow_key("test_provider_workflow", "1.0")

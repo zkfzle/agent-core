@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 CONFLICT_RESOLUTION_SYS = """
 角色：信息冲突判断处理器。输入中id=0为新消息，id>=1为旧消息，按以下规则处理，
 仅输出JSON列表（保留所有id，直接修改text和event），无额外文字。

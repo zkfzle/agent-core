@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput

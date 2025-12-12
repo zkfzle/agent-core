@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright c) Huawei Technologies Co. Ltd. 2025-2025
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from openjiuwen.graph.store.base import GraphState, create_state, Store, PendingNode, GraphStore
 from openjiuwen.graph.store.serde import PickleSerializer, Serializer

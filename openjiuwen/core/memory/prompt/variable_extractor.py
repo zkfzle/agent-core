@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 EXTRACT_VARIABLES_PROMPT = """
 # 任务描述
 假设你是信息提取领域专家。

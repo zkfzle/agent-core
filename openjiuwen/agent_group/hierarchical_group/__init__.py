@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Hierarchical Group - Leader-Worker pattern for multi-agent coordination"""
 
 from openjiuwen.agent_group.hierarchical_group.config import HierarchicalGroupConfig

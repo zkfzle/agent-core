@@ -1,4 +1,4 @@
-#!/usr/bin/python3.10
+#!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMAgent - ReAct style Agent based on ControllerAgent"""

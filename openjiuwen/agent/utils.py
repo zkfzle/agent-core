@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-"""
-MessageUtils - 消息处理工具类
-
-职责：处理 Agent 与 ContextEngine 之间的消息添加和获取操作
-"""
 
 from typing import List, Any
 from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage

@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 CATEGORIZATION_PROMPT = """
 # 任务描述
 你是一个记忆分类专家，你的任务是分析当前消息`current_messages`，结合历史消息`historical_messages`，并将其分类到以下一个或多个类别中：

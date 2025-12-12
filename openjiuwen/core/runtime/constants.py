@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 WORKFLOW_EXECUTE_TIMEOUT = "_execute_timeout"
 WORKFLOW_STREAM_FRAME_TIMEOUT = "_stream_frame_timeout"

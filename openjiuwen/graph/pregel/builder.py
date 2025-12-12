@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from openjiuwen.graph.pregel.channels import BarrierChannel, TriggerChannel
 from openjiuwen.graph.pregel.constants import START, END

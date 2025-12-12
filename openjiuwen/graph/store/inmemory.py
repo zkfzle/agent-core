@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved."""
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import copy
 from collections import defaultdict
 from typing import Dict, Optional

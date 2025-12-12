@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 USER_PROFILE_EXTRACTOR_PROMPT = """
 你是一个用户画像分析专家，你的任务是从当前消息`current_messages`中(结合历史消息`historical_messages`)精准提取用户画像信息。
 # 提取规则：

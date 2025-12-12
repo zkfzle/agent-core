@@ -374,7 +374,8 @@ class WorkflowFactory:
         self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version, name=workflow_name)
         if self.name and self.input_schema:
             workflow_input_schema = self.input_schema if isinstance(self.input_schema,
-                WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(self.input_schema)
+                                                                    WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
+                self.input_schema)
             from openjiuwen.core.runner.runner import resource_mgr
             resource_mgr.workflow()._workflow_tool_infos[
                 generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
@@ -455,7 +456,8 @@ class BaseAgent(ABC):
         self._config = self._config_wrapper  # Unified interface
 
         # 2. Create Runtime
-        self._runtime = AgentRuntime(config=self._config)
+        from openjiuwen.core.runner.runner import resource_mgr
+        self._runtime = AgentRuntime(config=self._config, resource_mgr=resource_mgr)
 
         # 3. Create ContextEngine
         self._context_engine = self._create_context_engine()

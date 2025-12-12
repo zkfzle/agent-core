@@ -143,6 +143,7 @@ class StatusCode(Enum):
     AGENT_NOT_FOUND = (134002, "Agent {} is not found")
     WORKFLOW_NOT_BOUND_TO_AGENT = (134003, "workflow not bound to agent")
     TOOL_NOT_BOUND_TO_AGENT = (134004, "tool not bound to agent")
+    TOOL_NOT_FOUND = (134005, "Tool not found")
 
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999

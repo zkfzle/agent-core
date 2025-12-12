@@ -120,6 +120,13 @@ class ToolMgr(AbstractManager[Tool]):
                     return result
                 else:
                     return None
+            if tool_ids is not None and not isinstance(tool_ids, list):
+                raise JiuWenBaseException(
+                    StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
+                    StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
+                        reason=f"tool_ids must be a list, got {type(tool_ids).__name__}"
+                    )
+                )
             if not tool_ids:
                 return [info for info in self._tool_infos.values()]
 

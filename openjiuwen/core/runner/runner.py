@@ -160,10 +160,28 @@ class Runner:
 
     async def run_tool(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
         tool_instance = self._prepare_tool(tool, runtime)
+        if tool_instance is None:
+            logger.error(f"{self.__class__.__name__} tool not found.")
+            if UserConfig.is_sensitive():
+                raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
+                                          f"{self.__class__.__name__} tool not found.")
+            else:
+                tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', 'unknown')
+                raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
+                                          f"{self.__class__.__name__} tool not found: {tool_name}.")
         return await tool_instance.ainvoke(inputs, runtime=runtime)
 
     async def run_tool_streaming(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
         tool_instance = self._prepare_tool(tool, runtime)
+        if tool_instance is None:
+            logger.error(f"{self.__class__.__name__} tool not found.")
+            if UserConfig.is_sensitive():
+                raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
+                                          f"{self.__class__.__name__} tool not found.")
+            else:
+                tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', 'unknown')
+                raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
+                                          f"{self.__class__.__name__} tool not found: {tool_name}.")
         return tool_instance.astream(inputs, runtime=runtime)
 
     async def list_tools(self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None) -> Union[

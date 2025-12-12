@@ -31,7 +31,9 @@ class SqlDbStore:
             logger.error("Write failed", exc_info=e)
             return False
 
-    async def get(self, table: str, id: str, columns: list[str] = []) -> dict[str, Any] | None:
+    async def get(self, table: str, record_id: str, columns: list[str] | None = None) -> dict[str, Any] | None:
+        if columns is None:
+            columns = []
         try:
             t = await self._get_table(table)
             if columns:
@@ -39,7 +41,7 @@ class SqlDbStore:
                 stmt = select(*cols)
             else:
                 stmt = select(t)
-            stmt = stmt.where(t.c.id == id)
+            stmt = stmt.where(t.c.id == record_id)
             async with self.async_session() as session:
                 async with session.begin():
                     execute_result = await session.execute(stmt)
@@ -94,7 +96,9 @@ class SqlDbStore:
                 return [dict(r) for r in execute_result.mappings().fetchall()]
 
     async def condition_get(self, table: str, conditions: Dict[str, List[Any]],
-                             columns: List[str] = []) -> List[Dict[str, Any]] | None:
+                             columns: List[str] | None = None) -> List[Dict[str, Any]] | None:
+        if columns is None:
+            columns = []
         try:
             t: Table = await self._get_table(table)
             stmt = (

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-import asyncio
-import unittest
+import os
+import shutil
 from enum import StrEnum
 from typing import List, Tuple
-import shutil
+
+import pytest
 from sqlalchemy import engine, text
-import os
 
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
@@ -113,8 +113,9 @@ class MockSemanticStore(BaseSemanticStore):
         return True
 
 
-class TestManage(unittest.TestCase):
-    async def _test_basic(self):
+class TestManage:
+    @pytest.mark.asyncio
+    async def test_basic(self):
         test_dir = "test_dbm"
         os.makedirs(test_dir, exist_ok=True)
         test_file = os.path.join(test_dir, "test_kv_db")
@@ -176,41 +177,32 @@ class TestManage(unittest.TestCase):
                                     variable_mem=item['profile_mem'], user_id=item['user_id'],
                                     group_id=item['group_id'])
             await write_manager.add_mem([mem_unit])
-            # message_manager.add(user_id=item['user_id'], group_id=item['group_id'], role='user', content=item['profile_mem'])
 
-        # message = message_manager.get(user_id=test_all_data[0]['user_id'], group_id=test_all_data[0]['group_id'], message_len=3)
         query = "用户的职业"
         res = await variable_manager.query_variable(user_id=test_all_data[0]['user_id'],
                                                     group_id=test_all_data[0]['group_id'])
         res = await user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
-        self.assertEqual(5, len(res))
+        assert len(res) == 5
         # message_by_id = message_manager.get_by_id("15")
 
         await user_profile_manager.update(res[0]['user_id'], res[0]['group_id'], res[0]['id'],
                                           "用户不是软件工程师，是系统")
         ret = await user_profile_manager.get(res[0]['user_id'], res[0]['group_id'], res[0]['id'])
-        self.assertEqual("用户不是软件工程师，是系统", ret['mem'])
+        assert ret['mem'] == "用户不是软件工程师，是系统"
 
         res = await user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3")
-        self.assertEqual(6, len(res))
+        assert len(res) == 6
 
         res = await user_profile_manager.list_user_profile("usrZH2025", "fitnesstrackerv3", "personal_information")
-        self.assertEqual(2, len(res))
+        assert len(res) == 2
         for rr in res:
             await write_manager.delete_mem_by_id(rr["user_id"], rr["group_id"], rr["id"])
 
         res = await user_profile_manager.search("usrZH2025", "fitnesstrackerv3", query, 5)
-        self.assertEqual(4, len(res))
+        assert len(res) == 4
         await write_manager.delete_mem_by_user_id("usrZH2026", "fitnesstrackerv3")
         res = await user_profile_manager.search("usrZH2026", "fitnesstrackerv3", query, 5)
-        self.assertEqual(0, len(res))
+        assert len(res) == 0
 
         #release resource
         shutil.rmtree(test_dir)
-
-    def test_basic(self):
-        asyncio.run(self._test_basic())
-
-
-if __name__ == '__main__':
-    unittest.main()

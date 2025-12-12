@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-import unittest
+# import pytest
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
@@ -13,7 +13,8 @@ from openjiuwen.core.utils.llm.messages import AIMessage
 from openjiuwen.agent_builder.prompt_builder.builder.feedback_prompt_builder import FeedbackPromptBuilder
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
-Mock_intent = '''```json{"intent": "true",\n"optimized_feedback": "[优化后的反馈信息]",
+MOCK_INTENT = '''```json{"intent": "true",
+"optimized_feedback": "[优化后的反馈信息]",
                             "optimization_directions": "[联想并提示其他优化方向的建议]"}```'''
 
 
@@ -25,7 +26,7 @@ class MockLLMModel(BaseModelClient):
 
     def _get_next_response(self, messages) -> AIMessage:
         """获取下一个响应"""
-        return AIMessage(content="".join(Mock_intent+msg.get("content") for msg in messages))
+        return AIMessage(content="".join(MOCK_INTENT + msg.get("content") for msg in messages))
 
     def _invoke(
             self,
@@ -78,75 +79,77 @@ class MockLLMModel(BaseModelClient):
         yield result
 
 
-class TestFeedbackPromptBuilder(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_feedback_prompt_builder_general(self):
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
-        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
-            mock_get_model.return_value = mock_llm
-            config = ModelConfig(
-                model_provider="",
-                model_info=BaseModelInfo(
-                    api_key="sk-fake",
-                    api_base="https://api.openai.com"
-                )
+def test_feedback_prompt_builder_general():
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        mock_get_model.return_value = mock_llm
+        config = ModelConfig(
+            model_provider="",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
             )
-            builder = FeedbackPromptBuilder(config)
-            prompt = "你是一个旅行助手"
-            feedback = "丰富一下"
-            response = builder.build(prompt=prompt, feedback=feedback, mode = "general")
-            self.assertEqual(response,
-                             Mock_intent+TEMPLATE.PROMPT_FEEDBACK_GENERAL_TEMPLATE.format(
-                             dict(original_prompt=prompt, suggestion=feedback)).content[0].content)
+        )
+        builder = FeedbackPromptBuilder(config)
+        prompt = "你是一个旅行助手"
+        feedback = "丰富一下"
+        response = builder.build(prompt=prompt, feedback=feedback, mode="general")
+        # 构建预期的消息内容
+        expected_messages = TEMPLATE.PROMPT_FEEDBACK_GENERAL_TEMPLATE.format(
+            dict(original_prompt=prompt, suggestion=feedback)
+        ).to_messages()
+        expected_content = "".join(MOCK_INTENT + msg.content for msg in expected_messages)
+        assert response == expected_content
 
-    def test_feedback_prompt_builder_insert(self):
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
-        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
-            mock_get_model.return_value = mock_llm
-            config = ModelConfig(
-                model_provider="",
-                model_info=BaseModelInfo(
-                    api_key="sk-fake",
-                    api_base="https://api.openai.com"
-                )
+
+def test_feedback_prompt_builder_insert():
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        mock_get_model.return_value = mock_llm
+        config = ModelConfig(
+            model_provider="",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
             )
-            builder = FeedbackPromptBuilder(config)
-            INSERT_TAG = "[用户要插入的位置]"
-            prompt = "你是一个旅行助手"
-            feedback = "丰富一下"
-            response = builder.build(prompt=prompt, feedback=feedback, mode="insert", start_pos=3)
-            self.assertEqual(response,
-                             Mock_intent+TEMPLATE.PROMPT_FEEDBACK_INSERT_TEMPLATE.format(
-                             dict(original_prompt=prompt[:3]+INSERT_TAG+prompt[3:],
-                                  suggestion="[优化后的反馈信息]")).content[0].content)
-
-    def test_feedback_prompt_builder_select(self):
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
-        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
-            mock_get_model.return_value = mock_llm
-            config = ModelConfig(
-                model_provider="",
-                model_info=BaseModelInfo(
-                    api_key="sk-fake",
-                    api_base="https://api.openai.com"
-                )
+        )
+        builder = FeedbackPromptBuilder(config)
+        insert_tag = "[用户要插入的位置]"
+        prompt = "你是一个旅行助手"
+        feedback = "丰富一下"
+        response = builder.build(prompt=prompt, feedback=feedback, mode="insert", start_pos=3)
+        # 构建预期的消息内容
+        expected_messages = TEMPLATE.PROMPT_FEEDBACK_INSERT_TEMPLATE.format(
+            dict(original_prompt=prompt[:3] + insert_tag + prompt[3:],
+                 suggestion="[优化后的反馈信息]"
             )
-            builder = FeedbackPromptBuilder(config)
-
-            prompt = "你是一个旅行助手"
-            feedback = "丰富一下"
-            response = builder.build(prompt=prompt+Mock_intent,
-                                     feedback=feedback,
-                                     mode="select",
-                                     start_pos=0,
-                                     end_pos=3)
-            self.assertEqual(response, Mock_intent+TEMPLATE.PROMPT_FEEDBACK_SELECT_TEMPLATE.format(
-                                 dict(original_prompt=prompt+Mock_intent,
-                                      suggestion="[优化后的反馈信息]",
-                                      pending_optimized_prompt=prompt[0:3])).content[0].content)
+        ).to_messages()
+        expected_content = "".join(MOCK_INTENT + msg.content for msg in expected_messages)
+        assert response == expected_content
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_feedback_prompt_builder_select():
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        mock_get_model.return_value = mock_llm
+        config = ModelConfig(
+            model_provider="",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
+        builder = FeedbackPromptBuilder(config)
+
+        prompt = "你是一个旅行助手"
+        feedback = "丰富一下"
+        response = builder.build(prompt=prompt + MOCK_INTENT, feedback=feedback, mode="select", start_pos=0, end_pos=3)
+        # 构建预期的消息内容
+        expected_messages = TEMPLATE.PROMPT_FEEDBACK_SELECT_TEMPLATE.format(
+            dict(original_prompt=prompt + MOCK_INTENT,
+                 suggestion="[优化后的反馈信息]",
+                 pending_optimized_prompt=prompt[0:3]
+            )
+        ).to_messages()
+        expected_content = "".join(MOCK_INTENT + msg.content for msg in expected_messages)
+        assert response == expected_content

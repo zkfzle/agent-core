@@ -2,7 +2,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import re
-import unittest
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
@@ -76,41 +75,32 @@ class MockLLMModel(BaseModelClient):
         yield result
 
 
-class TestBadCasePromptBuilder(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_bad_case_prompt_builder(self):
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
-        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
-            mock_get_model.return_value = mock_llm
-            config = ModelConfig(
-                model_provider="",
-                model_info=BaseModelInfo(
-                    api_key="sk-fake",
-                    api_base="https://api.openai.com"
-                )
+def test_bad_case_prompt_builder():
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        mock_get_model.return_value = mock_llm
+        config = ModelConfig(
+            model_provider="",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
             )
-            builder = BadCasePromptBuilder(config)
-            prompt = "bad_case test prompt"
-            INFORMATION_EXTRACTION_CASES = [
-                EvaluatedCase(case=Case(
-                    inputs={"query": "test input"},
-                    label={"label": "test label"}),
-                    answer={"answer": "test answer"}
-                ),
-                EvaluatedCase(case=Case(
-                    inputs={"query": "test input"},
-                    label={"label": "test label"}),
-                    answer={"answer": "test answer"}
-                )
-            ]
-            response = builder.build(prompt, cases=INFORMATION_EXTRACTION_CASES)
-            parse_str = re.findall(r"<summary>((?:(?!</summary>).)*?)</summary>", TEMPLATE.PROMPT_BAD_CASE_ANALYZE_TEMPLATE.content[0].content, re.DOTALL)
-            self.assertEqual(response,
-                             TEMPLATE.PROMPT_BAD_CASE_OPTIMIZE_TEMPLATE.format(
-                             dict(original_prompt=prompt, feedback=parse_str[0])).content[0].content)
-
-            
-if __name__ == "__main__":
-    unittest.main()
+        )
+        builder = BadCasePromptBuilder(config)
+        prompt = "bad_case test prompt"
+        INFORMATION_EXTRACTION_CASES = [
+            EvaluatedCase(case=Case(
+                inputs={"query": "test input"},
+                label={"label": "test label"}),
+                answer={"answer": "test answer"}
+            ),
+            EvaluatedCase(case=Case(
+                inputs={"query": "test input"},
+                label={"label": "test label"}),
+                answer={"answer": "test answer"}
+            )
+        ]
+        response = builder.build(prompt, cases=INFORMATION_EXTRACTION_CASES)
+        parse_str = re.findall(r"<summary>((?:(?!</summary>).)*?)</summary>", TEMPLATE.PROMPT_BAD_CASE_ANALYZE_TEMPLATE.content[0].content, re.DOTALL)
+        assert response == TEMPLATE.PROMPT_BAD_CASE_OPTIMIZE_TEMPLATE.format(
+            dict(original_prompt=prompt, feedback=parse_str[0])).content[0].content

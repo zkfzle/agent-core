@@ -187,9 +187,10 @@ class StatusCode(Enum):
     # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
     # Optimization Toolchain - AgentRL 172000 - 172999
     # Optimization Toolchain - Prompt Builder 173000 - 173999
-    AGENT_BUILDER_META_TEMPLATE_ERROR = (173000, "Meta-template failed: {error_msg}")
-    AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR = (173001, "Feedback-template failed: {error_msg}")
-    AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR = (173002, "Bad case-template failed: {error_msg}")
+    AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR = (173000, "Meta-template register failed: {error_msg}")
+    AGENT_BUILDER_META_TEMPLATE_ERROR = (173001, "Meta-template builder  failed: {error_msg}")
+    AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR = (173002, "Feedback-template builder failed: {error_msg}")
+    AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR = (173003, "Bad case-template builder failed: {error_msg}")
     # Common Capabilities 180000 - 189999
     # Common Capabilities - Prompt Template 180000 - 180999
     PROMPT_ASSEMBLER_VARIABLE_INIT_ERROR = (180000, "Wrong arguments for initializing the variable")

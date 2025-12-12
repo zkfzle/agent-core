@@ -31,8 +31,8 @@ class MetaTemplateBuilder(BasePromptBuilder):
             template_to_reg.name = f"{META_TEMPLATE_NAME_PREFIX}{name}"
         else:
             raise JiuWenBaseException(
-                StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code,
-                StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.errmsg.format(
+                StatusCode.AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR.code,
+                StatusCode.AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR.errmsg.format(
                     error_msg=f"failed to register meta-template: {name}"
                 )
             )

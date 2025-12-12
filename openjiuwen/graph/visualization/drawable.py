@@ -146,7 +146,7 @@ if not _MERMAID_AVAILABLE:
             self._raise()
 
         def _raise(self):
-            raise ImportError("Mermaid package is not installed. Please install it by `pip install mermaid`.")
+            raise ImportError("Mermaid package is not installed. Please install it by `pip install mermaid-py`.")
 
         def to_mermaid(self, *args, **kwargs):
             self._raise()

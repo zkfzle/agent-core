@@ -275,7 +275,7 @@ class RequestChatModel(BaseModelClient):
                     tool_calls.append(ToolCall(
                         id=tool_call_id or "",
                         type="function",
-                        name=name_delta,
+                        name=name_delta or "",
                         arguments=args_delta,
                         index=index
                     ))

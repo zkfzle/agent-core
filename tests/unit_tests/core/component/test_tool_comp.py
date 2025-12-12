@@ -49,13 +49,21 @@ def mock_tool():
     )
 
 
+@pytest.fixture
+def mock_tool_kwargs(mock_tool, mock_tool_input):
+    return {
+        "tool": mock_tool,
+        "config": mock_tool_config
+    }
+
+
 @patch('requests.request')
 @patch('openjiuwen.core.utils.tool.service_api.restful_api.RestfulApi._async_request')
-@patch('openjiuwen.core.component.tool_comp.ToolExecutable.get_tool')
 @pytest.mark.asyncio
-async def test_tool_comp_invoke(mock_get_tool, mock_async_request, mock_request, mock_tool, mock_tool_config, mock_tool_input, fake_ctx):
-    mock_get_tool.return_value = mock_tool
-    tool_executable = ToolExecutable(mock_tool_config)
+async def test_tool_comp_invoke(mock_async_request, mock_request, mock_tool_input,
+                                mock_tool_kwargs, fake_ctx):
+    tool_executable = ToolExecutable(mock_tool_kwargs["config"])
+    tool_executable.set_tool(mock_tool_kwargs["tool"])
 
     # mock request的response
     mock_response = MagicMock()
@@ -70,10 +78,8 @@ async def test_tool_comp_invoke(mock_get_tool, mock_async_request, mock_request,
 
 
 @patch('openjiuwen.core.component.tool_comp.ToolExecutable.invoke')
-@patch('openjiuwen.core.component.tool_comp.ToolExecutable.get_tool')
 @pytest.mark.asyncio
-async def test_tool_comp_in_workflow(mock_get_tool, mock_invoke, mock_tool, mock_tool_config, fake_ctx):
-    mock_get_tool.return_value = mock_tool
+async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, fake_ctx):
     mock_invoke.return_value = 'res'
     flow = Workflow()
 

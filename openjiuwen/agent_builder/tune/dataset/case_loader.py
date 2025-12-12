@@ -42,7 +42,8 @@ class CaseLoader:
         if ratio < 0.0 or ratio > 1.0:
             logger.error(f"ratio must be between 0.0 and 1.0, got {ratio}, using default 0.5")
             ratio = 0.5
-        shuffled_cases = random.shuffle(copy.deepcopy(self._cases))
+        shuffled_cases = copy.deepcopy(self._cases)
+        random.shuffle(shuffled_cases)
         cut = int(len(self._cases) * ratio)
         return CaseLoader(shuffled_cases[:cut]), CaseLoader(shuffled_cases[cut:])
 

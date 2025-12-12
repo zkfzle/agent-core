@@ -108,7 +108,7 @@ class ToolExecutable(ComponentExecutable):
 
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         if self._tool is None:
-            self._tool = self.get_tool(runtime)
+            ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
         tool_inputs = self._validate_inputs(inputs)
         formatted_inputs = self._prepare_inputs(tool_inputs, self._get_tool_param())
         try:
@@ -126,9 +126,6 @@ class ToolExecutable(ComponentExecutable):
 
     def _create_output(self, response: dict):
         return ToolComponentOutput(**response).model_dump()
-
-    def get_tool(self, runtime: Runtime) -> Tool:
-        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
 
     def _get_tool_param(self) -> List[Param]:
         return self._tool.params if hasattr(self._tool, "params") else []

@@ -212,7 +212,7 @@ class ParameterSearcher:
                     all_candidates.append(copy.deepcopy(candidate))
                 except Exception as e:
                     for candidate in candidate.values():
-                        print(type(candidate), candidate)
+                        logger.error(f"Candidate type is {type(candidate)} content is {candidate}")
                     raise e
                 return
             for i_cd in range(n_candidates):

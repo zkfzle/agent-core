@@ -3,12 +3,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMAgent - ReAct style Agent based on ControllerAgent"""
 import datetime
-from typing import Dict, List, Any, AsyncIterator
+from typing import Dict, List, Any, AsyncIterator, Optional
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.llm_agent.llm_controller import LLMController
 from openjiuwen.core.agent.agent import ControllerAgent
+from openjiuwen.core.common.constants.constant import TIMEZONE_NAME
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runtime.runtime import Runtime
@@ -27,8 +28,10 @@ def create_llm_agent_config(agent_id: str,
                             plugins: List[PluginSchema],
                             model: ModelConfig,
                             prompt_template: List[Dict],
-                            tools: List[str] = []):
+                            tools: Optional[List[str]] = None):
     """Create LLM Agent configuration - backward compatible factory function"""
+    if tools is None:
+        tools = []
     config = ReActAgentConfig(id=agent_id,
                               version=agent_version,
                               description=description,
@@ -221,7 +224,7 @@ class LLMAgent(ControllerAgent):
                     user_id=user_id,
                     group_id=group_id,
                     messages = [assistant_message],
-                    timestamp=datetime.datetime.now(),
+                    timestamp=datetime.datetime.now(tz=TIMEZONE_NAME),
                 )
             return
 
@@ -236,6 +239,6 @@ class LLMAgent(ControllerAgent):
                     user_id=user_id,
                     group_id=group_id,
                     messages=[user_message],
-                    timestamp=datetime.datetime.now(),
+                    timestamp=datetime.datetime.now(tz=TIMEZONE_NAME),
                 )
 

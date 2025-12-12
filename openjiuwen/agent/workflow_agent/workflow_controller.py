@@ -31,7 +31,7 @@ from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import CustomSchema, OutputSchema
 from openjiuwen.core.utils.llm.messages import AIMessage
-from openjiuwen.core.workflow.base import WorkflowExecutionState
+from openjiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
 
 
 class WorkflowController(IntentDetectionController):
@@ -237,9 +237,6 @@ class WorkflowController(IntentDetectionController):
             #    - workflow_final (完成结果)
             # 流式数据会写入 runtime，agent 层的 stream_iterator 可以读取
             async def run_workflow_streaming():
-                from openjiuwen.core.workflow.base import (
-                    WorkflowOutput, WorkflowExecutionState
-                )
                 workflow_stream = await Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,

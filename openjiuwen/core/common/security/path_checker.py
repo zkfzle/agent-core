@@ -33,10 +33,10 @@ class PathChecker:
         try:
             from openjiuwen.core.common.security.user_config import UserConfig
             sensitive_paths = UserConfig.get_sensitive_paths()
-        except (ImportError, Exception):
+        except Exception:
             sensitive_paths = [
                 "/etc/passwd", "/etc/shadow", "/etc/hosts", "/etc/hostname",
-                "/etc/ssh/", "/root/", "/home/", "/proc/", "/sys/", "/dev/",
+                "/etc/ssh/", "/proc/", "/sys/", "/dev/",
                 "C:\\Windows\\System32\\", "C:\\Windows\\SysWOW64\\", "C:\\Windows\\System\\"
             ]
 

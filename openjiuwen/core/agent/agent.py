@@ -904,3 +904,8 @@ class ControllerAgent(BaseAgent):
             else:
                 # 正常完成：yield dict 或其他结果
                 yield res
+
+    async def clear_session(self, session_id: str = "default_session"):
+        await self._runtime.release(session_id)
+        self.context_engine.clear_context(session_id)
+        self.controller.cleanup_conversation(session_id)

@@ -141,9 +141,10 @@ class TestManage:
         user_profile_manager = UserProfileManager(
             semantic_recall_instance=mock_semantic_recall,
             user_mem_store=mock_mem_store,
-            data_id_generator=data_id_generator
+            data_id_generator=data_id_generator,
+            crypto_key=""
         )
-        variable_manager = VariableManager(mock_kv_store)
+        variable_manager = VariableManager(mock_kv_store, "")
         managers = {"user_profile": user_profile_manager, "variable": variable_manager}
         write_manager = WriteManager(managers, mock_mem_store)
         test_all_data = [

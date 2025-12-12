@@ -21,6 +21,7 @@ dependencies = [
     "transformers==4.52.4",
     "portalocker==3.2.0",
     "pymilvus[milvus-lite]==2.6.2",
+    "pycryptodome==3.23.0",
 ]
 
 [tool.uv]

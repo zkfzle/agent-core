@@ -15,12 +15,15 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 
 class UserProfileManager(BaseMemoryManager):
-    def __init__(self, semantic_recall_instance: BaseSemanticStore,
+    def __init__(self,
+                 semantic_recall_instance: BaseSemanticStore,
                  user_mem_store: UserMemStore,
-                 data_id_generator: DataIdManager):
+                 data_id_generator: DataIdManager,
+                 crypto_key: str):
         self.mem_store = user_mem_store
         self.semantic_recall = semantic_recall_instance
         self.date_user_profile_id = data_id_generator
+        self.crypto_key = crypto_key
 
     async def add(self, memory: BaseMemoryUnit):
         if not isinstance(memory, UserProfileUnit):
@@ -51,20 +54,24 @@ class UserProfileManager(BaseMemoryManager):
                                                            memory_id=mem_id,
                                                            mem=conf_mem)
             elif conf_event == ConflictType.NONE.value:
-                logger.info(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
+                logger.debug(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
             elif conf_event == ConflictType.UPDATE.value:
-                logger.info(f"update conflict info: {conflict}, update_profile: {memory.profile_mem}")
+                logger.debug(f"update conflict info: {conflict}, update_profile: {memory.profile_mem}")
                 await self.update(memory.user_id, memory.group_id, conf_id, memory.profile_mem)
             elif conf_event == ConflictType.DELETE.value:
-                logger.info(f"delete conflict info: {conflict}, new_profile: {memory.profile_mem}")
+                logger.debug(f"delete conflict info: {conflict}, new_profile: {memory.profile_mem}")
                 await self.delete(memory.user_id, memory.group_id, conf_id)
+            else:
+                logger.debug(f"unknown conflict event: {conflict}")
 
     async def update(self, user_id: str, group_id: str, mem_id: str, new_memory: str, **kwargs) -> bool:
         time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        new_data = {'mem': new_memory, 'time': time}
+        encrypt_new_memory = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key, plaintext=new_memory)
+        new_data = {'mem': encrypt_new_memory, 'time': time}
         await self.mem_store.update(mem_id=mem_id, user_id=user_id, group_id=group_id, data=new_data)
         table_name = generate_idx_name(user_id, group_id, MemoryType.USER_PROFILE.value)
         await self.semantic_recall.delete_docs([mem_id], table_name)
+        # semantic memory embedding must not encrypt
         await self.semantic_recall.add_docs([(mem_id, new_memory)], table_name)
         return True
 
@@ -76,11 +83,20 @@ class UserProfileManager(BaseMemoryManager):
             return None
         for item in retrieve_res:
             item["score"] = scores.get(item['id'], 0)
+            item["mem"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key, ciphertext=item["mem"])
+            item["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                                 ciphertext=item["context_summary"])
         retrieve_res.sort(key=lambda x: scores.get(x["id"], 0), reverse=True)
         return retrieve_res
 
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
-        return await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
+        retrieve_res = await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
+        retrieve_res["mem"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                         ciphertext=retrieve_res["mem"])
+        retrieve_res["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                                     ciphertext=retrieve_res[
+                                                                                         "context_summary"])
+        return retrieve_res
 
     async def delete(self, user_id: str, group_id: str, mem_id: str, **kwargs):
         data = await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
@@ -105,7 +121,7 @@ class UserProfileManager(BaseMemoryManager):
         return True
 
     async def list_user_profile(self, user_id: str, group_id: str, profile_type: Optional[str] = None,
-                          mem_type=MemoryType.USER_PROFILE) -> list[dict[str, Any]]:
+                                mem_type=MemoryType.USER_PROFILE) -> list[dict[str, Any]]:
         datas = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=mem_type.value)
         if not datas:
             logger.debug(f"End to get user profile, result is None, "
@@ -118,6 +134,11 @@ class UserProfileManager(BaseMemoryManager):
                     new_datas.append(data)
         else:
             new_datas = datas
+        for data in new_datas:
+            data["mem"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                     ciphertext=data["mem"])
+            data["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                                 ciphertext=data["context_summary"])
         new_datas.sort(key=lambda x: (x['mem'], x['timestamp']), reverse=True)
         return new_datas
 
@@ -141,6 +162,10 @@ class UserProfileManager(BaseMemoryManager):
     ) -> str:
         mem_id = str(await self.date_user_profile_id.generate_next_id(user_id=user_id))
         time = datetime.now(timezone.utc)
+        profile_mem = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
+                                                                 plaintext=profile_mem)
+        context_summary = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
+                                                                     plaintext=context_summary)
         data = {
             'id': mem_id,
             'user_id': user_id or '',

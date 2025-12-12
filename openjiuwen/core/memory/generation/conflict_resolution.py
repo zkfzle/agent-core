@@ -69,6 +69,15 @@ class ConflictResolution:
                     "event": ConflictType.ADD.value,
                 }
             ]
+        if new_message in old_messages:
+            logger.debug(f"New message {new_message} found in old messages {old_messages}")
+            return [
+                {
+                    "id": "0",
+                    "text": new_message,
+                    "event": ConflictType.NONE.value,
+                }
+            ]
         model_name, model_client = base_chat_model
         messages = _get_message(old_messages, new_message)
         logger.debug(f"Start checking conflict, input messages: {messages}")

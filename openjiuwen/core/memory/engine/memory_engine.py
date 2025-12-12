@@ -312,27 +312,29 @@ class MemoryEngine(BaseMemoryEngine):
     def __init__(self, config: SysMemConfig, kv_store: BaseKVStore, semantic_store: BaseSemanticStore,
                  db_store: BaseDbStore, **kwargs):
         super().__init__(config=config, kv_store=kv_store, semantic_store=semantic_store, db_store=db_store)
+        # config
+        self._sys_mem_config = config  # sys mem config
+        self._group_config: dict[str, MemoryConfig] = {}  # group mem config map
+        # store and manager
         self.kv_store = kv_store
         data_id_generator = DataIdManager()
         user_mem_store = UserMemStore(kv_store)
         sql_db_store = SqlDbStore(db_store)
-        self.message_manager = MessageManager(sql_db_store, data_id_generator)
+        self.message_manager = MessageManager(sql_db_store, data_id_generator, self._sys_mem_config.crypto_key)
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=semantic_store,
             user_mem_store=user_mem_store,
-            data_id_generator=data_id_generator
+            data_id_generator=data_id_generator,
+            crypto_key=self._sys_mem_config.crypto_key
         )
-        self.variable_manager = VariableManager(kv_store)
+        self.variable_manager = VariableManager(kv_store, self._sys_mem_config.crypto_key)
         managers = {
             MemoryType.USER_PROFILE.value: self.user_profile_manager,
             MemoryType.VARIABLE.value: self.variable_manager
         }
         self.write_manager = WriteManager(managers, user_mem_store)
-        self.search_manager = SearchManager(managers, user_mem_store)
+        self.search_manager = SearchManager(managers, user_mem_store, self._sys_mem_config.crypto_key)
         self.generator = Generator(self.search_manager)
-        # config
-        self._sys_mem_config = config  # sys mem config
-        self._group_config: dict[str, MemoryConfig] = {}  # group mem config map
         # llm
         self._base_llm: Tuple[str, BaseModelClient] | None = None
         self._group_llm: dict[str, Tuple[str, BaseModelClient]] = {}

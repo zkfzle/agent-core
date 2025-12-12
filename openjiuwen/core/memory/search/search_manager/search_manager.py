@@ -15,9 +15,13 @@ class SearchManager:
     user_mem_manager_list = [MemoryType.USER_PROFILE.value]
     all_mem_manager_list = [item.value for item in MemoryType]
 
-    def __init__(self, managers: dict[str, BaseMemoryManager], user_mem_store: UserMemStore):
+    def __init__(self,
+                 managers: dict[str, BaseMemoryManager],
+                 user_mem_store: UserMemStore,
+                 crypto_key: str):
         self.managers = managers
         self.mem_store = user_mem_store
+        self.crypto_key = crypto_key
 
     async def search(self, user_id: str, group_id: str, query: str, top_k: int = 5, threshold: float = 0.3,
                      search_type: Optional[str] = None, **kwargs) -> list[dict[str, Any]] | None:
@@ -47,7 +51,14 @@ class SearchManager:
         return [item for item in result if item["score"] >= threshold][:top_k]
 
     async def list_user_mem(self, user_id: str, group_id: str, nums: int, pages: int) -> list[dict[str, Any]] | None:
-        return await self.mem_store.get_in_range(user_id, group_id, nums * (pages - 1), nums * pages)
+        list_res = await self.mem_store.get_in_range(user_id, group_id, nums * (pages - 1), nums * pages)
+        if not list_res:
+            return list_res
+        for item in list_res:
+            item["mem"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key, ciphertext=item["mem"])
+            item["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                                 ciphertext=item["context_summary"])
+        return list_res
 
     async def list_user_profile(self, user_id: str, group_id: str, profile_type: Optional[str] = None) -> list[dict]:
         if MemoryType.USER_PROFILE.value not in self.managers:

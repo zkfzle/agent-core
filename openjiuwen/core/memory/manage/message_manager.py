@@ -6,16 +6,21 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Tuple
 
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
+from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 
 ## DB-Based Message Management
 class MessageManager:
-    def __init__(self, sql_db_store: SqlDbStore, data_id_manager: DataIdManager):
+    def __init__(self,
+                 sql_db_store: SqlDbStore,
+                 data_id_manager: DataIdManager,
+                 crypto_key: str):
         self.sql_db = sql_db_store
         self.message_table = "user_message"
         self.data_id = data_id_manager
+        self.crypto_key = crypto_key
 
     async def add(self, user_id: str = None, group_id: str = None, content: str = None,
                   role: str = None, session_id: str = None, timestamp: datetime = None) -> str:
@@ -27,6 +32,7 @@ class MessageManager:
         if content is None:
             raise ValueError('Must provide content')
         time = datetime.now(timezone.utc) if not timestamp else timestamp
+        content = BaseMemoryManager.encrypt_memory_if_needed(self.crypto_key, content)
         data = {
             'message_id': message_id,
             'user_id': user_id or '',
@@ -52,11 +58,22 @@ class MessageManager:
             raise ValueError('message_len Must bigger than zero')
         messages = await self.sql_db.get_with_sort(table=self.message_table, filters=filters, order="DESC",
                                                    limit=message_len)
-        return [(BaseMessage(**message), message['timestamp']) for message in reversed(messages)]
+        result = []
+        for message in reversed(messages):
+            base_msg = BaseMessage(**message)
+            base_msg.content = BaseMemoryManager.decrypt_memory_if_needed(
+                key=self.crypto_key,
+                ciphertext=base_msg.content)
+            result.append((base_msg, message['timestamp']))
+        return result
 
     async def get_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime] | None:
         filters: Dict[str, Any] = {'message_id': [msg_id]}
         messages = await self.sql_db.condition_get(table=self.message_table, conditions=filters)
         if not messages:
             return None
-        return BaseMessage(**messages[0]), messages[0]['timestamp']
+        base_msg = BaseMessage(**messages[0]), messages[0]['timestamp']
+        base_msg.content = BaseMemoryManager.decrypt_memory_if_needed(
+            key=self.crypto_key,
+            ciphertext=base_msg.content)
+        return base_msg

@@ -114,7 +114,7 @@ class TraceAgentHandler(TraceBaseHandler):
             error_info = {"error_code": error.error_code, "message": error.message}
         else:
             error_info = {"error_code": StatusCode.RUNTIME_TRACE_AGENT_UNDEFINED_FAILED.code,
-                          "message": type(error).__name__}
+                          "message": str(error)}
         elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
         update_data = {
             "end_time": end_time,
@@ -292,7 +292,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
             else:
                 span.error = {"error_code": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                               "message": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
-                                  error=type(exception).__name__)}
+                                  error=str(exception))}
             if on_invoke_data:
                 span.on_invoke_data.append(on_invoke_data)
             update_data = {

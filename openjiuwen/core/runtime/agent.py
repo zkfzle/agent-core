@@ -7,7 +7,6 @@ from typing import Any
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.agent_state import StateCollection
 from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.interaction.agent_checkpointer import default_agent_inmemory_checkpointer
 from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
@@ -21,31 +20,11 @@ from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.tracer.tracer import Tracer
 
 
-def _resolve_agent_checkpointer(config: Config | None, override: Checkpointer | None = None) -> Checkpointer:
-    """
-        In the pure Agent scenario (without workflow), it automatically switches to simple checkpointer.
-    """
-    if override is not None:
-        return override
-
-    if config is None:
-        return default_inmemory_checkpointer
-
-    agent_cfg = config.get_agent_config()
-    if agent_cfg is None:
-        return default_inmemory_checkpointer
-
-    if not agent_cfg.workflows:
-        return default_agent_inmemory_checkpointer
-
-    return default_inmemory_checkpointer
-
-
 class StaticAgentRuntime(BaseRuntime):
     def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
         self._config = config if config is not None else Config()
         self._resource_manager = ResourceMgr() if resource_mgr is None else resource_mgr
-        self._checkpointer = _resolve_agent_checkpointer(self._config)
+        self._checkpointer = default_inmemory_checkpointer
 
     def config(self) -> Config:
         return self._config
@@ -98,7 +77,7 @@ class AgentRuntime(BaseRuntime):
         tracer = Tracer()
         tracer.init(self._stream_writer_manager, self._callback_manager)
         self._tracer = tracer
-        self._checkpointer = _resolve_agent_checkpointer(self._config, checkpointer)
+        self._checkpointer = default_inmemory_checkpointer if checkpointer is None else checkpointer
         self._agent_span = self._tracer.tracer_agent_span_manager.create_agent_span() if self._tracer else None
 
     def config(self) -> Config:

@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import threading
 from typing import List, Tuple, Any
-import numpy as np
 from pymilvus import MilvusClient, FieldSchema, CollectionSchema, DataType, Collection, connections, utility
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
@@ -99,10 +98,13 @@ class MilvusSemanticStore(BaseSemanticStore):
         if len(memory_ids) != len(embeddings):
             raise ValueError(f"memory_ids and embeddings must have same length")
         collection = self.get_collection(self.collection_name)
-        vectors_arr = np.array(embeddings, dtype=np.float32)
+        vectors_arr = [
+            [float(x) for x in vec]
+            for vec in embeddings
+        ]
         collection.insert([
             memory_ids,
-            vectors_arr.tolist(),
+            vectors_arr,
             [table_name] * len(memory_ids)
         ])
         return True

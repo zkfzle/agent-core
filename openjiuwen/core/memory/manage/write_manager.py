@@ -24,16 +24,16 @@ class WriteManager:
     async def update_mem_by_id(self, user_id: str, group_id: str, mem_id: str, memory: str):
         mem_type = await self.__get_mem_type_from_store(user_id, group_id, mem_id)
         if mem_type is None:
-            logger.error(f"Failed to update mem, because get memory type failed, "
-                         f"mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
+            logger.warning(f"Skipping this update due to failure in getting memory type, mem_id:{mem_id}, "
+                           f"user_id:{user_id}, group_id:{group_id}")
             return
         await self.managers[mem_type].update(user_id, group_id, mem_id, memory)
 
     async def delete_mem_by_id(self, user_id: str, group_id: str, mem_id: str):
         mem_type = await self.__get_mem_type_from_store(user_id, group_id, mem_id)
         if mem_type is None:
-            logger.error(f"Failed to delete mem, because get memory type failed, "
-                         f"mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
+            logger.warning(f"Skipping this deletion due to failure in getting memory type, mem_id:{mem_id}, "
+                           f"user_id:{user_id}, group_id:{group_id}")
             return
         await self.managers[mem_type].delete(user_id, group_id, mem_id)
 
@@ -49,13 +49,13 @@ class WriteManager:
             logger.error(f"Failed to get memory: {e}")
             return None
         if data is None:
-            logger.error(f"Failed to get memory, mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
+            logger.warning(f"Nonexistent memory, mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
             return None
         if "mem_type" not in data:
-            logger.error(f"The mem_type field does not exist, mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
+            logger.warning(f"The mem_type field doesn't exist, mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
             return None
         mem_type = data['mem_type']
         if mem_type not in self.managers:
-            logger.error(f"Unsupported mem_type:{mem_type}, mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
+            logger.warning(f"Unsupported mem_type:{mem_type}, mem_id:{mem_id}, user_id:{user_id}, group_id:{group_id}")
             return None
         return mem_type

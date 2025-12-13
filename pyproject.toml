@@ -16,7 +16,6 @@ dependencies = [
     "cacheout==0.16.0",
     "docx2txt==0.8",
     "mermaid-py==0.8.0",
-    "numpy==1.26.0",
     "pymupdf==1.26.4",
     "transformers==4.52.4",
     "portalocker==3.2.0",

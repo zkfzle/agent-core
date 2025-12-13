@@ -1034,7 +1034,6 @@ class LLMController(BaseController):
         else:
             query = ""
         logger.info(f"group_id: {group_id} | user_id: {user_id} | inputs: {inputs}")
-        mem_manager_config = {}
         memory_engine = MemoryEngine.get_mem_engine_instance()
         if not memory_engine:
             return result
@@ -1044,7 +1043,10 @@ class LLMController(BaseController):
                 group_id=group_id
             )
             if memory_variables:
-                result.update({"sys_memory_variables": JsonUtils.safe_json_dumps(memory_variables, ensure_ascii=False)})
+                filter_memory_variables = {k: v for k, v in memory_variables.items()
+                                           if k in self.config.memory_config.mem_variables}
+                result.update({"sys_memory_variables":
+                                   JsonUtils.safe_json_dumps(filter_memory_variables, ensure_ascii=False)})
             logger.info(f"memory_variables: {memory_variables}")
 
             try:

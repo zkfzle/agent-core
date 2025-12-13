@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import asyncio
 from abc import ABC, abstractmethod
+from contextlib import AsyncExitStack
 from typing import Any, List, Optional, Dict
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
@@ -109,20 +111,21 @@ class SseClient(McpToolClient):
         self._session = None
         self._read = None
         self._write = None
+        self._exit_stack = AsyncExitStack()
+        self._is_disconnected: bool = False
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         try:
             actual_timeout = timeout if timeout != NO_TIMEOUT else 60.0
             self._client = sse_client(self._server_path, timeout=actual_timeout)
-            self._read, self._write = await self._client.__aenter__()
-            self._session = ClientSession(
+            self._read, self._write = await self._exit_stack.enter_async_context(self._client)
+            self._session = await self._exit_stack.enter_async_context(ClientSession(
                 self._read, self._write, sampling_callback=None
-            )
-            await self._session.__aenter__()
+            ))
             await self._session.initialize()
+            self._is_disconnected = False
             logger.info(f"SSE client connected successfully to {self._server_path}")
             return True
-
         except Exception as e:
             logger.error(f"SSE connection failed to {self._server_path}: {e}")
             await self.disconnect()
@@ -130,22 +133,28 @@ class SseClient(McpToolClient):
 
     async def disconnect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Close SSE connection"""
+        if self._is_disconnected:
+            logger.info("SSE client disconnected successfully")
+            return True
         try:
-            if self._session:
-                await self._session.__aexit__(None, None, None)
-                self._session = None
-
+            await self._exit_stack.aclose()
+            logger.info("SSE client disconnected successfully")
+            self._is_disconnected = True
+            return True
+        except (asyncio.CancelledError, RuntimeError):
             if self._client:
                 await self._client.__aexit__(None, None, None)
-                self._client = None
-                self._read = None
-                self._write = None
-
             logger.info("SSE client disconnected successfully")
+            self._is_disconnected = True
             return True
         except Exception as e:
             logger.error(f"SSE disconnection failed: {e}")
             return False
+        finally:
+            self._session = None
+            self._client = None
+            self._read = None
+            self._write = None
 
     async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
         """List available tools via SSE"""
@@ -208,6 +217,8 @@ class StdioClient(McpToolClient):
         self._read = None
         self._write = None
         self._params = params if params else {}
+        self._exit_stack = AsyncExitStack()
+        self._is_disconnected: bool = False
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Establish Stdio connection to the tool server"""
@@ -223,12 +234,12 @@ class StdioClient(McpToolClient):
                                            cwd=self._params.get('cwd'),
                                            encoding_error_handler=handler
                                            )
-
             self._client = stdio_client(params)
-            self._read, self._write = await self._client.__aenter__()
-            self._session = ClientSession(self._read, self._write, sampling_callback=None)
-            await self._session.__aenter__()
+            self._read, self._write = await self._exit_stack.enter_async_context(self._client)
+            self._session = await self._exit_stack.enter_async_context(
+                ClientSession(self._read, self._write, sampling_callback=None))
             await self._session.initialize()
+            self._is_disconnected = False
             logger.info("Stdio client connected successfully")
             return True
         except Exception as e:
@@ -237,23 +248,29 @@ class StdioClient(McpToolClient):
             return False
 
     async def disconnect(self, *, timeout: float = NO_TIMEOUT) -> bool:
-        """Close Stdio connection"""
+        """Close SSE connection"""
+        if self._is_disconnected:
+            logger.info("Stdio client disconnected successfully")
+            return True
         try:
-            if self._session:
-                await self._session.__aexit__(None, None, None)
-                self._session = None
-
+            await self._exit_stack.aclose()
+            logger.info("Stdio client disconnected successfully")
+            self._is_disconnected = True
+            return True
+        except (asyncio.CancelledError, RuntimeError):
             if self._client:
                 await self._client.__aexit__(None, None, None)
-                self._client = None
-                self._read = None
-                self._write = None
-
             logger.info("Stdio client disconnected successfully")
+            self._is_disconnected = True
             return True
         except Exception as e:
             logger.error(f"Stdio disconnection failed: {e}")
             return False
+        finally:
+            self._session = None
+            self._client = None
+            self._read = None
+            self._write = None
 
     async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
         """List available tools via Stdio"""
@@ -315,6 +332,8 @@ class PlaywrightClient(McpToolClient):
         self._session = None
         self._read = None
         self._write = None
+        self._exit_stack = AsyncExitStack()
+        self._is_disconnected: bool = False
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Establish connection to Playwright MCP server"""
@@ -322,17 +341,18 @@ class PlaywrightClient(McpToolClient):
             # Determine client type based on server_path type
             if isinstance(self._server_path, StdioServerParameters):
                 self._client = stdio_client(self._server_path)
+                self._read, self._write = await self._exit_stack.enter_async_context(self._client)
                 logger.debug("Using Stdio transport for Playwright client")
             elif isinstance(self._server_path, str) and self._server_path.startswith(("http://", "https://")):
                 self._client = sse_client(self._server_path)
+                self._read, self._write = await self._exit_stack.enter_async_context(self._client)
                 logger.debug("Using SSE transport for Playwright client")
             else:
                 raise ValueError(f"Unsupported server_path type: {type(self._server_path)}")
-
-            self._read, self._write = await self._client.__aenter__()
-            self._session = ClientSession(self._read, self._write, sampling_callback=None)
-            await self._session.__aenter__()
+            self._session = await self._exit_stack.enter_async_context(
+                ClientSession(self._read, self._write, sampling_callback=None))
             await self._session.initialize()
+            self._is_disconnected = False
             logger.info("Playwright client connected successfully")
             return True
         except Exception as e:
@@ -341,23 +361,29 @@ class PlaywrightClient(McpToolClient):
             return False
 
     async def disconnect(self, *, timeout: float = NO_TIMEOUT) -> bool:
-        """Close Playwright connection"""
+        """Close SSE connection"""
+        if self._is_disconnected:
+            logger.info("Playwright client disconnected successfully")
+            return True
         try:
-            if self._session:
-                await self._session.__aexit__(None, None, None)
-                self._session = None
-
+            await self._exit_stack.aclose()
+            logger.info("Playwright client disconnected successfully")
+            self._is_disconnected = True
+            return True
+        except (asyncio.CancelledError, RuntimeError):
             if self._client:
                 await self._client.__aexit__(None, None, None)
-                self._client = None
-                self._read = None
-                self._write = None
-
             logger.info("Playwright client disconnected successfully")
+            self._is_disconnected = True
             return True
         except Exception as e:
             logger.error(f"Playwright disconnection failed: {e}")
             return False
+        finally:
+            self._session = None
+            self._client = None
+            self._read = None
+            self._write = None
 
     async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
         """List available browser tools"""

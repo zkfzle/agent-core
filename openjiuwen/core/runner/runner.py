@@ -64,7 +64,10 @@ class Runner:
 
     async def stop(self):
         logger.info("[Runner] Stopping...")
-        return await self._message_queue.stop()
+        await resource_mgr.tool().stop()
+        result = await self._message_queue.stop()
+        logger.info("[Runner] Stopped...")
+        return result
 
     def message_queue(self):
         return self._message_queue

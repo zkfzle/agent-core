@@ -230,3 +230,10 @@ class ToolMgr(AbstractManager[Tool]):
         copy_tool_info = deepcopy(tool_info)
         copy_tool_info.name = f'{tool_info.server_name}{delimiter}{tool_info.name}'
         return copy_tool_info
+
+    async def stop(self):
+        for client in self._mcp_clients.values():
+            try:
+                await client.disconnect()
+            except Exception:
+                continue

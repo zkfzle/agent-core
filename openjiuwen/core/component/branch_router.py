@@ -15,6 +15,7 @@ from openjiuwen.graph.visualization.drawable_edge import DrawableBranchRouter
 
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
+
 class Branch:
     def __init__(self, condition: Union[str, Callable[[], bool], Condition], target: list[str],
                  branch_id: str = None):

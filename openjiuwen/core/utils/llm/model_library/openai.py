@@ -37,19 +37,22 @@ class OpenAILLM(BaseModel, BaseModelClient):
             temperature=temperature, top_p=top_p, **kwargs)
 
     async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
-                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
+                       temperature: Optional[float] = None, top_p: Optional[float] = None,
+                       **kwargs: Any) -> AIMessage:
         return await self._openai_model._ainvoke(
             model_name=model_name, messages=messages, tools=tools,
             temperature=temperature, top_p=top_p, **kwargs)
 
     def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
-                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
+                temperature: Optional[float] = None, top_p: Optional[float] = None,
+                **kwargs: Any) -> Iterator[AIMessageChunk]:
         return self._openai_model._stream(
             model_name=model_name, messages=messages, tools=tools,
             temperature=temperature, top_p=top_p, **kwargs)
 
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AsyncIterator[
+    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None,
+                       **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
         async for chunk in self._openai_model._astream(
             model_name=model_name, messages=messages, tools=tools,

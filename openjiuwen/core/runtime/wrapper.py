@@ -63,6 +63,7 @@ class StaticWrappedRuntime(Runtime, ABC):
     async def interact(self, value):
         pass
 
+
 class WrappedRuntime(Runtime, ABC):
     def __init__(self, inner: BaseRuntime):
         self._inner = inner

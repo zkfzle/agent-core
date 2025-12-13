@@ -24,6 +24,7 @@ DEFAULT_USER_PROMPT = """
 当前输入：
 {{input}}"""
 
+
 def get_default_template():
     return Template(
                 content=[
@@ -31,6 +32,7 @@ def get_default_template():
                     {"role": "user", "content": DEFAULT_USER_PROMPT}
                 ]
             )
+
 
 class IntentDetectionConfig(BaseModel):
     """config of Intent Detection Component"""

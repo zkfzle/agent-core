@@ -9,6 +9,7 @@ from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractM
 from openjiuwen.core.runner.agent_group import AgentGroup
 from openjiuwen.core.agent_group.agent_group import BaseGroup
 
+
 class AgentGroupProvider(ABC):
     def __init__(self):
         self._subscription = None
@@ -28,6 +29,7 @@ class AgentGroupProvider(ABC):
     @abstractmethod
     def create(self) -> AgentGroup:
         pass
+
 
 class AgentGroupMgr(AbstractManager[AgentGroup]):
     def __init__(self):

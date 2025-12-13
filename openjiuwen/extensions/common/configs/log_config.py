@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-import os
-import yaml
-from typing import Dict, Any, List
-from openjiuwen.extensions.common.configs.constant import DEFAULT_INNER_LOG_CONFIG
 import copy
+import os
+from typing import Dict, Any, List
+
+import yaml
+
+from openjiuwen.extensions.common.configs.constant import DEFAULT_INNER_LOG_CONFIG
 
 
 class LogConfig:
@@ -111,6 +112,7 @@ class LogConfig:
 
 
 log_config = LogConfig()
+
 
 def configure_log(config_path: str):
     """

@@ -24,6 +24,7 @@ RULES = [
     (re.compile(r"is_not_empty\("), "_safe_is_not_empty("),
 ]
 
+
 class ExpressionCondition(Condition):
     def __init__(self, expression: str):
         super().__init__()
@@ -128,10 +129,12 @@ class ExpressionCondition(Condition):
                                           error_msg=str(e)
                                       ))
 
+
 def convert_condition(condition, inputs):
     for pattern, replacement in RULES:
         condition = pattern.sub(replacement, condition)
     return condition
+
 
 def _safe_is_empty(value):
     """Safely check if a value is empty"""
@@ -161,9 +164,11 @@ def _safe_is_empty(value):
         )
     return length == 0
 
+
 def _safe_is_not_empty(value):
     """Safely check if a value is not empty"""
     return not _safe_is_empty(value)
+
 
 def _check_ast_depth(node: ast.AST, current_depth: int = 0) -> int:
     """
@@ -224,6 +229,7 @@ def _check_ast_depth(node: ast.AST, current_depth: int = 0) -> int:
         max_depth = max(max_depth, _check_ast_depth(node.body, current_depth + 1))
     return max_depth
 
+
 def _evaluate_ast(node: Any, runtime: dict) -> Optional[Any]:
     try:
         if isinstance(node, ast.BoolOp):
@@ -268,6 +274,7 @@ def _evaluate_ast(node: Any, runtime: dict) -> Optional[Any]:
             )
         ) from e
 
+
 # Handle unary operators
 def _evaluate_unary_op(node: ast.UnaryOp, runtime: dict) -> Any:
     operand = _evaluate_ast(node.operand, runtime)
@@ -286,6 +293,7 @@ def _evaluate_unary_op(node: ast.UnaryOp, runtime: dict) -> Any:
             error_msg=f"Unsupported unary operator: {type(node.op).__name__}"
         )
     )
+
 
 # Handle binary operators
 def _evaluate_bin_op(node: ast.BinOp, runtime: dict) -> Any:
@@ -350,10 +358,12 @@ def _evaluate_bin_op(node: ast.BinOp, runtime: dict) -> Any:
         )
     )
 
+
 def _evaluate_bool_op(node: ast.BoolOp, runtime: dict) -> Any:
     op = node.op
     values = [_evaluate_ast(value, runtime) for value in node.values]
     return all(values) if isinstance(op, ast.And) else any(values)
+
 
 def _evaluate_compare(node: ast.Compare, runtime: dict) -> Any:
     left = _evaluate_ast(node.left, runtime)
@@ -362,6 +372,7 @@ def _evaluate_compare(node: ast.Compare, runtime: dict) -> Any:
         if not _compare_values(left, right, operation):
             return False
     return True
+
 
 def _compare_values(left: Any, right: Any, op: ast.operator) -> Any:
     if isinstance(op, ast.Eq):
@@ -397,6 +408,7 @@ def _compare_values(left: Any, right: Any, op: ast.operator) -> Any:
         )
     )
 
+
 def _evaluate_name(node: ast.Name, runtime: dict) -> Any:
     # First check if it's a direct key in runtime
     if node.id in runtime:
@@ -413,7 +425,7 @@ def _evaluate_name(node: ast.Name, runtime: dict) -> Any:
         try:
             # Check if it's a float
             return float(node.id)
-        except ValueError:
+        except ValueError as e:
             # Check if it's a boolean keyword
             if node.id == 'True':
                 return True
@@ -422,8 +434,11 @@ def _evaluate_name(node: ast.Name, runtime: dict) -> Any:
             elif node.id == 'None':
                 return None
             # According to test requirements, raise JiuWenBaseException instead of NameError
-            raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(error_msg=f"Name '{node.id}' is not defined"))
+            raise JiuWenBaseException(
+                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(error_msg=f"Name '{node.id}' is not defined")
+            ) from e
+
 
 def _evaluate_subscript(node: ast.Subscript, runtime: dict) -> Any:
     value = _evaluate_ast(node.value, runtime)
@@ -458,6 +473,7 @@ def _evaluate_subscript(node: ast.Subscript, runtime: dict) -> Any:
         # Handle regular index
         index = _evaluate_ast(node.slice, runtime)
         return value[index]
+
 
 def _evaluate_attribute(node: ast.Attribute, runtime: dict) -> Any:
     value = _evaluate_ast(node.value, runtime)
@@ -495,6 +511,7 @@ def _evaluate_attribute(node: ast.Attribute, runtime: dict) -> Any:
                                       error_msg=f"'dict' object has no attribute '{node.attr}'"
                                   ))
 
+
 def _evaluate_call(node: ast.Call, runtime: dict) -> Any:
     func = _evaluate_ast(node.func, runtime)
     args = [_evaluate_ast(arg, runtime) for arg in node.args]
@@ -508,6 +525,7 @@ def _evaluate_call(node: ast.Call, runtime: dict) -> Any:
         )
     return func(*args)
 
+
 def _evaluate_list(node: ast.List, runtime: dict) -> Any:
     # Check if list contains too many elements
     if len(node.elts) > MAX_COLLECTION_SIZE:
@@ -519,8 +537,10 @@ def _evaluate_list(node: ast.List, runtime: dict) -> Any:
         )
     return [_evaluate_ast(item, runtime) for item in node.elts]
 
+
 def _evaluate_tuple(node: ast.Tuple, runtime: dict) -> Any:
     return tuple(_evaluate_ast(item, runtime) for item in node.elts)
+
 
 def _evaluate_dict(node: ast.Dict, runtime: dict) -> Any:
     # Check if dictionary has too many key-value pairs

@@ -17,6 +17,7 @@ from openjiuwen.graph.visualization.drawable_graph import DrawableGraph
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"
 
+
 class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
     def __init__(self, sub_workflow: Workflow):
         super().__init__()
@@ -30,7 +31,8 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
         return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY))
 
     async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
-        async for value in self._sub_workflow.sub_stream(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY)):
+        async for value in self._sub_workflow.sub_stream(inputs.get(INPUTS_KEY),
+                                                         runtime.base(), inputs.get(CONFIG_KEY)):
             yield value
 
     def graph_invoker(self) -> bool:

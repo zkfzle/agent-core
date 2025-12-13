@@ -17,7 +17,8 @@ class StatusCode(Enum):
     INTERACTIVE_UPDATE_FAILED = (100001, "raw_inputs existed, update is invalid")
     COMPONENT_NOT_EXECUTABLE_ERROR = (100002, "workflow component should implement Executable")
     CONTROLLER_INTERRUPTED_ERROR = (100003, "controller interrupted error")
-    INTERACTIVE_NOT_SUPPORT_STREAM_ERROR = (100004, "streaming process interface(transform or collect) does not support interact operations")
+    INTERACTIVE_NOT_SUPPORT_STREAM_ERROR = (100004, "streaming process interface(transform or collect)"
+                                            " does not support interact operations")
     COMPONENT_EXECUTE_ERROR = (100005, "component [{node_id}] encountered an exception while executing ability [{"
                                            "ability}], error detail: {error}")
 
@@ -53,7 +54,8 @@ class StatusCode(Enum):
     QUESTIONER_COMPONENT_INIT_STATE_ERROR = (101073, "Questioner component init state error.")
     QUESTIONER_COMPONENT_EXCEED_MAX_RESPONSE = (101074, "Questioner component exceed max response.")
     QUESTIONER_COMPONENT_INVOKE_LLM_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
-    QUESTIONER_COMPONENT_PARSE_LLM_RESPONSE_ERROR = (101076, "Questioner component parse llm response error, as {error_msg}.")
+    QUESTIONER_COMPONENT_PARSE_LLM_RESPONSE_ERROR = (101076, "Questioner component parse llm response error,"
+                                                     " as {error_msg}.")
 
     ## BranchComponent  101100 - 101119
     BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")
@@ -68,7 +70,8 @@ class StatusCode(Enum):
     SUB_WORKFLOW_COMPONENT_RUNNING_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
 
     ## LoopComponent  101150 - 101159
-    LOOP_COMPONENT_NESTED_LOOP_ERROR = (101150, "Nested loops are not supported. Cannot add LoopComponent to a LoopGroup")
+    LOOP_COMPONENT_NESTED_LOOP_ERROR = (101150, "Nested loops are not supported."
+                                        " Cannot add LoopComponent to a LoopGroup")
     LOOP_COMPONENT_EXECUTION_ERROR = (101151, "Loop execution error: {error_msg}")
     LOOP_COMPONENT_EMPTY_GROUP_ERROR = (101152, "Loop group is empty, no components to execute")
     LOOP_COMPONENT_INPUT_TYPE_ERROR = (101153, "Inputs must be a dictionary, got {type}")
@@ -86,8 +89,8 @@ class StatusCode(Enum):
     TOOL_COMPONENT_CHECK_PARAM_ERROR = (102002, "Tool component check parameter error, as {error_msg}.")
 
     ## StartComponent  102100 - 102119
-    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (102100,
-                                                    "start component: global variable(s) defined with no value assigned:  {variable_name}")
+    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (102100, "start component: global variable(s)"
+                                                    " defined with no value assigned:  {variable_name}")
     WORKFLOW_START_CREATE_VALUE = (102101, "start component create error:  {reason}")
 
     ## EndComponent  102120 - 102149
@@ -150,7 +153,8 @@ class StatusCode(Enum):
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999
     # GraphEngine - Conditional Evaluation 140000 - 140019
-    EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error, expression as {expression}, error as {error_msg}.")
+    EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error,"
+                                         " expression as {expression}, error as {error_msg}.")
     EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
     ARRAY_CONDITION_ERROR = (140002, "Array condition error")
     NUMBER_CONDITION_ERROR = (140003, "Number condition error")
@@ -265,7 +269,9 @@ class StatusCode(Enum):
 
     # Runtime - Component Executable 196100 - 196199
     RUNTIME_COMPONENT_INVALID_RUNTIME_TYPE = (196100, "runtime should be NodeRuntime instance")
-    RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' method is not implemented. Please implement the '{method}' method in your component class '{class_name}'.")
+    RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' "
+                                                 "method is not implemented. Please implement the '{method}' method "
+                                                 "in your component class '{class_name}'.")
     RUNTIME_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
 
 

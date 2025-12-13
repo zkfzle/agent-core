@@ -3,8 +3,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from abc import ABC, abstractmethod
-from pydantic import BaseModel, Field
 from typing import Union, Dict, Optional, List
+
+from pydantic import BaseModel, Field
 
 from openjiuwen.core.utils.llm.messages import BaseMessage
 

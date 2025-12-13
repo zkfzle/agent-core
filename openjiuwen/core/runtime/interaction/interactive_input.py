@@ -13,6 +13,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
 _sentinel = object()
 
+
 class InteractiveInput(BaseModel):
     # key is id of interaction, value is input for the id
     user_inputs: Dict[str, Any] = Field(default_factory=dict)

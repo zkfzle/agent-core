@@ -31,6 +31,9 @@ class NumberConditionInRuntime(Condition):
         current_idx = runtime.state().get(INDEX)
         limit_num = self._limit
         if limit_num is None:
-            raise JiuWenBaseException(StatusCode.NUMBER_CONDITION_ERROR.code, "loop_number variable not found or is None")
+            raise JiuWenBaseException(
+                StatusCode.NUMBER_CONDITION_ERROR.code,
+                "loop_number variable not found or is None"
+            )
             
         return current_idx < limit_num

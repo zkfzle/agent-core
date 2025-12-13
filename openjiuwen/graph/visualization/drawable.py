@@ -168,7 +168,7 @@ else:
 
             def next(self):
                 self._node_id += 1
-                return  "_".join([self._prefix, str(self._node_id)])
+                return "_".join([self._prefix, str(self._node_id)])
 
         class _LinkIdGenerator:
             _prefix = "link"
@@ -178,7 +178,7 @@ else:
 
             def next(self):
                 self._node_id += 1
-                return  "_".join([self._prefix, str(self._node_id)])
+                return "_".join([self._prefix, str(self._node_id)])
 
         @dataclass
         class _SubGraphNode:
@@ -270,7 +270,8 @@ else:
         def to_mermaid_svg(self, graph: DrawableGraph, title: str = "", expand_subgraph: int | bool = False) -> bytes:
             """convert self._graph to Mermaid syntax and render it as svg"""
             return Mermaid(self.to_mermaid(graph=graph, title=title,
-                                           expand_subgraph=expand_subgraph, enable_animation=True)).svg_response.content
+                                           expand_subgraph=expand_subgraph,
+                                           enable_animation=True)).svg_response.content
 
         def _gen_mermaid_node(self, expand_subgraph: int | bool, node: DrawableSubgraphNode,
                               enable_animation: bool) -> _SubGraphNode:
@@ -287,7 +288,8 @@ else:
                     shape = "normal"
                     if sub_node in graph.start_nodes or sub_node in graph.end_nodes:
                         shape = "round-edge"
-                    mermaid_nodes[sub_node.id] = Node(id_=self._node_id_generator.next(), content=sub_node.id, shape=shape)
+                    mermaid_nodes[sub_node.id] = Node(id_=self._node_id_generator.next(),
+                                                      content=sub_node.id, shape=shape)
 
             links = self._gen_mermaid_links(graph, mermaid_nodes, subgraph_mermaid_nodes, enable_animation)
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-import os
-import yaml
-from typing import Any
-from openjiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
 import copy
+import os
+from typing import Any
 
+import yaml
+
+from openjiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
 from openjiuwen.core.common.security.path_checker import is_sensitive_path
 
 CRITICAL = 50

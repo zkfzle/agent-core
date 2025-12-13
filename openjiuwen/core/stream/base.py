@@ -50,6 +50,7 @@ class CustomSchema(BaseModel):
 
 StreamSchemas = Union[OutputSchema, CustomSchema, TraceSchema]
 
+
 class StreamDataMsg(Enum):
     """
     流式数据msg枚举
@@ -84,4 +85,7 @@ class StreamData:
         self.index = index
 
     def __str__(self):
-        return f"StreamData(code={self.code}, msg={self.msg}, data={self.data}, execution_id={self.execution_id}, index={self.index})"
+        return (
+            f"StreamData(code={self.code}, msg={self.msg}, data={self.data}, "
+            f"execution_id={self.execution_id}, index={self.index})"
+        )

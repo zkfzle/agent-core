@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import asyncio
 import random
 from typing import List, Tuple, Dict, Optional
 from concurrent.futures import ThreadPoolExecutor
 import copy
 
 from tqdm import tqdm
-import asyncio
 
 from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.core.agent.agent import Agent
@@ -206,6 +206,7 @@ class ParameterSearcher:
         n_candidates = len(parameters)
         node_names = list(parameters[0].keys())
         all_candidates = []
+
         def generate_candidates_recursively(i_param: int, candidate: Dict[str, LLMCall]):
             if i_param == n_params:
                 try:

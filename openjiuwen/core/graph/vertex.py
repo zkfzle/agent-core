@@ -26,6 +26,7 @@ from openjiuwen.graph.pregel.constants import GraphInterrupt
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"
 
+
 class Vertex(AsyncAtomicNode, StreamConsumer):
     def __init__(self, node_id: str, executable: Executable = None):
         self._node_id = node_id
@@ -237,8 +238,14 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         # wait only when stream_call called
         if self._stream_called:
             try:
-                result = await asyncio.wait_for(self._stream_done,
-                                                timeout=self._stream_called_timeout if self._stream_called_timeout and self._stream_called_timeout > 0 else None)
+                result = await asyncio.wait_for(
+                    self._stream_done,
+                    timeout=(
+                        self._stream_called_timeout
+                        if self._stream_called_timeout and self._stream_called_timeout > 0
+                        else None
+                    )
+                )
                 if isinstance(result, Exception):
                     raise result
             except asyncio.TimeoutError:

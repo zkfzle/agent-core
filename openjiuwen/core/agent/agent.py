@@ -266,7 +266,10 @@ class Agent(ABC):
                                           f"{self.__class__.__name__} stream error.") from e
 
     async def runner_controller_stream(self, inputs: Dict, runtime: Runtime):
-        """Interface adapted for runner, will be replaced with controller_stream after all agents fully adapt to runner"""
+        """
+        Interface adapted for runner, will be replaced with controller_stream
+        after all agents fully adapt to runner
+        """
         controller = None
         try:
             controller = self._create_controller(runtime)

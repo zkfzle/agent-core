@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-import aiohttp
 import json
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 
+import aiohttp
+import openai
 from pydantic import ConfigDict
 from requests import Session
-import openai
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.ssl_utils import SslUtils
@@ -70,7 +69,7 @@ class RequestChatModel(BaseModelClient):
         self.close_session()
         return self._parse_response(model_name, response.json())
 
-    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         UrlUtils.check_url_is_valid(self.api_base)
         messages = self.sanitize_tool_calls(messages)
@@ -135,7 +134,7 @@ class RequestChatModel(BaseModelClient):
         self.close_session()
 
 
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None,
                        **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
@@ -321,7 +320,7 @@ class OpenAIChatModel(BaseModelClient):
     def model_provider(self) -> str:
         return "openai"
 
-    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
@@ -340,7 +339,7 @@ class OpenAIChatModel(BaseModelClient):
             if sync_client is not None:
                 sync_client.close()
 
-    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         """Async call OpenAI API"""
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
@@ -384,7 +383,7 @@ class OpenAIChatModel(BaseModelClient):
             if sync_client is not None:
                 sync_client.close()
 
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None,
                        **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
         """Async stream call OpenAI API"""
@@ -410,7 +409,7 @@ class OpenAIChatModel(BaseModelClient):
                 await async_client.close()
 
 
-    def _build_request_params(self, model_name:str, messages: List[Dict],
+    def _build_request_params(self, model_name: str, messages: List[Dict],
                               tools: List[Dict] = None, stream: bool = False,
                               **kwargs) -> Dict:
         """Build OpenAI API request parameters"""

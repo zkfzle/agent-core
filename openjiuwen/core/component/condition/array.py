@@ -32,6 +32,7 @@ class ArrayCondition(Condition):
         io_updates = updates.copy()
         return True, io_updates
 
+
 class ArrayConditionInRuntime(Condition):
 
     def __init__(self, arrays: dict[str, Union[list[Any], tuple[Any]]]):
@@ -48,11 +49,17 @@ class ArrayConditionInRuntime(Condition):
         for key, array_info in self._arrays.items():
             try:
                 if not isinstance(array_info, (list, tuple)):
-                    raise JiuWenBaseException(StatusCode.ARRAY_CONDITION_ERROR.code, f"Expected list/tuple for '{key}' in loop_array, got {type(array_info).__name__}")
+                    raise JiuWenBaseException(
+                        StatusCode.ARRAY_CONDITION_ERROR.code,
+                        f"Expected list/tuple for '{key}' in loop_array, got {type(array_info).__name__}"
+                    )
 
                 updates[key] = array_info[current_idx]
             except (TypeError, IndexError, KeyError) as e:
-                raise JiuWenBaseException(StatusCode.ARRAY_CONDITION_ERROR.code, f"Array loop error in '{key}': <error_details>") from e
+                raise JiuWenBaseException(
+                    StatusCode.ARRAY_CONDITION_ERROR.code,
+                    f"Array loop error in '{key}': <error_details>"
+                ) from e
         runtime.state().update(updates)
         io_updates = updates.copy()
         return True, io_updates

@@ -31,7 +31,7 @@ class TextableVariable(Variable):
             input_key = placeholder.split(".")[0]
             if input_key not in input_keys:
                 input_keys.append(input_key)
-            clean_text = clean_text.replace(match.group(0), "{{"+ placeholder + "}}")
+            clean_text = clean_text.replace(match.group(0), "{{" + placeholder + "}}")
         self.text = clean_text
         self.placeholders = placeholders
         super().__init__(name, input_keys=input_keys)

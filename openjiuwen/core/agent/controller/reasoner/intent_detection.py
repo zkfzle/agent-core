@@ -5,6 +5,8 @@
 import json
 import re
 import secrets
+from typing import List, Union
+
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
 from openjiuwen.core.agent.controller.constants import IntentDetectionConstants
@@ -18,7 +20,7 @@ from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.llm.messages import BaseMessage
-from typing import List, Union
+
 
 class IntentDetection:
     """IntentDetection - 意图识别模块，负责识别消息意图并生成简单任务"""

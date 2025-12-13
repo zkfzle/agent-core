@@ -19,11 +19,14 @@ def decorate_model_with_trace(model, agent_runtime):
         model_name = type(model).__name__
     instance_info = {"class_name": model_name, "type": "llm"}
     wrapped_model.invoke = MethodType(
-        trace(wrapped_model.invoke, agent_runtime, InvokeType.LLM, instance_info, index = 2, inputs_field_name="messages"), wrapped_model)
+        trace(wrapped_model.invoke, agent_runtime, InvokeType.LLM, instance_info,
+              index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.ainvoke = MethodType(
-        async_trace(wrapped_model.ainvoke, agent_runtime, InvokeType.LLM, instance_info, index = 2, inputs_field_name="messages"), wrapped_model)
+        async_trace(wrapped_model.ainvoke, agent_runtime, InvokeType.LLM, instance_info,
+                    index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.stream = MethodType(
-        trace_stream(wrapped_model.stream, agent_runtime, InvokeType.LLM, instance_info, index = 2, inputs_field_name="messages"), wrapped_model)
+        trace_stream(wrapped_model.stream, agent_runtime, InvokeType.LLM, instance_info,
+                     index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.astream = MethodType(
         async_trace_stream(wrapped_model.astream, agent_runtime, InvokeType.LLM, instance_info, index=2,
                      inputs_field_name="messages"), wrapped_model)
@@ -61,7 +64,7 @@ def decorate_workflow_with_trace(workflow, agent_runtime):
     return wrapped_workflow
 
 
-def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name:str = "inputs"):
+def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     def decorator(*args, **kwargs):
         tracer = runtime.tracer()
@@ -70,7 +73,8 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1,
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
-                                inputs={"inputs": args[index] if args and len(args) > index else kwargs.get(inputs_field_name, {})},
+                                inputs={"inputs": args[index] if args and len(args) > index
+                                    else kwargs.get(inputs_field_name, {})},
                                 instance_info=instance_info)
 
             args = args[1:]
@@ -85,7 +89,8 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1,
     return decorator
 
 
-def async_trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name:str = "inputs"):
+def async_trace(func, runtime, invoke_type: InvokeType, instance_info,
+                index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     async def decorator(*args, **kwargs):
         tracer = runtime.tracer()
@@ -94,7 +99,8 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info, index: in
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
-                                 inputs={"inputs": args[index] if args and len(args) > index else kwargs.get(inputs_field_name, {})},
+                                 inputs={"inputs": args[index] if args and len(args) > index
+                                    else kwargs.get(inputs_field_name, {})},
                                  instance_info=instance_info)
 
             args = args[1:]
@@ -109,7 +115,8 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info, index: in
     return decorator
 
 
-def trace_stream(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name:str = "inputs"):
+def trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
+                 index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     def decorator(*args, **kwargs):
         tracer = runtime.tracer()
@@ -118,7 +125,8 @@ def trace_stream(func, runtime, invoke_type: InvokeType, instance_info, index: i
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
-                                inputs={"inputs": args[index] if args and len(args) > index else kwargs.get(inputs_field_name, {})},
+                                inputs={"inputs": args[index] if args and len(args) > index
+                                    else kwargs.get(inputs_field_name, {})},
                                 instance_info=instance_info)
             args = args[1:]
             result = func(*args, **kwargs)
@@ -138,7 +146,8 @@ def trace_stream(func, runtime, invoke_type: InvokeType, instance_info, index: i
     return decorator
 
 
-def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name:str = "inputs"):
+def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
+                       index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     async def decorator(*args, **kwargs):
         tracer = runtime.tracer()
@@ -147,7 +156,8 @@ def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info, in
             agent_span = runtime.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
-                                 inputs={"inputs": args[index] if args and len(args) > index else kwargs.get(inputs_field_name, {})},
+                                 inputs={"inputs": args[index] if args and len(args) > index
+                                    else kwargs.get(inputs_field_name, {})},
                                  instance_info=instance_info)
             args = args[1:]
             result = func(*args, **kwargs)

@@ -22,6 +22,7 @@ from openjiuwen.core.utils.tool.param import Param
 
 DEFAULT_EXCEPTION_ERROR_CODE = -1
 
+
 @dataclass
 class ToolComponentConfig(ComponentConfig):
     pass

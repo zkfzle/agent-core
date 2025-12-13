@@ -19,6 +19,7 @@ from openjiuwen.core.utils.tool.base import Tool
 
 ResourceManager = TypeVar("ResourceManager", contravariant=True)
 
+
 class BaseRuntime(ABC):
     @abstractmethod
     def config(self) -> Config:

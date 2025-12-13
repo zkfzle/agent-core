@@ -38,9 +38,10 @@ class CompIOConfig(BaseModel):
 
 class WorkflowMetadata(BaseModel):
     name: str = Field(default="")
-    id: str = Field(default_factory=lambda:uuid.uuid4().hex)
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     version: str = Field(default="")
     description: str = Field(default="")
+
 
 class NodeSpec(BaseModel):
     io_config: CompIOConfig

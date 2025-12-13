@@ -17,7 +17,7 @@ class ContextImpl(Context):
         self._accessor: ContextAccessor = accessor
 
     def batch_add_messages(self,
-                     messages:List[BaseMessage],
+                     messages: List[BaseMessage],
                      tags: Optional[Dict[str, str]] = None):
         history = self._accessor.history(self._owner)
         history.batch_add_messages(messages=messages, tags=tags)

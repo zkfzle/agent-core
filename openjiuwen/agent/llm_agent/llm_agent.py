@@ -2,15 +2,16 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMAgent - ReAct style Agent based on ControllerAgent"""
+import asyncio
 import datetime
 from datetime import timezone
 from typing import Dict, List, Any, AsyncIterator, Optional
+
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.llm_agent.llm_controller import LLMController
 from openjiuwen.core.agent.agent import ControllerAgent
-from openjiuwen.core.common.constants.constant import TIMEZONE_NAME
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runtime.runtime import Runtime
@@ -19,7 +20,6 @@ from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
-import asyncio
 
 
 def create_llm_agent_config(agent_id: str,
@@ -202,7 +202,7 @@ class LLMAgent(ControllerAgent):
 
         if own_stream:
             # 只有自己拥有 stream 时才从 stream_iterator 读取
-            # 如果传入了外部 runtime，外部调用方负责读取
+            # 如果传入了外部 runtime， 外部调用方负责读取
             async for result in agent_runtime.stream_iterator():
                 result_for_memory += _extract_answer_output(result)
                 yield result

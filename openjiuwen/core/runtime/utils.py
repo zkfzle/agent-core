@@ -37,6 +37,7 @@ def create_wrapper_class(original_obj, wrapper_name="WrappedObject"):
 
     return WrapperClass(original_obj)
 
+
 def update_dict(update: dict, source: dict, ignore_delete: bool = False) -> None:
     """
     update source dict by update dict
@@ -55,6 +56,7 @@ def update_dict(update: dict, source: dict, ignore_delete: bool = False) -> None
     if not ignore_delete:
         for key, value in removed:
             delete_by_key(key, value)
+
 
 def get_by_schema(schema: Union[str, list, dict], data: dict, nested_path: str = None, is_root: bool = True) -> Any:
     if nested_path is not None and len(nested_path) > 0:
@@ -110,6 +112,7 @@ def get_value_by_nested_path(nested_key: str, source: dict) -> Optional[Any]:
     except (ValueError, TypeError, KeyError, IndexError):
         return None
 
+
 def split_nested_path(nested_key: str) -> list:
     '''
     Split nested path
@@ -118,7 +121,8 @@ def split_nested_path(nested_key: str) -> list:
              a.b[0]['key'] -> ["a", "b", 0, "key"]
     '''
 
-    if (NESTED_PATH_SPLIT not in nested_key) and (NESTED_PATH_LIST_SPLIT not in nested_key) and ("['" not in nested_key):
+    if ((NESTED_PATH_SPLIT not in nested_key) and (NESTED_PATH_LIST_SPLIT not in nested_key)
+            and ("['" not in nested_key)):
         return []
     final_list = []
     params = nested_key.split(NESTED_PATH_SPLIT)

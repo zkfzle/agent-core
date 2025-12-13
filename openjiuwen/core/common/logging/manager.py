@@ -32,7 +32,10 @@ class LogManager:
                     if log_type not in cls._loggers:
                         cls._loggers[log_type] = default_logger_class(log_type, config)
             else:
-                raise RuntimeError("LogConfig not available. Please ensure extensions.common.configs.log_config is properly configured.")
+                raise RuntimeError(
+                    "LogConfig not available. Please ensure extensions.common."
+                    " configs.log_config is properly configured."
+                )
 
             cls._initialized = True
 

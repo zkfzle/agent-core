@@ -13,7 +13,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 
 class SslUtils:
     @staticmethod
-    def create_ssl_adapter(verify_switch_env:str, ssl_cert_env:str, trigger_value: list):
+    def create_ssl_adapter(verify_switch_env: str, ssl_cert_env: str, trigger_value: list):
         """create ssl adapter"""
         ssl_verify, ssl_cert = SslUtils.get_ssl_config(verify_switch_env, ssl_cert_env, trigger_value)
         if ssl_verify:
@@ -32,7 +32,7 @@ class SslUtils:
         return None
 
     @staticmethod
-    def get_ssl_config(verify_switch_env:str, ssl_cert_env:str, trigger_value: list):
+    def get_ssl_config(verify_switch_env: str, ssl_cert_env: str, trigger_value: list):
         """get ssl config"""
         is_ssl_verify_off = SslUtils._bool_env(verify_switch_env, trigger_value)
         ssl_cert = os.getenv(ssl_cert_env)

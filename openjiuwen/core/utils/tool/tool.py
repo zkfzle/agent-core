@@ -141,11 +141,13 @@ def extract_params(func: Callable):
 
 
 @overload
-def tool(func: Callable) -> LocalFunction: ...
+def tool(func: Callable) -> LocalFunction:
+    pass
 
 
 @overload
-def tool(*, name: str = None, description: str = None, params: List[Param] = None) -> LocalFunction: ...
+def tool(*, name: str = None, description: str = None, params: List[Param] = None) -> LocalFunction:
+    pass
 
 
 def tool(

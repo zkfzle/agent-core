@@ -13,14 +13,14 @@ from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessage
 
 
 class BaseModelClient:
-    def __init__(self, api_key:str, api_base:str, max_retries: int = 3, timeout: int = 60, **kwargs):
+    def __init__(self, api_key: str, api_base: str, max_retries: int = 3, timeout: int = 60, **kwargs):
         self.api_key = api_key
         self.api_base = api_base
         self.max_retries = max_retries
         self.timeout = timeout
         self.extra_params_config = kwargs
 
-    def invoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
+    def invoke(self, model_name: str, messages: Union[List[BaseMessage], List[Dict], str],
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature: Optional[float] = None,
                top_p: Optional[float] = None, **kwargs: Any):
         try:
@@ -32,8 +32,8 @@ class BaseModelClient:
                                             tools=self._convert_tool_info_format(tools),
                                             temperature=temperature, top_p=top_p, **kwargs))
 
-    async def ainvoke(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None,  temperature: Optional[float] = None,
+    async def ainvoke(self, model_name: str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature: Optional[float] = None,
                top_p: Optional[float] = None, **kwargs: Any):
         try:
             return await self._ainvoke(model_name=model_name, messages=self._convert_messages_format(messages),
@@ -44,8 +44,8 @@ class BaseModelClient:
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs)
 
-    def stream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None,  temperature: Optional[float] = None,
+    def stream(self, model_name: str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature: Optional[float] = None,
                top_p: Optional[float] = None, **kwargs: Any):
         try:
             for chunk in self._stream(model_name=model_name, messages=self._convert_messages_format(messages),
@@ -54,7 +54,8 @@ class BaseModelClient:
                 yield chunk
         except NotImplementedError:
             async def async_gen_wrapper():
-                async for chunk in self._astream(model_name=model_name, messages=self._convert_messages_format(messages),
+                async for chunk in self._astream(model_name=model_name,
+                                messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
                                 temperature=temperature, top_p=top_p, **kwargs):
                     yield chunk
@@ -72,9 +73,9 @@ class BaseModelClient:
                 loop.close()
 
 
-    async def astream(self, model_name:str, messages: Union[List[BaseMessage], List[Dict], str],
-               tools: Union[List[ToolInfo], List[Dict]] = None,  temperature: Optional[float] = None,
-               top_p: Optional[float] = None, **kwargs: Any)-> AsyncIterator[BaseMessageChunk]:
+    async def astream(self, model_name: str, messages: Union[List[BaseMessage], List[Dict], str],
+               tools: Union[List[ToolInfo], List[Dict]] = None, temperature: Optional[float] = None,
+               top_p: Optional[float] = None, **kwargs: Any) -> AsyncIterator[BaseMessageChunk]:
         try:
             async for chunk in self._astream(model_name=model_name, messages=self._convert_messages_format(messages),
                                 tools=self._convert_tool_info_format(tools),
@@ -87,23 +88,25 @@ class BaseModelClient:
                 yield chunk
 
     @abstractmethod
-    def _invoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
+    def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         raise NotImplementedError("BaseModelClient _invoke not implemented")
 
     @abstractmethod
-    async def _ainvoke(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                       temperature: Optional[float] = None, top_p: Optional[float] = None,**kwargs: Any) -> AIMessage:
+    async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         raise NotImplementedError("BaseModelClient _ainvoke not implemented")
 
     @abstractmethod
-    def _stream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[AIMessageChunk]:
+    def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                temperature: Optional[float] = None, top_p: Optional[float] = None,
+                **kwargs: Any) -> Iterator[AIMessageChunk]:
         raise NotImplementedError("BaseModelClient _stream not implemented")
 
     @abstractmethod
-    async def _astream(self, model_name:str, messages: List[Dict], tools: List[Dict] = None,
-                       temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AsyncIterator[
+    async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
+                       temperature: Optional[float] = None, top_p: Optional[float] = None,
+                       **kwargs: Any) -> AsyncIterator[
         AIMessageChunk]:
         raise NotImplementedError("BaseModelClient _astream not implemented")
 

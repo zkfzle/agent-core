@@ -178,6 +178,7 @@ class NodeRuntime(BaseRuntime):
         else:
             return None
 
+
 class SubWorkflowRuntime(NodeRuntime):
     def __init__(self, runtime: NodeRuntime, workflow_id: str, actor_manager: ActorManager = None):
         super().__init__(runtime=runtime.parent(), node_id=runtime.node_id())

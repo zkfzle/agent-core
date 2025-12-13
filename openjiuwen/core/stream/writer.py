@@ -31,9 +31,11 @@ class StreamWriter(Generic[T, S]):
         try:
             validated_data = self._schema_type.model_validate(stream_data)
         except ValidationError as e:
-            raise JiuWenBaseException(StatusCode.STREAM_WRITER_WRITE_SCHEMA_FAILED.code,
-                                      StatusCode.STREAM_WRITER_WRITE_SCHEMA_FAILED.errmsg.format(
-                                          detail=f"Data validation failed for schema {self._schema_type.__name__}")) from e
+            raise JiuWenBaseException(
+                StatusCode.STREAM_WRITER_WRITE_SCHEMA_FAILED.code,
+                StatusCode.STREAM_WRITER_WRITE_SCHEMA_FAILED.errmsg.format(
+                    detail=f"Data validation failed for schema {self._schema_type.__name__}")
+            ) from e
         try:
             await self._do_write(validated_data)
         except Exception as error:

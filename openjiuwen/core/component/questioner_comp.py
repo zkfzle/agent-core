@@ -61,24 +61,29 @@ QUESTIONER_USER_TEMPLATE = """\
 请充分考虑以上对话历史及用户输入，正确提取最符合约束要求的 JSON 格式参数。
 """
 
+
 def questioner_default_template():
     return [
         {"role": "system", "content": QUESTIONER_SYSTEM_TEMPLATE},
         {"role": "user", "content": QUESTIONER_USER_TEMPLATE},
     ]
 
+
 class ExecutionStatus(Enum):
     START = START_STR
     USER_INTERACT = USER_INTERACT_STR
     END = END_STR
+
 
 class QuestionerEvent(Enum):
     START_EVENT = START_STR
     END_EVENT = END_STR
     USER_INTERACT_EVENT = USER_INTERACT_STR
 
+
 class ResponseType(Enum):
     ReplyDirectly = "reply_directly"
+
 
 class FieldInfo(BaseModel):
     field_name: str
@@ -86,6 +91,7 @@ class FieldInfo(BaseModel):
     cn_field_name: str = Field(default="")
     required: bool = Field(default=False)
     default_value: Any = Field(default="")
+
 
 @dataclass
 class QuestionerConfig(ComponentConfig):
@@ -169,6 +175,7 @@ class QuestionerStartState(QuestionerState):
         if event == QuestionerEvent.END_EVENT:
             return QuestionerEndState.from_state(self)
         return self
+
 
 class QuestionerInteractState(QuestionerState):
     status: ExecutionStatus = Field(default=ExecutionStatus.USER_INTERACT)
@@ -370,7 +377,8 @@ class QuestionerDirectReplyHandler:
         if self._config.with_chat_history and context:
             raw_chat_history = context.get_messages()
             if raw_chat_history:
-                result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history, self._config.chat_history_max_rounds)
+                result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history,
+                                                                  self._config.chat_history_max_rounds)
         if not result or result[-1].role in ["assistant"]:
             # make sure content is Union[str, List[Union[str, Dict]]]
             content = self._query

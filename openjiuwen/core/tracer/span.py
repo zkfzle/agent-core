@@ -37,7 +37,8 @@ class TraceAgentSpan(Span):
 
 class TraceWorkflowSpan(Span):
     execution_id: str = Field(default="", alias="executionId")
-    on_invoke_data: List[dict] = Field(default=[], alias="onInvokeData")  # Recording intermediate process information for the current component's execution time
+    # Recording intermediate process information for the current component's execution time
+    on_invoke_data: List[dict] = Field(default=[], alias="onInvokeData")
     component_id: str = Field(default="", alias="componentId")  # put it to metadata
     component_name: str = Field(default="", alias="componentName")  # put it to metadata
     component_type: str = Field(default="", alias="componentType")  # is invoke_type

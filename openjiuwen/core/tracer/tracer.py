@@ -8,6 +8,7 @@ import uuid
 from openjiuwen.core.tracer.handler import TraceAgentHandler, TraceWorkflowHandler, TracerHandlerName
 from openjiuwen.core.tracer.span import SpanManager
 
+
 class Tracer:
     def __init__(self):
         self._trace_id = str(uuid.uuid4())

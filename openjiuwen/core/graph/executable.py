@@ -11,6 +11,7 @@ from openjiuwen.core.runtime.runtime import BaseRuntime
 Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", covariant=True)
 
+
 class Executable(Generic[Input, Output]):
     async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
         raise JiuWenBaseException(-1, "Invoke is not supported")

@@ -54,7 +54,9 @@ class StreamActor:
         if self._task is None or self._task.done():
             if self._task_error and self._task_error.done() and self._task_error.exception():
                 logger.warning(
-                    f"discard message [{message}], because current component [{self._node_id}] has error [{self._task_error.exception()}], can not handle message ")
+                    f"discard message [{message}], because current component [{self._node_id}] has error "
+                    f"[{self._task_error.exception()}], can not handle message "
+                )
                 return
             logger.debug(f"actor [{self._node_id}] start by message: {message}")
             event = asyncio.Event()

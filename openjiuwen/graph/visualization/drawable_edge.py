@@ -11,6 +11,7 @@ class Stringifiable(Protocol):
     def __str__(self) -> str:
         """Convert the object to a string."""
 
+
 @dataclass
 class DrawableEdge:
     source: str
@@ -18,6 +19,7 @@ class DrawableEdge:
     data: Optional[Stringifiable] = None
     conditional: bool = False
     streaming: bool = False
+
 
 @dataclass
 class DrawableBranchRouter:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+from typing import List, Optional
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
@@ -10,7 +11,7 @@ from openjiuwen.core.agent.task.task import Task
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.runtime import Runtime
-from typing import List, Optional
+
 
 class AgentReasoner:
     """AgentReasoner - Agent决策模块，负责消息智能决策和任务生成"""

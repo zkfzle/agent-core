@@ -19,6 +19,7 @@ DEFAULT_SENSITIVE_PATH_STR = ("/etc/passwd,/etc/shadow,/etc/hosts,/etc/hostname,
 DEFAULT_SENSITIVE_PATHS = ["/etc/passwd", "/etc/shadow", "/etc/hosts", "/etc/hostname", "/etc/ssh/",
                             "C:\\Windows\\System32\\", "C:\\Windows\\SysWOW64\\", "C:\\Windows\\System\\"]
 
+
 class UserConfig:
     _instance: Optional["UserConfig"] = None
     _lock = threading.Lock()

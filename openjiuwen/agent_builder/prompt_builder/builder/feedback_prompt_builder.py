@@ -22,6 +22,7 @@ MODE_SELECT: str = "select"
 MODE_INSERT: str = "insert"
 JSON_STRING_MAX_LENGTH: int = 10000
 
+
 class FeedbackPromptBuilder(BasePromptBuilder):
     def __init__(self, model_config: ModelConfig):
         super().__init__(model_config)

@@ -22,6 +22,7 @@ class ReadableStateLike(ABC):
 
 Transformer = Callable[[ReadableStateLike], Any]
 
+
 class RecoverableStateLike(ABC):
 
     @abstractmethod
@@ -76,6 +77,7 @@ COMP_STATE_UPDATES_KEY = "comp_state_updates"
 WORKFLOW_STATE_UPDATES_KEY = "workflow_state_updates"
 DEFAULT_NODE_ID = "default"
 DEFAULT_WORKFLOW_ID = "workflow"
+
 
 class State(RecoverableStateLike):
     @abstractmethod

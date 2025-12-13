@@ -244,8 +244,8 @@ class ReActAgent(BaseAgent):
             yield result
         await task
 
-# ===== 工厂函数 =====
 
+# ===== 工厂函数 =====
 def create_react_agent_config(
         agent_id: str,
         agent_version: str,

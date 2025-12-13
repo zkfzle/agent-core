@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import  List
+from typing import List
 
 from openjiuwen.core.utils.tool.types import ValueTypeEnum
 from openjiuwen.core.utils.tool.param import Param

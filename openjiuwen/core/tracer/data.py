@@ -3,6 +3,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from enum import Enum
+
+
 class InvokeType(Enum):
     """
     Agent Invoke Type
@@ -14,7 +16,8 @@ class InvokeType(Enum):
     CHAIN = "chain"
     RETRIEVER = "retriever"
     EVALUATOR = "evalutor"
-    
+
+
 class NodeStatus(Enum):
     """
     Workflow Node Status For Message

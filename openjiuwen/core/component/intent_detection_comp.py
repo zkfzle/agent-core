@@ -98,6 +98,7 @@ reason: 说明为何选择该分类
 如果没有合适的分类，请输出 {{default_class}}。
 """
 
+
 def get_default_template():
     return Template(
                 content=[

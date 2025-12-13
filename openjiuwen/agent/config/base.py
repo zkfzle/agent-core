@@ -20,6 +20,7 @@ class AgentConfig(BaseModel):
     model: Optional[ModelConfig] = Field(default=None)
     tools: List[str] = Field(default_factory=list)
 
+
 class LLMCallConfig(BaseModel):
     model: Optional[ModelConfig] = Field(default=None)
     system_prompt: List[Dict] = Field(default_factory=list)

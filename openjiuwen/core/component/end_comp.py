@@ -25,6 +25,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 
 RESPONSE_TEMPLATE = "responseTemplate"
 
+
 class EndConfig(TypedDict):
     responseTemplate: str
 
@@ -132,7 +133,8 @@ class End(ComponentExecutable, WorkflowComponent):
             if self._mix:
                 async with self._batch_template.condition:
                     try:
-                        await asyncio.wait_for(self._batch_template.condition.wait(), timeout if timeout and timeout > 0 else None)
+                        await asyncio.wait_for(self._batch_template.condition.wait(),
+                                               timeout if timeout and timeout > 0 else None)
                     except asyncio.TimeoutError as e:
                         logger.error(f"render template stream timeout, {e}")
                         return None
@@ -304,7 +306,7 @@ class TemplateUtils:
         if not isinstance(inputs, dict):
             raise TypeError("inputs must be a dict")
 
-        template = template.replace("{{","$").replace("}}","")
+        template = template.replace("{{", "$").replace("}}", "")
         t = string.Template(template)
         return t.safe_substitute(**inputs)
 

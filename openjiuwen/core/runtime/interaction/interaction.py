@@ -54,6 +54,7 @@ class WorkflowInteraction(BaseInteraction):
             value=OutputSchema(type=INTERACTION, index=self._idx, payload=(self._node_id, None)), resumable=True,
             ns=self._node_id),))
 
+
 class SimpleAgentInteraction:
     def __init__(self, runtime: AgentRuntime):
         self._agent_runtime = runtime
@@ -61,6 +62,7 @@ class SimpleAgentInteraction:
     async def wait_user_inputs(self, message):
         await self._agent_runtime.checkpointer().interrupt_agent_execute(self._agent_runtime)
         raise AgentInterrupt(message)
+
 
 class AgentInteraction(BaseInteraction):
     def __init__(self, runtime: AgentRuntime):

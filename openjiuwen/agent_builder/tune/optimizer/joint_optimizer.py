@@ -41,7 +41,7 @@ class JointOptimizer(BaseOptimizer):
         self._instruction_optimizer.bind_parameter(copy.deepcopy(parameters))
 
     def _backward(self,
-                 evaluated_cases: List[EvaluatedCase] ,
+                 evaluated_cases: List[EvaluatedCase],
                  ):
         self._example_optimizer.init_examples(evaluated_cases)
         self._select_optimize_strategy()

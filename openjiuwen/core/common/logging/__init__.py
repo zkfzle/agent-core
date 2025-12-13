@@ -9,6 +9,7 @@ from .utils import set_thread_session, get_thread_session
 
 _initialized = False
 
+
 def _ensure_initialized():
     global _initialized
     if not _initialized:

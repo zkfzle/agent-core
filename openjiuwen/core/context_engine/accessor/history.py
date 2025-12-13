@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Union
+
+from pydantic import BaseModel, Field
 
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.utils.llm.messages import BaseMessage

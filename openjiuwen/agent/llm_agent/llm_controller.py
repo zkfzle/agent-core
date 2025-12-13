@@ -1075,7 +1075,7 @@ class LLMController(BaseController):
                     user_id=user_id,
                     group_id=group_id,
                     query=query,
-                    num=1
+                    num=10
                 )
                 if long_term_memory:
                     memory_contents = [{

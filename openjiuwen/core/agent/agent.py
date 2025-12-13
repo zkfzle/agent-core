@@ -7,6 +7,7 @@ import inspect
 
 import warnings
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Union
 
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
@@ -59,6 +60,9 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
         inputs = kwargs.get("inputs")
         inner = await self._runtime.create_agent_runtime(session_id, inputs)
         return TaskRuntime(inner=inner)
+
+    def resource_mgr(self):
+        return self._inner.resource_manager()
 
     async def release(self, session_id: str):
         await self._runtime.checkpointer().release(session_id)
@@ -374,12 +378,20 @@ class WorkflowFactory:
         self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version, name=workflow_name)
         if self.name and self.input_schema:
             workflow_input_schema = self.input_schema if isinstance(self.input_schema,
-                                                                    WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
+                WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
                 self.input_schema)
+            self._tool_info = self._convert_to_tool_info(workflow_input_schema)
             from openjiuwen.core.runner.runner import resource_mgr
             resource_mgr.workflow()._workflow_tool_infos[
                 generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
                 workflow_input_schema)
+        else:
+            self._tool_info = None
+
+    def _register_tool_info(self, runtime: AgentRuntime):
+        if self._tool_info and runtime:
+            runtime.resource_mgr().workflow()._workflow_tool_infos[
+                generate_workflow_key(self.id, self.version)] = deepcopy(self._tool_info)
 
     def _convert_to_tool_info(self, workflow_input_schema) -> ToolInfo:
         parameters = Parameters(
@@ -456,8 +468,7 @@ class BaseAgent(ABC):
         self._config = self._config_wrapper  # Unified interface
 
         # 2. Create Runtime
-        from openjiuwen.core.runner.runner import resource_mgr
-        self._runtime = AgentRuntime(config=self._config, resource_mgr=resource_mgr)
+        self._runtime = AgentRuntime(config=self._config)
 
         # 3. Create ContextEngine
         self._context_engine = self._create_context_engine()
@@ -634,6 +645,7 @@ class BaseAgent(ABC):
                 provider = item
                 workflow_id = provider.id
                 workflow_version = provider.version
+                item._register_tool_info(self._runtime)
                 is_provider = True
             elif callable(item) and hasattr(item, 'id') and hasattr(item, 'version'):
                 # Callable with id/version attributes (preferred way for async providers)

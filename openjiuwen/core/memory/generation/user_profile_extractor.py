@@ -7,7 +7,7 @@ from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.generation.categorizer import Categorizer
+from openjiuwen.core.memory.generation.common import build_model_input
 from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_EXTRACTOR_PROMPT
 
 
@@ -44,7 +44,7 @@ class UserProfileExtractor:
             retries: int = 3
     ) -> Dict[str, Any]:
         sym_prompt = _get_message(user_define)
-        model_input = Categorizer.get_model_input(
+        model_input = build_model_input(
             messages,
             history_messages,
             sym_prompt

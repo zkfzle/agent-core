@@ -7,6 +7,7 @@ from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.memory.config.config import MemoryConfig
+from openjiuwen.core.memory.generation.common import build_model_input
 from openjiuwen.core.memory.generation.memory_info import (
     ExtractedData,
     ExtractedDataType
@@ -57,31 +58,18 @@ class ComprehensionExtractor:
             variables_output_format += f'"{key}": ' + '{"value": "string"}'
             cnt += 1
         variables_output_format += "}"
-        conversation = ""
-        for msg in messages:
-            conversation += f"{msg.role}: {msg.content}\n"
-
-        # Construct prompts
-        user_message = ""
-        if history_summary.content != "":
-            user_message += f"历史摘要如下<摘要>{history_summary.content}</摘要>"
-        user_message += f"基于以下对话内容提取变量：<对话>{conversation}</对话>"
 
         sys_message = EXTRACT_VARIABLES_PROMPT.format(
             variables=variables_dict["variables_description"],
             variables_output_format=variables_output_format
         )
 
-        model_input = [
-            {
-                "role": "system",
-                "content": sys_message
-            },
-            {
-                "role": "user",
-                "content": user_message
-            }
-        ]
+        history = history_summary.content if isinstance(history_summary.content, str) else ""
+        model_input = build_model_input(
+            messages=messages,
+            history_messages=history,
+            prompt=sys_message
+        )
         logger.debug(f"Start to extract variables, input: {model_input}")
         model_name, model_client = base_chat_model
         response = await model_client.ainvoke(

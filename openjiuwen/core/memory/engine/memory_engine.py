@@ -390,7 +390,8 @@ class MemoryEngine(BaseMemoryEngine):
             else:
                 msg_id = None
 
-            if not MemoryEngine._check_messages(messages):
+            check_res, messages = self._check_messages(messages=messages)
+            if not check_res:
                 logger.info("Memory engine no need to process messages.")
                 return msg_id
 
@@ -498,13 +499,19 @@ class MemoryEngine(BaseMemoryEngine):
             return self._base_llm
         return self._group_llm[group_id]
 
-    @staticmethod
-    def _check_messages(messages: list[BaseMessage]) -> bool:
+    def _check_messages(self, messages: list[BaseMessage]) -> Tuple[bool, list[BaseMessage]]:
+        out_messages = []
+        has_human_msg = False
         human_message: HumanMessage = HumanMessage()
         for msg in messages:
             if msg.role == human_message.role:
-                return True
-        return False
+                out_messages.append(msg)
+                has_human_msg = True
+                continue
+            if len(msg.content) <= self._sys_mem_config.ai_msg_gen_max_len:
+                out_messages.append(msg)
+
+        return has_human_msg, out_messages
 
     async def _get_history_messages(self,
                                     user_id: str,

@@ -108,24 +108,24 @@ class QuestionerDefaultConfig:
 
 class QuestionerInput(BaseModel):
     model_config = ConfigDict(extra='allow')   # Allow any extra fields
-    query: Union[str, None] = Field(default="")
+    query: Union[str, dict, None] = Field(default="")
 
 
 class OutputCache(BaseModel):
-    user_response: str = Field(default="")
+    user_response: Union[str, dict] = Field(default="")
     question: str = Field(default="")
     key_fields: dict = Field(default_factory=dict)
 
 
 class QuestionerOutput(BaseModel):
-    user_response: str = Field(default="")
+    user_response: Union[str, dict] = Field(default="")
     question: str = Field(default="")
     model_config = ConfigDict(extra='allow')  # Allow any extra fields
 
 
 class QuestionerState(BaseModel):
     response_num: int = Field(default=0)
-    user_response: str = Field(default="")
+    user_response: Union[str, dict] = Field(default="")
     question: str = Field(default="")
     extracted_key_fields: Dict[str, Any] = Field(default_factory=dict)
     status: ExecutionStatus = Field(default=ExecutionStatus.START)
@@ -372,7 +372,11 @@ class QuestionerDirectReplyHandler:
             if raw_chat_history:
                 result = QuestionerUtils.get_latest_k_rounds_chat(raw_chat_history, self._config.chat_history_max_rounds)
         if not result or result[-1].role in ["assistant"]:
-            result.append(HumanMessage(role="user", content=self._query))
+            # make sure content is Union[str, List[Union[str, Dict]]]
+            content = self._query
+            if isinstance(content, dict):
+                content = [content]  # wrap dict in list
+            result.append(HumanMessage(role="user", content=content))
         return result
 
     def _build_llm_inputs(self, chat_history: list = None) -> List[BaseMessage]:

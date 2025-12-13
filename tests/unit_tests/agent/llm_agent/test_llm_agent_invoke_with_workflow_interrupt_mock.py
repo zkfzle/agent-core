@@ -179,7 +179,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
         2. ReAct Agent 调用 LLM，决定调用 questioner_weather_workflow
         3. Workflow 中的 Questioner 组件请求用户提供地点信息（中断）
         4. 用户提供"上海"
-        5. ReAct Agent 再次调用 LLM，决定恢复 workflow
+        5. ReAct Agent 通过InteractiveInput，决定恢复 workflow
         6. Workflow 完成，返回"上海 | today"
         7. ReAct Agent 第三次调用 LLM，返回最终答案
         """
@@ -191,13 +191,14 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
         mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
         
         # 定义所有 LLM 调用的返回值（按调用顺序）
+        # 注意：恢复 workflow 时直接使用 InteractiveInput，不会再次调用 ReAct Agent 的 LLM
         all_llm_responses = [
             # 第1次调用：ReAct Agent 决定调用 workflow
             AIMessage(
                 content='',
                 tool_calls=[
                     ToolCall(
-                        id='mock_tool_call_1',
+                        id='call_weather_001',
                         type='function',
                         name='questioner_weather_workflow',
                         arguments='{"query": "今天天气查询"}'
@@ -205,34 +206,31 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 ],
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
-                    finish_reason='tool_calls'
+                    finish_reason='tool_calls',
+                    prompt_tokens=150,
+                    completion_tokens=25
                 )
             ),
             # 第2次调用：Questioner 组件提取字段，location为null，触发交互
-            AIMessage(content='{"location": null, "time": "today"}'),
-            
-            # 第3次调用：ReAct Agent 用户提供"上海"后，决定恢复 workflow
             AIMessage(
-                content='',
-                tool_calls=[
-                    ToolCall(
-                        id='mock_tool_call_2',
-                        type='function',
-                        name='questioner_weather_workflow',
-                        arguments='{"query": "上海"}'
-                    )
-                ],
+                content='{\n  "location": null,\n  "time": "today"\n}',
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
-                    finish_reason='tool_calls'
+                    finish_reason='stop'
                 )
             ),
-            # 第4次调用：Questioner 组件从"上海"中提取地点
-            AIMessage(content='{"location": "上海", "time": "today"}'),
-            
-            # 第5次调用：ReAct Agent workflow 完成后，返回最终答案
+            # 第3次调用：Questioner 组件恢复时，从"上海"中提取地点
+            # （恢复 workflow 时直接使用 InteractiveInput，跳过 ReAct Agent 的 LLM 调用）
             AIMessage(
-                content='根据查询结果，上海今天的天气信息已获取：上海 | today',
+                content='{\n  "location": "上海",\n  "time": "today"\n}',
+                usage_metadata=UsageMetadata(
+                    model_name='gpt-3.5-turbo',
+                    finish_reason='stop'
+                )
+            ),
+            # 第4次调用：ReAct Agent workflow 完成后，返回最终答案
+            AIMessage(
+                content='我已经为您查询了上海的天气信息。根据返回的结果：上海 | today，这表明查询已成功完成。如果需要更详细的天气数据，请告诉我。',
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
                     finish_reason='stop'

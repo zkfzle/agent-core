@@ -365,6 +365,14 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             interactive_input.update(component_id, "上海")
         return interactive_input
 
+    def _create_interactive_input_dict(self, interaction_outputs):
+        """创建结构化信息InteractiveInput的通用方法"""
+        interactive_input = InteractiveInput()
+        for item in interaction_outputs:
+            component_id = item.payload.id
+            interactive_input.update(component_id, {"location": "上海"})
+        return interactive_input
+
     @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_runner_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
@@ -415,6 +423,90 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
 
             return result, result2  # 返回结果用于比对
+        else:
+            print("未检测到交互请求，测试可能未按预期执行")
+            self.fail("应该检测到交互请求")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_runner_stream_with_dict_interrupt_recovery(self):
+        """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。使用dict类型InteractiveInput"""
+        print("=== 测试 WorkflowAgent.stream 方法 ===")
+        _, workflow = self.build_interrupt_workflow()
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        agent = self._create_agent(workflow)
+
+        # 第一次调用 - 应该触发中断（设置50秒超时）
+        interaction_outputs = []
+        try:
+            async def collect_first_stream():
+                chunks = []
+                async for chunk in Runner.run_agent_streaming(agent,
+                                                              {"query": "查询天气", "conversation_id": "c123"}):
+                    print(f"Workflow Agent第一次输出结果 >>> {chunk}")
+                    chunks.append(chunk)
+                    if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                        print("✅ stream 检测到交互请求!")
+                        interaction_outputs.append(chunk)
+                return chunks
+
+            first_chunks = await asyncio.wait_for(collect_first_stream(), timeout=50.0)
+        except asyncio.TimeoutError:
+            print("❌ 第一次调用超时！")
+            raise
+
+        # 校验第一次调用结果：应该包含交互请求
+        self.assertTrue(interaction_outputs, "第一次调用应该包含交互请求")
+        self.assertEqual(interaction_outputs[0].type, '__interaction__', "应该返回交互类型")
+        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求")
+
+        if interaction_outputs:
+            print("检测到交互请求，准备进行中断恢复...")
+            interactive_input = self._create_interactive_input_dict(interaction_outputs)
+
+            # 第二次调用 - 使用InteractiveInput进行恢复（设置30秒超时）
+            second_chunks = []
+            workflow_final_chunk = None
+            try:
+                async def collect_second_stream():
+                    chunks = []
+                    async for chunk in Runner.run_agent_streaming(agent, {"query": interactive_input,
+                                                                          "conversation_id": "c123"}):
+                        print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
+                        chunks.append(chunk)
+                    return chunks
+
+                second_chunks = await asyncio.wait_for(collect_second_stream(), timeout=30.0)
+            except asyncio.TimeoutError:
+                print("❌ 第二次调用（恢复）超时！")
+                raise
+
+            # 校验第二次调用结果：应该包含 workflow_final
+            for chunk in second_chunks:
+                if isinstance(chunk, OutputSchema) and chunk.type == "workflow_final":
+                    workflow_final_chunk = chunk
+                    break
+
+            self.assertIsNotNone(workflow_final_chunk, "第二次调用应该包含 workflow_final 结果")
+            self.assertIsInstance(workflow_final_chunk.payload, dict, "workflow_final payload 应该是字典")
+
+            # 检查是否是错误响应
+            if workflow_final_chunk.payload.get('error'):
+                error_msg = workflow_final_chunk.payload.get('message', 'Unknown error')
+                print(f"⚠️ 工作流执行遇到错误: {error_msg}")
+                # 如果是 LLM 调用错误，这是外部依赖问题，测试跳过
+                if 'invoke llm error' in error_msg or 'Failed to invoke llm' in error_msg:
+                    self.skipTest(f"LLM 调用失败（外部依赖问题）: {error_msg}")
+                else:
+                    self.fail(f"工作流执行失败: {error_msg}")
+
+            # 校验正常响应 - 透传模式下 payload 是 End 组件的直接输出
+            # payload 格式: {'responseContent': '...', 'output': {}}
+            self.assertIn('responseContent', workflow_final_chunk.payload, "应该包含responseContent")
+            self.assertEqual(workflow_final_chunk.payload['responseContent'], '上海', "应该返回上海")
+            print(f"✅ 第二次调用校验通过：工作流完成，返回结果正确")
+
+            return first_chunks, second_chunks  # 返回结果用于比对
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")

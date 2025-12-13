@@ -103,8 +103,29 @@ class LLMController(BaseController):
 
         # Add user message to conversation history
         MessageUtils.add_user_message(message.get_display_content(), self._context_engine, runtime)
+        
+        # 0. Fast path: Check if message has InteractiveInput with node_id - directly resume workflow
+        interactive_input = getattr(message.content, 'interactive_input', None)
+        if interactive_input is not None and interactive_input.user_inputs:
+            resume_result = self._find_interrupted_task_by_node_id(
+                interactive_input, runtime
+            )
+            if resume_result:
+                task, saved_iteration = resume_result
+                logger.info(
+                    f"Resuming interrupted workflow task from InteractiveInput: {task.input.target_name}, "
+                    f"saved_iteration: {saved_iteration}"
+                )
+                # Create resume task with InteractiveInput
+                resume_task = self._create_resume_task(message, task)
+                # Calculate initial_iteration
+                initial_iteration = (saved_iteration + 1) if saved_iteration is not None else 1
+                # Execute directly without LLM call
+                return await self._execute_react_loop([resume_task], runtime, initial_iteration=initial_iteration)
+            logger.warning("Given Interactive input, but no interrupted task found, " \
+                            "falling through to normal LLM detection")
 
-        # Call LLM model to generate plans
+        # 1. Normal path: Call LLM model to generate plans
         tasks, llm_output = await self._generate_plan_from_llm(message, runtime)
 
         if not tasks:
@@ -1068,3 +1089,61 @@ class LLMController(BaseController):
                 logger.error(f"[LongTermMemory] failed to search mem: {e}")
                 result.update({"sys_long_term_memory": "[]"})
         return result
+
+    def _find_interrupted_task_by_node_id(
+            self,
+            interactive_input,
+            runtime: Runtime
+    ) -> Optional[tuple]:
+        """Find interrupted workflow by node_id from InteractiveInput
+        
+        When user provides InteractiveInput with user_inputs (node_id -> value),
+        we can directly find the interrupted workflow without LLM detection.
+        
+        This method searches in llm_controller state
+        to find the interrupted task matching the node_id.
+        
+        Args:
+            interactive_input: InteractiveInput with user_inputs
+            runtime: Runtime context
+            
+        Returns:
+            tuple(Task, current_iteration) if found, None otherwise
+        """
+        state = runtime.get_state("llm_controller")
+        if not state:
+            return None
+
+        interrupted_tasks = state.get("interrupted_tasks", {})
+        if not interrupted_tasks:
+            return None
+
+        # Get node_id from InteractiveInput
+        node_ids = list(interactive_input.user_inputs.keys())
+        if not node_ids:
+            return None
+
+        target_node_id = node_ids[0]
+        logger.info(
+            f"_find_interrupted_task_by_node_id: looking for node_id={target_node_id}"
+        )
+
+        # Search through interrupted tasks to find matching component_id
+        for workflow_key, task_info in interrupted_tasks.items():
+            component_id = task_info.get("component_id")
+            if component_id == target_node_id:
+                logger.info(
+                    f"_find_interrupted_task_by_node_id: "
+                    f"found match workflow_key={workflow_key}"
+                )
+                task_data = task_info["task"]
+                task = Task.model_validate(task_data)
+                saved_iteration = task_info["iteration"]
+
+                return task, saved_iteration
+
+        logger.warning(
+            f"_find_interrupted_task_by_node_id: "
+            f"no match found for node_id={target_node_id}"
+        )
+        return None

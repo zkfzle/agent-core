@@ -293,14 +293,44 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
+                print(f"✅ 第一次调用校验通过：返回交互请求")
 
         if interaction_output_schema:
             user_input = InteractiveInput()
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
+            final_chunk = None
             async for chunk in llm_agent.stream({"query": user_input, "conversation_id": "c123"}):
                 print(f"LLMAgent 第二次输出结果 >>> {chunk}")
+                if chunk.type == "answer":
+                    final_chunk = chunk
+            self.assertIn("杭州", final_chunk.payload["output"], "应该包含杭州")
+            print(f"✅ 第二次调用校验通过：恢复中断工作流完成，返回结果正确")
+
+    @unittest.skip("requires network")
+    async def test_llm_agent_with_workflow_interrupt_dict_with_stream(self):
+        llm_agent = self._setup_test_environment_and_agent()
+
+        interaction_output_schema = []
+        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "c123"}):
+            print(f"LLMAgent 第一次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✅ 第一次调用校验通过：返回交互请求")
+
+        if interaction_output_schema:
+            user_input = InteractiveInput()
+            for item in interaction_output_schema:
+                component_id = item.payload.id
+                user_input.update(component_id, {"location": "杭州"})
+            final_chunk = None
+            async for chunk in Runner.run_agent_streaming(llm_agent, {"query": user_input, "conversation_id": "c123"}):
+                print(f"LLMAgent 第二次输出结果 >>> {chunk}")
+                if chunk.type == "answer":
+                    final_chunk = chunk
+            self.assertIn("杭州", final_chunk.payload["output"], "应该包含杭州")
+            print(f"✅ 第二次调用校验通过：恢复中断工作流完成，返回结果正确")
 
     @unittest.skip("require network")
     async def test_llm_agent_with_workflow_interrupt_agent_invoke_multi_rounds(self):
@@ -330,16 +360,23 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def test_llm_agent_with_workflow_interrupt_agent_stream_multi_rounds(self):
         llm_agent = self._setup_test_environment_and_agent()
 
-        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "今天天气查询"}):
+        interaction_output_schema = []
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "昨天天气查询"}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
-        print(f"✅ 第一次调用校验通过：返回交互请求")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✅ 第一次调用校验通过：返回交互请求")
 
         async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "今天是周几"}):
             print(f"LLMAgent 第二次输出结果 >>> {chunk}")
         print(f"✅ 第二次调用校验通过：调用完成，返回结果正确")
 
         interactive_input = InteractiveInput()
-        interactive_input.update("questioner", "上海")
+        interactive_input.update("questioner", {"location": "上海"})
+        final_chunk = None
         async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
             print(f"LLMAgent 第三次输出结果 >>> {chunk}")
+            if chunk.type == "answer":
+                final_chunk = chunk
+        self.assertIn("上海", final_chunk.payload["output"], "应该包含上海")
         print(f"✅ 第三次调用校验通过：恢复中断工作流完成，返回结果正确")

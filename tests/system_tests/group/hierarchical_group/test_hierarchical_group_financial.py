@@ -9,14 +9,9 @@ HierarchicalGroup 金融场景测试 - 使用 HierarchicalMainController + Workf
 - 3个子 workflow agent：转账、查余额、理财
 - 每个 workflow 都有 QuestionerComponent 中断节点
 """
-
 import os
-
-os.environ["LLM_SSL_VERIFY"] = "false"
-os.environ["RESTFUL_SSL_VERIFY"] = "false"
-
-import asyncio
 import unittest
+import asyncio
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
@@ -25,9 +20,7 @@ from openjiuwen.agent_group.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
-from openjiuwen.agent_group.hierarchical_group.agents.main_controller import (
-    HierarchicalMainController
-)
+from openjiuwen.agent_group.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -43,6 +36,8 @@ from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+
 
 # 模型配置
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -975,6 +970,137 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print(f"agent group result: {result}")
 
         print("\n[PASS] HierarchicalMainController 意图识别测试完成！")
+
+    @unittest.skip("require network")
+    async def test_financial_workflow_with_interrupt_invoke_interactive_input(self):
+        """
+        金融场景完整用例：HierarchicalGroup + 工作流中断恢复
+
+        测试流程：
+        1. 创建 HierarchicalGroup，主 agent 使用 HierarchicalMainController
+        2. 添加 2 个金融 WorkflowAgent（每个都有中断节点）
+        3. 发送转账请求 -> 路由到转账 agent -> 触发中断（询问金额）
+        4. 提供金额 -> 恢复工作流 -> 完成
+        """
+        print("\n=== 金融场景 HierarchicalGroup 测试 ===")
+
+        # 1. 创建金融业务工作流
+        transfer_workflow = self._build_financial_workflow(
+            workflow_id="transfer_flow",
+            workflow_name="转账服务",
+            workflow_desc="处理用户转账请求，支持转账到指定账户",
+            field_name="amount",
+            field_desc="转账金额（数字）"
+        )
+
+        balance_workflow = self._build_financial_workflow(
+            workflow_id="balance_flow",
+            workflow_name="余额查询",
+            workflow_desc="查询用户账户余额信息",
+            field_name="account",
+            field_desc="账户号码"
+        )
+
+        # 2. 创建 WorkflowAgent
+        transfer_agent = self._create_workflow_agent(
+            agent_id="transfer_agent",
+            description="转账服务，处理用户的转账请求",
+            workflow=transfer_workflow
+        )
+
+        balance_agent = self._create_workflow_agent(
+            agent_id="balance_agent",
+            description="余额查询服务，查询用户账户余额",
+            workflow=balance_workflow
+        )
+
+        # 3. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="financial_group",
+            leader_agent_id="main_controller"
+        )
+        hierarchical_group = HierarchicalGroup(config)
+
+        # 4. 创建主 agent（HierarchicalMainController）
+        main_config = AgentConfig(
+            id="main_controller",
+            description="金融服务主控制器，识别用户意图并分发任务"
+        )
+        main_controller = HierarchicalMainController()
+        main_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 5. 添加所有 agent 到 group
+        hierarchical_group.add_agent("main_controller", main_agent)
+        hierarchical_group.add_agent("transfer_agent", transfer_agent)
+        hierarchical_group.add_agent("balance_agent", balance_agent)
+
+        conversation_id = "financial_test_001"
+
+        # ========== 步骤1: 发送转账请求 -> 中断 ==========
+        # 不指定 receiver_id，让消息自动路由到 leader
+        # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 agent
+        print("\n【步骤1】发送转账请求")
+        message1 = Message.create_user_message(
+            content="我要转账",
+            conversation_id=conversation_id
+        )
+        # 不设置 receiver_id，消息会自动路由到 leader，由 leader 做意图识别
+
+        try:
+            result1 = await asyncio.wait_for(
+                hierarchical_group.invoke(message1),
+                timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤1 超时！")
+            raise
+
+        print(f"步骤1 结果类型: {type(result1)}")
+
+        # 校验：应该触发中断
+        self.assertIsInstance(result1, list, "步骤1应该返回交互请求列表")
+        self.assertTrue(result1, "步骤1应该有交互请求")
+        self.assertEqual(
+            result1[0].type, const.INTERACTION, "步骤1应该返回交互类型"
+        )
+        print(f"✅ 步骤1成功：转账工作流触发中断，询问金额")
+
+        # ========== 步骤2: 提供金额 -> 恢复 -> 完成 ==========
+        # 不指定 receiver_id，leader 会自动检测到有中断的 agent 并恢复
+        print("\n【步骤2】提供转账金额")
+        user_input = InteractiveInput()
+        component_id = result1[0].payload.id
+        user_input.update(component_id, {"amount": "100元"})
+        message2 = Message.create_user_message(
+            content=user_input,
+            conversation_id=conversation_id
+        )
+        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 agent
+
+        try:
+            result2 = await asyncio.wait_for(
+                hierarchical_group.invoke(message2),
+                timeout=120.0
+            )
+        except asyncio.TimeoutError:
+            print("❌ 步骤2 超时！")
+            raise
+
+        print(f"步骤2 结果: {result2}")
+
+        # 校验：工作流应该完成
+        self.assertIsInstance(result2, dict, "步骤2应该返回字典")
+        self.assertEqual(
+            result2['result_type'], 'answer', "步骤2应该返回answer类型"
+        )
+        self.assertEqual(
+            result2['output'].state.value, 'COMPLETED', "步骤2工作流应该完成"
+        )
+        response_content = result2['output'].result.get('responseContent', '')
+        self.assertIn("100", response_content, "应该包含转账金额100元")
+        print(f"✅ 步骤2成功：转账工作流完成，返回: {response_content}")
+
+        print("\n🎉 金融场景测试完成！")
 
 
 if __name__ == "__main__":

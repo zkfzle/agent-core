@@ -25,10 +25,9 @@ class ToolServerConfig(BaseModel):
 NO_TIMEOUT = -1
 
 
-class McpToolInfo(BaseModel):
-    name: str
-    description: str = ''
-    schema: dict = {}
+class McpToolInfo(ToolInfo):
+    input_schema: dict = Field(default_factory=dict)
+    server_name: str = Field(default="")
 
 
 class MCPTool(Tool):
@@ -36,8 +35,7 @@ class MCPTool(Tool):
 
     def __init__(self,
                  mcp_client: Any,  # McpToolClient or its subclasses
-                 tool_name: str,
-                 server_name: str = "mcp_server"):
+                 tool_info: McpToolInfo):
         """
         Initialize MCP Tool
 
@@ -48,9 +46,7 @@ class MCPTool(Tool):
         """
         super().__init__()
         self.mcp_client = mcp_client
-        self.tool_name = tool_name
-        self.server_name = server_name
-        self._tool_info: Optional[ToolInfo] = None
+        self._tool_info = tool_info
 
     def invoke(self, inputs: Input, **kwargs) -> Output:
         """invoke of the MCP tool"""
@@ -65,7 +61,7 @@ class MCPTool(Tool):
             arguments = inputs if isinstance(inputs, dict) else {}
 
             result = await self.mcp_client.call_tool(
-                tool_name=self.tool_name,
+                tool_name=self._tool_info.name,
                 arguments=arguments
             )
             return {"result": result}
@@ -75,19 +71,6 @@ class MCPTool(Tool):
 
     def get_tool_info(self) -> ToolInfo:
         """Get tool information"""
-        # If we haven't cached the tool info, create it
-        if self._tool_info is None:
-            # Create and cache ToolInfo
-            self._tool_info = ToolInfo(
-                name=self.tool_name,
-                description=f"MCP tool from {self.server_name}",
-                parameters=Parameters(
-                    type="object",
-                    properties={},
-                    required=[]
-                )
-            )
-
         return self._tool_info
 
 
@@ -175,7 +158,7 @@ class SseClient(McpToolClient):
                 McpToolInfo(
                     name=tool.name,
                     description=getattr(tool, "description", ""),
-                    schema=getattr(tool, "inputSchema", {})
+                    input_schema=getattr(tool, "inputSchema", {})
                 )
                 for tool in tools_response.tools
             ]
@@ -283,7 +266,7 @@ class StdioClient(McpToolClient):
                 McpToolInfo(
                     name=tool.name,
                     description=getattr(tool, "description", ""),
-                    schema=getattr(tool, "inputSchema", {})
+                    input_schema=getattr(tool, "inputSchema", {})
                 )
                 for tool in tools_response.tools
             ]
@@ -387,7 +370,7 @@ class PlaywrightClient(McpToolClient):
                 McpToolInfo(
                     name=tool.name,
                     description=getattr(tool, "description", ""),
-                    schema=getattr(tool, "inputSchema", {})
+                    input_schema=getattr(tool, "inputSchema", {})
                 )
                 for tool in tools_response.tools
             ]

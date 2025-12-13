@@ -366,7 +366,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolInfo(
                 name="browser_navigate",
                 description="Navigate to a URL",
-                schema={
+                input_schema={
                     "type": "object",
                     "properties": {"url": {"type": "string", "description": "The URL to navigate to"}},
                     "required": ["url"],
@@ -375,7 +375,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolInfo(
                 name="browser_extract_text",
                 description="Extract text from the current page",
-                schema={
+                input_schema={
                     "type": "object",
                     "properties": {"selector": {"type": "string", "description": "CSS selector for the element"}},
                     "required": ["selector"],
@@ -445,7 +445,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolInfo(
                 name="doubter",
                 description="Doubter tool via stdio",
-                schema={
+                input_schema={
                     "type": "object",
                     "properties": {
                         "history": {"type": "string", "description": "Agent action history"}
@@ -456,7 +456,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolInfo(
                 name="checker",
                 description="Checker tool via stdio",
-                schema={
+                input_schema={
                     "type": "object",
                     "properties": {
                         "url": {"type": "string", "description": "URL to check"}
@@ -530,7 +530,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolInfo(
                 name="browser_navigate",
                 description="Navigate to a URL via Playwright",
-                schema={
+                input_schema={
                     "type": "object",
                     "properties": {"url": {"type": "string", "description": "The URL to navigate to"}},
                     "required": ["url"],
@@ -539,7 +539,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolInfo(
                 name="browser_click",
                 description="Click an element via Playwright",
-                schema={
+                input_schema={
                     "type": "object",
                     "properties": {"selector": {"type": "string", "description": "CSS selector"}},
                     "required": ["selector"],

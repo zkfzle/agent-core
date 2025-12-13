@@ -105,18 +105,14 @@ class ToolMgr(AbstractManager[Tool]):
     def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None) \
             -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
         try:
+            delimiter = self._normalize_delimiter(name_delimiter, default_delimiter=".")
             if tool_server_name:
                 server_tools = self._server_tool_infos.get(tool_server_name)
                 if server_tools:
                     result = []
-                    delimiter = name_delimiter if name_delimiter else '.'
-                    if len(delimiter) > 1:
-                        logger.warning(f"Invalid delimiter '{delimiter}', expected single character, using default '.")
-                        delimiter = '.'
+
                     for tool in server_tools:
-                        copy_tool = deepcopy(tool)
-                        copy_tool.name = f'{tool_server_name}{delimiter}{tool.name}'
-                        result.append(copy_tool)
+                        result.append(self._normalize_mcp_tool_info(tool, delimiter))
                     return result
                 else:
                     return None
@@ -128,12 +124,12 @@ class ToolMgr(AbstractManager[Tool]):
                     )
                 )
             if not tool_ids:
-                return [info for info in self._tool_infos.values()]
+                return [self._normalize_mcp_tool_info(info, delimiter) for info in self._tool_infos.values()]
 
             infos = []
             for tool_id in tool_ids:
                 self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED, "tool")
-                infos.append(self._tool_infos.get(tool_id))
+                infos.append(self._normalize_mcp_tool_info(self._tool_infos.get(tool_id), delimiter))
             return infos
         except JiuWenBaseException:
             raise
@@ -177,12 +173,12 @@ class ToolMgr(AbstractManager[Tool]):
         tools = await client.list_tools()
         self._server_tool_infos[config.server_name] = tools
 
-        for tool_info in tools:
-            tool_id = f'{config.server_name}.{tool_info.name}'
+        for mcp_tool_info in tools:
+            tool_id = f'{config.server_name}.{mcp_tool_info.name}'
+            mcp_tool_info.server_name = config.server_name
             mcp_tool = MCPTool(
                 mcp_client=client,
-                tool_name=tool_info.name,
-                server_name=config.server_name,
+                tool_info=mcp_tool_info
             )
             # 注册到 ToolMgr
             self.add_tool(tool_id, mcp_tool)
@@ -216,3 +212,21 @@ class ToolMgr(AbstractManager[Tool]):
         await client.disconnect()  # 直接 await，确保在同一个任务中
         self._server_configs.pop(tool_server_name, None)
         logger.info(f"Removed MCP server: {tool_server_name}")
+
+    @staticmethod
+    def _normalize_delimiter(raw_delimiter: str | None, *, default_delimiter: str = "."):
+        normalized_delimiter = raw_delimiter if raw_delimiter else default_delimiter
+        if len(normalized_delimiter) > 1:
+            logger.warning(f"Invalid delimiter '{raw_delimiter}', expected single character,"
+                           f" using default {default_delimiter}")
+            normalized_delimiter = default_delimiter
+        return normalized_delimiter
+
+    @staticmethod
+    def _normalize_mcp_tool_info(tool_info: ToolInfo, delimiter: str):
+        if not isinstance(tool_info, McpToolInfo):
+            return tool_info
+
+        copy_tool_info = deepcopy(tool_info)
+        copy_tool_info.name = f'{tool_info.server_name}{delimiter}{tool_info.name}'
+        return copy_tool_info

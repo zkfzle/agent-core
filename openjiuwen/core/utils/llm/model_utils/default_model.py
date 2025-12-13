@@ -4,6 +4,7 @@
 import json
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 
+import httpx
 import aiohttp
 import openai
 from pydantic import ConfigDict
@@ -326,7 +327,14 @@ class OpenAIChatModel(BaseModelClient):
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         sync_client = None
         try:
-            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base,
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+
+            if ssl_verify:
+                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+                http_client = httpx.Client(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=ssl_context)
+            else:
+                http_client = httpx.Client(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=None)
+            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base, http_client=http_client,
                                         timeout=self.timeout, max_retries=0)
             response = sync_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
@@ -346,7 +354,14 @@ class OpenAIChatModel(BaseModelClient):
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         async_client = None
         try:
-            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base,
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+
+            if ssl_verify:
+                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+                http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=ssl_context)
+            else:
+                http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=None)
+            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, http_client=http_client,
                                               timeout=self.timeout, max_retries=0)
             response = await async_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
@@ -367,7 +382,14 @@ class OpenAIChatModel(BaseModelClient):
                                             **model_params)
         sync_client = None
         try:
-            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base,
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+
+            if ssl_verify:
+                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+                http_client = httpx.Client(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=ssl_context)
+            else:
+                http_client = httpx.Client(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=None)
+            sync_client = openai.OpenAI(api_key=self.api_key, base_url=self.api_base, http_client=http_client,
                                         timeout=self.timeout, max_retries=0)
             stream = sync_client.chat.completions.create(**params)
             for chunk in stream:
@@ -392,7 +414,14 @@ class OpenAIChatModel(BaseModelClient):
                                             **model_params)
         async_client = None
         try:
-            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base,
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+
+            if ssl_verify:
+                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+                http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=ssl_context)
+            else:
+                http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=None)
+            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, http_client=http_client,
                                               timeout=self.timeout, max_retries=0)
             stream = await async_client.chat.completions.create(**params)
             async for chunk in stream:

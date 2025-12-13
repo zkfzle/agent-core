@@ -67,7 +67,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
 
-    # Todo: 临时关闭
+    # 临时关闭
     # @unittest.skip("skip system test")
     @pytest.mark.asyncio
     @patch("openjiuwen.agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")

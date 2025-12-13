@@ -257,19 +257,19 @@ class DefaultLogger(LoggerProtocol):
         msg = self._sanitize_message(msg)
         self._logger.log(level, msg, *args, **kwargs)
 
-    def setLevel(self, level: int) -> None:
+    def set_level(self, level: int) -> None:
         self._logger.setLevel(level)
 
-    def addHandler(self, handler: logging.Handler) -> None:
+    def add_handler(self, handler: logging.Handler) -> None:
         self._logger.addHandler(handler)
 
-    def removeHandler(self, handler: logging.Handler) -> None:
+    def remove_handler(self, handler: logging.Handler) -> None:
         self._logger.removeHandler(handler)
 
-    def addFilter(self, filter) -> None:
+    def add_filter(self, filter) -> None:
         self._logger.addFilter(filter)
 
-    def removeFilter(self, filter) -> None:
+    def remove_filter(self, filter) -> None:
         self._logger.removeFilter(filter)
 
     def get_config(self) -> Dict[str, Any]:

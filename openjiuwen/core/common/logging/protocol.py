@@ -38,24 +38,24 @@ class LoggerProtocol(Protocol):
         """Generic log method"""
         ...
 
-    def setLevel(self, level: int) -> None:
+    def set_level(self, level: int) -> None:
         """Set log level"""
         ...
 
-    def addHandler(self, handler: logging.Handler) -> None:
+    def add_handler(self, handler: logging.Handler) -> None:
         """Add log handler"""
         ...
 
-    def removeHandler(self, handler: logging.Handler) -> None:
+    def remove_handler(self, handler: logging.Handler) -> None:
         """Remove log handler"""
         ...
 
-    def addFilter(self, filter) -> None:
-        """Add filter"""
+    def add_filter(self, filter) -> None:
+        """Add log filter"""
         ...
 
-    def removeFilter(self, filter) -> None:
-        """Remove filter"""
+    def remove_filter(self, filter) -> None:
+        """Remove log filter"""
         ...
 
     def get_config(self) -> Dict[str, Any]:

@@ -26,8 +26,8 @@ def get_log_max_bytes(max_bytes_config) -> int:
             error_code=-1, message="-1"
         ) from e
 
-    DEFAULT_LOG_MAX_BYTES = 100 * 1024 * 1024
-    if max_bytes <= 0 or max_bytes > DEFAULT_LOG_MAX_BYTES:
-        max_bytes = DEFAULT_LOG_MAX_BYTES
+    default_log_max_bytes = 100 * 1024 * 1024
+    if max_bytes <= 0 or max_bytes > default_log_max_bytes:
+        max_bytes = default_log_max_bytes
 
     return max_bytes 

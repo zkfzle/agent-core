@@ -37,8 +37,8 @@ def thread_function(session_id, log_list, stdout_capture):
             # 如果没有指向stdout的handler，添加一个
             handler = logging.StreamHandler(sys.stdout)
             logger._logger.addHandler(handler)
-    
-    logger.setLevel(logging.INFO)
+
+    logger.set_level(logging.INFO)
 
     set_thread_session(session_id)
     logger.info(f'Thread started with session id {session_id}')
@@ -139,12 +139,12 @@ def initialized_logger(mock_log_config, stdout_capture):
     """初始化日志管理器并设置测试环境"""
     LogManager.reset()
     LogManager.initialize()
-    
+
     # 更新所有logger的handler，确保输出到捕获的stdout
     # 但保留原有的filter和formatter
     from openjiuwen.extensions.common.log.default_impl import ThreadContextFilter
     from openjiuwen.core.common.logging.utils import get_thread_session
-    
+
     for log in LogManager.get_all_loggers().values():
         # 更新现有的StreamHandler的stream指向当前stdout（已被重定向）
         for handler in log._logger.handlers[:]:
@@ -158,7 +158,7 @@ def initialized_logger(mock_log_config, stdout_capture):
                 except Exception:
                     pass
                 log._logger.removeHandler(handler)
-        
+
         # 如果没有StreamHandler，添加一个
         has_stream_handler = any(
             isinstance(h, logging.StreamHandler) 
@@ -166,17 +166,17 @@ def initialized_logger(mock_log_config, stdout_capture):
         )
         if not has_stream_handler:
             handler = logging.StreamHandler(sys.stdout)
-            handler.addFilter(ThreadContextFilter(log.log_type))
+            handler.add_filter(ThreadContextFilter(log.log_type))
             # 使用logger的格式化器
             formatter = log._get_formatter()
             handler.setFormatter(formatter)
-            handler.setLevel(logging.DEBUG)
+            handler.set_level(logging.DEBUG)
             log._logger.addHandler(handler)
-        
+
         log._logger.setLevel(logging.DEBUG)
-    
+
     yield
-    
+
     # 清理
     set_thread_session('')
     try:
@@ -228,7 +228,7 @@ class TestThreadSafety:
 
 class TestLogManager:
     """测试日志管理器功能"""
-    
+
     def test_custom_logger_registration_and_usage(self, initialized_logger, capsys):
         """测试自定义日志记录器的注册和使用"""
         class CustomLogger:
@@ -236,48 +236,48 @@ class TestLogManager:
             def __init__(self):
                 self.messages = []
                 self._config = {}
-            
+
             def info(self, msg, *args, **kwargs):
                 formatted_msg = f"CUSTOM LOGGER INFO: {msg}"
                 print(formatted_msg)
                 self.messages.append(formatted_msg)
-            
+
             def debug(self, msg, *args, **kwargs): 
                 pass
-            
+
             def warning(self, msg, *args, **kwargs): 
                 pass
-            
+
             def error(self, msg, *args, **kwargs): 
                 pass
-            
+
             def critical(self, msg, *args, **kwargs): 
                 pass
-            
+
             def exception(self, msg, *args, **kwargs): 
                 pass
-            
+
             def log(self, level, msg, *args, **kwargs): 
                 pass
-            
-            def setLevel(self, level): 
+
+            def set_level(self, level):
                 pass
-            
-            def addHandler(self, handler): 
+
+            def add_handler(self, handler):
                 pass
-            
-            def removeHandler(self, handler): 
+
+            def remove_handler(self, handler):
                 pass
-            
-            def addFilter(self, filter): 
+
+            def add_filter(self, filter):
                 pass
-            
-            def removeFilter(self, filter): 
+
+            def remove_filter(self, filter):
                 pass
-            
+
             def get_config(self) -> Dict[str, Any]:
                 return self._config.copy()
-            
+
             def reconfigure(self, config: Dict[str, Any]): 
                 self._config = config
 
@@ -303,7 +303,7 @@ class TestLogManager:
 
         for handler in new_logger._logger.handlers:
             handler.flush()
-        
+
         captured = capsys.readouterr()
         output = captured.out
         assert "Test new logger type" in output
@@ -315,7 +315,7 @@ class TestLogManager:
         all_loggers = LogManager.get_all_loggers()
         expected_types = {'common', 'interface', 'prompt_builder', 'performance'}
         assert expected_types.issubset(set(all_loggers.keys()))
-        
+
         for log_instance in all_loggers.values():
             assert isinstance(log_instance, LoggerProtocol)
 
@@ -326,7 +326,7 @@ class TestLogManager:
             pass
 
         invalid_logger = InvalidLogger()
-        
+
         with pytest.raises(TypeError, match="Logger must implement LoggerProtocol"):
             LogManager.register_logger('invalid', invalid_logger)
 
@@ -334,10 +334,10 @@ class TestLogManager:
         """测试按需创建日志记录器"""
         # 获取一个不存在的logger类型
         new_type_logger = LogManager.get_logger('on_demand_test')
-        
+
         assert isinstance(new_type_logger, DefaultLogger)
         assert new_type_logger.log_type == 'on_demand_test'
-        
+
         # 再次获取应该返回同一个实例
         same_logger = LogManager.get_logger('on_demand_test')
         assert same_logger is new_type_logger
@@ -345,12 +345,12 @@ class TestLogManager:
 
 class TestLogLevel:
     """测试日志级别过滤"""
-    
+
     def test_log_level_filtering(self, initialized_logger, capsys):
         """测试日志级别过滤功能"""
         test_logger_instance = LogManager.get_logger('level_test')
 
-        test_logger_instance.setLevel(logging.DEBUG)
+        test_logger_instance.set_level(logging.DEBUG)
 
         test_logger_instance.debug("Debug message")
         test_logger_instance.info("Info message")
@@ -369,7 +369,7 @@ class TestLogLevel:
         assert "Error message" in output
 
         # 测试更高级别的过滤
-        test_logger_instance.setLevel(logging.ERROR)
+        test_logger_instance.set_level(logging.ERROR)
 
         test_logger_instance.debug("Should not appear debug")
         test_logger_instance.info("Should not appear info")
@@ -433,22 +433,22 @@ class TestLogFileOutput:
 
 class TestDefaultLogger:
     """测试默认日志记录器功能"""
-    
+
     def test_message_sanitization(self, initialized_logger, capsys):
         """测试消息清理功能（防止日志注入）"""
         logger = LogManager.get_logger('common')
-        logger.setLevel(logging.INFO)
-        
+        logger.set_level(logging.INFO)
+
         # 测试包含换行符的消息
         test_message = "Test message\nwith newline\r\nand carriage return\r"
         logger.info(test_message)
-        
+
         for handler in logger._logger.handlers:
             handler.flush()
-        
+
         captured = capsys.readouterr()
         output = captured.out
-        
+
         # 验证消息内容中的换行符被替换为空格（消息本身不应包含换行符）
         # 但日志格式本身可能包含换行符（每行日志结尾）
         # 检查消息内容部分（不包含日志格式前缀）
@@ -465,7 +465,7 @@ class TestDefaultLogger:
     def test_logger_config_access(self, initialized_logger):
         """测试日志配置访问"""
         logger = LogManager.get_logger('common')
-        
+
         config = logger.get_config()
         assert isinstance(config, dict)
         assert 'log_file' in config
@@ -475,13 +475,13 @@ class TestDefaultLogger:
     def test_logger_reconfigure(self, initialized_logger, stdout_capture):
         """测试日志重新配置"""
         logger = LogManager.get_logger('common')
-        
+
         original_config = logger.get_config()
         new_config = original_config.copy()
         new_config['level'] = logging.DEBUG
-        
+
         logger.reconfigure(new_config)
-        
+
         # 验证配置已更新
         updated_config = logger.get_config()
         assert updated_config['level'] == logging.DEBUG
@@ -489,20 +489,20 @@ class TestDefaultLogger:
     def test_all_log_levels(self, initialized_logger, stdout_capture):
         """测试所有日志级别"""
         logger = LogManager.get_logger('common')
-        logger.setLevel(logging.DEBUG)
-        
+        logger.set_level(logging.DEBUG)
+
         stdout_capture.truncate(0)
         stdout_capture.seek(0)
-        
+
         logger.debug("Debug level message")
         logger.info("Info level message")
         logger.warning("Warning level message")
         logger.error("Error level message")
         logger.critical("Critical level message")
-        
+
         for handler in logger._logger.handlers:
             handler.flush()
-        
+
         output = stdout_capture.getvalue()
         assert "Debug level message" in output
         assert "Info level message" in output
@@ -513,19 +513,19 @@ class TestDefaultLogger:
     def test_exception_logging(self, initialized_logger, stdout_capture):
         """测试异常日志记录"""
         logger = LogManager.get_logger('common')
-        logger.setLevel(logging.ERROR)
-        
+        logger.set_level(logging.ERROR)
+
         stdout_capture.truncate(0)
         stdout_capture.seek(0)
-        
+
         try:
             raise ValueError("Test exception")
         except ValueError:
             logger.exception("Exception occurred")
-        
+
         for handler in logger._logger.handlers:
             handler.flush()
-        
+
         output = stdout_capture.getvalue()
         assert "Exception occurred" in output
         assert "Test exception" in output or "ValueError" in output

@@ -10,48 +10,46 @@ from typing import Any, Dict, AsyncIterator
 
 from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.common.logging import logger
-# 直接从 openjiuwen.core.agent.agent 导入 AgentRuntime
 from openjiuwen.core.agent.agent import AgentRuntime
 from openjiuwen.core.agent_group.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.stream.base import OutputSchema
 
 
 class AgentGroupRuntime(AgentRuntime):
-    """AgentGroup 专用 Runtime
+    """AgentGroup Runtime
     
-    直接继承 openjiuwen.core.agent.agent.AgentRuntime
-    复用其所有能力，包括 pre_run() 返回的 TaskRuntime
+    Inherits from openjiuwen.core.agent.agent.AgentRuntime
+    Reuses all capabilities including TaskRuntime from pre_run()
     
-    为什么可以直接继承：
-    1. AgentRuntime(config, resource_mgr) 的构造函数签名简单
-    2. 它已经包含了 write_stream() 方法
-    3. 通过 pre_run() 可以获得 TaskRuntime，后者有 stream_iterator()
+    Why direct inheritance:
+    1. AgentRuntime(config, resource_mgr) has simple constructor
+    2. Already includes write_stream() method
+    3. TaskRuntime from pre_run() has stream_iterator()
     """
     
     def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
-        """初始化 AgentGroupRuntime
+        """Initialize AgentGroupRuntime
         
         Args:
-            config: 配置对象（可选，会自动创建）
-            resource_mgr: 资源管理器（可选，会自动创建）
+            config: Config object (optional, auto-created)
+            resource_mgr: Resource manager (optional, auto-created)
         """
-        # 如果没有提供 config，创建一个带有 agent_config 的 Config
+        # Create Config with agent_config if not provided
         if config is None:
             from openjiuwen.agent.config.base import AgentConfig
             config = Config()
-            # 创建一个虚拟的 AgentConfig 用于 Group Runtime
+            # Create virtual AgentConfig for Group Runtime
             agent_config = AgentConfig(id="agent_group_runtime")
             config.set_agent_config(agent_config)
         
-        # 直接调用父类构造函数
+        # Call parent constructor
         super().__init__(config, resource_mgr)
     
-    # write_stream() 方法已经在父类 AgentRuntime 中实现了
-    # 无需重复定义
+    # write_stream() already implemented in parent AgentRuntime
+    # No need to redefine
 
 
 class BaseGroup(ABC):
@@ -77,14 +75,14 @@ class BaseGroup(ABC):
 
     def add_agent(self, agent_id: str, agent: BaseAgent):
         """
-        注册Agent
+        Register agent
 
         Args:
-            agent_id: Agent唯一标识符（主键）
-            agent: Agent实例
+            agent_id: Agent unique identifier (primary key)
+            agent: Agent instance
 
         Raises:
-            ValueError: Agent ID已经存在
+            ValueError: Agent ID already exists
         """
         if agent_id in self.agents:
             raise JiuWenBaseException(
@@ -243,16 +241,16 @@ class ControllerGroup(BaseGroup):
                 await task_runtime.post_run()
 
     async def stream(self, message, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
-        """Streaming invocation - 真正的流式输出
+        """Streaming invocation - real streaming output
         
         Design: 
-        1. 后台任务执行 group_controller.invoke
-        2. group_controller.send_to_agent 会调用 agent.stream 并透传 chunk 到 runtime
-        3. 本方法从 runtime.stream_iterator() 实时读取并 yield
+        1. Background task executes group_controller.invoke
+        2. group_controller.send_to_agent calls agent.stream and forwards chunks to runtime
+        3. This method reads from runtime.stream_iterator() in real-time and yields
         
-        流式数据来源：
-        - 子 agent 的流式输出通过共享 runtime 透传
-        - 包括 __interaction__、workflow_final 等所有类型
+        Streaming data source:
+        - Sub-agent streaming output forwarded via shared runtime
+        - Includes __interaction__, workflow_final and all types
         
         Args:
             message: Message object (carries message_type for routing)
@@ -277,8 +275,8 @@ class ControllerGroup(BaseGroup):
             task_runtime = runtime
             need_cleanup = False
 
-        # 后台任务执行 group_controller.invoke
-        # send_to_agent 会调用 agent.stream 并把 chunk 写入 task_runtime
+        # Background task executes group_controller.invoke
+        # send_to_agent calls agent.stream and writes chunks to task_runtime
         async def run_controller():
             try:
                 await self.group_controller.invoke(message, task_runtime)
@@ -288,10 +286,10 @@ class ControllerGroup(BaseGroup):
 
         task = asyncio.create_task(run_controller())
 
-        # 真正流式读取：从 stream_iterator 实时获取 chunk
+        # Real streaming read: get chunks from stream_iterator in real-time
         async for chunk in task_runtime.stream_iterator():
             yield chunk
 
-        # 等待后台任务完成
+        # Wait for background task to complete
         await task
 

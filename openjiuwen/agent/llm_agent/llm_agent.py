@@ -136,19 +136,13 @@ class LLMAgent(ControllerAgent):
         Returns:
             Execution result
         """
-        if self._enable_memory:
-            # Async write user message memory
-            user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
-            user_memory_task.set_name("user_memory_task")
-            user_memory_task.add_done_callback(_memory_log_task_exception)
-
         # Fully delegate to ControllerAgent implementation
         result = await super().invoke(inputs, runtime)
 
         if self._enable_memory:
             # Async write AI result message memory
             agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result))
-            agent_memory_task.set_name("agent_memory_task")
+            agent_memory_task.set_name("invoke_add_memory_task")
             agent_memory_task.add_done_callback(_memory_log_task_exception)
         return result
 
@@ -191,12 +185,6 @@ class LLMAgent(ControllerAgent):
                 if need_cleanup:
                     await agent_runtime.post_run()
 
-        if self._enable_memory:
-            # Async write user message memory
-            user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
-            user_memory_task.set_name("user_memory_task")
-            user_memory_task.add_done_callback(_memory_log_task_exception)
-
         task = asyncio.create_task(stream_process())
         result_for_memory = ""
 
@@ -222,7 +210,7 @@ class LLMAgent(ControllerAgent):
         if self._enable_memory:
             # Async write AI result message memory
             agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
-            agent_memory_task.set_name("agent_memory_task")
+            agent_memory_task.set_name("stream_add_memory_task")
             agent_memory_task.add_done_callback(_memory_log_task_exception)
 
 
@@ -246,38 +234,30 @@ class LLMAgent(ControllerAgent):
 
         if not user_id or not self._memory_engine:
             return
+        message_list = []
         # Add AI response message if exist
         if result is not None:
             assistant_message = _convert_response_to_message(result)
             if assistant_message is not None and assistant_message.content != "":
-                try:
-                    await self._memory_engine.add_conversation_messages(
-                        user_id=user_id,
-                        group_id=group_id,
-                        messages=[assistant_message],
-                        timestamp=datetime.datetime.now(tz=timezone.utc),
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Add memory failed: {e}"
-                    )
-            return
-
+                message_list.append(assistant_message)
         # Add user message
         if not isinstance(inputs, dict):
+            logger.warning(f"Unexpected inputs in write_messages_to_memory: {inputs}")
             return
         query = inputs.get("query")
         if query is not None and isinstance(query, str):
             user_message = HumanMessage(content=query)
             if user_message and user_message.content != "":
-                try:
-                    await self._memory_engine.add_conversation_messages(
-                        user_id=user_id,
-                        group_id=group_id,
-                        messages=[user_message],
-                        timestamp=datetime.datetime.now(tz=timezone.utc),
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Add memory failed: {e}"
-                    )
+                message_list.append(user_message)
+
+        try:
+            await self._memory_engine.add_conversation_messages(
+                user_id=user_id,
+                group_id=group_id,
+                messages=message_list,
+                timestamp=datetime.datetime.now(tz=timezone.utc),
+            )
+        except Exception as e:
+            logger.error(
+                f"Add memory failed: {e}"
+            )

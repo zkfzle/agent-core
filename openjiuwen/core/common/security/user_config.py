@@ -67,6 +67,13 @@ class UserConfig:
         """get sensitive paths"""
         return cls.get_config()._get_sensitive_paths()
 
+    @classmethod
+    def set_is_sensitive(cls, is_sensitive: bool = True):
+        """set is_sensitive flag"""
+        config = cls.get_config()
+        with cls._lock:
+            config.is_sensitive = is_sensitive
+
     @staticmethod
     def _resolve_and_check(path: Path) -> Path:
         path = Path(os.path.expandvars(path.expanduser())).resolve()

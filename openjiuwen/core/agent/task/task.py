@@ -10,21 +10,21 @@ from openjiuwen.agent.common.enum import TaskStatus, TaskType
 
 
 class DependencyType(Enum):
-    """依赖类型"""
-    SEQUENTIAL = "sequential"  # 顺序依赖（前置任务完成后才能执行）
-    PARALLEL = "parallel"  # 并行依赖（可以同时执行，但需要等待依赖完成）
-    CONDITIONAL = "conditional"  # 条件依赖（根据条件决定是否执行）
-    DATA = "data"  # 数据依赖（需要前置任务的输出数据）
+    """Dependency type"""
+    SEQUENTIAL = "sequential"  # Sequential (exec after dependency completes)
+    PARALLEL = "parallel"  # Parallel (can run concurrently, wait for deps)
+    CONDITIONAL = "conditional"  # Conditional (execute based on condition)
+    DATA = "data"  # Data dependency (needs dependency output)
 
 
 @dataclass
 class TaskDependency:
-    """任务依赖关系"""
-    dependency_id: str  # 依赖的任务ID
+    """Task dependency"""
+    dependency_id: str  # Dependent task ID
     dependency_type: DependencyType = DependencyType.SEQUENTIAL
-    condition: Optional[str] = Field(default=None)  # 条件表达式（用于条件依赖）
-    data_mapping: Dict[str, str] = field(default_factory=dict)  # 数据映射：{源字段: 目标字段}
-    required: bool = True  # 是否为必需依赖
+    condition: Optional[str] = Field(default=None)  # Condition expression
+    data_mapping: Dict[str, str] = field(default_factory=dict)  # Data mapping: {source: target}
+    required: bool = True  # Whether required
 
     def __post_init__(self):
         if self.data_mapping is None:
@@ -32,22 +32,22 @@ class TaskDependency:
 
 
 class TaskInput(BaseModel):
-    """任务调用输入 - 统一处理工具、工作流、MCP等调用"""
+    """Task input - unified handling for tools, workflows, MCP calls"""
     target_id: str = Field(default="")
     target_name: str = Field(default="")
     arguments: Any = Field(default_factory=dict)
 
 
 class TaskResult(BaseModel):
-    """任务执行结果 - 极简设计，消除重复字段"""
+    """Task result - minimal design, no duplicate fields"""
     status: TaskStatus
-    output: Any = Field(default=None)  # 成功时的输出数据（WorkflowOutput等）
-    error: Optional[str] = Field(default=None)  # 失败时的错误信息
-    metadata: Dict[str, Any] = Field(default_factory=dict)  # execution_time等扩展信息
+    output: Any = Field(default=None)  # Output on success (WorkflowOutput etc)
+    error: Optional[str] = Field(default=None)  # Error message on failure
+    metadata: Dict[str, Any] = Field(default_factory=dict)  # Extended info (execution_time etc)
 
 
 class Task(BaseModel):
-    """统一的任务类 - 支持依赖关系"""
+    """Unified task class - supports dependencies"""
     agent_id: Optional[str] = Field(default=None)
     task_id: str = Field(default="")
     task_type: TaskType = Field(default=TaskType.UNDEFINED)
@@ -57,18 +57,18 @@ class Task(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
     input: TaskInput = Field(default_factory=TaskInput)
-    result: Optional[TaskResult] = Field(default=None)  # 明确类型，不再是 Any
+    result: Optional[TaskResult] = Field(default=None)  # Explicit type, not Any
 
-    # 依赖关系管理
-    dependencies: List[TaskDependency] = Field(default_factory=list)  # 此任务依赖的其他任务
-    dependents: Set[str] = Field(default_factory=set)  # 依赖此任务的任务ID集合
+    # Dependency management
+    dependencies: List[TaskDependency] = Field(default_factory=list)  # Tasks this depends on
+    dependents: Set[str] = Field(default_factory=set)  # Task IDs depending on this
 
-    # DAG相关属性
-    parent_task_id: Optional[str] = Field(default=None)  # 父任务ID（用于子任务）
-    child_task_ids: Set[str] = Field(default_factory=set)  # 子任务ID集合
-    group_id: Optional[str] = Field(default=None)  # 任务组ID
-    level: int = Field(default=0)  # 在依赖图中的层级（0为根任务）
+    # DAG attributes
+    parent_task_id: Optional[str] = Field(default=None)  # Parent task ID (for subtasks)
+    child_task_ids: Set[str] = Field(default_factory=set)  # Child task ID set
+    group_id: Optional[str] = Field(default=None)  # Task group ID
+    level: int = Field(default=0)  # Level in dependency graph (0 is root)
 
     def set_agent_id(self, agent_id: str) -> None:
-        """设置Agent ID"""
+        """Set Agent ID"""
         self.agent_id = agent_id

@@ -14,48 +14,48 @@ from openjiuwen.core.runtime.runtime import Runtime
 
 
 class AgentReasoner:
-    """AgentReasoner - Agent决策模块，负责消息智能决策和任务生成"""
+    """AgentReasoner - Agent decision module for message decision and task generation"""
     
     def __init__(self, config: AgentConfig, context_engine: ContextEngine, runtime: Runtime):
         """
-        初始化AgentReasoner
+        Initialize AgentReasoner
         
         Args:
-            config: AgentConfig配置
-            context_engine: 上下文引擎
-            runtime: 运行时环境
+            config: AgentConfig
+            context_engine: Context engine
+            runtime: Runtime environment
         """
         self.config = config
         self.context_engine = context_engine
         self.runtime = runtime
 
-        # 子模块
+        # Sub-modules
         self.intent_detection: Optional[IntentDetection] = None
         self.planner: Optional[Planner] = None
         
     async def process_message(self, message: Message) -> List[Task]:
         """
-        处理消息 - 统一的决策处理入口
+        Process message - unified decision entry point
         
         Args:
-            message: 输入消息
+            message: Input message
             
         Returns:
-            List[Task]: 生成的任务列表
+            List[Task]: Generated task list
         """
-        # 当前默认使用直接意图识别模块
+        # Currently uses intent detection by default
         tasks = await self.use_intent_detection(message)
         return tasks
 
     def set_intent_detection(self, intent_detection: IntentDetection) -> 'AgentReasoner':
         """
-        设置意图识别模块
+        Set intent detection module
         
         Args:
-            intent_detection: 意图识别模块实例
+            intent_detection: Intent detection module instance
             
         Returns:
-            AgentReasoner: 支持链式调用
+            AgentReasoner: Supports chaining
         """
         self.intent_detection = intent_detection
         logger.debug("Intent detection module set")
@@ -63,26 +63,26 @@ class AgentReasoner:
 
     def set_planner(self, planner: Planner) -> 'AgentReasoner':
         """
-        设置规划器模块
+        Set planner module
         
         Args:
-            planner: 规划器模块实例
+            planner: Planner module instance
             
         Returns:
-            AgentReasoner: 支持链式调用
+            AgentReasoner: Supports chaining
         """
         self.planner = planner
         return self
 
     async def use_intent_detection(self, message: Message) -> List[Task]:
         """
-        直接使用意图识别模块处理消息
+        Process message using intent detection module
         
         Args:
-            message: 输入消息
+            message: Input message
             
         Returns:
-            List[Task]: 生成的任务列表
+            List[Task]: Generated task list
         """
         if not self.intent_detection:
             raise ValueError("Intent detection module not set")
@@ -90,13 +90,13 @@ class AgentReasoner:
 
     async def use_planner(self, message: Message) -> List[Task]:
         """
-        直接使用规划器模块处理消息
+        Process message using planner module
         
         Args:
-            message: 输入消息
+            message: Input message
             
         Returns:
-            List[Task]: 生成的任务列表
+            List[Task]: Generated task list
         """
         if not self.planner:
             raise ValueError("Planner module not set")
@@ -104,10 +104,10 @@ class AgentReasoner:
 
     @property
     def intent_detection_module(self) -> Optional[IntentDetection]:
-        """获取意图识别模块"""
+        """Get intent detection module"""
         return self.intent_detection
 
     @property
     def planner_module(self) -> Optional[Planner]:
-        """获取规划器模块"""
+        """Get planner module"""
         return self.planner

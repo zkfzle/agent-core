@@ -235,10 +235,10 @@ class BaseGroupController(ABC):
     ) -> Any:
         """Send message to specified Agent (point-to-point, streaming)
         
-        调用 agent.stream() 并传入共享 runtime。agent 内部会把流式数据写入该
-        runtime（不会从 stream_iterator 读取，避免嵌套死锁）。
+        Call agent.stream() with shared runtime. Agent writes stream data
+        to runtime (doesn't read from stream_iterator to avoid nested deadlock).
         
-        外部 ControllerGroup.stream() 通过 runtime.stream_iterator() 统一读取。
+        External ControllerGroup.stream() reads via runtime.stream_iterator().
         
         Args:
             message: Message object
@@ -271,24 +271,24 @@ class BaseGroupController(ABC):
         )
         
         try:
-            # 调用 agent.stream，传入共享 runtime
-            # agent 内部会把数据写入 runtime，不会从 stream_iterator 读取
-            # 收集所有 chunks 以处理中断情况
+            # Call agent.stream with shared runtime
+            # Agent writes to runtime, doesn't read from stream_iterator
+            # Collect chunks to handle interrupt case
             chunks = []
             async for chunk in agent.stream(inputs, runtime):
                 chunks.append(chunk)
             
-            # 检查是否为中断情况（包含 __interaction__ 类型）
+            # Check if interrupt case (contains __interaction__ type)
             if chunks:
                 has_interaction = any(
                     isinstance(c, OutputSchema) and c.type == INTERACTION
                     for c in chunks
                 )
                 if has_interaction:
-                    # 中断情况：返回整个列表
+                    # Interrupt: return entire list
                     return chunks
                 
-                # 正常情况：返回最后一个结果
+                # Normal case: return last result
                 final_result = chunks[-1]
                 if isinstance(final_result, OutputSchema):
                     return final_result.payload

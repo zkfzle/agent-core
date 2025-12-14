@@ -884,8 +884,9 @@ class ControllerAgent(BaseAgent):
             Streaming output
         
         Note:
-            当传入外部 runtime 时，数据会写入该 runtime，但不从其 stream_iterator
-            读取（避免嵌套读取导致死锁）。外部调用方负责从 runtime 读取流式数据。
+            When external runtime is provided, data is written to it but not read
+            from stream_iterator (to avoid nested read deadlock). External caller
+            reads stream data from runtime.
         """
         if not self.controller:
             raise RuntimeError(
@@ -898,13 +899,13 @@ class ControllerAgent(BaseAgent):
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
-            own_stream = True  # 自己拥有 stream 的生命周期
+            own_stream = True  # Owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False
-            own_stream = False  # 外部拥有 stream 的生命周期
+            own_stream = False  # External owns stream lifecycle
 
-        # 用于存储最终结果，供 send_to_agent 获取
+        # Store final result for send_to_agent
         final_result_holder = {"result": None}
 
         # Fully delegate to controller
@@ -912,10 +913,10 @@ class ControllerAgent(BaseAgent):
             try:
                 res = await self.controller.invoke(inputs, agent_runtime)
                 final_result_holder["result"] = res
-                # 中断情况：list 包含 __interaction__ 等 OutputSchema
-                # 只有 WorkflowController 才需要在这里写入 runtime
-                # 其他 Controller（如 HierarchicalMainController）只是转发下层 agent 的结果
-                # 下层 agent 已经把 __interaction__ 写入了共享的 runtime，不需要再写一次
+                # Interrupt: list contains __interaction__ OutputSchema
+                # Only WorkflowController writes to runtime here
+                # Other controllers (e.g. HierarchicalMainController) forward
+                # lower agent results, which already wrote to shared runtime
                 from openjiuwen.agent.workflow_agent.workflow_controller import (
                     WorkflowController
                 )
@@ -932,23 +933,23 @@ class ControllerAgent(BaseAgent):
         task = asyncio.create_task(stream_process())
 
         if own_stream:
-            # 只有自己拥有 stream 时才从 stream_iterator 读取
-            # 如果传入了外部 runtime，外部调用方负责读取
+            # Read from stream_iterator only when owning stream
+            # External caller reads if external runtime provided
             async for result in agent_runtime.stream_iterator():
                 yield result
 
         await task
 
-        # 当 own_stream = False 时，yield 最终结果给 send_to_agent
-        # 这样 send_to_agent 可以获取到 agent 的实际返回值
+        # When own_stream=False, yield final result to send_to_agent
+        # so send_to_agent can get agent's actual return value
         if not own_stream and final_result_holder["result"] is not None:
             res = final_result_holder["result"]
             if isinstance(res, list):
-                # 中断情况：返回 list（包含 __interaction__）
+                # Interrupt: return list (contains __interaction__)
                 for item in res:
                     yield item
             else:
-                # 正常完成：yield dict 或其他结果
+                # Normal completion: yield dict or other result
                 yield res
 
     async def clear_session(self, session_id: str = "default_session"):

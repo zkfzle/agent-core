@@ -10,16 +10,16 @@ from openjiuwen.agent.common.enum import TaskType, TaskStatus
 
 
 class Planner:
-    """Planner - 规划器，负责复杂任务的规划和任务分解"""
+    """Planner - Plans and decomposes complex tasks"""
 
     def __init__(self, config, context_engine, runtime):
         """
-        初始化Planner
+        Initialize Planner
         
         Args:
-            config: Planner配置
-            context_engine: 上下文引擎
-            runtime: 运行时环境
+            config: Planner config
+            context_engine: Context engine
+            runtime: Runtime environment
         """
         self.config = config
         self.context_engine = context_engine
@@ -27,7 +27,7 @@ class Planner:
 
     @staticmethod
     def _create_default_task(message: Message) -> Task:
-        # 临时实现：返回一个默认任务
+        # Temporary: return default task
         return Task(
             task_type=TaskType.UNDEFINED,
             description=f"Planner task for message: {message.content.get_query() if message.content else 'No content'}",
@@ -40,19 +40,19 @@ class Planner:
 
     async def process_message(self, message: Message) -> List[Task]:
         """
-        处理消息，进行任务规划并生成任务列表
+        Process message, plan tasks and generate task list
         
         Args:
-            message: 输入消息
+            message: Input message
             
         Returns:
-            List[Task]: 生成的任务列表
+            List[Task]: Generated task list
         """
-        # 实现具体的任务规划逻辑
-        # 1. 分析消息内容，识别复杂任务
-        # 2. 制定执行计划，分解为多个子任务
-        # 3. 生成任务列表，设置任务依赖关系
-        # 4. 返回任务列表
+        # Implement task planning logic:
+        # 1. Analyze message, identify complex tasks
+        # 2. Create execution plan, decompose into subtasks
+        # 3. Generate task list, set task dependencies
+        # 4. Return task list
 
         logger.debug(f"Processing message {message.msg_id} with Planner")
         return [self._create_default_task(message)]

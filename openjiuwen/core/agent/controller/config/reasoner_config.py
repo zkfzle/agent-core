@@ -70,7 +70,7 @@ class ReasonerConfig:
     proactive_identifier: ProactiveIdentifierConfig = field(default_factory=ProactiveIdentifierConfig)
     reflector: ReflectorConfig = field(default_factory=ReflectorConfig)
 
-    # 全局配置
+    # Global config
     enable_metrics: bool = True
     enable_logging: bool = True
     metadata: Dict[str, Any] = field(default_factory=dict)

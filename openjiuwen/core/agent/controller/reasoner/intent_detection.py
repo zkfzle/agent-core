@@ -23,18 +23,18 @@ from openjiuwen.core.utils.llm.messages import BaseMessage
 
 
 class IntentDetection:
-    """IntentDetection - 意图识别模块，负责识别消息意图并生成简单任务"""
+    """IntentDetection - Intent detection module for message intent recognition and task generation"""
 
     def __init__(self, intent_config: IntentDetectionConfig, agent_config: AgentConfig,
                 context_engine: ContextEngine, runtime: Runtime):
         """
-        初始化IntentDetection
+        Initialize IntentDetection
         
         Args:
-            intent_config: IntentDetection配置
-            agent_config: Agent配置
-            context_engine: 上下文引擎
-            runtime: 运行时环境
+            intent_config: IntentDetection config
+            agent_config: Agent config
+            context_engine: Context engine
+            runtime: Runtime environment
         """
         self.intent_config = intent_config
         self.agent_config = agent_config
@@ -43,15 +43,15 @@ class IntentDetection:
 
     async def process_message(self, message: Message) -> List[Task]:
         """
-        处理消息，识别意图并生成任务
+        Process message, detect intent and generate tasks
         
         Args:
-            message: 输入消息
+            message: Input message
             
         Returns:
-            List[Task]: 生成的任务列表
+            List[Task]: Generated task list
         """
-        # 1. 识别意图
+        # 1. Detect intent
         llm_inputs = self._prepare_detection_input(message)
         session_id = self.runtime.session_id()
         if UserConfig.is_sensitive():
@@ -59,7 +59,7 @@ class IntentDetection:
         else:
             logger.info(f"[%s] <LLM Input>: %s", session_id, llm_inputs)
         
-        # 2. 调用大模型识别意图
+        # 2. Call LLM for intent detection
         llm_output = await self._invoke_llm_get_output(llm_inputs)
         if UserConfig.is_sensitive():
             logger.info(f"[%s] <LLM Output>", session_id)
@@ -67,7 +67,7 @@ class IntentDetection:
             logger.info(f"[%s] <LLM Output>: %s", session_id, llm_output)
         detected_intent_id = self._parse_intent_from_output(llm_output)
         
-        # 3. 根据意图创建任务
+        # 3. Create tasks from intent
         tasks = self._generate_tasks_from_intent(detected_intent_id, message)
         return tasks
 
@@ -75,24 +75,24 @@ class IntentDetection:
         self, intent_id: str, message: Message
     ) -> List[Task]:
         """
-        创建任务对象
+        Create task objects
         
-        根据识别到的意图创建对应的任务
-        1. 映射意图到任务类型
-        2. 创建任务实例
-        3. 返回任务列表
+        Create tasks from detected intent:
+        1. Map intent to task type
+        2. Create task instance
+        3. Return task list
         
-        Note: 如果 agent_config 没有 workflows，直接用 intent_id 作为 target_name
+        Note: If agent_config has no workflows, use intent_id as target_name
         """
         tasks = []
         session_id = self.runtime.session_id()
         task_unique_id = f"{session_id}_intent_{intent_id}_{secrets.token_hex(4)}"
         
         if intent_id == IntentDetectionConstants.DEFAULT_CLASS:
-            # 意图识别没有匹配结果，返回空任务列表
+            # No match, return empty task list
             return tasks
         
-        # 如果没有 workflows，直接用 intent_id 作为 target
+        # If no workflows, use intent_id as target
         workflows = getattr(self.agent_config, 'workflows', None) or []
         if not workflows:
             task_input = TaskInput(target_id=intent_id, target_name=intent_id, arguments=message.content)
@@ -109,7 +109,7 @@ class IntentDetection:
             )
             return tasks
         
-        # 有 workflows 时，匹配 workflow
+        # Match workflow when workflows exist
         for workflow in workflows:
             if workflow.id == intent_id:
                 task_input = TaskInput(target_id=workflow.id, target_name=workflow.name, arguments=message.content)
@@ -129,13 +129,13 @@ class IntentDetection:
 
     def _parse_intent_from_output(self, llm_output: str) -> str:
         """
-        从大模型输出中解析意图
+        Parse intent from LLM output
         
-        从大模型的输出中提取意图
-        1. 解析输出中的意图标签
-        2. 返回意图工作流id或category名称
+        Extract intent from LLM output:
+        1. Parse intent label from output
+        2. Return workflow id or category name
         
-        Note: 如果 agent_config 没有 workflows，直接返回 category 名称
+        Note: If agent_config has no workflows, return category name directly
         """
         detected_intent_id = ""
         session_id = self.runtime.session_id()
@@ -146,14 +146,14 @@ class IntentDetection:
             detected_class_number = int(output_data.get('result', ''))
             if (detected_class_number <= 0 or
                     detected_class_number > len(self.intent_config.category_list)):
-                # 意图不明
+                # Unknown intent
                 logger.warning("get unknown class")
             else:
                 detected_intent_name = (
                     self.intent_config.category_list[detected_class_number - 1]
                 )
                 
-                # 如果没有 workflows，直接返回 category 名称
+                # If no workflows, return category name directly
                 workflows = getattr(self.agent_config, 'workflows', None) or []
                 if not workflows:
                     logger.info(
@@ -162,8 +162,8 @@ class IntentDetection:
                     )
                     return detected_intent_name
                 
-                # 有 workflows 时，匹配 workflow
-                # 优先通过 description 匹配，如果匹配不到再通过 name 匹配
+                # Match workflow when workflows exist
+                # Prefer description match, fallback to name match
                 for workflow in workflows:
                     workflow_label = (
                         workflow.description if workflow.description else workflow.name
@@ -198,12 +198,12 @@ class IntentDetection:
 
     def _prepare_detection_input(self, message: Message) -> str:
         """
-        准备意图识别输入
+        Prepare intent detection input
         
-        将当前消息和历史记录拼接为大模型的输入
-        1. 格式化当前消息
-        2. 格式化历史记录
-        3. 拼接为大模型输入
+        Combine current message and history as LLM input:
+        1. Format current message
+        2. Format history
+        3. Combine as LLM input
         """
         category_list = "分类0：意图不明\n" + "\n".join(f"分类{i+1}：{c}" for i, c in enumerate(self.intent_config.category_list))
         current_inputs = {}
@@ -218,7 +218,7 @@ class IntentDetection:
             IntentDetectionConstants.CHAT_HISTORY: ""
         })
 
-        # 更新对话历史
+        # Update chat history
         if self.intent_config.enable_history:
             chat_history = ReasonerUtils.get_chat_history(self.context_engine, self.runtime,
                                                           self.intent_config.chat_history_max_turn)
@@ -230,7 +230,7 @@ class IntentDetection:
                 )
             current_inputs.update({IntentDetectionConstants.CHAT_HISTORY: chat_history_str})
 
-        # 处理当前输入
+        # Process current input
         if self.intent_config.enable_input:
             current_inputs.update({IntentDetectionConstants.INPUT: message.content.get_query() or ""})
         llm_inputs = self.intent_config.intent_detection_template.format(current_inputs).to_messages()

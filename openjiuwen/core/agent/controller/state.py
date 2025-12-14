@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
-"""Controller State - 纯数据结构，无依赖"""
+"""Controller State - Pure data structure, no dependencies"""
 
 from dataclasses import dataclass, field
 from typing import List, Optional
@@ -10,7 +10,7 @@ from openjiuwen.core.agent.task.task import Task
 
 @dataclass
 class ControllerState:
-    """通用控制器状态：管理被中断的任务列表及其组件ID记录"""
+    """Controller state: manages interrupted tasks and component IDs"""
     interrupted_tasks: List[Task] = field(default_factory=list)
 
     def is_interrupted(self) -> bool:
@@ -47,7 +47,7 @@ class ControllerState:
                 if task.input and task.input.target_id:
                     if task.input.target_id == workflow_id:
                         return task
-            # 兼容按名称匹配
+            # Fallback: match by name
             for task in self.interrupted_tasks:
                 if task.input and task.input.target_name == workflow_id:
                     return task

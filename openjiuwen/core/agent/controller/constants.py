@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 class IntentDetectionConstants:
-    """意图识别相关常量"""
+    """Intent detection constants"""
     USER_PROMPT = "user_prompt"
     CATEGORY_LIST = "category_list"
     DEFAULT_CLASS = "default_class"

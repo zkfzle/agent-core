@@ -11,25 +11,25 @@ from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInp
 
 
 class MessageType(Enum):
-    """消息类型枚举"""
-    # 用户交互类
-    USER_INPUT = "user_input"  # 用户输入消息
+    """Message type enum"""
+    # User interaction
+    USER_INPUT = "user_input"  # User input message
 
-    # Agent交互类
-    AGENT_RESPONSE = "agent_response"  # Agent响应消息
-    AGENT_HANDOFF = "agent_handoff"  # Agent间切换
+    # Agent interaction
+    AGENT_RESPONSE = "agent_response"  # Agent response message
+    AGENT_HANDOFF = "agent_handoff"  # Agent handoff
 
-    # 任务执行类
-    TASK_COMPLETED = "task_completed"  # 任务完成
-    TASK_INTERRUPTED = "task_interrupted"  # 任务中断
+    # Task execution
+    TASK_COMPLETED = "task_completed"  # Task completed
+    TASK_INTERRUPTED = "task_interrupted"  # Task interrupted
 
-    # 事件通知类
-    ERROR = "error"  # 错误消息
-    INFO = "info"  # 信息消息
+    # Event notification
+    ERROR = "error"  # Error message
+    INFO = "info"  # Info message
 
 
 class MessagePriority(Enum):
-    """消息优先级枚举"""
+    """Message priority enum"""
     LOW = 1
     NORMAL = 2
     HIGH = 3
@@ -37,68 +37,68 @@ class MessagePriority(Enum):
 
 
 class SourceType(Enum):
-    """消息来源类型枚举"""
-    USER = "user"  # 用户
+    """Message source type enum"""
+    USER = "user"  # User
     AGENT = "agent"  # Agent
-    TASK = "task"  # 任务
-    WORKFLOW = "workflow"  # 工作流
-    SYSTEM = "system"  # 系统
+    TASK = "task"  # Task
+    WORKFLOW = "workflow"  # Workflow
+    SYSTEM = "system"  # System
 
 
 @dataclass
 class MessageSource:
-    """消息来源信息"""
-    conversation_id: str  # 对话ID
-    source_type: SourceType  # 来源类型
+    """Message source info"""
+    conversation_id: str  # Conversation ID
+    source_type: SourceType  # Source type
     user_id: Optional[str] = None
 
 
 @dataclass
 class MessageContent:
-    """消息内容 - 显式字段设计，消除魔法字符串，类型明确"""
-    # 文本内容
+    """Message content - explicit fields, no magic strings, clear types"""
+    # Text content
     query: Optional[str] = None
     
-    # 交互输入（用于中断恢复）
+    # Interactive input (for interrupt resume)
     interactive_input: Optional['InteractiveInput'] = None
     
-    # 流数据 - 统一为列表类型，消除类型不一致
+    # Stream data - unified list type, no type inconsistency
     stream_data: List[Any] = field(default_factory=list)  # List[OutputSchema]
     
-    # 任务结果 - 明确类型，不再是 Any
-    task_result: Optional[Any] = None  # TaskResult，避免循环导入暂时用 Any
+    # Task result - explicit type, not Any
+    task_result: Optional[Any] = None  # TaskResult, use Any to avoid circular import
     
-    # 扩展字段（真正不确定的数据才放这里）
+    # Extension fields (for truly uncertain data)
     extensions: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
-        """确保列表和字典字段不为 None"""
+        """Ensure list and dict fields are not None"""
         if self.stream_data is None:
             self.stream_data = []
         if self.extensions is None:
             self.extensions = {}
     
     def get_query(self) -> str:
-        """获取查询文本 - 统一处理所有情况"""
-        # 优先返回 query
+        """Get query text - unified handling for all cases"""
+        # Prefer query
         if self.query is not None:
             return self.query
         
-        # 如果有 interactive_input，提取其文本
+        # Extract text from interactive_input if present
         if self.interactive_input is not None:
             return self._extract_interactive_text(self.interactive_input)
         
-        # 默认返回空字符串
+        # Default to empty string
         return ""
     
     @staticmethod
     def _extract_interactive_text(interactive_input: 'InteractiveInput') -> str:
-        """从 InteractiveInput 中提取文本"""
+        """Extract text from InteractiveInput"""
         if interactive_input.raw_inputs is not None:
             return str(interactive_input.raw_inputs)
         
         if interactive_input.user_inputs:
-            # 取第一个值
+            # Get first value
             return str(list(interactive_input.user_inputs.values())[0])
         
         return ""
@@ -106,11 +106,11 @@ class MessageContent:
 
 @dataclass
 class MessageContext:
-    """消息上下文信息"""
-    correlation_id: Optional[str] = None  # 关联ID（用于追踪消息链）
-    conversation_id: Optional[str] = None  # 对话ID
-    task_id: Optional[str] = None  # 相关任务ID
-    workflow_id: Optional[str] = None  # 相关工作流ID
+    """Message context info"""
+    correlation_id: Optional[str] = None  # Correlation ID (for message chain tracking)
+    conversation_id: Optional[str] = None  # Conversation ID
+    task_id: Optional[str] = None  # Related task ID
+    workflow_id: Optional[str] = None  # Related workflow ID
 
     def __post_init__(self):
         pass
@@ -118,48 +118,48 @@ class MessageContext:
 
 @dataclass
 class Message:
-    """统一消息类"""
-    # 基础信息
+    """Unified message class"""
+    # Basic info
     msg_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     msg_type: MessageType = MessageType.USER_INPUT
     priority: MessagePriority = MessagePriority.NORMAL
 
-    # 来源
+    # Source
     source: MessageSource = field(default_factory=lambda: MessageSource("unknown", SourceType.SYSTEM))
 
-    # 内容
+    # Content
     content: MessageContent = field(default_factory=MessageContent)
 
-    # 上下文
+    # Context
     context: MessageContext = field(default_factory=MessageContext)
 
-    # 时间信息
+    # Time info
     created_at: datetime = field(default_factory=datetime.now)
 
-    # 扩展元数据
+    # Extended metadata
     metadata: Dict[str, Any] = field(default_factory=dict)
 
-    # AgentGroup 路由支持
-    receiver_id: Optional[str] = None  # 目标 Agent ID（用于点对点发送）
-    message_type: Optional[str] = None  # 自定义消息类型（用于订阅路由）
+    # AgentGroup routing support
+    receiver_id: Optional[str] = None  # Target Agent ID (for point-to-point)
+    message_type: Optional[str] = None  # Custom message type (for subscription routing)
 
     def __post_init__(self):
         if self.metadata is None:
             self.metadata = {}
 
-    # ========== 工厂方法 ==========
+    # ========== Factory methods ==========
 
     @classmethod
     def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default",
                             user_id: Optional[str] = None) -> 'Message':
-        """创建用户消息 - 统一处理字符串和 InteractiveInput"""
+        """Create user message - unified handling for str and InteractiveInput"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.USER,
             user_id=user_id
         )
         
-        # 根据类型分配到不同字段
+        # Assign to different fields by type
         if isinstance(content, InteractiveInput):
             msg_content = MessageContent(interactive_input=content)
         else:
@@ -180,7 +180,7 @@ class Message:
     @classmethod
     def create_agent_response(cls, content: str, conversation_id: str,
                               reply_to_msg_id: Optional[str] = None) -> 'Message':
-        """创建Agent响应消息"""
+        """Create Agent response message"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.AGENT
@@ -201,7 +201,7 @@ class Message:
     @classmethod
     def create_agent_handoff(cls, conversation_id: str, to_agent_id: str,
                              handoff_reason: str) -> 'Message':
-        """创建Agent切换消息"""
+        """Create Agent handoff message"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.AGENT
@@ -223,16 +223,16 @@ class Message:
 
     @classmethod
     def create_task_completed(cls, conversation_id: str, task_id: str,
-                              task_result: Any,  # TaskResult，避免循环导入暂时用 Any
+                              task_result: Any,  # TaskResult, use Any to avoid circular import
                               workflow_id: Optional[str] = None,
                               stream_data: Optional[List[Any]] = None) -> 'Message':
-        """创建任务完成消息"""
+        """Create task completed message"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
 
-        # 处理 stream_data 默认值
+        # Handle stream_data default value
         if stream_data is None:
             stream_data = []
         
@@ -256,16 +256,16 @@ class Message:
 
     @classmethod
     def create_task_interrupted(cls, conversation_id: str, task_id: str, reason: str,
-                                task_result: Any,  # TaskResult，避免循环导入暂时用 Any
+                                task_result: Any,  # TaskResult, use Any to avoid circular import
                                 workflow_id: Optional[str] = None,
                                 stream_data: Optional[List[Any]] = None) -> 'Message':
-        """创建任务中断消息"""
+        """Create task interrupted message"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
         
-        # 处理 stream_data 默认值
+        # Handle stream_data default value
         if stream_data is None:
             stream_data = []
         
@@ -291,7 +291,7 @@ class Message:
     @classmethod
     def create_error_message(cls, conversation_id: str, error_msg: str,
                              source_type: SourceType = SourceType.SYSTEM) -> 'Message':
-        """创建错误消息"""
+        """Create error message"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=source_type
@@ -308,7 +308,7 @@ class Message:
     @classmethod
     def create_info_message(cls, conversation_id: str, info_msg: str,
                             source_type: SourceType = SourceType.SYSTEM) -> 'Message':
-        """创建信息消息"""
+        """Create info message"""
         source = MessageSource(
             conversation_id=conversation_id,
             source_type=source_type
@@ -321,38 +321,38 @@ class Message:
             content=msg_content
         )
 
-    # ========== 便利方法 ==========
+    # ========== Convenience methods ==========
 
     def set_correlation(self, correlation_id: str) -> None:
-        """设置关联ID"""
+        """Set correlation ID"""
         self.context.correlation_id = correlation_id
 
     def set_conversation(self, conversation_id: str) -> None:
-        """设置对话ID"""
+        """Set conversation ID"""
         self.context.conversation_id = conversation_id
 
     def is_from_user(self) -> bool:
-        """是否来自用户"""
+        """Check if from user"""
         return self.source.source_type == SourceType.USER
 
     def is_from_agent(self) -> bool:
-        """是否来自Agent"""
+        """Check if from Agent"""
         return self.source.source_type == SourceType.AGENT
 
     def is_task_related(self) -> bool:
-        """是否与任务相关"""
+        """Check if task related"""
         return self.context.task_id is not None
 
     def is_workflow_related(self) -> bool:
-        """是否与工作流相关"""
+        """Check if workflow related"""
         return self.context.workflow_id is not None
 
     def get_display_content(self) -> str:
-        """获取用于显示的内容"""
+        """Get display content"""
         return self.content.get_query()
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典格式"""
+        """Convert to dict format"""
 
         def convert_enum(obj):
             if isinstance(obj, Enum):
@@ -361,12 +361,12 @@ class Message:
 
         result = {}
         for key, value in self.__dict__.items():
-            if hasattr(value, '__dict__'):  # 处理嵌套的dataclass
+            if hasattr(value, '__dict__'):  # Handle nested dataclass
                 result[key] = {k: convert_enum(v) for k, v in value.__dict__.items()}
             else:
                 result[key] = convert_enum(value)
 
-        # 特殊处理datetime
+        # Special handling for datetime
         if isinstance(self.created_at, datetime):
             result['created_at'] = self.created_at.isoformat()
 

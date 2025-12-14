@@ -66,7 +66,7 @@ class MessageHandlerUtils:
 
     @staticmethod
     def parse_llm_output(response: BaseMessage, config: AgentConfig) -> List[Task]:
-        """解析LLM输出，返回任务列表"""
+        """Parse LLM output, return task list"""
         return MessageHandlerUtils.create_tasks_from_tool_calls(
             response.tool_calls, config
         )
@@ -202,7 +202,7 @@ class MessageHandlerUtils:
 
     @staticmethod
     def filter_inputs(schema: dict, user_data: dict) -> dict:
-        """过滤和验证用户输入，根据schema提取所需字段"""
+        """Filter and validate user input, extract fields by schema"""
         if not schema:
             return {}
 
@@ -224,7 +224,7 @@ class MessageHandlerUtils:
     @staticmethod
     def add_workflow_message_to_chat_history(message: BaseMessage, workflow_id: str,
                                              context_engine: ContextEngine, runtime: Runtime):
-        """添加消息到workflow的聊天历史"""
+        """Add message to workflow chat history"""
         workflow_context = context_engine.get_workflow_context(
             workflow_id=workflow_id,
             session_id=runtime.session_id()
@@ -236,14 +236,14 @@ class ReasonerUtils:
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime,
                          chat_history_max_turn: int) -> List[BaseMessage]:
-        """根据最大对话轮数获取历史记录"""
+        """Get history by max conversation rounds"""
         agent_context = context_engine.get_agent_context(runtime.session_id())
         chat_history = agent_context.get_messages()
         return chat_history[-2 * chat_history_max_turn:]
 
     @staticmethod
     def get_model(model_config: ModelConfig, runtime: Runtime):
-        """根据模型配置获取模型实例"""
+        """Get model instance by config"""
         model_id = generate_key(
             model_config.model_info.api_key,
             model_config.model_info.api_base,

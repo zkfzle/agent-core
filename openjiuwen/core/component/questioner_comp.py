@@ -555,9 +555,9 @@ class QuestionerExecutable(ComponentExecutable):
     async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
         state_from_runtime = self._load_state_from_runtime(runtime)
         if state_from_runtime.is_undergoing_interaction():
-            current_state = state_from_runtime  # 恢复交互，使用 runtime 中的状态
+            current_state = state_from_runtime  # recover state from runtime
         else:
-            current_state = QuestionerState()  # 新调用，创建独立的 state 实例
+            current_state = QuestionerState()  # create new state
 
         current_state = current_state.handle_event(QuestionerEvent.START_EVENT)
 
@@ -566,7 +566,7 @@ class QuestionerExecutable(ComponentExecutable):
             invoke_result = await self._handle_questioner_direct_reply_safe(
                 inputs, runtime, context, current_state
             )
-            # handler 可能更新了 state
+            # handler might update state
             current_state = invoke_result.pop('_state', current_state)
 
         self._store_state_to_runtime(current_state, runtime)
@@ -602,7 +602,7 @@ class QuestionerExecutable(ComponentExecutable):
         handler = (QuestionerDirectReplyHandler()
                    .config(self._config).model(self._llm).state(current_state).prompt(self._prompt))
         result = await handler.handle(inputs, runtime, context)
-        # 返回更新后的 state，由调用者管理
+        # return updated state, let caller manage
         result['_state'] = handler.get_state()
         return result
 

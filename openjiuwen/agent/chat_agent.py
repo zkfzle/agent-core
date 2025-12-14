@@ -40,12 +40,12 @@ def create_chat_agent(agent_config: ChatAgentConfig,
 
 class ChatAgent(Agent):
     def __init__(self, agent_config: ChatAgentConfig):
-        # 创建配置并初始化基类
+        # Create config and init base class
         config = Config()
         config.set_agent_config(agent_config=agent_config)
         super().__init__(config)
         
-        # 初始化 LLM Call
+        # Initialize LLM Call
         llm_config = agent_config.model
         self._llm_call = LLMCall(
             llm_config.model.model_info.model_name,
@@ -57,7 +57,7 @@ class ChatAgent(Agent):
         )
 
     def _init_model(self, model_config):
-        """初始化模型"""
+        """Initialize model"""
         model_id = generate_key(
             model_config.model_info.api_key,
             model_config.model_info.api_base,
@@ -77,7 +77,7 @@ class ChatAgent(Agent):
         return self._runtime.get_model(model_id=model_id)
 
     def _create_context_engine(self) -> ContextEngine:
-        """ChatAgent 使用默认配置的 ContextEngine"""
+        """ChatAgent uses default configured ContextEngine"""
         context_config = ContextEngineConfig()
         return ContextEngine(
             agent_id=self._config.get_agent_config().id,
@@ -89,7 +89,7 @@ class ChatAgent(Agent):
         session_id = inputs.pop("conversation_id", "default_session")
 
         if runtime is None:
-            # 兼容不传runtime的旧用法
+            # Compatible with old usage without runtime
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
         else:
             agent_runtime = runtime
@@ -111,7 +111,7 @@ class ChatAgent(Agent):
         session_id = inputs.pop("conversation_id", "default_session")
 
         if runtime is None:
-            # 兼容不传runtime的旧用法
+            # Compatible with old usage without runtime
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
         else:
             agent_runtime = runtime

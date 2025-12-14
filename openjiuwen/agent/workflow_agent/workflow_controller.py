@@ -260,11 +260,11 @@ class WorkflowController(IntentDetectionController):
             else:
                 logger.info(f"Starting workflow: {workflow_id}")
 
-            # 3. 使用流式调用 workflow，这样 workflow 层可以 yield:
-            #    - tracer_workflow (执行跟踪)
-            #    - __interaction__ (中断请求)
-            #    - workflow_final (完成结果)
-            # 流式数据会写入 runtime，agent 层的 stream_iterator 可以读取
+            # 3. Use streaming workflow call, so workflow layer can yield:
+            #    - tracer_workflow (execution trace)
+            #    - __interaction__ (interrupt request)
+            #    - workflow_final (completion result)
+            # Stream data written to runtime, agent layer's stream_iterator can read
             async def run_workflow_streaming():
                 workflow_stream = await Runner.run_workflow_streaming(
                     workflow,
@@ -278,19 +278,19 @@ class WorkflowController(IntentDetectionController):
                 has_interaction = False
                 final_result = None
                 async for chunk in workflow_stream:
-                    # 检查 chunk 类型
+                    # Check chunk type
                     if isinstance(chunk, OutputSchema):
                         if chunk.type == INTERACTION:
                             has_interaction = True
-                            # 不在这里透传 __interaction__
-                            # 由上层 ControllerAgent.stream 在 controller.invoke 完成后统一写入
-                            # 确保 __interaction__ 在所有 tracer 事件之后
+                            # Don't pass through __interaction__ here
+                            # Let upper ControllerAgent.stream write after controller.invoke completes
+                            # Ensure __interaction__ comes after all tracer events
                         elif chunk.type == "workflow_final":
-                            # 直接透传 workflow 返回的 workflow_final 帧
+                            # Direct pass-through of workflow_final frame from workflow
                             final_result = chunk.payload
                             await runtime.write_stream(chunk)
                         else:
-                            # 透传其他流式数据（tracer 等）
+                            # Pass through other stream data (tracer etc.)
                             await runtime.write_stream(chunk)
                     elif isinstance(chunk, CustomSchema):
                         await runtime.write_custom_stream(chunk)
@@ -308,12 +308,12 @@ class WorkflowController(IntentDetectionController):
                                 if answer is not None:
                                     content_parts.append(str(answer))
                             elif isinstance(chunk.payload, InteractionOutput):
-                                # 保留交互中断的输出内容
+                                # Keep interaction interrupt output content
                                 content_parts.append(str(chunk.payload.value) if chunk.payload.value else "")
                     workflow_content = "".join(content_parts)
                     MessageUtils.add_ai_message(AIMessage(content=workflow_content), self._context_engine, runtime)
 
-                # 构造 WorkflowOutput
+                # Construct WorkflowOutput
                 if has_interaction:
                     return WorkflowOutput(
                         result=chunks,
@@ -378,10 +378,10 @@ class WorkflowController(IntentDetectionController):
                 # Clean up interruption state (if any)
                 self._clear_interrupted_state(task, runtime)
 
-                # workflow_final 已在 run_workflow_streaming 中直接透传
-                # 如果 workflow 没有返回 workflow_final 帧，则不写入
+                # workflow_final already passed through directly in run_workflow_streaming
+                # If workflow doesn't return workflow_final frame, don't write
                 # Return completion response
-                # 返回值保持与原格式兼容，包含 output 和 result_type
+                # Return value maintains compatibility with original format, includes output and result_type
                 return {"output": result, "result_type": "answer"}
 
         except asyncio.CancelledError:
@@ -545,7 +545,7 @@ class WorkflowController(IntentDetectionController):
             logger.debug("Updated intent detection runtime")
             return
 
-        # 优先使用 description 作为分类，语义更丰富；如果没有配置则回退到 name
+        # Prefer description for classification (richer semantics); fallback to name if not configured
         category_list = [
             workflow.description if workflow.description else workflow.name
             for workflow in self.agent_config.workflows

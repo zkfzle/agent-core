@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """
-ReActAgent - 极简版 ReAct Agent（无中断、无Controller）
+ReActAgent - Minimal ReAct Agent (no interruption, no Controller)
 """
 
 import json
@@ -28,28 +28,28 @@ from openjiuwen.agent.utils import MessageUtils
 
 
 class ReActAgent(BaseAgent):
-    """ReAct Agent - 极简实现（无中断、无Controller）
+    """ReAct Agent - Minimal implementation (no interruption, no Controller)
     """
 
     def __init__(
             self,
             agent_config: ReActAgentConfig
     ):
-        """初始化 ReActAgent
+        """Initialize ReActAgent
         
         Args:
-            agent_config: ReAct 配置
-            workflows: 工作流列表
-            tools: 工具列表
+            agent_config: ReAct config
+            workflows: Workflow list
+            tools: Tool list
         """
-        # 调用父类初始化（BaseAgent 会创建 runtime, context_engine 等）
+        # Call parent init (BaseAgent creates runtime, context_engine, etc.)
         super().__init__(agent_config)
 
-        # LLM 实例（延迟创建）
+        # LLM instance (lazy creation)
         self._llm = None
 
     def _get_llm(self):
-        """获取 LLM 实例"""
+        """Get LLM instance"""
         if self._llm is None:
             self._llm = ModelFactory().get_model(
                 model_provider=self.agent_config.model.model_provider,
@@ -58,28 +58,28 @@ class ReActAgent(BaseAgent):
         return self._llm
 
     async def call_model(self, user_input: str, runtime: Runtime, is_first_call: bool = False):
-        """调用 LLM 进行推理
+        """Call LLM for reasoning
         
         Args:
-            user_input: 用户输入或工具结果
-            runtime: Runtime 实例
-            is_first_call: 是否是第一次调用（第一次需要添加用户消息）
+            user_input: User input or tool result
+            runtime: Runtime instance
+            is_first_call: Whether first call (first call needs to add user message)
         
         Returns:
-            llm_output: LLM 的输出（包含 content 和 tool_calls）
+            llm_output: LLM output (contains content and tool_calls)
         """
-        # 1. 如果是第一次调用，添加用户消息
+        # 1. If first call, add user message
         if is_first_call:
             MessageUtils.add_user_message(user_input, self.context_engine, runtime)
 
-        # 2. 获取对话历史
+        # 2. Get chat history
         chat_history = MessageUtils.get_chat_history(
             self.context_engine, runtime, self.agent_config
         )
 
-        # 3. 格式化 prompt
+        # 3. Format prompt
         messages = []
-        # 添加系统提示
+        # Add system prompt
         try:
             system_prompt = Template(content=self.agent_config.prompt_template).to_messages()
             for prompt in system_prompt:
@@ -91,16 +91,16 @@ class ReActAgent(BaseAgent):
                 message=StatusCode.PROMPT_PARAMS_CHECK_ERROR.errmsg.format(msg=str(e))
             ) from e
 
-        # 添加对话历史（需要完整转换 BaseMessage 对象）
+        # Add chat history (need complete BaseMessage conversion)
         for msg in chat_history:
-            # 使用 model_dump 完整导出消息，排除 None 值
+            # Use model_dump to export message completely, exclude None values
             msg_dict = msg.model_dump(exclude_none=True)
             messages.append(msg_dict)
 
-        # 4. 获取可用工具信息
+        # 4. Get available tool info
         tools = runtime.get_tool_info()
 
-        # 5. 调用 LLM
+        # 5. Call LLM
         llm = self._get_llm()
         llm_output = await llm.ainvoke(
             self.agent_config.model.model_info.model_name,
@@ -108,7 +108,7 @@ class ReActAgent(BaseAgent):
             tools
         )
 
-        # 6. 保存 AI 响应到对话历史
+        # 6. Save AI response to chat history
         ai_message = AIMessage(
             content=llm_output.content,
             tool_calls=llm_output.tool_calls
@@ -118,30 +118,30 @@ class ReActAgent(BaseAgent):
         return llm_output
 
     async def _execute_tool_call(self, tool_call, runtime: Runtime) -> Any:
-        """执行单个工具调用
+        """Execute single tool call
         
         Args:
-            tool_call: LLM 返回的 tool_call 对象
-            runtime: Runtime 实例
+            tool_call: Tool call object returned by LLM
+            runtime: Runtime instance
         
         Returns:
-            工具执行结果
+            Tool execution result
         """
-        # 解析工具名称和参数
+        # Parse tool name and parameters
         tool_name = tool_call.name
         try:
             tool_args = json.loads(tool_call.arguments) if isinstance(tool_call.arguments, str) else tool_call.arguments
         except (json.JSONDecodeError, AttributeError):
             tool_args = {}
 
-        # 获取并执行工具
+        # Get and execute tool
         tool = runtime.get_tool(tool_name)
         if not tool:
             raise ValueError(f"Tool not found: {tool_name}")
 
         result = await tool.ainvoke(tool_args)
 
-        # 将工具结果添加到对话历史
+        # Add tool result to chat history
         tool_message = ToolMessage(
             content=str(result),
             tool_call_id=tool_call.id
@@ -151,20 +151,20 @@ class ReActAgent(BaseAgent):
         return result
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """同步调用 - 完整的 ReAct 循环
+        """Sync call - Complete ReAct loop
         
         Args:
-            inputs: 输入数据，必须包含 'query' 字段
-            runtime: 可选的 Runtime（如果不提供，使用 BaseAgent 的 _runtime）
+            inputs: Input data, must contain 'query' field
+            runtime: Optional Runtime (if not provided, use BaseAgent's _runtime)
         
         Returns:
-            执行结果
+            Execution result
         """
-        # 1. 准备 Runtime
+        # 1. Prepare Runtime
         session_id = inputs.get("conversation_id", "default_session")
         runtime_created = False
         if runtime is None:
-            # 使用 BaseAgent 的 _runtime，需要创建 task runtime
+            # Use BaseAgent's _runtime, need to create task runtime
             runtime = await self._runtime.pre_run(session_id=session_id, inputs=inputs)
             runtime_created = True
 
@@ -173,7 +173,7 @@ class ReActAgent(BaseAgent):
             if not user_input:
                 return {"output": "No query provided", "result_type": "error"}
 
-            # 2. ReAct 循环
+            # 2. ReAct loop
             iteration = 0
             max_iteration = self.agent_config.constrain.max_iteration
             is_first_call = True
@@ -182,15 +182,15 @@ class ReActAgent(BaseAgent):
                 iteration += 1
                 logger.info(f"ReAct iteration {iteration}")
 
-                # 2.1 调用模型进行推理
+                # 2.1 Call model for reasoning
                 llm_output = await self.call_model(
                     user_input,
                     runtime,
                     is_first_call=is_first_call
                 )
-                is_first_call = False  # 第一次调用后设为 False
+                is_first_call = False  # Set to False after first call
 
-                # 2.2 如果没有工具调用，说明 LLM 认为问题已解决
+                # 2.2 If no tool calls, LLM thinks problem is solved
                 if not llm_output.tool_calls:
                     logger.info("No tool calls, task completed")
                     return {
@@ -198,32 +198,32 @@ class ReActAgent(BaseAgent):
                         "result_type": "answer"
                     }
 
-                # 2.3 执行工具调用（工具结果已在 _execute_tool_call 中添加到历史）
+                # 2.3 Execute tool calls (tool results already added to history in _execute_tool_call)
                 for tool_call in llm_output.tool_calls:
                     tool_name = tool_call.name
                     logger.info(f"Executing tool: {tool_name}")
                     result = await self._execute_tool_call(tool_call, runtime)
                     logger.info(f"Tool {tool_name} completed with result: {result}")
 
-            # 3. 超过最大迭代次数
+            # 3. Exceeded max iteration count
             logger.warning(f"Exceeded max iteration {max_iteration}")
             return {
                 "output": "Exceeded max iteration",
                 "result_type": "error"
             }
         finally:
-            # 4. 清理 runtime（如果是我们创建的）
+            # 4. Cleanup runtime (if we created it)
             if runtime_created:
                 await runtime.post_run()
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """流式调用 - 极简版
+        """Stream call - minimal version
         """
-        # 准备runtime
+        # Prepare runtime
         session_id = inputs.get("conversation_id", "default_session")
         runtime_created = False
         if runtime is None:
-            # 使用 BaseAgent 的 _runtime，需要创建 task runtime
+            # Use BaseAgent's _runtime, need to create task runtime
             runtime = await self._runtime.pre_run(session_id=session_id, inputs=inputs)
             runtime_created = True
 
@@ -235,7 +235,7 @@ class ReActAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"ReActAgent stream error: {e}")
             finally:
-                # 清理 runtime（如果是我们创建的）
+                # Cleanup runtime (if we created it)
                 if runtime_created:
                     await runtime.post_run()
 
@@ -245,7 +245,7 @@ class ReActAgent(BaseAgent):
         await task
 
 
-# ===== 工厂函数 =====
+# ===== Factory Functions =====
 def create_react_agent_config(
         agent_id: str,
         agent_version: str,
@@ -253,20 +253,20 @@ def create_react_agent_config(
         model: ModelConfig,
         prompt_template: List[Dict]
 ) -> ReActAgentConfig:
-    """创建 ReAct Agent 配置
+    """Create ReAct Agent config
     
     Args:
         agent_id: Agent ID
-        agent_version: Agent 版本
-        description: Agent 描述
-        workflows: 工作流 Schema 列表
-        plugins: 插件 Schema 列表
-        model: 模型配置
-        prompt_template: 提示词模板
-        tools: 工具名称列表
+        agent_version: Agent version
+        description: Agent description
+        workflows: Workflow schema list
+        plugins: Plugin schema list
+        model: Model config
+        prompt_template: Prompt template
+        tools: Tool name list
     
     Returns:
-        ReActAgentConfig 实例
+        ReActAgentConfig instance
     """
     return ReActAgentConfig(
         id=agent_id,

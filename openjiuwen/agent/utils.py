@@ -12,19 +12,19 @@ from openjiuwen.agent.config.base import AgentConfig
 
 
 class MessageUtils:
-    """消息工具类 - 处理消息的添加和获取"""
+    """Message utilities for adding and retrieving messages"""
 
     @staticmethod
     def should_add_user_message(query: str, context_engine: ContextEngine, runtime: Runtime) -> bool:
-        """判断是否应该添加用户消息
+        """Check if user message should be added
         
         Args:
-            query: 用户输入
-            context_engine: 上下文引擎
-            runtime: Runtime 实例
+            query: User input
+            context_engine: Context engine
+            runtime: Runtime instance
         
         Returns:
-            bool: 是否应该添加用户消息
+            bool: Whether to add user message
         """
         agent_context = context_engine.get_agent_context(runtime.session_id())
         last_message = agent_context.get_latest_message()
@@ -44,12 +44,12 @@ class MessageUtils:
 
     @staticmethod
     def add_user_message(query: Any, context_engine: ContextEngine, runtime: Runtime):
-        """添加用户消息到对话历史
+        """Add user message to chat history
         
         Args:
-            query: 用户输入
-            context_engine: 上下文引擎
-            runtime: Runtime 实例
+            query: User input
+            context_engine: Context engine
+            runtime: Runtime instance
         """
         if MessageUtils.should_add_user_message(query, context_engine, runtime):
             agent_context = context_engine.get_agent_context(runtime.session_id())
@@ -62,12 +62,12 @@ class MessageUtils:
 
     @staticmethod
     def add_ai_message(ai_message: AIMessage, context_engine: ContextEngine, runtime: Runtime):
-        """添加 AI 消息到对话历史
+        """Add AI message to chat history
         
         Args:
-            ai_message: AI 消息对象
-            context_engine: 上下文引擎
-            runtime: Runtime 实例
+            ai_message: AI message object
+            context_engine: Context engine
+            runtime: Runtime instance
         """
         if ai_message:
             agent_context = context_engine.get_agent_context(runtime.session_id())
@@ -75,12 +75,12 @@ class MessageUtils:
 
     @staticmethod
     def add_tool_message(tool_message: ToolMessage, context_engine: ContextEngine, runtime: Runtime):
-        """添加工具消息到对话历史
+        """Add tool message to chat history
         
         Args:
-            tool_message: 工具消息对象
-            context_engine: 上下文引擎
-            runtime: Runtime 实例
+            tool_message: Tool message object
+            context_engine: Context engine
+            runtime: Runtime instance
         """
         if tool_message:
             agent_context = context_engine.get_agent_context(runtime.session_id())
@@ -89,13 +89,13 @@ class MessageUtils:
     @staticmethod
     def add_workflow_message(message: BaseMessage, workflow_id: str,
                             context_engine: ContextEngine, runtime: Runtime):
-        """添加消息到 workflow 的聊天历史
+        """Add message to workflow chat history
         
         Args:
-            message: 消息对象
-            workflow_id: 工作流 ID
-            context_engine: 上下文引擎
-            runtime: Runtime 实例
+            message: Message object
+            workflow_id: Workflow ID
+            context_engine: Context engine
+            runtime: Runtime instance
         """
         workflow_context = context_engine.get_workflow_context(
             workflow_id=workflow_id,
@@ -105,15 +105,15 @@ class MessageUtils:
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime, config: AgentConfig) -> List[BaseMessage]:
-        """获取对话历史
+        """Get chat history
         
         Args:
-            context_engine: 上下文引擎
-            runtime: Runtime 实例
-            config: Agent 配置
+            context_engine: Context engine
+            runtime: Runtime instance
+            config: Agent config
         
         Returns:
-            List[BaseMessage]: 对话历史消息列表
+            List[BaseMessage]: Chat history message list
         """
         agent_context = context_engine.get_agent_context(runtime.session_id())
         chat_history = agent_context.get_messages()

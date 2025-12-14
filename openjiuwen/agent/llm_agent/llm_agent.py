@@ -66,7 +66,7 @@ def _memory_log_task_exception(task: asyncio.Task) -> None:
 
 
 def _extract_answer_output(result) -> str:
-    """从result中提取answer类型的output，不符合条件返回空字符串"""
+    """Extract answer type output from result, return empty string if not matching"""
     if not (hasattr(result, 'payload') and isinstance(result.payload, dict)):
         return ""
     payload = result.payload
@@ -100,7 +100,7 @@ class LLMAgent(ControllerAgent):
     """
 
     def __init__(self, agent_config: ReActAgentConfig):
-        """Initialize LLMControllerAgent
+        """Initialize LLMAgent
         
         Args:
             agent_config: ReAct Agent configuration
@@ -108,7 +108,7 @@ class LLMAgent(ControllerAgent):
         # Validate controller_type
         if agent_config.controller_type != ControllerType.ReActController:
             raise NotImplementedError(
-                f"LLMControllerAgent requires ReActController, "
+                f"LLMAgent requires ReActController, "
                 "got {agent_config.controller_type}"
             )
 
@@ -137,7 +137,7 @@ class LLMAgent(ControllerAgent):
             Execution result
         """
         if self._enable_memory:
-            # async write user message memory
+            # Async write user message memory
             user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
             user_memory_task.set_name("user_memory_task")
             user_memory_task.add_done_callback(_memory_log_task_exception)
@@ -146,7 +146,7 @@ class LLMAgent(ControllerAgent):
         result = await super().invoke(inputs, runtime)
 
         if self._enable_memory:
-            # async write AI result message memory
+            # Async write AI result message memory
             agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result))
             agent_memory_task.set_name("agent_memory_task")
             agent_memory_task.add_done_callback(_memory_log_task_exception)
@@ -173,13 +173,13 @@ class LLMAgent(ControllerAgent):
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
-            own_stream = True  # 自己拥有 stream 的生命周期
+            own_stream = True  # Own stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False
-            own_stream = False  # 外部拥有 stream 的生命周期
+            own_stream = False  # External owns stream lifecycle
 
-        # 用于存储最终结果，供 send_to_agent 获取
+        # Store final result for send_to_agent
         final_result_holder = {"result": None}
 
         # Fully delegate to controller
@@ -192,7 +192,7 @@ class LLMAgent(ControllerAgent):
                     await agent_runtime.post_run()
 
         if self._enable_memory:
-            # async write user message memory
+            # Async write user message memory
             user_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs))
             user_memory_task.set_name("user_memory_task")
             user_memory_task.add_done_callback(_memory_log_task_exception)
@@ -201,16 +201,16 @@ class LLMAgent(ControllerAgent):
         result_for_memory = ""
 
         if own_stream:
-            # 只有自己拥有 stream 时才从 stream_iterator 读取
-            # 如果传入了外部 runtime， 外部调用方负责读取
+            # Only read from stream_iterator when owning stream
+            # If external runtime passed, external caller handles reading
             async for result in agent_runtime.stream_iterator():
                 result_for_memory += _extract_answer_output(result)
                 yield result
 
         await task
 
-        # 当 own_stream = False 时，yield 最终结果给 send_to_agent
-        # 这样 send_to_agent 可以获取到 agent 的实际返回值
+        # When own_stream = False, yield final result to send_to_agent
+        # This allows send_to_agent to get actual agent return value
         if not own_stream and final_result_holder["result"] is not None:
             res = final_result_holder["result"]
             if isinstance(res, list):
@@ -220,7 +220,7 @@ class LLMAgent(ControllerAgent):
                 yield res
 
         if self._enable_memory:
-            # async write AI result message memory
+            # Async write AI result message memory
             agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
             agent_memory_task.set_name("agent_memory_task")
             agent_memory_task.add_done_callback(_memory_log_task_exception)
@@ -246,7 +246,7 @@ class LLMAgent(ControllerAgent):
 
         if not user_id or not self._memory_engine:
             return
-        # add ai response message if exist
+        # Add AI response message if exist
         if result is not None:
             assistant_message = _convert_response_to_message(result)
             if assistant_message is not None and assistant_message.content != "":
@@ -263,7 +263,7 @@ class LLMAgent(ControllerAgent):
                     )
             return
 
-        #add user message
+        # Add user message
         if not isinstance(inputs, dict):
             return
         query = inputs.get("query")

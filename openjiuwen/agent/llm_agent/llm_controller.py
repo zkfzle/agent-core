@@ -48,7 +48,7 @@ class LLMController(BaseController):
     1. Receive user input and invoke LLM reasoning to generate tasks
     2. Execute tasks (plugin/workflow)
     3. After task completion, invoke LLM reasoning again to decide whether to continue
-    4. Loop until the problem is solved or the maximum iteration count is reached
+    4. Loop until problem solved or max iteration reached
     """
 
     def __init__(
@@ -97,7 +97,7 @@ class LLMController(BaseController):
         1. Add user message to conversation history
         2. Call LLM reasoning to generate task plan
         3. Execute tasks
-        4. If it's a workflow task, check if it needs to resume interrupted task
+        4. If workflow task, check if needs to resume interrupted task
         5. Loop until completion
         """
 
@@ -133,11 +133,11 @@ class LLMController(BaseController):
             final_result = await self._send_final_stream(llm_output.content, runtime)
             return self._unwrap_result(final_result)
         
-        # Check if planned task is a workflow task
+        # Check if planned task is workflow task
         initial_iteration = 1
         workflow_task = self._resolve_workflow_from_tasks(tasks)
         if workflow_task:
-            # Check if it needs to resume interrupted task
+            # Check if needs to resume interrupted task
             interrupted_task, saved_iteration = self._find_interrupted_task(workflow_task, runtime)
             if interrupted_task:
                 logger.info(f"Resuming interrupted workflow task: {workflow_task.input.target_name}, "

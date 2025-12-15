@@ -105,8 +105,7 @@ class ReActAgent(BaseAgent):
         llm_output = await llm.ainvoke(
             self.agent_config.model.model_info.model_name,
             messages,
-            tools,
-            **self.agent_config.model.model_info.model_dump(exclude={'model_name'}, exclude_none=True)
+            tools
         )
 
         # 6. Save AI response to chat history

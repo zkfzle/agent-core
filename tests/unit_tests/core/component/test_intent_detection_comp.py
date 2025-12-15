@@ -42,7 +42,7 @@ def fake_ctx():
 def fake_model_config() -> ModelConfig:
     return ModelConfig(
         model_provider="openai",
-        model_info=BaseModelInfo(
+        model_info=Mock(
             api_key="sk-fake",
             api_base="https://api.openai.com/v1",
             model_name="gpt-3.5-turbo",

@@ -31,6 +31,7 @@ class TracerWorkflowUtils:
             "component_id": runtime.node_id(),
             "component_name": runtime.node_id(),
             "component_type": runtime.node_type(),
+            "workflow_id": runtime.workflow_id()
         }
         loop_id = state.get_global(LOOP_ID)
         if loop_id is None:

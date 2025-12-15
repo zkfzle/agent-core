@@ -365,6 +365,6 @@ class TraceWorkflowHandler(TraceBaseHandler):
         if elapsed_time is not None:
             update_data["elapsed_time"] = elapsed_time
         self._span_manager.update_span(span, update_data)
-        await self._send_data(span, exclude={"start_time", "inputs", "stream_inputs"})
+        await self._send_data(span, exclude={"inputs", "stream_inputs"})
         if span.component_type == "End" and span.end_time:
             self._span_manager.update_span(span, {})

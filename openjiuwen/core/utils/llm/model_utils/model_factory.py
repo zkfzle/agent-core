@@ -6,6 +6,9 @@ import importlib
 import os
 from typing import Dict, Type
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utlis.singleton import Singleton
 from openjiuwen.core.common.logging import logger
@@ -54,9 +57,7 @@ class ModelFactory(metaclass=Singleton):
                     for _, obj in module.__dict__.items():
                         if isinstance(obj, type) and issubclass(obj, BaseModelClient) and obj != BaseModelClient:
                             model_dict[module_name] = obj
-                            if UserConfig.is_sensitive():
-                                logger.info("Loaded model")
-                            else:
+                            if not UserConfig.is_sensitive():
                                 logger.info(f"Loaded model: {module_name} -> {obj.__name__}")
                 except Exception as e:
                     if UserConfig.is_sensitive():
@@ -80,9 +81,14 @@ class ModelFactory(metaclass=Singleton):
                   max_retries: int = 3, timeout: int = 60, **kwargs) -> BaseModelClient:
         model_cls = self.model_map.get(model_provider.lower())
         if not model_cls:
-            available_models = ", ".join(self.model_map.keys())
-            if not UserConfig.is_sensitive():
-                raise ValueError(f"Unavailable model provider: {model_provider}. Available models: {available_models}")
+            if UserConfig.is_sensitive():
+                ExceptionUtils.raise_exception(StatusCode.MODEL_PROVIDER_INVALID_ERROR,
+                                               error_msg="unavailable model provider.")
+            else:
+                available_models = ", ".join(self.model_map.keys())
+                ExceptionUtils.raise_exception(StatusCode.MODEL_PROVIDER_INVALID_ERROR,
+                                               error_msg=f"unavailable model provider: {model_provider},"
+                                                         f"and available providers are: {available_models}")
         params = {
             "max_retries": max_retries,
             "timeout": timeout,

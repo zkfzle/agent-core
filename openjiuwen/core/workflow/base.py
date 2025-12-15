@@ -6,7 +6,6 @@ import inspect
 import json
 import os
 import re
-from abc import ABC, abstractmethod
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
@@ -398,30 +397,7 @@ class BaseWorkFlow:
         return target_map
 
 
-class WorkflowExecutable(ABC):
-    @abstractmethod
-    async def invoke(self, inputs, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
-        pass
-
-    @abstractmethod
-    async def sub_invoke(self, inputs, runtime: BaseRuntime, config: Any = None) -> WorkflowOutput:
-        pass
-
-    @abstractmethod
-    async def stream(
-            self,
-            inputs,
-            runtime: BaseRuntime,
-            context: Context = None,
-            stream_modes: list[StreamMode] = None
-    ) -> AsyncIterator[WorkflowChunk]:
-        pass
-
-    def get_tool_info(self) -> ToolInfo:
-        pass
-
-
-class Workflow(BaseWorkFlow, WorkflowExecutable):
+class Workflow(BaseWorkFlow):
     def __init__(self, workflow_config: WorkflowConfig = None):
         super().__init__(workflow_config, PregelGraph())
         self.tool_info = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)

@@ -7,6 +7,7 @@ import stat
 
 from requests.adapters import HTTPAdapter
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 
@@ -32,8 +33,11 @@ class SslUtils:
         return None
 
     @staticmethod
-    def get_ssl_config(verify_switch_env: str, ssl_cert_env: str, trigger_value: list):
+    def get_ssl_config(verify_switch_env: str, ssl_cert_env: str, trigger_value: list, url_is_https: bool = True):
         """get ssl config"""
+        if not url_is_https:
+            return False, False
+
         is_ssl_verify_off = SslUtils._bool_env(verify_switch_env, trigger_value)
         ssl_cert = os.getenv(ssl_cert_env)
 
@@ -41,7 +45,8 @@ class SslUtils:
             return False, False
 
         if ssl_cert is None:
-            raise ValueError(f"If verify_switch=true, must provide ssl_cert certificate")
+            raise JiuWenBaseException(StatusCode.INVALID_SSL_CERT_ERROR.code,
+                                      f"when {verify_switch_env}=true, must provide ssl cert {ssl_cert_env}")
 
         return True, ssl_cert
 

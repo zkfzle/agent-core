@@ -128,8 +128,10 @@ class RestfulApi(Tool):
     async def _async_request(self, request_args: dict):
         ip_address_url = request_args.get('ip_address_url')
         UrlUtils.check_url_is_valid(ip_address_url)
+        url_is_https = ip_address_url.startswith("https://")
         request_arg = request_args.get('request_arg')
-        ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"])
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config(RESTFUL_SSL_VERIFY, RESTFUL_SSL_CERT, ["false"],
+                                                       url_is_https)
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
             connector = aiohttp.TCPConnector(ssl=ssl_context)

@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 import httpx
 import aiohttp
 import openai
+from flask import url_for
 from pydantic import ConfigDict
 from requests import Session
 
@@ -71,11 +72,13 @@ class RequestChatModel(BaseModelClient):
     def _invoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs) -> AIMessage:
         UrlUtils.check_url_is_valid(self.api_base)
+        url_is_https = self.api_base.startswith("https://")
         messages = self.sanitize_tool_calls(messages)
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
 
-        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                       ["false"], url_is_https)
         verify = ssl_cert if ssl_verify else False
 
         response = self.sync_client.post(
@@ -98,11 +101,12 @@ class RequestChatModel(BaseModelClient):
     async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
         UrlUtils.check_url_is_valid(self.api_base)
+        url_is_https = self.api_base.startswith("https://")
         messages = self.sanitize_tool_calls(messages)
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
-        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
-        
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                       ["false"], url_is_https)
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
             connector = aiohttp.TCPConnector(ssl=ssl_context)
@@ -130,12 +134,13 @@ class RequestChatModel(BaseModelClient):
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[
         AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
-
+        url_is_https = self.api_base.startswith("https://")
         messages = self.sanitize_tool_calls(messages)
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         params["stream"] = True
-        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                       ["false"], url_is_https)
         verify = ssl_cert if ssl_verify else False
 
         with self.sync_client.post(
@@ -164,13 +169,15 @@ class RequestChatModel(BaseModelClient):
                        temperature: Optional[float] = None, top_p: Optional[float] = None,
                        **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
         UrlUtils.check_url_is_valid(self.api_base)
+        url_is_https = self.api_base.startswith("https://")
 
         messages = self.sanitize_tool_calls(messages)
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         params["stream"] = True
 
-        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+        ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                       ["false"], url_is_https)
         
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
@@ -352,7 +359,9 @@ class OpenAIChatModel(BaseModelClient):
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         sync_client = None
         try:
-            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+            url_is_https = self.api_base.startswith("https://")
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                           ["false"], url_is_https)
 
             if ssl_verify:
                 ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
@@ -379,7 +388,9 @@ class OpenAIChatModel(BaseModelClient):
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, **model_params)
         async_client = None
         try:
-            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+            url_is_https = self.api_base.startswith("https://")
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                           ["false"], url_is_https)
 
             if ssl_verify:
                 ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
@@ -407,7 +418,9 @@ class OpenAIChatModel(BaseModelClient):
                                             **model_params)
         sync_client = None
         try:
-            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+            url_is_https = self.api_base.startswith("https://")
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                           ["false"], url_is_https)
 
             if ssl_verify:
                 ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
@@ -439,7 +452,9 @@ class OpenAIChatModel(BaseModelClient):
                                             **model_params)
         async_client = None
         try:
-            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT", ["false"])
+            url_is_https = self.api_base.startswith("https://")
+            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                           ["false"], url_is_https)
 
             if ssl_verify:
                 ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)

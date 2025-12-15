@@ -569,12 +569,8 @@ class Workflow(BaseWorkFlow):
             logger.info("end to invoke, results=%s", output)
             return output
 
-        try:
-            invoke_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
-            return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
-        finally:
-            await runtime.close()
-            self._graph.reset()
+        invoke_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+        return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
 
     async def stream(
             self,

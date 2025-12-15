@@ -8,12 +8,13 @@ import asyncio
 import inspect
 from typing import Dict, Optional, List, Union
 
-from openjiuwen.graph.store.base import PendingNode
+from openjiuwen.core.common.logging import logger
 from openjiuwen.graph.pregel.config import PregelConfig, InnerPregelConfig, \
     create_inner_config
 from openjiuwen.graph.pregel.constants import GraphInterrupt, TASK_STATUS_INTERRUPT, TASK_STATUS_ERROR, PARENT_NS, NS
 from openjiuwen.graph.pregel.messages import Message
 from openjiuwen.graph.pregel.nodes import PregelNode
+from openjiuwen.graph.store.base import PendingNode
 
 
 class TaskExecutorPool:
@@ -68,7 +69,10 @@ class TaskExecutorPool:
         tasks_to_cancel = list(pending)
         for t in tasks_to_cancel:
             t.cancel()
-        await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+        results = await asyncio.gather(*tasks_to_cancel, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                logger.warning(f"running task with exception {result}")
         for t in tasks_to_cancel:
             if t in self.running_tasks:
                 node = self.running_tasks.pop(t)

@@ -226,7 +226,7 @@ class TemplateProcessor:
                         self.advance_position()
                     except asyncio.CancelledError as e:
                         logger.error(f"render template stream cancelled {e}")
-                        raise e
+                        break
                 should_wait = False
                 logger.debug("previous segment has been finished")
             async with self._lock:

@@ -557,7 +557,6 @@ async def test_workflow_stream_with_exception():
     assert e.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="transform_comp",
                                                                                ability="transform",
                                                                                error="mock error")
-    await asyncio.sleep(5)
     logger.info("after exception, execution again")
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, runtime=WorkflowRuntime())
     assert result.result == {'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}

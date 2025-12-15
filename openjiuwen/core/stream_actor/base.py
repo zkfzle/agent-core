@@ -67,6 +67,8 @@ class StreamActor:
                 f"discard message [{message}], because current component [{self._node_id}] can not handle message")
             return
         if self._task is None or self._task.done():
+            if self._task and self._task.done() and self._task.exception():
+                logger.warning(f"previous task with exception {self._task.exception()}")
             if self._task_error and self._task_error.done() and self._task_error.exception():
                 logger.warning(
                     f"discard message [{message}], because current component [{self._node_id}] has error "
@@ -107,13 +109,27 @@ class StreamActor:
                     await self._task
                 except asyncio.CancelledError:
                     logger.warning("task has been cancelled")
+                except Exception as e:
+                    logger.warning(f"unexpected exception {e}")
+            if self._task_error:
+                if not self._task_error.done() and not self._task_error.cancelled():
+                    self._task_error.cancel()
+                    try:
+                        await self._task_error
+                    except asyncio.CancelledError:
+                        logger.warning("task error has been cancelled")
+                    except Exception as e:
+                        logger.warning(f"unexpected exception {e}")
+                if not self._task_error.cancelled() and self._task_error.exception():
+                    logger.warning(f"unexpected exception {self._task_error.exception()}")
+
             if self._running_tasks:
                 for task in self._running_tasks:
                     if not task.done() and not task.cancelled():
                         task.cancel()
                 results = await asyncio.gather(*self._running_tasks, return_exceptions=True)
                 for result in results:
-                    if isinstance(result, BaseException):
+                    if isinstance(result, Exception):
                         logger.debug(f"running task with exception {result}")
         finally:
             self._task = None

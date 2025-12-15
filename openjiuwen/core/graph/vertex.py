@@ -309,8 +309,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 if not task.done() and not task.cancelled():
                     task.cancel()
                     pending_tasks.append(task)
-                await asyncio.gather(*pending_tasks, return_exceptions=True)
-            raise
+                results = await asyncio.gather(*pending_tasks, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        logger.warning(f"task with exception, {result}")
         except Exception as e:
             logger.error(f"failed to call node [{self._node_id}], error: {e}")
             error_callback(e)

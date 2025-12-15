@@ -955,4 +955,4 @@ class ControllerAgent(BaseAgent):
     async def clear_session(self, session_id: str = "default_session"):
         await self._runtime.release(session_id)
         self.context_engine.clear_context(session_id)
-        self.controller.cleanup_conversation(session_id)
+        await self.controller.cleanup_conversation(session_id)

@@ -16,36 +16,10 @@ class Siliconflow(BaseModel, BaseModelClient):
 
     def __init__(self,
                  api_key: str, api_base: str, max_retries: int = 3, timeout: int = 60, **kwargs):
-        # Ensure api_base ends with /chat/completions for siliconflow
-        api_base = self._normalize_api_base(api_base)
         super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout)
         self._request_model = RequestChatModel(api_key=api_key, api_base=api_base,
                                                max_retries=max_retries, timeout=timeout, **kwargs)
         self._should_close_session = True
-
-    @staticmethod
-    def _normalize_api_base(api_base: str) -> str:
-        """
-        Normalize the api_base URL for Silicon Flow.
-        Ensures the URL ends with /chat/completions.
-
-        Args:
-            api_base: The original API base URL
-
-        Returns:
-            The normalized API base URL with /chat/completions suffix
-        """
-        if not api_base:
-            return api_base
-
-        # Remove trailing slashes
-        api_base = api_base.rstrip('/')
-
-        # Check if it already ends with /chat/completions
-        if not api_base.endswith('/chat/completions'):
-            api_base = f"{api_base}/chat/completions"
-
-        return api_base
 
     async def close(self):
         if hasattr(self, '_request_model') and self._request_model:

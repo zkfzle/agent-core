@@ -26,9 +26,34 @@ class RequestChatModel(BaseModelClient):
     sync_client: Session = Session()
 
     def __init__(self, api_key: str, api_base: str, max_retries: int = 3, timeout: int = 60, **kwargs):
+        api_base = self._normalize_api_base(api_base)
         super().__init__(api_key=api_key, api_base=api_base, max_retries=max_retries, timeout=timeout, **kwargs)
         self._usage = dict()
         self._setup_ssl_adapter()
+
+    @staticmethod
+    def _normalize_api_base(api_base: str) -> str:
+        """
+        Normalize the api_base URL for Silicon Flow.
+        Ensures the URL ends with /chat/completions.
+
+        Args:
+            api_base: The original API base URL
+
+        Returns:
+            The normalized API base URL with /chat/completions suffix
+        """
+        if not api_base:
+            return api_base
+
+        # Remove trailing slashes
+        api_base = api_base.rstrip('/')
+
+        # Check if it already ends with /chat/completions
+        if not api_base.endswith('/chat/completions'):
+            api_base = f"{api_base}/chat/completions"
+
+        return api_base
 
     def close_session(self):
         if self.sync_client is not None:

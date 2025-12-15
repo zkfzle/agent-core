@@ -527,7 +527,7 @@ class TestTraceWorkflow:
         # for 'a' node with stream output, tracer finish frame with empty output
         a_finish_chunk = results[4]
         assert a_finish_chunk.payload["invokeId"] == 'a' and a_finish_chunk.payload["status"] == 'finish' and \
-               a_finish_chunk.payload["outputs"] == None
+               a_finish_chunk.payload.get("outputs") == None
         # for 'end' node, tracer frame with error info
         end_error_chunk = results[6]
         assert end_error_chunk.payload["invokeId"] == 'end' and end_error_chunk.payload["status"] == 'error' and \

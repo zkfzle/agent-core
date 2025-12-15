@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Dict, Any
+from typing import Dict, Any, Callable, Awaitable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -67,9 +67,10 @@ class ActorManager:
         end_message_content = f"END_{producer_id}"
         await self.produce(producer_id, end_message_content)
 
-    async def consume(self, consumer_id: str, ability: ComponentAbility, schema: dict) -> dict:
+    async def consume(self, consumer_id: str, ability: ComponentAbility, schema: dict,
+                      stream_callback: Callable[[dict], Awaitable[None]] = None) -> dict:
         actor = self._get_actor(consumer_id)
-        return await actor.generator(ability, schema)
+        return await actor.generator(ability, schema, stream_callback)
 
 
 def _build_reverse_graph(graph):

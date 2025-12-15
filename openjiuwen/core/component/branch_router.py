@@ -89,12 +89,12 @@ class BranchRouter:
                     "branch_id": branch.branch_id,
                     "condition": branch.trace_info(runtime)
                 })
-            await TracerWorkflowUtils.trace_inputs(runtime, {"branches": branches})
+            await TracerWorkflowUtils.trace_component_inputs(runtime, {"branches": branches})
         for branch in self._branches:
             if branch.evaluate(runtime):
                 if self.report_trace:
-                    await TracerWorkflowUtils.trace_outputs(runtime, {"branch_id": branch.branch_id})
-                    await TracerWorkflowUtils.trace_call_done(runtime)
+                    await TracerWorkflowUtils.trace_component_outputs(runtime, {"branch_id": branch.branch_id})
+                    await TracerWorkflowUtils.trace_component_done(runtime)
                 return branch.target
         raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.code,
                                   StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.errmsg)

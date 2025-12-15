@@ -37,11 +37,21 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         self._stream_done = asyncio.Future()
         self._stream_called = False
         self.is_end_node = False
+        self._is_started = asyncio.Event()
+        self._is_call_started = asyncio.Event()
+        self._node_config = None
+        self._component_ability = None
+        self._has_stream_call: bool = False
+        self._source_id: list = []
 
     def init(self, runtime: BaseRuntime) -> bool:
-        self._runtime = NodeRuntime(runtime, self._node_id)
+        self._runtime = NodeRuntime(runtime, self._node_id, type(self._executable).__name__)
         self._stream_called_timeout = runtime.config().get_env(COMP_STREAM_CALL_TIMEOUT_KEY)
         self._node_config = self._runtime.node_config()
+        self._component_ability = (
+            self._node_config.abilities) if self._node_config and self._node_config.abilities else [
+            ComponentAbility.INVOKE]
+        self._has_stream_call = len(self._stream_abilities()) > 0
         return True
 
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None,
@@ -50,7 +60,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             if event is not None:
                 logger.debug(f"node {self._node_id} with ability {ability.name} set event")
                 event.set()
-            
+
             # Simplified strategy pattern using lambda functions wrapping async execution
             async def invoke_strategy():
                 batch_inputs = await self._pre_invoke()
@@ -58,19 +68,19 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
                 results = await self._executable.on_invoke(batch_inputs, runtime=self._runtime)
                 await self._post_invoke(results)
-            
+
             async def stream_strategy():
                 batch_inputs = await self._pre_invoke()
                 if is_subgraph:
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
                 result_iter = self._executable.on_stream(batch_inputs, runtime=self._runtime)
                 await self._post_stream(result_iter)
-            
+
             async def collect_strategy():
                 collect_iter = await self._pre_stream(ComponentAbility.COLLECT)
                 batch_output = await self._executable.on_collect(collect_iter, self._runtime)
                 await self._post_invoke(batch_output)
-            
+
             async def transform_strategy():
                 transform_iter = None
                 try:
@@ -79,14 +89,14 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
                 output_iter = self._executable.on_transform(transform_iter, self._runtime)
                 await self._post_stream(output_iter)
-            
+
             ability_strategies = {
                 ComponentAbility.INVOKE: invoke_strategy,
                 ComponentAbility.STREAM: stream_strategy,
                 ComponentAbility.COLLECT: collect_strategy,
                 ComponentAbility.TRANSFORM: transform_strategy
             }
-            
+
             # Execute strategy if found
             strategy = ability_strategies.get(ability)
             if strategy:
@@ -123,20 +133,23 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             if self._runtime.tracer() is not None:
                 await self.__trace_error__(e)
             raise e
+        finally:
+            self._is_started.clear()
+            self._is_call_started.clear()
         return {"source_node_id": [self._node_id]}
 
     async def _atomic_invoke(self, **kwargs) -> Any:
         return await self.call(kwargs.get("config", None))
 
     async def _pre_invoke(self) -> Optional[dict]:
+        await self.__trace_component_begin__()
         inputs_transformer = self._node_config.io_config.inputs_transformer if self._node_config else None
         if inputs_transformer is None:
             inputs_schema = self._node_config.io_config.inputs_schema if self._node_config else None
             inputs = self._runtime.state().get_inputs(inputs_schema) if inputs_schema is not None else None
         else:
             inputs = self._runtime.state().get_inputs_by_transformer(inputs_transformer)
-        if self._runtime.tracer() is not None:
-            await self.__trace_inputs__(inputs)
+        await self.__trace_component_inputs__(inputs)
         return inputs
 
     async def _post_invoke(self, results: Optional[dict]) -> Any:
@@ -150,17 +163,22 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         else:
             results = output_transformer(results)
         self._runtime.state().set_outputs(results)
-        if self._runtime.tracer() is not None:
-            await self.__trace_outputs__(results)
-
+        await self.__trace_component_outputs__(results)
         self.__clear_interactive__()
         return results
 
     async def _pre_stream(self, ability: ComponentAbility) -> dict:
+        await self.__trace_component_begin__()
         actor_manager = self._runtime.actor_manager()
         inputs_schema = self._node_config.stream_io_configs.inputs_schema if self._node_config else None
         logger.debug(f"{ability} consumer handler inputs schema: {inputs_schema}")
-        return await actor_manager.consume(self._node_id, ability, inputs_schema)
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
+            return await actor_manager.consume(self._node_id, ability, inputs_schema)
+
+        async def stream_callable(chunk):
+            await TracerWorkflowUtils.trace_component_stream_input(self._runtime, chunk, send=False)
+
+        return await actor_manager.consume(self._node_id, ability, inputs_schema, stream_callable)
 
     async def _post_stream(self, results_iter: AsyncIterator) -> None:
         is_end_node = isinstance(self._executable, End)
@@ -192,31 +210,21 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     "index": end_stream_index,
                     "payload": message
                 }
-            if self._runtime.tracer() is not None:
-                await self.__trace_stream__(message_stream_data)
-            await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)
+            await self.__trace_component_stream_output__(message_stream_data)
+            if self._runtime.stream_writer_manager().get_output_writer():
+                await self._runtime.stream_writer_manager().get_output_writer().write(message_stream_data)
         elif is_end_node and is_sub_graph:
             message_stream_data = message.payload if isinstance(message, OutputSchema) else message
-            if self._runtime.tracer() is not None:
-                await self.__trace_stream__(message_stream_data)
+            await self.__trace_component_stream_output__(message_stream_data)
             await self._runtime.actor_manager().sub_workflow_stream().send(message_stream_data)
         else:
             logger.debug(f"sending message: {message}")
-            if self._runtime.tracer() is not None:
-                await self.__trace_stream__(message)
+            await self.__trace_component_stream_output__(message)
             await self._runtime.actor_manager().produce(self._node_id, message)
 
     def __clear_interactive__(self) -> None:
         if self._runtime.state().get(INTERACTIVE_INPUT):
             self._runtime.state().update({INTERACTIVE_INPUT: None})
-
-    async def __trace_inputs__(self, inputs: Optional[dict]) -> None:
-        if self._executable.skip_trace():
-            return
-        await TracerWorkflowUtils.trace_inputs(self._runtime, inputs)
-
-        if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
-            self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
 
     async def call(self, config: Any = None):
         if self._runtime is None or self._executable is None:
@@ -224,9 +232,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
         is_subgraph = self._executable.graph_invoker()
         try:
-            component_ability = self._node_config.abilities if self._node_config else None
-            component_ability = component_ability if component_ability else [ComponentAbility.INVOKE]
-            call_ability = [ability for ability in component_ability if
+            call_ability = [ability for ability in self._component_ability if
                             ability in [ComponentAbility.INVOKE, ComponentAbility.STREAM]]
             logger.debug(f"call ability: {call_ability}, node: {self._node_id}")
             for ability in call_ability:
@@ -253,8 +259,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                                           StatusCode.STREAM_FRAME_TIMEOUT_FAILED.errmsg.format(
                                               timeout=self._stream_called_timeout))
         # when the component output is in streaming mode, send an end tracer frame with empty outputs.
-        if self._runtime.tracer() is not None:
-            await self.__trace_call_done__()
+        await self.__trace_component_done__()
         logger.debug("node [%s] call finished", self._node_id)
 
     async def stream_call(self, event: asyncio.Event, error_callback):
@@ -288,11 +293,11 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             error = e
         finally:
             self._stream_done.set_result(error if error else True)
+            await self.__trace_component_stream_input_send__()
             logger.debug(f"node [{self._node_id}] stream call finished")
 
     def _stream_abilities(self) -> list[Literal[ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]:
-        component_ability = self._node_config.abilities if self._node_config else None
-        call_ability = [ability for ability in component_ability if
+        call_ability = [ability for ability in self._component_ability if
                         ability in [ComponentAbility.COLLECT, ComponentAbility.TRANSFORM]]
         return call_ability
 
@@ -300,22 +305,44 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         call_ability = self._stream_abilities()
         return len(call_ability) > 0
 
-    async def __trace_outputs__(self, outputs: Optional[dict] = None) -> None:
-        if self._executable.skip_trace():
+    async def __trace_component_inputs__(self, inputs: Optional[dict]) -> None:
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
             return
-        await TracerWorkflowUtils.trace_outputs(self._runtime, outputs)
+        self._is_call_started.set()
+        need_send = (not self._has_stream_call) or self._stream_done.done()
+        await TracerWorkflowUtils.trace_component_inputs(self._runtime, inputs, send=need_send)
+        if self._executable.component_type() == SUB_WORKFLOW_COMPONENT:
+            self._runtime.tracer().register_workflow_span_manager(self._runtime.executable_id())
 
-    async def __trace_call_done__(self) -> None:
-        if self._executable.skip_trace():
+    async def __trace_component_outputs__(self, outputs: Optional[dict] = None) -> None:
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
             return
-        await TracerWorkflowUtils.trace_call_done(self._runtime)
+        await TracerWorkflowUtils.trace_component_outputs(self._runtime, outputs)
 
-    async def __trace_stream__(self, chunk) -> None:
-        if self._executable.skip_trace():
+    async def __trace_component_begin__(self) -> None:
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
             return
-        await TracerWorkflowUtils.trace_stream_output(self._runtime, chunk)
+        if not self._is_started.is_set():
+            self._is_started.set()
+            await TracerWorkflowUtils.trace_component_begin(self._runtime)
+
+    async def __trace_component_done__(self) -> None:
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
+            return
+        await TracerWorkflowUtils.trace_component_done(self._runtime)
+
+    async def __trace_component_stream_output__(self, chunk) -> None:
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
+            return
+        await TracerWorkflowUtils.trace_component_stream_output(self._runtime, chunk)
 
     async def __trace_error__(self, error: Exception) -> None:
-        if self._executable.skip_trace():
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
             return
         await TracerWorkflowUtils.trace_error(self._runtime, error)
+
+    async def __trace_component_stream_input_send__(self) -> None:
+        if (not self._runtime.tracer()) or self._executable.skip_trace():
+            return
+        if self._is_call_started.is_set():
+            await TracerWorkflowUtils.trace_component_stream_input(self._runtime, {}, send=True)

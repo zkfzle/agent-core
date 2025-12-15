@@ -15,10 +15,9 @@ class Span(BaseModel):
     inputs: Optional[dict] = Field(default=None, alias="inputs")
     outputs: Optional[dict] = Field(default=None, alias="outputs")
     error: Optional[dict] = Field(default=None, alias="error")
-    invoke_id: str = Field(default=None, alias="invokeId")
+    invoke_id: Optional[str] = Field(default=None, alias="invokeId")
     parent_invoke_id: Optional[str] = Field(default=None, alias="parentInvokeId")
-    child_invokes_id: List[str] = Field(default=[], alias="childInvokes")
-
+    child_invokes_id: Optional[List[str]] = Field(default=None, alias="childInvokes")
     model_config = ConfigDict(populate_by_name=True)
 
     def update(self, data: dict):
@@ -26,6 +25,12 @@ class Span(BaseModel):
             if not hasattr(self, attr_name):
                 continue
             setattr(self, attr_name, value)
+
+    def append_child_invoke_id(self, invoke_id):
+        if self.child_invokes_id:
+            self.child_invokes_id.append(invoke_id)
+        else:
+            self.child_invokes_id = [invoke_id]
 
 
 class TraceAgentSpan(Span):
@@ -36,26 +41,38 @@ class TraceAgentSpan(Span):
 
 
 class TraceWorkflowSpan(Span):
-    execution_id: str = Field(default="", alias="executionId")
-    # Recording intermediate process information for the current component's execution time
-    on_invoke_data: List[dict] = Field(default=[], alias="onInvokeData")
-    component_id: str = Field(default="", alias="componentId")  # put it to metadata
-    component_name: str = Field(default="", alias="componentName")  # put it to metadata
-    component_type: str = Field(default="", alias="componentType")  # is invoke_type
+    execution_id: Optional[str] = Field(default=None, alias="executionId")
+    source_ids: Optional[list] = Field(default=None, alias="sourceIds")
+    workflow_id: Optional[str] = Field(default=None, alias="workflowId")
+    workflow_version: Optional[str] = Field(default=None, alias="workflowVersion")
+    workflow_name: Optional[str] = Field(default=None, alias="workflowName")
+    component_id: Optional[str] = Field(default=None, alias="componentId")
+    component_name: Optional[str] = Field(default=None, alias="componentName")
+    component_type: Optional[str] = Field(default=None, alias="componentType")
     # for loop component
     loop_node_id: Optional[str] = Field(default=None, alias="loopNodeId")
     loop_index: Optional[int] = Field(default=None, alias="loopIndex")
     # node status
     status: Optional[str] = Field(default=None, alias="status")
     # for llm invoke data
-    llm_invoke_data: Dict[str, dict] = Field(default={}, exclude=True)  # model data
+    llm_invoke_data: Optional[Dict[str, dict]] = Field(default=None, exclude=True)  # model data
     # for subworkflow
-    parent_node_id: str = Field(default="", alias="parentNodeId")
+    parent_node_id: Optional[str] = Field(default=None, alias="parentNodeId")
+    stream_inputs: Optional[list] = Field(default=None, alias="streamInputs")
     # for component stream output
-    stream_outputs: list = Field(default=list(), alias="streamOutputs")
+    stream_outputs: Optional[list] = Field(default=None, alias="streamOutputs")
+    # Recording intermediate process information for the current component's execution time
+    on_invoke_data: Optional[List[dict]] = Field(default=None, alias="onInvokeData")
 
-    def append_stream(self, chunk):
+    def append_stream_output(self, chunk):
+        if self.stream_outputs is None:
+            self.stream_outputs = []
         self.stream_outputs.append(chunk)
+
+    def append_stream_inputs(self, chunk):
+        if self.stream_inputs is None:
+            self.stream_inputs = []
+        self.stream_inputs.append(chunk)
 
 
 class SpanManager:
@@ -85,7 +102,7 @@ class SpanManager:
 
     def _refresh_parent_child_span(self, span, parent_span=None):
         if parent_span:
-            parent_span.child_invokes_id.append(span.invoke_id)
+            parent_span.append_child_invoke_id(span.invoke_id)
             self.refresh_span_record(parent_span.invoke_id, {parent_span.invoke_id: parent_span})
         self.refresh_span_record(span.invoke_id, {span.invoke_id: span})
 

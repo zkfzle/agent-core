@@ -13,10 +13,25 @@ from openjiuwen.core.tracer.handler import TracerHandlerName
 
 class TracerWorkflowUtils:
     @staticmethod
+    def _get_workflow_metadata(runtime) -> dict:
+        executable_id = runtime._workflow_id
+        workflow_config = runtime.config().get_workflow_config(executable_id)
+        workflow_metadata = workflow_config.metadata if workflow_config else None
+        return {
+            "workflow_id": executable_id,
+            "workflow_version": workflow_metadata.version if workflow_metadata else '',
+            "workflow_name": workflow_metadata.name if workflow_metadata else '',
+        }
+
+    @staticmethod
     def _get_component_metadata(runtime) -> dict:
         executable_id = runtime.executable_id()
         state = runtime.state()
-        component_metadata = {"component_type": executable_id}
+        component_metadata = {
+            "component_id": runtime.node_id(),
+            "component_name": runtime.node_id(),
+            "component_type": runtime.node_type(),
+        }
         loop_id = state.get_global(LOOP_ID)
         if loop_id is None:
             return component_metadata
@@ -30,7 +45,32 @@ class TracerWorkflowUtils:
         return component_metadata
 
     @staticmethod
-    async def trace_inputs(runtime, inputs: Optional[dict]):
+    async def trace_workflow_start(runtime, inputs: Optional[dict]):
+        tracer = runtime.tracer()
+        if tracer is None:
+            return
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, event_name="on_call_start",
+                             invoke_id=runtime._workflow_id,
+                             parent_node_id='',
+                             metadata=TracerWorkflowUtils._get_workflow_metadata(runtime),
+                             inputs=inputs,
+                             need_send=True)
+
+    @staticmethod
+    async def trace_component_begin(runtime, source_ids: list = None):
+        tracer = runtime.tracer()
+        if tracer is None:
+            return
+        executable_id = runtime.executable_id()
+        parent_id = runtime.parent_id()
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_call_start",
+                             invoke_id=executable_id,
+                             parent_node_id=parent_id,
+                             source_ids=source_ids,
+                             metadata=TracerWorkflowUtils._get_component_metadata(runtime))
+
+    @staticmethod
+    async def trace_component_inputs(runtime, inputs: Optional[dict], send: bool = True):
         tracer = runtime.tracer()
         if tracer is None:
             return
@@ -40,25 +80,27 @@ class TracerWorkflowUtils:
                              invoke_id=executable_id,
                              parent_node_id=parent_id,
                              inputs=inputs,
+                             need_send=send,
                              component_metadata=TracerWorkflowUtils._get_component_metadata(runtime))
-        runtime.state().update_trace(tracer.get_workflow_span(executable_id, parent_id))
 
     @staticmethod
-    async def workflow_trace_inputs(runtime, inputs: Optional[dict]):
+    async def trace_component_stream_input(runtime, chunk, send: bool = True):
         tracer = runtime.tracer()
         if tracer is None:
             return
-        executable_id = runtime._workflow_id
-        parent_id = ""
-        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_pre_invoke",
-                             invoke_id=executable_id,
-                             parent_node_id=parent_id,
-                             inputs=inputs,
-                             component_metadata={"component_type": executable_id})
-        runtime.state().update_trace(tracer.get_workflow_span(executable_id, parent_id))
+        executable_id = runtime.executable_id()
+        parent_id = runtime.parent_id()
+        if isinstance(chunk, str):
+            return
+        if chunk:
+            await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_pre_stream",
+                                 invoke_id=executable_id,
+                                 parent_node_id=parent_id,
+                                 need_send=send,
+                                 chunk=dict(chunk))
 
     @staticmethod
-    async def trace_outputs(runtime, outputs: Optional[dict]):
+    async def trace_component_outputs(runtime, outputs: Optional[dict]):
         tracer = runtime.tracer()
         if tracer is None:
             return
@@ -70,7 +112,7 @@ class TracerWorkflowUtils:
                              outputs=outputs)
 
     @staticmethod
-    async def trace_stream_output(runtime, chunk):
+    async def trace_component_stream_output(runtime, chunk):
         tracer = runtime.tracer()
         if tracer is None:
             return
@@ -84,7 +126,20 @@ class TracerWorkflowUtils:
                              chunk=dict(chunk))
 
     @staticmethod
-    async def trace_call_done(runtime):
+    async def trace_workflow_done(runtime, outputs: Optional[dict]):
+        tracer = runtime.tracer()
+        if tracer is None:
+            return
+        executable_id = runtime._workflow_id
+        parent_id = ""
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_call_done",
+                             invoke_id=executable_id,
+                             parent_node_id=parent_id,
+                             outputs=outputs,
+                             metadata=TracerWorkflowUtils._get_workflow_metadata(runtime))
+
+    @staticmethod
+    async def trace_component_done(runtime):
         tracer = runtime.tracer()
         if tracer is None:
             return
@@ -93,23 +148,6 @@ class TracerWorkflowUtils:
         await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_call_done",
                              invoke_id=executable_id,
                              parent_node_id=parent_id)
-
-
-    @staticmethod
-    async def workflow_trace_outputs(runtime, outputs: Optional[dict]):
-        tracer = runtime.tracer()
-        if tracer is None:
-            return
-        executable_id = runtime._workflow_id
-        parent_id = ""
-        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_post_invoke",
-                             invoke_id=executable_id,
-                             parent_node_id=parent_id,
-                             outputs=outputs)
-        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_call_done",
-                             invoke_id=executable_id,
-                             parent_node_id=parent_id)
-        runtime.state().update_trace(tracer.get_workflow_span(executable_id, parent_id))
 
     @staticmethod
     async def trace(runtime, data: dict = None):
@@ -122,7 +160,6 @@ class TracerWorkflowUtils:
                              invoke_id=invoke_id,
                              parent_node_id=parent_id,
                              on_invoke_data=data)
-        runtime.state().update_trace(tracer.get_workflow_span(invoke_id, parent_id))
 
     @staticmethod
     async def trace_error(runtime, error: Exception):
@@ -138,4 +175,3 @@ class TracerWorkflowUtils:
                                        invoke_id=invoke_id,
                                        parent_node_id=parent_id,
                                        exception=error)
-        runtime.state().update_trace(tracer.get_workflow_span(invoke_id, parent_id))

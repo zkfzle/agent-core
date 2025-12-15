@@ -4,7 +4,8 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator, Any
+from collections.abc import Awaitable
+from typing import AsyncGenerator, Any, Callable
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.utils import EndFrame, get_value_by_nested_path, extract_origin_key
@@ -69,10 +70,11 @@ class StreamActor:
             logger.debug(f"processor [{processor.node_id}] receive message [{message}]")
             await processor.receive(message)
 
-    async def generator(self, ability: ComponentAbility, schema: dict) -> dict:
+    async def generator(self, ability: ComponentAbility, schema: dict,
+                        stream_callback: Callable[[dict], Awaitable[None]] = None) -> dict:
         processor = self._processors[ability]
         logger.debug(f"processor [{processor.node_id}] generate message for ability: [{ability.name}]")
-        return processor.generator(schema)
+        return processor.generator(schema, stream_callback)
 
     def _error_callback(self, error):
         if error:
@@ -115,7 +117,7 @@ class StreamProcessor:
     async def receive(self, message: dict):
         await self.queue.put(message)
 
-    def generator(self, schema: dict) -> dict:
+    def generator(self, schema: dict, stream_callable: Callable[[dict], Awaitable[None]] = None) -> dict:
         inputs = []
         paths = extract_leaf_nodes(schema)
         for key_path, ref_path in paths:
@@ -123,12 +125,13 @@ class StreamProcessor:
             if not isinstance(ref_path, str) or '$' not in ref_path:
                 inputs.append((key_path, ref_path))
                 continue
-            inputs.append((key_path, self._create_generator(path_str, ref_path)))
+            inputs.append((key_path, self._create_generator(path_str, ref_path, stream_callable)))
         input_map = rebuild_dict(inputs)
         logger.debug(f"stream generator source: {input_map}, schema: {schema}")
         return input_map
 
-    def _create_generator(self, k_path: str, r_path: str) -> AsyncGenerator:
+    def _create_generator(self, k_path: str, r_path: str,
+                          stream_callable: Callable[[dict], Awaitable[None]] = None) -> AsyncGenerator:
         queue = asyncio.Queue()
         if r_path in self.processor_queues:
             self.processor_queues[r_path].append(queue)
@@ -146,6 +149,8 @@ class StreamProcessor:
                     queue.task_done()
                     break
                 yield message
+                if stream_callable:
+                    await stream_callable({r_path: message})
                 queue.task_done()
 
         return generator()

@@ -7,7 +7,7 @@ import json
 from abc import abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Union
 from dateutil.tz import tzlocal
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -48,7 +48,11 @@ class TraceBaseHandler(BaseHandler):
             return
         await self._stream_writer.write(self._format_data(span))
 
-    async def _send_data(self, span):
+    async def _send_data(self, span, exclude=None):
+        if exclude:
+            clean_dict = span.model_dump(exclude=exclude)
+            await self.emit_stream_writer(type(span).model_validate(clean_dict))
+            return
         await self.emit_stream_writer(copy.deepcopy(span))
 
     def _get_elapsed_time(self, start_time: datetime, end_time: datetime) -> str:
@@ -246,8 +250,9 @@ class TraceWorkflowHandler(TraceBaseHandler):
 
     def _format_data(self, span: TraceWorkflowSpan) -> dict:
         span.status = self._get_node_status(span)
+        result = span.model_dump(exclude_none=True, by_alias=True, exclude={"child_invokes_id", "llm_invoke_data"})
         return {"type": self.event_name(),
-                "payload": span.model_dump(by_alias=True, exclude={"child_invokes_id", "llm_invoke_data"})}
+                "payload": result}
 
     def _get_node_status(self, span: TraceWorkflowSpan) -> str:
         if span.error:
@@ -265,19 +270,44 @@ class TraceWorkflowHandler(TraceBaseHandler):
         return self._span_manager.create_workflow_span(invoke_id, self._span_manager.last_span)
 
     @trigger_event
-    async def on_pre_invoke(self, invoke_id: str, inputs: Any, component_metadata: dict,
+    async def on_call_start(self, invoke_id: str, metadata: dict = None, inputs: Any = None,
+                            need_send: bool = False, source_ids: list = None,
+                            **kwargs):
+        span = self._get_tracer_workflow_span(invoke_id)
+        update_data = {
+            "start_time": datetime.now(tz=tzlocal()).replace(tzinfo=None),
+            "invoke_type": type,
+            "on_invoke_data": [],
+            "inputs": inputs,
+            "outputs": None,
+            "stream_outputs": [],
+            "source_ids": source_ids,
+            **metadata
+        }
+        self._span_manager.update_span(span, update_data)
+        if need_send:
+            await self._send_data(span)
+
+    @trigger_event
+    async def on_pre_invoke(self, invoke_id: str, inputs: Any, component_metadata: dict, need_send: bool = False,
                             **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
 
         update_data = {
-            "start_time": datetime.now(tz=tzlocal()).replace(tzinfo=None),
             "inputs": inputs,
-            "invoke_type": component_metadata["component_type"],
-            "on_invoke_data": [],
             **component_metadata
         }
         self._span_manager.update_span(span, update_data)
-        await self._send_data(span)
+        if need_send:
+            await self._send_data(span, exclude={"outputs", "stream_outputs"})
+
+    @trigger_event
+    async def on_pre_stream(self, invoke_id: str, chunk, need_send: bool = False, **kwargs):
+        span = self._get_tracer_workflow_span(invoke_id)
+        if isinstance(chunk, dict):
+            span.append_stream_inputs(chunk)
+        if need_send:
+            await self._send_data(span, exclude={"outputs", "stream_outputs"})
 
     @trigger_event
     async def on_invoke(self, invoke_id: str, on_invoke_data: dict = None, exception: Exception = None, **kwargs):
@@ -309,13 +339,12 @@ class TraceWorkflowHandler(TraceBaseHandler):
 
         await self._send_data(span)
         if exception and span.component_type == "LLM":
-            span.llm_invoke_data.clear()
             self._span_manager.update_span(span, {})
 
     @trigger_event
     async def on_post_stream(self, invoke_id: str, chunk, **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
-        span.append_stream(chunk)
+        span.append_stream_output(chunk)
 
     @trigger_event
     async def on_post_invoke(self, invoke_id: str, outputs, inputs=None, **kwargs):
@@ -328,19 +357,14 @@ class TraceWorkflowHandler(TraceBaseHandler):
         self._span_manager.update_span(span, update_data)
 
     @trigger_event
-    async def on_call_done(self, invoke_id, **kwargs):
+    async def on_call_done(self, invoke_id, outputs: Any = None, **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
         end_time = datetime.now(tz=tzlocal()).replace(tzinfo=None)
         elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
-        update_data = {"end_time": end_time}
+        update_data = {"end_time": end_time, "outputs": outputs} if outputs is not None else {"end_time": end_time}
         if elapsed_time is not None:
             update_data["elapsed_time"] = elapsed_time
         self._span_manager.update_span(span, update_data)
-        await self._send_data(span)
-        if span.component_type == "LLM":
-            span.llm_invoke_data.clear()
-            self._span_manager.update_span(span, {})
-
+        await self._send_data(span, exclude={"start_time", "inputs", "stream_inputs"})
         if span.component_type == "End" and span.end_time:
-            span.llm_invoke_data.clear()
             self._span_manager.update_span(span, {})

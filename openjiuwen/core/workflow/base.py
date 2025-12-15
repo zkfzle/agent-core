@@ -597,7 +597,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
     ) -> AsyncIterator[WorkflowChunk]:
         self._validate_and_init_runtime(runtime, stream_modes, context)
         # workflow start tracer info
-        await TracerWorkflowUtils.workflow_trace_inputs(runtime, inputs)
+        await TracerWorkflowUtils.trace_workflow_start(runtime, inputs)
         timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
         frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
         if timeout is not None and 0 < timeout <= frame_timeout:
@@ -615,7 +615,7 @@ class Workflow(BaseWorkFlow, WorkflowExecutable):
             finally:
                 # workflow end tracer info
                 outputs = runtime.state().get_outputs(self._end_comp_id)
-                await TracerWorkflowUtils.workflow_trace_outputs(runtime, outputs)
+                await TracerWorkflowUtils.trace_workflow_done(runtime, outputs)
                 await runtime.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(

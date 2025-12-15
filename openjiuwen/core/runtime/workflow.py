@@ -107,8 +107,9 @@ def create_executable_id(node_id: str, parent_id: str):
 
 
 class NodeRuntime(BaseRuntime):
-    def __init__(self, runtime: BaseRuntime, node_id: str):
+    def __init__(self, runtime: BaseRuntime, node_id: str, node_type: str = None):
         self._node_id = node_id
+        self._node_type = node_type
         parent_id = create_parent_id(runtime)
         executable_id = create_executable_id(node_id, parent_id)
         state = runtime.state().create_node_state(executable_id, parent_id)
@@ -122,6 +123,9 @@ class NodeRuntime(BaseRuntime):
 
     def node_id(self):
         return self._node_id
+
+    def node_type(self):
+        return self._node_type
 
     def executable_id(self):
         return self._executable_id
@@ -181,7 +185,7 @@ class NodeRuntime(BaseRuntime):
 
 class SubWorkflowRuntime(NodeRuntime):
     def __init__(self, runtime: NodeRuntime, workflow_id: str, actor_manager: ActorManager = None):
-        super().__init__(runtime=runtime.parent(), node_id=runtime.node_id())
+        super().__init__(runtime=runtime.parent(), node_id=runtime.node_id(), node_type=runtime.node_type())
         self._workflow_id = workflow_id
         self._workflow_nesting_depth = runtime.workflow_nesting_depth() + 1
         self._main_workflow_id = runtime.main_workflow_id()

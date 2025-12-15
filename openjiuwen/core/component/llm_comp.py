@@ -442,7 +442,8 @@ class LLMExecutable(ComponentExecutable):
         response = ""
         try:
             llm_response = await self._llm.ainvoke(
-                model_name=self._config.model.model_info.model_name, messages=model_inputs)
+                model_name=self._config.model.model_info.model_name, messages=model_inputs,
+                **self._config.model.model_info.model_dump(exclude={'model_name'}, exclude_none=True))
             response = llm_response.content
         except Exception as e:
             if UserConfig.is_sensitive():
@@ -554,15 +555,20 @@ class LLMExecutable(ComponentExecutable):
             logger.info("[%s] model inputs", self._runtime.executable_id())
         else:
             logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
-        llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name,
-                                             messages=model_inputs) # Add await if invoke is async
+        llm_output = await self._llm.ainvoke(
+            model_name=self._config.model.model_info.model_name,
+            messages=model_inputs,
+            **self._config.model.model_info.model_dump(exclude={'model_name'}, exclude_none=True)
+        ) # Add await if invoke is async
         llm_output_content = llm_output.content
         yield self._create_output(llm_output_content)
 
     async def _stream_with_chunks(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
-        async for chunk in self._llm.astream(model_name=self._config.model.model_info.model_name,
-                                             messages=model_inputs):
+        async for chunk in self._llm.astream(
+            model_name=self._config.model.model_info.model_name,
+            messages=model_inputs,
+            **self._config.model.model_info.model_dump(exclude={'model_name'}, exclude_none=True)):
             content = WorkflowLLMUtils.extract_content(chunk)
             if content:
                 formatted_res = OutputFormatter.format_response(content,

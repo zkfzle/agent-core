@@ -284,7 +284,8 @@ class IntentDetectionExecutable(ComponentExecutable):
             logger.info(f"Invoke llm for intent detection, inputs = {llm_inputs}")
 
         try:
-            llm_output = self._llm.invoke(model_name=self._config.model.model_info.model_name, messages=llm_inputs)
+            llm_output = self._llm.invoke(model_name=self._config.model.model_info.model_name, messages=llm_inputs,
+                                **self._config.model.model_info.model_dump(exclude={'model_name'}, exclude_none=True))
             llm_output_content = llm_output.content
         except Exception as e:
             ExceptionUtils.raise_exception(StatusCode.INTENT_DETECTION_COMPONENT_INVOKE_LLM_ERROR,

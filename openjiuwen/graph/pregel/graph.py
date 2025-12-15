@@ -172,7 +172,8 @@ class CompiledGraph(ExecutableGraph):
             is_main = True
             config = PregelConfig(session_id=session_id, ns=workflow_id, recursion_limit=MAX_RECURSIVE_LIMIT)
 
-        await self._checkpointer.pre_workflow_execute(runtime, inputs)
+        if is_main:
+            await self._checkpointer.pre_workflow_execute(runtime, inputs)
         if not isinstance(inputs, InteractiveInput):
             runtime.state().commit_user_inputs(inputs)
 

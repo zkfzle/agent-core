@@ -21,6 +21,7 @@ class StatusCode(Enum):
                                             " does not support interact operations")
     COMPONENT_EXECUTE_ERROR = (100005, "component [{node_id}] encountered an exception while executing ability [{"
                                            "ability}], error detail: {error}")
+    WORKFLOW_STATE_EXISTS_ERROR = (100006, "workflow state exists but non-interactive input and cleanup is disabled.")
 
     # Workflow: Execution 100100 - 100199
     WORKFLOW_EXECUTE_INNER_ERROR = (100100, "workflow execute inner error: {error}")

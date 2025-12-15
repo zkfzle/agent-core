@@ -61,3 +61,8 @@ class WorkflowStorage(Storage):
         self.state_blobs.pop(workflow_id, None)
         self.state_updates_blobs.pop(workflow_id, None)
 
+    def exists(self, runtime: BaseRuntime) -> bool:
+        state_blob = self.state_blobs.get(runtime.workflow_id())
+        if state_blob and state_blob[0] != "empty":
+            return True
+        return False

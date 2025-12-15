@@ -19,3 +19,7 @@ class Storage(ABC):
     @abstractmethod
     def clear(self, session_id: str):
         pass
+
+    @abstractmethod
+    def exists(self, runtime: BaseRuntime) -> bool:
+        pass

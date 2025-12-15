@@ -33,3 +33,6 @@ class AgentStorage(Storage):
 
     def clear(self, agent_id: str):
         self.state_blobs.pop(agent_id, None)
+
+    def exists(self, runtime: BaseRuntime) -> bool:
+        return self.state_blobs.get(runtime.agent_id()) is not None

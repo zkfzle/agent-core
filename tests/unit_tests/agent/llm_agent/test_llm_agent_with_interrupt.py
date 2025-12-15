@@ -17,6 +17,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.runtime.constants import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
@@ -47,6 +48,7 @@ class MockLLMModel:
         )
 
 
+@patch.dict(os.environ, {FORCE_DEL_WORKFLOW_STATE_ENV_KEY: "True"})
 class TestReActAgentInterrupt:  # ① 关键改动
     @staticmethod
     def _create_model():

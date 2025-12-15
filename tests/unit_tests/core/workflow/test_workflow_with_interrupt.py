@@ -16,6 +16,7 @@ from openjiuwen.core.component.loop_callback.output import OutputCallback
 from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
 from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.runtime.constants import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -1083,3 +1084,46 @@ async def test_simple_interactive_workflow_checkpointer_manual_release():
     assert state is None
     first_time_workflow_store = getattr(default_inmemory_checkpointer, "_workflow_stores").get(session_id)
     assert first_time_workflow_store is None
+
+
+async def test_simple_interactive_workflow_clear_checkpointer():
+    """
+    graph : start->a->end
+    """
+    start_node = MockStartNode4Cp("start")
+    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow")))
+    flow.set_start_comp("start", start_node,
+                        inputs_schema={
+                            "a": "${inputs.a}",
+                            "b": "${inputs.b}",
+                            "c": 1,
+                            "d": [1, 2, 3]})
+    flow.add_workflow_comp("a", InteractiveNode4Cp("a"),
+                           inputs_schema={
+                               "aa": "${start.a}",
+                               "ac": "${start.c}"})
+    flow.set_end_comp("end", MockEndNode("end"),
+                      inputs_schema={
+                          "result": "${a.aa}"})
+    flow.add_connection("start", "a")
+    flow.add_connection("a", "end")
+
+    session_id = uuid.uuid4().hex
+
+    res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, WorkflowRuntime(session_id=session_id))
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate({'type': INTERACTION, 'index': 0,
+                                             'payload': InteractionOutput.model_validate(
+                                                 {'id': 'a', 'value': 'Please enter any key'})})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+
+    runtime = WorkflowRuntime(session_id=session_id)
+    # will clean checkpointer of the session when input is not interactive input, workflow reinvoke from start node
+    runtime.config().set_envs({FORCE_DEL_WORKFLOW_STATE_KEY: True})
+    res = await flow.invoke({"inputs": {"a": 1, "b": "haha"}}, runtime)
+    assert res == WorkflowOutput(
+        result=[OutputSchema.model_validate(
+            {'index': 0, 'payload': InteractionOutput.model_validate({'id': 'a', 'value': 'Please enter any key'}),
+             'type': INTERACTION})],
+        state=WorkflowExecutionState.INPUT_REQUIRED)
+    assert start_node.runtime == 2

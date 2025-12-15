@@ -15,7 +15,8 @@ from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STRE
     WORKFLOW_EXECUTE_TIMEOUT, WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_EXECUTE_TIMEOUT_ENV_KEY, \
     WORKFLOW_STREAM_FRAME_TIMEOUT_ENV_KEY, COMP_STREAM_CALL_TIMEOUT_ENV_KEY, STREAM_INPUT_GEN_TIMEOUT_ENV_KEY, \
     WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT_ENV_KEY, \
-    LOOP_NUMBER_MAX_LIMIT_KEY, LOOP_NUMBER_MAX_LIMIT_ENV_KEY, LOOP_NUMBER_MAX_LIMIT_DEFAULT
+    LOOP_NUMBER_MAX_LIMIT_KEY, LOOP_NUMBER_MAX_LIMIT_ENV_KEY, LOOP_NUMBER_MAX_LIMIT_DEFAULT, \
+    FORCE_DEL_WORKFLOW_STATE_ENV_KEY, FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 
 
@@ -28,15 +29,41 @@ _ENV_CONFIG_KEYS = [(WORKFLOW_EXECUTE_TIMEOUT_ENV_KEY, WORKFLOW_EXECUTE_TIMEOUT)
                     (WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT_ENV_KEY, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT),
                     (COMP_STREAM_CALL_TIMEOUT_ENV_KEY, COMP_STREAM_CALL_TIMEOUT_KEY),
                     (STREAM_INPUT_GEN_TIMEOUT_ENV_KEY, STREAM_INPUT_GEN_TIMEOUT_KEY),
-                    (LOOP_NUMBER_MAX_LIMIT_ENV_KEY, LOOP_NUMBER_MAX_LIMIT_KEY)]
+                    (LOOP_NUMBER_MAX_LIMIT_ENV_KEY, LOOP_NUMBER_MAX_LIMIT_KEY),
+                    (FORCE_DEL_WORKFLOW_STATE_ENV_KEY, FORCE_DEL_WORKFLOW_STATE_KEY)]
+
+_ENV_CONFIG_TYPES = {
+    WORKFLOW_EXECUTE_TIMEOUT_ENV_KEY: 'float',
+    WORKFLOW_STREAM_FRAME_TIMEOUT_ENV_KEY: 'float',
+    WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT_ENV_KEY: 'float',
+    COMP_STREAM_CALL_TIMEOUT_ENV_KEY: 'float',
+    STREAM_INPUT_GEN_TIMEOUT_ENV_KEY: 'float',
+    LOOP_NUMBER_MAX_LIMIT_ENV_KEY: 'int',
+    FORCE_DEL_WORKFLOW_STATE_ENV_KEY: 'bool'
+}
 
 
 def _try_set_env(env_configs: dict, config_key: str, env_key: str, value):
     if value is not None:
-        try:
-            env_configs[config_key] = float(value)
-        except (ValueError, TypeError):
-            logger.warning(f"value of env {env_key} is not a number, use default value")
+        env_type = _ENV_CONFIG_TYPES.get(env_key, None)
+        if env_type == 'float':
+            try:
+                env_configs[config_key] = float(value)
+            except (ValueError, TypeError):
+                logger.warning(f"value of env {env_key} is not a number, use default value")
+        elif env_type == 'int':
+            try:
+                env_configs[config_key] = int(value)
+            except (ValueError, TypeError):
+                logger.warning(f"value of env {env_key} is not a integer number, use default value")
+        elif env_type == 'bool':
+            env_value = value.lower()
+            if env_value not in ['true', 'false']:
+                logger.warning(f"value of env {env_key} is not a boolean value, use default value")
+            else:
+                env_configs[config_key] = env_value == 'true'
+        else:
+            env_configs[config_key] = value
 
 
 def _load_env_configs() -> dict:
@@ -97,7 +124,8 @@ class Config(ABC):
             WORKFLOW_EXECUTE_TIMEOUT: 60,
             WORKFLOW_STREAM_FRAME_TIMEOUT: -1,
             WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT: -1,
-            LOOP_NUMBER_MAX_LIMIT_KEY: LOOP_NUMBER_MAX_LIMIT_DEFAULT
+            LOOP_NUMBER_MAX_LIMIT_KEY: LOOP_NUMBER_MAX_LIMIT_DEFAULT,
+            FORCE_DEL_WORKFLOW_STATE_KEY: False
         }
 
         builtin_configs.update(_load_env_configs())

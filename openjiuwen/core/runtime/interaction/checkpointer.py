@@ -4,6 +4,9 @@
 
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.runtime.constants import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.runtime.interaction.agent_storage import AgentStorage
 from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
@@ -22,11 +25,19 @@ class InMemoryCheckpointer(Checkpointer):
         self._session_to_workflow_ids = {}
 
     async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
-        self._workflow_stores.setdefault(runtime.session_id(), WorkflowStorage())
+        workflow_store = self._workflow_stores.setdefault(runtime.session_id(), WorkflowStorage())
         self._session_to_workflow_ids.setdefault(runtime.session_id(), set())
         if isinstance(inputs, InteractiveInput):
-            workflow_store = self._workflow_stores.get(runtime.session_id())
             workflow_store.recover(runtime, inputs)
+        else:
+            if not workflow_store.exists(runtime):
+                return
+            if runtime.config().get_env(FORCE_DEL_WORKFLOW_STATE_KEY, False):
+                await self._graph_store.delete(runtime.session_id(), runtime.workflow_id())
+                workflow_store.clear(runtime.workflow_id())
+            else:
+                raise JiuWenBaseException(StatusCode.WORKFLOW_STATE_EXISTS_ERROR.code,
+                                          StatusCode.WORKFLOW_STATE_EXISTS_ERROR.errmsg)
 
     async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
         workflow_store = self._workflow_stores.get(runtime.session_id())

@@ -65,7 +65,6 @@ class ExampleOptimizer(BaseOptimizer):
                 )
             )
         self._num_examples = num_examples
-        self._model_config: dict = model_config.model_info.model_dump(exclude={'model_name'}, exclude_none=True)
 
     def _backward(self,
                   evaluated_cases: List[EvaluatedCase],
@@ -181,7 +180,7 @@ class ExampleOptimizer(BaseOptimizer):
         ).to_messages()
 
         try:
-            response = self._model.invoke(self._model_name, messages, **self._model_config).content
+            response = self._model.invoke(self._model_name, messages).content
             selected_examples = self._extract_selected_examples_from_response(response, pre_selected_examples)
             if len(selected_examples) < self._num_examples:
                 selected_examples = self._fill_missing_example(

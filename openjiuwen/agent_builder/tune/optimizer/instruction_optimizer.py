@@ -182,7 +182,6 @@ class InstructionOptimizer(BaseOptimizer):
             api_base=model_config.model_info.api_base
         )
         self._model_name = model_config.model_info.model_name
-        self._model_config: dict = model_config.model_info.model_dump(exclude={'model_name'}, exclude_none=True)
 
     def _backward(self,
                  evaluated_cases: List[EvaluatedCase],
@@ -254,7 +253,7 @@ class InstructionOptimizer(BaseOptimizer):
                  tools_description=str(tools),
                  )
         ).to_messages()
-        textual_gradient = self._model.invoke(self._model_name, messages, **self._model_config).content
+        textual_gradient = self._model.invoke(self._model_name, messages).content
         return textual_gradient
 
     def _optimize_instruction(self,
@@ -269,7 +268,7 @@ class InstructionOptimizer(BaseOptimizer):
                  tools_description=str(tools) if tools else "None"
                  )
         ).to_messages()
-        response = self._model.invoke(self._model_name, messages, **self._model_config).content
+        response = self._model.invoke(self._model_name, messages).content
         return self._extract_optimized_prompt_from_response(response, tag="PROMPT_OPTIMIZED")
 
     def _optimize_both_instruction(self,
@@ -286,7 +285,7 @@ class InstructionOptimizer(BaseOptimizer):
                  tools_description=str(tools) if tools else "None"
                  )
         ).to_messages()
-        response = self._model.invoke(self._model_name, messages, **self._model_config).content
+        response = self._model.invoke(self._model_name, messages).content
         system_prompt = self._extract_optimized_prompt_from_response(response, tag="SYSTEM_PROMPT_OPTIMIZED")
         user_prompt = self._extract_optimized_prompt_from_response(response, tag="USER_PROMPT_OPTIMIZED")
         return system_prompt, user_prompt
@@ -359,7 +358,7 @@ class InstructionOptimizer(BaseOptimizer):
                  missing_placeholders=str(missing_placeholders)
                  )
         ).to_messages()
-        restored_prompt = self._model.invoke(self._model_name, messages, **self._model_config).content
+        restored_prompt = self._model.invoke(self._model_name, messages).content
         restored_placeholders = Assembler(restored_prompt).input_keys
         missing_placeholders = self._find_missing_placeholders(all_placeholders, restored_placeholders)
         if missing_placeholders:

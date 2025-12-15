@@ -128,6 +128,7 @@ class DefaultEvaluator(BaseEvaluator):
         self._metric_template = LLM_METRIC_TEMPLATE.format(
             dict(user_metrics=metric)
         )
+        self._model_config: dict = model_config.model_info.model_dump(exclude={'model_name'}, exclude_none=True)
 
     def evaluate(self,
                  case: Case,
@@ -142,7 +143,7 @@ class DefaultEvaluator(BaseEvaluator):
         ).to_messages()
         evaluated_case = EvaluatedCase(case=case, answer=predict)
         try:
-            response = self._model.invoke(self._model_name, messages).content
+            response = self._model.invoke(self._model_name, messages, **self._model_config).content
         except Exception:
             evaluated_case.reason = "Failed to evaluate case due to model error"
             return evaluated_case
@@ -171,7 +172,7 @@ class DefaultEvaluator(BaseEvaluator):
             ),
         ).to_messages()
         try:
-            response = self._model.invoke(self._model_name, messages).content
+            response = self._model.invoke(self._model_name, messages, **self._model_config).content
         except Exception:
             return None
         return TuneUtils.parse_json_from_llm_response(response)

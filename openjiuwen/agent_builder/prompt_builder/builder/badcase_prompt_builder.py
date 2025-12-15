@@ -28,7 +28,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
               ) -> Optional[str]:
         prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_bad_case_template(prompt, cases)
-        response = self._model.invoke(self._model_name, messages)
+        response = self._model.invoke(self._model_name, messages, **self._model_config)
         return response.content
 
     def stream_build(self,
@@ -37,7 +37,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
                      ) -> Optional[str]:
         prompt = TEMPLATE.get_string_prompt(prompt)
         messages = self._format_bad_case_template(prompt, cases)
-        chunks = self._model.stream(self._model_name, messages)
+        chunks = self._model.stream(self._model_name, messages, **self._model_config)
         for chunk in chunks:
             yield chunk.content
 
@@ -63,7 +63,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
                  bad_cases=bad_case_string
                  )
         ).to_messages()
-        response = self._model.invoke(self._model_name, messages)
+        response = self._model.invoke(self._model_name, messages, **self._model_config)
         feedback_summary = self._parse_feedback_summary(response)
         return feedback_summary
 

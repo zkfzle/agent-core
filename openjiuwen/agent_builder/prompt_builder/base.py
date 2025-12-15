@@ -18,6 +18,7 @@ class BasePromptBuilder(ABC):
             api_key=model_config.model_info.api_key
         )
         self._model_name: str = model_config.model_info.model_name
+        self._model_config: dict = model_config.model_info.model_dump(exclude={'model_name'}, exclude_none=True)
 
     @abstractmethod
     def build(self,

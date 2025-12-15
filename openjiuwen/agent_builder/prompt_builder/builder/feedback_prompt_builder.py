@@ -37,7 +37,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
         prompt = TEMPLATE.get_string_prompt(prompt)
         self._is_valid_prompt(prompt, feedback)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)
-        response = self._model.invoke(self._model_name, messages)
+        response = self._model.invoke(self._model_name, messages, **self._model_config)
         if response is None:
             return None
         return response.content
@@ -52,7 +52,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
         prompt = TEMPLATE.get_string_prompt(prompt)
         self._is_valid_prompt(prompt, feedback)
         messages = self._format_feedback_template(prompt, feedback, mode, start_pos, end_pos)
-        chunks = self._model.stream(self._model_name, messages)
+        chunks = self._model.stream(self._model_name, messages, **self._model_config)
         for chunk in chunks:
             yield chunk.content
 
@@ -135,7 +135,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                  feedbacks=feedback
                  )
         ).to_messages()
-        feedback_message = self._model.invoke(self._model_name, messages)
+        feedback_message = self._model.invoke(self._model_name, messages, **self._model_config)
         try:
             intent, optimized_feedback = self._extract_intent_from_respones(feedback_message.content)
         except JiuWenBaseException:

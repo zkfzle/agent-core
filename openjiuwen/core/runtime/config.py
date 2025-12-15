@@ -52,16 +52,26 @@ def _try_set_env(env_configs: dict, config_key: str, env_key: str, value):
             except (ValueError, TypeError):
                 logger.warning(f"value of env {env_key} is not a number, use default value")
         elif env_type == 'int':
-            try:
-                env_configs[config_key] = int(value)
-            except (ValueError, TypeError):
+            if isinstance(value, int):
+                env_configs[config_key] = value
+            elif isinstance(value, str):
+                try:
+                    env_configs[config_key] = int(value)
+                except ValueError:
+                    logger.warning(f"value of env {env_key} is not a integer number, use default value")
+            else:
                 logger.warning(f"value of env {env_key} is not a integer number, use default value")
         elif env_type == 'bool':
-            env_value = value.lower()
-            if env_value not in ['true', 'false']:
-                logger.warning(f"value of env {env_key} is not a boolean value, use default value")
+            if isinstance(value, bool):
+                env_configs[config_key] = value
+            elif isinstance(value, str):
+                env_value = value.lower()
+                if env_value not in ['true', 'false']:
+                    logger.warning(f"value of env {env_key} is not a boolean value, use default value")
+                else:
+                    env_configs[config_key] = env_value == 'true'
             else:
-                env_configs[config_key] = env_value == 'true'
+                logger.warning(f"value of env {env_key} is not a boolean value, use default value")
         else:
             env_configs[config_key] = value
 

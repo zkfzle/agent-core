@@ -904,6 +904,12 @@ class ControllerAgent(BaseAgent):
             agent_runtime = runtime
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
+            
+            # Sync agent's tools to external runtime
+            # When external runtime is provided, agent's tools need to be registered
+            if self._tools:
+                tools_to_add = [(tool.name, tool) for tool in self._tools]
+                agent_runtime.add_tools(tools_to_add)
 
         # Store final result for send_to_agent
         final_result_holder = {"result": None}

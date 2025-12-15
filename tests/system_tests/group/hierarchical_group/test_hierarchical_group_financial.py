@@ -12,6 +12,7 @@ HierarchicalGroup 金融场景测试 - 使用 HierarchicalMainController + Workf
 import os
 import unittest
 import asyncio
+from unittest.mock import patch, AsyncMock
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
@@ -37,7 +38,6 @@ from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-
 
 # 模型配置
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -266,18 +266,21 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         return flow
 
-    def _create_llm_agent(self, agent_id: str, description: str):
+    def _create_llm_agent(self, agent_id: str, description: str, with_tools: bool = False):
         """创建 LLM Agent
 
         Args:
             agent_id: Agent ID
             description: Agent 描述
+            with_tools: 是否添加工具
 
         Returns:
             LLMAgent 实例
         """
         from openjiuwen.agent.llm_agent.llm_agent import LLMAgent
         from openjiuwen.agent.config.react_config import ReActAgentConfig
+        from openjiuwen.core.utils.tool.function.function import LocalFunction
+        from openjiuwen.core.utils.tool.param import Param
 
         model_config = self._create_model_config()
         prompt_template = [
@@ -292,7 +295,22 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             prompt_template=prompt_template,
         )
 
-        return LLMAgent(config)
+        agent = LLMAgent(config)
+
+        # 可选：添加工具
+        if with_tools:
+            multiply_tool = LocalFunction(
+                name="multiply",
+                description="将两个数字相乘",
+                params=[
+                    Param(name="a", description="第一个数", type="number", required=True),
+                    Param(name="b", description="第二个数", type="number", required=True),
+                ],
+                func=lambda a, b: a * b
+            )
+            agent.add_tools([multiply_tool])
+
+        return agent
 
     def _create_react_agent(self, agent_id: str, description: str):
         """创建 ReAct Agent
@@ -953,23 +971,243 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         #     {'output': {'data': {'location': '杭州', 'date': '明日', 'weather': '晴', 'temperature': '25度'}}}
         # )
 
-        # 6-3、 与第3个agent进行交互（翻倍运算）
-        # message3 = Message.create_user_message(
-        #     content="对3进行翻倍运算并模板输出",
-        #     conversation_id=conversation_id
-        # )
-        # result = await group.invoke(message3)
-        # print(f"agent group result: {result}")
-
-        # 6-4、与第4个agent进行交互（求和运算）
-        message4 = Message.create_user_message(
-            content="进行翻倍运算：对3+5进行求和",
+        # 6-3、 与第3个agent进行交互（翻倍运算 - LLM Agent）
+        message3 = Message.create_user_message(
+            content="帮我把数字5翻倍，然后用模板格式输出结果",
             conversation_id=conversation_id
         )
-        result = await group.invoke(message4)
-        print(f"agent group result: {result}")
+        result3 = await group.invoke(message3)
+        print(f"LLM Agent (翻倍运算) result: {result3}")
+
+        # 6-4、与第4个agent进行交互（求和运算 - React Agent）
+        message4 = Message.create_user_message(
+            content="请计算 3 加 5 的和是多少",
+            conversation_id=conversation_id
+        )
+        result4 = await group.invoke(message4)
+        print(f"React Agent (求和运算) result: {result4}")
 
         print("\n[PASS] HierarchicalMainController 意图识别测试完成！")
+
+    @unittest.skip("skip system test - requires network")
+    @patch(
+        "openjiuwen.agent_group.hierarchical_group.agents.main_controller."
+        "HierarchicalMainController._detect_intent"
+    )
+    async def test_hierarchical_with_react_agent_only(self, mock_detect_intent):
+        """
+        测试 HierarchicalGroup 中只有 React Agent 的场景
+
+        测试流程：
+        1. 创建 HierarchicalGroup，只添加一个 React Agent
+        2. Mock 意图识别直接返回 React Agent 的 ID
+        3. 验证 React Agent 被正确调用并返回结果
+        """
+        print("\n=== 测试 HierarchicalGroup + React Agent Only ===")
+
+        conversation_id = "test_hierarchical_react_agent_only"
+
+        # 1. 创建 React Agent
+        sum_agent = self._create_react_agent(
+            agent_id="sum_agent",
+            description="两数求和运算"
+        )
+
+        # 2. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="react_only_group",
+            leader_agent_id="main_controller"
+        )
+        group = HierarchicalGroup(config)
+
+        # 3. 创建 Leader Agent
+        main_config = AgentConfig(
+            id="main_controller",
+            description="组合型agent group",
+            model=self._create_model_config()
+        )
+        main_controller = HierarchicalMainController()
+        leader_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 4. 添加 Agents 到 Group
+        group.add_agent("main_controller", leader_agent)
+        group.add_agent("sum_agent", sum_agent)
+
+        # 5. Mock 意图识别直接返回 sum_agent
+        mock_detect_intent.return_value = "sum_agent"
+
+        # 6. 发送消息
+        message = Message.create_user_message(
+            content="请计算 3 加 5 的和是多少",
+            conversation_id=conversation_id
+        )
+
+        print(f"发送消息：{message.content.get_query()}")
+        print("Mock 意图识别返回：sum_agent")
+
+        result = await asyncio.wait_for(
+            group.invoke(message),
+            timeout=60.0
+        )
+        print(f"React Agent result: {result}")
+
+        # 7. 验证结果
+        self.assertIsNotNone(result, "应该返回结果")
+        self.assertIsInstance(result, dict, "结果应该是字典类型")
+
+        print("\n[PASS] HierarchicalGroup + React Agent Only 测试完成！")
+
+    @unittest.skip("skip system test - requires network")
+    @patch(
+        "openjiuwen.agent_group.hierarchical_group.agents.main_controller."
+        "HierarchicalMainController._detect_intent"
+    )
+    async def test_hierarchical_with_llm_agent_only(self, mock_detect_intent):
+        """
+        测试 HierarchicalGroup 中只有 LLM Agent 的场景
+
+        测试流程：
+        1. 创建 HierarchicalGroup，只添加一个 LLM Agent
+        2. Mock 意图识别直接返回 LLM Agent 的 ID
+        3. 验证 LLM Agent 被正确调用并返回结果
+        """
+        print("\n=== 测试 HierarchicalGroup + LLM Agent Only ===")
+
+        conversation_id = "test_hierarchical_llm_agent_only"
+
+        # 1. 创建 LLM Agent
+        double_agent = self._create_llm_agent(
+            agent_id="double_agent",
+            description="进行翻倍运算并模板输出"
+        )
+
+        # 2. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="llm_only_group",
+            leader_agent_id="main_controller"
+        )
+        group = HierarchicalGroup(config)
+
+        # 3. 创建 Leader Agent
+        main_config = AgentConfig(
+            id="main_controller",
+            description="组合型agent group",
+            model=self._create_model_config()
+        )
+        main_controller = HierarchicalMainController()
+        leader_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 4. 添加 Agents 到 Group
+        group.add_agent("main_controller", leader_agent)
+        group.add_agent("double_agent", double_agent)
+
+        # 5. Mock 意图识别直接返回 double_agent
+        mock_detect_intent.return_value = "double_agent"
+
+        # 6. 发送消息
+        message = Message.create_user_message(
+            content="帮我把数字 5 翻倍",
+            conversation_id=conversation_id
+        )
+
+        print(f"发送消息：{message.content.get_query()}")
+        print("Mock 意图识别返回：double_agent")
+
+        result = await asyncio.wait_for(
+            group.invoke(message),
+            timeout=60.0
+        )
+        print(f"LLM Agent result: {result}")
+
+        # 7. 验证结果
+        self.assertIsNotNone(result, "应该返回结果")
+        self.assertIsInstance(result, dict, "结果应该是字典类型")
+
+        # 验证返回了 answer 类型的结果
+        if "result_type" in result:
+            self.assertEqual(
+                result.get("result_type"), "answer",
+                "应该返回 answer 类型的结果"
+            )
+
+        print("\n[PASS] HierarchicalGroup + LLM Agent Only 测试完成！")
+
+    @unittest.skip("skip system test - requires network")
+    @patch(
+        "openjiuwen.agent_group.hierarchical_group.agents.main_controller."
+        "HierarchicalMainController._detect_intent"
+    )
+    async def test_hierarchical_with_llm_agent_with_tools(self, mock_detect_intent):
+        """
+        测试 HierarchicalGroup 中 LLM Agent 使用工具的场景
+
+        测试流程：
+        1. 创建带工具的 LLM Agent
+        2. Mock 意图识别直接返回 LLM Agent 的 ID
+        3. 验证 LLM Agent 能够正确使用工具
+        """
+        print("\n=== 测试 HierarchicalGroup + LLM Agent with Tools ===")
+
+        conversation_id = "test_hierarchical_llm_agent_with_tools"
+
+        # 1. 创建带工具的 LLM Agent
+        calc_agent = self._create_llm_agent(
+            agent_id="calc_agent",
+            description="数学计算助手",
+            with_tools=True  # 添加工具
+        )
+
+        # 2. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="llm_tools_group",
+            leader_agent_id="main_controller"
+        )
+        group = HierarchicalGroup(config)
+
+        # 3. 创建 Leader Agent
+        main_config = AgentConfig(
+            id="main_controller",
+            description="组合型agent group",
+            model=self._create_model_config()
+        )
+        main_controller = HierarchicalMainController()
+        leader_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 4. 添加 Agents 到 Group
+        group.add_agent("main_controller", leader_agent)
+        group.add_agent("calc_agent", calc_agent)
+
+        # 5. Mock 意图识别直接返回 calc_agent
+        mock_detect_intent.return_value = "calc_agent"
+
+        # 6. 发送消息
+        message = Message.create_user_message(
+            content="计算 5 乘以 3",
+            conversation_id=conversation_id
+        )
+
+        print(f"发送消息：{message.content.get_query()}")
+        print("Mock 意图识别返回：calc_agent")
+        print("期望：LLM Agent 能够正确加载并使用 multiply 工具")
+
+        result = await asyncio.wait_for(
+            group.invoke(message),
+            timeout=60.0
+        )
+        print(f"LLM Agent with Tools result: {result}")
+
+        # 7. 验证结果
+        self.assertIsNotNone(result, "应该返回结果")
+        self.assertIsInstance(result, dict, "结果应该是字典类型")
+
+        # 验证返回了 answer 类型的结果
+        if "result_type" in result:
+            self.assertEqual(
+                result.get("result_type"), "answer",
+                "应该返回 answer 类型的结果"
+            )
+
+        print("\n[PASS] HierarchicalGroup + LLM Agent with Tools 测试完成！")
 
     @unittest.skip("require network")
     async def test_financial_workflow_with_interrupt_invoke_interactive_input(self):

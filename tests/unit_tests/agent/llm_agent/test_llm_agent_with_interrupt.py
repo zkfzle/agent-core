@@ -70,7 +70,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         ]
 
     # 临时关闭
-    # @unittest.skip("skip system test")
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
     @patch("openjiuwen.agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")

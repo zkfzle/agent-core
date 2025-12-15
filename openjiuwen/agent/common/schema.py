@@ -21,6 +21,7 @@ class PluginSchema(BaseModel):
     name: str = Field(default="")
     description: str = Field(default="")
     inputs: Dict[str, Any] = Field(default_factory=dict)
+    plugin_id: str = Field(default="")
 
 
 class McpSchema(BaseModel):

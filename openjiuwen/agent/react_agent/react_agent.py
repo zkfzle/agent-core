@@ -219,31 +219,65 @@ class ReActAgent(BaseAgent):
 
     async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
         """Stream call - minimal version
+        
+        Note:
+            When external runtime is provided, data is written to it but not read
+            from stream_iterator (to avoid nested read deadlock). External caller
+            reads stream data from runtime.
         """
         # Prepare runtime
         session_id = inputs.get("conversation_id", "default_session")
-        runtime_created = False
         if runtime is None:
             # Use BaseAgent's _runtime, need to create task runtime
-            runtime = await self._runtime.pre_run(session_id=session_id, inputs=inputs)
-            runtime_created = True
+            agent_runtime = await self._runtime.pre_run(
+                session_id=session_id, inputs=inputs
+            )
+            need_cleanup = True
+            own_stream = True  # Owns stream lifecycle
+        else:
+            agent_runtime = runtime
+            need_cleanup = False
+            own_stream = False  # External owns stream lifecycle
+            
+            # Sync agent's tools to external runtime
+            # When external runtime is provided, agent's tools need to be registered
+            if hasattr(self, '_tools') and self._tools:
+                tools_to_add = [(tool.name, tool) for tool in self._tools]
+                agent_runtime.add_tools(tools_to_add)
+
+        # Store final result for send_to_agent
+        final_result_holder = {"result": None}
 
         async def stream_process():
             try:
-                final_result = await self.invoke(inputs, runtime)
-                await runtime.write_stream(OutputSchema(type="answer", index=0,
-                                                        payload={"output": final_result, "result_type": "answer"}))
+                final_result = await self.invoke(inputs, agent_runtime)
+                final_result_holder["result"] = final_result
+                await agent_runtime.write_stream(OutputSchema(
+                    type="answer",
+                    index=0,
+                    payload={"output": final_result, "result_type": "answer"}
+                ))
             except Exception as e:
                 logger.error(f"ReActAgent stream error: {e}")
             finally:
                 # Cleanup runtime (if we created it)
-                if runtime_created:
-                    await runtime.post_run()
+                if need_cleanup:
+                    await agent_runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        async for result in runtime.stream_iterator():
-            yield result
+
+        if own_stream:
+            # Read from stream_iterator only when owning stream
+            # External caller reads if external runtime provided
+            async for result in agent_runtime.stream_iterator():
+                yield result
+
         await task
+
+        # When own_stream=False, yield final result to send_to_agent
+        # so send_to_agent can get agent's actual return value
+        if not own_stream and final_result_holder["result"] is not None:
+            yield final_result_holder["result"]
 
 
 # ===== Factory Functions =====

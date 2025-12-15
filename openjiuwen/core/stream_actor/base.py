@@ -150,7 +150,7 @@ class StreamProcessor:
                     break
                 yield message
                 if stream_callable:
-                    await stream_callable({r_path: message})
+                    await stream_callable({k_path: message})
                 queue.task_done()
 
         return generator()

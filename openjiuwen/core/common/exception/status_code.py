@@ -133,6 +133,7 @@ class StatusCode(Enum):
     CONTROLLER_HANDLE_USER_INPUT_ERROR = (123002, "ReAct Agent failed to handle user input, the reason is {error_msg}")
     CONTROLLER_RUNTIME_ERROR = (123003, "Controller runtime error, the reason is {error_msg}")
     CONTROLLER_SEND_STREAM_FAILED = (123004, "Controller failed to send stream, the reason is {error_msg}")
+    CONTROLLER_PARSE_TOOL_CALL_ERROR = (123005, "Controller failed to parse tool call, the reason is {error_msg}")
 
     # Multi-Agent Orchestration 130000 - 139999
     # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999

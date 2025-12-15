@@ -10,6 +10,7 @@ from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
@@ -86,12 +87,27 @@ class MessageHandlerUtils:
                 if workflow.name == tool_name:
                     task_type = TaskType.WORKFLOW
                     target_id = f"{workflow.id}_{workflow.version}"
+                    arguments = {}
+                    try:
+                        arguments = JsonUtils.safe_json_loads(tool_call.arguments)
+                    except Exception as e:
+                        if UserConfig.is_sensitive():
+                            logger.error("LLM Agent parse tool call workflow's arguments error")
+                            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
+                                                           "LLM output workflow's arguments error", e)
+                        else:
+                            logger.error(f"LLM Agent parse tool call workflow({tool_name})'s arguments error: "
+                                         f"{tool_call.arguments}")
+                            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
+                                                           f"LLM output workflow({tool_name})'s arguments error: "
+                                                           f"{tool_call.arguments}", e)
+
                     result.append(Task(
                         task_id=tool_call.id,
                         input=TaskInput(
                             target_id=target_id,
                             target_name=tool_name,
-                            arguments=JsonUtils.safe_json_loads(tool_call.arguments)
+                            arguments=arguments
                         ),
                         task_type=task_type
                     ))
@@ -99,11 +115,25 @@ class MessageHandlerUtils:
             for plugin in config.plugins:
                 if plugin.name == tool_name:
                     task_type = TaskType.PLUGIN
+                    arguments = {}
+                    try:
+                        arguments = JsonUtils.safe_json_loads(tool_call.arguments)
+                    except Exception as e:
+                        if UserConfig.is_sensitive():
+                            logger.error("LLM Agent parse tool call plugin's arguments error")
+                            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
+                                                           "LLM output plugin's arguments error", e)
+                        else:
+                            logger.error(f"LLM Agent parse tool call plugin({tool_name})'s arguments error: "
+                                         f"{tool_call.arguments}")
+                            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
+                                                           f"LLM output plugin({tool_name})'s arguments error: "
+                                                           f"{tool_call.arguments}", e)
                     result.append(Task(
                         task_id=tool_call.id,
                         input=TaskInput(
                             target_name=tool_name,
-                            arguments=JsonUtils.safe_json_loads(tool_call.arguments)
+                            arguments=arguments
                         ),
                         task_type=task_type
                     ))

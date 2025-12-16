@@ -50,8 +50,8 @@ class ToolMgr(AbstractManager[Tool]):
     def add_tools(self, tools: List[Tuple[str, Union[Tool, ToolProvider]]]):
         if not tools:
             return
-        for id, tool in tools:
-            self.add_tool(id, tool)
+        for tool_id, tool in tools:
+            self.add_tool(tool_id, tool)
 
     def _get_all_tool_ids(self, name: str):
         yield name
@@ -90,6 +90,7 @@ class ToolMgr(AbstractManager[Tool]):
             raise
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "get")
+            return None
 
     def remove_tool(self, tool_id: str) -> Optional[Tool]:
         if tool_id is None:
@@ -101,6 +102,7 @@ class ToolMgr(AbstractManager[Tool]):
             return tool
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "remove")
+            return None
 
     def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None) \
             -> Optional[List[Union[ToolInfo, McpToolInfo]]]:

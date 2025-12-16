@@ -28,8 +28,8 @@ class PromptMgr:
     def add_prompts(self, templates: List[Tuple[str, Template]]) -> None:
         if templates is None:
             return
-        for id, template in templates:
-            self.add_prompt(id, template)
+        for template_id, template in templates:
+            self.add_prompt(template_id, template)
 
     def remove_prompt(self, template_id: str) -> Optional[Template]:
         return self._repo.pop(template_id, None)

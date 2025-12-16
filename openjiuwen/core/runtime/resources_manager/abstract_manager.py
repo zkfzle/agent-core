@@ -33,7 +33,7 @@ class AbstractManager(Generic[T]):
     
     def _handle_exception(self, exception: Exception, error_code: StatusCode, operation: str) -> None:
         if isinstance(exception, JiuWenBaseException):
-            raise
+            raise exception
         
         raise JiuWenBaseException(
             error_code.code,
@@ -78,6 +78,7 @@ class AbstractManager(Generic[T]):
             raise
         except Exception as e:
             self._handle_exception(e, get_error_code, "get")
+            return None
     
     def _remove_resource(self, resource_id: str, 
                         remove_error_code: StatusCode) -> Optional[T]:
@@ -87,3 +88,4 @@ class AbstractManager(Generic[T]):
             return resource
         except Exception as e:
             self._handle_exception(e, remove_error_code, "remove")
+            return None

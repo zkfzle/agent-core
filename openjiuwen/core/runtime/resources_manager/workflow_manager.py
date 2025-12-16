@@ -89,6 +89,7 @@ class WorkflowMgr(AbstractManager[Workflow]):
             return workflow
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED, "remove")
+            return None
 
     def get_tool_infos(self, workflow_ids: List[str] = None):
         try:

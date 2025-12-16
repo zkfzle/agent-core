@@ -9,7 +9,7 @@ from openjiuwen.core.common.logging import logger
 
 
 def trigger_event(func):
-    func._is_trigger_event = True
+    func.is_trigger_event = True
     return func
 
 
@@ -28,11 +28,12 @@ class BaseHandler:
         pass
 
     def get_trigger_events(self):
-        return [
-            name for name in dir(self)
-            if callable(getattr(self, name)) and
-               getattr(getattr(self, name), "_is_trigger_event", False)
-        ]
+        trigger_events = []
+        for name in dir(self):
+            attr = getattr(self, name)
+            if callable(attr) and getattr(attr, "is_trigger_event", False):
+                trigger_events.append(name)
+        return trigger_events
 
 
 class CallbackManager:

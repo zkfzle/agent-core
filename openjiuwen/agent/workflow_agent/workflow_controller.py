@@ -758,20 +758,20 @@ class WorkflowController(IntentDetectionController):
         if not interrupted_tasks:
             return None
 
-        # Get node_id from InteractiveInput
+        # Get node_ids from InteractiveInput
         node_ids = list(interactive_input.user_inputs.keys())
         if not node_ids:
             return None
 
-        target_node_id = node_ids[0]
         logger.info(
-            f"_find_interrupted_task_by_node_id: looking for node_id={target_node_id}"
+            f"_find_interrupted_task_by_node_id: looking for node_ids={node_ids}"
         )
 
         # Search through interrupted tasks to find matching component_id
+        # Support multiple node_ids (parallel interruptions)
         for workflow_key, task_info in interrupted_tasks.items():
             component_id = task_info.get("component_id")
-            if component_id == target_node_id:
+            if component_id in node_ids:
                 logger.info(
                     f"_find_interrupted_task_by_node_id: "
                     f"found match workflow_key={workflow_key}"

@@ -38,6 +38,11 @@ from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.component.base import WorkflowComponent
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.executable import Output, Input
+from openjiuwen.core.runtime.base import ComponentExecutable
+from openjiuwen.core.runtime.runtime import Runtime
 
 # 模型配置
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -1339,6 +1344,363 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 步骤2成功：转账工作流完成，返回: {response_content}")
 
         print("\n🎉 金融场景测试完成！")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_hierarchical_group_014(self):
+        """
+        # @CaseID: test_hierarchical_group_014
+        # @Description: HierarchicalGroup添加 workflowAgent(相同超步提问器/中断组件) llmAgent ReactAgent
+        #               使用InteractiveInput恢复，通过主agent调度workflowAgent
+        # @Precondition: 部署jiuwen开源项目环境
+        # @Step:
+        # 1、创建1个WorkflowAgent(相同超步提问器/中断组件)、 llmAgent 、ReactAgent
+        # 2、创建 HierarchicalGroup
+        # 3、将3个Agent、1个leader_agent加入group
+        # 4、Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput恢复，通过主agent调度workflowAgent
+        # @Result:
+        # agent group创建成功，会话请求正常
+        # @Date:
+        # @Status: New
+        # @ModifyRecord: None
+        # !!================================================================
+        """
+        print("\n=== 测试 test_hierarchical_group_014 ===")
+
+        conversation_id = "test_hierarchical_group_014"
+
+        # 1、创建 workflow - 银行存取钱业务（包含两个中断组件）
+        cash_access_flow = self._build_cash_access_workflow(
+            workflow_id="cash_access_flow",
+            workflow_name="银行存取钱",
+            workflow_desc="处理用户在各类银行（如民生银行、工商银行、建设银行等）进行存钱、取钱操作的业务流程"
+        )
+
+        # 2、创建 workflow - 支付密码（包含中断组件）
+        cipher_flow = self._build_cipher_workflow(
+            workflow_id="cipher_flow",
+            workflow_name="支付密码",
+            workflow_desc="处理用户设置或修改支付密码的业务流程"
+        )
+
+        # 3、创建 WorkflowAgent（包含多个workflow）
+        bank_agent = self._create_workflow_agent_multi(
+            agent_id="bank_agent",
+            description="银行业务助手，处理各类银行（如民生银行、工商银行、建设银行等）的存取款、支付密码设置等金融服务",
+            workflows=[cipher_flow, cash_access_flow]
+        )
+
+        # 4、创建 LLM Agent
+        double_template_agent = self._create_llm_agent(
+            agent_id="double_template_agent",
+            description="数学翻倍运算助手，帮助用户将数字翻倍（乘以2）并格式化输出结果"
+        )
+
+        # 5、创建 React Agent
+        sum_agent = self._create_react_agent(
+            agent_id="sum_agent",
+            description="数学求和助手，帮助用户计算两个数字的和、加法运算"
+        )
+
+        # 6. 创建 HierarchicalGroup
+        config = HierarchicalGroupConfig(
+            group_id="financial_group",
+            leader_agent_id="main_controller"
+        )
+        group = HierarchicalGroup(config)
+
+        # 7. 创建 Leader Agent
+        main_config = AgentConfig(
+            id="main_controller",
+            description="组合型agent group",
+            model=self._create_model_config()
+        )
+        main_controller = HierarchicalMainController()
+        leader_agent = ControllerAgent(main_config, controller=main_controller)
+
+        # 8. 添加所有 Agents 到 Group
+        group.add_agent("main_controller", leader_agent)
+        group.add_agent("double_template_agent", double_template_agent)
+        group.add_agent("bank_agent", bank_agent)
+        group.add_agent("sum_agent", sum_agent)
+
+        # 9、与bank_agent下面的cash_access_flow进行交互
+        print("\n【步骤1】发送银行存取钱请求，触发并行中断")
+        message1 = Message.create_user_message(content="我想在民生银行存取款", conversation_id=conversation_id)
+        chunks1 = []
+        stream1 = await Runner.run_agent_group_streaming(group, message1)
+        async for chunk in stream1:
+            chunks1.append(chunk)
+            print(f"agent group message1 chunk: {chunk}")
+
+        # 收集所有中断
+        interaction_chunks = []
+        for chunk in chunks1:
+            if chunk.type == '__interaction__':
+                interaction_chunks.append(chunk)
+                print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+        
+        self.assertEqual(len(interaction_chunks), 2, "应该同时返回2个中断（interactive和questioner）")
+
+        # 10、使用InteractiveInput同时恢复所有中断
+        print("\n【步骤2】使用InteractiveInput同时恢复所有中断")
+        user_input = InteractiveInput()
+        
+        # 根据中断提示内容智能填充恢复数据
+        for chunk in interaction_chunks:
+            interaction_id = chunk.payload.id
+            interaction_value = str(chunk.payload.value)
+            
+            # 根据提示内容判断应该填充什么数据
+            if "跳转" in interaction_value or "确认" in interaction_value or "手机银行" in interaction_value:
+                user_input.update(interaction_id, "是，确认跳转手机银行操作界面")
+                print(f"  填充中断 [{interaction_id}]: 是，确认跳转手机银行操作界面")
+            elif "存钱" in interaction_value or "取钱" in interaction_value or "金额" in interaction_value:
+                # 提供完整信息：银行+操作+金额
+                user_input.update(interaction_id, "在民生银行存钱5000元")
+                print(f"  填充中断 [{interaction_id}]: 在民生银行存钱5000元")
+            else:
+                # 默认策略：根据ID名称判断
+                if "interactive" in interaction_id:
+                    user_input.update(interaction_id, "是，确认跳转手机银行操作界面")
+                    print(f"  填充中断 [{interaction_id}]: 是，确认跳转手机银行操作界面")
+                elif "questioner" in interaction_id:
+                    user_input.update(interaction_id, "在民生银行存钱5000元")
+                    print(f"  填充中断 [{interaction_id}]: 在民生银行存钱5000元")
+
+        message2 = Message.create_user_message(content=user_input, conversation_id=conversation_id)
+        chunks2 = []
+        stream2 = await Runner.run_agent_group_streaming(group, message2)
+        async for chunk in stream2:
+            chunks2.append(chunk)
+            print(f"agent group message2 chunk: {chunk}")
+
+        # 验证workflow完成
+        final_chunk = None
+        for chunk in chunks2:
+            if chunk.type == 'workflow_final':
+                final_chunk = chunk
+                break
+
+        self.assertIsNotNone(final_chunk, "应该有 workflow_final 输出")
+        
+        # 验证最终结果包含预期的数据
+        final_payload = final_chunk.payload
+        print(f"✅ 步骤2成功：workflow 成功完成，结果: {final_payload}")
+        
+        # 验证结果包含关键信息
+        if isinstance(final_payload, dict):
+            response_str = final_payload.get('responseContent', str(final_payload))
+        else:
+            response_str = str(final_payload)
+        
+        self.assertIn("5000", response_str, "结果应包含金额5000")
+        self.assertIn("存钱", response_str, "结果应包含操作类型：存钱")
+        self.assertIn("确认跳转手机银行操作界面", response_str, "结果应包含确认信息")
+        
+        print("\n🎉 test_hierarchical_group_014 测试完成！")
+        print("   ✓ 成功创建包含多个workflow的WorkflowAgent")
+        print("   ✓ 成功创建LLMAgent和ReactAgent")
+        print("   ✓ 成功创建HierarchicalGroup并添加所有agents")
+        print("   ✓ 使用Runner.run_agent_group_streaming进行流式交互")
+        print("   ✓ 第一次调用返回2个并行中断（同一个超步）")
+        print("   ✓ 使用InteractiveInput同时恢复多个中断组件")
+        print("   ✓ 验证：通过HierarchicalGroup时，InteractiveInput能跳过意图识别直接恢复")
+        print("   ✓ 验证：通过WorkflowAgent时，InteractiveInput的数据能正确传给对应node id")
+
+    def _build_cash_access_workflow(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            workflow_desc: str
+    ) -> Workflow:
+        """
+        构建银行存取钱工作流（包含interactive确认和questioner提问两个中断组件）
+        注意：interactive和questioner在同一个超步（并行执行）
+
+        Args:
+            workflow_id: 工作流ID
+            workflow_name: 工作流名称
+            workflow_desc: 工作流描述
+
+        Returns:
+            Workflow: 包含并行中断的工作流
+                     start -> interactive \
+                              questioner  -> end
+        """
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=workflow_name,
+                id=workflow_id,
+                version="1.0",
+                description=workflow_desc,
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+
+        # 创建组件
+        start = self._create_start_component()
+
+        # 创建interactive确认组件
+        interactive = InteractiveConfirmComponent("interactive")
+
+        # 创建questioner提问组件
+        key_fields = [
+            FieldInfo(field_name="bank", description="银行名称", required=True),
+            FieldInfo(field_name="action", description="操作类型（存钱/取钱）", required=True),
+            FieldInfo(field_name="amount", description="金额（数字）", required=True),
+        ]
+        model_config = self._create_model_config()
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="请您提供明确用户操作：存钱 还是 取钱, 具体金额相关的信息",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=False,
+        )
+        questioner = QuestionerComponent(questioner_config)
+
+        # End 组件
+        end = End({"responseTemplate": "银行操作完成: bank={{bank}}, "
+                                       "action={{action}}, amount={{amount}}, confirm={{confirm_result}}"})
+
+        # 注册组件
+        flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
+        flow.add_workflow_comp(
+            "interactive", interactive, inputs_schema={"query": "${start.query}"}
+        )
+        flow.add_workflow_comp(
+            "questioner", questioner, inputs_schema={"query": "${start.query}"}
+        )
+        flow.set_end_comp(
+            "end", end,
+            inputs_schema={
+                "bank": "${questioner.bank}",
+                "action": "${questioner.action}",
+                "amount": "${questioner.amount}",
+                "confirm_result": "${interactive.confirm_result}"
+            }
+        )
+
+        # 连接拓扑: start -> [interactive, questioner] -> end (并行，同一个超步)
+        # 使用列表语法让start同时触发两个节点，end等待所有节点完成
+        flow.add_connection("start", "interactive")
+        flow.add_connection("start", "questioner")
+        # 使用列表语法创建barrier，让end等待interactive和questioner都完成
+        flow.add_connection(["interactive", "questioner"], "end")
+
+        return flow
+
+    def _build_cipher_workflow(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            workflow_desc: str
+    ) -> Workflow:
+        """
+        构建支付密码工作流（包含两次interactive中断）
+
+        Args:
+            workflow_id: 工作流ID
+            workflow_name: 工作流名称
+            workflow_desc: 工作流描述
+
+        Returns:
+            Workflow: 包含 start -> interactive1 -> interactive2 -> end 的工作流
+        """
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=workflow_name,
+                id=workflow_id,
+                version="1.0",
+                description=workflow_desc,
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+
+        # 创建组件
+        start = self._create_start_component()
+
+        # 创建两个interactive组件
+        interactive1 = InteractivePasswordComponent("interactive1", "请输入支付密码")
+        interactive2 = InteractivePasswordComponent("interactive2", "再次输入支付密码")
+
+        # End 组件
+        end = End({"responseTemplate": "支付密码设置完成: password1={{password1}}, password2={{password2}}"})
+
+        # 注册组件
+        flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
+        flow.add_workflow_comp(
+            "interactive1", interactive1, inputs_schema={"query": "${start.query}"}
+        )
+        flow.add_workflow_comp(
+            "interactive2", interactive2, inputs_schema={"password1": "${interactive1.password}"}
+        )
+        flow.set_end_comp(
+            "end", end,
+            inputs_schema={
+                "password1": "${interactive1.password}",
+                "password2": "${interactive2.password}"
+            }
+        )
+
+        # 连接拓扑: start -> interactive1 -> interactive2 -> end
+        flow.add_connection("start", "interactive1")
+        flow.add_connection("interactive1", "interactive2")
+        flow.add_connection("interactive2", "end")
+
+        return flow
+
+    def _create_workflow_agent_multi(
+            self,
+            agent_id: str,
+            description: str,
+            workflows: list
+    ) -> WorkflowAgent:
+        """创建包含多个Workflow的WorkflowAgent"""
+        config = WorkflowAgentConfig(
+            id=agent_id,
+            version="1.0",
+            description=description,
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows(workflows)
+        return agent
+
+
+# ============ 自定义Interactive组件 ============
+
+
+class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
+    """
+    交互确认组件 - 用于用户确认操作
+    """
+
+    def __init__(self, comp_id: str):
+        super().__init__()
+        self.comp_id = comp_id
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        # 请求用户确认
+        confirm = await runtime.interact("是否跳转手机银行操作界面")
+        return {"confirm_result": confirm}
+
+
+class InteractivePasswordComponent(ComponentExecutable, WorkflowComponent):
+    """
+    交互密码输入组件
+    """
+
+    def __init__(self, comp_id: str, prompt: str):
+        super().__init__()
+        self.comp_id = comp_id
+        self.prompt = prompt
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        # 请求用户输入密码
+        password = await runtime.interact(self.prompt)
+        return {"password": password}
 
 
 if __name__ == "__main__":

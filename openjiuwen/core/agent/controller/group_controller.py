@@ -258,12 +258,18 @@ class BaseGroupController(ABC):
             )
             return None
 
+        # Preserve InteractiveInput object if present, otherwise extract string
+        # This ensures InteractiveInput can be passed through the agent chain without loss
+        if (hasattr(message.content, 'interactive_input') 
+            and message.content.interactive_input is not None):
+            query_value = message.content.interactive_input
+        else:
+            query_value = message.content.get_query()
+        
         inputs = {
-            "message": message,
-            "content": message.content.get_query(),
-            "query": message.content.get_query(),
+            "query": query_value,
             "conversation_id": message.context.conversation_id,
-            "metadata": message.metadata
+            "user_id": message.source.user_id
         }
         
         logger.info(

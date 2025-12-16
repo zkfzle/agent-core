@@ -151,13 +151,35 @@ class HierarchicalMainController(BaseController):
         """Process message: intent detection -> interruption check -> dispatch
         
         Logic:
-        1. Always detect intent first
-        2. If intent matches an interrupted agent, resume it
-        3. If intent points to a different agent, route to that agent
+        1. If message content is InteractiveInput, skip intent detection and resume last interrupted agent
+        2. Otherwise, detect intent first
+        3. If intent matches an interrupted agent, resume it
+        4. If intent points to a different agent, route to that agent
         """
         self._ensure_reasoner_initialized(runtime)
         
-        # Always detect intent first
+        # Check if message content is InteractiveInput
+        is_interactive_input = (
+            hasattr(message.content, 'interactive_input') 
+            and message.content.interactive_input is not None
+        )
+        
+        if is_interactive_input:
+            # Skip intent detection for InteractiveInput, directly resume last interrupted agent
+            target_id = self._get_last_interrupted_agent(runtime)
+            if target_id:
+                logger.info(
+                    f"HierarchicalMainController: InteractiveInput detected, "
+                    f"resume last interrupted agent -> {target_id}"
+                )
+                return await self._dispatch(target_id, message, runtime)
+            else:
+                logger.warning(
+                    "HierarchicalMainController: InteractiveInput detected but no "
+                    "interrupted agent found, falling back to intent detection"
+                )
+        
+        # Normal flow: detect intent first
         target_id = await self._detect_intent(message)
         logger.info(f"HierarchicalMainController: Intent -> {target_id}")
         

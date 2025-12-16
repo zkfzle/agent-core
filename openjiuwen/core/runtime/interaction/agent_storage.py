@@ -20,7 +20,8 @@ class AgentStorage(Storage):
     def save(self, runtime: BaseRuntime):
         agent_id = runtime.agent_id()
         state = runtime.state().get_state()
-        if state_blob := self.serde.dumps_typed(state):
+        state_blob = self.serde.dumps_typed(state)
+        if state_blob:
             self.state_blobs[agent_id] = state_blob
 
     def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):

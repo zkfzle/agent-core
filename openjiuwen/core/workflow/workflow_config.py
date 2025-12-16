@@ -16,13 +16,13 @@ class ComponentAbility(Enum):
     COLLECT = ("collect", "stream in, batch out")
     TRANSFORM = ("transform", "stream in, stream out")
 
-    def __init__(self, name: str, desc: str):
-        self._name = name
+    def __init__(self, _ability_name: str, desc: str):
+        self._ability_name = _ability_name
         self._desc = desc
 
     @property
-    def name(self) -> str:
-        return self._name
+    def ability_name(self):
+        return self._ability_name
 
     @property
     def desc(self) -> str:

@@ -16,3 +16,6 @@ class AgentGroup:
 
     def get_topic(self):
         pass
+
+    def get_subscription(self):
+        return self._subscription

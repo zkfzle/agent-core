@@ -26,17 +26,19 @@ class WorkflowStorage(Storage):
     def save(self, runtime: BaseRuntime):
         workflow_id = runtime.workflow_id()
         state = runtime.state().get_state()
-        if state_blob := self.serde.dumps_typed(state):
+        state_blob = self.serde.dumps_typed(state)
+        if state_blob:
             self.state_blobs[workflow_id] = state_blob
 
         updates = runtime.state().get_updates()
-        if updates_blob := self.serde.dumps_typed(updates):
+        updates_blob = self.serde.dumps_typed(updates)
+        if updates_blob:
             self.state_updates_blobs[workflow_id] = updates_blob
 
     def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):
         workflow_id = runtime.workflow_id()
-        if (state_blob := self.state_blobs.get(workflow_id)) and \
-                state_blob[0] != "empty":
+        state_blob = self.state_blobs.get(workflow_id)
+        if state_blob and state_blob[0] != "empty":
             state = self.serde.loads_typed(state_blob)
             runtime.state().set_state(state)
 
@@ -53,7 +55,8 @@ class WorkflowStorage(Storage):
                     node_runtime.state().update({INTERACTIVE_INPUT: [value]})
             runtime.state().commit()
 
-        if state_updates_blob := self.state_updates_blobs.get(workflow_id):
+        state_updates_blob = self.state_updates_blobs.get(workflow_id)
+        if state_updates_blob:
             state_updates = self.serde.loads_typed(state_updates_blob)
             runtime.state().set_updates(state_updates)
 

@@ -99,7 +99,8 @@ class BaseWorkFlow:
     def config(self):
         return self._workflow_config
 
-    def _validate_comp_id(self, comp_id: str) -> None:
+    @classmethod
+    def _validate_comp_id(cls, comp_id: str) -> None:
         """validate compnent id"""
         if len(comp_id) > 100:
             raise JiuWenBaseException(-1, "workflow component id length must not exceed 100")
@@ -664,7 +665,7 @@ class Workflow(BaseWorkFlow):
         if isinstance(runtime, WorkflowRuntime):
             runtime.set_workflow_id(self._workflow_config.metadata.id)
             if context:
-                runtime._context = context
+                runtime.set_context(context)
         self._auto_complete_abilities()
         mq_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=False, runtime=runtime)
         runtime.set_actor_manager(mq_manager)

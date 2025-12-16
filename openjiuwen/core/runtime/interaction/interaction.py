@@ -32,7 +32,8 @@ class WorkflowInteraction(BaseInteraction):
         super().__init__(runtime, workflow_interactive_input)
 
     async def wait_user_inputs(self, value: Any) -> Any:
-        if (res := self._get_next_interactive_input()) is not None:
+        res = self._get_next_interactive_input()
+        if res is not None:
             return res
         self._runtime.state().commit_cmp()
         payload = InteractionOutput(id=self._node_id, value=value)
@@ -43,7 +44,8 @@ class WorkflowInteraction(BaseInteraction):
             value=OutputSchema(type=INTERACTION, index=self._idx, payload=payload)),))
 
     async def user_latest_input(self, value: Any) -> Any:
-        if res := self._latest_interactive_inputs:
+        if self._latest_interactive_inputs:
+            res = self._latest_interactive_inputs
             self._latest_interactive_inputs = None
             return res
         if self._runtime.stream_writer_manager:

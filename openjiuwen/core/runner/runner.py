@@ -87,7 +87,7 @@ class Runner:
         if agent_group and hasattr(agent_group, 'get_topic') and callable(agent_group.get_topic):
             topic = agent_group.get_topic()
             if topic is not None and hasattr(agent_group, '_subscription'):
-                await self._message_queue.unsubscribe(topic, agent_group._subscription)
+                await self._message_queue.unsubscribe(topic, agent_group.get_subscription)
         return agent_group
 
     def add_agent(self, agent_id, agent: Union[Agent, AgentProvider]):
@@ -223,10 +223,12 @@ class Runner:
                 return True
         return False
 
-    def _is_called_by_agent(self, runtime: Runtime) -> bool:
+    @classmethod
+    def _is_called_by_agent(cls, runtime: Runtime) -> bool:
         return runtime and isinstance(runtime, TaskRuntime)
 
-    def _create_workflow_runtime(self, runtime):
+    @classmethod
+    def _create_workflow_runtime(cls, runtime):
         # Convert workflow runtime
         if not runtime:
             workflow_runtime = WorkflowRuntime()

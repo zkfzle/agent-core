@@ -16,10 +16,12 @@ from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowS
 
 
 class StreamTransform:
-    def get_by_defined_transformer(self, origin_message: dict, transformer: Transformer) -> dict:
+    @classmethod
+    def get_by_defined_transformer(cls, origin_message: dict, transformer: Transformer) -> dict:
         return transformer(origin_message)
 
-    def get_by_default_transformer(self, origin_message: dict, stream_inputs_schema: dict) -> dict:
+    @classmethod
+    def get_by_default_transformer(cls, origin_message: dict, stream_inputs_schema: dict) -> dict:
         return get_by_schema(stream_inputs_schema, origin_message)
 
 
@@ -37,7 +39,7 @@ class ActorManager:
             for producer_id in producer_ids:
                 for ability in workflow_spec.comp_configs[producer_id].abilities:
                     if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]:
-                        sources.add(f"{producer_id}-{ability.name}")
+                        sources.add(f"{producer_id}-{ability.ability_name}")
 
             self._streams[consumer_id] = StreamActor(consumer_id, graph.get_node(consumer_id),
                                                      consumer_stream_ability, list(sources),

@@ -9,12 +9,19 @@ from openjiuwen.core.runtime.utils import create_wrapper_class
 from openjiuwen.core.tracer.data import InvokeType
 
 
+def _should_decorate(obj, runtime):
+    return (obj and
+            runtime and
+            runtime.tracer() and
+            hasattr(runtime, "span"))
+
+
 def decorate_model_with_trace(model, agent_runtime):
-    if not model or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
+    if not _should_decorate(model, agent_runtime):
         return model
     wrapped_model = create_wrapper_class(model, "WrappedModel")
     try:
-        model_name = model._config.model.model_info.model_name
+        model_name = model.config.model.model_info.model_name
     except Exception:
         model_name = type(model).__name__
     instance_info = {"class_name": model_name, "type": "llm"}
@@ -29,12 +36,12 @@ def decorate_model_with_trace(model, agent_runtime):
                      index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.astream = MethodType(
         async_trace_stream(wrapped_model.astream, agent_runtime, InvokeType.LLM, instance_info, index=2,
-                     inputs_field_name="messages"), wrapped_model)
+                           inputs_field_name="messages"), wrapped_model)
     return wrapped_model
 
 
 def decorate_tool_with_trace(tool, agent_runtime):
-    if not tool or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
+    if not _should_decorate(tool, agent_runtime):
         return tool
     wrapped_tool = create_wrapper_class(tool, "WrappedTool")
     instance_info = {"class_name": tool.name if hasattr(tool, "name") else type(tool).__name__, "type": "tool"}
@@ -46,7 +53,7 @@ def decorate_tool_with_trace(tool, agent_runtime):
 
 
 def decorate_workflow_with_trace(workflow, agent_runtime):
-    if not workflow or not agent_runtime or not agent_runtime.tracer() or not hasattr(agent_runtime, "span"):
+    if not _should_decorate(workflow, agent_runtime):
         return workflow
     wrapped_workflow = create_wrapper_class(workflow, "WrappedWorkflow")
     metadata = wrapped_workflow.config().metadata if wrapped_workflow and wrapped_workflow.config() else {}
@@ -74,7 +81,7 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1,
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                 inputs={"inputs": args[index] if args and len(args) > index
-                                    else kwargs.get(inputs_field_name, {})},
+                                else kwargs.get(inputs_field_name, {})},
                                 instance_info=instance_info)
 
             args = args[1:]
@@ -100,7 +107,7 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info,
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                  inputs={"inputs": args[index] if args and len(args) > index
-                                    else kwargs.get(inputs_field_name, {})},
+                                 else kwargs.get(inputs_field_name, {})},
                                  instance_info=instance_info)
 
             args = args[1:]
@@ -126,7 +133,7 @@ def trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                 inputs={"inputs": args[index] if args and len(args) > index
-                                    else kwargs.get(inputs_field_name, {})},
+                                else kwargs.get(inputs_field_name, {})},
                                 instance_info=instance_info)
             args = args[1:]
             result = func(*args, **kwargs)
@@ -157,7 +164,7 @@ def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                  inputs={"inputs": args[index] if args and len(args) > index
-                                    else kwargs.get(inputs_field_name, {})},
+                                 else kwargs.get(inputs_field_name, {})},
                                  instance_info=instance_info)
             args = args[1:]
             result = func(*args, **kwargs)

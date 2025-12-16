@@ -50,6 +50,9 @@ class WorkflowRuntime(BaseRuntime):
     def set_tracer(self, tracer: Tracer) -> None:
         self._tracer = tracer
 
+    def set_context(self, context: Context) -> None:
+        self._context = context
+
     def set_actor_manager(self, queue_manager: ActorManager):
         if self._actor_manager is not None:
             return

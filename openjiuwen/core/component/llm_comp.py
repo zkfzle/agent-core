@@ -371,6 +371,10 @@ class LLMExecutable(ComponentExecutable):
         self._runtime = None
         self._context = None
 
+    @property
+    def config(self) -> LLMCompConfig:
+        return self._config
+
     @staticmethod
     def _validate_template_content(template_content):
         if len(template_content) >= 1:

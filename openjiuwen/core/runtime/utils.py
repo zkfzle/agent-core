@@ -204,8 +204,7 @@ def root_to_path(nested_path: str, source: dict, create_if_absent: bool = False)
     if len(paths) == 0:
         return (nested_path, source)
     current = source
-    for i in range(len(paths)):
-        path = paths[i]
+    for i, path in enumerate(paths):
         is_last = (i == len(paths) - 1)
         if isinstance(path, str):
             if isinstance(current, dict):

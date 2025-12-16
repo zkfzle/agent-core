@@ -60,7 +60,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                               event: asyncio.Event = None) -> bool:
         try:
             if event is not None:
-                logger.debug(f"node {self._node_id} with ability {ability.name} set event")
+                logger.debug(f"node {self._node_id} with ability {ability.ability_name} set event")
                 event.set()
 
             # Simplified strategy pattern using lambda functions wrapping async execution
@@ -104,7 +104,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             if strategy:
                 await strategy()
             else:
-                logger.error(f"error ComponentAbility: {ability.name}")
+                logger.error(f"error ComponentAbility: {ability.ability_name}")
             return True
         except GraphInterrupt:
             raise
@@ -114,12 +114,12 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             else:
                 raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
                                           StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
-                                                                                           ability=ability.name,
+                                                                                           ability=ability.ability_name,
                                                                                            error=e.message))
         except Exception as e:
             raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
                                       StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
-                                                                                       ability=ability.name,
+                                                                                       ability=ability.ability_name,
                                                                                        error=e))
         finally:
             if event and not event.is_set():
@@ -167,7 +167,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             results = output_transformer(results)
         self._runtime.state().set_outputs(results)
         await self.__trace_component_outputs__(results)
-        self.__clear_interactive__()
+        self._clear_interactive()
         return results
 
     async def _pre_stream(self, ability: ComponentAbility) -> dict:
@@ -202,7 +202,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
         else:
             await self._runtime.actor_manager().end_message(self._node_id, ability)
-        self.__clear_interactive__()
+        self._clear_interactive()
 
     async def _process_chunk(self, message,
                              is_end_node: bool,
@@ -231,7 +231,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             await self.__trace_component_stream_output__(message)
             await self._runtime.actor_manager().produce(self._node_id, message, ability, first_frame=first_frame)
 
-    def __clear_interactive__(self) -> None:
+    def _clear_interactive(self) -> None:
         if self._runtime.state().get(INTERACTIVE_INPUT):
             self._runtime.state().update({INTERACTIVE_INPUT: None})
 

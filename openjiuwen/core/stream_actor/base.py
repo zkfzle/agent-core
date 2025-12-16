@@ -94,7 +94,7 @@ class StreamActor:
     async def generator(self, ability: ComponentAbility, schema: dict,
                         stream_callback: Callable[[dict], Awaitable[None]] = None) -> dict:
         processor = self._processors[ability]
-        logger.debug(f"processor [{processor.node_id}] generate message for ability: [{ability.name}]")
+        logger.debug(f"processor [{processor.node_id}] generate message for ability: [{ability.ability_name}]")
         return processor.generator(schema, stream_callback)
 
     def _error_callback(self, error):
@@ -145,7 +145,7 @@ class StreamProcessor:
         self._timeout = stream_generator_timeout if stream_generator_timeout > 0 else None
 
     async def run(self, ability: ComponentAbility):
-        logger.info(f"stream processor started for {self.node_id}, ability: [{ability.name}]")
+        logger.info(f"stream processor started for {self.node_id}, ability: [{ability.ability_name}]")
         handle_map = set()
         source_map: dict[ComponentAbility, set[str]] = defaultdict(set)
         while True:
@@ -172,12 +172,12 @@ class StreamProcessor:
                             await queue.put(value)
             if handle_map == self.sources:
                 break
-        logger.info(f"stream processor finished for {self.node_id}, ability: [{ability.name}]")
+        logger.info(f"stream processor finished for {self.node_id}, ability: [{ability.ability_name}]")
 
     @staticmethod
     def _get_unique_source_key(payload: StreamPayload) -> str:
         source_id = _get_producer_id(payload.message)
-        ability = payload.source_ability.name
+        ability = payload.source_ability.ability_name
         return f"{source_id}-{ability}"
 
     async def receive(self, message: StreamPayload):

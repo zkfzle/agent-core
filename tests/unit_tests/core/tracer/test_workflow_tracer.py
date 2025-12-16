@@ -66,7 +66,32 @@ class Producer(ComponentExecutable, WorkflowComponent):
             yield {"output": v}
 
 
+class AnyTypeReturnNode(ComponentExecutable, WorkflowComponent):
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        return inputs.get("data")
+
+
 class TestTraceWorkflow:
+    async def test_any_type_trace(self):
+        async def inner_test(inputs):
+            workflow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test")))
+            workflow.set_start_comp("start", Start())
+            workflow.add_workflow_comp("node", AnyTypeReturnNode(), inputs_schema={"data": "${inputs}"})
+            workflow.set_end_comp("end", End(), inputs_schema={"output": "${node}"},
+                                  response_mode="streaming")
+            workflow.add_connection("start", "node")
+            workflow.add_connection("node", "end")
+            chunks = []
+            async for chunk in workflow.stream(inputs={"inputs": inputs}, runtime=WorkflowRuntime(),
+                                               stream_modes=[BaseStreamMode.TRACE]):
+                chunks.append(chunk)
+            assert chunks[-2].payload.get("streamOutputs") == [
+                {'type': 'end node stream', 'index': 0, 'payload': {'output': {'output': inputs}}}]
+
+        all_type_inputs = [[1, 2, 3], "abc", {'a': 1}, 1, 0.4, None]
+        for item in all_type_inputs:
+            await inner_test(item)
+
     async def test_stream_workflow_with_trace(self):
         workflow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test")))
         workflow.set_start_comp("start", Start())
@@ -110,7 +135,6 @@ class TestTraceWorkflow:
             payload = {k: payload.get(k) for k in selected_keys}
             chunks.append(payload)
         assert chunks == expect_chunks
-
 
     async def test_seq_exec_stream_workflow_with_tracer(self):
         """

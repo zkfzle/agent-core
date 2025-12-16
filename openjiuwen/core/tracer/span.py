@@ -4,7 +4,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Optional, Dict, List, Callable
+from typing import Optional, Dict, List, Callable, Union
 from pydantic import ConfigDict, Field, BaseModel
 
 
@@ -13,7 +13,7 @@ class Span(BaseModel):
     start_time: Optional[datetime] = Field(default=None, alias="startTime")
     end_time: Optional[datetime] = Field(default=None, alias="endTime")
     inputs: Optional[dict] = Field(default=None, alias="inputs")
-    outputs: Optional[dict] = Field(default=None, alias="outputs")
+    outputs: Optional[Union[dict, float, int, list, str, tuple]] = Field(default=None, alias="outputs")
     error: Optional[dict] = Field(default=None, alias="error")
     invoke_id: Optional[str] = Field(default=None, alias="invokeId")
     parent_invoke_id: Optional[str] = Field(default=None, alias="parentInvokeId")

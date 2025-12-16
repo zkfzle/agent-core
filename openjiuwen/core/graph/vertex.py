@@ -201,6 +201,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             await self._runtime.actor_manager().sub_workflow_stream().send(StreamEmitter.END_FRAME)
         else:
             await self._runtime.actor_manager().end_message(self._node_id, ability)
+        self.__clear_interactive__()
 
     async def _process_chunk(self, message,
                              is_end_node: bool,

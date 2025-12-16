@@ -8,7 +8,7 @@ from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage
-from openjiuwen.core.utils.tool.schema import ToolInfo
+from openjiuwen.core.utils.tool.schema import ToolInfo, Parameters
 from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 
@@ -121,7 +121,8 @@ class BaseModelClient:
         if all(isinstance(item, Dict) for item in tools):
             return tools
         else:
-            return [self._convert_tool_info_to_dict(tool) for tool in tools]
+            return [self._convert_tool_info_to_dict(self.convert_to_tool_info(
+                self._convert_tool_info_to_dict(tool))) for tool in tools]
 
     @staticmethod
     def clean_tools(tools):
@@ -154,6 +155,36 @@ class BaseModelClient:
                 "parameters": tool.parameters.model_dump() if tool.parameters else {}
             }
         }
+
+    # switch ToolInfo
+    @staticmethod
+    def convert_to_tool_info(tool_dict):
+        """convert_to_tool_info"""
+        func = tool_dict.get('function', {})
+
+        params_dict = func.get('parameters', {})
+        parameters = None
+        if params_dict:
+            properties = params_dict.get('properties', {})
+            cleaned_properties = {}
+            for key, value in properties.items():
+                cleaned_value = {k: v for k, v in value.items() if k != 'required'}
+                cleaned_properties[key] = cleaned_value
+
+            parameters = Parameters(
+                type=params_dict.get('type', 'object'),
+                properties=cleaned_properties,
+                required=params_dict.get('required', [])
+            )
+
+        tool_info = ToolInfo(
+            type=tool_dict.get('type', 'function'),
+            name=func.get('name', ''),
+            description=func.get('description', ''),
+            parameters=parameters
+        )
+
+        return tool_info
 
     @staticmethod
     def _convert_messages_format(messages: Union[List[BaseMessage], List[Dict], str]):

@@ -762,6 +762,7 @@ class WorkflowController(IntentDetectionController):
 
         if state_key in interrupted_tasks:
             del interrupted_tasks[state_key]
+            runtime.update_state({"workflow_controller": None})  # clear state first
             runtime.update_state({"workflow_controller": state})
             logger.info(f"Cleared interrupted state for workflow: {workflow_id}, state_key: {state_key}")
 

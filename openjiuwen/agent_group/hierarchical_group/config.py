@@ -4,9 +4,10 @@
 """Hierarchical Group Configuration"""
 
 from dataclasses import dataclass
-from typing import Optional
 
 from openjiuwen.core.agent_group.config import AgentGroupConfig
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 @dataclass
@@ -27,8 +28,11 @@ class HierarchicalGroupConfig(AgentGroupConfig):
     def __post_init__(self):
         """Validate configuration"""
         if not self.leader_agent_id:
-            raise ValueError(
-                "leader_agent_id is required for HierarchicalGroupConfig"
+            raise JiuWenBaseException(
+                StatusCode.AGENT_GROUP_CREATE_FAILED.code,
+                StatusCode.AGENT_GROUP_CREATE_FAILED.errmsg.format(
+                    reason="leader_agent_id is required for HierarchicalGroupConfig"
+                )
             )
 
 

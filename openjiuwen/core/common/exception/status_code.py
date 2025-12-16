@@ -141,6 +141,8 @@ class StatusCode(Enum):
     # Multi-Agent Orchestration - Single Runtime 131000 - 131999
     # Multi-Agent Orchestration - AgentGroup 132000 - 132999
     AGENT_GROUP_ADD_FAILED = (132000, "failed to add agent, reason: {reason}")
+    AGENT_GROUP_CREATE_FAILED = (132001, "failed to create agent group, reason: {reason}")
+    AGENT_GROUP_EXECUTION_ERROR = (132002, "failed to execute agent group, reason: {reason}")
 
     # Multi-Agent Orchestration - Multi-Agent Debug 133000 - 133999
     # Multi-Agent Orchestration - Distribution Runtime 134000 - 134999

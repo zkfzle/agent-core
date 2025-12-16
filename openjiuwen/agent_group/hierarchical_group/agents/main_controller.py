@@ -13,6 +13,8 @@ from openjiuwen.core.agent.controller.reasoner.intent_detection import IntentDet
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class HierarchicalMainController(BaseController):
@@ -183,7 +185,12 @@ class HierarchicalMainController(BaseController):
                     f"fallback to {fallback}"
                 )
                 return fallback
-            raise RuntimeError("HierarchicalMainController: No agents available")
+            raise JiuWenBaseException(
+                StatusCode.AGENT_GROUP_EXECUTION_ERROR.code,
+                StatusCode.AGENT_GROUP_EXECUTION_ERROR.errmsg.format(
+                    reason="HierarchicalMainController: No agents available"
+                )
+            )
         
         try:
             tasks = await self.reasoner.use_intent_detection(message)

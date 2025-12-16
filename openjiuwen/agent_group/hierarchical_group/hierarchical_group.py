@@ -3,12 +3,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Hierarchical Group - Leader-Worker pattern implementation"""
 
-from typing import Optional
-
 from openjiuwen.core.agent_group.agent_group import ControllerGroup
 from openjiuwen.agent_group.hierarchical_group.config import HierarchicalGroupConfig
 from openjiuwen.agent_group.hierarchical_group.hierarchical_group_controller import HierarchicalGroupController
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class HierarchicalGroup(ControllerGroup):
@@ -56,9 +56,12 @@ class HierarchicalGroup(ControllerGroup):
             ValueError: If leader_agent_id not provided in config
         """
         if not isinstance(config, HierarchicalGroupConfig):
-            raise TypeError(
-                f"HierarchicalGroup requires HierarchicalGroupConfig, "
-                f"got {type(config)}"
+            raise JiuWenBaseException(
+                StatusCode.AGENT_GROUP_CREATE_FAILED.code,
+                StatusCode.AGENT_GROUP_CREATE_FAILED.errmsg.format(
+                    reason=f"HierarchicalGroup requires HierarchicalGroupConfig, "
+                           f"got {type(config)}"
+                )
             )
         
         # Create HierarchicalGroupController with leader_agent_id

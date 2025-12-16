@@ -403,5 +403,8 @@ class DefaultGroupController(BaseGroupController):
                 f"DefaultGroupController: Broadcasting message with "
                 f"message_type={message.message_type}"
             )
-            return await self.publish(message, runtime)
+            results = await self.publish(message, runtime)
+            # Return single result for single subscriber
+            # Return list for multiple subscribers (explicit broadcast)
+            return results[0] if len(results) == 1 else results
 

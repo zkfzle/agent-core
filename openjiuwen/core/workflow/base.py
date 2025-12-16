@@ -157,7 +157,7 @@ class BaseWorkFlow:
             abilities=comp_ability if comp_ability is not None else [])
 
         for ability in node_spec.abilities:
-            if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM, ComponentAbility.COLLECT]:
+            if ability in [ComponentAbility.TRANSFORM, ComponentAbility.COLLECT]:
                 if wait_for_all is None:
                     wait_for_all = True
                 if not wait_for_all:
@@ -458,9 +458,9 @@ class Workflow(BaseWorkFlow):
                 comp_ability.append(ComponentAbility.TRANSFORM)
                 if isinstance(component, End):
                     component.set_mix()
+                wait_for_all = True
             if not comp_ability:
                 comp_ability = [ComponentAbility.STREAM]
-            wait_for_all = True
         else:
             comp_ability = [ComponentAbility.INVOKE]
             if stream_inputs_schema is not None:

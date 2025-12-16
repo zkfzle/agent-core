@@ -192,13 +192,13 @@ class LLMAgent(ControllerAgent):
                     await agent_runtime.post_run()
 
         task = asyncio.create_task(stream_process())
-        result_for_memory = ""
+        result_for_memory_list = []
 
         if own_stream:
             # Only read from stream_iterator when owning stream
             # If external runtime passed, external caller handles reading
             async for result in agent_runtime.stream_iterator():
-                result_for_memory += _extract_answer_output(result)
+                result_for_memory_list.append(_extract_answer_output(result))
                 yield result
 
         await task
@@ -215,6 +215,7 @@ class LLMAgent(ControllerAgent):
 
         if self._enable_memory:
             # Async write AI result message memory
+            result_for_memory = ''.join(result_for_memory_list[:-1])
             agent_memory_task = asyncio.create_task(self._write_messages_to_memory(inputs, result_for_memory))
             agent_memory_task.set_name("stream_add_memory_task")
             agent_memory_task.add_done_callback(_memory_log_task_exception)
@@ -241,11 +242,6 @@ class LLMAgent(ControllerAgent):
         if not user_id or not self._memory_engine:
             return
         message_list = []
-        # Add AI response message if exist
-        if result is not None:
-            assistant_message = _convert_response_to_message(result)
-            if assistant_message is not None and assistant_message.content != "":
-                message_list.append(assistant_message)
         # Add user message
         if not isinstance(inputs, dict):
             logger.warning(f"Unexpected inputs in write_messages_to_memory: {inputs}")
@@ -255,6 +251,11 @@ class LLMAgent(ControllerAgent):
             user_message = HumanMessage(content=query)
             if user_message and user_message.content != "":
                 message_list.append(user_message)
+        # Add AI response message if exist
+        if result is not None:
+            assistant_message = _convert_response_to_message(result)
+            if assistant_message is not None and assistant_message.content != "":
+                message_list.append(assistant_message)
 
         try:
             await self._memory_engine.add_conversation_messages(

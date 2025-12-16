@@ -88,8 +88,8 @@ class LogManager:
                 from openjiuwen.extensions.common.log.default_impl import DefaultLogger
 
                 cls._default_logger_class = DefaultLogger
-            except ImportError:
-                raise RuntimeError("No default logger class set and cannot import DefaultLogger from extensions")
+            except ImportError as e:
+                raise RuntimeError("No default logger class set and cannot import DefaultLogger from extensions") from e
         return cls._default_logger_class
 
     @classmethod

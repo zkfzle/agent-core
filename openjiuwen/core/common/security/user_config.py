@@ -69,7 +69,7 @@ class UserConfig:
     @classmethod
     def get_sensitive_paths(cls) -> list:
         """get sensitive paths"""
-        return cls.get_config()._get_sensitive_paths()
+        return cls.get_config().get_sensitive_paths_list()
 
     @classmethod
     def set_is_sensitive(cls, is_sensitive: bool = True):
@@ -85,14 +85,15 @@ class UserConfig:
         root = Path.cwd()
         try:
             path.relative_to(root)
-        except ValueError:
+        except ValueError as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.USER_CONFIG_LOAD_ERROR.code,
-                message=StatusCode.USER_CONFIG_LOAD_ERROR.errmsg.format(error_msg="Config file must inside root."))
+                message=StatusCode.USER_CONFIG_LOAD_ERROR.errmsg.format(error_msg="Config file must inside root."),
+            ) from e
 
         return path
 
-    def _get_sensitive_paths(self) -> list:
+    def get_sensitive_paths_list(self) -> list:
         if self._sensitive_paths is None:
             try:
                 sensitive_paths_str = self._cfg.get("settings", "sensitive_paths", fallback="")

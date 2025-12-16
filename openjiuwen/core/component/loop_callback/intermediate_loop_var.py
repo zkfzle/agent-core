@@ -15,10 +15,10 @@ class IntermediateLoopVarCallback(LoopCallback):
         self.intermediate_loop_var_root = intermediate_loop_var_root
 
     def first_in_loop(self, runtime: BaseRuntime) -> Output:
-        vars = runtime.state().get_inputs(self.intermediate_loop_var)
+        local_vars = runtime.state().get_inputs(self.intermediate_loop_var)
         if self.intermediate_loop_var_root:
-            vars = {self.intermediate_loop_var_root: vars}
-        return vars
+            local_vars = {self.intermediate_loop_var_root: local_vars}
+        return local_vars
 
     def out_loop(self, runtime: BaseRuntime) -> Output:
         return None

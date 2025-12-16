@@ -107,27 +107,24 @@ class ExpressionCondition(Condition):
 
             return result
         except SyntaxError as e:
-            raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(
-                                          expression="<expression>",
-                                          error_msg=str(e)
-                                      ))
+            raise JiuWenBaseException(
+                StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.code,
+                StatusCode.EXPRESSION_CONDITION_SYNTAX_ERROR.errmsg.format(expression="<expression>", error_msg=str(e)),
+            ) from e
         except NameError as e:
             # Handle undefined variable cases
-            raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                          expression="<expression>",
-                                          error_msg=str(e)
-                                      ))
+            raise JiuWenBaseException(
+                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(expression="<expression>", error_msg=str(e)),
+            ) from e
         except JiuWenBaseException as e:
             # Re-raise existing JiuWenBaseException
             raise e
         except Exception as e:
-            raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                      StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                          expression="<expression>",
-                                          error_msg=str(e)
-                                      ))
+            raise JiuWenBaseException(
+                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+                StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(expression="<expression>", error_msg=str(e)),
+            ) from e
 
 
 def convert_condition(condition, inputs):
@@ -500,16 +497,18 @@ def _evaluate_attribute(node: ast.Attribute, runtime: dict) -> Any:
     try:
         # First try attribute access (for objects)
         return getattr(value, node.attr)
-    except AttributeError:
+    except AttributeError as e:
         # If attribute access fails and value is a dictionary, try dictionary access
         if isinstance(value, dict) and node.attr in value:
             return value[node.attr]
         # If both fail, raise an error
-        raise JiuWenBaseException(StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
-                                  StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
-                                      expression=f"${{data.{node.attr}}}",
-                                      error_msg=f"'dict' object has no attribute '{node.attr}'"
-                                  ))
+        raise JiuWenBaseException(
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.code,
+            StatusCode.EXPRESSION_CONDITION_EVAL_ERROR.errmsg.format(
+                expression=f"${{data.{node.attr}}}",
+                error_msg=f"'dict' object has no attribute '{node.attr}'",
+            ),
+        ) from e
 
 
 def _evaluate_call(node: ast.Call, runtime: dict) -> Any:

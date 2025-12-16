@@ -201,7 +201,7 @@ class TemplateProcessor:
             self._current_position = 0
         self._chunk_index = 0
 
-    async def render_stream(self, inputs: dict, timeout: float=0.2) -> AsyncGenerator:
+    async def render_stream(self, inputs: dict, timeout: float = 0.2) -> AsyncGenerator:
         self._count += 1
         try:
             async for frame in self._render_stream(inputs, timeout):

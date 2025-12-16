@@ -60,6 +60,10 @@ class UserConfig:
 
     @classmethod
     def is_sensitive(cls) -> bool:
+        result = os.getenv("IS_SENSITIVE", "true").lower() == "false"
+        if result:
+            return False
+
         return cls.get_config().is_sensitive
 
     @classmethod

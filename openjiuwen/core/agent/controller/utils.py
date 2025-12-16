@@ -25,6 +25,7 @@ from openjiuwen.core.common.utlis.hash_util import generate_key
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.workflow.base import WorkflowOutput
 
 
 class MessageHandlerUtils:
@@ -94,13 +95,13 @@ class MessageHandlerUtils:
                         if UserConfig.is_sensitive():
                             logger.error("LLM Agent parse tool call workflow's arguments error")
                             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
-                                                           "LLM output workflow's arguments error", e)
+                                                           "LLM-generated workflow arguments are invalid", e)
                         else:
                             logger.error(f"LLM Agent parse tool call workflow({tool_name})'s arguments error: "
                                          f"{tool_call.arguments}")
                             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
-                                                           f"LLM output workflow({tool_name})'s arguments error: "
-                                                           f"{tool_call.arguments}", e)
+                                                           f"LLM-generated workflow ({tool_name}) arguments "
+                                                           f"are invalid: {tool_call.arguments}", e)
 
                     result.append(Task(
                         task_id=tool_call.id,
@@ -122,13 +123,13 @@ class MessageHandlerUtils:
                         if UserConfig.is_sensitive():
                             logger.error("LLM Agent parse tool call plugin's arguments error")
                             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
-                                                           "LLM output plugin's arguments error", e)
+                                                           "LLM-generated plugin arguments are invalid", e)
                         else:
                             logger.error(f"LLM Agent parse tool call plugin({tool_name})'s arguments error: "
                                          f"{tool_call.arguments}")
                             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_PARSE_TOOL_CALL_ERROR,
-                                                           f"LLM output plugin({tool_name})'s arguments error: "
-                                                           f"{tool_call.arguments}", e)
+                                                           f"LLM-generated plugin ({tool_name}) arguments "
+                                                           f"are invalid: {tool_call.arguments}", e)
                     result.append(Task(
                         task_id=tool_call.id,
                         input=TaskInput(
@@ -155,7 +156,7 @@ class MessageHandlerUtils:
             if tool_name == plugin.name:
                 return TaskType.PLUGIN
 
-        raise JiuWenBaseException(5000, f"not find tool call type: {tool_name}")
+        raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND_ERROR.code, f"not find tool call type: {tool_name}")
 
     @staticmethod
     def is_interaction_result(exec_result: Any) -> bool:
@@ -219,7 +220,10 @@ class MessageHandlerUtils:
                 payload = tool_result.payload
                 if isinstance(payload, dict):
                     tool_result = payload.get("output", "")
-            tool_message = ToolMessage(content=str(tool_result),
+            elif isinstance(tool_result, WorkflowOutput):
+                tool_result = tool_result.result
+            content = JsonUtils.safe_json_dumps(tool_result, str(tool_result), ensure_ascii=False)
+            tool_message = ToolMessage(content=content,
                                        tool_call_id=message.context.task_id)
             agent_context.add_message(tool_message)
 

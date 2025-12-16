@@ -480,3 +480,139 @@ class TestQuestionerStream:
             workflow_result = await flow.invoke(user_feedback, workflow_runtime)
             assert workflow_result.state == WorkflowExecutionState.COMPLETED
             assert workflow_result.result.get("responseContent", "") == "杭州 | 2025-10-01"
+
+    @pytest.mark.asyncio
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.component.questioner_comp.QuestionerExecutable._init_prompt")
+    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    async def test_questioner_state_reset_on_second_workflow_invocation(
+            self, mock_get_model, mock_init_prompt, mock_llm_inputs, mock_extraction
+    ):
+        """
+        测试直接调用 Workflow 时，questioner 组件状态在第二次调用时正确重置。
+        
+        验证场景：
+        1. 第一次调用 workflow: 提问 -> 回答"张三" -> 完成
+        2. 第二次调用 workflow: 应该重新提问（而不是使用第一次的状态）-> 回答"李四" -> 完成
+        3. 验证第二次结果是"李四"，没有残留"张三"
+        
+        这个测试验证了底层 workflow runtime 和组件状态管理的正确性，
+        不依赖于 WorkflowAgent 层。
+        """
+        # Mock setup
+        mock_get_model.return_value = MockLLMModel()
+        mock_prompt_template = [
+            dict(role="system", content="系统提示词"),
+            dict(role="user", content="你是一个AI助手")
+        ]
+        mock_init_prompt.return_value = Template(name="test", content=mock_prompt_template)
+        mock_llm_inputs.return_value = mock_prompt_template
+        
+        # 第一次调用时返回空字典（触发交互），第二次调用返回 "张三"
+        mock_extraction.side_effect = [{}, {"name": "张三"}]
+        
+        # 构建 workflow: start -> questioner -> end
+        flow = Workflow()
+        
+        key_fields = [
+            FieldInfo(field_name="name", description="用户姓名", required=True),
+        ]
+        
+        start_component = Start({
+            "inputs": [
+                {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+            ]
+        })
+        
+        end_component = End({"responseTemplate": "{{name}}"})
+        
+        model_config = ModelConfig(
+            model_provider="openai",
+            model_info=BaseModelInfo(
+                api_key="sk-fake",
+                api_base="https://api.openai.com"
+            )
+        )
+        
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=False,
+        )
+        
+        questioner_comp = QuestionerComponent(questioner_config)
+        
+        # 注册组件
+        flow.set_start_comp("start", start_component, inputs_schema={"query": "${query}"})
+        flow.add_workflow_comp("questioner", questioner_comp, inputs_schema={"query": "${start.query}"})
+        flow.set_end_comp("end", end_component, inputs_schema={"name": "${questioner.name}"})
+        
+        # 连接拓扑
+        flow.add_connection("start", "questioner")
+        flow.add_connection("questioner", "end")
+        
+        # ========== 第一次调用 workflow ==========
+        session_id = "test_questioner_state_reset"
+        workflow_runtime_1 = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        
+        # 第一次调用：触发中断
+        workflow_result_1 = await flow.invoke({"query": "请收集用户信息"}, workflow_runtime_1)
+        
+        # 验证：应该触发交互
+        assert workflow_result_1.state == WorkflowExecutionState.INPUT_REQUIRED
+        component_id_1 = workflow_result_1.result[0].payload.id
+        assert component_id_1 == "questioner"
+        
+        # 第一次回答："张三"（需要创建新的 runtime）
+        workflow_runtime_1_resume = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        user_feedback_1 = InteractiveInput()
+        user_feedback_1.update(component_id_1, "张三")
+        
+        workflow_result_2 = await flow.invoke(user_feedback_1, workflow_runtime_1_resume)
+        
+        # 验证：第一次应该完成并返回 "张三"
+        assert workflow_result_2.state == WorkflowExecutionState.COMPLETED
+        response_content_1 = workflow_result_2.result.get("responseContent", "")
+        assert "张三" in response_content_1
+        print(f"[OK] 第一次调用完成，返回结果: {response_content_1}")
+        
+        # ========== 第二次调用 workflow（新的 runtime）==========
+        # 重置 mock side_effect：第三次返回空（触发交互），第四次返回 "李四"
+        mock_extraction.side_effect = [{}, {"name": "李四"}]
+        
+        # 使用新的 workflow runtime
+        workflow_runtime_2 = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        
+        # 第二次调用：应该重新触发中断（而不是使用第一次的状态）
+        workflow_result_3 = await flow.invoke({"query": "再次收集用户信息"}, workflow_runtime_2)
+        
+        # 关键验证：第二次调用应该再次触发交互（重新提问）
+        assert workflow_result_3.state == WorkflowExecutionState.INPUT_REQUIRED, \
+            "第二次调用应该重新触发 questioner 提问，而不是直接使用上次的状态"
+        component_id_2 = workflow_result_3.result[0].payload.id
+        assert component_id_2 == "questioner"
+        print(f"[OK] 第二次调用成功触发中断（重新提问）")
+        
+        # 第二次回答："李四"（需要创建新的 runtime）
+        workflow_runtime_2_resume = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        user_feedback_2 = InteractiveInput()
+        user_feedback_2.update(component_id_2, "李四")
+        
+        workflow_result_4 = await flow.invoke(user_feedback_2, workflow_runtime_2_resume)
+        
+        # 验证：第二次应该完成并返回 "李四"
+        assert workflow_result_4.state == WorkflowExecutionState.COMPLETED
+        response_content_2 = workflow_result_4.result.get("responseContent", "")
+        assert "李四" in response_content_2
+        
+        # 关键验证：第二次结果不应该包含第一次的数据
+        assert "张三" not in response_content_2, \
+            "第二次调用返回的结果不应该包含第一次的数据（张三）"
+        
+        print(f"[OK] 第二次调用完成，返回结果: {response_content_2}")
+        print("✅ 测试通过：Questioner 组件状态在第二次 workflow 调用时正确重置！")
+        print("   - 第一次调用：张三 ✓")
+        print("   - 第二次调用：李四 ✓（未残留张三）")

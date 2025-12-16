@@ -61,15 +61,15 @@ class WorkflowController(IntentDetectionController):
             ControllerAgent via setup_from_agent()
         """
         super().__init__(config, context_engine, runtime)
-        
+
         # Maintain backward compatible attribute name
         self.agent_config = config
-        
+
         # Initialize reasoner (only if config and context_engine are available)
         self.reasoner = None
         if config is not None and context_engine is not None:
             self._init_reasoner()
-    
+
     def _init_reasoner(self):
         """Initialize reasoner - can be called after setup_from_agent"""
         if self._config is not None and self._context_engine is not None:
@@ -80,7 +80,7 @@ class WorkflowController(IntentDetectionController):
             )
             # Update backward compatible reference
             self.agent_config = self._config
-    
+
     def setup_from_agent(self, agent):
         """Override to also initialize reasoner after setup"""
         super().setup_from_agent(agent)
@@ -114,6 +114,7 @@ class WorkflowController(IntentDetectionController):
             raise ValueError("No workflows configured for agent")
 
         # 0. Fast path: InteractiveInput with node_id - directly resume workflow
+        # When user provides InteractiveInput, always resume (don't return interruption again)
         interactive_input = getattr(message.content, 'interactive_input', None)
         if interactive_input is not None and interactive_input.user_inputs:
             resume_result = self._find_interrupted_task_by_node_id(
@@ -162,16 +163,37 @@ class WorkflowController(IntentDetectionController):
         )
 
         if interrupted_task:
-            # Found interrupted task for this workflow: Resume
-            logger.info(
-                f"Found interrupted task for workflow "
-                f"{detected_workflow.name}, resuming"
+            # Found interrupted task for this workflow
+            # Check if we should resume or return the interruption again
+            should_resume = self._should_resume_interrupted_task(
+                interrupted_task, message, runtime
             )
-            return Intent(
-                intent_type=IntentType.ResumeTask,
-                task=interrupted_task,
-                workflow=detected_workflow
-            )
+
+            if should_resume:
+                # Resume task execution
+                logger.info(
+                    f"Found interrupted task for workflow "
+                    f"{detected_workflow.name}, resuming"
+                )
+                return Intent(
+                    intent_type=IntentType.ResumeTask,
+                    task=interrupted_task,
+                    workflow=detected_workflow
+                )
+            else:
+                # Return the interruption again (dict type interruption)
+                logger.info(
+                    f"Found interrupted task with dict-type interruption, "
+                    f"returning interruption again for workflow {detected_workflow.name}"
+                )
+                # Use ResumeTask intent but with special metadata to indicate
+                # we should return the interruption instead of executing
+                return Intent(
+                    intent_type=IntentType.ResumeTask,
+                    task=interrupted_task,
+                    workflow=detected_workflow,
+                    metadata={"return_interruption": True}
+                )
         else:
             # No interrupted task for this workflow: Create new task
             # Note: Other workflows' interrupted states are preserved
@@ -236,7 +258,7 @@ class WorkflowController(IntentDetectionController):
                             )
                         )
                         self._clear_interrupted_state(temp_task, runtime)
-            
+
             # 2. Prepare execution (existing code)
             task.status = TaskStatus.RUNNING
 
@@ -331,7 +353,7 @@ class WorkflowController(IntentDetectionController):
             await self.task_queue.register_task(
                 conversation_id, task, workflow_task, target_id=workflow_id
             )
-            
+
             # 5. Wait for task completion (may be cancelled)
             try:
                 result = await workflow_task
@@ -361,7 +383,7 @@ class WorkflowController(IntentDetectionController):
                 # Workflow interrupted
                 logger.info(f"Workflow interrupted: {workflow_id}")
                 task.status = TaskStatus.INTERRUPTED
-                
+
                 # Extract interaction list from result
                 interaction_data = (
                     result.result if hasattr(result, 'result') else None
@@ -403,6 +425,71 @@ class WorkflowController(IntentDetectionController):
             await self.task_queue.unregister_task(conversation_id)
             raise
 
+    async def _handle_resume(
+            self,
+            message: Message,
+            intent: Intent,
+            runtime: Runtime
+    ) -> Dict:
+        """Override parent's _handle_resume to support return_interruption logic
+        
+        If intent.metadata contains 'return_interruption': True,
+        directly return the saved interruption instead of executing workflow.
+        
+        Args:
+            message: Message object
+            intent: Intent object
+            runtime: Runtime context
+            
+        Returns:
+            dict: Execution result or interruption data
+        """
+        # Check if we should return interruption directly
+        if intent.metadata and intent.metadata.get("return_interruption"):
+            logger.info("Returning saved interruption directly (dict-type interruption)")
+
+            # Get saved interruption data from state
+            task = intent.task
+            workflow_id = task.input.target_id
+            state = runtime.get_state("workflow_controller")
+
+            if not state:
+                logger.warning("No workflow_controller state found, falling back to normal resume")
+                return await super()._handle_resume(message, intent, runtime)
+
+            state_key = workflow_id.replace('.', '_')
+            interrupted_info = state.get("interrupted_tasks", {}).get(state_key)
+
+            if not interrupted_info:
+                logger.warning("No interrupted task info found, falling back to normal resume")
+                return await super()._handle_resume(message, intent, runtime)
+
+            # Reconstruct the interruption OutputSchema
+            component_id = interrupted_info.get("component_id", "questioner")
+            last_interaction_value = interrupted_info.get("last_interaction_value")
+
+            if last_interaction_value is None:
+                logger.warning("No last_interaction_value found, falling back to normal resume")
+                return await super()._handle_resume(message, intent, runtime)
+
+            # Create InteractionOutput
+            interaction_output = InteractionOutput(
+                id=component_id,
+                value=last_interaction_value
+            )
+
+            # Return as OutputSchema list (same format as workflow interruption)
+            return [
+                OutputSchema(
+                    type="__interaction__",
+                    index=0,
+                    payload=interaction_output
+                )
+            ]
+
+        # Normal resume flow
+        return await super()._handle_resume(message, intent, runtime)
+
     async def interrupt_task(
             self,
             task: Task,
@@ -431,22 +518,30 @@ class WorkflowController(IntentDetectionController):
         if "interrupted_tasks" not in state:
             state["interrupted_tasks"] = {}
 
-        # Extract component ID from interaction data
+        # Extract component ID and interaction value from interaction data
         component_id = self._extract_component_id_from_interaction_data(
+            interaction_data
+        )
+        interaction_value = self._extract_interaction_value_from_interaction_data(
             interaction_data
         )
         state_key = workflow_id.replace('.', '_')
 
         state["interrupted_tasks"][state_key] = {
             "task": task.model_dump(),
-            "component_id": component_id
+            "component_id": component_id,
+            "last_interaction_value": interaction_value
         }
 
+        # Clear old state first, then update with new state
+        # This ensures proper cleanup of nested dict keys
+        runtime.update_state({"workflow_controller": None})
         runtime.update_state({"workflow_controller": state})
 
         logger.info(
             f"Task interrupted: workflow={workflow_id}, "
-            f"state_key={state_key}, component_id={component_id}"
+            f"state_key={state_key}, component_id={component_id}, "
+            f"interaction_value_type={type(interaction_value).__name__}"
         )
 
         return {
@@ -569,6 +664,74 @@ class WorkflowController(IntentDetectionController):
 
         self.reasoner.set_intent_detection(intent_detection)
         logger.info("Intent detection module initialized")
+
+    def _should_resume_interrupted_task(
+            self,
+            task: Task,
+            message: Message,
+            runtime: Runtime
+    ) -> bool:
+        """Check if interrupted task should resume or return interruption again
+        
+        Logic:
+        1. If user provides InteractiveInput -> always resume
+        2. If last_interaction_value is dict (structured data from component) -> return interruption again
+        3. If last_interaction_value is str (human interaction text) -> resume
+        
+        Args:
+            task: Interrupted task
+            message: Current message
+            runtime: Runtime context
+            
+        Returns:
+            bool: True if should resume, False if should return interruption again
+        """
+        # 1. Check if user provides InteractiveInput
+        interactive_input = getattr(message.content, 'interactive_input', None)
+        if interactive_input is not None and interactive_input.user_inputs:
+            logger.info("User provided InteractiveInput, will resume task")
+            return True
+
+        # 2. Get last_interaction_value from state
+        state = runtime.get_state("workflow_controller")
+        if not state:
+            logger.info("No workflow_controller state, will resume task")
+            return True
+
+        workflow_id = task.input.target_id
+        state_key = workflow_id.replace('.', '_')
+        interrupted_info = state.get("interrupted_tasks", {}).get(state_key)
+
+        if not interrupted_info:
+            logger.info("No interrupted task info in state, will resume task")
+            return True
+
+        last_interaction_value = interrupted_info.get("last_interaction_value")
+
+        # 3. Check type of last_interaction_value
+        if last_interaction_value is None:
+            logger.info("No last_interaction_value, will resume task")
+            return True
+
+        if isinstance(last_interaction_value, dict):
+            logger.info(
+                f"last_interaction_value is dict (structured data), "
+                f"will return interruption again"
+            )
+            return False
+        elif isinstance(last_interaction_value, str):
+            logger.info(
+                f"last_interaction_value is str (human interaction), "
+                f"will resume task"
+            )
+            return True
+        else:
+            # For other types, default to resume
+            logger.info(
+                f"last_interaction_value type is {type(last_interaction_value).__name__}, "
+                f"will resume task"
+            )
+            return True
 
     def _find_interrupted_task_by_node_id(
             self,
@@ -785,15 +948,15 @@ class WorkflowController(IntentDetectionController):
         if not interaction_data:
             logger.warning("No interaction_data provided, using default component_id")
             return "questioner"
-        
+
         try:
             # Iterate through interaction_data, find output with type '__interaction__'
             for output_schema in interaction_data:
-                if (hasattr(output_schema, 'type') and 
-                    output_schema.type == '__interaction__'):
+                if (hasattr(output_schema, 'type') and
+                        output_schema.type == '__interaction__'):
                     # Extract InteractionOutput.id from payload
-                    if (hasattr(output_schema, 'payload') and 
-                        hasattr(output_schema.payload, 'id')):
+                    if (hasattr(output_schema, 'payload') and
+                            hasattr(output_schema.payload, 'id')):
                         component_id = output_schema.payload.id
                         logger.info(
                             f"Extracted component_id from interaction_data: "
@@ -804,9 +967,50 @@ class WorkflowController(IntentDetectionController):
             logger.warning(
                 f"Failed to extract component_id from interaction_data: {e}"
             )
-        
+
         logger.warning("No component_id found in interaction_data, using default")
         return "questioner"  # Default value
+
+    def _extract_interaction_value_from_interaction_data(
+            self,
+            interaction_data: Optional[list]
+    ) -> Optional[any]:
+        """Extract interaction value from interaction data
+        
+        Find OutputSchema with type '__interaction__' from interaction_data list,
+        and extract value from payload.value
+        
+        Args:
+            interaction_data: OutputSchema list, containing interaction requests during interruption
+            
+        Returns:
+            Optional[any]: Interaction value (could be str, dict, or other types), None if not found
+        """
+        if not interaction_data:
+            logger.warning("No interaction_data provided, cannot extract interaction_value")
+            return None
+
+        try:
+            # Iterate through interaction_data, find output with type '__interaction__'
+            for output_schema in interaction_data:
+                if (hasattr(output_schema, 'type') and
+                        output_schema.type == '__interaction__'):
+                    # Extract InteractionOutput.value from payload
+                    if (hasattr(output_schema, 'payload') and
+                            hasattr(output_schema.payload, 'value')):
+                        interaction_value = output_schema.payload.value
+                        logger.info(
+                            f"Extracted interaction_value from interaction_data: "
+                            f"type={type(interaction_value).__name__}"
+                        )
+                        return interaction_value
+        except Exception as e:
+            logger.warning(
+                f"Failed to extract interaction_value from interaction_data: {e}"
+            )
+
+        logger.warning("No interaction_value found in interaction_data")
+        return None
 
     async def _find_workflow_from_agent(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime

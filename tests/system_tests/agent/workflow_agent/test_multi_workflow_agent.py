@@ -1543,3 +1543,161 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print(f"workflow_final 帧内容: {workflow_final_chunk.payload}")
         print(f"✅ 测试通过：流式模式正确返回 workflow_final 帧，内容: {default_text}")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_questioner_state_reset_on_second_invocation(self):
+        """
+        测试 questioner 组件状态在第二次调用时正确重置。
+        
+        验证场景：
+        1. 第一次调用包含 questioner 的工作流
+        2. questioner 提问 -> 使用 InteractiveInput 回答 -> 完成
+        3. 第二次调用同一个工作流
+        4. questioner 应该重新提问（验证状态已清空，不会残留第一次的数据）
+        
+        这个测试用例验证了 _store_state_to_runtime 的修复：
+        必须先 update_state({key: None}) 再 update_state({key: new_value})
+        以确保嵌套字典中的旧键被正确删除。
+        """
+        print("=== 测试 Questioner 组件状态在第二次调用时正确重置 ===")
+        
+        # 构建包含 questioner 的工作流
+        workflow = self._build_questioner_workflow(
+            workflow_id="user_info_flow",
+            workflow_name="用户信息收集",
+            question_field="name",
+            question_desc="用户姓名",
+            questioner_id="questioner"
+        )
+        
+        # 创建 WorkflowAgent
+        config = WorkflowAgentConfig(
+            name="测试Agent",
+            id="test_questioner_reset",
+            version="0.1.0",
+            description="测试questioner状态重置",
+            workflows=[],
+            model=self._create_model_config(),
+        )
+        agent = WorkflowAgent(config)
+        agent.add_workflows([workflow])
+        
+        # ========== 第一次调用：触发 questioner 提问 ==========
+        print("\n【第一次调用】触发 questioner 提问")
+        
+        try:
+            result1 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "我想收集用户信息",
+                    "session_id": "test_session_questioner_reset"
+                }),
+                timeout=60
+            )
+        except asyncio.TimeoutError:
+            self.fail("第一次调用超时")
+        
+        # 验证：应该返回中断状态（list 格式）
+        self.assertIsInstance(result1, list, "应该返回列表")
+        self.assertEqual(result1[0].type, '__interaction__', "应该返回交互类型")
+        
+        # 提取 node_id
+        interaction_output = result1[0]
+        node_id = interaction_output.payload.id
+        interaction_value = interaction_output.payload.value
+        
+        print(f"[OK] 第一次调用成功触发中断，node_id = {node_id}")
+        print(f"提问器问题: {interaction_value}")
+        
+        # ========== 使用 InteractiveInput 回答第一次提问 ==========
+        print("\n【第一次回答】使用 InteractiveInput 提供姓名")
+        
+        interactive_input_1 = InteractiveInput()
+        interactive_input_1.update(node_id, "张三")
+        
+        try:
+            result2 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": interactive_input_1,
+                    "session_id": "test_session_questioner_reset"
+                }),
+                timeout=60
+            )
+        except asyncio.TimeoutError:
+            self.fail("第一次回答超时")
+        
+        # 验证：应该完成并返回结果
+        self.assertIsInstance(result2, dict, "应该返回字典")
+        self.assertEqual(result2["result_type"], "answer")
+        
+        output_1 = result2.get("output")
+        self.assertIsNotNone(output_1)
+        response_content_1 = output_1.result.get("responseContent", "")
+        self.assertIn("张三", response_content_1)
+        
+        print(f"[OK] 第一次调用完成，返回结果: {response_content_1}")
+        
+        # ========== 第二次调用：应该重新提问（状态已重置）==========
+        print("\n【第二次调用】再次触发工作流，应该重新提问")
+        
+        try:
+            result3 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": "我想再次收集用户信息",
+                    "session_id": "test_session_questioner_reset"
+                }),
+                timeout=60
+            )
+        except asyncio.TimeoutError:
+            self.fail("第二次调用超时")
+        
+        # 关键验证：应该再次返回中断状态（重新提问）
+        self.assertIsInstance(result3, list, "第二次调用应该返回列表")
+        self.assertEqual(
+            result3[0].type, '__interaction__',
+            "第二次调用应该重新触发 questioner 提问，而不是直接使用上次的状态"
+        )
+        
+        # 提取新的 node_id
+        interaction_output_2 = result3[0]
+        node_id_2 = interaction_output_2.payload.id
+        interaction_value_2 = interaction_output_2.payload.value
+        
+        print(f"[OK] 第二次调用成功触发中断（重新提问），node_id = {node_id_2}")
+        print(f"提问器问题: {interaction_value_2}")
+        
+        # ========== 使用 InteractiveInput 回答第二次提问 ==========
+        print("\n【第二次回答】使用 InteractiveInput 提供不同的姓名")
+        
+        interactive_input_2 = InteractiveInput()
+        interactive_input_2.update(node_id_2, "李四")
+        
+        try:
+            result4 = await asyncio.wait_for(
+                agent.invoke({
+                    "query": interactive_input_2,
+                    "session_id": "test_session_questioner_reset"
+                }),
+                timeout=60
+            )
+        except asyncio.TimeoutError:
+            self.fail("第二次回答超时")
+        
+        # 验证：应该完成并返回新的结果
+        self.assertIsInstance(result4, dict, "应该返回字典")
+        self.assertEqual(result4["result_type"], "answer")
+        
+        output_4 = result4.get("output")
+        self.assertIsNotNone(output_4)
+        response_content_4 = output_4.result.get("responseContent", "")
+        self.assertIn("李四", response_content_4)
+        
+        # 关键验证：第二次结果应该是新输入的"李四"，而不是第一次的"张三"
+        self.assertNotIn(
+            "张三", response_content_4,
+            "第二次调用返回的结果不应该包含第一次的数据（张三）"
+        )
+        
+        print(f"[OK] 第二次调用完成，返回结果: {response_content_4}")
+        print("\n✅ 测试通过：Questioner 组件状态在第二次调用时正确重置！")
+        print("   - 第一次调用：张三 ✓")
+        print("   - 第二次调用：李四 ✓（未残留张三）")

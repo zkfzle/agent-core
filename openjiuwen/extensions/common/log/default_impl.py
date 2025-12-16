@@ -15,6 +15,17 @@ from openjiuwen.core.common.logging.utils import get_thread_session, get_log_max
 from openjiuwen.core.common.security.path_checker import is_sensitive_path
 
 
+_EXCLUDED_SUFFIXES = ('.pyc', '.pyo')
+_EXCLUDED_KEYWORDS = (
+    'log_handlers.py',
+    'logger_impl.py',
+    'log_manager.py',
+    'default_impl.py',
+    'test_',
+    'logging',
+)
+
+
 class SafeRotatingFileHandler(RotatingFileHandler):
     def __init__(self, filename, *args, log_file_pattern=None, backup_file_pattern=None, **kwargs):
         """初始化安全轮转文件处理器"""
@@ -124,14 +135,8 @@ class CallerAwareFormatter(logging.Formatter):
                 func_name = frame_info.function
 
                 if (filename and
-                        not filename.endswith('.pyc') and
-                        not filename.endswith('.pyo') and
-                        'log_handlers.py' not in filename and
-                        'logger_impl.py' not in filename and
-                        'log_manager.py' not in filename and
-                        'default_impl.py' not in filename and
-                        'test_' not in filename and
-                        'logging' not in filename):  # 跳过logging模块
+                        not filename.endswith(_EXCLUDED_SUFFIXES)
+                        and not any(k in filename for k in _EXCLUDED_KEYWORDS)):  # 跳过logging模块
                     return {
                         'filename': os.path.basename(filename),
                         'lineno': lineno,

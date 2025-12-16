@@ -65,9 +65,9 @@ class ConfigManager:
                 }
             }
         except yaml.YAMLError as e:
-            raise ValueError(f"YAML配置文件格式错误: {e}")
+            raise ValueError(f"YAML配置文件格式错误: {e}") from e
         except Exception as e:
-            raise Exception(f"加载配置文件失败: {e}")
+            raise Exception(f"加载配置文件失败: {e}") from e
 
     def get(self, key: str, default: Any = None) -> Any:
         keys = key.split('.')
@@ -80,6 +80,10 @@ class ConfigManager:
                 return default
 
         return value
+
+    @property
+    def config(self) -> dict:
+        return self._config
 
     def __getitem__(self, key: str) -> Any:
         return self.get(key)
@@ -103,7 +107,7 @@ class ConfigDict(dict):
     def refresh(self):
         """在底层配置重载后刷新自身内容。"""
         self.clear()
-        self.update(self._config_manager._config)
+        self.update(self._config_manager.config)
 
 
 config_manager = ConfigManager()

@@ -35,10 +35,10 @@ def _get_targets(data: Any) -> list[str]:
         func = data.__call__
     if func is None:
         return []
-    if rtn_type := get_type_hints(func).get("return"):
-        if get_origin(rtn_type) is Literal:
-            targets = [name for name in get_args(rtn_type)]
-            return targets
+    rtn_type = get_type_hints(func).get("return")
+    if rtn_type and get_origin(rtn_type) is Literal:
+        targets = [name for name in get_args(rtn_type)]
+        return targets
     return []
 
 
@@ -145,7 +145,8 @@ if not _MERMAID_AVAILABLE:
         def __init__(self):
             self._raise()
 
-        def _raise(self):
+        @staticmethod
+        def _raise():
             raise ImportError("Mermaid package is not installed. Please install it by `pip install mermaid-py`.")
 
         def to_mermaid(self, *args, **kwargs):
@@ -234,9 +235,7 @@ else:
             if not isinstance(title, str):
                 raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.code,
                                           message=StatusCode.DRAWABLE_GRAPH_INVALID_TITLE.errmsg)
-            if (not isinstance(expand_subgraph, bool) and
-                    not isinstance(expand_subgraph, int) or
-                    isinstance(expand_subgraph, int) and expand_subgraph < 0):
+            if not (isinstance(expand_subgraph, bool) or (type(expand_subgraph) is int and expand_subgraph >= 0)):
                 raise JiuWenBaseException(error_code=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.code,
                                           message=StatusCode.DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH.errmsg)
             if not isinstance(enable_animation, bool):

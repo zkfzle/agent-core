@@ -23,7 +23,8 @@ class LogConfig:
         self._log_config = self._load_config(config_path)
         self._log_path = self._get_log_path()
 
-    def _load_config(self, config_path: str) -> Dict[str, Any]:
+    @staticmethod
+    def _load_config(config_path: str) -> Dict[str, Any]:
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
@@ -49,9 +50,9 @@ class LogConfig:
                 'backup_file_pattern': None
             }
         except yaml.YAMLError as e:
-            raise ValueError(f"YAML配置文件格式错误: {e}")
+            raise ValueError(f"YAML配置文件格式错误: {e}") from e
         except Exception as e:
-            raise Exception(f"加载配置文件失败: {e}")
+            raise Exception(f"加载配置文件失败: {e}") from e
 
     def _get_log_path(self) -> str:
         return self._log_config.get('log_path', './logs/')

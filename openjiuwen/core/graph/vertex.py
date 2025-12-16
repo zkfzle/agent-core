@@ -53,6 +53,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             self._node_config.abilities) if self._node_config and self._node_config.abilities else [
             ComponentAbility.INVOKE]
         self._has_stream_call = len(self._stream_abilities()) > 0
+        self._has_call = len(self._component_ability) > len(self._stream_abilities())
         return True
 
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None,
@@ -371,7 +372,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
     async def __trace_component_stream_input_send__(self) -> None:
         if (not self._runtime.tracer()) or self._executable.skip_trace():
             return
-        if self._is_call_started.is_set():
+        if (not self._has_call) or self._is_call_started.is_set():
             await TracerWorkflowUtils.trace_component_stream_input(self._runtime, {}, send=True)
 
     def reset(self):

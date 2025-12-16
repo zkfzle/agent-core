@@ -304,7 +304,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
     @trigger_event
     async def on_pre_stream(self, invoke_id: str, chunk, need_send: bool = False, **kwargs):
         span = self._get_tracer_workflow_span(invoke_id)
-        if isinstance(chunk, dict):
+        if chunk and isinstance(chunk, dict):
             span.append_stream_inputs(chunk)
         if need_send:
             await self._send_data(span, exclude={"outputs", "stream_outputs"})
@@ -365,6 +365,6 @@ class TraceWorkflowHandler(TraceBaseHandler):
         if elapsed_time is not None:
             update_data["elapsed_time"] = elapsed_time
         self._span_manager.update_span(span, update_data)
-        await self._send_data(span, exclude={"inputs", "stream_inputs"})
+        await self._send_data(span)
         if span.component_type == "End" and span.end_time:
             self._span_manager.update_span(span, {})

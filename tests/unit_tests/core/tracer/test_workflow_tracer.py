@@ -2,12 +2,14 @@ import json
 import sys
 import types
 import unittest
+from typing import AsyncIterator
 from unittest.mock import Mock
 
 import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.condition.array import ArrayCondition
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
@@ -16,7 +18,10 @@ from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
 from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
 
 fake_base = types.ModuleType("base")
@@ -53,7 +58,60 @@ def record_tracer_info(tracer_chunks, file_path):
         print(f"调测信息保存失败：{e}")
 
 
+class Producer(ComponentExecutable, WorkflowComponent):
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        logger.debug(f"producer inputs: {inputs}")
+        for v in inputs.get("array"):
+            logger.debug(f"send stream frame {v}")
+            yield {"output": v}
+
+
 class TestTraceWorkflow:
+    async def test_stream_workflow_with_trace(self):
+        workflow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test")))
+        workflow.set_start_comp("start", Start())
+        workflow.add_workflow_comp("producer", Producer(), inputs_schema={"array": "${inputs}"})
+        workflow.set_end_comp("end", End(), stream_inputs_schema={"output": "${producer.output}"},
+                              response_mode="streaming")
+        workflow.add_connection("start", "producer")
+        workflow.add_stream_connection("producer", "end")
+        expect_chunks = [{'invokeId': 'test', 'status': 'start', 'inputs': {'inputs': [1, 2, 3]}, 'streamInputs': None,
+                          'outputs': None, 'streamOutputs': [], 'workflowId': 'test', 'componentId': None},
+                         {'invokeId': 'start', 'status': 'start', 'inputs': None, 'streamInputs': None, 'outputs': None,
+                          'streamOutputs': None, 'workflowId': 'test', 'componentId': 'start'},
+                         {'invokeId': 'start', 'status': 'finish', 'inputs': None, 'streamInputs': None,
+                          'outputs': None, 'streamOutputs': [], 'workflowId': 'test', 'componentId': 'start'},
+                         {'invokeId': 'producer', 'status': 'start', 'inputs': {'array': [1, 2, 3]},
+                          'streamInputs': None, 'outputs': None, 'streamOutputs': None, 'workflowId': 'test',
+                          'componentId': 'producer'},
+                         {'invokeId': 'producer', 'status': 'finish', 'inputs': {'array': [1, 2, 3]},
+                          'streamInputs': None, 'outputs': None,
+                          'streamOutputs': [{'output': 1}, {'output': 2}, {'output': 3}], 'workflowId': 'test',
+                          'componentId': 'producer'}, {'invokeId': 'end', 'status': 'start', 'inputs': None,
+                                                       'streamInputs': [{'output': 1}, {'output': 2}, {'output': 3}],
+                                                       'outputs': None, 'streamOutputs': None, 'workflowId': 'test',
+                                                       'componentId': 'end'},
+                         {'invokeId': 'end', 'status': 'finish', 'inputs': None,
+                          'streamInputs': [{'output': 1}, {'output': 2}, {'output': 3}], 'outputs': None,
+                          'streamOutputs': [
+                              {'type': 'end node stream', 'index': 0, 'payload': {'output': {'output': 1}}},
+                              {'type': 'end node stream', 'index': 1, 'payload': {'output': {'output': 2}}},
+                              {'type': 'end node stream', 'index': 2, 'payload': {'output': {'output': 3}}}],
+                          'workflowId': 'test', 'componentId': 'end'},
+                         {'invokeId': 'test', 'status': 'finish', 'inputs': {'inputs': [1, 2, 3]}, 'streamInputs': None,
+                          'outputs': None, 'streamOutputs': [], 'workflowId': 'test', 'componentId': None}]
+
+        chunks = []
+        async for chunk in workflow.stream(inputs={"inputs": [1, 2, 3]}, runtime=WorkflowRuntime(),
+                                           stream_modes=[BaseStreamMode.TRACE]):
+            payload: dict = chunk.payload
+            selected_keys = ["invokeId", "status", 'inputs', 'streamInputs', "outputs", "streamOutputs", "workflowId",
+                             "componentId"]
+            payload = {k: payload.get(k) for k in selected_keys}
+            chunks.append(payload)
+        assert chunks == expect_chunks
+
+
     async def test_seq_exec_stream_workflow_with_tracer(self):
         """
         start -> a -> b -> end

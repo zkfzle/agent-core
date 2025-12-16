@@ -1,6 +1,8 @@
+from openjiuwen.core.runtime.agent import AgentRuntime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.runtime.state import ReadableStateLike
 from openjiuwen.core.runtime.utils import update_dict, get_by_schema, root_to_index
+from openjiuwen.core.runtime.wrapper import TaskRuntime
 
 
 class TestRuntime:
@@ -247,3 +249,22 @@ class TestRuntime:
         assert source[1][5] == [None, None, {}]
         assert source[1][3] is None  # Filled with None
         assert source[1][4] is None  # Filled with None
+
+    def test_task_runtime(self):
+        runtime = AgentRuntime("abc")
+        task_runtime = TaskRuntime(inner=runtime)
+        data = {"data": {"a": 1}}
+        task_runtime.update_state({"result": data})
+        assert task_runtime.get_state("result") == {"data": {"a": 1}}
+
+        assert task_runtime.get_state("result") == {"data": {"a": 1}}
+
+        data2 = {"data": {"b": 1}}
+        task_runtime.update_state({"result": data2})
+        assert task_runtime.get_state("result") == {"data": {"a": 1, "b": 1}}
+
+        task_runtime.update_state({"result": None})
+        assert task_runtime.get_state("result") is None
+
+        task_runtime.update_state({"result": data2})
+        assert task_runtime.get_state("result") == {"data": {"b": 1}}

@@ -115,7 +115,7 @@ class InMemoryStateLike(StateLike):
         return transformer(self._state)
 
     def update(self, data: dict) -> None:
-        update_dict(data, self._state)
+        update_dict(deepcopy(data), self._state)
 
     def get_state(self) -> dict:
         return deepcopy(self._state)
@@ -138,7 +138,7 @@ class InMemoryCommitState(CommitStateLike):
             raise JiuWenBaseException(1, "can not update state by none node_id")
         if node_id not in self._updates:
             self._updates[node_id] = []
-        self._updates[node_id].append(data)
+        self._updates[node_id].append(deepcopy(data))
 
     def commit(self, node_id: str = None) -> None:
         if node_id is None:

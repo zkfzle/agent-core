@@ -93,12 +93,11 @@ class TracerWorkflowUtils:
         parent_id = runtime.parent_id()
         if isinstance(chunk, str):
             return
-        if chunk:
-            await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_pre_stream",
-                                 invoke_id=executable_id,
-                                 parent_node_id=parent_id,
-                                 need_send=send,
-                                 chunk=dict(chunk))
+        await tracer.trigger(TracerHandlerName.TRACER_WORKFLOW.value, "on_pre_stream",
+                             invoke_id=executable_id,
+                             parent_node_id=parent_id,
+                             need_send=send,
+                             chunk=dict(chunk))
 
     @staticmethod
     async def trace_component_outputs(runtime, outputs: Optional[dict]):

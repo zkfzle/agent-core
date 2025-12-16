@@ -77,31 +77,39 @@ class UrlUtils:
     @staticmethod
     def should_bypass_proxy(url: str) -> bool:
         """check if URL should bypass proxy based on NO_PROXY environment variable"""
-        no_proxy = os.getenv("NO_PROXY") or os.getenv("no_proxy")
-        if not no_proxy:
-            return False
-
-        if no_proxy.strip() == "*":
-            return True
-
         parsed_url = urlparse(url)
         hostname = parsed_url.hostname
         if not hostname:
             return False
 
-        no_proxy_list = UrlUtils._parse_no_proxy(no_proxy)
+        no_proxy_list = UrlUtils._get_no_proxy_list()
+        if not no_proxy_list:
+            return False
         return UrlUtils._hostname_matches_no_proxy(hostname, no_proxy_list)
 
     @staticmethod
-    def _parse_no_proxy(no_proxy_str: str) -> List[str]:
-        """parse NO_PROXY environment variable"""
-        no_proxy_str = no_proxy_str.replace(" ", ",").replace(";", ",")
-        entries = [
-            entry.strip().lower()
-            for entry in no_proxy_str.split(",")
-            if entry.strip()
-        ]
-        return entries
+    def _get_no_proxy_list() -> List[str]:
+        """parse NO_PROXY environment variable and get NO_PROXY list"""
+        no_proxy_upper = os.getenv("NO_PROXY", "")
+        no_proxy_lower = os.getenv("no_proxy", "")
+
+        result = []
+        seen = set()
+
+        def process_proxy_str(proxy_str: str) -> None:
+            if not proxy_str:
+                return
+            proxy_str = proxy_str.replace(" ", ",").replace(";", ",")
+            items = [item.strip().lower() for item in proxy_str.split(',') if item.strip()]
+            for item in items:
+                if item not in seen:
+                    seen.add(item)
+                    result.append(item)
+
+        process_proxy_str(no_proxy_upper)
+        process_proxy_str(no_proxy_lower)
+
+        return result
 
     @staticmethod
     def _hostname_matches_no_proxy(hostname: str, no_proxy_list: List[str]) -> bool:

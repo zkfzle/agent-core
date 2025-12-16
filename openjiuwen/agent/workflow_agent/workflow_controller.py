@@ -713,7 +713,7 @@ class WorkflowController(IntentDetectionController):
             logger.info("No last_interaction_value, will resume task")
             return True
 
-        if isinstance(last_interaction_value, dict):
+        if isinstance(last_interaction_value, dict) or isinstance(last_interaction_value, list):
             logger.info(
                 f"last_interaction_value is dict (structured data), "
                 f"will return interruption again"

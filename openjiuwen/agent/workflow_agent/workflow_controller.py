@@ -787,7 +787,7 @@ class WorkflowController(IntentDetectionController):
 
         logger.info(
             f"_find_interrupted_task_by_node_id: "
-            f"no match found for node_id={target_node_id}"
+            f"no match found for node_ids={node_ids}"
         )
         return None
 

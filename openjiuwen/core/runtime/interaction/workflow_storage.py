@@ -7,12 +7,12 @@ from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.runtime.interaction.storage import Storage
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.workflow import NodeRuntime
-from openjiuwen.graph.store.serde import Serializer, PickleSerializer
+from openjiuwen.graph.store import create_serializer, Serializer
 
 
 class WorkflowStorage(Storage):
     def __init__(self):
-        self.serde: Serializer = PickleSerializer()
+        self.serde: Serializer = create_serializer("pickle")
         self.state_blobs: dict[
             str,
             tuple[str, bytes],

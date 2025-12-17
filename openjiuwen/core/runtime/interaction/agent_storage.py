@@ -5,7 +5,7 @@
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.interaction.storage import Storage
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.store.serde import Serializer, PickleSerializer
+from openjiuwen.graph.store import create_serializer, Serializer
 
 
 class AgentStorage(Storage):
@@ -15,7 +15,7 @@ class AgentStorage(Storage):
             tuple[str, bytes],
         ] = {}
 
-        self.serde: Serializer = PickleSerializer()
+        self.serde: Serializer = create_serializer("pickle")
 
     def save(self, runtime: BaseRuntime):
         agent_id = runtime.agent_id()

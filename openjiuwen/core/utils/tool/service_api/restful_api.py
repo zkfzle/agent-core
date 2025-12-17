@@ -26,8 +26,18 @@ timeout_aiohttp = aiohttp.ClientTimeout(total=constant.REQUEST_TIMEOUT)
 
 
 class RestfulApi(Tool):
-    def __init__(self, name: str, description: str, params: List[Param], path: str, headers: dict, method: str,
-                 response: List[Param]):
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        params: List[Param],
+        path: str,
+        headers: dict,
+        method: str,
+        response: List[Param],
+        builtin_params: List[Param] = None,
+    ):
         super().__init__()
         self.name = name
         self.description = description
@@ -36,6 +46,7 @@ class RestfulApi(Tool):
         self.headers = headers
         self.method = method
         self.response: List[Param] = response
+        self.builtin_params = builtin_params
 
     def get_tool_info(self) -> ToolInfo:
         tool_info_dict = Param.format_functions(self)
@@ -45,7 +56,8 @@ class RestfulApi(Tool):
     def get_header_params_from_input(self, inputs: dict):
         """get header params from input"""
         header_params = {}
-        for param in self.params:
+        all_params = self.params + (self.builtin_params or [])
+        for param in all_params:
             if param.method == "Headers" and (inputs.get(param.name) or inputs.get(param.name) is False):
                 header_params[param.name] = str(inputs.get(param.name))
                 inputs.pop(param.name, None)
@@ -54,7 +66,8 @@ class RestfulApi(Tool):
     def get_query_params_from_input(self, inputs: dict):
         """get query params from input"""
         query_params = {}
-        for param in self.params:
+        all_params = self.params + (self.builtin_params or [])
+        for param in all_params:
             if inputs.get(param.name) or inputs.get(param.name) is False:
                 query_params[param.name] = str(inputs.get(param.name))
                 inputs.pop(param.name, None)
@@ -159,6 +172,8 @@ class RequestParams:
         self.kwargs = kwargs
 
         inputs = ParamUtil.format_input_with_default_when_required(self.restful_api.params, inputs)
+        if self.restful_api.builtin_params:
+            inputs = ParamUtil.format_input_with_default_when_required(self.restful_api.builtin_params, inputs)
         self.header_params_in_inputs = restful_api.get_header_params_from_input(inputs)
         self.query_params_in_inputs = restful_api.get_query_params_from_input(inputs)
         self.inputs = restful_api.parse_retrieval_inputs(inputs)

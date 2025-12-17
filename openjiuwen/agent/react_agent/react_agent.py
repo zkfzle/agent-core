@@ -293,11 +293,8 @@ def create_react_agent_config(
         agent_id: Agent ID
         agent_version: Agent version
         description: Agent description
-        workflows: Workflow schema list
-        plugins: Plugin schema list
         model: Model config
         prompt_template: Prompt template
-        tools: Tool name list
     
     Returns:
         ReActAgentConfig instance

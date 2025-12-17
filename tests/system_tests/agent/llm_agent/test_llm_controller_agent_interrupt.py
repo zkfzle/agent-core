@@ -3,7 +3,7 @@ import unittest
 from datetime import datetime
 from typing import List
 
-from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
+from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
@@ -17,6 +17,11 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMet
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.component.base import WorkflowComponent
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.executable import Output, Input
+from openjiuwen.core.runtime.base import ComponentExecutable
+from openjiuwen.core.runtime.runtime import Runtime
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -27,6 +32,21 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 def build_current_date():
     current_datetime = datetime.now()
     return current_datetime.strftime("%Y-%m-%d")
+
+
+class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
+    """
+    交互确认组件 - 用于用户确认操作
+    """
+
+    def __init__(self, comp_id: str):
+        super().__init__()
+        self.comp_id = comp_id
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        # 请求用户确认
+        confirm = await runtime.interact("是否确认操作")
+        return {"confirm_result": confirm}
 
 
 class MockInteractiveTool:
@@ -97,54 +117,8 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         )
 
     @staticmethod
-    def _create_tool_schema():
-        tool_info = PluginSchema(
-            name='WeatherReporter',
-            description='天气查询插件',
-            inputs={
-                "type": "object",
-                "properties": {
-                    "location": {
-                        "type": "string",
-                        "description": "天气查询的地点。\n注意：地点名称必须为英文",
-                        "required": True
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "天气查询的时间，格式为YYYY-MM-DD",
-                        "required": True
-                    }
-                }
-            }
-        )
-        return tool_info
-
-    @staticmethod
-    def _create_interactive_tool_schema():
-        """创建交互式工具的schema"""
-        return PluginSchema(
-            name='UserConfirmation',
-            description='用户确认工具，需要用户交互确认操作',
-            inputs={
-                "type": "object",
-                "properties": {
-                    "action": {
-                        "type": "string",
-                        "description": "需要确认的操作名称",
-                        "required": True
-                    },
-                    "details": {
-                        "type": "string",
-                        "description": "操作的详细信息",
-                        "required": True
-                    }
-                }
-            }
-        )
-
-    @staticmethod
     def _create_prompt_template():
-        system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
+        system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！注意如果是查询天气，必须调用工具。今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
@@ -156,6 +130,95 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
+
+    def _build_workflow(
+            self,
+            workflow_id: str,
+            workflow_name: str,
+            workflow_desc: str
+    ) -> Workflow:
+        """
+        构建测试工作流（包含interactive确认和questioner提问两个中断组件）
+        注意：interactive和questioner在同一个超步（并行执行）
+
+        Args:
+            workflow_id: 工作流ID
+            workflow_name: 工作流名称
+            workflow_desc: 工作流描述
+
+        Returns:
+            Workflow: 包含并行中断的工作流
+                     start -> interactive \
+                              questioner  -> end
+        """
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=workflow_name,
+                id=workflow_id,
+                version="1.0",
+                description=workflow_desc,
+            ),
+            workflow_inputs_schema=WorkflowInputsSchema(
+                type="object",
+                properties={
+                    "query": {
+                        "type": "string",
+                        "description": "天气查询用户输入",
+                        "required": True
+                    }
+                },
+                required=['query']
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+
+        key_fields = [
+            FieldInfo(field_name="location", description="地点", required=True),
+            FieldInfo(field_name="time", description="时间", required=True, default_value="today")
+        ]
+
+        start_component = Start(
+            {
+                "inputs": [
+                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
+                ]
+            }
+        )
+
+        interactive = InteractiveConfirmComponent("interactive")
+        end_component = End({"responseTemplate": "{{location}} | {{time}} | confirm={{confirm_result}}"})
+
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+        questioner_config = QuestionerConfig(
+            model=model_config,
+            question_content="",
+            extract_fields_from_response=True,
+            field_names=key_fields,
+            with_chat_history=False
+        )
+        questioner_component = QuestionerComponent(questioner_comp_config=questioner_config)
+
+        flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
+        flow.set_end_comp("e", end_component,
+                          inputs_schema={"location": "${questioner.location}", "time": "${questioner.time}"})
+        flow.add_workflow_comp("questioner", questioner_component, inputs_schema={"query": "${s.query}"})
+        flow.add_workflow_comp(
+            "interactive", interactive, inputs_schema={"query": "${s.query}"}
+        )
+
+        flow.add_connection("s", "questioner")
+        flow.add_connection("s", "interactive")
+        flow.add_connection(["interactive", "questioner"], "e")
+
+        return flow
 
     def _setup_test_environment_and_agent(self):
         """Setup common test environment and create LLMAgent instance with workflow"""
@@ -380,3 +443,152 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 final_chunk = chunk
         self.assertIn("上海", final_chunk.payload["output"], "应该包含上海")
         print(f"✅ 第三次调用校验通过：恢复中断工作流完成，返回结果正确")
+
+    @unittest.skip("require network")
+    async def test_llm_agent_with_multiple_interrupt_nodes_workflow(self):
+        """
+        构建包含interactive和questioner2个中断组件的workflow
+        注意：interactive和questioner在同一个超步（并行执行）
+
+        Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput分次恢复
+        """
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
+
+        # 创建 workflow - 包含两个中断组件
+        flow = self._build_workflow(
+            workflow_id="questioner_weather_workflow",
+            workflow_name="questioner_weather_workflow",
+            workflow_desc="天气查询"
+        )
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+        llm_agent_config = create_llm_agent_config(
+            agent_id="llm_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=[],
+            workflows=[],
+            model=model_config,
+            prompt_template=self._create_prompt_template()
+        )
+
+        llm_agent: LLMAgent = create_llm_agent(
+            agent_config=llm_agent_config,
+            workflows=[],
+            tools=[]
+        )
+
+        # 动态绑定workflow
+        llm_agent.add_workflows([flow])
+
+        print("\n【步骤1】发送天气查询请求，触发并行中断")
+        interaction_output_schema = []
+        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
+            print(f"LLMAgent 第一次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+
+        self.assertEqual(len(interaction_output_schema), 2, "应该同时返回2个中断（interactive和questioner）")
+
+        # 使用interactiveInput恢复的中断
+        print("\n【步骤2】使用InteractiveInput恢复一个中断")
+        interactive_input = InteractiveInput()
+        interactive_input.update("interactive", {"confirm_result": "确认操作"})
+        interaction_output_schema = []
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+            print(f"LLMAgent 第二次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+        self.assertEqual(len(interaction_output_schema), 1, "应该返回1个中断")
+        self.assertEqual(interaction_output_schema[0].payload.id, "questioner", "应该只返回interactive中断")
+
+        print("\n【步骤3】使用InteractiveInput恢复所有中断")
+        interactive_input = InteractiveInput()
+        interactive_input.update("questioner", {"location": "上海"})
+        interaction_output_schema = []
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+            print(f"LLMAgent 第三次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+        self.assertEqual(len(interaction_output_schema), 0, "应该全部完成")
+        print(f"✅ 调用校验通过：恢复中断工作流完成，返回结果正确")
+
+    @unittest.skip("require network")
+    async def test_llm_agent_with_multiple_interrupt_nodes_workflow_resume_once(self):
+        """
+        构建包含interactive和questioner2个中断组件的workflow
+        注意：interactive和questioner在同一个超步（并行执行）
+
+        Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput一次恢复所有的中断
+        """
+        os.environ.setdefault("LLM_SSL_VERIFY", "false")
+        os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
+
+        # 创建 workflow - 包含两个中断组件
+        flow = self._build_workflow(
+            workflow_id="questioner_weather_workflow",
+            workflow_name="questioner_weather_workflow",
+            workflow_desc="天气查询"
+        )
+        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
+                                   model_info=BaseModelInfo(
+                                       model=MODEL_NAME,
+                                       api_base=API_BASE,
+                                       api_key=API_KEY,
+                                       temperature=0.7,
+                                       top_p=0.9,
+                                       timeout=30  # 添加超时设置
+                                   ))
+        llm_agent_config = create_llm_agent_config(
+            agent_id="llm_agent_123",
+            agent_version="0.0.1",
+            description="AI助手",
+            plugins=[],
+            workflows=[],
+            model=model_config,
+            prompt_template=self._create_prompt_template()
+        )
+
+        llm_agent: LLMAgent = create_llm_agent(
+            agent_config=llm_agent_config,
+            workflows=[],
+            tools=[]
+        )
+
+        # 动态绑定workflow
+        llm_agent.add_workflows([flow])
+
+        print("\n【步骤1】发送天气查询请求，触发并行中断")
+        interaction_output_schema = []
+        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
+            print(f"LLMAgent 第一次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+
+        self.assertEqual(len(interaction_output_schema), 2, "应该同时返回2个中断（interactive和questioner）")
+
+        # 使用interactiveInput恢复的中断
+        print("\n【步骤2】使用InteractiveInput恢复全部中断")
+        interactive_input = InteractiveInput()
+        interactive_input.update("questioner", {"location": "上海"})
+        interactive_input.update("interactive", {"confirm_result": "确认操作"})
+        interaction_output_schema = []
+        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+            print(f"LLMAgent 第二次输出结果 >>> {chunk}")
+            if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                interaction_output_schema.append(chunk)
+                print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+        self.assertEqual(len(interaction_output_schema), 0, "应该全部完成")
+        print(f"✅ 调用校验通过：恢复中断工作流完成，返回结果正确")

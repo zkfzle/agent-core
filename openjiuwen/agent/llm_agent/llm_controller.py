@@ -839,6 +839,7 @@ class LLMController(BaseController):
 
         if state_key in interrupted_tasks:
             del interrupted_tasks[state_key]
+            runtime.update_state({"llm_controller ": None})  # clear state first
             runtime.update_state({"llm_controller": state})
             logger.info(
                 f"Cleared interrupted state for workflow: {task.input.target_id}, "
@@ -879,7 +880,7 @@ class LLMController(BaseController):
             state["interrupted_tasks"] = {}
 
         # Extract component ID from interaction data
-        component_id = self._extract_component_id_from_interaction_data(
+        component_ids = self._extract_component_ids_from_interaction_data(
             interaction_data
         )
         
@@ -888,7 +889,7 @@ class LLMController(BaseController):
 
         state["interrupted_tasks"][state_key] = {
             "task": task.model_dump(),
-            "component_id": component_id,
+            "component_ids": component_ids,
             "iteration": current_iteration
         }
 
@@ -896,7 +897,7 @@ class LLMController(BaseController):
 
         logger.info(
             f"Task interrupted: workflow={workflow_id}, "
-            f"state_key={state_key}, component_id={component_id}, "
+            f"state_key={state_key}, component_ids={component_ids}, "
             f"task_id={task.task_id}, current_iteration={current_iteration}"
         )
 
@@ -907,7 +908,7 @@ class LLMController(BaseController):
             "message": "Task interrupted, waiting for subsequent input"
         }
     
-    def _extract_component_id_from_interaction_data(self, interaction_data: Optional[list]) -> str:
+    def _extract_component_ids_from_interaction_data(self, interaction_data: Optional[list]) -> str:
         """Extract component ID from interaction data
         
         Args:
@@ -920,6 +921,7 @@ class LLMController(BaseController):
             logger.warning("No interaction_data provided, using default component_id")
             return "questioner"
         
+        component_ids = []
         try:
             # Iterate through interaction_data to find outputs with INTERACTION type
             for output_schema in interaction_data:
@@ -929,17 +931,20 @@ class LLMController(BaseController):
                     if (hasattr(output_schema, 'payload') and 
                         hasattr(output_schema.payload, 'id')):
                         component_id = output_schema.payload.id
+                        component_ids.append(component_id)
                         logger.info(
                             f"Extracted component_id from interaction_data: {component_id}"
                         )
-                        return component_id
         except Exception as e:
             logger.warning(
                 f"Failed to extract component_id from interaction_data: {e}"
             )
         
-        logger.warning("No component_id found in interaction_data, using default")
-        return "questioner"  # Default value
+        if not component_ids:
+            logger.warning("No component_id found in interaction_data, using default")
+            return ["questioner"]  # Default value
+        
+        return component_ids
 
     async def _write_message_stream_data(self, stream_data: List, runtime: Runtime):
         """Write stream data carried by message List[OutputSchema]"""
@@ -1123,18 +1128,19 @@ class LLMController(BaseController):
         if not node_ids:
             return None
 
-        target_node_id = node_ids[0]
         logger.info(
-            f"_find_interrupted_task_by_node_id: looking for node_id={target_node_id}"
+            f"_find_interrupted_task_by_node_id: looking for node_id={node_ids}"
         )
 
         # Search through interrupted tasks to find matching component_id
+        # Support multiple node_ids (parallel interruptions)
         for workflow_key, task_info in interrupted_tasks.items():
-            component_id = task_info.get("component_id")
-            if component_id == target_node_id:
+            component_ids = task_info.get("component_ids") or []
+            if any(node_id in component_ids for node_id in node_ids):
                 logger.info(
                     f"_find_interrupted_task_by_node_id: "
-                    f"found match workflow_key={workflow_key}"
+                    f"found match workflow_key={workflow_key}, "
+                    f"given component_id={component_ids}"
                 )
                 task_data = task_info["task"]
                 task = Task.model_validate(task_data)
@@ -1144,6 +1150,6 @@ class LLMController(BaseController):
 
         logger.warning(
             f"_find_interrupted_task_by_node_id: "
-            f"no match found for node_id={target_node_id}"
+            f"no match found for node_id={node_ids}"
         )
         return None

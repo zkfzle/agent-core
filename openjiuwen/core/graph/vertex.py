@@ -3,13 +3,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import asyncio
+from asyncio import CancelledError
 from typing import Any, Optional, AsyncIterator, Literal
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.graph.atomic_node import AsyncAtomicNode
 from openjiuwen.core.graph.executable import Executable, Output
 from openjiuwen.core.graph.graph_state import GraphState
@@ -126,6 +126,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 event.set()
 
     async def __call__(self, state: GraphState, config) -> Output:
+        logger.debug(f"begin to call node [{self._node_id}]")
         try:
             if self._executable.post_commit():
                 await self.atomic_invoke(config=config, runtime=self._runtime)
@@ -184,7 +185,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         return await actor_manager.consume(self._node_id, ability, inputs_schema, stream_callable)
 
     async def _post_stream(self, results_iter: AsyncIterator, ability: ComponentAbility) -> None:
-        is_end_node = isinstance(self._executable, End)
+        is_end_node = self.is_end_node
         is_sub_graph = self._runtime.parent_id() != ''
         actor_manager = self._runtime.actor_manager()
         output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
@@ -251,6 +252,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             raise e
 
         # wait only when stream_call called
+        logger.debug(f"node [{self._node_id}] stream called: {self._stream_called()}")
         if self._stream_called():
             try:
                 result = await asyncio.wait_for(
@@ -267,6 +269,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 raise JiuWenBaseException(StatusCode.STREAM_FRAME_TIMEOUT_FAILED.code,
                                           StatusCode.STREAM_FRAME_TIMEOUT_FAILED.errmsg.format(
                                               timeout=self._stream_called_timeout))
+        elif self._has_stream_call and not self.is_end_node:
+            raise JiuWenBaseException(StatusCode.STREAM_NO_INPUT_FAILED.code,
+                                      StatusCode.STREAM_NO_INPUT_FAILED.errmsg.format(
+                                          abilities=self._stream_abilities()))
         # when the component output is in streaming mode, send an end tracer frame with empty outputs.
         await self.__trace_component_done__()
         logger.debug("node [%s] call finished", self._node_id)
@@ -375,6 +381,12 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         if (not self._has_call) or self._is_call_started.is_set():
             await TracerWorkflowUtils.trace_component_stream_input(self._runtime, {}, send=True)
 
-    def reset(self):
+    async def reset(self):
         self._call_count = 0
         self._stream_call_count = 0
+        self._stream_done.cancel()
+        try:
+            await self._stream_done
+        except CancelledError:
+            pass
+        self._stream_done = asyncio.Future()

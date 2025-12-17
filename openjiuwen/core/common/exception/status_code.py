@@ -268,6 +268,7 @@ class StatusCode(Enum):
     STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
     STREAM_FRAME_TIMEOUT_FAILED = (193003, "stream frame is timeout ({timeout}s), no stream output")
     STREAM_FIRST_FRAME_TIMEOUT_FAILED = (193004, "stream first frame is timeout ({timeout}s), no stream output")
+    STREAM_NO_INPUT_FAILED = (193005, "after recovery, component has {abilities} ability, no stream input")
 
     # Runtime - Config 194000 - 194999
     # Runtime - callback 195000 - 195999

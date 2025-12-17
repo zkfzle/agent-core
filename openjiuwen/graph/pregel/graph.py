@@ -157,9 +157,9 @@ class PregelGraph(Graph):
                 builder.add_branch(start, branch.condition)
         return builder.build(graph_store, after_tick=step_callback)
 
-    def reset(self):
+    async def reset(self):
         for node in self.nodes.values():
-            node.reset()
+            await node.reset()
 
 
 class CompiledGraph(ExecutableGraph):

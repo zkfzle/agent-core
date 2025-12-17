@@ -1,7 +1,10 @@
+from typing import AsyncIterator
+
 import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.component.base import SimpleComponent
 from openjiuwen.core.component.branch_comp import BranchComponent
 from openjiuwen.core.component.branch_router import BranchRouter
 from openjiuwen.core.component.break_comp import BreakComponent
@@ -14,13 +17,15 @@ from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent
 from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.runtime.base import Input, Output
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.state import ReadableStateLike
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import BaseStreamMode, CustomSchema, TraceSchema, OutputSchema
+from openjiuwen.core.stream.base import BaseStreamMode, CustomSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
-
+from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode, CommonNode, \
     AddTenNode, Node1, SlowNode, CountNode, StreamNode, CollectCompNode, TransformCompNode, StreamCompNode
 
@@ -1109,3 +1114,92 @@ async def test_nested_loop():
     except Exception as e:
         print(e)
         assert False
+
+
+class LogComp(SimpleComponent):
+    def __init__(self, name: str):
+        super().__init__()
+        self.name = name
+        self.times = 0
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context):
+        logger.info(f"Invoked {self.name}")
+        return {"out": "b_value"}
+
+    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        for i in range(0, inputs.get('num')):
+            yield {"out": i}
+
+    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        if self.times < 2:
+            self.times += 1
+            raise Exception("collect first time")
+        result = []
+        async for value in inputs.get("stream"):
+            result.append(value)
+        return {"out": result}
+
+    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+        async for value in inputs.get("stream"):
+            # await asyncio.sleep(0.5)
+            yield {"out": value}
+
+
+async def test_workflow_with_branch_and_stream():
+    workflow = Workflow()
+    workflow.set_start_comp("start", Start(), inputs_schema={"out": "${inputs}", "num": "${num}"})
+    workflow.add_workflow_comp("stream_comp", LogComp("stream_comp"), inputs_schema={"num": "${start.num}"})
+    branch_comp = BranchComponent()
+    branch_comp.add_branch("${start.out} == 'a'", "a")
+    branch_comp.add_branch("${start.out} == 'b'", "b")
+    workflow.add_workflow_comp("branch", branch_comp)
+    workflow.add_workflow_comp("a", LogComp("a"))
+    workflow.add_workflow_comp("b", LogComp("b"))
+    workflow.add_workflow_comp("wait", LogComp("wait"))
+    workflow.set_end_comp("end", End(conf={"responseTemplate": "s: {{s}}, b: {{b}}"}),
+                          inputs_schema={"b": "${b.out}"},
+                          stream_inputs_schema={"s": "${stream_comp.out}"},
+                          response_mode="streaming")
+
+    workflow.add_connection("start", "stream_comp")
+    workflow.add_connection("start", "branch")
+    # workflow.add_connection("a", "end")
+    # workflow.add_connection("b", "end")
+    workflow.add_connection("a", "wait")
+    workflow.add_connection("b", "wait")
+    workflow.add_connection("wait", "end")
+    workflow.add_stream_connection("stream_comp", "end")
+
+    async for chunk in workflow.stream(inputs={"inputs": 'b', 'num': 5}, runtime=WorkflowRuntime(),
+                                       stream_modes=[BaseStreamMode.OUTPUT]):
+        print(chunk)
+
+
+async def test_workflow_with_interrupt_recovery():
+    workflow = create_workflow2()
+    try:
+        async for chunk in workflow.stream(inputs={"inputs": 10}, runtime=WorkflowRuntime(session_id="123")):
+            logger.info(chunk)
+    except Exception as e:
+        logger.error(f"failed call workflow, error: {e}")
+    workflow2 = create_workflow2()
+    try:
+        async for chunk in workflow2.stream(InteractiveInput(), runtime=WorkflowRuntime(session_id="123")):
+            logger.info(chunk)
+    except Exception as e:
+        logger.error(f"failed call workflow, error: {e}")
+
+
+def create_workflow2() -> Workflow:
+    workflow = Workflow(WorkflowConfig(metadata=WorkflowMetadata(id="123")))
+    workflow.set_start_comp("start", Start(), inputs_schema={"out": "${inputs}"})
+    workflow.add_workflow_comp("a", LogComp("a"), inputs_schema={"num": "${start.out}"})
+    workflow.add_workflow_comp("b", LogComp("b"), stream_inputs_schema={"stream": "${a.out}"})
+    workflow.add_workflow_comp("c", LogComp("c"), stream_inputs_schema={"stream": "${b.out}"})
+    workflow.set_end_comp("end", End(), inputs_schema={"result": "${c.out}"})
+
+    workflow.add_connection("start", "a")
+    workflow.add_stream_connection("a", "b")
+    workflow.add_stream_connection("b", "c")
+    workflow.add_connection("c", "end")
+    return workflow

@@ -513,7 +513,7 @@ class Workflow(BaseWorkFlow):
             return results
         finally:
             await sub_workflow_runtime.close()
-            self._graph.reset()
+            await self._graph.reset()
 
     async def sub_stream(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> AsyncIterator[Output]:
         logger.info(f"begin to sub_stream, input: {inputs}")
@@ -544,7 +544,7 @@ class Workflow(BaseWorkFlow):
                 yield frame
         finally:
             await sub_workflow_runtime.close()
-            self._graph.reset()
+            await self._graph.reset()
 
     async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
         async def _invoke_task():
@@ -632,7 +632,7 @@ class Workflow(BaseWorkFlow):
                                       StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
         finally:
             await runtime.close()
-            self._graph.reset()
+            await self._graph.reset()
 
     async def _execute_with_timeout(self, func, timeout, status_code):
         task = asyncio.create_task(func())

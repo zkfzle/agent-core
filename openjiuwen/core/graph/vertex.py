@@ -59,9 +59,10 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
     async def _run_executable(self, ability: ComponentAbility, is_subgraph: bool = False, config: Any = None,
                               event: asyncio.Event = None) -> bool:
         try:
-            if event is not None:
-                logger.debug(f"node {self._node_id} with ability {ability.ability_name} set event")
-                event.set()
+            def set_event():
+                if event is not None:
+                    logger.debug(f"node {self._node_id} with ability {ability.ability_name} set event")
+                    event.set()
 
             # Simplified strategy pattern using lambda functions wrapping async execution
             async def invoke_strategy():
@@ -80,6 +81,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
             async def collect_strategy():
                 collect_iter = await self._pre_stream(ComponentAbility.COLLECT)
+                set_event()
                 batch_output = await self._executable.on_collect(collect_iter, self._runtime)
                 await self._post_invoke(batch_output)
 
@@ -87,6 +89,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 transform_iter = None
                 try:
                     transform_iter = await self._pre_stream(ComponentAbility.TRANSFORM)
+                    set_event()
                 except Exception as e:
                     logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
                 output_iter = self._executable.on_transform(transform_iter, self._runtime)
@@ -289,7 +292,6 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         self._stream_call_count += 1
         self._stream_done = asyncio.Future()
         logger.debug(f"node [{self._node_id}] stream entrypoint has been called")
-        event.set()
 
         if self._runtime is None or self._runtime.actor_manager() is None:
             error = JiuWenBaseException(1, "queue manager is not initialized")
@@ -305,6 +307,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 task = asyncio.create_task(self._run_executable(ability, event=e))
                 tasks.append(task)
                 await e.wait()
+            event.set()
             results = await asyncio.gather(*tasks, return_exceptions=True)
             logger.debug(f"node [{self._node_id}] all streaming tasks have been finished")
             for result in results:

@@ -9,6 +9,7 @@ dependencies = [
     "mcp==1.12.2",
     "pydantic==2.11.5",
     "python-dateutil==2.9.0.post0",
+    "filelock>=3.20.1",
     "sqlalchemy==2.0.41",
     "openai==1.108.0",
     "requests==2.32.3",

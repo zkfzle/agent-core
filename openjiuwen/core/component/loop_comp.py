@@ -265,6 +265,7 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
         if not continue_loop:
             runtime.state().update({INDEX: 0, BROKEN: False})
             self._post_body.set_finish_index(-1)
+            runtime.parent().state().update({POST_BODY_NODE_ID: None})
 
         return self._in_loop if continue_loop else self._out_loop
 

@@ -17,7 +17,7 @@ from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.state import ReadableStateLike
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import BaseStreamMode, CustomSchema
+from openjiuwen.core.stream.base import BaseStreamMode, CustomSchema, TraceSchema, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 
@@ -1038,3 +1038,69 @@ async def test_invoke_validates_unregistered_edge_nodes():
     flow3.add_connection("a", "end")
     result = await flow3.invoke({"a": 1}, WorkflowRuntime())
     assert result is not None
+
+
+async def test_nested_loop():
+
+    def create_sub_workflow():
+        flow = Workflow()
+        flow.set_start_comp("start", Start(), inputs_schema={"input_arr": "${array}", "input_num": "${num}"})
+        flow.set_end_comp("end", End(), inputs_schema={"end_out": "${loop}"})
+
+        loop_group = LoopGroup()
+        loop_group.add_workflow_comp("loop_1", AddTenNode("loop_1"), inputs_schema={"source": "${loop.index}"})
+        loop_group.add_workflow_comp("loop_2", AddTenNode("loop_2"), inputs_schema={"source": "${loop.user_num}"})
+
+        set_variable_component = SetVariableComponent({"${loop.user_num}": "${loop_2.result}"})
+
+        loop_group.add_workflow_comp("loop_3", set_variable_component)
+        loop_group.start_nodes(["loop_1"])
+        loop_group.end_nodes(["loop_3"])
+        loop_group.add_connection("loop_1", "loop_2")
+        loop_group.add_connection("loop_2", "loop_3")
+
+        loop_component = LoopComponent(loop_group,
+                                       output_schema={"l_out1": "${loop_1.result}", "l_out2": "${loop_2.result}"})
+
+        flow.add_workflow_comp("loop", loop_component, inputs_schema={"loop_type": "number", "loop_number": 2,
+                                                                      "intermediate_var": {
+                                                                          "user_num": "${start.input_num}"}})
+
+        flow.add_connection("start", "loop")
+        flow.add_connection("loop", "end")
+        return flow
+
+    def create_main_loop():
+        loop_group = LoopGroup()
+        loop_group.start_nodes(['s'])
+        loop_group.add_workflow_comp("s", Start())
+        loop_group.add_workflow_comp("sub", SubWorkflowComponent(create_sub_workflow()),
+                                     inputs_schema={"array": "${array}", "num": "${num}"})
+        loop_group.add_workflow_comp("e", End(), inputs_schema={"result": "${end_out}"})
+        loop_group.end_nodes(['e'])
+        loop_group.add_connection("s", "sub")
+        loop_group.add_connection("sub", "e")
+        loop_component = LoopComponent(loop_group,
+                                       output_schema={"array": "${array}", "result": "${result}"})
+        return loop_component
+
+    main_workflow = Workflow()
+    main_workflow.set_start_comp("main_start", Start(), inputs_schema={"input_arr": "${array}", "input_num": "${num}"})
+    main_workflow.add_workflow_comp("main_loop", create_main_loop(),
+                                    inputs_schema={"loop_type": "number", "loop_number": 2,
+                                                   "intermediate_var": {
+                                                       "user_num": "${start.input_num}"}})
+    main_workflow.set_end_comp("main_end", End(), inputs_schema={"end_out": "${loop}"})
+
+    main_workflow.add_connection("main_start", "main_loop")
+    main_workflow.add_connection("main_loop", "main_end")
+
+
+    inputs = {"array": [4, 5, 6], "num": -3}
+
+    try:
+        async for chunk in main_workflow.stream(inputs, runtime=WorkflowRuntime()):
+            pass
+    except Exception as e:
+        print(e)
+        assert False

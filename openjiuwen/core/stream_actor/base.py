@@ -158,8 +158,9 @@ class StreamProcessor:
                 handle_map.add(source_key)
                 for path, queues in self.processor_queues.items():
                     path = extract_origin_key(path)
-                    if (path in source_map.get(source_ability)
-                            and (path == source_id or path.startswith(f"{source_id}."))):
+                    is_handled = path in source_map.get(source_ability)
+                    is_all_finish = handle_map == self.sources
+                    if (is_handled or is_all_finish) and self.is_value_from_source(path, source_id):
                         for queue in queues:
                             await queue.put(EndFrame(source_id))
             else:
@@ -173,6 +174,10 @@ class StreamProcessor:
             if handle_map == self.sources:
                 break
         logger.info(f"stream processor finished for {self.node_id}, ability: [{ability.ability_name}]")
+
+    @staticmethod
+    async def is_value_from_source(path: str, source_id: str) -> bool:
+        return path == source_id or path.startswith(f"{source_id}.")
 
     @staticmethod
     def _get_unique_source_key(payload: StreamPayload) -> str:

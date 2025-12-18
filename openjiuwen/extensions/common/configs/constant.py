@@ -4,8 +4,7 @@
 
 
 DEFAULT_INNER_LOG_CONFIG = {
-                # 'level': 'INFO',
-                'level': 'DEBUG',
+                'level': 'INFO',
                 'output': ['console', 'file'],
                 'log_path': './logs/',
                 'log_file': 'run/jiuwen.log',

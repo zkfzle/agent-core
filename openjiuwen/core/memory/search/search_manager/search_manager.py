@@ -29,7 +29,7 @@ class SearchManager:
     def __init__(self,
                  managers: dict[str, BaseMemoryManager],
                  user_mem_store: UserMemStore,
-                 crypto_key: str):
+                 crypto_key: bytes):
         self.managers = managers
         self.mem_store = user_mem_store
         self.crypto_key = crypto_key

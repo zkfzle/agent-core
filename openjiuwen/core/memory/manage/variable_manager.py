@@ -16,7 +16,7 @@ class VariableManager(BaseMemoryManager):
 
     def __init__(self,
                  kv_store: BaseKVStore,
-                 crypto_key: str):
+                 crypto_key: bytes):
         self.kv_store = kv_store
         self.crypto_key = crypto_key
 

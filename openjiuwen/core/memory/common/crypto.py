@@ -11,24 +11,22 @@ AES_KEY_LENGTH = 32
 TAG_LENGTH = 16
 
 
-def encrypt(key: str, plaintext: str):
-    aes_key = key.encode(encoding='utf-8')
-    if len(aes_key) != AES_KEY_LENGTH:
-        raise ValueError(f'Wrong key length: {len(aes_key)}, expected {AES_KEY_LENGTH}')
+def encrypt(key: bytes, plaintext: str):
+    if len(key) != AES_KEY_LENGTH:
+        raise ValueError(f'Wrong key length: {len(key)}, expected {AES_KEY_LENGTH}')
     random_instance = secrets.SystemRandom()
     nonce = bytes([random_instance.getrandbits(BIT_LENGTH) for _ in range(0, NONCE_LENGTH)])
-    cipher = AES.new(key=aes_key, mode=AES.MODE_GCM, nonce=nonce, mac_len=TAG_LENGTH)
+    cipher = AES.new(key=key, mode=AES.MODE_GCM, nonce=nonce, mac_len=TAG_LENGTH)
     cipher_text, tag = cipher.encrypt_and_digest(plaintext.encode(encoding="utf-8"))
     return [cipher_text.hex(), nonce.hex(), tag.hex()]
 
 
-def decrypt(key: str, ciphertext: str, nonce: str, tag: str):
+def decrypt(key: bytes, ciphertext: str, nonce: str, tag: str):
     ciphertext_bytes = bytes.fromhex(ciphertext)
     nonce_bytes = bytes.fromhex(nonce)
     tag_bytes = bytes.fromhex(tag)
-    aes_key = key.encode(encoding='utf-8')
-    if len(aes_key) != AES_KEY_LENGTH:
-        raise ValueError(f'Wrong key length: {len(aes_key)}, expected {AES_KEY_LENGTH}')
+    if len(key) != AES_KEY_LENGTH:
+        raise ValueError(f'Wrong key length: {len(key)}, expected {AES_KEY_LENGTH}')
 
     if len(nonce_bytes) != NONCE_LENGTH:
         raise ValueError(f"Wrong nonce length: {len(nonce_bytes)}")
@@ -36,6 +34,6 @@ def decrypt(key: str, ciphertext: str, nonce: str, tag: str):
     if len(tag_bytes) != TAG_LENGTH:
         raise ValueError(f"Wrong tag length: {len(tag_bytes)}, expected {TAG_LENGTH}")
 
-    cipher = AES.new(key=aes_key, mode=AES.MODE_GCM, nonce=nonce_bytes)
+    cipher = AES.new(key=key, mode=AES.MODE_GCM, nonce=nonce_bytes)
     plaintext_bytes = cipher.decrypt_and_verify(ciphertext=ciphertext_bytes, received_mac_tag=tag_bytes)
     return plaintext_bytes.decode(encoding="utf-8")

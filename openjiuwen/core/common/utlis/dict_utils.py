@@ -56,6 +56,8 @@ def extract_leaf_nodes(data: Any, current_path: Optional[List[str]] = None) -> L
         >>> extract_leaf_nodes({'a': [1, {'b': 2}]})
         [(['a', '[0]'], 1), (['a', '[1]', 'b'], 2)]
     """
+    if not data:
+        return []
     if current_path is None:
         current_path = []
 

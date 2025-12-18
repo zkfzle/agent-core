@@ -185,6 +185,8 @@ class StreamProcessor:
 
     def generator(self, schema: dict, stream_callable: Callable[[dict], Awaitable[None]] = None) -> dict:
         inputs = []
+        if not schema:
+            return {}
         paths = extract_leaf_nodes(schema)
         for key_path, ref_path in paths:
             path_str = format_path(key_path)

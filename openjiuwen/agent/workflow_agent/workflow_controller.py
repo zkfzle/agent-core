@@ -4,7 +4,7 @@
 """Workflow Controller - Workflow-specific execution logic"""
 
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from openjiuwen.agent.common.enum import TaskStatus, TaskType
 from openjiuwen.agent.common.schema import WorkflowSchema
@@ -771,11 +771,29 @@ class WorkflowController(IntentDetectionController):
         # Support multiple node_ids (parallel interruptions)
         for workflow_key, task_info in interrupted_tasks.items():
             component_id = task_info.get("component_id")
-            if component_id in node_ids:
-                logger.info(
-                    f"_find_interrupted_task_by_node_id: "
-                    f"found match workflow_key={workflow_key}"
-                )
+            # component_id can be a list (parallel interruptions) or a string (legacy)
+            # Check if any node_id from user input matches any component_id in the interrupted task
+            matched = False
+            if isinstance(component_id, list):
+                # New format: component_id is a list
+                if any(node_id in component_id for node_id in node_ids):
+                    matched = True
+                    logger.info(
+                        f"_find_interrupted_task_by_node_id: "
+                        f"found match workflow_key={workflow_key}, "
+                        f"component_ids={component_id}, node_ids={node_ids}"
+                    )
+            else:
+                # Legacy format: component_id is a string
+                if component_id in node_ids:
+                    matched = True
+                    logger.info(
+                        f"_find_interrupted_task_by_node_id: "
+                        f"found match workflow_key={workflow_key}, "
+                        f"component_id={component_id}"
+                    )
+
+            if matched:
                 task_data = task_info["task"]
                 task = Task.model_validate(task_data)
 
@@ -932,25 +950,28 @@ class WorkflowController(IntentDetectionController):
     def _extract_component_id_from_interaction_data(
             self,
             interaction_data: Optional[list]
-    ) -> str:
-        """Extract component ID from interaction data
+    ) -> List[str]:
+        """Extract component IDs from interaction data
         
         Reference old implementation: MessageHandler.extract_component_id_from_stream_data
-        Find OutputSchema with type '__interaction__' from interaction_data list,
-        and extract component_id from payload.id
+        Find all OutputSchema with type '__interaction__' from interaction_data list,
+        and extract component_ids from payload.id
+        
+        Support parallel interruptions by collecting all component IDs.
         
         Args:
             interaction_data: OutputSchema list, containing interaction requests during interruption
             
         Returns:
-            str: Component ID, default return "questioner"
+            List[str]: List of component IDs, default return ["questioner"]
         """
         if not interaction_data:
             logger.warning("No interaction_data provided, using default component_id")
-            return "questioner"
+            return ["questioner"]
 
+        component_ids = []
         try:
-            # Iterate through interaction_data, find output with type '__interaction__'
+            # Iterate through interaction_data, find all outputs with type '__interaction__'
             for output_schema in interaction_data:
                 if (hasattr(output_schema, 'type') and
                         output_schema.type == '__interaction__'):
@@ -958,18 +979,22 @@ class WorkflowController(IntentDetectionController):
                     if (hasattr(output_schema, 'payload') and
                             hasattr(output_schema.payload, 'id')):
                         component_id = output_schema.payload.id
+                        component_ids.append(component_id)
                         logger.info(
                             f"Extracted component_id from interaction_data: "
                             f"{component_id}"
                         )
-                        return component_id
         except Exception as e:
             logger.warning(
                 f"Failed to extract component_id from interaction_data: {e}"
             )
 
-        logger.warning("No component_id found in interaction_data, using default")
-        return "questioner"  # Default value
+        if not component_ids:
+            logger.warning("No component_id found in interaction_data, using default")
+            return ["questioner"]  # Default value
+
+        logger.info(f"Extracted {len(component_ids)} component_ids: {component_ids}")
+        return component_ids
 
     def _extract_interaction_value_from_interaction_data(
             self,

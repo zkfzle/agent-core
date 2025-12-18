@@ -33,6 +33,11 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.executable import Output, Input
+from openjiuwen.core.runtime.base import ComponentExecutable
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.component.base import WorkflowComponent
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -89,6 +94,21 @@ SYSTEM_PROMPT_TEMPLATE = "你是一个query改写的AI助手。今天的日期�
 def build_current_date():
     current_datetime = datetime.now()
     return current_datetime.strftime("%Y-%m-%d")
+
+
+class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
+    """
+    交互确认组件 - 用于用户确认操作
+    """
+
+    def __init__(self, comp_id: str):
+        super().__init__()
+        self.comp_id = comp_id
+
+    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+        # 请求用户确认
+        confirm = await runtime.interact("是否确认操作")
+        return {"confirm_result": confirm}
 
 
 class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
@@ -313,6 +333,81 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 4. 连接拓扑
         flow.add_connection("start", "questioner")
         flow.add_connection("questioner", "end")
+
+        return context.create_workflow_runtime(), flow
+
+    def build_multiple_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
+        """
+        构建包含两个并行中断节点的工作流，用于测试分步恢复功能。
+        
+        工作流拓扑：
+            start -> interactive \
+                     questioner  -> end
+        
+        返回 (context, workflow) 二元组，可直接用于 invoke。
+        """
+        # 1. 初始化工作流与上下文
+        workflow_id = "test_multiple_interrupt_workflow"
+        version = "1.0"
+        name = "multiple_interrupt_test"
+        workflow_config = WorkflowConfig(
+            metadata=WorkflowMetadata(
+                name=name,
+                id=workflow_id,
+                version=version,
+                description="包含两个并行中断节点的测试工作流",
+            ),
+            workflow_inputs_schema=WorkflowInputsSchema(
+                type="object",
+                properties={
+                    "query": {
+                        "type": "string",
+                        "description": "用户输入",
+                        "required": True
+                    }
+                },
+                required=['query']
+            )
+        )
+        flow = Workflow(workflow_config=workflow_config)
+        context = TaskRuntime(trace_id="test")
+
+        # 2. 实例化各组件
+        start = self._create_start_component()
+        questioner = self._create_questioner_component()
+        interactive = InteractiveConfirmComponent("interactive")
+        end = End({"responseTemplate": "{{location}} | {{date}} | confirm={{confirm_result}}"})
+
+        # 3. 注册组件到工作流
+        flow.set_start_comp(
+            "start",
+            start,
+            inputs_schema={"query": "${query}"},
+        )
+        flow.add_workflow_comp(
+            "questioner",
+            questioner,
+            inputs_schema={"query": "${start.query}"}
+        )
+        flow.add_workflow_comp(
+            "interactive",
+            interactive,
+            inputs_schema={"query": "${start.query}"}
+        )
+        flow.set_end_comp(
+            "end", 
+            end, 
+            inputs_schema={
+                "location": "${questioner.location}",
+                "date": "${questioner.date}",
+                "confirm_result": "${interactive.confirm_result}"
+            }
+        )
+
+        # 4. 连接拓扑（并行执行）
+        flow.add_connection("start", "questioner")
+        flow.add_connection("start", "interactive")
+        flow.add_connection(["questioner", "interactive"], "end")
 
         return context.create_workflow_runtime(), flow
 
@@ -954,3 +1049,215 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             success_count, 0,
             "至少应该有一个 conversation 成功触发中断"
         )
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_with_multiple_interrupt_nodes_stream(self):
+        """
+        测试WorkflowAgent运行包含两个并行中断节点的工作流，并逐个恢复。
+        
+        测试场景：
+        1. 首次调用：触发两个并行中断节点（interactive和questioner）
+        2. 第二次调用：恢复interactive节点，questioner仍处于中断状态
+        3. 第三次调用：恢复questioner节点，工作流完成
+        """
+        print("=== 测试 WorkflowAgent 运行包含两个并行中断节点的工作流 ===")
+        
+        # 构建包含两个并行中断节点的工作流
+        _, workflow = self.build_multiple_interrupt_workflow()
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), 
+            workflow
+        )
+        agent = self._create_agent(workflow)
+
+        # ========== 步骤1: 首次调用，触发并行中断 ==========
+        print("\n【步骤1】发送查询请求，触发并行中断")
+        interaction_outputs = []
+        try:
+            async def collect_first_stream():
+                chunks = []
+                async for chunk in agent.stream({"query": "查询天气", "conversation_id": "test_multi_interrupt"}):
+                    print(f"第一次输出结果 >>> {chunk}")
+                    chunks.append(chunk)
+                    if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                        interaction_outputs.append(chunk)
+                        print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+                return chunks
+
+            first_chunks = await asyncio.wait_for(collect_first_stream(), timeout=50.0)
+        except asyncio.TimeoutError:
+            print("❌ 第一次调用超时！")
+            raise
+
+        # 校验第一次调用结果：应该返回2个交互请求
+        self.assertEqual(len(interaction_outputs), 2, "应该同时返回2个中断（interactive和questioner）")
+        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求")
+
+        # ========== 步骤2: 恢复一个中断节点（interactive） ==========
+        print("\n【步骤2】使用InteractiveInput恢复一个中断（interactive）")
+        interactive_input = InteractiveInput()
+        interactive_input.update("interactive", "确认操作")
+        
+        interaction_outputs = []
+        try:
+            async def collect_second_stream():
+                chunks = []
+                async for chunk in agent.stream({"query": interactive_input,
+                                                 "conversation_id": "test_multi_interrupt"}):
+                    print(f"第二次输出结果 >>> {chunk}")
+                    chunks.append(chunk)
+                    if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                        interaction_outputs.append(chunk)
+                        print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+                return chunks
+
+            second_chunks = await asyncio.wait_for(collect_second_stream(), timeout=30.0)
+        except asyncio.TimeoutError:
+            print("❌ 第二次调用超时！")
+            raise
+
+        # 校验第二次调用结果：应该返回1个交互请求（questioner）
+        self.assertEqual(len(interaction_outputs), 1, "应该返回1个中断（questioner）")
+        self.assertEqual(interaction_outputs[0].payload.id, "questioner", "应该只返回questioner中断")
+        print(f"✅ 第二次调用校验通过：返回 {len(interaction_outputs)} 个交互请求（questioner）")
+
+        # ========== 步骤3: 恢复剩余的中断节点（questioner） ==========
+        print("\n【步骤3】使用InteractiveInput恢复剩余中断（questioner）")
+        interactive_input = InteractiveInput()
+        interactive_input.update("questioner", {"location": "上海"})
+        
+        interaction_outputs = []
+        workflow_final_chunk = None
+        try:
+            async def collect_third_stream():
+                chunks = []
+                final_chunk = None
+                async for chunk in agent.stream({"query": interactive_input,
+                                                 "conversation_id": "test_multi_interrupt"}):
+                    print(f"第三次输出结果 >>> {chunk}")
+                    chunks.append(chunk)
+                    if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                        interaction_outputs.append(chunk)
+                        print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+                    elif isinstance(chunk, OutputSchema) and chunk.type == "workflow_final":
+                        final_chunk = chunk
+                return chunks, final_chunk
+
+            third_chunks, workflow_final_chunk = await asyncio.wait_for(collect_third_stream(), timeout=30.0)
+        except asyncio.TimeoutError:
+            print("❌ 第三次调用超时！")
+            raise
+
+        # 校验第三次调用结果：应该没有交互请求，工作流完成
+        self.assertEqual(len(interaction_outputs), 0, "应该全部完成，没有中断")
+        self.assertIsNotNone(workflow_final_chunk, "第三次调用应该包含 workflow_final 结果")
+        self.assertIsInstance(workflow_final_chunk.payload, dict, "workflow_final payload 应该是字典")
+        
+        # 检查是否是错误响应
+        if workflow_final_chunk.payload.get('error'):
+            error_msg = workflow_final_chunk.payload.get('message', 'Unknown error')
+            print(f"⚠️ 工作流执行遇到错误: {error_msg}")
+            if 'invoke llm error' in error_msg or 'Failed to invoke llm' in error_msg:
+                self.skipTest(f"LLM 调用失败（外部依赖问题）: {error_msg}")
+            else:
+                self.fail(f"工作流执行失败: {error_msg}")
+
+        # 校验正常响应
+        self.assertIn('responseContent', workflow_final_chunk.payload, "应该包含responseContent")
+        response_content = workflow_final_chunk.payload['responseContent']
+        self.assertIn('上海', response_content, "应该包含location信息")
+        self.assertIn('确认操作', response_content, "应该包含confirm信息")
+        print(f"✅ 第三次调用校验通过：工作流完成，返回结果正确")
+        print(f"   最终结果：{response_content}")
+
+        print("\n🎉 测试完成！成功验证了并行中断节点的分步恢复功能")
+
+    @unittest.skip("skip system test - requires network")
+    async def test_workflow_agent_with_multiple_interrupt_nodes_resume_all_at_once(self):
+        """
+        测试WorkflowAgent运行包含两个并行中断节点的工作流，并同时恢复所有中断。
+        
+        测试场景：
+        1. 首次调用：触发两个并行中断节点（interactive和questioner）
+        2. 第二次调用：同时恢复所有中断节点，工作流直接完成
+        """
+        print("=== 测试 WorkflowAgent 同时恢复所有并行中断节点 ===")
+        
+        # 构建包含两个并行中断节点的工作流
+        _, workflow = self.build_multiple_interrupt_workflow()
+        resource_mgr.workflow().add_workflow(
+            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), 
+            workflow
+        )
+        agent = self._create_agent(workflow)
+
+        # ========== 步骤1: 首次调用，触发并行中断 ==========
+        print("\n【步骤1】发送查询请求，触发并行中断")
+        interaction_outputs = []
+        try:
+            async def collect_first_stream():
+                chunks = []
+                async for chunk in agent.stream({"query": "查询天气", "conversation_id": "test_resume_all"}):
+                    print(f"第一次输出结果 >>> {chunk}")
+                    chunks.append(chunk)
+                    if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                        interaction_outputs.append(chunk)
+                        print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
+                return chunks
+
+            first_chunks = await asyncio.wait_for(collect_first_stream(), timeout=50.0)
+        except asyncio.TimeoutError:
+            print("❌ 第一次调用超时！")
+            raise
+
+        # 校验第一次调用结果：应该返回2个交互请求
+        self.assertEqual(len(interaction_outputs), 2, "应该同时返回2个中断（interactive和questioner）")
+        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求")
+
+        # ========== 步骤2: 同时恢复所有中断节点 ==========
+        print("\n【步骤2】使用InteractiveInput同时恢复所有中断")
+        interactive_input = InteractiveInput()
+        interactive_input.update("interactive", "确认操作")
+        interactive_input.update("questioner", {"location": "北京"})
+        
+        workflow_final_chunk = None
+        try:
+            async def collect_second_stream():
+                chunks = []
+                final_chunk = None
+                async for chunk in agent.stream({"query": interactive_input, "conversation_id": "test_resume_all"}):
+                    print(f"第二次输出结果 >>> {chunk}")
+                    chunks.append(chunk)
+                    if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
+                        print(f"⚠️ 意外的中断: {chunk.payload.id}")
+                    elif isinstance(chunk, OutputSchema) and chunk.type == "workflow_final":
+                        final_chunk = chunk
+                return chunks, final_chunk
+
+            second_chunks, workflow_final_chunk = await asyncio.wait_for(collect_second_stream(), timeout=30.0)
+        except asyncio.TimeoutError:
+            print("❌ 第二次调用超时！")
+            raise
+
+        # 校验第二次调用结果：应该直接完成，无交互请求
+        self.assertIsNotNone(workflow_final_chunk, "第二次调用应该包含 workflow_final 结果")
+        self.assertIsInstance(workflow_final_chunk.payload, dict, "workflow_final payload 应该是字典")
+        
+        # 检查是否是错误响应
+        if workflow_final_chunk.payload.get('error'):
+            error_msg = workflow_final_chunk.payload.get('message', 'Unknown error')
+            print(f"⚠️ 工作流执行遇到错误: {error_msg}")
+            if 'invoke llm error' in error_msg or 'Failed to invoke llm' in error_msg:
+                self.skipTest(f"LLM 调用失败（外部依赖问题）: {error_msg}")
+            else:
+                self.fail(f"工作流执行失败: {error_msg}")
+
+        # 校验正常响应
+        self.assertIn('responseContent', workflow_final_chunk.payload, "应该包含responseContent")
+        response_content = workflow_final_chunk.payload['responseContent']
+        self.assertIn('北京', response_content, "应该包含location信息")
+        self.assertIn('确认操作', response_content, "应该包含confirm信息")
+        print(f"✅ 第二次调用校验通过：工作流直接完成，返回结果正确")
+        print(f"   最终结果：{response_content}")
+
+        print("\n🎉 测试完成！成功验证了同时恢复所有并行中断节点的功能")

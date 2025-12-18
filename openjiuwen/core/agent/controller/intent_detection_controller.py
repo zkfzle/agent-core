@@ -362,7 +362,16 @@ class IntentDetectionController(BaseController):
             # Check if provided input's component_id matches target workflow
             if provided_input.user_inputs:
                 provided_keys = list(provided_input.user_inputs.keys())
-                if target_component_id not in provided_keys:
+                
+                # Handle both list (parallel interruptions) and string (single interruption)
+                if isinstance(target_component_id, list):
+                    # Parallel interruptions: check if any provided key is in target list
+                    matches = any(key in target_component_id for key in provided_keys)
+                else:
+                    # Single interruption: check if target is in provided keys
+                    matches = target_component_id in provided_keys
+                
+                if not matches:
                     # Mismatch: Remap user input value to target component_id
                     # Get user input value from the first key
                     user_value = list(provided_input.user_inputs.values())[0]
@@ -373,7 +382,11 @@ class IntentDetectionController(BaseController):
                         f"target component."
                     )
                     interactive_input = InteractiveInput()
-                    interactive_input.update(target_component_id, user_value)
+                    # For parallel interruptions, remap to the first target component
+                    if isinstance(target_component_id, list):
+                        interactive_input.update(target_component_id[0], user_value)
+                    else:
+                        interactive_input.update(target_component_id, user_value)
                 else:
                     # Match: Use provided input directly
                     interactive_input = provided_input
@@ -388,7 +401,12 @@ class IntentDetectionController(BaseController):
                 query_text = ""
 
             interactive_input = InteractiveInput()
-            interactive_input.update(target_component_id, query_text)
+            # For parallel interruptions, update the first component
+            if isinstance(target_component_id, list):
+                # Only update the first interrupted component with user's text input
+                interactive_input.update(target_component_id[0], query_text)
+            else:
+                interactive_input.update(target_component_id, query_text)
             logger.info(
                 f"Created InteractiveInput for resume: "
                 f"component_id={target_component_id}, query={query_text}"

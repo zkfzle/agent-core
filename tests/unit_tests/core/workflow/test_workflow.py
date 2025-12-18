@@ -1099,8 +1099,13 @@ async def test_nested_loop():
     inputs = {"array": [4, 5, 6], "num": -3}
 
     try:
+        loop_indexes = []
         async for chunk in main_workflow.stream(inputs, runtime=WorkflowRuntime()):
-            pass
+            if isinstance(chunk, TraceSchema):
+                loop_index = chunk.payload.get("loopIndex")
+                if loop_index is not None and chunk.payload.get("invokeId") == "main_loop.sub.loop.loop_1":
+                    loop_indexes.append(loop_index)
+        assert loop_indexes == [0, 0, 1, 1, 0, 0, 1, 1]
     except Exception as e:
         print(e)
         assert False

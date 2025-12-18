@@ -6,7 +6,7 @@ from abc import abstractmethod, ABC
 from typing import Any
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.common.crypto import encrypt, decrypt, IV_LENGTH
+from openjiuwen.core.memory.common.crypto import encrypt, decrypt, NONCE_LENGTH, TAG_LENGTH
 
 from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit
 
@@ -17,7 +17,8 @@ class BaseMemoryManager(ABC):
     Managing a specific type of memory data.
     """
 
-    IV_HEX_LENGTH = IV_LENGTH * 2 # hex_length = bytes_length * 2
+    NONCE_HEX_LENGTH = NONCE_LENGTH * 2  # hex_length = bytes_length * 2
+    TAG_HEX_LENGTH = TAG_LENGTH * 2  # hex_length = bytes_length * 2
 
     @abstractmethod
     async def add(self, memory: BaseMemoryUnit):
@@ -55,8 +56,8 @@ class BaseMemoryManager(ABC):
             return plaintext
 
         try:
-            encrypt_memory, iv = encrypt(key=key, plaintext=plaintext)
-            return f"{iv}{encrypt_memory}"
+            encrypt_memory, nonce, tag = encrypt(key=key, plaintext=plaintext)
+            return f"{nonce}{tag}{encrypt_memory}"
         except ValueError as e:
             logger.warning(f"Encrypt exception occurred:{str(e)}")
             return ""
@@ -69,14 +70,16 @@ class BaseMemoryManager(ABC):
         if not key or not ciphertext:
             return ciphertext
 
-        if len(ciphertext) < BaseMemoryManager.IV_HEX_LENGTH:
+        nonce_and_tag_len = BaseMemoryManager.NONCE_HEX_LENGTH + BaseMemoryManager.TAG_HEX_LENGTH
+        if len(ciphertext) < nonce_and_tag_len:
             logger.warning(f"Decryption error occurred: invalid ciphertext len{len(ciphertext)}")
             return ""
 
-        iv = ciphertext[0:BaseMemoryManager.IV_HEX_LENGTH]
-        encrypt_memory = ciphertext[BaseMemoryManager.IV_HEX_LENGTH:]
+        nonce = ciphertext[0:BaseMemoryManager.NONCE_HEX_LENGTH]
+        tag = ciphertext[BaseMemoryManager.NONCE_HEX_LENGTH:nonce_and_tag_len]
+        encrypt_memory = ciphertext[nonce_and_tag_len:]
         try:
-            return decrypt(key=key, ciphertext=encrypt_memory, iv=iv)
+            return decrypt(key=key, ciphertext=encrypt_memory, nonce=nonce, tag=tag)
         except ValueError as e:
             logger.warning(f"Decrypt exception occurred:{str(e)}")
             return ""

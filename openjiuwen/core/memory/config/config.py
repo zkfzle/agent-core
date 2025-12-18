@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from pydantic import BaseModel, Field, field_validator
-from openjiuwen.core.memory.common.crypto import IV_LENGTH
+from openjiuwen.core.memory.common.crypto import AES_KEY_LENGTH
 
 
 class SysMemConfig(BaseModel):
@@ -18,10 +18,10 @@ class SysMemConfig(BaseModel):
         if v == "":
             return ""
 
-        if len(v.encode(encoding="utf-8")) == IV_LENGTH:
+        if len(v.encode(encoding="utf-8")) == AES_KEY_LENGTH:
             return v
 
-        raise ValueError(f"Invalid crypto_key, must be empty or {IV_LENGTH} bytes(utf-8 length)")
+        raise ValueError(f"Invalid crypto_key, must be empty or {AES_KEY_LENGTH} bytes(utf-8 length)")
 
 
 class MemoryConfig(BaseModel):

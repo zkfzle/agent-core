@@ -6,6 +6,7 @@ from typing import List, Tuple, TypeVar, Optional, Union, Callable, Awaitable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_workflow_with_trace
 from openjiuwen.core.utils.tool.schema import ToolInfo
@@ -32,7 +33,10 @@ class WorkflowMgr(AbstractManager[Workflow]):
 
         # Define validation function for non-callable workflows
         def validate_workflow(workflow_obj):
-            self._workflow_tool_infos[workflow_id] = workflow_obj.get_tool_info()
+            if workflow_obj.get_tool_info() is None:
+                logger.warn(f"add a workflow without tool_info, workflow_id={workflow_id}")
+            else:
+                self._workflow_tool_infos[workflow_id] = workflow_obj.get_tool_info()
             return workflow_obj
 
         self._add_resource(workflow_id, workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, validate_workflow)
@@ -94,7 +98,7 @@ class WorkflowMgr(AbstractManager[Workflow]):
     def get_tool_infos(self, workflow_ids: List[str] = None):
         try:
             if not workflow_ids:
-                return [info for info in self._workflow_tool_infos.values()]
+                return [info for info in self._workflow_tool_infos.values() if info is not None]
 
             infos = []
             for workflow_id in workflow_ids:

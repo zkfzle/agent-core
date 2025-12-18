@@ -68,7 +68,10 @@ class ToolMgr(AbstractManager[Tool]):
             tool = provider()
             # Store tool info
             if hasattr(tool, "get_tool_info"):
-                self._tool_infos[name] = tool.get_tool_info()
+                if tool.get_tool_info() is None:
+                    logger.warn(f"add a tool without tool_info, tool_name={name}")
+                else:
+                    self._tool_infos[name] = tool.get_tool_info()
             else:
                 self._tool_infos[name] = ToolInfo()
             return tool
@@ -126,7 +129,8 @@ class ToolMgr(AbstractManager[Tool]):
                     )
                 )
             if not tool_ids:
-                return [self._normalize_mcp_tool_info(info, delimiter) for info in self._tool_infos.values()]
+                return [self._normalize_mcp_tool_info(info, delimiter) for info in self._tool_infos.values() if
+                        info is not None]
 
             infos = []
             for tool_id in tool_ids:

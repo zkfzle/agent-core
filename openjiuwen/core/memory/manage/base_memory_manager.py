@@ -51,7 +51,7 @@ class BaseMemoryManager(ABC):
         pass
 
     @staticmethod
-    def encrypt_memory_if_needed(key: str, plaintext: str) -> str:
+    def encrypt_memory_if_needed(key: bytes, plaintext: str) -> str:
         if not key or not plaintext:
             return plaintext
 
@@ -66,7 +66,7 @@ class BaseMemoryManager(ABC):
             return ""
 
     @staticmethod
-    def decrypt_memory_if_needed(key: str, ciphertext: str) -> str:
+    def decrypt_memory_if_needed(key: bytes, ciphertext: str) -> str:
         if not key or not ciphertext:
             return ciphertext
 

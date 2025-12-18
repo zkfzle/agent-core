@@ -19,7 +19,7 @@ class UserProfileManager(BaseMemoryManager):
                  semantic_recall_instance: BaseSemanticStore,
                  user_mem_store: UserMemStore,
                  data_id_generator: DataIdManager,
-                 crypto_key: str):
+                 crypto_key: bytes):
         self.mem_store = user_mem_store
         self.semantic_recall = semantic_recall_instance
         self.date_user_profile_id = data_id_generator

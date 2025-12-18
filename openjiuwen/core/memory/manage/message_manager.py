@@ -16,7 +16,7 @@ class MessageManager:
     def __init__(self,
                  sql_db_store: SqlDbStore,
                  data_id_manager: DataIdManager,
-                 crypto_key: str):
+                 crypto_key: bytes):
         self.sql_db = sql_db_store
         self.message_table = "user_message"
         self.data_id = data_id_manager

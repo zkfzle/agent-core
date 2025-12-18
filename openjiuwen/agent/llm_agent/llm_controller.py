@@ -908,7 +908,7 @@ class LLMController(BaseController):
             "message": "Task interrupted, waiting for subsequent input"
         }
     
-    def _extract_component_ids_from_interaction_data(self, interaction_data: Optional[list]) -> str:
+    def _extract_component_ids_from_interaction_data(self, interaction_data: Optional[list]) -> List[str]:
         """Extract component ID from interaction data
         
         Args:
@@ -919,7 +919,7 @@ class LLMController(BaseController):
         """
         if not interaction_data:
             logger.warning("No interaction_data provided, using default component_id")
-            return "questioner"
+            return ["questioner"]
         
         component_ids = []
         try:

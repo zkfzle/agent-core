@@ -15,6 +15,7 @@ from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.utils.tool.base import Tool
@@ -168,6 +169,11 @@ class LLMAgent(ControllerAgent):
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Own stream lifecycle
+        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
+            agent_runtime = await self._runtime.pre_run(session_id=session_id,
+                                                        stream_writer_manager=runtime.base().stream_writer_manager())
+            need_cleanup = False
+            own_stream = False  # External owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False

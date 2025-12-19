@@ -58,7 +58,7 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
         if session_id is None:
             session_id = kwargs.get("trace_id")
         inputs = kwargs.get("inputs")
-        inner = await self._runtime.create_agent_runtime(session_id, inputs)
+        inner = await self._runtime.create_agent_runtime(session_id, inputs, kwargs.get("stream_writer_manager"))
         return TaskRuntime(inner=inner)
 
     def resource_mgr(self):
@@ -381,7 +381,7 @@ class WorkflowFactory:
         self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version, name=workflow_name)
         if self.name and self.input_schema:
             workflow_input_schema = self.input_schema if isinstance(self.input_schema,
-                WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
+                                                                    WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
                 self.input_schema)
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
             from openjiuwen.core.runner.runner import resource_mgr
@@ -735,11 +735,11 @@ class BaseAgent(ABC):
             ])
         """
         logger.info(f"BaseAgent.remove_workflows called with {len(workflows)} workflows")
-        
+
         for workflow_id, workflow_version in workflows:
             workflow_key = generate_workflow_key(workflow_id, workflow_version)
             logger.info(f"Removing workflow: {workflow_key}")
-            
+
             # 1. Remove from agent_config.workflows
             original_count = len(self.agent_config.workflows)
             self.agent_config.workflows = [
@@ -748,11 +748,11 @@ class BaseAgent(ABC):
             ]
             removed_from_config = original_count - len(self.agent_config.workflows)
             logger.info(f"Removed {removed_from_config} workflow schema(s) from config")
-            
+
             # 2. Remove from runtime
             self._runtime.remove_workflow(workflow_key)
             logger.info(f"Removed workflow {workflow_key} from runtime")
-            
+
             # 3. Remove from global resource_mgr
             try:
                 from openjiuwen.core.runner.runner import resource_mgr
@@ -906,6 +906,9 @@ class ControllerAgent(BaseAgent):
         session_id = inputs.get("conversation_id", "default_session")
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
+            agent_runtime = await self._runtime.pre_run(session_id=session_id,
+                                                        stream_writer_manager=runtime.base().stream_writer_manager())
         else:
             agent_runtime = runtime
 
@@ -947,11 +950,16 @@ class ControllerAgent(BaseAgent):
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Owns stream lifecycle
+        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
+            agent_runtime = await self._runtime.pre_run(session_id=session_id,
+                                                        stream_writer_manager=runtime.base().stream_writer_manager())
+            need_cleanup = False
+            own_stream = False  # External owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
-            
+
             # Sync agent's tools to external runtime
             # When external runtime is provided, agent's tools need to be registered
             if self._tools:

@@ -215,6 +215,7 @@ class StatusCode(Enum):
 
     # Common Capabilities - Model API 181000 - 181999
     MODEL_PROVIDER_INVALID_ERROR = (181000, "Invalid model provider, the reason is {error_msg}")
+    MODEL_CALL_FAILED = (181001, "Failed to call model, the reason is: {error_msg}")
     # Common Capabilities - Tool Definition and Execution 182000 - 182999
     PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
     PLUGIN_REQUEST_TIMEOUT_ERROR = (182001, "Plugin restful api request timed out")

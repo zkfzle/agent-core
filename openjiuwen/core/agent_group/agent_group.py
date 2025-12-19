@@ -87,13 +87,15 @@ class BaseGroup(ABC):
         if agent_id in self.agents:
             raise JiuWenBaseException(
                 StatusCode.AGENT_GROUP_ADD_FAILED.code,
-                StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format("Agent ID already exists")
+                StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format(reason="Agent ID already exists")
             )
         else:
             if self.get_agent_count() == self.config.max_agents:
                 raise JiuWenBaseException(
                     StatusCode.AGENT_GROUP_ADD_FAILED.code,
-                    StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format("Agent count exceeds max agents"))
+                    StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format(
+                        reason="Agent count exceeds max agents")
+                )
             self.agents[agent_id] = agent
             
             # Auto-inject group reference to agent's controller

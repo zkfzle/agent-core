@@ -168,6 +168,11 @@ class LLMAgent(ControllerAgent):
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Own stream lifecycle
+        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
+            agent_runtime = await self._runtime.pre_run(session_id=session_id,
+                                                        stream_writer_manager=runtime.base().stream_writer_manager())
+            need_cleanup = False
+            own_stream = False  # External owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False

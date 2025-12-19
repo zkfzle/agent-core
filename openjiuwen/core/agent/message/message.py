@@ -151,7 +151,7 @@ class Message:
 
     @classmethod
     def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default",
-                            user_id: Optional[str] = None) -> 'Message':
+                            user_id: Optional[str] = None, extensions: Dict[str, Any] = None) -> 'Message':
         """Create user message - unified handling for str and InteractiveInput"""
         source = MessageSource(
             conversation_id=conversation_id,
@@ -164,7 +164,10 @@ class Message:
             msg_content = MessageContent(interactive_input=content)
         else:
             msg_content = MessageContent(query=str(content))
-        
+
+        if extensions:
+            msg_content.extensions = extensions
+
         context = MessageContext(
             conversation_id=conversation_id,
             correlation_id=str(uuid.uuid4())

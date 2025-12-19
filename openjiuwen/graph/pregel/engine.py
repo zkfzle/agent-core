@@ -133,7 +133,7 @@ class PregelLoop:
         return True
 
     async def _save_state_on_error(self, exception: Exception):
-        logger.warning(f"save_state_on_error: {exception}")
+        logger.debug(f"save_state_on_error: {exception}")
         if not self.config.get(SESSION_ID) or not self.config.get(NS) or not self.saver:
             return
         pending_buffer = self.manager.buffer

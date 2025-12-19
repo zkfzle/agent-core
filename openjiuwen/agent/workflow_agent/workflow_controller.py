@@ -4,7 +4,7 @@
 """Workflow Controller - Workflow-specific execution logic"""
 
 import asyncio
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from openjiuwen.agent.common.enum import TaskStatus, TaskType
 from openjiuwen.agent.common.schema import WorkflowSchema
@@ -950,8 +950,8 @@ class WorkflowController(IntentDetectionController):
     def _extract_component_id_from_interaction_data(
             self,
             interaction_data: Optional[list]
-    ) -> List[str]:
-        """Extract component IDs from interaction data
+    ) -> Union[str, List[str]]:
+        """Extract component ID(s) from interaction data
         
         Reference old implementation: MessageHandler.extract_component_id_from_stream_data
         Find all OutputSchema with type '__interaction__' from interaction_data list,
@@ -963,11 +963,13 @@ class WorkflowController(IntentDetectionController):
             interaction_data: OutputSchema list, containing interaction requests during interruption
             
         Returns:
-            List[str]: List of component IDs, default return ["questioner"]
+            Union[str, List[str]]: Single component ID string if only one interruption,
+                                   List of component IDs if multiple interruptions,
+                                   Default return "questioner" for legacy compatibility
         """
         if not interaction_data:
             logger.warning("No interaction_data provided, using default component_id")
-            return ["questioner"]
+            return "questioner"
 
         component_ids = []
         try:
@@ -991,10 +993,15 @@ class WorkflowController(IntentDetectionController):
 
         if not component_ids:
             logger.warning("No component_id found in interaction_data, using default")
-            return ["questioner"]  # Default value
+            return "questioner"  # Default value for legacy compatibility
 
-        logger.info(f"Extracted {len(component_ids)} component_ids: {component_ids}")
-        return component_ids
+        # Return single string if only one interruption, list if multiple
+        if len(component_ids) == 1:
+            logger.info(f"Extracted single component_id: {component_ids[0]}")
+            return component_ids[0]
+        else:
+            logger.info(f"Extracted {len(component_ids)} component_ids: {component_ids}")
+            return component_ids
 
     def _extract_interaction_value_from_interaction_data(
             self,

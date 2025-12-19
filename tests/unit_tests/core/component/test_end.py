@@ -212,7 +212,7 @@ async def test_end_batch_stream_workflow():
                            comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
 
     flow.set_end_comp("end", End({"responseTemplate": "hello:{{value}}"}),
-                      stream_inputs_schema={"value": "${a.value}"}, inputs_schema={"value": "${a.value}"},
+                      stream_inputs_schema={"value": "${a.value}"},
                       response_mode="streaming")
     flow.add_connection("start", "a")
     flow.add_stream_connection("a", "end")

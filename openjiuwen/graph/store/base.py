@@ -13,7 +13,6 @@ from typing import (
 )
 
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.pregel.base import Message
 
 
 @dataclass
@@ -28,7 +27,7 @@ class GraphState:
     ns: str
     step: int
     channel_values: Dict[str, Any]
-    pending_buffer: List[Message]
+    pending_buffer: List["Message"]
     pending_node: Dict[str, PendingNode]
     node_version: Dict[str, int]
 
@@ -52,7 +51,7 @@ def create_state(
         step: int,
         channel_snapshot: Dict[str, Any],
         *,
-        pending_buffer: Optional[List[Message]] = None,
+        pending_buffer: Optional[List["Message"]] = None,
         pending_node: Optional[Dict[str, PendingNode]] = None,
         node_version: Dict[str, int] = None
 

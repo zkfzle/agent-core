@@ -10,6 +10,8 @@ import openai
 from pydantic import ConfigDict
 from requests import Session
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.ssl_utils import SslUtils
 from openjiuwen.core.common.security.url_utils import UrlUtils
@@ -79,23 +81,29 @@ class RequestChatModel(BaseModelClient):
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
                                                        ["false"], url_is_https)
         verify = ssl_cert if ssl_verify else False
+        try:
+            response = self.sync_client.post(
+                    verify=verify,
+                    url=self.api_base,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    },
+                    json=params,
+                    proxies=UrlUtils.get_global_proxies(self.api_base),
+                    allow_redirects=False,
+                    timeout=self.timeout
+                )
 
-        response = self.sync_client.post(
-                verify=verify,
-                url=self.api_base,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                },
-                json=params,
-                proxies=UrlUtils.get_global_proxies(self.api_base),
-                allow_redirects=False,
-                timeout=self.timeout
-            )
-
-        response.raise_for_status()
-        self.close_session()
-        return self._parse_response(model_name, response.json())
+            response.raise_for_status()
+            return self._parse_response(model_name, response.json())
+        except Exception as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="Generic API error")
+            ) from e
+        finally:
+            self.close_session()
 
     async def _ainvoke(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> AIMessage:
@@ -113,21 +121,27 @@ class RequestChatModel(BaseModelClient):
             connector = aiohttp.TCPConnector(ssl=False)
         
         timeout = aiohttp.ClientTimeout(total=self.timeout)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            async with session.post(
-                    url=self.api_base,
-                    proxy=UrlUtils.get_global_proxy_url(self.api_base),
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {self.api_key}"
-                    },
-                    json=params,
-                    allow_redirects=False,
-                    timeout=timeout
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-                return self._parse_response(model_name, data)
+        try:
+            async with aiohttp.ClientSession(connector=connector) as session:
+                async with session.post(
+                        url=self.api_base,
+                        proxy=UrlUtils.get_global_proxy_url(self.api_base),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.api_key}"
+                        },
+                        json=params,
+                        allow_redirects=False,
+                        timeout=timeout
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    return self._parse_response(model_name, data)
+        except Exception as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="Generic API async error")
+            ) from e
 
     def _stream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                 temperature: Optional[float] = None, top_p: Optional[float] = None, **kwargs: Any) -> Iterator[
@@ -141,27 +155,33 @@ class RequestChatModel(BaseModelClient):
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
                                                        ["false"], url_is_https)
         verify = ssl_cert if ssl_verify else False
-
-        with self.sync_client.post(
-                verify=verify,
-                url=self.api_base,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
-                },
-                json=params,
-                proxies=UrlUtils.get_global_proxies(self.api_base),
-                stream=True,
-                allow_redirects=False,
-                timeout=self.timeout
-        ) as response:
-            response.raise_for_status()
-            for line in response.iter_lines():
-                if line:
-                    chunk = self._parse_stream_line(line)
-                    if chunk:
-                        yield chunk
-        self.close_session()
+        try:
+            with self.sync_client.post(
+                    verify=verify,
+                    url=self.api_base,
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {self.api_key}"
+                    },
+                    json=params,
+                    proxies=UrlUtils.get_global_proxies(self.api_base),
+                    stream=True,
+                    allow_redirects=False,
+                    timeout=self.timeout
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line:
+                        chunk = self._parse_stream_line(line)
+                        if chunk:
+                            yield chunk
+        except Exception as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="Generic API stream error")
+            ) from e
+        finally:
+            self.close_session()
 
 
     async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
@@ -185,24 +205,30 @@ class RequestChatModel(BaseModelClient):
             connector = aiohttp.TCPConnector(ssl=False)
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            async with session.post(
-                    url=self.api_base,
-                    proxy=UrlUtils.get_global_proxy_url(self.api_base),
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {self.api_key}"
-                    },
-                    json=params,
-                    allow_redirects=False,
-                    timeout=timeout
-            ) as response:
-                response.raise_for_status()
-                async for line in response.content:
-                    if line:
-                        chunk = self._parse_stream_line(line)
-                        if chunk:
-                            yield chunk
+        try:
+            async with aiohttp.ClientSession(connector=connector) as session:
+                async with session.post(
+                        url=self.api_base,
+                        proxy=UrlUtils.get_global_proxy_url(self.api_base),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {self.api_key}"
+                        },
+                        json=params,
+                        allow_redirects=False,
+                        timeout=timeout
+                ) as response:
+                    response.raise_for_status()
+                    async for line in response.content:
+                        if line:
+                            chunk = self._parse_stream_line(line)
+                            if chunk:
+                                yield chunk
+        except Exception as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="Generic API async stream error")
+            ) from e
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -372,10 +398,10 @@ class OpenAIChatModel(BaseModelClient):
             response = sync_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
         except Exception as e:
-            if UserConfig.is_sensitive():
-                raise Exception("OpenAI API error")
-            else:
-                raise Exception(f"OpenAI API error: {str(e)}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="OpenAI API error")
+            ) from e
         finally:
             if sync_client is not None:
                 sync_client.close()
@@ -401,10 +427,10 @@ class OpenAIChatModel(BaseModelClient):
             response = await async_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
         except Exception as e:
-            if UserConfig.is_sensitive():
-                raise Exception("OpenAI API async error")
-            else:
-                raise Exception(f"OpenAI API async error: {str(e)}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="OpenAI API async error")
+            ) from e
         finally:
             if async_client is not None:
                 await async_client.close()
@@ -434,10 +460,10 @@ class OpenAIChatModel(BaseModelClient):
                 if parsed_chunk:
                     yield parsed_chunk
         except Exception as e:
-            if UserConfig.is_sensitive():
-                raise Exception("OpenAI API stream error")
-            else:
-                raise Exception(f"OpenAI API stream error: {str(e)}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="OpenAI API stream error")
+            ) from e
         finally:
             if sync_client is not None:
                 sync_client.close()
@@ -468,10 +494,10 @@ class OpenAIChatModel(BaseModelClient):
                 if parsed_chunk:
                     yield parsed_chunk
         except Exception as e:
-            if UserConfig.is_sensitive():
-                raise Exception("OpenAI API async stream error")
-            else:
-                raise Exception(f"OpenAI API async stream error: {str(e)}")
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="OpenAI API async stream error")
+            ) from e
         finally:
             if async_client is not None:
                 await async_client.close()

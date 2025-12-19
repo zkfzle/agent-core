@@ -199,7 +199,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_event"
 
         chunks = []
-        stream = await Runner.run_agent_group_streaming(group, message)
+        stream = Runner.run_agent_group_streaming(group, message)
         async for chunk in stream:
             chunks.append(chunk)
             chunk_type = chunk.type if hasattr(chunk, 'type') else type(chunk)
@@ -226,7 +226,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_data"
 
         chunks = []
-        stream = await Runner.run_agent_group_streaming(
+        stream = Runner.run_agent_group_streaming(
             "runner_stream_by_id", message
         )
         async for chunk in stream:
@@ -257,7 +257,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_broadcast"
 
         chunks = []
-        stream = await Runner.run_agent_group_streaming(group, message)
+        stream = Runner.run_agent_group_streaming(group, message)
         async for chunk in stream:
             chunks.append(chunk)
             chunk_type = chunk.type if hasattr(chunk, 'type') else type(chunk)
@@ -376,7 +376,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
             message.message_type = "seq_event"
 
             chunks = []
-            stream = await Runner.run_agent_group_streaming(group, message)
+            stream = Runner.run_agent_group_streaming(group, message)
             async for chunk in stream:
                 chunks.append(chunk)
 

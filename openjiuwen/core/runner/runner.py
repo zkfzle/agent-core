@@ -154,7 +154,9 @@ class Runner:
                                      *, runtime: Union[Runtime, WorkflowRuntime] = None,
                                      stream_modes: list[BaseStreamMode] = None, context: Context = None):
         workflow_instance, workflow_runtime = await self._prepare_workflow(workflow, runtime)
-        return workflow_instance.stream(inputs, runtime=workflow_runtime, stream_modes=stream_modes, context=context)
+        async for chunk in workflow_instance.stream(inputs, runtime=workflow_runtime,
+                                                    stream_modes=stream_modes, context=context):
+            yield chunk
 
     async def run_agent(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
@@ -211,7 +213,8 @@ class Runner:
 
     async def run_agent_group_streaming(self, agent_group: Union[str, AgentGroup], inputs: Any):
         agent_group_instance = self._prepare_agent_group(agent_group)
-        return agent_group_instance.stream(inputs)
+        async for chunk in agent_group_instance.stream(inputs):
+            yield chunk
 
     async def run_tool(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
         tool_instance = self._prepare_tool(tool, runtime)
@@ -237,7 +240,8 @@ class Runner:
                 tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', 'unknown')
                 raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
                                           f"{self.__class__.__name__} tool not found: {tool_name}.")
-        return tool_instance.astream(inputs, runtime=runtime)
+        async for chunk in tool_instance.astream(inputs, runtime=runtime):
+            yield chunk
 
     async def list_tools(self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None) -> Union[
         Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:

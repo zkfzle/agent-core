@@ -288,7 +288,7 @@ class WorkflowController(IntentDetectionController):
             #    - workflow_final (completion result)
             # Stream data written to runtime, agent layer's stream_iterator can read
             async def run_workflow_streaming():
-                workflow_stream = await Runner.run_workflow_streaming(
+                workflow_stream = Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
                     runtime=workflow_runtime,

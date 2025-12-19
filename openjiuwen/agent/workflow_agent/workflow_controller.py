@@ -860,9 +860,11 @@ class WorkflowController(IntentDetectionController):
         query = message.content.get_query() if hasattr(message.content, 'get_query') else ""
 
         # Filter input parameters
+        user_data = {"query": query}
+        user_data.update(message.content.extensions or {})
         filtered_inputs = self._filter_workflow_inputs(
             workflow.inputs or {},
-            {"query": query}
+            user_data
         )
 
         logger.info(f"Creating task with inputs: {filtered_inputs}, query: {query}")

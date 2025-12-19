@@ -249,7 +249,8 @@ class TraceWorkflowHandler(TraceBaseHandler):
         return TracerHandlerName.TRACER_WORKFLOW.value
 
     def _format_data(self, span: TraceWorkflowSpan) -> dict:
-        span.status = self._get_node_status(span)
+        if span.status != NodeStatus.INTERRUPTED.value:
+            span.status = self._get_node_status(span)
         result = span.model_dump(exclude_none=True, by_alias=True, exclude={"child_invokes_id", "llm_invoke_data"})
         return {"type": self.event_name(),
                 "payload": result}
@@ -318,7 +319,7 @@ class TraceWorkflowHandler(TraceBaseHandler):
             if isinstance(exception, JiuWenBaseException):
                 span.error = {"error_code": exception.error_code, "message": exception.message}
             elif isinstance(exception, GraphInterrupt):
-                return
+                span.status = NodeStatus.INTERRUPTED.value
             else:
                 span.error = {"error_code": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                               "message": StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(

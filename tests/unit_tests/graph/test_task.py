@@ -7,9 +7,10 @@ import asyncio
 import pytest
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.graph.pregel import Interrupt, GraphInterrupt
+from openjiuwen.graph.pregel.base import PregelNode
 from openjiuwen.graph.pregel.config import PregelConfig
-from openjiuwen.graph.pregel.constants import GraphInterrupt, Interrupt, PARENT_NS, NS
-from openjiuwen.graph.pregel.nodes import PregelNode
+from openjiuwen.graph.pregel.constants import PARENT_NS, NS
 from openjiuwen.graph.pregel.router import StaticRouter
 from openjiuwen.graph.pregel.task import TaskExecutorPool
 

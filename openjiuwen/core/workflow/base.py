@@ -40,7 +40,7 @@ from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
-from openjiuwen.graph.pregel.graph import PregelGraph
+from openjiuwen.graph.graph import PregelGraph
 from openjiuwen.graph.visualization.drawable import Drawable
 
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"

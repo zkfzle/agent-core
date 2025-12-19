@@ -25,14 +25,14 @@ from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY
 from openjiuwen.core.graph.executable import Output, Input, Executable
 from openjiuwen.core.runtime.base import ComponentExecutable
+from openjiuwen.core.runtime.constants import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
-from openjiuwen.core.runtime.constants import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
-from openjiuwen.graph.pregel.constants import GraphInterrupt, START, END
-from openjiuwen.graph.pregel.graph import PregelGraph
+from openjiuwen.graph.graph import PregelGraph
+from openjiuwen.graph.pregel import GraphInterrupt, START, END
 
 
 class EmptyExecutable(Executable):

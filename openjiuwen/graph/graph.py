@@ -18,14 +18,11 @@ from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.pregel.builder import PregelGraphBuilder
-from openjiuwen.graph.pregel.config import PregelConfig
-from openjiuwen.graph.pregel.constants import MAX_RECURSIVE_LIMIT, START, END
-from openjiuwen.graph.pregel.engine import Pregel
-from openjiuwen.graph.store.base import GraphStore
+from openjiuwen.graph.pregel import Pregel, PregelBuilder, PregelConfig, MAX_RECURSIVE_LIMIT, START, END
+from openjiuwen.graph.store import GraphStore
 
 
-def after_tick(loop):
+def after_step(loop):
     runtime = loop.saver.ctx if loop.saver and hasattr(loop.saver, "ctx") else None
     if runtime:
         runtime.state().commit()
@@ -124,7 +121,7 @@ class PregelGraph(Graph):
         if self.pregel is None:
             self.checkpointer = default_inmemory_checkpointer
             store = GraphStore(runtime, self.checkpointer.graph_store())
-            self.pregel = self._compile(graph_store=store, step_callback=after_tick)
+            self.pregel = self._compile(graph_store=store, step_callback=after_step)
             self._graph_store = store
         else:
             self._graph_store.reset(runtime)
@@ -133,7 +130,7 @@ class PregelGraph(Graph):
     def _compile(self, graph_store=None, step_callback=None) -> Pregel:
         edges: list[Tuple[str | list[str], str]] = []
         sources: dict[str, set[str]] = {}
-        builder = PregelGraphBuilder()
+        builder = PregelBuilder()
         for node_id, action in self.nodes.items():
             builder.add_node(node_id, action)
 
@@ -155,7 +152,7 @@ class PregelGraph(Graph):
         for start, branches in self.branches.items():
             for name, branch in branches.items():
                 builder.add_branch(start, branch.condition)
-        return builder.build(graph_store, after_tick=step_callback)
+        return builder.build(graph_store, after_step_callback=step_callback)
 
     async def reset(self):
         for node in self.nodes.values():
@@ -185,8 +182,7 @@ class CompiledGraph(ExecutableGraph):
         exception = None
 
         try:
-            result = await self._pregel.ainvoke(config=config,
-                                                durability="exit")
+            result = await self._pregel.run(config=config)
         except Exception as e:
             exception = e
 

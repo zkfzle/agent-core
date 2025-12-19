@@ -13,7 +13,7 @@ from typing import (
 )
 
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.pregel.messages import Message
+from openjiuwen.graph.pregel.base import Message
 
 
 @dataclass

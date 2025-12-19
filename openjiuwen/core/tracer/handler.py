@@ -7,7 +7,8 @@ import json
 from abc import abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any, Union
+from typing import Any
+
 from dateutil.tz import tzlocal
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -17,9 +18,8 @@ from openjiuwen.core.runtime.resources_manager.callback_manager import BaseHandl
 from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.tracer.data import InvokeType, NodeStatus
 from openjiuwen.core.tracer.span import Span, TraceAgentSpan, TraceWorkflowSpan
-
 from openjiuwen.core.tracer.span import SpanManager
-from openjiuwen.graph.pregel.constants import GraphInterrupt
+from openjiuwen.graph.pregel import GraphInterrupt
 
 
 class TracerHandlerName(Enum):

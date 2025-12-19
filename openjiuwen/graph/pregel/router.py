@@ -4,16 +4,9 @@
 
 import asyncio
 import inspect
-from abc import ABC, abstractmethod
 from typing import Any, List, Union, Protocol
 
-from openjiuwen.graph.pregel.messages import Message, TriggerMessage, BarrierMessage
-
-
-class IRouter(ABC):
-    @abstractmethod
-    async def dispatch(self, source_node: str) -> List[Message]:
-        ...
+from openjiuwen.graph.pregel.base import IRouter, Message, TriggerMessage, BarrierMessage
 
 
 class StaticRouter(IRouter):

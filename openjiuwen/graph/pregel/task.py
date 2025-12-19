@@ -9,11 +9,10 @@ import inspect
 from typing import Dict, Optional, List, Union
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.graph.pregel.base import Message, PregelNode, GraphInterrupt
 from openjiuwen.graph.pregel.config import PregelConfig, InnerPregelConfig, \
     create_inner_config
-from openjiuwen.graph.pregel.constants import GraphInterrupt, TASK_STATUS_INTERRUPT, TASK_STATUS_ERROR, PARENT_NS, NS
-from openjiuwen.graph.pregel.messages import Message
-from openjiuwen.graph.pregel.nodes import PregelNode
+from openjiuwen.graph.pregel.constants import TASK_STATUS_INTERRUPT, TASK_STATUS_ERROR, PARENT_NS, NS
 from openjiuwen.graph.store.base import PendingNode
 
 
@@ -123,7 +122,7 @@ class NodeTask:
             if 'state' in sig.parameters:
                 kwargs['state'] = None
 
-            if inspect.iscoroutinefunction(func) or asyncio.iscoroutinefunction(target_func):
+            if asyncio.iscoroutinefunction(func) or asyncio.iscoroutinefunction(target_func):
                 await target_func(**kwargs)
             else:
                 target_func(**kwargs)

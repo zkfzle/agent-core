@@ -2,14 +2,16 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
+from __future__ import annotations
+
+from openjiuwen.graph.pregel.base import PregelNode
 from openjiuwen.graph.pregel.channels import BarrierChannel, TriggerChannel
 from openjiuwen.graph.pregel.constants import START, END
 from openjiuwen.graph.pregel.engine import Pregel
-from openjiuwen.graph.pregel.nodes import PregelNode
 from openjiuwen.graph.pregel.router import BarrierRouter, StaticRouter, ConditionalRouter
 
 
-class PregelGraphBuilder:
+class PregelBuilder:
     def __init__(self):
         self.nodes = {}
         self.channels = []
@@ -55,10 +57,10 @@ class PregelGraphBuilder:
         self.nodes[src].routers.append(ConditionalRouter(selector=selector))
         return self
 
-    def build(self, store=None, after_tick=None):
+    def build(self, store=None, after_step_callback=None):
         return Pregel(
             nodes=self.nodes,
             channels=self.channels,
             store=store,
-            after_tick=after_tick
+            after_step=after_step_callback
         )

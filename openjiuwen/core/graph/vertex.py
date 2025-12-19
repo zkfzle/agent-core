@@ -22,7 +22,7 @@ from openjiuwen.core.stream.emitter import StreamEmitter
 from openjiuwen.core.stream_actor.base import StreamConsumer
 from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
-from openjiuwen.graph.pregel.constants import GraphInterrupt
+from openjiuwen.graph.pregel import GraphInterrupt
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"
 

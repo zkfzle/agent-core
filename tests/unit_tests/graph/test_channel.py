@@ -4,8 +4,8 @@
 # -*- coding: UTF-8 -*-
 # Copyright c) Huawei Technologies Co. Ltd. 2025-2025
 
+from openjiuwen.graph.pregel.base import TriggerMessage, BarrierMessage
 from openjiuwen.graph.pregel.channels import ChannelManager, TriggerChannel, BarrierChannel
-from openjiuwen.graph.pregel.messages import TriggerMessage, BarrierMessage
 
 
 class TestChannelManager:

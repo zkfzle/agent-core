@@ -4,12 +4,11 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Any, List, Set, Dict
 
+from openjiuwen.graph.pregel.base import Message, TriggerMessage, BarrierMessage, Channel
 from openjiuwen.graph.pregel.constants import END
-from openjiuwen.graph.pregel.messages import Message, TriggerMessage, BarrierMessage
 
 
 class ChannelManager:
@@ -22,7 +21,7 @@ class ChannelManager:
 
         # updated node
         self._ready_node_names: Set[str] = set()
-        # message to next tick
+        # message to next step
         self.buffer: list[Message] = []
 
         for ch in channels:
@@ -101,40 +100,6 @@ class ChannelManager:
 
                                 if channel.is_ready():
                                     self._ready_node_names.add(node_name)
-
-
-class Channel(ABC):
-    def __init__(self, name: str):
-        self.name = name
-
-    @property
-    def key(self) -> str:
-        return self.name
-
-    @property
-    def node_name(self) -> str:
-        return self.name
-
-    @abstractmethod
-    def is_ready(self) -> bool:
-        ...
-
-    @abstractmethod
-    def accept(self, msg: Message) -> None:
-        ...
-
-    @abstractmethod
-    def consume(self) -> Any:
-        """Return consumable input for node func and reset internal snapshot."""
-        ...
-
-    @abstractmethod
-    def snapshot(self) -> Any:
-        return None
-
-    @abstractmethod
-    def restore(self, snapshot: Any) -> None:
-        pass
 
 
 class TriggerChannel(Channel):

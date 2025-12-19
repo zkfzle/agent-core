@@ -8,19 +8,19 @@ import asyncio
 from collections import defaultdict
 from typing import Dict, Optional, Union, Callable, Any, Coroutine, List
 
-from openjiuwen.graph.pregel.channels import Channel, ChannelManager
+from openjiuwen.core.common.logging import logger
+from openjiuwen.graph.pregel.base import TriggerMessage, PregelNode, Channel, Interrupt, GraphInterrupt
+from openjiuwen.graph.pregel.channels import ChannelManager
 from openjiuwen.graph.pregel.config import PregelConfig, DEFAULT_PREGEL_CONFIG, InnerPregelConfig, \
     create_inner_config
-from openjiuwen.graph.pregel.constants import END, GraphInterrupt, Interrupt, TASK_STATUS_INTERRUPT, START, \
+from openjiuwen.graph.pregel.constants import END, TASK_STATUS_INTERRUPT, START, \
     PARENT_NS, NS, SESSION_ID, RECURSION_LIMIT
-from openjiuwen.graph.pregel.messages import TriggerMessage
-from openjiuwen.graph.pregel.nodes import PregelNode
 from openjiuwen.graph.pregel.task import TaskExecutorPool
 from openjiuwen.graph.store import GraphState, PendingNode, create_state, Store
 
 
 class PregelLoop:
-    def __init__(self, graph: Pregel, config: PregelConfig, durability="exit"):
+    def __init__(self, graph: Pregel, config: PregelConfig):
         self.graph = graph
         self.manager = ChannelManager(graph.channels)
         self.step: int = 0
@@ -58,9 +58,9 @@ class PregelLoop:
             self.manager.buffer_message(TriggerMessage(sender=self.graph.initial, target=self.graph.initial))
             self.manager.flush()
 
-    async def tick(self) -> bool:
+    async def run_step(self) -> bool:
         try:
-            return await self._tick()
+            return await self._run_step()
         except Exception as e:
             await self._save_state_on_error(e)
             raise e
@@ -70,7 +70,7 @@ class PregelLoop:
         return state is not None and (
                 bool(state.pending_node) or bool(state.pending_buffer) or bool(state.channel_values))
 
-    async def _tick(self) -> bool:
+    async def _run_step(self) -> bool:
         # 1. Determine tasks for this round
         tasks_to_run = []
 
@@ -123,8 +123,8 @@ class PregelLoop:
         self.executor.clear()
 
         # Hook
-        if self.graph.after_tick:
-            callback = self.graph.after_tick
+        if self.graph.after_step:
+            callback = self.graph.after_step
             if asyncio.iscoroutinefunction(callback):
                 await callback(self)
             else:
@@ -133,6 +133,7 @@ class PregelLoop:
         return True
 
     async def _save_state_on_error(self, exception: Exception):
+        logger.warning(f"save_state_on_error: {exception}")
         if not self.config.get(SESSION_ID) or not self.config.get(NS) or not self.saver:
             return
         pending_buffer = self.manager.buffer
@@ -162,7 +163,7 @@ class Pregel:
             channels: List[Channel],
             initial: str = START,
             store: Store | None = None,
-            after_tick: Optional[
+            after_step: Optional[
                 Union[
                     Callable[[PregelLoop], Any],
                     Callable[[PregelLoop], Coroutine[Any, Any, Any]]
@@ -174,9 +175,9 @@ class Pregel:
         # key:node node_name, value:list[Channel]
         self.channels = channels
         self.initial = initial
-        self.after_tick = after_tick
+        self.after_step = after_step
 
-    async def ainvoke(self, config: Optional[PregelConfig] = None, durability="exit") -> None | dict[
+    async def run(self, config: Optional[PregelConfig] = None) -> None | dict[
         Any, Any] | dict[str, Interrupt | tuple[Interrupt, ...] | None]:
         inner_config: InnerPregelConfig = create_inner_config(config or DEFAULT_PREGEL_CONFIG)
         is_top_level = not inner_config.get(PARENT_NS)
@@ -185,10 +186,10 @@ class Pregel:
             if current_ns:
                 inner_config[PARENT_NS] = current_ns
 
-        loop = PregelLoop(self, inner_config, durability)
+        loop = PregelLoop(self, inner_config)
         try:
             await loop.init()
-            while await loop.tick():
+            while await loop.run_step():
                 pass
             return {}
         except GraphInterrupt as e:

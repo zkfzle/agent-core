@@ -1427,7 +1427,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print("\n【步骤1】发送银行存取钱请求，触发并行中断")
         message1 = Message.create_user_message(content="我想在民生银行存取款", conversation_id=conversation_id)
         chunks1 = []
-        stream1 = await Runner.run_agent_group_streaming(group, message1)
+        stream1 = Runner.run_agent_group_streaming(group, message1)
         async for chunk in stream1:
             chunks1.append(chunk)
             print(f"agent group message1 chunk: {chunk}")
@@ -1469,7 +1469,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         message2 = Message.create_user_message(content=user_input, conversation_id=conversation_id)
         chunks2 = []
-        stream2 = await Runner.run_agent_group_streaming(group, message2)
+        stream2 = Runner.run_agent_group_streaming(group, message2)
         async for chunk in stream2:
             chunks2.append(chunk)
             print(f"agent group message2 chunk: {chunk}")

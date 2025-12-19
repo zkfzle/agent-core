@@ -7,7 +7,7 @@ import inspect
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Tuple, Union
 
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -710,6 +710,53 @@ class BaseAgent(ABC):
                 logger.info(f"Successfully added workflow {'provider' if is_provider else 'instance'} {workflow_key}")
             except Exception as e:
                 logger.error(f"Failed to add workflow to global resource_mgr: {e}")
+
+    def remove_workflows(
+            self,
+            workflows: List[Tuple[str, str]]
+    ) -> None:
+        """Remove workflows from agent (update config and runtime simultaneously).
+        
+        Removes workflows from three locations:
+        1. agent_config.workflows (WorkflowSchema list)
+        2. runtime workflow manager
+        3. global resource_mgr (if available)
+        
+        Args:
+            workflows: List of (workflow_id, workflow_version) tuples to remove
+            
+        Example:
+            agent.remove_workflows([
+                ("my_workflow", "1.0"),
+                ("another_workflow", "2.0")
+            ])
+        """
+        logger.info(f"BaseAgent.remove_workflows called with {len(workflows)} workflows")
+        
+        for workflow_id, workflow_version in workflows:
+            workflow_key = generate_workflow_key(workflow_id, workflow_version)
+            logger.info(f"Removing workflow: {workflow_key}")
+            
+            # 1. Remove from agent_config.workflows
+            original_count = len(self.agent_config.workflows)
+            self.agent_config.workflows = [
+                w for w in self.agent_config.workflows
+                if not (w.id == workflow_id and w.version == workflow_version)
+            ]
+            removed_from_config = original_count - len(self.agent_config.workflows)
+            logger.info(f"Removed {removed_from_config} workflow schema(s) from config")
+            
+            # 2. Remove from runtime
+            self._runtime.remove_workflow(workflow_key)
+            logger.info(f"Removed workflow {workflow_key} from runtime")
+            
+            # 3. Remove from global resource_mgr
+            try:
+                from openjiuwen.core.runner.runner import resource_mgr
+                resource_mgr.workflow().remove_workflow(workflow_key)
+                logger.info(f"Successfully removed workflow {workflow_key} from global resource_mgr")
+            except Exception as e:
+                logger.error(f"Failed to remove workflow from global resource_mgr: {e}")
 
     def bind_workflows(self, workflows: List[Workflow]) -> None:
         """Bind workflows - Backward compatible alias method

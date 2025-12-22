@@ -9,9 +9,9 @@ from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.utils.tool.tool import tool
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.tool.tool import tool
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
@@ -58,7 +58,7 @@ def mock_tool_kwargs(mock_tool, mock_tool_config):
 
 
 @patch('requests.request')
-@patch('openjiuwen.core.utils.tool.service_api.restful_api.RestfulApi._async_request')
+@patch('openjiuwen.core.foundation.tool.service_api.restful_api.RestfulApi._async_request')
 @pytest.mark.asyncio
 async def test_tool_comp_invoke(mock_async_request, mock_request, mock_tool_input,
                                 mock_tool_kwargs, fake_ctx):

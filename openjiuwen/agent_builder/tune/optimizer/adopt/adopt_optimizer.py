@@ -17,9 +17,9 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.utils.tool.schema import ToolInfo
+from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.tool.schema import ToolInfo
 
 DEFAULT_BAD_CASES_SAMPLE_NUM: int = 5
 DEFAULT_MODEL_RETRY_NUM: int = 5

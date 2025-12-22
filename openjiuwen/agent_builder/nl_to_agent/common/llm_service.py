@@ -5,8 +5,8 @@ import os
 from typing import List, Union, Dict, Any
 
 from openjiuwen.agent_builder.nl_to_agent.utils.utils import load_yaml_file
-from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 
 
 def get_model_info():

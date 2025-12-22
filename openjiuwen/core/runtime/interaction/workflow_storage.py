@@ -7,7 +7,7 @@ from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.runtime.interaction.storage import Storage
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.workflow import NodeRuntime
-from openjiuwen.graph.store import create_serializer, Serializer
+from openjiuwen.core.graph.store import create_serializer, Serializer
 
 
 class WorkflowStorage(Storage):

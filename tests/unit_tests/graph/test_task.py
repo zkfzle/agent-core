@@ -7,12 +7,12 @@ import asyncio
 import pytest
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.graph.pregel import Interrupt, GraphInterrupt
-from openjiuwen.graph.pregel.base import PregelNode
-from openjiuwen.graph.pregel.config import PregelConfig
-from openjiuwen.graph.pregel.constants import PARENT_NS, NS
-from openjiuwen.graph.pregel.router import StaticRouter
-from openjiuwen.graph.pregel.task import TaskExecutorPool
+from openjiuwen.core.graph.pregel import Interrupt, GraphInterrupt
+from openjiuwen.core.graph.pregel.base import PregelNode
+from openjiuwen.core.graph.pregel import PregelConfig
+from openjiuwen.core.graph.pregel.constants import PARENT_NS, NS
+from openjiuwen.core.graph.pregel.router import StaticRouter
+from openjiuwen.core.graph.pregel.task import TaskExecutorPool
 
 
 async def task_a_slow(config):

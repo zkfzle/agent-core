@@ -11,7 +11,7 @@ from typing import AsyncGenerator, Any
 from typing import Callable
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.common.utlis.dict_utils import extract_leaf_nodes, format_path, rebuild_dict
+from openjiuwen.core.common.utils.dict_utils import extract_leaf_nodes, format_path, rebuild_dict
 from openjiuwen.core.runtime.utils import EndFrame, get_value_by_nested_path, extract_origin_key
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 

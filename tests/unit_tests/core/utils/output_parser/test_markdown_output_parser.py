@@ -1,10 +1,10 @@
 import pytest
 
-from openjiuwen.core.utils.llm.output_parser.markdown_output_parser import (
+from openjiuwen.core.foundation.llm.output_parser.markdown_output_parser import (
     MarkdownOutputParser, MarkdownContent, MarkdownElementType
 )
-from openjiuwen.core.utils.llm.messages import AIMessage
-from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
+from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm.messages_chunk import AIMessageChunk
 
 pytestmark = pytest.mark.asyncio
 

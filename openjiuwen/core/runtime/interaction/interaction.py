@@ -14,7 +14,7 @@ from openjiuwen.core.runtime.agent import AgentRuntime
 from openjiuwen.core.runtime.interaction.base import BaseInteraction, AgentInterrupt
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.graph.pregel import Interrupt, GraphInterrupt
+from openjiuwen.core.graph.pregel import Interrupt, GraphInterrupt
 
 
 class InteractionOutput(BaseModel):

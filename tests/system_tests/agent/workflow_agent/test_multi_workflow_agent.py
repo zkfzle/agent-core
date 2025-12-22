@@ -33,7 +33,7 @@ from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner.runner import Runner
@@ -672,7 +672,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         return flow
 
     @patch(
-        "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model"
+        "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model"
     )
     async def test_end_batch_output_should_have_workflow_final(self, mock_get_model):
         """
@@ -757,7 +757,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("✅ 测试通过：批输出模式正确返回 workflow_final 帧")
 
     @patch(
-        "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model"
+        "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model"
     )
     async def test_end_stream_output_should_have_end_node_stream(
             self, mock_get_model

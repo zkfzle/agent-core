@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.tool.schema import Parameters, ToolInfo
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
 

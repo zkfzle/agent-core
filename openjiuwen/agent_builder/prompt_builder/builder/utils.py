@@ -3,8 +3,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage, BaseMessage
+from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage, BaseMessage
 
 PROMPT_BUILD_GENERAL_META_SYSTEM_TEMPLATE = Template(content=[SystemMessage(content="""
 以下是markdown的元模板：

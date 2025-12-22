@@ -15,16 +15,16 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.common.utlis.hash_util import generate_key
+from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.tool.schema import ToolCall
+from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.tool.schema import ToolCall
 from openjiuwen.core.workflow.base import WorkflowOutput
 
 

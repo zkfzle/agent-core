@@ -23,9 +23,9 @@ from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 
 
 class BaseMemoryEngine(ABC):

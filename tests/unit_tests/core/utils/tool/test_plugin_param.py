@@ -6,9 +6,9 @@
 import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.param_util import ParamUtil
-from openjiuwen.core.utils.tool.types import ValueTypeEnum, Type
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.param_util import ParamUtil
+from openjiuwen.core.foundation.tool.types import ValueTypeEnum, Type
 
 
 class TestPluginParam:

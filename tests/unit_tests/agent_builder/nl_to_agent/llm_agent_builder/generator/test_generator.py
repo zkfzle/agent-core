@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.generator.generator import Generator
-from openjiuwen.core.utils.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
 
 
 class TestGenerator(unittest.TestCase):

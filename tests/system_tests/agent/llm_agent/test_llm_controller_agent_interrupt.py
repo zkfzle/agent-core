@@ -17,9 +17,9 @@ from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 

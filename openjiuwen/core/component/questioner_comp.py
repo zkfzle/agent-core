@@ -20,10 +20,10 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.utils.prompt.template.template import Template
+from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
+from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.prompt.template.template import Template
 
 START_STR = "start"
 END_STR = "end"

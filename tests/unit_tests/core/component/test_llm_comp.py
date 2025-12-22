@@ -16,9 +16,9 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage
-from openjiuwen.core.utils.tool.schema import ToolInfo
-from openjiuwen.core.utils.llm.messages_chunk import BaseMessageChunk
+from openjiuwen.core.foundation.llm.messages import AIMessage, BaseMessage
+from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata
 
@@ -39,7 +39,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
 from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
+from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 
 USER_FIELDS = "userFields"
 
@@ -90,7 +90,7 @@ class FakeModel(BaseModelClient):
 
 
 @patch(
-    "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
+    "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model",
     autospec=True,
 )
 class TestLLMExecutableInvoke:

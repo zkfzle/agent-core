@@ -9,7 +9,7 @@ from typing import List, Dict
 from openjiuwen.agent_builder.nl_to_agent.common.resource.plugin_processor import PluginProcessor
 from openjiuwen.agent_builder.nl_to_agent.common.resource.prompt import retrieve_system_prompt
 from openjiuwen.agent_builder.nl_to_agent.utils.utils import load_yaml_file
-from openjiuwen.core.utils.llm.messages import SystemMessage
+from openjiuwen.core.foundation.llm.messages import SystemMessage
 
 
 def extract_json(dl: str):

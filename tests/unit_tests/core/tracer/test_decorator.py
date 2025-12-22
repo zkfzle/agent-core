@@ -11,11 +11,11 @@ from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, \
     decorate_model_with_trace
-from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.utils.tool.schema import ToolInfo
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.tool.constant import Input, Output
+from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
+from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool.constant import Input, Output
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 
 pytestmark = pytest.mark.asyncio

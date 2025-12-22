@@ -47,9 +47,9 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
-from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
-from openjiuwen.core.utils.tool.schema import ToolCall
+from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
+from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.foundation.tool.schema import ToolCall
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
@@ -241,7 +241,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
         mock_llm.set_responses(all_llm_responses)
         
         # ==================== 使用 Patch Mock LLM（在创建组件之前开始 patch）====================
-        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             # 所有组件共享同一个 mock LLM 实例
             mock_get_model.return_value = mock_llm
             

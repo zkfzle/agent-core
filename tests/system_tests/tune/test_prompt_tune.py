@@ -7,16 +7,16 @@ import asyncio
 
 from openjiuwen.agent.chat_agent import create_chat_agent_config, create_chat_agent
 from openjiuwen.agent.config.base import LLMCallConfig
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.tool.function.function import LocalFunction, Param
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.tool.function.function import LocalFunction, Param
 
 from openjiuwen.agent_builder.tune.optimizer.joint_optimizer import JointOptimizer
 from openjiuwen.agent_builder.tune.evaluator.evaluator import DefaultEvaluator
-from openjiuwen.core.utils.llm.messages import UsageMetadata
+from openjiuwen.core.foundation.llm.messages import UsageMetadata
 from openjiuwen.agent_builder.tune.base import Case
 from openjiuwen.agent_builder.tune.trainer.trainer import Trainer
 from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
-from openjiuwen.core.utils.tool.schema import ToolCall
+from openjiuwen.core.foundation.tool.schema import ToolCall
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 

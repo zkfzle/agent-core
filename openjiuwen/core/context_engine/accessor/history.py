@@ -6,7 +6,7 @@ from typing import List, Dict, Optional, Union
 from pydantic import BaseModel, Field
 
 from openjiuwen.core.context_engine.config import ContextEngineConfig
-from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm.messages import BaseMessage
 
 DEFAULT_HISTORY_LENGTH = 100
 

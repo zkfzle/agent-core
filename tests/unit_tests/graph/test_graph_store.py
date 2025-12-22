@@ -9,8 +9,8 @@ from unittest.mock import MagicMock
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.store import create_state, PendingNode, GraphStore
-from openjiuwen.graph.store.inmemory import InMemoryStore
+from openjiuwen.core.graph.store import create_state, PendingNode, GraphStore
+from openjiuwen.core.graph.store.inmemory import InMemoryStore
 
 
 @dataclass

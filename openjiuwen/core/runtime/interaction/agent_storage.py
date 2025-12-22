@@ -5,7 +5,7 @@
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.interaction.storage import Storage
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.store import create_serializer, Serializer
+from openjiuwen.core.graph.store import create_serializer, Serializer
 
 
 class AgentStorage(Storage):

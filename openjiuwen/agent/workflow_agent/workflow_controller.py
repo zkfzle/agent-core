@@ -30,7 +30,7 @@ from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import CustomSchema, OutputSchema
-from openjiuwen.core.utils.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
 
 

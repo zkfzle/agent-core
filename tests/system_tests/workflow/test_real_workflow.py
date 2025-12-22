@@ -37,10 +37,10 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.stream.base import CustomSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode

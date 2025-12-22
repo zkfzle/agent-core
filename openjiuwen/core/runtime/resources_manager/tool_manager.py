@@ -9,8 +9,8 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.tool.mcp.base import (
+from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool.mcp.base import (
     ToolServerConfig,
     McpToolInfo,
     McpToolClient,
@@ -19,7 +19,7 @@ from openjiuwen.core.utils.tool.mcp.base import (
     PlaywrightClient,
     MCPTool
 )
-from openjiuwen.core.utils.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool.schema import ToolInfo
 
 ToolProvider = Callable[[], Tool]
 

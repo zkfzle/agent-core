@@ -10,8 +10,8 @@ from typing import Optional, List, Dict, Any
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage
+from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase
 
 

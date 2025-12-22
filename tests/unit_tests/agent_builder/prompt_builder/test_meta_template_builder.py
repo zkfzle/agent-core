@@ -12,10 +12,10 @@ from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder impor
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.llm.messages import AIMessage
-from openjiuwen.core.utils.prompt.template.template import Template
+from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.prompt.template.template import Template
 
 
 class MockLLMModel(BaseModelClient):

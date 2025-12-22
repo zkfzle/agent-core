@@ -19,7 +19,7 @@ from openjiuwen.core.stream.manager import StreamWriterManager
 from openjiuwen.core.tracer.data import InvokeType, NodeStatus
 from openjiuwen.core.tracer.span import Span, TraceAgentSpan, TraceWorkflowSpan
 from openjiuwen.core.tracer.span import SpanManager
-from openjiuwen.graph.pregel import GraphInterrupt
+from openjiuwen.core.graph.pregel import GraphInterrupt
 
 
 class TracerHandlerName(Enum):

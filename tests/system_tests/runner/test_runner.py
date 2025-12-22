@@ -19,8 +19,8 @@ from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 

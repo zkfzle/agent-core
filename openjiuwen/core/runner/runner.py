@@ -30,8 +30,8 @@ from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.stream.base import BaseStreamMode
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.tool.mcp.base import McpToolInfo
+from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
 
 AGENT_ADAPTER = "agent_adapter_"

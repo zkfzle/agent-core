@@ -4,7 +4,7 @@
 
 from typing import Optional
 
-from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from openjiuwen.core.context_engine.base import ContextOwner
 from openjiuwen.core.context_engine.context import AgentContext, WorkflowContext

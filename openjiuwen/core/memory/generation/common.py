@@ -1,5 +1,5 @@
 from typing import List
-from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm.messages import BaseMessage
 
 
 def build_model_input(messages: List[BaseMessage],

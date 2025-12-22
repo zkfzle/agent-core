@@ -7,7 +7,7 @@ from typing import Dict, Any, Tuple, List
 
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.clarifier.prompt import \
     FACTOR_SYSTEM_PROMPT, USER_PROMPT_TEMPLATE, RESOURCE_SYSTEM_PROMPT, RESOURCE_USER_PROMPT_TEMPLATE
-from openjiuwen.core.utils.llm.messages import HumanMessage, SystemMessage
+from openjiuwen.core.foundation.llm.messages import HumanMessage, SystemMessage
 
 
 class Clarifier:

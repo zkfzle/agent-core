@@ -7,8 +7,8 @@ from typing import Optional, List, Generator
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.utils.llm.messages import AIMessage
-from openjiuwen.core.utils.prompt.template.template import Template
+from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 from openjiuwen.agent_builder.prompt_builder.base import BasePromptBuilder

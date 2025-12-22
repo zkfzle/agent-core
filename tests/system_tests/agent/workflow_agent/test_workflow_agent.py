@@ -21,9 +21,9 @@ from openjiuwen.core.component.questioner_comp import QuestionerComponent, Quest
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput

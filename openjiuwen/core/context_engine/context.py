@@ -6,7 +6,7 @@ from typing import Optional, Dict, Union, List
 
 from openjiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from openjiuwen.core.context_engine.base import Context, ContextOwner
-from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm.messages import BaseMessage
 
 
 class ContextImpl(Context):

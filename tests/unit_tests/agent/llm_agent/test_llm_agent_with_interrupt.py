@@ -20,8 +20,8 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runtime.constants import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
@@ -75,7 +75,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
     @patch("openjiuwen.agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
-    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_react_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_llm_inputs,
                                                                mock_extraction, mock_generate_plan_from_llm):
         mock_get_model.return_value = MockLLMModel()
@@ -189,7 +189,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             print(f"LLMAgent 第二次输出结果：{result}")
 
     @pytest.mark.asyncio
-    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_real_react_agent_invoke_with_workflow_interrupt(self, mock_get_model):
         # Mock LLM model
         mock_get_model.return_value = MockLLMModel()
@@ -303,7 +303,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
     @pytest.mark.asyncio
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_real_workflow_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_extraction):
         # Mock LLM model
         mock_get_model.return_value = MockLLMModel()
@@ -402,7 +402,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
     @pytest.mark.asyncio
     @patch("openjiuwen.core.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_real_workflow_agent_stream_with_workflow_interrupt(self, mock_get_model, mock_extraction):
         # Mock LLM model
         mock_get_model.return_value = MockLLMModel()

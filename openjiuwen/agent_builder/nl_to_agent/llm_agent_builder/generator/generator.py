@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 
 from openjiuwen.agent_builder.nl_to_agent.llm_agent_builder.generator.prompt import \
     GENERATE_USER_PROMPT_TEMPLATE, GENERATE_SYSTEM_PROMPT
-from openjiuwen.core.utils.llm.messages import HumanMessage, SystemMessage
+from openjiuwen.core.foundation.llm.messages import HumanMessage, SystemMessage
 
 
 class Generator:

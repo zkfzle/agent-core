@@ -16,7 +16,7 @@ from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
 from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
-from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
@@ -65,7 +65,7 @@ def fake_config(fake_model_config) -> IntentDetectionCompConfig:
 
 class TestIntentDetectionExecutableInvoke:
     @patch(
-        "openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model",
+        "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model",
         autospec=True,
     )
     @pytest.mark.asyncio

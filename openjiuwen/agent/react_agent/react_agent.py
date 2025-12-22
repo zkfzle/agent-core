@@ -20,10 +20,10 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.llm.messages import AIMessage, ToolMessage
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.tool.base import Tool
+from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.tool.base import Tool
 
 
 class ReActAgent(BaseAgent):

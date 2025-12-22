@@ -7,12 +7,12 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY, Graph
+from openjiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.graph.visualization.drawable_graph import DrawableGraph
+from openjiuwen.core.graph.visualization.drawable_graph import DrawableGraph
 
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"

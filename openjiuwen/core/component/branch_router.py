@@ -10,7 +10,7 @@ from openjiuwen.core.component.condition.condition import Condition, FuncConditi
 from openjiuwen.core.component.condition.expression import ExpressionCondition
 from openjiuwen.core.runtime.runtime import Runtime, BaseRuntime
 from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
-from openjiuwen.graph.visualization.drawable_edge import DrawableBranchRouter
+from openjiuwen.core.graph.visualization.drawable_edge import DrawableBranchRouter
 
 
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"

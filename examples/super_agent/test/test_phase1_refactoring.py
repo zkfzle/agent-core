@@ -15,7 +15,7 @@ from examples.super_agent.agent.context_manager import ContextManager
 from examples.super_agent.agent.super_react_agent import SuperReActAgent
 from examples.super_agent.agent.super_config import SuperAgentFactory
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
 
 
 def test_context_manager_basic_operations():

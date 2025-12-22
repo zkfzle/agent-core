@@ -10,8 +10,8 @@ from tqdm import tqdm
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.utils.prompt.template.template import Template
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase, TuneConstant
 from openjiuwen.agent_builder.tune.utils import TuneUtils

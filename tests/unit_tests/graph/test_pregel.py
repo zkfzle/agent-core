@@ -8,14 +8,14 @@ import pytest
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.graph.pregel import Interrupt, GraphInterrupt
-from openjiuwen.graph.pregel.base import PregelNode
-from openjiuwen.graph.pregel.builder import PregelBuilder
-from openjiuwen.graph.pregel.channels import TriggerChannel, BarrierChannel
-from openjiuwen.graph.pregel.config import PregelConfig
-from openjiuwen.graph.pregel.constants import START, END, NS
-from openjiuwen.graph.pregel.engine import Pregel
-from openjiuwen.graph.pregel.router import StaticRouter, BarrierRouter, ConditionalRouter
+from openjiuwen.core.graph.pregel import Interrupt, GraphInterrupt
+from openjiuwen.core.graph.pregel.base import PregelNode
+from openjiuwen.core.graph.pregel import PregelBuilder
+from openjiuwen.core.graph.pregel.channels import TriggerChannel, BarrierChannel
+from openjiuwen.core.graph.pregel import PregelConfig
+from openjiuwen.core.graph.pregel.constants import START, END, NS
+from openjiuwen.core.graph.pregel import Pregel
+from openjiuwen.core.graph.pregel.router import StaticRouter, BarrierRouter, ConditionalRouter
 
 
 @pytest.fixture

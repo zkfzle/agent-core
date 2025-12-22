@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.tracer.decorator import decorate_model_with_trace
-from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
 
 

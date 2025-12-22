@@ -16,7 +16,7 @@ from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgen
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runner.runner_config import RunnerConfig, MessageQueueConfig, DistributedConfig, PulsarConfig
 from openjiuwen.core.stream.base import OutputSchema, TraceSchema
-from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode

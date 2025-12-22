@@ -16,10 +16,10 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.stream.writer import StreamWriter
 from openjiuwen.core.tracer.tracer import Tracer
 from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.tool.schema import ToolInfo
+from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool.schema import ToolInfo
 
 
 class StaticWrappedRuntime(Runtime, ABC):

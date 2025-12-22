@@ -31,8 +31,8 @@ from openjiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
 from openjiuwen.core.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
-from openjiuwen.graph.graph import PregelGraph
-from openjiuwen.graph.pregel import GraphInterrupt, START, END
+from openjiuwen.core.graph.graph import PregelGraph
+from openjiuwen.core.graph.pregel import GraphInterrupt, START, END
 
 
 class EmptyExecutable(Executable):

@@ -12,9 +12,9 @@ from openjiuwen.core.runtime.interaction.base import Checkpointer
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.interaction.workflow_storage import WorkflowStorage
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.graph.store import Store
-from openjiuwen.graph.store.inmemory import InMemoryStore
-from openjiuwen.graph.pregel.constants import TASK_STATUS_INTERRUPT
+from openjiuwen.core.graph.store import Store
+from openjiuwen.core.graph.store.inmemory import InMemoryStore
+from openjiuwen.core.graph.pregel import TASK_STATUS_INTERRUPT
 
 
 class InMemoryCheckpointer(Checkpointer):

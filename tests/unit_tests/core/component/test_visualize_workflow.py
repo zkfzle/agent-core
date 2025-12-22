@@ -18,11 +18,11 @@ from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
-from openjiuwen.graph.visualization.drawable import Drawable
+from openjiuwen.core.graph.visualization.drawable import Drawable
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, MockEndNode, MockStartNode, CommonNode, \
     StreamCompNode, CollectCompNode, Node1
 

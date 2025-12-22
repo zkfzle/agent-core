@@ -11,9 +11,9 @@ from openjiuwen.core.memory.generation.memory_info import (
     ExtractedDataType
 )
 from openjiuwen.core.memory.prompt.variable_extractor import EXTRACT_VARIABLES_PROMPT
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
+from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm.output_parser.json_output_parser import JsonOutputParser
 
 
 class ComprehensionExtractor:

@@ -35,11 +35,11 @@ import pytest
 
 from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, ReActAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.utils.llm.base import BaseModelInfo, BaseModelClient
-from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
-from openjiuwen.core.utils.tool.schema import ToolCall
-from openjiuwen.core.utils.tool.function.function import LocalFunction
-from openjiuwen.core.utils.tool.param import Param
+from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
+from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.foundation.tool.schema import ToolCall
+from openjiuwen.core.foundation.tool.function.function import LocalFunction
+from openjiuwen.core.foundation.tool.param import Param
 
 
 class MockLLMModel(BaseModelClient):
@@ -202,7 +202,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
         mock_llm.set_responses(all_llm_responses)
         
         # ==================== 使用 Patch Mock LLM ====================
-        with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+        with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
             mock_get_model.return_value = mock_llm
             
             # ==================== 创建工具 ====================

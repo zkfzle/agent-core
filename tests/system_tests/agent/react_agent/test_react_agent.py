@@ -12,11 +12,11 @@ from datetime import datetime
 from openjiuwen.agent.react_agent.react_agent import ReActAgent
 from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.tool.function.function import LocalFunction
-from openjiuwen.core.utils.tool.param import Param
-from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.utils.tool.tool import tool
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.tool.function.function import LocalFunction
+from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.tool.tool import tool
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 

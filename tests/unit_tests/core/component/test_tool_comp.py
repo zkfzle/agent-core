@@ -50,7 +50,7 @@ def mock_tool():
 
 
 @pytest.fixture
-def mock_tool_kwargs(mock_tool, mock_tool_input):
+def mock_tool_kwargs(mock_tool, mock_tool_config):
     return {
         "tool": mock_tool,
         "config": mock_tool_config

@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import List
 from unittest.mock import patch, AsyncMock
 
+from mcp import StdioServerParameters
+
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -12,16 +14,15 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
 from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
-from mcp import StdioServerParameters
 
 API_BASE = "https://mock.com/v1"
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -604,3 +605,31 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert empty_tools == None
 
             return True
+        
+    @unittest.skip("skip system test - requires network")
+    async def test_connect_and_list_tools_with_query_ak(self):
+        """端到端测试：带 ak 查询参数的 SSE 客户端连接和工具列表获取（已使用可用的 ak 值测试通过）"""
+        print("=== 测试带 ak 查询参数的 SSE 客户端连接和工具列表获取 ===")
+
+        # 在环境变量中获取实际的 ak 值
+        ak_value = os.getenv("BAIDU_MCP_AK", "your-ak") 
+
+        config = ToolServerConfig(
+            server_name="baidu-map-mcp-server",
+            server_path="https://mcp.map.baidu.com/sse",
+            client_type="sse",
+            auth_query_params={"ak": ak_value}
+        )
+
+        client = SseClient(config.server_path, config.server_name,
+                           auth_query_params=config.auth_query_params)
+
+        try:
+            connected = await asyncio.wait_for(client.connect(timeout=60), timeout=60)
+            self.assertTrue(connected, "Should connect to Baidu Map MCP SSE server with ak query parameter")
+
+            tools = await asyncio.wait_for(client.list_tools(timeout=60), timeout=60)
+            self.assertIsInstance(tools, list)
+            self.assertGreater(len(tools), 0, "Expected the server to return at least one tool")
+        finally:
+            await asyncio.wait_for(client.disconnect(timeout=15), timeout=15)

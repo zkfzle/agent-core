@@ -19,7 +19,7 @@ async def task_a_slow(config):
     # Slow task, needs 1 second
     logger.debug(">>> Node A start")
     await asyncio.sleep(1)
-    print(">>> Node A end")
+    logger.debug(">>> Node A end")
     assert config[NS] == 'root:A:1'
 
 

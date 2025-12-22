@@ -3,18 +3,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import List, Any, Dict, Iterator, AsyncIterator
 from unittest.mock import patch
+
 import pytest
 
-from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.core.utils.llm.messages import AIMessage
+import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder import (MetaTemplateBuilder,
                                                                                    META_TEMPLATE_NAME_PREFIX)
-import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.llm.messages import AIMessage
+from openjiuwen.core.utils.prompt.template.template import Template
 
 
 class MockLLMModel(BaseModelClient):
@@ -79,12 +80,12 @@ class MockLLMModel(BaseModelClient):
 
 
 def test_register_custom_template():
-    mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_api")
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
     config = ModelConfig(
         model_provider="",
         model_info=BaseModelInfo(
             api_key="sk-fake",
-            api_base="mock_api"
+            api_base="https://api.openai.com"
         )
     )
     with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
@@ -112,14 +113,14 @@ def test_register_custom_template():
 
 
 def test_build_with_default_meta_template():
-    mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_api")
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
     with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         mock_get_model.return_value = mock_llm
         config = ModelConfig(
             model_provider="",
             model_info=BaseModelInfo(
                 api_key="sk-fake",
-                api_base="mock_api"
+                api_base="https://api.openai.com"
             )
         )
         builder = MetaTemplateBuilder(config)
@@ -146,7 +147,7 @@ def test_build_with_default_meta_template():
 
 
 def test_build_with_custom_meta_template():
-    mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_api")
+    mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
     template = "you are a custom meta template"
     with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         mock_get_model.return_value = mock_llm
@@ -154,7 +155,7 @@ def test_build_with_custom_meta_template():
             model_provider="",
             model_info=BaseModelInfo(
                 api_key="sk-fake",
-                api_base="mock_api"
+                api_base="https://api.openai.com"
             )
         )
         builder = MetaTemplateBuilder(config)

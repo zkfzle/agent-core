@@ -1,7 +1,6 @@
 from typing import AsyncIterator
 
 import pytest
-from sphinx.addnodes import index
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -14,9 +13,8 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import OutputSchema, BaseStreamMode
+from openjiuwen.core.stream.base import BaseStreamMode
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode
 
 pytestmark = pytest.mark.asyncio
@@ -156,7 +154,7 @@ async def test_loop_group_component_stream():
     loop_group.add_stream_connection("transformer", "consumer")
 
     # Create main workflow
-    flow = Workflow(workflow_config=WorkflowConfig())
+    flow = Workflow()
     flow.set_start_comp("start", Start(), inputs_schema={})
     
     # Create end component with proper output schema

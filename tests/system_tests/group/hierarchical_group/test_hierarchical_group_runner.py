@@ -15,7 +15,6 @@ import os
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
 
-import asyncio
 import unittest
 from typing import Any, Dict, AsyncIterator
 
@@ -200,7 +199,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_event"
 
         chunks = []
-        stream = Runner.run_agent_group_streaming(group, message)
+        stream = await Runner.run_agent_group_streaming(group, message)
         async for chunk in stream:
             chunks.append(chunk)
             chunk_type = chunk.type if hasattr(chunk, 'type') else type(chunk)
@@ -227,7 +226,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_data"
 
         chunks = []
-        stream = Runner.run_agent_group_streaming(
+        stream = await Runner.run_agent_group_streaming(
             "runner_stream_by_id", message
         )
         async for chunk in stream:
@@ -258,7 +257,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_broadcast"
 
         chunks = []
-        stream = Runner.run_agent_group_streaming(group, message)
+        stream = await Runner.run_agent_group_streaming(group, message)
         async for chunk in stream:
             chunks.append(chunk)
             chunk_type = chunk.type if hasattr(chunk, 'type') else type(chunk)
@@ -377,7 +376,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
             message.message_type = "seq_event"
 
             chunks = []
-            stream = Runner.run_agent_group_streaming(group, message)
+            stream = await Runner.run_agent_group_streaming(group, message)
             async for chunk in stream:
                 chunks.append(chunk)
 

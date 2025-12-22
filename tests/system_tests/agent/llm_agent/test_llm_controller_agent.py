@@ -4,32 +4,33 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy.ext.asyncio import create_async_engine
+
 from openjiuwen.agent.common.schema import PluginSchema
+from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.memory.config.config import SysMemConfig
 from openjiuwen.core.memory.embed_models import APIEmbedModel
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
+from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
+from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
+from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.utils.tool.tool import tool
-from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.memory.config.config import SysMemConfig
-from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
-from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
-from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
-from sqlalchemy.ext.asyncio import create_async_engine
-from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
 
-API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
-API_KEY = os.getenv("API_KEY", "sk-fake")
+API_BASE = os.getenv("API_BASE", "")
+API_KEY = os.getenv("API_KEY", "")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -212,7 +213,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
             },
         )
         return LLMComponent(config)
-
+    
     @staticmethod
     def _create_start_component():
         return Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})

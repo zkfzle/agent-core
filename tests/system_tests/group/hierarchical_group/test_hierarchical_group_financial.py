@@ -9,10 +9,10 @@ HierarchicalGroup 金融场景测试 - 使用 HierarchicalMainController + Workf
 - 3个子 workflow agent：转账、查余额、理财
 - 每个 workflow 都有 QuestionerComponent 中断节点
 """
+import asyncio
 import os
 import unittest
-import asyncio
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
@@ -24,6 +24,8 @@ from openjiuwen.agent_group.hierarchical_group import (
 from openjiuwen.agent_group.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.common.constants import constant as const
+from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.questioner_comp import (
@@ -32,17 +34,15 @@ from openjiuwen.core.component.questioner_comp import (
     QuestionerConfig
 )
 from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.common.constants import constant as const
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runtime.base import ComponentExecutable
+from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.component.base import WorkflowComponent
-from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
 
 # 模型配置
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -1427,7 +1427,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print("\n【步骤1】发送银行存取钱请求，触发并行中断")
         message1 = Message.create_user_message(content="我想在民生银行存取款", conversation_id=conversation_id)
         chunks1 = []
-        stream1 = Runner.run_agent_group_streaming(group, message1)
+        stream1 = await Runner.run_agent_group_streaming(group, message1)
         async for chunk in stream1:
             chunks1.append(chunk)
             print(f"agent group message1 chunk: {chunk}")
@@ -1438,18 +1438,18 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             if chunk.type == '__interaction__':
                 interaction_chunks.append(chunk)
                 print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
-        
+
         self.assertEqual(len(interaction_chunks), 2, "应该同时返回2个中断（interactive和questioner）")
 
         # 10、使用InteractiveInput同时恢复所有中断
         print("\n【步骤2】使用InteractiveInput同时恢复所有中断")
         user_input = InteractiveInput()
-        
+
         # 根据中断提示内容智能填充恢复数据
         for chunk in interaction_chunks:
             interaction_id = chunk.payload.id
             interaction_value = str(chunk.payload.value)
-            
+
             # 根据提示内容判断应该填充什么数据
             if "跳转" in interaction_value or "确认" in interaction_value or "手机银行" in interaction_value:
                 user_input.update(interaction_id, "是，确认跳转手机银行操作界面")
@@ -1469,7 +1469,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         message2 = Message.create_user_message(content=user_input, conversation_id=conversation_id)
         chunks2 = []
-        stream2 = Runner.run_agent_group_streaming(group, message2)
+        stream2 = await Runner.run_agent_group_streaming(group, message2)
         async for chunk in stream2:
             chunks2.append(chunk)
             print(f"agent group message2 chunk: {chunk}")
@@ -1482,21 +1482,21 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
                 break
 
         self.assertIsNotNone(final_chunk, "应该有 workflow_final 输出")
-        
+
         # 验证最终结果包含预期的数据
         final_payload = final_chunk.payload
         print(f"✅ 步骤2成功：workflow 成功完成，结果: {final_payload}")
-        
+
         # 验证结果包含关键信息
         if isinstance(final_payload, dict):
             response_str = final_payload.get('responseContent', str(final_payload))
         else:
             response_str = str(final_payload)
-        
+
         self.assertIn("5000", response_str, "结果应包含金额5000")
         self.assertIn("存钱", response_str, "结果应包含操作类型：存钱")
         self.assertIn("确认跳转手机银行操作界面", response_str, "结果应包含确认信息")
-        
+
         print("\n🎉 test_hierarchical_group_014 测试完成！")
         print("   ✓ 成功创建包含多个workflow的WorkflowAgent")
         print("   ✓ 成功创建LLMAgent和ReactAgent")

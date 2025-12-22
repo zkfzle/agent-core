@@ -5,23 +5,23 @@ from typing import List
 
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
+from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
+from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.graph.executable import Output, Input
+from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.component.base import WorkflowComponent
-from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -323,9 +323,9 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         # 动态绑定workflow
         llm_agent.add_workflows([flow])
-            
+
         return llm_agent
-        
+
     @unittest.skip("requires network")
     async def test_llm_agent_with_workflow_interrupt_agent_invoke(self):
         llm_agent = self._setup_test_environment_and_agent()

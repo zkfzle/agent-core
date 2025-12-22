@@ -145,8 +145,11 @@ async def test_batch_multi_stream_workflow():
     assert res.result == {'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'}
 
     chunks = []
-    expect_chunks = [OutputSchema(type='workflow_final', index=0,
-                                  payload={'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'})]
+    # End 组件批输出时也会发送 end node stream，然后发送 workflow_final
+    expect_chunks = [
+        OutputSchema(type='workflow_final', index=0,
+                     payload={'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'})
+    ]
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, WorkflowRuntime(), stream_modes=[BaseStreamMode.OUTPUT]):
         assert chunk is not None

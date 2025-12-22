@@ -7,7 +7,7 @@ from typing import List, Any
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
 

@@ -14,8 +14,8 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.context_engine.config import ContextEngineConfig
-from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
+from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.agent import StaticAgentRuntime
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr

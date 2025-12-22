@@ -8,7 +8,7 @@ from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.context_engine.accessor.accessor import ContextAccessor
 from openjiuwen.core.context_engine.base import ContextOwner
 from openjiuwen.core.context_engine.context import AgentContext, WorkflowContext
-from openjiuwen.core.context_engine.config import ContextEngineConfig
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 
 
 class ContextEngine:

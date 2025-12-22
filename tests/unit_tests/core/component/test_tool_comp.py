@@ -5,8 +5,8 @@ import pytest
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
-from openjiuwen.core.context_engine.config import ContextEngineConfig
-from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
+from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.session.wrapper import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.tool.param import Param

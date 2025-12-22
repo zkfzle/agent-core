@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.controller.controller import BaseController
 from openjiuwen.core.agent.message.message import Message
-from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.runtime import Runtime
 
 

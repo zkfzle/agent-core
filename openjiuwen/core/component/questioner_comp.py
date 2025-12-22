@@ -23,7 +23,7 @@ from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 
 START_STR = "start"
 END_STR = "end"

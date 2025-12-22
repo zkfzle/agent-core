@@ -22,7 +22,7 @@ from openjiuwen.core.session.runtime import Runtime, Workflow
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.tool.base import Tool
 
 

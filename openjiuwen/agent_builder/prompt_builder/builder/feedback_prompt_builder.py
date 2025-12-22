@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.messages import BaseMessage
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 
 INSERT_STR: str = "[用户要插入的位置]"
 MODE_GENERAL: str = "general"

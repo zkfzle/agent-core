@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.tool.schema import ToolInfo
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 from openjiuwen.agent_builder.prompt_builder.base import BasePromptBuilder

@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.session.thread_safe_dict import ThreadSafeDict
 
 

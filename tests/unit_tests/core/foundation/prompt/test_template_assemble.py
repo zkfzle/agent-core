@@ -4,7 +4,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm.messages import HumanMessage, AIMessage, ToolMessage
 from openjiuwen.core.foundation.tool.schema import ToolCall
 from openjiuwen.core.foundation.prompt.assemble.variables.variable import Variable
-from openjiuwen.core.foundation.prompt.template.template import Assembler, Template
+from openjiuwen.core.foundation.prompt.template import Assembler, Template
 from openjiuwen.core.foundation.prompt.assemble.variables.textable import TextableVariable
 
 class TestPromptAssemble:

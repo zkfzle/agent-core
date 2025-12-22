@@ -6,7 +6,7 @@ import json
 from typing import List, Dict, Any
 
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 
 OUTPUT_CHANGE_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
 You are the dedicated feedback engine for output of a multi-stage workflow.

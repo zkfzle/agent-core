@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.core.context_engine.config import ContextEngineConfig
-from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
+from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.interaction.interaction import InteractionOutput
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.wrapper import TaskRuntime
@@ -21,7 +21,7 @@ from openjiuwen.core.session.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.session.workflow import WorkflowRuntime
 from openjiuwen.core.session.stream.base import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 

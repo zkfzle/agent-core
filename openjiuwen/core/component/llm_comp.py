@@ -8,7 +8,7 @@ from typing import List, Any, Dict, Optional, AsyncIterator, Union
 
 from pydantic import ValidationError, Field, BaseModel
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException, InterruptException
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
@@ -21,7 +21,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 _ROLE = "role"

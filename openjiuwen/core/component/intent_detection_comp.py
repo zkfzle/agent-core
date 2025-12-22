@@ -24,7 +24,7 @@ from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.common.security.user_config import UserConfig
 
 

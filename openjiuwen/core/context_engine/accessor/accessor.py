@@ -4,7 +4,7 @@
 
 from openjiuwen.core.context_engine.accessor.history import ConversationHistory
 from openjiuwen.core.context_engine.base import ContextOwner
-from openjiuwen.core.context_engine.config import ContextEngineConfig
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 
 
 class ContextAccessor:

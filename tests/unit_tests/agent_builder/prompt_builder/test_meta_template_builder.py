@@ -15,7 +15,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 
 
 class MockLLMModel(BaseModelClient):
@@ -88,7 +88,7 @@ def test_register_custom_template():
             api_base="https://api.openai.com"
         )
     )
-    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+    with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         # register string template
         mock_get_model.return_value = mock_llm
         builder = MetaTemplateBuilder(config)
@@ -114,7 +114,7 @@ def test_register_custom_template():
 
 def test_build_with_default_meta_template():
     mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
-    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+    with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         mock_get_model.return_value = mock_llm
         config = ModelConfig(
             model_provider="",
@@ -149,7 +149,7 @@ def test_build_with_default_meta_template():
 def test_build_with_custom_meta_template():
     mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
     template = "you are a custom meta template"
-    with patch('openjiuwen.core.utils.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
+    with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
         mock_get_model.return_value = mock_llm
         config = ModelConfig(
             model_provider="",

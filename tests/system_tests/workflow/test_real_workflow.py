@@ -38,7 +38,7 @@ from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConf
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.stream.base import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.prompt.template.template import Template
+from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.tool.param import Param
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow

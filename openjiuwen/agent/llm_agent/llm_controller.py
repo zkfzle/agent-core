@@ -3,32 +3,49 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 """LLMController - ReAct style controller based on BaseController"""
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Dict, Optional, List, Any
 
-from openjiuwen.agent.common.enum import TaskType
 from openjiuwen.agent.config.react_config import ReActAgentConfig
-from openjiuwen.agent.utils import MessageUtils
+from openjiuwen.agent.common.enum import TaskType
 from openjiuwen.core.agent.controller.controller import BaseController
-from openjiuwen.core.agent.controller.utils import MessageHandlerUtils
 from openjiuwen.core.agent.message.message import Message, MessageType
 from openjiuwen.core.agent.task.task import Task, TaskResult, TaskStatus
-from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.agent.controller.utils import MessageHandlerUtils
+from openjiuwen.agent.utils import MessageUtils
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
-from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.stream.base import OutputSchema
-from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.foundation.tool.schema import ToolCall
+
+
+@dataclass
+class TaskInterruptionState:
+    """Encapsulates all data related to task interruption
+
+    This dataclass groups related parameters that describe the complete state
+    when a task is interrupted, making the API cleaner and more maintainable.
+    """
+    task: Task
+    runtime: Runtime
+    ai_message: AIMessage
+    remaining_tasks: list[Task]
+    interaction_data: Optional[list] = None
+    current_iteration: Optional[int] = None
 
 
 def convert_timestamp(utc_timestamp: str) -> str:
@@ -43,8 +60,8 @@ def convert_timestamp(utc_timestamp: str) -> str:
 
 
 class LLMController(BaseController):
-    """LLM Controller 
-    
+    """LLM Controller
+
     Core responsibilities:
     1. Receive user input and invoke LLM reasoning to generate tasks
     2. Execute tasks (plugin/workflow)
@@ -65,15 +82,15 @@ class LLMController(BaseController):
 
     async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
         """Handle Message - only handles user input
-        
+
         Notes:
         - BaseController.invoke() only creates USER_INPUT type messages
         - Task execution results are handled directly in _execute_tasks_loop
-        
+
         Args:
             message: Message object (only USER_INPUT type)
             runtime: Runtime context
-            
+
         Returns:
             Final result
         """
@@ -81,7 +98,7 @@ class LLMController(BaseController):
             logger.warning(f"Unexpected message type: {message.msg_type}, expected USER_INPUT")
             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_HANDLE_USER_INPUT_ERROR.code,
                                            f"{message.msg_type} is unexpected message type, should be USER_INPUT")
-        
+
         try:
             return await self._handle_user_input(message, runtime)
         except Exception as e:
@@ -93,7 +110,7 @@ class LLMController(BaseController):
 
     async def _handle_user_input(self, message: Message, runtime: Runtime) -> Optional[Dict]:
         """Handle user input - ReAct core: LLM reasoning to generate plan
-        
+
         Process:
         1. Add user message to conversation history
         2. Call LLM reasoning to generate task plan
@@ -112,19 +129,34 @@ class LLMController(BaseController):
                 interactive_input, runtime
             )
             if resume_result:
-                task, saved_iteration = resume_result
+                # Unpack new return values
+                ai_message, remaining_tasks, saved_iteration = resume_result
+
                 logger.info(
-                    f"Resuming interrupted workflow task from InteractiveInput: {task.input.target_name}, "
+                    f"Resuming interrupted workflow from InteractiveInput, "
+                    f"remaining tasks: {len(remaining_tasks)}, "
                     f"saved_iteration: {saved_iteration}"
                 )
-                # Create resume task with InteractiveInput
-                resume_task = self._create_resume_task(message, task)
-                # Calculate initial_iteration
+
+                # Directly use saved ai_message (no need to manually construct)
+                MessageUtils.add_ai_message(ai_message, self._context_engine, runtime)
+
+                # Update first task (interrupted one) with user input
+                interrupted_task = remaining_tasks[0]
+                interrupted_task.input.arguments = interactive_input
+                interrupted_task.status = TaskStatus.INTERRUPTED
+
+                # Resume execution: execute all remaining tasks
                 initial_iteration = (saved_iteration + 1) if saved_iteration is not None else 1
-                # Execute directly without LLM call
-                return await self._execute_react_loop([resume_task], runtime, initial_iteration=initial_iteration)
+
+                return await self._execute_react_loop(
+                    remaining_tasks,
+                    runtime,
+                    initial_iteration=initial_iteration,
+                    ai_message=ai_message
+                )
             logger.warning("Given Interactive input, but no interrupted task found, " \
-                            "falling through to normal LLM detection")
+                           "falling through to normal LLM detection")
 
         # 1. Normal path: Call LLM model to generate plans
         tasks, llm_output = await self._generate_plan_from_llm(message, runtime)
@@ -133,43 +165,92 @@ class LLMController(BaseController):
             logger.info("ReAct Iteration: 1 end, No task is generated")
             final_result = await self._send_final_stream(llm_output.content, runtime)
             return self._unwrap_result(final_result)
-        
+
         # Check if planned task is workflow task
         initial_iteration = 1
         workflow_task = self._resolve_workflow_from_tasks(tasks)
         if workflow_task:
             # Check if needs to resume interrupted task
-            interrupted_task, saved_iteration = self._find_interrupted_task(workflow_task, runtime)
-            if interrupted_task:
-                logger.info(f"Resuming interrupted workflow task: {workflow_task.input.target_name}, "
-                            f"last iteration: {saved_iteration}")
-                # Create resume task
-                resume_task = self._create_resume_task(message, interrupted_task)
-                tasks = [resume_task]
-                if saved_iteration is not None:
-                    initial_iteration = saved_iteration + 1
+            resume_result = self._find_interrupted_task(workflow_task, runtime)
+            if resume_result[0]:
+                # Unpack new return values
+                saved_ai_message, remaining_tasks, saved_iteration, component_ids = resume_result
+
+                logger.info(
+                    f"Resuming interrupted workflow task: {workflow_task.input.target_name}, "
+                    # f"remaining tasks: {len(remaining_tasks)}, "
+                    f"last iteration: {saved_iteration}"
+                )
+
+                # LLM generated a new ai_message (llm_output) with new tool_call_id in _generate_plan_from_llm.
+                # To ensure tool responses match the ai_message in context, we update the saved task's
+                # task_id to use LLM's new tool_call_id. This way the tool response will correctly
+                # correspond to the ai_message already in context.
+                if llm_output and llm_output.tool_calls and len(llm_output.tool_calls) > 0:
+                    new_tool_call_id = llm_output.tool_calls[0].id
+                    old_task_id = remaining_tasks[0].task_id
+                    remaining_tasks[0].task_id = new_tool_call_id
+                    logger.info(f"Updated task_id from {old_task_id} to {new_tool_call_id} for resume")
+
+                # Update first task (interrupted one) with user input
+                interrupted_task = remaining_tasks[0]
+
+                # Build correct InteractiveInput for workflow resume
+                if message.content.interactive_input is not None:
+                    interactive_input = message.content.interactive_input
+                else:
+                    # Create InteractiveInput with component_ids
+                    user_query = message.get_display_content()
+                    interactive_input = InteractiveInput()
+                    if component_ids:
+                        # Use first component_id to bind user input
+                        for comp_id in component_ids:
+                            interactive_input.update(comp_id, user_query)
+                    else:
+                        # Fallback to raw_inputs
+                        interactive_input = InteractiveInput(raw_inputs=user_query)
+                    logger.info(
+                        f"Created InteractiveInput with component_ids: {component_ids}, user_query: {user_query}")
+
+                interrupted_task.input.arguments = interactive_input
+                interrupted_task.status = TaskStatus.INTERRUPTED
+
+                # Resume execution
+                initial_iteration = saved_iteration + 1 if saved_iteration is not None else 1
+
+                return await self._execute_react_loop(
+                    remaining_tasks,
+                    runtime,
+                    initial_iteration=initial_iteration,
+                    ai_message=saved_ai_message
+                )
             else:
                 logger.info(f"Creating new workflow task: {workflow_task.input.target_name}")
-        
-        # Execute tasks
-        return await self._execute_react_loop(tasks, runtime, initial_iteration=initial_iteration)
+
+        # Execute new tasks
+        return await self._execute_react_loop(
+            tasks,
+            runtime,
+            initial_iteration=initial_iteration,
+            ai_message=llm_output
+        )
 
     async def _post_task_completion(
-        self,
-        task: Task,
-        output: Any,
-        workflow_id: Optional[str],
-        runtime: Runtime
+            self,
+            task: Task,
+            output: Any,
+            workflow_id: Optional[str],
+            runtime: Runtime
     ):
-        """Post-processing after task completion: add history, clear state
-        
+        """Post-processing after task completion: add tool_msg, clear state
+
         Args:
             task: Completed task
             output: Task output (stream data)
             workflow_id: Workflow ID (if applicable)
             runtime: Runtime context
         """
-        # Add tool call result to history
+        # Add tool_msg for completed task
         if output and len(output) > 0:
             if output[0].type in ("plugin_final", "workflow_final"):
                 temp_message = Message.create_task_completed(
@@ -180,26 +261,28 @@ class LLMController(BaseController):
                     stream_data=output
                 )
                 MessageHandlerUtils.add_tool_result(temp_message, self._context_engine, runtime)
-        
+                logger.info(f"Added tool_message for completed task: {task.task_id}")
+
         # Clear workflow interrupted state (if any)
-        self._clear_interrupted_state(task, runtime)
-        logger.info(f"Cleared state for workflow: {workflow_id}")
-    
+        if workflow_id:
+            self._clear_interrupted_state(task, runtime)
+            logger.info(f"Cleared interrupted state for workflow: {workflow_id}")
+
     async def _generate_next_plan(
-        self,
-        task: Task,
-        workflow_id: Optional[str],
-        output: Any,
-        runtime: Runtime
+            self,
+            task: Task,
+            workflow_id: Optional[str],
+            output: Any,
+            runtime: Runtime
     ) -> tuple[list[Task], Any]:
         """Generate next plan after task completion
-        
+
         Args:
             task: Completed task
             workflow_id: Workflow ID (if applicable)
             output: Task output (stream data)
             runtime: Runtime context
-            
+
         Returns:
             tuple: (tasks, llm_output)
         """
@@ -211,7 +294,7 @@ class LLMController(BaseController):
             workflow_id=workflow_id,
             stream_data=output
         )
-        
+
         return await self._generate_plan_from_llm(temp_message, runtime)
 
     async def _handle_task_completed(
@@ -219,8 +302,8 @@ class LLMController(BaseController):
             task: Task,
             execution_result: TaskResult,
             runtime: Runtime
-    ) -> tuple[Optional[Dict], list[Task]]:
-        """Handle task completion - post-processing, generate next plan, check if done
+    ) -> tuple[Optional[Dict], list[Task], Optional[AIMessage]]:
+        """Handle task completion - generate next plan, check if done
 
         Args:
             task: Completed task
@@ -228,21 +311,13 @@ class LLMController(BaseController):
             runtime: Runtime context
 
         Returns:
-            tuple: (final_result_if_done, new_tasks)
+            tuple: (final_result_if_done, new_tasks, new_ai_message)
             - If final_result is not None, ReAct loop should end
-            - If final_result is None, continue with new_tasks
+            - If final_result is None, continue with new_tasks and new_ai_message
         """
         workflow_id = execution_result.metadata.get("workflow_id")
 
-        # 1. Post-processing
-        await self._post_task_completion(
-            task=task,
-            output=execution_result.output,
-            workflow_id=workflow_id,
-            runtime=runtime
-        )
-
-        # 2. Generate next plan
+        # Generate next plan
         tasks, llm_output = await self._generate_next_plan(
             task=task,
             workflow_id=workflow_id,
@@ -250,72 +325,100 @@ class LLMController(BaseController):
             runtime=runtime
         )
 
-        # 3. Check if done
+        # Check if done
         if not tasks:
             logger.info("No new tasks generated, ReAct loop completed")
             final_result = await self._send_final_stream(llm_output.content, runtime)
-            return self._unwrap_result(final_result), []
+            return self._unwrap_result(final_result), [], None
 
-        # 4. Continue loop
-        return None, tasks
+        # Continue loop with new tasks and new ai_message
+        return None, tasks, llm_output
 
     async def _handle_task_interrupted(
-        self,
-        task: Task,
-        output: List,
-        runtime: Runtime,
-        current_iteration: int
+            self,
+            interruption_state: TaskInterruptionState,
+            output: List
     ) -> Optional[Dict]:
         """Handle task interruption
-        
-        Note: interruption state has been saved in _execute_workflow_task, only return result here
+
+        Save complete ai_message and remaining tasks for resumption
+
+        Args:
+            interruption_state: Complete interruption state encapsulated in dataclass
+            output: Interaction output data
         """
-        # Save interruption state (including iteration, resume the task here to avoid an infinite loop)
-        await self.interrupt_task(
-            task=task,
-            runtime=runtime,
-            interaction_data=output,
-            current_iteration=current_iteration
+        # Save interruption state with complete information
+        await self.interrupt_task(interruption_state)
+
+        # Add mock tool_msg
+        mock_tool_msg = ToolMessage(
+            content="[INTERRUPTED - Waiting for user input]",
+            tool_call_id=interruption_state.task.task_id
+        )
+        agent_context = self._context_engine.get_agent_context(
+            interruption_state.runtime.session_id()
+        )
+        agent_context.add_message(mock_tool_msg)
+
+        # 流式返回：只返回第一个中断
+        first_interrupt = self._get_first_interrupt(output)
+        logger.info(
+            f"Task has {self._count_interactions(output)} "
+            f"interrupts, returning only the first one for streaming"
         )
 
-        # Write interrupted task stream data
-        await self._write_message_stream_data(output, runtime)
+        # Write interrupted task stream data (only first interrupt)
+        await self._write_message_stream_data(first_interrupt, interruption_state.runtime)
 
-        # Return interruption result (stop processing, wait for user input)
-        logger.info(f"Task interrupted, return interaction requests")
-        return self._unwrap_result(output)
+        # Return interruption result (only first interrupt)
+        return self._unwrap_result(first_interrupt)
 
     async def _handle_task_error(
-        self,
-        error_msg: str,
-        runtime: Runtime
+            self,
+            error_msg: str,
+            runtime: Runtime,
+            task: Task
     ) -> Optional[Dict]:
         """Handle task error
 
-        - send error stream data and return final result
+        - Add tool message and send error stream data
+        - Return None to continue executing next task
         """
         logger.error(f"Task execution error: {error_msg}")
-        error_result = await self._send_error_stream(error_msg, runtime)
-        return self._unwrap_result(error_result)
+
+        # Add tool message (similar to interrupted task handling)
+        error_content = f"[FAILED - {error_msg}]"
+        mock_tool_msg = ToolMessage(
+            content=error_content,
+            tool_call_id=task.task_id
+        )
+        agent_context = self._context_engine.get_agent_context(runtime.session_id())
+        agent_context.add_message(mock_tool_msg)
+        logger.info(f"Added tool_message for failed task: {task.task_id}")
+
+        # Send error stream data for user notification
+        await self._send_error_stream(error_msg, runtime)
+
+        # Return None to allow continuing to next task
+        return None
 
     async def _execute_react_loop(self, tasks: list[Task], runtime: Runtime,
-                                  initial_iteration: int = 1) -> Optional[Dict]:
+                                  initial_iteration: int = 1,
+                                  ai_message: Optional[AIMessage] = None) -> Optional[Dict]:
         """Execute ReAct loop with explicit iteration - NO RECURSION
 
         Main loop:
-        1. Execute task
-        2. If interrupted/failed, return immediately
-        3. If completed, do post-processing
-        4. Generate next plan from LLM
-        5. If no new tasks or max iteration reached, return final result
-        6. Otherwise, continue loop with new tasks
+        1. Execute all tasks sequentially
+        2. If interrupted, return immediately, if failed, add tool message and execute next task
+        3. If all completed, generate next plan from LLM
+        4. If no new tasks or max iteration reached, return final result
+        5. Otherwise, continue loop with new tasks
 
-        Note: ReAct typically processes one task at a time
-        
         Args:
             tasks: Initial task list
             runtime: Runtime context
             initial_iteration: Initial iteration
+            ai_message: Complete AI message with all tool_calls
 
         Returns:
             Final result dictionary
@@ -323,44 +426,73 @@ class LLMController(BaseController):
         iteration = initial_iteration
         while tasks and iteration <= self.config.constrain.max_iteration:
             logger.info(f"ReAct Iteration: {iteration} / {self.config.constrain.max_iteration}")
-            task = tasks[0]
-            logger.info(f"Executing task {task.task_id}, type: {task.task_type}")
-            
-            # Execute task
-            execution_result = await self._execute_task(task, runtime)
-            
-            # Handle interruption - stop immediately, wait for user input
-            if execution_result.status == TaskStatus.INTERRUPTED:
-                logger.info(f"Task interrupted, stopping ReAct loop at iteration: {iteration}")
-                return await self._handle_task_interrupted(
-                    task=task,
-                    output=execution_result.output,
-                    runtime=runtime,
-                    current_iteration=iteration
-                )
-            
-            # Handle error - stop immediately
-            if execution_result.status == TaskStatus.FAILED:
-                logger.error(f"Task failed: {execution_result.error}")
-                return await self._handle_task_error(
-                    error_msg=execution_result.error,
-                    runtime=runtime
-                )
-            
-            # Task completed successfully - do post-processing
-            if execution_result.status == TaskStatus.SUCCESS:
-                final_result, tasks = await self._handle_task_completed(
-                    task=task,
-                    execution_result=execution_result,
-                    runtime=runtime
-                )
-                iteration += 1
 
-                if final_result is not None:
-                    logger.info(f"ReAct Iteration: {iteration} / {self.config.constrain.max_iteration}")
-                    return final_result
+            # Execute all tasks sequentially
+            for idx, task in enumerate(tasks):
+                logger.info(f"Executing task {task.task_id}, type: {task.task_type}, index: {idx + 1}/{len(tasks)}")
 
-            # Continue to next iteration (loop will check iteration count)
+                # Execute task
+                execution_result = await self._execute_task(task, runtime)
+
+                # Handle interruption - stop immediately, wait for user input
+                if execution_result.status == TaskStatus.INTERRUPTED:
+                    logger.info(f"Task interrupted at index {idx + 1}, stopping ReAct loop")
+
+                    # Calculate remaining uncompleted tasks (including current interrupted one)
+                    remaining_tasks = tasks[idx:]
+
+                    # Create interruption state
+                    interruption_state = TaskInterruptionState(
+                        task=task,
+                        runtime=runtime,
+                        ai_message=ai_message,
+                        remaining_tasks=remaining_tasks,
+                        interaction_data=execution_result.output,
+                        current_iteration=iteration
+                    )
+
+                    return await self._handle_task_interrupted(
+                        interruption_state=interruption_state,
+                        output=execution_result.output
+                    )
+
+                # Handle error - add mock tool message and continue to next task
+                if execution_result.status == TaskStatus.FAILED:
+                    logger.error(f"Task failed: {execution_result.error}")
+                    await self._handle_task_error(
+                        error_msg=execution_result.error,
+                        runtime=runtime,
+                        task=task
+                    )
+                    # Continue to next task
+
+                # Task completed successfully - do post-processing
+                if execution_result.status == TaskStatus.SUCCESS:
+                    await self._post_task_completion(
+                        task=task,
+                        output=execution_result.output,
+                        workflow_id=execution_result.metadata.get("workflow_id"),
+                        runtime=runtime
+                    )
+                    # Continue to next task
+
+            # All tasks completed, generate next plan
+            logger.info("All tasks completed successfully, generate next plan using LLM")
+            last_task = tasks[-1]
+            final_result, new_tasks, new_ai_message = await self._handle_task_completed(
+                task=last_task,
+                execution_result=execution_result,
+                runtime=runtime
+            )
+
+            if final_result is not None:
+                logger.info(f"ReAct loop completed at iteration: {iteration}")
+                return final_result
+
+            # Update loop variables
+            tasks = new_tasks
+            ai_message = new_ai_message
+            iteration += 1
 
         # Exceeded max iteration count
         logger.warning(
@@ -402,7 +534,7 @@ class LLMController(BaseController):
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
             workflow_runtime = runtime.create_workflow_runtime()
-            
+
             # Record task execution information
             is_resume = task.status == TaskStatus.INTERRUPTED
             logger.info(
@@ -411,23 +543,23 @@ class LLMController(BaseController):
                 f"is_resume={is_resume}, "
                 f"input_type={type(task.input.arguments)}"
             )
-            
+
             # Update task status to RUNNING
             task.status = TaskStatus.RUNNING
-            
+
             # Execute workflow
             result = await Runner.run_workflow(
-                workflow, 
+                workflow,
                 inputs=task.input.arguments,
                 runtime=workflow_runtime,
                 context=self._context_engine.get_workflow_context(
                     session_id=runtime.session_id(), workflow_id=workflow_id
                 )
             )
-            
+
             # Prepare stream data
             output_stream_data = self._prepare_workflow_stream_data(result)
-            
+
             # Check result status
             is_interrupted = self._is_workflow_interrupted(result)
             result_state = "NO STATE"
@@ -488,7 +620,7 @@ class LLMController(BaseController):
             )
         try:
             result = await tool.ainvoke(task.input.arguments)
-            
+
             # Prepare stream data
             payload = {"output": result, "result_type": "answer"}
             output_stream_data = [OutputSchema(type="plugin_final", index=0, payload=payload)]
@@ -531,7 +663,7 @@ class LLMController(BaseController):
             logger.info(f"React llm inputs")
         else:
             logger.info(f"React llm inputs: {llm_inputs}")
-        
+
         try:
             model = self._get_model(runtime)
             llm_output = await self._call_llm_get_output(
@@ -559,31 +691,31 @@ class LLMController(BaseController):
         return tasks, llm_output
 
     async def _call_llm_get_output(
-        self,
-        model,
-        model_name: str,
-        llm_inputs: Any,
-        tools: List[Any],
-        runtime: Runtime
+            self,
+            model,
+            model_name: str,
+            llm_inputs: Any,
+            tools: List[Any],
+            runtime: Runtime
     ) -> AIMessage:
         """ Stream LLM invocation and output chunks in real-time
-        
+
         Args:
             model: Model instance
             model_name: Model name
             llm_inputs: LLM input messages
             tools: Available tools
             runtime: Runtime context for streaming output
-            
+
         Returns:
             AIMessage: Accumulated complete message from all chunks
-            
+
         Raises:
             JiuWenBaseException: If LLM returns empty response or invocation fails
         """
         accumulated_chunk = None
         stream_index = 0
-        
+
         try:
             async for chunk in model.astream(model_name, llm_inputs, tools):
                 # Accumulate chunks using AIMessageChunk's __add__ method
@@ -604,7 +736,7 @@ class LLMController(BaseController):
                     )
                     await runtime.write_stream(stream_output)
                     stream_index += 1
-                
+
                 # Stream output for response content
                 if chunk.content:
                     stream_output = OutputSchema(
@@ -617,12 +749,12 @@ class LLMController(BaseController):
                     )
                     await runtime.write_stream(stream_output)
                     stream_index += 1
-            
+
             # Check for empty response
             if accumulated_chunk is None:
                 ExceptionUtils.raise_exception(StatusCode.CONTROLLER_INVOKE_LLM_FAILED,
                                                "LLM returned empty response")
-            
+
             # Convert accumulated chunk to AIMessage
             return AIMessage(
                 role=accumulated_chunk.role or "assistant",
@@ -645,9 +777,9 @@ class LLMController(BaseController):
             self.config.model.model_info.api_base,
             self.config.model.model_provider
         )
-        
+
         model = runtime.get_model(model_id=model_id)
-        
+
         if model is None:
             model = ModelFactory().get_model(
                 model_provider=self.config.model.model_provider,
@@ -659,15 +791,15 @@ class LLMController(BaseController):
                 **self.config.model.model_info.model_extra
             )
             runtime.add_model(model_id=model_id, model=model)
-        
+
         return runtime.get_model(model_id=model_id)
-    
+
     def _get_workflow_id_from_schema(self, workflow_name: str) -> Optional[str]:
         """Get workflow_id from workflow schema by name
-        
+
         Args:
             workflow_name: Workflow name
-            
+
         Returns:
             Workflow ID in format {id}_{version}, or None if not found
         """
@@ -675,23 +807,23 @@ class LLMController(BaseController):
             if workflow_schema.name == workflow_name:
                 return f"{workflow_schema.id}_{workflow_schema.version}"
         return None
-    
+
     def _ensure_workflow_id(self, task: Task) -> str:
         """Ensure task has valid workflow_id, construct from schema if needed
-        
+
         Args:
             task: Task object
-            
+
         Returns:
             Workflow ID
-            
+
         Raises:
             ValueError: If workflow_id cannot be determined
         """
         # If task already has target_id, use it
         if task.input.target_id:
             return task.input.target_id
-        
+
         # Otherwise, construct from workflow schema
         workflow_id = self._get_workflow_id_from_schema(task.input.target_name)
         if workflow_id:
@@ -700,54 +832,65 @@ class LLMController(BaseController):
                 f"Set workflow_id={workflow_id} for workflow: {task.input.target_name}"
             )
             return workflow_id
-        
+
         raise ValueError(
             f"Cannot determine workflow_id for task: {task.input.target_name}"
         )
-    
+
     def _resolve_workflow_from_tasks(self, tasks: list[Task]) -> Optional[Task]:
         """Find workflow task from task list"""
         for task in tasks:
             if task.task_type == TaskType.WORKFLOW:
                 return task
         return None
-    
-    def _find_interrupted_task(self, workflow_task: Task, runtime: Runtime) -> Optional[Task]:
+
+    def _find_interrupted_task(self, workflow_task: Task, runtime: Runtime):
         """Find interrupted task
 
         Find interrupted task from runtime.state:
         state["llm_controller"]["interrupted_tasks"][workflow_id]
-        
+
         Find interrupted task for specified workflow from runtime.state
 
         Returns:
-            tuple: (interrupted_task, saved_iteration) or (None, None)
+            tuple: (ai_message, remaining_tasks, saved_iteration, component_ids) or (None, None, None, None)
         """
         state = runtime.get_state("llm_controller")
         if not state:
             logger.info("No llm_controller state found, don't have interrupted tasks")
-            return None, None
+            return None, None, None, None
 
         interrupted_tasks = state.get("interrupted_tasks", {})
         logger.info(f"find interrupted_tasks {list(interrupted_tasks.keys())} from llm_controller")
-        
+
         # Get workflow_id from schema (unified method)
         workflow_id = self._get_workflow_id_from_schema(workflow_task.input.target_name)
         if not workflow_id:
             logger.warning(f"Workflow schema not found for {workflow_task.input.target_name}")
-            return None, None
+            return None, None, None, None
 
         state_key = workflow_id.replace('.', '_')
-        
+
         # Try to find interrupted task with normalized key
         if state_key in interrupted_tasks:
             logger.info(f"Found interrupted task for {workflow_task.input.target_name} (key: {state_key})")
-            task_data = interrupted_tasks[state_key]["task"]
-            saved_iteration = interrupted_tasks[state_key]["iteration"]
-            return Task.model_validate(task_data), saved_iteration
-        
+            task_info = interrupted_tasks[state_key]
+
+            # Restore complete information
+            ai_message = AIMessage.model_validate(task_info["ai_message"])
+            remaining_tasks = [Task.model_validate(t) for t in task_info["remaining_tasks"]]
+            saved_iteration = task_info["iteration"]
+            component_ids = task_info.get("component_ids", [])
+
+            logger.info(
+                f"Restored: {len(ai_message.tool_calls) if ai_message.tool_calls else 0} tool_calls, "
+                f"{len(remaining_tasks)} remaining tasks, component_ids: {component_ids}"
+            )
+
+            return ai_message, remaining_tasks, saved_iteration, component_ids
+
         logger.info(f"No interrupted task found for workflow {workflow_task.input.target_name}")
-        return None, None
+        return None, None, None, None
 
     def _create_resume_task(self, message: Message, interrupted_task: Task) -> Task:
         """Create resume task
@@ -756,11 +899,11 @@ class LLMController(BaseController):
         - Otherwise create InteractiveInput from query
         - Update interrupted task input parameters
         - Update task status to Interrupted
-        
+
         Args:
             message: Message
             interrupted_task: Interrupted task recovered from state
-            
+
         Returns:
             Task: Resumed task object
         """
@@ -773,29 +916,29 @@ class LLMController(BaseController):
             query = message.content.get_query()
             logger.info(f"Creating InteractiveInput from query: {query}")
             interactive_input = InteractiveInput(raw_inputs=query)
-        
+
         # Update interrupted task input to InteractiveInput
         interrupted_task.input.arguments = interactive_input
-        
+
         # Keep task status as INTERRUPTED
         interrupted_task.status = TaskStatus.INTERRUPTED
-        
+
         logger.info(
             f"Created resume task: task_id={interrupted_task.task_id}, "
             f"workflow={interrupted_task.input.target_name}, "
             f"status={interrupted_task.status}, "
             f"input_type={type(interrupted_task.input.arguments)}"
         )
-        
+
         return interrupted_task
 
     async def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime
-        
+
         Args:
             workflow_id: workflow ID (format: {id}_{version})
             runtime: Runtime context
-            
+
         Returns:
             Workflow object, None if not found
         """
@@ -831,7 +974,7 @@ class LLMController(BaseController):
         if not workflow_id:
             logger.warning("Cannot clear interrupted state: task has no target_id")
             return
-        
+
         state = runtime.get_state("llm_controller") or {}
         interrupted_tasks = state.get("interrupted_tasks", {})
 
@@ -849,88 +992,86 @@ class LLMController(BaseController):
 
     async def interrupt_task(
             self,
-            task: Task,
-            runtime: Runtime,
-            interaction_data: Optional[list] = None,
-            current_iteration: Optional[int] = None
+            interruption_state: TaskInterruptionState
     ) -> Dict:
         """Save interruption state to runtime.state
 
         Args:
-            task: Task object
-            runtime: Runtime context
-            interaction_data: Interaction data during interruption (OutputSchema list)
-            current_iteration: Current iteration
+            interruption_state: Complete interruption state containing task, runtime,
+                              ai_message, remaining_tasks, interaction_data, and current_iteration
 
         Returns:
             dict: Interruption information
         """
         # Ensure task has valid workflow_id (unified method)
         try:
-            workflow_id = self._ensure_workflow_id(task)
+            workflow_id = self._ensure_workflow_id(interruption_state.task)
         except ValueError as e:
             logger.error(f"interrupt_task: {e}")
             workflow_id = "unknown"
 
         # Step 1: Update task status
-        task.status = TaskStatus.INTERRUPTED
+        interruption_state.task.status = TaskStatus.INTERRUPTED
 
         # Step 2: Save interruption state to runtime.state
-        state = runtime.get_state("llm_controller") or {}
+        state = interruption_state.runtime.get_state("llm_controller") or {}
         if "interrupted_tasks" not in state:
             state["interrupted_tasks"] = {}
 
         # Extract component ID from interaction data
         component_ids = self._extract_component_ids_from_interaction_data(
-            interaction_data
+            interruption_state.interaction_data
         )
-        
+
         # Normalize workflow_id for state key
         state_key = workflow_id.replace('.', '_')
 
         state["interrupted_tasks"][state_key] = {
-            "task": task.model_dump(),
+            "ai_message": interruption_state.ai_message.model_dump(),
+            "remaining_tasks": [t.model_dump() for t in interruption_state.remaining_tasks],
             "component_ids": component_ids,
-            "iteration": current_iteration
+            "iteration": interruption_state.current_iteration
         }
 
-        runtime.update_state({"llm_controller": state})
+        interruption_state.runtime.update_state({"llm_controller": state})
 
         logger.info(
             f"Task interrupted: workflow={workflow_id}, "
-            f"state_key={state_key}, component_ids={component_ids}, "
-            f"task_id={task.task_id}, current_iteration={current_iteration}"
+            f"state_key={state_key}, "
+            f"saved remaining_tasks count: {len(interruption_state.remaining_tasks)}, "
+            f"ai_message tool_calls: {len(interruption_state.ai_message.tool_calls) if interruption_state.ai_message.tool_calls else 0}, "
+            f"task_id={interruption_state.task.task_id}, current_iteration={interruption_state.current_iteration}"
         )
 
         return {
             "status": "interrupted",
-            "task_id": task.task_id,
+            "task_id": interruption_state.task.task_id,
             "workflow_id": workflow_id,
             "message": "Task interrupted, waiting for subsequent input"
         }
-    
-    def _extract_component_ids_from_interaction_data(self, interaction_data: Optional[list]) -> str:
+
+    def _extract_component_ids_from_interaction_data(self, interaction_data: Optional[list]) -> List[str]:
         """Extract component ID from interaction data
-        
+
         Args:
             interaction_data: OutputSchema list containing interaction requests during interruption
-            
+
         Returns:
             str: Component ID, defaults to "questioner"
         """
         if not interaction_data:
             logger.warning("No interaction_data provided, using default component_id")
-            return "questioner"
-        
+            return ["questioner"]
+
         component_ids = []
         try:
             # Iterate through interaction_data to find outputs with INTERACTION type
             for output_schema in interaction_data:
                 if (hasattr(output_schema, 'type') and
-                    output_schema.type == const.INTERACTION):
+                        output_schema.type == const.INTERACTION):
                     # Extract InteractionOutput.id from payload
-                    if (hasattr(output_schema, 'payload') and 
-                        hasattr(output_schema.payload, 'id')):
+                    if (hasattr(output_schema, 'payload') and
+                            hasattr(output_schema.payload, 'id')):
                         component_id = output_schema.payload.id
                         component_ids.append(component_id)
                         logger.info(
@@ -940,11 +1081,11 @@ class LLMController(BaseController):
             logger.warning(
                 f"Failed to extract component_id from interaction_data: {e}"
             )
-        
+
         if not component_ids:
             logger.warning("No component_id found in interaction_data, using default")
             return ["questioner"]  # Default value
-        
+
         return component_ids
 
     async def _write_message_stream_data(self, stream_data: List, runtime: Runtime):
@@ -1008,7 +1149,7 @@ class LLMController(BaseController):
                 # If it's multiple non-interaction OutputSchemas, return list
                 return result
             return {"output": result, "result_type": "answer"}
-        
+
         if isinstance(result, OutputSchema):
             # If it's interaction, return wrapped in list for consistency
             if result.type == const.INTERACTION:
@@ -1021,6 +1162,72 @@ class LLMController(BaseController):
             return {"output": payload, "result_type": "answer"}
 
         return {"output": result, "result_type": "answer"}
+
+    def _get_first_interrupt(
+            self,
+            interaction_data: Optional[list]
+    ) -> list:
+        """从 interaction_data 中提取第一个中断用于流式返回
+
+        当产生多个中断时，状态中保存所有中断，
+        但流式输出只返回第一个中断给用户。
+
+        Args:
+            interaction_data: OutputSchema 列表，包含所有中断
+
+        Returns:
+            list: 只包含第一个 __interaction__ 的 OutputSchema 列表
+                  保持其他类型的 chunk（tracer等）不变
+        """
+        if not interaction_data:
+            return []
+
+        first_interrupt_found = False
+        result = []
+
+        for chunk in interaction_data:
+            if isinstance(chunk, OutputSchema) and chunk.type == const.INTERACTION:
+                # 只保留第一个 __interaction__
+                if not first_interrupt_found:
+                    result.append(chunk)
+                    first_interrupt_found = True
+                    logger.info(
+                        f"Found first interrupt: component_id="
+                        f"{chunk.payload.id if hasattr(chunk.payload, 'id') else 'unknown'}"
+                    )
+                else:
+                    # 跳过后续的 __interaction__
+                    logger.info(
+                        f"Skipping additional interrupt: component_id="
+                        f"{chunk.payload.id if hasattr(chunk.payload, 'id') else 'unknown'}"
+                    )
+            else:
+                # 保留非 __interaction__ 类型的 chunk（如 tracer）
+                result.append(chunk)
+
+        return result
+
+    def _count_interactions(
+            self,
+            interaction_data: Optional[list]
+    ) -> int:
+        """统计 interaction_data 中的中断数量
+
+        Args:
+            interaction_data: OutputSchema 列表
+
+        Returns:
+            int: 中断数量
+        """
+        if not interaction_data:
+            return 0
+
+        count = 0
+        for chunk in interaction_data:
+            if isinstance(chunk, OutputSchema) and chunk.type == const.INTERACTION:
+                count += 1
+
+        return count
 
     def create_message(self, inputs: Dict) -> Message:
         """Create message object - override to support query field"""
@@ -1096,6 +1303,31 @@ class LLMController(BaseController):
                 result.update({"sys_long_term_memory": "[]"})
         return result
 
+    def _convert_openai_tool_calls_to_tool_call_objects(self, tool_calls: List[Dict]) -> List[ToolCall]:
+        """Convert OpenAI format tool_calls to ToolCall objects
+
+        OpenAI format: {"id": "...", "type": "...", "function": {"name": "...", "arguments": "..."}}
+        ToolCall format: ToolCall(id=..., type=..., name=..., arguments=...)
+        """
+        if not tool_calls:
+            return []
+        result = []
+        for tool_call in tool_calls:
+            # Handle both OpenAI format (with function nested) and ToolCall format (direct fields)
+            if "function" in tool_call:
+                # OpenAI format
+                result.append(ToolCall(
+                    id=tool_call.get("id"),
+                    type=tool_call.get("type", "function"),
+                    name=tool_call.get("function", {}).get("name", ""),
+                    arguments=tool_call.get("function", {}).get("arguments", ""),
+                    index=tool_call.get("index"),
+                ))
+            else:
+                # Already in ToolCall format
+                result.append(ToolCall(**tool_call))
+        return result
+
     def _find_interrupted_task_by_node_id(
             self,
             interactive_input,
@@ -1114,7 +1346,7 @@ class LLMController(BaseController):
             runtime: Runtime context
 
         Returns:
-            tuple(Task, current_iteration) if found, None otherwise
+            tuple(ai_message, remaining_tasks, saved_iteration) if found, None otherwise
         """
         state = runtime.get_state("llm_controller")
         if not state:
@@ -1143,11 +1375,27 @@ class LLMController(BaseController):
                     f"found match workflow_key={workflow_key}, "
                     f"given component_id={component_ids}"
                 )
-                task_data = task_info["task"]
-                task = Task.model_validate(task_data)
+
+                # Restore complete information
+                ai_message_data = task_info["ai_message"].copy()
+                if "tool_calls" in ai_message_data and ai_message_data["tool_calls"]:
+                    ai_message_data["tool_calls"] = [
+                        tc.model_dump() if isinstance(tc, ToolCall) else tc
+                        for tc in self._convert_openai_tool_calls_to_tool_call_objects(ai_message_data["tool_calls"])
+                    ]
+
+                # Restore complete information
+                ai_message = AIMessage.model_validate(ai_message_data)
+                remaining_tasks = [Task.model_validate(t) for t in task_info["remaining_tasks"]]
                 saved_iteration = task_info["iteration"]
 
-                return task, saved_iteration
+                logger.info(
+                    f"Restored: ai_message with "
+                    f"{len(ai_message.tool_calls) if ai_message.tool_calls else 0} tool_calls, "
+                    f"{len(remaining_tasks)} remaining tasks"
+                )
+
+                return ai_message, remaining_tasks, saved_iteration
 
         logger.warning(
             f"_find_interrupted_task_by_node_id: "

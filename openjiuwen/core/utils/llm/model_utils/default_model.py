@@ -8,7 +8,7 @@ import httpx
 import aiohttp
 import openai
 from pydantic import ConfigDict
-from requests import Session
+from requests import Session, Timeout, ConnectionError, HTTPError
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -97,6 +97,25 @@ class RequestChatModel(BaseModelClient):
 
             response.raise_for_status()
             return self._parse_response(model_name, response.json())
+        except Timeout as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API call timeout")
+            ) from e
+        except ConnectionError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API connection failed")
+            ) from e
+        except HTTPError as e:
+            status_code = e.response.status_code if hasattr(e, "response") else "unknown"
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"Generic API error, status code is {status_code}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -137,6 +156,24 @@ class RequestChatModel(BaseModelClient):
                     response.raise_for_status()
                     data = await response.json()
                     return self._parse_response(model_name, data)
+        except aiohttp.ClientTimeoutError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API async call timeout")
+            ) from e
+        except aiohttp.ClientConnectionError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API async connection failed")
+            ) from e
+        except aiohttp.ClientResponseError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"Generic API async error, status code is {e.status}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -175,6 +212,25 @@ class RequestChatModel(BaseModelClient):
                         chunk = self._parse_stream_line(line)
                         if chunk:
                             yield chunk
+        except Timeout as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API stream call timeout")
+            ) from e
+        except ConnectionError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API stream connection failed")
+            ) from e
+        except HTTPError as e:
+            status_code = e.response.status_code if hasattr(e, "response") else "unknown"
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"Generic API stream error, status code is {status_code}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -224,6 +280,24 @@ class RequestChatModel(BaseModelClient):
                             chunk = self._parse_stream_line(line)
                             if chunk:
                                 yield chunk
+        except aiohttp.ClientTimeoutError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API async stream call timeout")
+            ) from e
+        except aiohttp.ClientConnectionError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="Generic API async stream connection failed")
+            ) from e
+        except aiohttp.ClientResponseError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"Generic API async stream error, status code is {e.status}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -397,6 +471,24 @@ class OpenAIChatModel(BaseModelClient):
                                         timeout=self.timeout, max_retries=0)
             response = sync_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
+        except httpx.TimeoutException as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API call timeout")
+            ) from e
+        except httpx.ConnectError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API connection failed")
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"OpenAI API error, status code is {e.response.status_code}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -426,6 +518,24 @@ class OpenAIChatModel(BaseModelClient):
                                               timeout=self.timeout, max_retries=0)
             response = await async_client.chat.completions.create(**params)
             return self._parse_openai_response(model_name, response)
+        except httpx.TimeoutException as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API async call timeout")
+            ) from e
+        except httpx.ConnectError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API async connection failed")
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"OpenAI API async error, status code is {e.response.status_code}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -459,6 +569,24 @@ class OpenAIChatModel(BaseModelClient):
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
                     yield parsed_chunk
+        except httpx.TimeoutException as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API stream call timeout")
+            ) from e
+        except httpx.ConnectError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API stream connection failed")
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"OpenAI API stream error, status code is {e.response.status_code}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
@@ -493,6 +621,24 @@ class OpenAIChatModel(BaseModelClient):
                 parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
                 if parsed_chunk:
                     yield parsed_chunk
+        except httpx.TimeoutException as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API async stream call timeout")
+            ) from e
+        except httpx.ConnectError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg="OpenAI API async stream connection failed")
+            ) from e
+        except httpx.HTTPStatusError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.MODEL_CALL_FAILED.code,
+                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                    error_msg=f"OpenAI API async stream error, status code is {e.response.status_code}")
+            ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,

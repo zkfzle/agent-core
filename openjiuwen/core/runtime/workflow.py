@@ -7,8 +7,8 @@ from typing import Any
 
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
-from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceManager, ResourceMgr
+from openjiuwen.core.runner.resources_manager.callback_manager import CallbackManager
+from openjiuwen.core.runner.resources_manager.resource_manager import ResourceManager, ResourceMgr
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.state import State
 from openjiuwen.core.runtime.workflow_state import InMemoryState

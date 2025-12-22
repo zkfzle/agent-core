@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple, Union, Callable
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
+from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.runtime.tracer.decorator import decorate_tool_with_trace
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.mcp.base import (

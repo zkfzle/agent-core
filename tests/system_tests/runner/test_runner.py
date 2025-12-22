@@ -15,7 +15,7 @@ from openjiuwen.core.component.intent_detection_comp import IntentDetectionCompo
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.runtime.stream.base import OutputSchema

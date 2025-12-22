@@ -22,10 +22,10 @@ from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CO
     get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
 from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.runtime.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
-from openjiuwen.core.runtime.resources_manager.agent_manager import AgentProvider, AgentMgr
-from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runner.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
+from openjiuwen.core.runner.resources_manager.agent_manager import AgentProvider, AgentMgr
+from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
+from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.runtime.wrapper import TaskRuntime

@@ -11,8 +11,8 @@ from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgen
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner_config import get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
-from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
-from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
+from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
+from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
 
 
 @dataclass

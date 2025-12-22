@@ -6,7 +6,7 @@ from typing import Any, Union, Optional, List, TypeVar, Tuple
 
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
+from openjiuwen.core.runner.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.state import State
 from openjiuwen.core.runtime.stream.base import OutputSchema
 from openjiuwen.core.runtime.stream.manager import StreamWriterManager

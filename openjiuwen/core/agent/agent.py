@@ -18,8 +18,8 @@ from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
 from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
+from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.wrapper import (
     StaticWrappedRuntime,

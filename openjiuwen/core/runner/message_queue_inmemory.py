@@ -22,7 +22,7 @@ from openjiuwen.core.runner.message_queue_base import (
 
 class SubscriptionInMemory(SubscriptionBase):
 
-    def __init__(self, max_size=10000, timeout=120.0):
+    def __init__(self, max_size=10000, timeout=120000.0):
         """Initialize in-memory subscription
 
         Args:

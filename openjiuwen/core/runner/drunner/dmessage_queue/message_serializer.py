@@ -11,7 +11,7 @@ from openjiuwen.core.runner.drunner.dmessage_queue.message import (
     DmqRequestMessage, DmqResponseMessage
 )
 from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
-from openjiuwen.core.stream.base import OutputSchema, CustomSchema, TraceSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema, CustomSchema, TraceSchema
 from openjiuwen.core.workflow.base import WorkflowOutput
 
 MAX_RECURSE_DEPTH = 10

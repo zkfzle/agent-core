@@ -16,7 +16,7 @@ from openjiuwen.core.agent.task.task import Task, TaskStatus
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 
 
 @dataclass

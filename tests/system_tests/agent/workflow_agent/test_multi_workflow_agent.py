@@ -32,7 +32,7 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata

@@ -26,7 +26,7 @@ from openjiuwen.core.runtime.wrapper import (
     TaskRuntime,
     WrappedRuntime
 )
-from openjiuwen.core.stream.base import OutputSchema, CustomSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.function.function import LocalFunction
 from openjiuwen.core.foundation.tool.schema import ToolInfo, Parameters

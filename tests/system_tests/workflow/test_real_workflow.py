@@ -36,7 +36,7 @@ from openjiuwen.core.component.questioner_comp import (
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.stream.base import CustomSchema
+from openjiuwen.core.runtime.stream.base import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.foundation.tool.param import Param

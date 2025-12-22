@@ -5,8 +5,8 @@
 import asyncio
 import uuid
 
-from openjiuwen.core.tracer.handler import TraceAgentHandler, TraceWorkflowHandler, TracerHandlerName
-from openjiuwen.core.tracer.span import SpanManager
+from openjiuwen.core.runtime.tracer.handler import TraceAgentHandler, TraceWorkflowHandler, TracerHandlerName
+from openjiuwen.core.runtime.tracer.span import SpanManager
 
 
 class Tracer:

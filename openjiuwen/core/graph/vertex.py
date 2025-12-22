@@ -17,10 +17,10 @@ from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.utils import get_by_schema
 from openjiuwen.core.runtime.workflow import NodeRuntime
-from openjiuwen.core.stream.base import StreamSchemas, OutputSchema
-from openjiuwen.core.stream.emitter import StreamEmitter
-from openjiuwen.core.stream_actor.base import StreamConsumer
-from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
+from openjiuwen.core.runtime.stream.base import StreamSchemas, OutputSchema
+from openjiuwen.core.runtime.stream.emitter import StreamEmitter
+from openjiuwen.core.graph.stream_actor.base import StreamConsumer
+from openjiuwen.core.runtime.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 from openjiuwen.core.graph.pregel import GraphInterrupt
 

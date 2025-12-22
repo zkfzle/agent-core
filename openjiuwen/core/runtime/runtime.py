@@ -8,10 +8,10 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.resources_manager.callback_manager import CallbackManager
 from openjiuwen.core.runtime.state import State
-from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.stream.manager import StreamWriterManager
-from openjiuwen.core.stream.writer import StreamWriter
-from openjiuwen.core.stream_actor.manager import ActorManager
+from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.manager import StreamWriterManager
+from openjiuwen.core.runtime.stream.writer import StreamWriter
+from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.foundation.tool.base import Tool

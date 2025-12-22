@@ -28,7 +28,7 @@ from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.constants import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
-from openjiuwen.core.stream_actor.manager import ActorManager
+from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph

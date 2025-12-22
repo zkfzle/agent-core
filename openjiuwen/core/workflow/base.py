@@ -30,13 +30,13 @@ from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
 from openjiuwen.core.runtime.state import Transformer
 from openjiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
 from openjiuwen.core.runtime.wrapper import RouterRuntime
-from openjiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
-from openjiuwen.core.stream.emitter import StreamEmitter
-from openjiuwen.core.stream.manager import StreamWriterManager
-from openjiuwen.core.stream_actor.base import StreamGraph
-from openjiuwen.core.stream_actor.manager import ActorManager
-from openjiuwen.core.tracer.tracer import Tracer
-from openjiuwen.core.tracer.workflow_tracer import TracerWorkflowUtils
+from openjiuwen.core.runtime.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
+from openjiuwen.core.runtime.stream.emitter import StreamEmitter
+from openjiuwen.core.runtime.stream.manager import StreamWriterManager
+from openjiuwen.core.graph.stream_actor.base import StreamGraph
+from openjiuwen.core.graph.stream_actor.manager import ActorManager
+from openjiuwen.core.runtime.tracer.tracer import Tracer
+from openjiuwen.core.runtime.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata

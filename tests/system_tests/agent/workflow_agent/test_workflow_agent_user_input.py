@@ -26,7 +26,7 @@ from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.exception.exception import JiuWenBaseException

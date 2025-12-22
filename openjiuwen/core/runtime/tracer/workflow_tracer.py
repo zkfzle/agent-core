@@ -8,7 +8,7 @@ from openjiuwen.core.common.constants.constant import LOOP_ID, INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runtime.utils import NESTED_PATH_SPLIT
-from openjiuwen.core.tracer.handler import TracerHandlerName
+from openjiuwen.core.runtime.tracer.handler import TracerHandlerName
 
 
 class TracerWorkflowUtils:

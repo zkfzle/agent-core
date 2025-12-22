@@ -19,7 +19,7 @@ from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import StreamMode, BaseStreamMode, OutputSchema
+from openjiuwen.core.runtime.stream.base import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowChunk
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, ComponentAbility, \
     WorkflowInputsSchema

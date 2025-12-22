@@ -29,7 +29,7 @@ from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.runtime.wrapper import TaskRuntime
-from openjiuwen.core.stream.base import BaseStreamMode
+from openjiuwen.core.runtime.stream.base import BaseStreamMode
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow

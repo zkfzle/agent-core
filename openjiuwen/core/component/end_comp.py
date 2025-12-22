@@ -20,7 +20,7 @@ from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.utils import get_value_by_nested_path
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 
 RESPONSE_TEMPLATE = "responseTemplate"
 

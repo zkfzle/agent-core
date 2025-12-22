@@ -20,7 +20,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template.template import Template

@@ -8,8 +8,8 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.llm_comp import LLMCompConfig, LLMExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.stream.base import StreamMode, BaseStreamMode
-from openjiuwen.core.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, \
+from openjiuwen.core.runtime.stream.base import StreamMode, BaseStreamMode
+from openjiuwen.core.runtime.tracer.decorator import decorate_tool_with_trace, decorate_workflow_with_trace, \
     decorate_model_with_trace
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage

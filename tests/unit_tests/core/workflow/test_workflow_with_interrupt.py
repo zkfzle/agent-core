@@ -21,7 +21,7 @@ from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_ch
 from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import BaseStreamMode, TraceSchema, OutputSchema
+from openjiuwen.core.runtime.stream.base import BaseStreamMode, TraceSchema, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.base import WorkflowConfig
 from openjiuwen.core.workflow.workflow_config import ComponentAbility

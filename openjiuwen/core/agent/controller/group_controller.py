@@ -248,7 +248,7 @@ class BaseGroupController(ABC):
         Returns:
             Final result (last chunk or default)
         """
-        from openjiuwen.core.stream.base import OutputSchema
+        from openjiuwen.core.runtime.stream.base import OutputSchema
         from openjiuwen.core.common.constants.constant import INTERACTION
 
         agent = self.agent_group.agents.get(agent_id)

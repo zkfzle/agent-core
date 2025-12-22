@@ -25,7 +25,7 @@ from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput

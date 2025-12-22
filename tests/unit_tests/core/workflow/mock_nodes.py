@@ -11,7 +11,7 @@ from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.utils import extract_origin_key, is_ref_path
-from openjiuwen.core.stream.base import OutputSchema
+from openjiuwen.core.runtime.stream.base import OutputSchema
 from openjiuwen.core.workflow.base import Workflow
 
 

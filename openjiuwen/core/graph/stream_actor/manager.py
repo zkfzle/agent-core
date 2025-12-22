@@ -10,8 +10,8 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.constants import STREAM_INPUT_GEN_TIMEOUT_KEY
 from openjiuwen.core.runtime.state import Transformer
 from openjiuwen.core.runtime.utils import get_by_schema
-from openjiuwen.core.stream.emitter import AsyncStreamQueue
-from openjiuwen.core.stream_actor.base import StreamActor, StreamGraph
+from openjiuwen.core.runtime.stream.emitter import AsyncStreamQueue
+from openjiuwen.core.graph.stream_actor.base import StreamActor, StreamGraph
 from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowSpec
 
 

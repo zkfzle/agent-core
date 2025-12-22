@@ -19,7 +19,7 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.graph.executable import Input
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import TraceSchema, OutputSchema
+from openjiuwen.core.runtime.stream.base import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput

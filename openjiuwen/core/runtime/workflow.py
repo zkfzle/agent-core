@@ -12,9 +12,9 @@ from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceM
 from openjiuwen.core.runtime.runtime import BaseRuntime
 from openjiuwen.core.runtime.state import State
 from openjiuwen.core.runtime.workflow_state import InMemoryState
-from openjiuwen.core.stream.manager import StreamWriterManager
-from openjiuwen.core.stream_actor.manager import ActorManager
-from openjiuwen.core.tracer.tracer import Tracer
+from openjiuwen.core.runtime.stream.manager import StreamWriterManager
+from openjiuwen.core.graph.stream_actor.manager import ActorManager
+from openjiuwen.core.runtime.tracer.tracer import Tracer
 
 
 class WorkflowRuntime(BaseRuntime):

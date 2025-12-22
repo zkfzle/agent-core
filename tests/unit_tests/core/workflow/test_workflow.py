@@ -23,7 +23,7 @@ from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.state import ReadableStateLike
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.stream.base import BaseStreamMode, CustomSchema, TraceSchema
+from openjiuwen.core.runtime.stream.base import BaseStreamMode, CustomSchema, TraceSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode, CommonNode, \

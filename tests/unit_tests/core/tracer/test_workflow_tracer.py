@@ -38,7 +38,7 @@ from openjiuwen.core.common.logging import logger
 
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.stream.base import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
+from openjiuwen.core.runtime.stream.base import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
 
 pytestmark = pytest.mark.asyncio
 

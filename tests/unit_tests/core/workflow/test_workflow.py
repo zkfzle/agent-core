@@ -18,12 +18,12 @@ from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.base import Input, Output
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.state import ReadableStateLike
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.runtime.stream.base import BaseStreamMode, CustomSchema, TraceSchema
+from openjiuwen.core.session.base import Input, Output
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.state import ReadableStateLike
+from openjiuwen.core.session.workflow import WorkflowRuntime
+from openjiuwen.core.session.stream.base import BaseStreamMode, CustomSchema, TraceSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode, CommonNode, \

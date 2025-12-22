@@ -2,9 +2,9 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.interaction.storage import Storage
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.interaction.storage import Storage
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.store import create_serializer, Serializer
 
 

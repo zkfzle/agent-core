@@ -4,7 +4,7 @@
 from abc import abstractmethod
 from typing import Any
 
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.executable import Output
 

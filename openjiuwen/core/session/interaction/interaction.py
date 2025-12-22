@@ -10,10 +10,10 @@ from pydantic import BaseModel
 
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
-from openjiuwen.core.runtime.agent import AgentRuntime
-from openjiuwen.core.runtime.interaction.base import BaseInteraction, AgentInterrupt
-from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.agent import AgentRuntime
+from openjiuwen.core.session.interaction.base import BaseInteraction, AgentInterrupt
+from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.graph.pregel import Interrupt, GraphInterrupt
 
 

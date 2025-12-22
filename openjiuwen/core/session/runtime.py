@@ -5,12 +5,12 @@ from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
 
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.session.config import Config
 from openjiuwen.core.runner.resources_manager.callback_manager import CallbackManager
-from openjiuwen.core.runtime.state import State
-from openjiuwen.core.runtime.stream.base import OutputSchema
-from openjiuwen.core.runtime.stream.manager import StreamWriterManager
-from openjiuwen.core.runtime.stream.writer import StreamWriter
+from openjiuwen.core.session.state import State
+from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session.stream.manager import StreamWriterManager
+from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template.template import Template

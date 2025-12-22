@@ -8,7 +8,7 @@ from typing import Any
 from unittest.mock import MagicMock
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.store import create_state, PendingNode, GraphStore
 from openjiuwen.core.graph.store.inmemory import InMemoryStore
 

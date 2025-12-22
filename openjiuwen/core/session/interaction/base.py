@@ -8,8 +8,8 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import Any
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.store import Store
 
 

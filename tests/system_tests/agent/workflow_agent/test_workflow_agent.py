@@ -12,7 +12,7 @@ from typing import List
 
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.core.agent.agent import workflow_provider
-from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
@@ -20,21 +20,21 @@ from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool.param import Param
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.component.base import WorkflowComponent
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")

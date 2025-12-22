@@ -7,9 +7,9 @@ from typing import Dict, Optional, List, AsyncIterator, Any
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.stream.base import StreamMode, BaseStreamMode
-from openjiuwen.core.runtime.stream.emitter import StreamEmitter
-from openjiuwen.core.runtime.stream.writer import StreamWriter, OutputStreamWriter, TraceStreamWriter, CustomStreamWriter
+from openjiuwen.core.session.stream.base import StreamMode, BaseStreamMode
+from openjiuwen.core.session.stream.emitter import StreamEmitter
+from openjiuwen.core.session.stream.writer import StreamWriter, OutputStreamWriter, TraceStreamWriter, CustomStreamWriter
 from openjiuwen.core.common.security.user_config import UserConfig
 
 _DEFAULT_FRAME_TIMEOUT = -1

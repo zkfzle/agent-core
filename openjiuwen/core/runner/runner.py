@@ -20,16 +20,16 @@ from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgen
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
     get_runner_config
-from openjiuwen.core.runtime.agent import StaticAgentRuntime
-from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.session.agent import StaticAgentRuntime
+from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runner.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runner.resources_manager.agent_manager import AgentProvider, AgentMgr
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.runtime.wrapper import TaskRuntime
-from openjiuwen.core.runtime.stream.base import BaseStreamMode
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.workflow import WorkflowRuntime
+from openjiuwen.core.session.wrapper import TaskRuntime
+from openjiuwen.core.session.stream.base import BaseStreamMode
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow

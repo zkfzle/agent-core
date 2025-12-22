@@ -8,8 +8,8 @@ from pydantic import BaseModel, ValidationError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.stream.base import OutputSchema, TraceSchema, CustomSchema
-from openjiuwen.core.runtime.stream.emitter import StreamEmitter
+from openjiuwen.core.session.stream.base import OutputSchema, TraceSchema, CustomSchema
+from openjiuwen.core.session.stream.emitter import StreamEmitter
 
 T = TypeVar("T")
 S = TypeVar("S", bound=BaseModel)

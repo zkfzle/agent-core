@@ -4,7 +4,7 @@
 
 from typing import Union, Optional
 
-from openjiuwen.core.runtime.state import State, InMemoryStateLike, GLOBAL_STATE_KEY, AGENT_STATE_KEY
+from openjiuwen.core.session.state import State, InMemoryStateLike, GLOBAL_STATE_KEY, AGENT_STATE_KEY
 
 
 class StateCollection(State):

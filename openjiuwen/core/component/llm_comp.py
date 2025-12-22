@@ -15,8 +15,8 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage

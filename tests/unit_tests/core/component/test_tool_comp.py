@@ -7,8 +7,8 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.runtime.workflow import WorkflowRuntime, NodeRuntime
-from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
+from openjiuwen.core.session.wrapper import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.tool.param import Param
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.foundation.tool.tool import tool

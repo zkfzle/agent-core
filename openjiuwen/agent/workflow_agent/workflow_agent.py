@@ -8,7 +8,7 @@ from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.agent.workflow_agent.workflow_controller import WorkflowController
-from openjiuwen.core.runtime.runtime import Runtime, Workflow
+from openjiuwen.core.session.runtime import Runtime, Workflow
 
 
 class WorkflowAgent(ControllerAgent):

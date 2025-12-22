@@ -4,8 +4,8 @@
 from typing import Any
 
 from openjiuwen.core.component.loop_callback.loop_callback import LoopCallback
-from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.runtime.utils import is_ref_path, extract_origin_key, NESTED_PATH_SPLIT
+from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.utils import is_ref_path, extract_origin_key, NESTED_PATH_SPLIT
 from openjiuwen.core.graph.executable import Output
 
 

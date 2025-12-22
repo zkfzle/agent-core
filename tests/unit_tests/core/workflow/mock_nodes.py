@@ -8,10 +8,10 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.utils import extract_origin_key, is_ref_path
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.utils import extract_origin_key, is_ref_path
+from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.workflow.base import Workflow
 
 

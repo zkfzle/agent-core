@@ -16,12 +16,12 @@ from openjiuwen.core.component.loop_callback.output import OutputCallback
 from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
 from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.runtime.constants import FORCE_DEL_WORKFLOW_STATE_KEY
-from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.runtime.stream.base import BaseStreamMode, TraceSchema, OutputSchema
+from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_KEY
+from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.session.interaction.interaction import InteractionOutput
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.workflow import WorkflowRuntime
+from openjiuwen.core.session.stream.base import BaseStreamMode, TraceSchema, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.base import WorkflowConfig
 from openjiuwen.core.workflow.workflow_config import ComponentAbility

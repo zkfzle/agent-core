@@ -10,7 +10,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner_config import get_runner_config
-from openjiuwen.core.runtime.agent import StaticAgentRuntime
+from openjiuwen.core.session.agent import StaticAgentRuntime
 from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
 

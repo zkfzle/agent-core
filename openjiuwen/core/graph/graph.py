@@ -14,10 +14,10 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.graph.vertex import Vertex
-from openjiuwen.core.runtime.interaction.base import Checkpointer
-from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.interaction.base import Checkpointer
+from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.pregel import Pregel, PregelBuilder, PregelConfig, MAX_RECURSIVE_LIMIT, START, END
 from openjiuwen.core.graph.store import GraphStore
 

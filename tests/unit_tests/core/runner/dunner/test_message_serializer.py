@@ -7,8 +7,8 @@ import pytest
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.runner.drunner.dmessage_queue.message import DmqResponseMessage, DmqRequestMessage
 from openjiuwen.core.runner.drunner.dmessage_queue.message_serializer import serialize_message, deserialize_message
-from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
-from openjiuwen.core.runtime.stream.base import CustomSchema, OutputSchema, TraceSchema
+from openjiuwen.core.session.interaction.interaction import InteractionOutput
+from openjiuwen.core.session.stream.base import CustomSchema, OutputSchema, TraceSchema
 from openjiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
 
 

@@ -9,8 +9,8 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
 
 
 class Start(ComponentExecutable, WorkflowComponent):

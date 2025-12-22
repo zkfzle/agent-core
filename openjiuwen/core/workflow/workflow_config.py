@@ -7,7 +7,7 @@ from typing import Optional, Dict, Any, List
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.runtime.state import Transformer
+from openjiuwen.core.session.state import Transformer
 
 
 class ComponentAbility(Enum):

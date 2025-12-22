@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional
 
-from openjiuwen.core.runtime.utils import get_by_schema, update_dict
+from openjiuwen.core.session.utils import get_by_schema, update_dict
 
 
 class Store(ABC):

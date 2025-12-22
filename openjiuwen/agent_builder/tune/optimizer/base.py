@@ -14,7 +14,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.messages import BaseMessage
 from openjiuwen.core.foundation.tool.schema import ToolInfo
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.agent_builder.tune.base import EvaluatedCase
 

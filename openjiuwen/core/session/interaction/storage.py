@@ -3,8 +3,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
 
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import BaseRuntime
 
 
 class Storage(ABC):

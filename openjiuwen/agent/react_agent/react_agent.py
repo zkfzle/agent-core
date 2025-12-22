@@ -18,8 +18,8 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.runtime.runtime import Runtime, Workflow
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.runtime import Runtime, Workflow
+from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template.template import Template

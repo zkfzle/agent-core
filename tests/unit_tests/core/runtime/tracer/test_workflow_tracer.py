@@ -19,8 +19,8 @@ from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable, Input, Output
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
 
@@ -36,9 +36,9 @@ sys.modules["openjiuwen.core.common.exception.base"] = fake_exception_module
 from tests.unit_tests.core.runtime.tracer.mock_node_with_tracer import StreamNodeWithTracer
 from openjiuwen.core.common.logging import logger
 
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
+from openjiuwen.core.session.workflow import WorkflowRuntime
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.runtime.stream.base import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
+from openjiuwen.core.session.stream.base import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
 
 pytestmark = pytest.mark.asyncio
 

@@ -18,8 +18,8 @@ from openjiuwen.core.component.base import ComponentConfig, WorkflowComponent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory

@@ -29,8 +29,8 @@ from openjiuwen.agent_group.hierarchical_group.agents.main_controller import (
 from openjiuwen.core.agent.agent import BaseAgent, ControllerAgent
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.stream.base import OutputSchema
 
 
 class SimpleEchoAgent(BaseAgent):

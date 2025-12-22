@@ -4,7 +4,7 @@
 from typing import Union, Any
 
 from openjiuwen.core.component.loop_callback.loop_callback import LoopCallback
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.executable import Output
 
 

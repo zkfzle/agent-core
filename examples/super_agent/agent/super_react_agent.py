@@ -17,7 +17,7 @@ from examples.super_agent.llm.openrouter_llm import OpenRouterLLM, ContextLimitE
 from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.runtime.runtime import Runtime, Workflow
+from openjiuwen.core.session.runtime import Runtime, Workflow
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.function.function import LocalFunction

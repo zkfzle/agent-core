@@ -17,7 +17,7 @@ from openjiuwen.core.component.loop_comp import AdvancedLoopComponent, LoopGroup
 from openjiuwen.core.component.set_variable_comp import SetVariableComponent
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.foundation.tool.param import Param
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow

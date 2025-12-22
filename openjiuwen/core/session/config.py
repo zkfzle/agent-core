@@ -9,8 +9,8 @@ from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime import workflow_runtime_vars
-from openjiuwen.core.runtime.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STREAM_INPUT_GEN_TIMEOUT_KEY, \
+from openjiuwen.core.session import workflow_runtime_vars
+from openjiuwen.core.session.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STREAM_INPUT_GEN_TIMEOUT_KEY, \
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY, END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
     WORKFLOW_EXECUTE_TIMEOUT, WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_EXECUTE_TIMEOUT_ENV_KEY, \
     WORKFLOW_STREAM_FRAME_TIMEOUT_ENV_KEY, COMP_STREAM_CALL_TIMEOUT_ENV_KEY, STREAM_INPUT_GEN_TIMEOUT_ENV_KEY, \

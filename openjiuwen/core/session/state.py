@@ -7,7 +7,7 @@ from typing import Any, Union, Optional, Callable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.utils import update_dict, get_by_schema
+from openjiuwen.core.session.utils import update_dict, get_by_schema
 
 
 class ReadableStateLike(ABC):

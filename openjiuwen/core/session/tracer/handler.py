@@ -15,10 +15,10 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.resources_manager.callback_manager import BaseHandler, trigger_event
-from openjiuwen.core.runtime.stream.manager import StreamWriterManager
-from openjiuwen.core.runtime.tracer.data import InvokeType, NodeStatus
-from openjiuwen.core.runtime.tracer.span import Span, TraceAgentSpan, TraceWorkflowSpan
-from openjiuwen.core.runtime.tracer.span import SpanManager
+from openjiuwen.core.session.stream.manager import StreamWriterManager
+from openjiuwen.core.session.tracer.data import InvokeType, NodeStatus
+from openjiuwen.core.session.tracer.span import Span, TraceAgentSpan, TraceWorkflowSpan
+from openjiuwen.core.session.tracer.span import SpanManager
 from openjiuwen.core.graph.pregel import GraphInterrupt
 
 

@@ -19,7 +19,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.component.branch_comp import BranchComponent
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.component.end_comp import End
@@ -35,8 +35,8 @@ from openjiuwen.core.component.questioner_comp import (
 )
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.tool_comp import ToolComponent, ToolComponentConfig
-from openjiuwen.core.runtime.runtime import BaseRuntime
-from openjiuwen.core.runtime.stream.base import CustomSchema
+from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.stream.base import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.foundation.tool.param import Param

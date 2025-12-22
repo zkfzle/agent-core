@@ -18,9 +18,9 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template.template import Template

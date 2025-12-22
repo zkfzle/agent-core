@@ -7,7 +7,7 @@ from typing import Self, Union, Any, AsyncIterator, Hashable, Callable, Awaitabl
 
 from openjiuwen.core.common.constants.constant import INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Executable, Output, Input
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 
 
 class ExecutableGraph(Executable[Input, Output]):

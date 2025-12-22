@@ -7,7 +7,7 @@ import asyncio
 import pytest
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.graph.pregel import Interrupt, GraphInterrupt
 from openjiuwen.core.graph.pregel.base import PregelNode
 from openjiuwen.core.graph.pregel import PregelBuilder

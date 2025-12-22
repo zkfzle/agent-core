@@ -15,12 +15,12 @@ from openjiuwen.core.common.utils.dict_utils import extract_leaf_nodes, format_p
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.utils import get_value_by_nested_path
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.utils import get_value_by_nested_path
+from openjiuwen.core.session.stream.base import OutputSchema
 
 RESPONSE_TEMPLATE = "responseTemplate"
 

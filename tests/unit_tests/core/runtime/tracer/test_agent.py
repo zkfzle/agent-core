@@ -4,11 +4,11 @@ import pytest
 
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.agent import AgentRuntime
-from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.wrapper import TaskRuntime
+from openjiuwen.core.session.config import Config
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.stream.base import CustomSchema
+from openjiuwen.core.session.stream.base import CustomSchema
 from openjiuwen.core.workflow.base import Workflow
 from tests.unit_tests.core.runtime.tracer.mock_node_with_tracer import StreamNodeWithTracer
 from tests.unit_tests.core.runtime.tracer.test_workflow_tracer import record_tracer_info

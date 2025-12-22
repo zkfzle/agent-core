@@ -12,7 +12,7 @@ from typing import (
     Optional
 )
 
-from openjiuwen.core.runtime.runtime import BaseRuntime
+from openjiuwen.core.session.runtime import BaseRuntime
 
 
 @dataclass

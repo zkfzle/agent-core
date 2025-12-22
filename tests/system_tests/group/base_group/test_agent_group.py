@@ -15,7 +15,7 @@ from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.agent_group import AgentGroupConfig
 from openjiuwen.core.agent_group.agent_group import BaseGroup, AgentGroupRuntime
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.runner.runner import Runner
 
 

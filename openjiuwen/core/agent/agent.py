@@ -16,17 +16,17 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.runtime.agent import StaticAgentRuntime
-from openjiuwen.core.runtime.config import Config
+from openjiuwen.core.session.agent import StaticAgentRuntime
+from openjiuwen.core.session.config import Config
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.wrapper import (
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.wrapper import (
     StaticWrappedRuntime,
     TaskRuntime,
     WrappedRuntime
 )
-from openjiuwen.core.runtime.stream.base import OutputSchema, CustomSchema
+from openjiuwen.core.session.stream.base import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.function.function import LocalFunction
 from openjiuwen.core.foundation.tool.schema import ToolInfo, Parameters

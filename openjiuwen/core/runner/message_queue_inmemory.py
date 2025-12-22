@@ -9,7 +9,7 @@ from typing import Awaitable, AsyncIterator
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
+from openjiuwen.core.session.thread_safe_dict import ThreadSafeDict
 from openjiuwen.core.runner.message_queue_base import (
     MessageQueueBase,
     SubscriptionBase,

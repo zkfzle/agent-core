@@ -24,10 +24,10 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY
 from openjiuwen.core.graph.executable import Output, Input, Executable
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.constants import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
-from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
-from openjiuwen.core.runtime.workflow import NodeRuntime, SubWorkflowRuntime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.constants import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
+from openjiuwen.core.session.runtime import BaseRuntime, Runtime
+from openjiuwen.core.session.workflow import NodeRuntime, SubWorkflowRuntime
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility

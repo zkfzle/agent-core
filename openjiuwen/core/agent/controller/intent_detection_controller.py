@@ -14,9 +14,9 @@ from openjiuwen.core.agent.controller.controller import BaseController
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.agent.task.task import Task, TaskStatus
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.stream.base import OutputSchema
 
 
 @dataclass

@@ -16,7 +16,7 @@ from openjiuwen.core.agent.task.task import TaskInput
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 
 

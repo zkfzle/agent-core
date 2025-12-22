@@ -19,8 +19,8 @@ from openjiuwen.core.component.condition.condition import Condition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory

@@ -23,20 +23,20 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.runtime.constants import WORKFLOW_EXECUTE_TIMEOUT, \
+from openjiuwen.core.session.constants import WORKFLOW_EXECUTE_TIMEOUT, \
     WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime, ProxyRuntime
-from openjiuwen.core.runtime.state import Transformer
-from openjiuwen.core.runtime.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
-from openjiuwen.core.runtime.wrapper import RouterRuntime
-from openjiuwen.core.runtime.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
-from openjiuwen.core.runtime.stream.emitter import StreamEmitter
-from openjiuwen.core.runtime.stream.manager import StreamWriterManager
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import BaseRuntime, ProxyRuntime
+from openjiuwen.core.session.state import Transformer
+from openjiuwen.core.session.workflow import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
+from openjiuwen.core.session.wrapper import RouterRuntime
+from openjiuwen.core.session.stream.base import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
+from openjiuwen.core.session.stream.emitter import StreamEmitter
+from openjiuwen.core.session.stream.manager import StreamWriterManager
 from openjiuwen.core.graph.stream_actor.base import StreamGraph
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
-from openjiuwen.core.runtime.tracer.tracer import Tracer
-from openjiuwen.core.runtime.tracer.workflow_tracer import TracerWorkflowUtils
+from openjiuwen.core.session.tracer.tracer import Tracer
+from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.tool.schema import Parameters, ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata

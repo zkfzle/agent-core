@@ -6,9 +6,9 @@ from typing import List, Optional, Tuple
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.tracer.decorator import decorate_model_with_trace
+from openjiuwen.core.session.tracer.decorator import decorate_model_with_trace
 from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.runtime.thread_safe_dict import ThreadSafeDict
+from openjiuwen.core.session.thread_safe_dict import ThreadSafeDict
 
 
 class ModelMgr:

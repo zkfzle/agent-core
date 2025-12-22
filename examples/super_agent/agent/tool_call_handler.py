@@ -10,7 +10,7 @@ import json
 from typing import Dict, Any, List, Optional
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.tool.function.function import LocalFunction
 from openjiuwen.core.foundation.tool.param import Param
 

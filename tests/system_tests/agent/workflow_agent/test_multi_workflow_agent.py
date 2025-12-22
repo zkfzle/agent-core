@@ -11,8 +11,8 @@ import os
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.runtime.base import ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.session.base import ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -32,12 +32,12 @@ from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.runtime.stream.base import OutputSchema
+from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")

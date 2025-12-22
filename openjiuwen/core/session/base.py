@@ -9,9 +9,9 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable
-from openjiuwen.core.runtime.runtime import Runtime, BaseRuntime
-from openjiuwen.core.runtime.workflow import NodeRuntime
-from openjiuwen.core.runtime.wrapper import WrappedNodeRuntime
+from openjiuwen.core.session.runtime import Runtime, BaseRuntime
+from openjiuwen.core.session.workflow import NodeRuntime
+from openjiuwen.core.session.wrapper import WrappedNodeRuntime
 
 Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", contravariant=True)

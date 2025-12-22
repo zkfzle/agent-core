@@ -5,8 +5,8 @@
 from functools import wraps
 from types import MethodType
 
-from openjiuwen.core.runtime.utils import create_wrapper_class
-from openjiuwen.core.runtime.tracer.data import InvokeType
+from openjiuwen.core.session.utils import create_wrapper_class
+from openjiuwen.core.session.tracer.data import InvokeType
 
 
 def _should_decorate(obj, runtime):

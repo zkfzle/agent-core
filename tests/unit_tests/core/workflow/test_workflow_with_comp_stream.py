@@ -14,12 +14,12 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable
-from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
-from openjiuwen.core.runtime.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.runtime.runtime import BaseRuntime, Runtime
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.runtime.stream.base import StreamMode, BaseStreamMode, OutputSchema
+from openjiuwen.core.session.base import ComponentExecutable, Input, Output
+from openjiuwen.core.session.constants import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.runtime import BaseRuntime, Runtime
+from openjiuwen.core.session.workflow import WorkflowRuntime
+from openjiuwen.core.session.stream.base import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowChunk
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, ComponentAbility, \
     WorkflowInputsSchema

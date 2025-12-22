@@ -7,10 +7,10 @@ from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.base import ComponentExecutable, Input, Output
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.runtime.stream.base import BaseStreamMode, OutputSchema
+from openjiuwen.core.session.base import ComponentExecutable, Input, Output
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.workflow import WorkflowRuntime
+from openjiuwen.core.session.stream.base import BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 from tests.unit_tests.core.workflow.mock_nodes import (ComputeComponent2,

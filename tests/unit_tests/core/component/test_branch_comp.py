@@ -11,9 +11,9 @@ from openjiuwen.core.component.branch_router import BranchRouter
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.runtime.base import Input, Output, ComponentExecutable
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.workflow import WorkflowRuntime
+from openjiuwen.core.session.base import Input, Output, ComponentExecutable
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.workflow import WorkflowRuntime
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, CommonNode

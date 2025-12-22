@@ -7,15 +7,15 @@ from typing import Union, Any, Optional, List, Tuple, AsyncIterator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.agent import AgentRuntime
-from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.runtime.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
-from openjiuwen.core.runtime.runtime import Runtime, Workflow, BaseRuntime
-from openjiuwen.core.runtime.workflow import NodeRuntime, WorkflowRuntime
-from openjiuwen.core.runtime.stream.base import OutputSchema
-from openjiuwen.core.runtime.stream.writer import StreamWriter
-from openjiuwen.core.runtime.tracer.tracer import Tracer
-from openjiuwen.core.runtime.tracer.workflow_tracer import TracerWorkflowUtils
+from openjiuwen.core.session.agent import AgentRuntime
+from openjiuwen.core.session.config import Config
+from openjiuwen.core.session.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
+from openjiuwen.core.session.runtime import Runtime, Workflow, BaseRuntime
+from openjiuwen.core.session.workflow import NodeRuntime, WorkflowRuntime
+from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session.stream.writer import StreamWriter
+from openjiuwen.core.session.tracer.tracer import Tracer
+from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template.template import Template
 from openjiuwen.core.foundation.tool.base import Tool

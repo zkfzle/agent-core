@@ -4,10 +4,10 @@ from typing import AsyncIterator, Type
 import pytest
 from pydantic import BaseModel
 
-from openjiuwen.core.runtime.stream.base import StreamMode
-from openjiuwen.core.runtime.stream.emitter import StreamEmitter
-from openjiuwen.core.runtime.stream.manager import StreamWriterManager
-from openjiuwen.core.runtime.stream.writer import StreamWriter
+from openjiuwen.core.session.stream.base import StreamMode
+from openjiuwen.core.session.stream.emitter import StreamEmitter
+from openjiuwen.core.session.stream.manager import StreamWriterManager
+from openjiuwen.core.session.stream.writer import StreamWriter
 
 pytestmark = pytest.mark.asyncio
 

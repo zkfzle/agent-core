@@ -2,7 +2,7 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 
 
 class TestInteractiveInput:

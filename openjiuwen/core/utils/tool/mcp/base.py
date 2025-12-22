@@ -3,18 +3,22 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack
 from typing import Any, List, Optional, Dict
+
+import httpx
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.sse import sse_client
 from mcp.client.stdio import stdio_client
 from pydantic import BaseModel, Field
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.utils.tool.schema import Parameters, ToolInfo
-from openjiuwen.core.utils.tool.constant import Input, Output
-from openjiuwen.core.common.logging import logger
+
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.utils.tool.base import Tool
+from openjiuwen.core.utils.tool.constant import Input, Output
+from openjiuwen.core.utils.tool.schema import ToolInfo
 
 
 class ToolServerConfig(BaseModel):
@@ -22,6 +26,27 @@ class ToolServerConfig(BaseModel):
     server_path: str
     client_type: str = 'sse'
     params: Dict[str, Any] = Field(default_factory=dict)
+    auth_headers: dict = Field(default_factory=dict)
+    auth_query_params: Dict[str, str] = Field(default_factory=dict)
+
+
+class AuthHeaderAndQueryProvider(httpx.Auth):
+    def __init__(self, auth_headers: Dict[str, str], auth_query_params: Dict[str, str]):
+        self.headers = auth_headers
+        self.query_params = auth_query_params
+
+    async def async_auth_flow(self, request: httpx.Request) -> AsyncGenerator[httpx.Request, httpx.Response]:
+        # Add custom headers
+        if self.headers:
+            for key, value in self.headers.items():
+                request.headers[key] = value
+
+        # Add custom query parameters
+        if self.query_params:
+            url = request.url.copy_merge_params(self.query_params)
+            request.url = url
+
+        yield request
 
 
 NO_TIMEOUT = -1
@@ -104,7 +129,9 @@ class McpToolClient(ABC):
 class SseClient(McpToolClient):
     """SSE (Server-Sent Events) transport based MCP client"""
 
-    def __init__(self, server_path: str, name: str):
+    def __init__(self, server_path: str, name: str,
+                 auth_headers: Optional[Dict[str, str]] = None,
+                 auth_query_params: Optional[Dict[str, str]] = None):
         super().__init__(server_path)
         self._name = name
         self._client = None
@@ -113,11 +140,21 @@ class SseClient(McpToolClient):
         self._write = None
         self._exit_stack = AsyncExitStack()
         self._is_disconnected: bool = False
+        self._auth_headers = auth_headers
+        self._auth_query_params = auth_query_params
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         try:
+            if self._auth_headers or self._auth_query_params:
+                auth_provider = AuthHeaderAndQueryProvider(
+                    auth_headers=self._auth_headers,
+                    auth_query_params=self._auth_query_params
+                )
+                logger.info("Using custom header and query authorization for SSE client")
+            else:
+                auth_provider = None
             actual_timeout = timeout if timeout != NO_TIMEOUT else 60.0
-            self._client = sse_client(self._server_path, timeout=actual_timeout)
+            self._client = sse_client(self._server_path, timeout=actual_timeout, auth=auth_provider)
             self._read, self._write = await self._exit_stack.enter_async_context(self._client)
             self._session = await self._exit_stack.enter_async_context(ClientSession(
                 self._read, self._write, sampling_callback=None
@@ -126,6 +163,7 @@ class SseClient(McpToolClient):
             self._is_disconnected = False
             logger.info(f"SSE client connected successfully to {self._server_path}")
             return True
+
         except Exception as e:
             logger.error(f"SSE connection failed to {self._server_path}: {e}")
             await self.disconnect()
@@ -133,28 +171,22 @@ class SseClient(McpToolClient):
 
     async def disconnect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Close SSE connection"""
-        if self._is_disconnected:
-            logger.info("SSE client disconnected successfully")
-            return True
         try:
-            await self._exit_stack.aclose()
-            logger.info("SSE client disconnected successfully")
-            self._is_disconnected = True
-            return True
-        except (asyncio.CancelledError, RuntimeError):
+            if self._session:
+                await self._session.__aexit__(None, None, None)
+                self._session = None
+
             if self._client:
                 await self._client.__aexit__(None, None, None)
+                self._client = None
+                self._read = None
+                self._write = None
+
             logger.info("SSE client disconnected successfully")
-            self._is_disconnected = True
             return True
         except Exception as e:
             logger.error(f"SSE disconnection failed: {e}")
             return False
-        finally:
-            self._session = None
-            self._client = None
-            self._read = None
-            self._write = None
 
     async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
         """List available tools via SSE"""
@@ -234,6 +266,7 @@ class StdioClient(McpToolClient):
                                            cwd=self._params.get('cwd'),
                                            encoding_error_handler=handler
                                            )
+
             self._client = stdio_client(params)
             self._read, self._write = await self._exit_stack.enter_async_context(self._client)
             self._session = await self._exit_stack.enter_async_context(

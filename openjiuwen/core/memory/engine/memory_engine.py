@@ -7,15 +7,16 @@ from typing import Any, Tuple
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.memory.common.distributed_lock import DistributedLock
 from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.generation.generation import Generator
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
-from openjiuwen.core.memory.manage.message_manager import MessageManager
+from openjiuwen.core.memory.manage.message_manager import MessageManager, MessageAddRequest
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.manage.write_manager import WriteManager
 from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
-from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
+from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager, SearchParams
 from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
@@ -25,7 +26,6 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.memory.common.distributed_lock import DistributedLock
 
 
 class BaseMemoryEngine(ABC):
@@ -379,7 +379,7 @@ class MemoryEngine(BaseMemoryEngine):
             # when multi messages, use last msg_id
             if self._sys_mem_config.record_message:
                 for msg in messages:
-                    msg_id = await self.message_manager.add(
+                    add_req = MessageAddRequest(
                         user_id=user_id,
                         group_id=group_id,
                         role=msg.role,
@@ -387,6 +387,7 @@ class MemoryEngine(BaseMemoryEngine):
                         session_id=session_id,
                         timestamp=timestamp
                     )
+                    msg_id = await self.message_manager.add(add_req)
             else:
                 msg_id = None
 
@@ -452,12 +453,15 @@ class MemoryEngine(BaseMemoryEngine):
     async def search_user_mem(self, user_id: str, group_id: str, query: str, num: int,
                               threshold: float = 0.3) -> list[dict[str, Any]]:
         if not self.search_manager:
-            raise ValueError("Search manager is not initialized.")
-        return await self.search_manager.search(user_id=user_id,
-                                                group_id=group_id,
-                                                query=query,
-                                                top_k=num,
-                                                threshold=threshold)
+            raise ValueError("Search Manager is not initialized")
+        params = SearchParams(
+            query=query,
+            group_id=group_id,
+            top_k=num,
+            user_id=user_id,
+            threshold=threshold
+        )
+        return await self.search_manager.search(params)
 
     async def list_user_mem(self, user_id: str, group_id: str, num: int, page: int) -> list[dict[str, Any]]:
         if not self.search_manager:

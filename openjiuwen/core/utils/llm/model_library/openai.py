@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
+
 from pydantic import BaseModel
 
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -20,12 +21,6 @@ class OpenAILLM(BaseModel, BaseModelClient):
         self._openai_model = OpenAIChatModel(api_key=api_key, api_base=api_base,
                                              max_retries=max_retries, timeout=timeout, **kwargs)
         self._should_close_session = True
-
-    async def close(self):
-        if hasattr(self, '_openai_model') and self._openai_model:
-            if hasattr(self._openai_model, 'close'):
-                await self._openai_model.close()
-            self._openai_model = None
 
     def model_provider(self) -> str:
         return "openai"

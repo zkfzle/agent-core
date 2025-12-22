@@ -5,27 +5,34 @@
 import asyncio
 from typing import Union, Any, List, Optional
 
+from openjiuwen.agent.chat_agent import ChatAgent
 from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.agent.agent import Agent, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.runner.agent_group import AgentGroup
+from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
+from openjiuwen.core.runner.drunner.dmessage_queue.message_queue_factory import MessageQueueFactory
+from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
+from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
+from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
+    get_runner_config
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
+from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runtime.resources_manager.agent_manager import AgentProvider, AgentMgr
-from openjiuwen.core.runtime.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
+from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.workflow import WorkflowRuntime
-from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runtime.wrapper import TaskRuntime
-from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.stream.base import BaseStreamMode
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.mcp.base import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.runner.agent_group import AgentGroup
 
 AGENT_ADAPTER = "agent_adapter_"
 
@@ -51,18 +58,48 @@ class Runner:
 
     _AGENT_CONVERSATION_ID = "conversation_id"
 
-    def __init__(self, resource_manager: ResourceMgr, runner_id: str = ""):
+    def __init__(self, resource_manager: ResourceMgr, runner_id: str = "", config: RunnerConfig = None):
         self._runner_id = runner_id
         self._resource_manager = resource_manager
         self._message_queue = LocalMessageQueue()
         self._agent_group_mgr: AgentGroupMgr = AgentGroupMgr()
         self._agent_mgr: AgentMgr = AgentMgr(resource_manager)
+        if config is not None:
+            set_runner_config(config)
+        else:
+            set_runner_config(DEFAULT_RUNNER_CONFIG)
+        # Distributed system related components
+        self.system_reply_sub: ReplyTopicSubscription | None = None
+        self._distribute_message_queue = None
+
+    def set_config(self, config: RunnerConfig):
+        set_runner_config(config)
+
+    def get_config(self):
+        return get_runner_config()
 
     async def start(self) -> bool:
+        if get_runner_config().distributed_mode:
+            # start dmq
+            self._distribute_message_queue = MessageQueueFactory.create(
+                get_runner_config().distributed_config.message_queue_config)
+            self._distribute_message_queue.start()
+            # start reply topic sub
+            self.system_reply_sub = ReplyTopicSubscription(self._distribute_message_queue)
+            self.system_reply_sub.activate()
         return await self._message_queue.start()
 
     async def stop(self):
         logger.info("[Runner] Stopping...")
+        if get_runner_config().distributed_mode:
+            # 2. Stop ReplyTopicSubscription, clean up collector
+            if self.system_reply_sub:
+                await self.system_reply_sub.deactivate()
+                self.system_reply_sub = None
+            # 3. Stop MQ
+            if self._distribute_message_queue:
+                await self._distribute_message_queue.stop()
+                self._distribute_message_queue = None
         await resource_mgr.tool().stop()
         result = await self._message_queue.stop()
         logger.info("[Runner] Stopped...")
@@ -70,6 +107,9 @@ class Runner:
 
     def message_queue(self):
         return self._message_queue
+
+    def distribute_message_queue(self):
+        return self._distribute_message_queue
 
     async def add_agent_group(self, agent_group_id: str, agent_group: Union[AgentGroup, AgentGroupProvider]):
         self._agent_group_mgr.add_agent_group(agent_group_id, agent_group)
@@ -90,10 +130,19 @@ class Runner:
                 await self._message_queue.unsubscribe(topic, agent_group.get_subscription)
         return agent_group
 
-    def add_agent(self, agent_id, agent: Union[Agent, AgentProvider]):
+    def add_agent(self, agent_id, agent: Union[Agent, AgentProvider, RemoteAgent]):
+        if get_runner_config().distributed_mode:
+            if not isinstance(agent, RemoteAgent):
+                mqAgentAdapter = AgentAdapter(agent_id)
+                mqAgentAdapter.start()
+                self._agent_mgr.add_agent(AGENT_ADAPTER + agent_id, mqAgentAdapter)
         self._agent_mgr.add_agent(agent_id, agent)
 
     def remove_agent(self, agent_id) -> Union[Agent, AgentProvider]:
+        if get_runner_config().distributed_mode:
+            adapter = self._agent_mgr.remove_agent(AGENT_ADAPTER + agent_id)
+            if adapter is not None:
+                adapter.stop()
         return self._agent_mgr.remove_agent(agent_id)
 
     async def run_workflow(self, workflow: Union[str, Workflow], inputs: Any,
@@ -105,13 +154,13 @@ class Runner:
                                      *, runtime: Union[Runtime, WorkflowRuntime] = None,
                                      stream_modes: list[BaseStreamMode] = None, context: Context = None):
         workflow_instance, workflow_runtime = await self._prepare_workflow(workflow, runtime)
-        async for chunk in workflow_instance.stream(inputs, runtime=workflow_runtime,
-                                                    stream_modes=stream_modes, context=context):
-            yield chunk
+        return workflow_instance.stream(inputs, runtime=workflow_runtime, stream_modes=stream_modes, context=context)
 
     async def run_agent(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        if isinstance(agent_instance, BaseAgent):
+        if isinstance(agent_instance, RemoteAgent):
+            res = await agent_instance.invoke(inputs)
+        elif isinstance(agent_instance, BaseAgent):
             # ControllerAgent handles its own runtime lifecycle
             res = await agent_instance.invoke(inputs, runtime=None)
         else:
@@ -121,12 +170,15 @@ class Runner:
 
     async def run_agent_streaming(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        if agent_instance and agent_instance.__class__.__name__ == "ChatAgent":
+        if isinstance(agent_instance, ChatAgent):
             try:
                 async for chunk in agent_instance.stream(inputs, agent_runtime):
                     yield chunk
             finally:
                 await agent_runtime.post_run()
+        elif isinstance(agent_instance, RemoteAgent):
+            async for chunk in agent_instance.stream(inputs):
+                yield chunk
         elif isinstance(agent_instance, BaseAgent):
             # ControllerAgent handles its own runtime lifecycle
             async for chunk in agent_instance.stream(inputs, runtime=None):
@@ -159,8 +211,7 @@ class Runner:
 
     async def run_agent_group_streaming(self, agent_group: Union[str, AgentGroup], inputs: Any):
         agent_group_instance = self._prepare_agent_group(agent_group)
-        async for chunk in agent_group_instance.stream(inputs):
-            yield chunk
+        return agent_group_instance.stream(inputs)
 
     async def run_tool(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
         tool_instance = self._prepare_tool(tool, runtime)
@@ -186,8 +237,7 @@ class Runner:
                 tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', 'unknown')
                 raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
                                           f"{self.__class__.__name__} tool not found: {tool_name}.")
-        async for chunk in tool_instance.astream(inputs, runtime=runtime):
-            yield chunk
+        return tool_instance.astream(inputs, runtime=runtime)
 
     async def list_tools(self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None) -> Union[
         Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
@@ -249,12 +299,15 @@ class Runner:
             if agent_with_runtime is None:
                 raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
                                           StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
-            task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs),
-                                       is_from_group=False)
+            if isinstance(agent_with_runtime, RemoteAgent):
+                # Remote agent does not add runtime, keep sessionId in input
+                if self._AGENT_CONVERSATION_ID not in inputs:
+                    inputs[self._AGENT_CONVERSATION_ID] = session_id
+                return agent_with_runtime, None
+            task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs))
             return agent_with_runtime.agent, task_runtime
         agent_runtime = StaticAgentRuntime(agent.config(), resource_mgr=self._resource_manager)
-        task_runtime = TaskRuntime(inner=await agent_runtime.create_agent_runtime(session_id, inputs),
-                                   is_from_group=False)
+        task_runtime = TaskRuntime(inner=await agent_runtime.create_agent_runtime(session_id, inputs))
         return agent, task_runtime
 
     async def _prepare_workflow(self, workflow: Union[str, Workflow],
@@ -290,4 +343,4 @@ class Runner:
 
 
 resource_mgr = ResourceMgr()
-Runner = Runner(resource_mgr, runner_id=DEFAULT_RUNNER_ID)
+Runner = Runner(resource_mgr, runner_id=DEFAULT_RUNNER_ID, config=DEFAULT_RUNNER_CONFIG)

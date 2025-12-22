@@ -8,12 +8,12 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, AsyncIterator
 
-from openjiuwen.core.agent.agent import BaseAgent
-from openjiuwen.core.common.logging import logger
 from openjiuwen.core.agent.agent import AgentRuntime
+from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.agent_group.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
 
@@ -87,15 +87,13 @@ class BaseGroup(ABC):
         if agent_id in self.agents:
             raise JiuWenBaseException(
                 StatusCode.AGENT_GROUP_ADD_FAILED.code,
-                StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format(reason="Agent ID already exists")
+                StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format("Agent ID already exists")
             )
         else:
             if self.get_agent_count() == self.config.max_agents:
                 raise JiuWenBaseException(
                     StatusCode.AGENT_GROUP_ADD_FAILED.code,
-                    StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format(
-                        reason="Agent count exceeds max agents")
-                )
+                    StatusCode.AGENT_GROUP_ADD_FAILED.errmsg.format("Agent count exceeds max agents"))
             self.agents[agent_id] = agent
             
             # Auto-inject group reference to agent's controller

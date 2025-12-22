@@ -256,8 +256,7 @@ class BaseController(ABC):
         return Message.create_user_message(
             content=content,
             conversation_id=conversation_id,
-            user_id=user_id,
-            extensions={k: _ for k, _ in inputs.items() if k not in ["query", "conversation_id", "user_id"]}
+            user_id=user_id
         )
 
     async def cleanup_conversation(self, conversation_id: str):

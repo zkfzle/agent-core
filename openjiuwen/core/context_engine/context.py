@@ -4,8 +4,8 @@
 
 from typing import Optional, Dict, Union, List
 
-from openjiuwen.core.context_engine.base import Context, ContextOwner
 from openjiuwen.core.context_engine.accessor.accessor import ContextAccessor
+from openjiuwen.core.context_engine.base import Context, ContextOwner
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 
@@ -35,7 +35,7 @@ class ContextImpl(Context):
         messages = history.get_messages(num, tags=tags)
         return messages
 
-    def get_latest_message(self, role: str = None) -> Optional[BaseMessage]:
+    def get_latest_message(self, role: str = None) -> Union[BaseMessage, None]:
         history = self._accessor.history(self._owner)
         return history.get_latest_message(role=role)
 

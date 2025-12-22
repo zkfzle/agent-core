@@ -6,9 +6,9 @@ from typing import List, Optional, Tuple, Union, Callable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runtime.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.tracer.decorator import decorate_tool_with_trace
-from openjiuwen.core.utils.tool.schema import ToolInfo
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.mcp.base import (
     ToolServerConfig,
@@ -19,7 +19,7 @@ from openjiuwen.core.utils.tool.mcp.base import (
     PlaywrightClient,
     MCPTool
 )
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.utils.tool.schema import ToolInfo
 
 ToolProvider = Callable[[], Tool]
 
@@ -193,7 +193,8 @@ class ToolMgr(AbstractManager[Tool]):
 
     def _create_client(self, config: ToolServerConfig) -> McpToolClient:
         if config.client_type == "sse":
-            return SseClient(config.server_path, config.server_name)
+            return SseClient(config.server_path, config.server_name, \
+                             config.auth_headers, config.auth_query_params)
         elif config.client_type == "stdio":
             return StdioClient(config.server_path, config.server_name, config.params)
         elif config.client_type == "playwright":
@@ -236,6 +237,7 @@ class ToolMgr(AbstractManager[Tool]):
         copy_tool_info = deepcopy(tool_info)
         copy_tool_info.name = f'{tool_info.server_name}{delimiter}{tool_info.name}'
         return copy_tool_info
+
 
     async def stop(self):
         for client in self._mcp_clients.values():

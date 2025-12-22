@@ -63,10 +63,10 @@ class EdgeTopology:
     def all_edge_nodes(self) -> set[str]:
         """Get all nodes referenced in edges."""
         return (
-                set(self.source_map.keys()) |
-                set(self.target_map.keys()) |
-                set(self.source_stream_map.keys()) |
-                set(self.target_stream_map.keys())
+            set(self.source_map.keys()) |
+            set(self.target_map.keys()) |
+            set(self.source_stream_map.keys()) |
+            set(self.target_stream_map.keys())
         )
 
 
@@ -109,7 +109,7 @@ class BaseWorkFlow:
                                           "digits (0–9), underscores (_) or hyphens (-)")
 
     def _validate_connection_comp_ids(self, src_comp_id: str, target_comp_id: str,
-                                      connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
+                                       connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
         """Validate that component IDs exist in comp_configs before adding connection.
 
         This prevents KeyError in _auto_complete_abilities when edges reference non-existent components.
@@ -633,6 +633,7 @@ class Workflow(BaseWorkFlow):
         finally:
             await runtime.close()
             await self._graph.reset()
+
 
     async def _execute_with_timeout(self, func, timeout, status_code):
         task = asyncio.create_task(func())

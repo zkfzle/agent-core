@@ -25,5 +25,4 @@ class NodeStatus(Enum):
     START = "start"
     FINISH = "finish"
     RUNNING = "running"
-    INTERRUPTED = "interrupted"
     ERROR = "error"

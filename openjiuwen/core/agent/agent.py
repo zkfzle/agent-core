@@ -4,36 +4,34 @@
 
 import asyncio
 import inspect
-
 import warnings
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Union
 
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.context_engine.config import ContextEngineConfig
 from openjiuwen.core.context_engine.engine import ContextEngine
 from openjiuwen.core.runtime.agent import StaticAgentRuntime
+from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.runtime.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.runtime.wrapper import (
     StaticWrappedRuntime,
     TaskRuntime,
     WrappedRuntime
 )
 from openjiuwen.core.stream.base import OutputSchema, CustomSchema
-from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.schema import ToolInfo, Parameters
-
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.runtime.config import Config
 from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema, WorkflowMetadata
 
 if TYPE_CHECKING:
@@ -58,7 +56,7 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
         if session_id is None:
             session_id = kwargs.get("trace_id")
         inputs = kwargs.get("inputs")
-        inner = await self._runtime.create_agent_runtime(session_id, inputs, kwargs.get("stream_writer_manager"))
+        inner = await self._runtime.create_agent_runtime(session_id, inputs)
         return TaskRuntime(inner=inner)
 
     def resource_mgr(self):
@@ -266,9 +264,8 @@ class Agent(ABC):
                                           f"{self.__class__.__name__} stream error.") from e
 
     async def runner_controller_stream(self, inputs: Dict, runtime: Runtime):
-        """
-        Interface adapted for runner, will be replaced with controller_stream
-        after all agents fully adapt to runner
+        """Interface for runner
+        will be replaced with controller_stream after all agents fully adapt to runner
         """
         controller = None
         try:
@@ -381,7 +378,7 @@ class WorkflowFactory:
         self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version, name=workflow_name)
         if self.name and self.input_schema:
             workflow_input_schema = self.input_schema if isinstance(self.input_schema,
-                                                                    WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
+                WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
                 self.input_schema)
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
             from openjiuwen.core.runner.runner import resource_mgr
@@ -619,11 +616,11 @@ class BaseAgent(ABC):
             def create_workflow():
                 return Workflow()
             agent.add_workflows([create_workflow])
-            
+
             # Method 2: Use WorkflowFactory directly
             provider = WorkflowFactory("my_wf", "1.0", lambda: build_workflow())
             agent.add_workflows([provider])
-            
+
             # Method 3: Async provider with id/version attributes
             async def _create_provider(wf, mgr):
                 async def provider():
@@ -713,53 +710,6 @@ class BaseAgent(ABC):
                 logger.info(f"Successfully added workflow {'provider' if is_provider else 'instance'} {workflow_key}")
             except Exception as e:
                 logger.error(f"Failed to add workflow to global resource_mgr: {e}")
-
-    def remove_workflows(
-            self,
-            workflows: List[Tuple[str, str]]
-    ) -> None:
-        """Remove workflows from agent (update config and runtime simultaneously).
-        
-        Removes workflows from three locations:
-        1. agent_config.workflows (WorkflowSchema list)
-        2. runtime workflow manager
-        3. global resource_mgr (if available)
-        
-        Args:
-            workflows: List of (workflow_id, workflow_version) tuples to remove
-            
-        Example:
-            agent.remove_workflows([
-                ("my_workflow", "1.0"),
-                ("another_workflow", "2.0")
-            ])
-        """
-        logger.info(f"BaseAgent.remove_workflows called with {len(workflows)} workflows")
-
-        for workflow_id, workflow_version in workflows:
-            workflow_key = generate_workflow_key(workflow_id, workflow_version)
-            logger.info(f"Removing workflow: {workflow_key}")
-
-            # 1. Remove from agent_config.workflows
-            original_count = len(self.agent_config.workflows)
-            self.agent_config.workflows = [
-                w for w in self.agent_config.workflows
-                if not (w.id == workflow_id and w.version == workflow_version)
-            ]
-            removed_from_config = original_count - len(self.agent_config.workflows)
-            logger.info(f"Removed {removed_from_config} workflow schema(s) from config")
-
-            # 2. Remove from runtime
-            self._runtime.remove_workflow(workflow_key)
-            logger.info(f"Removed workflow {workflow_key} from runtime")
-
-            # 3. Remove from global resource_mgr
-            try:
-                from openjiuwen.core.runner.runner import resource_mgr
-                resource_mgr.workflow().remove_workflow(workflow_key)
-                logger.info(f"Successfully removed workflow {workflow_key} from global resource_mgr")
-            except Exception as e:
-                logger.error(f"Failed to remove workflow from global resource_mgr: {e}")
 
     def bind_workflows(self, workflows: List[Workflow]) -> None:
         """Bind workflows - Backward compatible alias method
@@ -906,9 +856,6 @@ class ControllerAgent(BaseAgent):
         session_id = inputs.get("conversation_id", "default_session")
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
-        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
-            agent_runtime = await self._runtime.pre_run(session_id=session_id,
-                                                        stream_writer_manager=runtime.base().stream_writer_manager())
         else:
             agent_runtime = runtime
 
@@ -950,11 +897,6 @@ class ControllerAgent(BaseAgent):
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Owns stream lifecycle
-        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
-            agent_runtime = await self._runtime.pre_run(session_id=session_id,
-                                                        stream_writer_manager=runtime.base().stream_writer_manager())
-            need_cleanup = False
-            own_stream = False  # External owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False

@@ -1,21 +1,21 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-"""ReActAgent"""
+"""
+ChatAgent - simplest llm chat agent
+"""
 from typing import Dict, Any, List, AsyncIterator
 
 from openjiuwen.agent.config.base import LLMCallConfig
 from openjiuwen.agent.config.chat_config import ChatAgentConfig
 from openjiuwen.core.agent.agent import Agent
-from openjiuwen.core.runtime.config import Config
-from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.common.utlis.hash_util import generate_key
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.context_engine.config import ContextEngineConfig
-
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.operator.llm_call import LLMCall
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.utils.tool.base import Tool
 
 
 def create_chat_agent_config(agent_id: str,
@@ -34,7 +34,7 @@ def create_chat_agent_config(agent_id: str,
 def create_chat_agent(agent_config: ChatAgentConfig,
                       tools: List[Tool] = None):
     agent = ChatAgent(agent_config)
-    agent.bind_tools(tools or [])
+    agent.add_tools(tools or [])
     return agent
 
 

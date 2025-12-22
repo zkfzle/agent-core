@@ -4,7 +4,7 @@
 """Workflow Controller - Workflow-specific execution logic"""
 
 import asyncio
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional
 
 from openjiuwen.agent.common.enum import TaskStatus, TaskType
 from openjiuwen.agent.common.schema import WorkflowSchema
@@ -288,7 +288,7 @@ class WorkflowController(IntentDetectionController):
             #    - workflow_final (completion result)
             # Stream data written to runtime, agent layer's stream_iterator can read
             async def run_workflow_streaming():
-                workflow_stream = Runner.run_workflow_streaming(
+                workflow_stream = await Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
                     runtime=workflow_runtime,
@@ -388,17 +388,10 @@ class WorkflowController(IntentDetectionController):
                 interaction_data = (
                     result.result if hasattr(result, 'result') else None
                 )
-                
-                # 状态保存：保存所有中断
                 await self.interrupt_task(task, runtime, interaction_data)
 
-                # 流式返回：只返回第一个中断
-                first_interrupt = self._get_first_interrupt(interaction_data)
-                logger.info(
-                    f"Workflow has {self._count_interactions(interaction_data)} "
-                    f"interrupts, returning only the first one for streaming"
-                )
-                return first_interrupt  # Return only first interrupt for streaming
+                # Return interruption response (interaction request)
+                return result.result  # Return interaction list
             else:
                 # Workflow completed
                 logger.info(f"Workflow completed: {workflow_id}")
@@ -439,15 +432,15 @@ class WorkflowController(IntentDetectionController):
             runtime: Runtime
     ) -> Dict:
         """Override parent's _handle_resume to support return_interruption logic
-        
+
         If intent.metadata contains 'return_interruption': True,
         directly return the saved interruption instead of executing workflow.
-        
+
         Args:
             message: Message object
             intent: Intent object
             runtime: Runtime context
-            
+
         Returns:
             dict: Execution result or interruption data
         """
@@ -679,17 +672,17 @@ class WorkflowController(IntentDetectionController):
             runtime: Runtime
     ) -> bool:
         """Check if interrupted task should resume or return interruption again
-        
+
         Logic:
         1. If user provides InteractiveInput -> always resume
         2. If last_interaction_value is dict (structured data from component) -> return interruption again
         3. If last_interaction_value is str (human interaction text) -> resume
-        
+
         Args:
             task: Interrupted task
             message: Current message
             runtime: Runtime context
-            
+
         Returns:
             bool: True if should resume, False if should return interruption again
         """
@@ -867,11 +860,9 @@ class WorkflowController(IntentDetectionController):
         query = message.content.get_query() if hasattr(message.content, 'get_query') else ""
 
         # Filter input parameters
-        user_data = {"query": query}
-        user_data.update(message.content.extensions or {})
         filtered_inputs = self._filter_workflow_inputs(
             workflow.inputs or {},
-            user_data
+            {"query": query}
         )
 
         logger.info(f"Creating task with inputs: {filtered_inputs}, query: {query}")
@@ -959,8 +950,8 @@ class WorkflowController(IntentDetectionController):
     def _extract_component_id_from_interaction_data(
             self,
             interaction_data: Optional[list]
-    ) -> Union[str, List[str]]:
-        """Extract component ID(s) from interaction data
+    ) -> List[str]:
+        """Extract component IDs from interaction data
         
         Reference old implementation: MessageHandler.extract_component_id_from_stream_data
         Find all OutputSchema with type '__interaction__' from interaction_data list,
@@ -972,13 +963,11 @@ class WorkflowController(IntentDetectionController):
             interaction_data: OutputSchema list, containing interaction requests during interruption
             
         Returns:
-            Union[str, List[str]]: Single component ID string if only one interruption,
-                                   List of component IDs if multiple interruptions,
-                                   Default return "questioner" for legacy compatibility
+            List[str]: List of component IDs, default return ["questioner"]
         """
         if not interaction_data:
             logger.warning("No interaction_data provided, using default component_id")
-            return "questioner"
+            return ["questioner"]
 
         component_ids = []
         try:
@@ -1002,28 +991,23 @@ class WorkflowController(IntentDetectionController):
 
         if not component_ids:
             logger.warning("No component_id found in interaction_data, using default")
-            return "questioner"  # Default value for legacy compatibility
+            return ["questioner"]  # Default value
 
-        # Return single string if only one interruption, list if multiple
-        if len(component_ids) == 1:
-            logger.info(f"Extracted single component_id: {component_ids[0]}")
-            return component_ids[0]
-        else:
-            logger.info(f"Extracted {len(component_ids)} component_ids: {component_ids}")
-            return component_ids
+        logger.info(f"Extracted {len(component_ids)} component_ids: {component_ids}")
+        return component_ids
 
     def _extract_interaction_value_from_interaction_data(
             self,
             interaction_data: Optional[list]
     ) -> Optional[any]:
         """Extract interaction value from interaction data
-        
+
         Find OutputSchema with type '__interaction__' from interaction_data list,
         and extract value from payload.value
-        
+
         Args:
             interaction_data: OutputSchema list, containing interaction requests during interruption
-            
+
         Returns:
             Optional[any]: Interaction value (could be str, dict, or other types), None if not found
         """
@@ -1052,72 +1036,6 @@ class WorkflowController(IntentDetectionController):
 
         logger.warning("No interaction_value found in interaction_data")
         return None
-
-    def _get_first_interrupt(
-            self,
-            interaction_data: Optional[list]
-    ) -> list:
-        """从 interaction_data 中提取第一个中断用于流式返回
-        
-        当 workflow 产生多个中断时，状态中保存所有中断，
-        但流式输出只返回第一个中断给用户。
-        
-        Args:
-            interaction_data: OutputSchema 列表，包含所有中断
-            
-        Returns:
-            list: 只包含第一个 __interaction__ 的 OutputSchema 列表
-                  保持其他类型的 chunk（tracer等）不变
-        """
-        if not interaction_data:
-            return []
-        
-        first_interrupt_found = False
-        result = []
-        
-        for chunk in interaction_data:
-            if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
-                # 只保留第一个 __interaction__
-                if not first_interrupt_found:
-                    result.append(chunk)
-                    first_interrupt_found = True
-                    logger.info(
-                        f"Found first interrupt: component_id="
-                        f"{chunk.payload.id if hasattr(chunk.payload, 'id') else 'unknown'}"
-                    )
-                else:
-                    # 跳过后续的 __interaction__
-                    logger.info(
-                        f"Skipping additional interrupt: component_id="
-                        f"{chunk.payload.id if hasattr(chunk.payload, 'id') else 'unknown'}"
-                    )
-            else:
-                # 保留非 __interaction__ 类型的 chunk（如 tracer）
-                result.append(chunk)
-        
-        return result
-
-    def _count_interactions(
-            self,
-            interaction_data: Optional[list]
-    ) -> int:
-        """统计 interaction_data 中的中断数量
-        
-        Args:
-            interaction_data: OutputSchema 列表
-            
-        Returns:
-            int: 中断数量
-        """
-        if not interaction_data:
-            return 0
-        
-        count = 0
-        for chunk in interaction_data:
-            if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
-                count += 1
-        
-        return count
 
     async def _find_workflow_from_agent(self, workflow_id: str, runtime: Runtime):
         """Find workflow object from runtime

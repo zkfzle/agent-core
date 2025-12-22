@@ -5,26 +5,25 @@
 ReActAgent - Minimal ReAct Agent (no interruption, no Controller)
 """
 
-import json
 import asyncio
+import json
 from typing import Dict, Any, AsyncIterator, List
 
 from pydantic import ValidationError
 
-from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.agent.config.react_config import ReActAgentConfig
-from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
+from openjiuwen.agent.utils import MessageUtils
+from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runtime.runtime import Runtime, Workflow
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.utils.tool.base import Tool
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.messages import AIMessage, ToolMessage
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.utils.prompt.template.template import Template
-from openjiuwen.agent.utils import MessageUtils
+from openjiuwen.core.utils.tool.base import Tool
 
 
 class ReActAgent(BaseAgent):
@@ -33,7 +32,9 @@ class ReActAgent(BaseAgent):
 
     def __init__(
             self,
-            agent_config: ReActAgentConfig
+            agent_config: ReActAgentConfig,
+            workflows: List[Workflow] = None,
+            tools: List[Tool] = None
     ):
         """Initialize ReActAgent
         
@@ -47,6 +48,12 @@ class ReActAgent(BaseAgent):
 
         # LLM instance (lazy creation)
         self._llm = None
+        
+        # 通过 BaseAgent 的接口添加 tools 和 workflows（自动同步）
+        if tools:
+            self.add_tools(tools)
+        if workflows:
+            self.add_workflows(workflows)
 
     def _get_llm(self):
         """Get LLM instance"""

@@ -3,9 +3,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, Optional, Union, List
-from datetime import datetime
 
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 
@@ -151,7 +151,7 @@ class Message:
 
     @classmethod
     def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default",
-                            user_id: Optional[str] = None, extensions: Dict[str, Any] = None) -> 'Message':
+                            user_id: Optional[str] = None) -> 'Message':
         """Create user message - unified handling for str and InteractiveInput"""
         source = MessageSource(
             conversation_id=conversation_id,
@@ -164,10 +164,7 @@ class Message:
             msg_content = MessageContent(interactive_input=content)
         else:
             msg_content = MessageContent(query=str(content))
-
-        if extensions:
-            msg_content.extensions = extensions
-
+        
         context = MessageContext(
             conversation_id=conversation_id,
             correlation_id=str(uuid.uuid4())

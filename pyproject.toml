@@ -1,5 +1,5 @@
 [project]
-name = "openjiuwen"
+name = "jiuwen-opensource"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -12,11 +12,12 @@ dependencies = [
     "filelock>=3.20.1",
     "sqlalchemy==2.0.41",
     "openai==1.108.0",
-    "requests==2.32.3",
-    "httpx==0.27.0",
     "cacheout==0.16.0",
-    "docx2txt==0.8",
     "mermaid-py==0.8.0",
+    "pymupdf==1.26.4",
+    "elasticsearch==8.17.1",
+    "llama-index==0.12.36",
+    "llama-index-vector-stores-elasticsearch==0.4.3",
     "transformers==4.52.4",
     "portalocker==3.2.0",
     "pymilvus[milvus-lite]==2.6.2",
@@ -49,3 +50,7 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["jiuwen"]
 addopts = ["-v", "--html=report/index.html", "--self-contained-html"]
+
+[project.optional-dependencies]
+pulsar = ["pulsar-client==3.5.0"]
+

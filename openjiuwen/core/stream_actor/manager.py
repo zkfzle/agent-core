@@ -39,7 +39,7 @@ class ActorManager:
             for producer_id in producer_ids:
                 for ability in workflow_spec.comp_configs[producer_id].abilities:
                     if ability in [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]:
-                        sources.add(f"{producer_id}-{ability.ability_name}")
+                        sources.add(f"{producer_id}-{ability.name}")
 
             self._streams[consumer_id] = StreamActor(consumer_id, graph.get_node(consumer_id),
                                                      consumer_stream_ability, list(sources),

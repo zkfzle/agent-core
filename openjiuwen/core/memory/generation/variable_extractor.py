@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-import json
 from typing import Any, Tuple
-from openjiuwen.core.utils.llm.base import BaseModelClient
-from openjiuwen.core.utils.llm.messages import BaseMessage
-from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
+
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.memory.generation.common import build_model_input
 from openjiuwen.core.memory.generation.memory_info import (
     ExtractedData,
     ExtractedDataType
 )
-
 from openjiuwen.core.memory.prompt.variable_extractor import EXTRACT_VARIABLES_PROMPT
-
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.utils.llm.messages import BaseMessage
+from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 
 
 class ComprehensionExtractor:
@@ -107,7 +105,8 @@ class ComprehensionExtractor:
 
     @staticmethod
     def _check_value(value: Any) -> bool:
-        if (value is None or not isinstance(value, dict) or value.get("value", "") is None
-                or value.get("value", "").lower() == "none"):
+        if value is None or not isinstance(value, dict):
+            return False
+        if value.get("value", "") is None or value.get("value", "").lower() == "none":
             return False
         return True

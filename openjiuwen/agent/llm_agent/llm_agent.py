@@ -14,13 +14,12 @@ from openjiuwen.agent.llm_agent.llm_controller import LLMController
 from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runtime.wrapper import TaskRuntime
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.utils.tool.base import Tool
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 
 
 def create_llm_agent_config(agent_id: str,
@@ -102,7 +101,7 @@ class LLMAgent(ControllerAgent):
 
     def __init__(self, agent_config: ReActAgentConfig):
         """Initialize LLMAgent
-        
+
         Args:
             agent_config: ReAct Agent configuration
         """
@@ -129,11 +128,11 @@ class LLMAgent(ControllerAgent):
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
         """Synchronous call - fully delegate to controller
-        
+
         Args:
             inputs: Input data, contains query and conversation_id
             runtime: Runtime instance (optional)
-            
+
         Returns:
             Execution result
         """
@@ -169,16 +168,11 @@ class LLMAgent(ControllerAgent):
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Own stream lifecycle
-        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
-            agent_runtime = await self._runtime.pre_run(session_id=session_id,
-                                                        stream_writer_manager=runtime.base().stream_writer_manager())
-            need_cleanup = False
-            own_stream = False  # External owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
-            
+
             # Sync agent's tools to external runtime
             # When external runtime is provided, agent's tools need to be registered
             if self._tools:
@@ -241,7 +235,7 @@ class LLMAgent(ControllerAgent):
             if self._memory_engine:
                 self._memory_engine.set_group_config(group_id, memory_config)
 
-    async def _write_messages_to_memory(self, inputs, result=None):
+    async def _write_messages_to_memory(self, inputs, result = None):
         user_id = inputs.get("user_id")
         group_id = inputs.get("group_id", "default_group_id")
 

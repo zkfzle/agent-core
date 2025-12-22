@@ -3,12 +3,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from typing import List, Any
-from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
-from openjiuwen.core.context_engine.engine import ContextEngine
-from openjiuwen.core.runtime.runtime import Runtime
+
+from openjiuwen.agent.config.base import AgentConfig
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.core.context_engine.engine import ContextEngine
+from openjiuwen.core.runtime.runtime import Runtime
+from openjiuwen.core.utils.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
 
 
 class MessageUtils:
@@ -33,8 +34,8 @@ class MessageUtils:
             return True
 
         if last_message.role == 'tool':
-            logger.info("post-tool-call request")
-            return True
+            logger.info("Skipping user message - post-tool-call request")
+            return False
 
         if last_message.role == 'user' and last_message.content == query:
             logger.info("Skipping duplicate user message")

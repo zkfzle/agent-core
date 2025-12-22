@@ -149,10 +149,18 @@ class StatusCode(Enum):
     # Multi-Agent Orchestration - Multi-Agent Runner 131000-131030
 
     # Runner 134000 - 134999
+    REMOTE_AGENT_REQUEST_TIMEOUT = (134001, "RemoteAgent {} request timeout")
     AGENT_NOT_FOUND = (134002, "Agent {} is not found")
     WORKFLOW_NOT_BOUND_TO_AGENT = (134003, "workflow not bound to agent")
     TOOL_NOT_BOUND_TO_AGENT = (134004, "tool not bound to agent")
     TOOL_NOT_FOUND = (134005, "Tool not found")
+    RUNNER_DISTRIBUTED_MODE_REQUIRED = (134006, "Runner must be initialized with distributed_mode enabled. message: {}")
+    RUNNER_STOPPED = (134007, "Runner not running: {}")
+    REMOTE_AGENT_REQUEST_CANCELLED = (134008, "Remote agent request cancelled: {}")
+    REMOTE_AGENT_PROCESS_ERROR = (134009, "Remote agent process error. code: {error_code}, message: {error_msg}")
+    # Runner Dmq 134100 - 134199
+    MESSAGE_QUEUE_NOT_RUNNING = (134101, "Message queue is not running: {}")
+    MESSAGE_QUEUE_INIT_ERROR = (134102, "Message queue init error: {}")
 
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999
@@ -175,6 +183,10 @@ class StatusCode(Enum):
     # Development Toolchain - Prompt Generation 160000 - 160999
     # Development Toolchain - Agent DL convertor 161000 - 161999
     # Development Toolchain - NL2Agent 162000 - 162999
+    NL2AGENT_WORKFLOW_INTENTION_DETECT_ERROR = (162000, "NL2Agent workflow intention detect error: {error_msg}")
+    NL2AGENT_WORKFLOW_STATE_ERROR = (162001, "NL2Agent workflow state error: {error_msg}")
+    NL2AGENT_WORKFLOW_DL_GENERATION_ERROR = (162002, "NL2Agent workflow dl generation error: {error_msg}")
+    NL2AGENT_LLM_AGENT_STATE_ERROR = (162010, "NL2Agent llm agent state error: {error_msg}")
 
     # Optimization Toolchain 170000 - 179999
     # Optimization Toolchain - Prompt Self-optimization 170000 - 170999
@@ -203,7 +215,6 @@ class StatusCode(Enum):
 
     # Common Capabilities - Model API 181000 - 181999
     MODEL_PROVIDER_INVALID_ERROR = (181000, "Invalid model provider, the reason is {error_msg}")
-    MODEL_CALL_FAILED = (181001, "Failed to call model, the reason is: {error_msg}")
     # Common Capabilities - Tool Definition and Execution 182000 - 182999
     PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
     PLUGIN_REQUEST_TIMEOUT_ERROR = (182001, "Plugin restful api request timed out")

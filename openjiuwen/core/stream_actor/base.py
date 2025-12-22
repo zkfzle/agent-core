@@ -145,7 +145,7 @@ class StreamProcessor:
         self._timeout = stream_generator_timeout if stream_generator_timeout > 0 else None
 
     async def run(self, ability: ComponentAbility):
-        logger.info(f"stream processor started for {self.node_id}, ability: [{ability.ability_name}]")
+        logger.info(f"stream processor started for {self.node_id}, ability: [{ability.name}]")
         handle_map = set()
         source_map: dict[ComponentAbility, set[str]] = defaultdict(set)
         while True:
@@ -173,7 +173,7 @@ class StreamProcessor:
                             await queue.put(value)
             if handle_map == self.sources:
                 break
-        logger.info(f"stream processor finished for {self.node_id}, ability: [{ability.ability_name}]")
+        logger.info(f"stream processor finished for {self.node_id}, ability: [{ability.name}]")
 
     @staticmethod
     async def is_value_from_source(path: str, source_id: str) -> bool:
@@ -182,7 +182,7 @@ class StreamProcessor:
     @staticmethod
     def _get_unique_source_key(payload: StreamPayload) -> str:
         source_id = _get_producer_id(payload.message)
-        ability = payload.source_ability.ability_name
+        ability = payload.source_ability.name
         return f"{source_id}-{ability}"
 
     async def receive(self, message: StreamPayload):

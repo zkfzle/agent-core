@@ -40,7 +40,7 @@ class RequestChatModel(BaseModelClient):
         Ensures the URL ends with /chat/completions.
 
         Args:
-            api_base: The original API base URL
+            api_base: The original API base URL.
 
         Returns:
             The normalized API base URL with /chat/completions suffix

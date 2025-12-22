@@ -33,7 +33,7 @@ fake_exception_module.JiuWenBaseException = Mock()
 sys.modules["openjiuwen.core.common.logging.base"] = fake_base
 sys.modules["openjiuwen.core.common.exception.base"] = fake_exception_module
 
-from tests.unit_tests.core.tracer.mock_node_with_tracer import StreamNodeWithTracer
+from tests.unit_tests.core.runtime.tracer.mock_node_with_tracer import StreamNodeWithTracer
 from openjiuwen.core.common.logging import logger
 
 from openjiuwen.core.runtime.workflow import WorkflowRuntime

@@ -1,0 +1,5 @@
+rerank_prompt_cn:
+  description: "template for reranker (Chinese)"
+
+rerank_prompt_en:
+  description: "template for reranker (English)"

@@ -1,0 +1,2 @@
+`#system#`根据提供的Query，判断Document是否与其相关。注意，答案只能是"{{yes}}"或"{{no}}"。
+`#user#`{{instruction}}<Query>: {{query}}\n\n<Document>: {{doc}}

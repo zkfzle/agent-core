@@ -1,0 +1,2 @@
+`#system#`Judge whether the Document is relevant to the Query. Note that the answer can only be "{{yes}}" or "{{no}}".
+`#user#`{{instruction}}<Query>: {{query}}\n\n<Document>: {{doc}}

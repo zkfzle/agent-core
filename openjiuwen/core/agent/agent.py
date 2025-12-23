@@ -58,7 +58,7 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
         if session_id is None:
             session_id = kwargs.get("trace_id")
         inputs = kwargs.get("inputs")
-        inner = await self._runtime.create_agent_runtime(session_id, inputs, kwargs.get("stream_writer_manager"))
+        inner = await self._runtime.create_agent_runtime(session_id, inputs)
         return TaskRuntime(inner=inner)
 
     def resource_mgr(self):
@@ -906,9 +906,6 @@ class ControllerAgent(BaseAgent):
         session_id = inputs.get("conversation_id", "default_session")
         if runtime is None:
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
-        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
-            agent_runtime = await self._runtime.pre_run(session_id=session_id,
-                                                        stream_writer_manager=runtime.base().stream_writer_manager())
         else:
             agent_runtime = runtime
 
@@ -950,11 +947,6 @@ class ControllerAgent(BaseAgent):
             agent_runtime = await self._runtime.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Owns stream lifecycle
-        elif isinstance(runtime, TaskRuntime) and runtime.is_from_group():
-            agent_runtime = await self._runtime.pre_run(session_id=session_id,
-                                                        stream_writer_manager=runtime.base().stream_writer_manager())
-            need_cleanup = False
-            own_stream = False  # External owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False
@@ -965,7 +957,20 @@ class ControllerAgent(BaseAgent):
             if self._tools:
                 tools_to_add = [(tool.name, tool) for tool in self._tools]
                 agent_runtime.add_tools(tools_to_add)
-
+            # Sync agent's workflows to external runtime
+            # When external runtime is provided, agent's workflows need to be registered
+            try:
+                agent_workflow_mgr = self._runtime.resource_mgr().workflow()
+                # Sync workflow instances
+                for workflow_id, workflow in agent_workflow_mgr._resources.items():
+                    agent_runtime.add_workflow(workflow_id, workflow)
+                    logger.debug(f"Synced workflow instance {workflow_id} to external runtime")
+                # Sync workflow providers
+                for workflow_id, provider in agent_workflow_mgr._providers.items():
+                    agent_runtime.add_workflow(workflow_id, provider)
+                    logger.debug(f"Synced workflow provider {workflow_id} to external runtime")
+            except Exception as e:
+                logger.warning(f"Failed to sync workflows to external runtime: {e}")
         # Store final result for send_to_agent
         final_result_holder = {"result": None}
 

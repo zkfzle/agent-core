@@ -7,9 +7,9 @@ from typing import Any, Union, List, Dict, AsyncIterator
 import pytest
 from unittest.mock import Mock
 
-from openjiuwen.agent.common.enum import ControllerType
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.common.constants.enums import ControllerType
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
@@ -321,7 +321,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from openjiuwen.agent.workflow_agent import WorkflowAgent
+        from examples.agents_for_studio.workflow_agent import WorkflowAgent
         workflow_id = flow.config().metadata.id
         workflow_name = flow.config().metadata.name
         workflow_version = flow.config().metadata.version
@@ -335,7 +335,7 @@ class TestLLMExecutableInvokeNew:
         config = WorkflowAgentConfig(
             id="write_poem_agent",
             version="0.1.0",
-            description="写诗 agent",
+            description="写诗 single_agent",
             workflows=[schema],
             controller_type=ControllerType.WorkflowController,
         )
@@ -608,7 +608,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from openjiuwen.agent.workflow_agent import WorkflowAgent
+        from examples.agents_for_studio.workflow_agent import WorkflowAgent
         workflow_id = flow.config().metadata.id
         workflow_name = flow.config().metadata.name
         workflow_version = flow.config().metadata.version
@@ -622,7 +622,7 @@ class TestLLMExecutableInvokeNew:
         config = WorkflowAgentConfig(
             id="write_poem_agent",
             version="0.1.0",
-            description="写诗 agent",
+            description="写诗 single_agent",
             workflows=[schema],
             controller_type=ControllerType.WorkflowController,
         )
@@ -631,4 +631,4 @@ class TestLLMExecutableInvokeNew:
         agent.bind_workflows([flow])
 
         result = await agent.invoke({"query": "please write a 3-line poem", "conversation_id": "c123"})
-        print(f"agent invoke result >>> {result}")
+        print(f"single_agent invoke result >>> {result}")

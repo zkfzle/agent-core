@@ -11,8 +11,8 @@ import unittest
 from datetime import datetime
 from typing import Dict, AsyncIterator, Any
 
-from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.agent import BaseAgent
+from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.agent_group import AgentGroupConfig
 from openjiuwen.core.agent_group.agent_group import BaseGroup, AgentGroupRuntime
 from openjiuwen.core.session.runtime import Runtime
@@ -101,7 +101,7 @@ class AgentGroupTest(unittest.IsolatedAsyncioTestCase):
         """Test Case for AgentGroup"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
-        # create agent group config
+        # create single_agent group config
         agent_group_config = AgentGroupConfig(
             group_id="test_agent_group_id",
             max_agents=10,

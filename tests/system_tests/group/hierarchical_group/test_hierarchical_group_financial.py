@@ -5,8 +5,8 @@
 HierarchicalGroup 金融场景测试 - 使用 HierarchicalMainController + WorkflowAgent
 
 场景：
-- 1个主 agent（使用 HierarchicalMainController 进行意图识别和任务分发）
-- 3个子 workflow agent：转账、查余额、理财
+- 1个主 single_agent（使用 HierarchicalMainController 进行意图识别和任务分发）
+- 3个子 workflow single_agent：转账、查余额、理财
 - 每个 workflow 都有 QuestionerComponent 中断节点
 """
 import asyncio
@@ -14,16 +14,16 @@ import os
 import unittest
 from unittest.mock import patch
 
-from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.single_agent.config import AgentConfig
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from examples.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.agent_group.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
 from openjiuwen.agent_group.hierarchical_group.agents.main_controller import HierarchicalMainController
-from openjiuwen.core.agent.agent import ControllerAgent
-from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.single_agent.agent import ControllerAgent
+from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.workflow.component.base import WorkflowComponent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
@@ -282,8 +282,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             LLMAgent 实例
         """
-        from openjiuwen.agent.llm_agent.llm_agent import LLMAgent
-        from openjiuwen.agent.config.react_config import ReActAgentConfig
+        from examples.agents_for_studio.llm_agent import LLMAgent
+        from examples.agents_for_studio.llm_agent import ReActAgentConfig
         from openjiuwen.core.utils.tool.function.function import LocalFunction
         from openjiuwen.core.utils.tool.param import Param
 
@@ -327,8 +327,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             ReActAgent 实例
         """
-        from openjiuwen.agent.react_agent.react_agent import ReActAgent
-        from openjiuwen.agent.config.react_config import ReActAgentConfig
+        from openjiuwen.core.single_agent.agents import ReActAgent
+        from examples.agents_for_studio.llm_agent import ReActAgentConfig
         from openjiuwen.core.utils.tool.function.function import LocalFunction
         from openjiuwen.core.utils.tool.param import Param
 
@@ -367,9 +367,9 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         金融场景完整用例：HierarchicalGroup + 工作流中断恢复
 
         测试流程：
-        1. 创建 HierarchicalGroup，主 agent 使用 HierarchicalMainController
+        1. 创建 HierarchicalGroup，主 single_agent 使用 HierarchicalMainController
         2. 添加 3 个金融 WorkflowAgent（每个都有中断节点）
-        3. 发送转账请求 -> 路由到转账 agent -> 触发中断（询问金额）
+        3. 发送转账请求 -> 路由到转账 single_agent -> 触发中断（询问金额）
         4. 提供金额 -> 恢复工作流 -> 完成
         """
         print("\n=== 金融场景 HierarchicalGroup 测试 ===")
@@ -425,7 +425,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         )
         hierarchical_group = HierarchicalGroup(config)
 
-        # 4. 创建主 agent（HierarchicalMainController）
+        # 4. 创建主 single_agent（HierarchicalMainController）
         main_config = AgentConfig(
             id="main_controller",
             description="金融服务主控制器，识别用户意图并分发任务"
@@ -433,7 +433,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         main_controller = HierarchicalMainController()
         main_agent = ControllerAgent(main_config, controller=main_controller)
 
-        # 5. 添加所有 agent 到 group
+        # 5. 添加所有 single_agent 到 group
         hierarchical_group.add_agent("main_controller", main_agent)
         hierarchical_group.add_agent("transfer_agent", transfer_agent)
         hierarchical_group.add_agent("balance_agent", balance_agent)
@@ -443,7 +443,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤1: 发送转账请求 -> 中断 ==========
         # 不指定 receiver_id，让消息自动路由到 leader
-        # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 agent
+        # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 single_agent
         print("\n【步骤1】发送转账请求")
         message1 = Message.create_user_message(
             content="我要转账",
@@ -471,13 +471,13 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 步骤1成功：转账工作流触发中断，询问金额")
 
         # ========== 步骤2: 提供金额 -> 恢复 -> 完成 ==========
-        # 不指定 receiver_id，leader 会自动检测到有中断的 agent 并恢复
+        # 不指定 receiver_id，leader 会自动检测到有中断的 single_agent 并恢复
         print("\n【步骤2】提供转账金额")
         message2 = Message.create_user_message(
             content="100元",
             conversation_id=conversation_id
         )
-        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 agent
+        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 single_agent
 
         try:
             result2 = await asyncio.wait_for(
@@ -509,7 +509,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         金融场景 Stream 用例：HierarchicalGroup.stream + 工作流中断恢复
 
         测试流程：
-        1. 创建 HierarchicalGroup，主 agent 使用 HierarchicalMainController
+        1. 创建 HierarchicalGroup，主 single_agent 使用 HierarchicalMainController
         2. 添加 3 个金融 WorkflowAgent（每个都有中断节点）
         3. 使用 stream() 发送转账请求 -> 触发中断
         4. 使用 stream() 提供金额 -> 恢复工作流 -> 完成
@@ -567,7 +567,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         )
         hierarchical_group = HierarchicalGroup(config)
 
-        # 4. 创建主 agent（HierarchicalMainController）
+        # 4. 创建主 single_agent（HierarchicalMainController）
         main_config = AgentConfig(
             id="main_controller",
             description="金融服务主控制器，识别用户意图并分发任务"
@@ -575,7 +575,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         main_controller = HierarchicalMainController()
         main_agent = ControllerAgent(main_config, controller=main_controller)
 
-        # 5. 添加所有 agent 到 group
+        # 5. 添加所有 single_agent 到 group
         hierarchical_group.add_agent("main_controller", main_agent)
         hierarchical_group.add_agent("transfer_agent", transfer_agent)
         hierarchical_group.add_agent("balance_agent", balance_agent)
@@ -617,13 +617,13 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 步骤1成功：转账工作流触发中断，询问金额")
 
         # ========== 步骤2: 使用 stream 提供金额 -> 恢复 -> 完成 ==========
-        # 不指定 receiver_id，leader 会自动检测到有中断的 agent 并恢复
+        # 不指定 receiver_id，leader 会自动检测到有中断的 single_agent 并恢复
         print("\n【步骤2】使用 stream 提供转账金额")
         message2 = Message.create_user_message(
             content="200元",
             conversation_id=conversation_id
         )
-        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 agent
+        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 single_agent
 
         # 收集流式输出
         chunks2 = []
@@ -728,7 +728,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         )
         hierarchical_group = HierarchicalGroup(config)
 
-        # 4. 创建主 agent（HierarchicalMainController）
+        # 4. 创建主 single_agent（HierarchicalMainController）
         main_config = AgentConfig(
             id="main_controller",
             description="金融服务主控制器，识别用户意图并分发任务",
@@ -737,7 +737,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         main_controller = HierarchicalMainController()
         main_agent = ControllerAgent(main_config, controller=main_controller)
 
-        # 5. 添加所有 agent 到 group
+        # 5. 添加所有 single_agent 到 group
         hierarchical_group.add_agent("main_controller", main_agent)
         hierarchical_group.add_agent("transfer_agent", transfer_agent)
         hierarchical_group.add_agent("balance_agent", balance_agent)
@@ -887,8 +887,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         不指定路由，由leader_agent做意图识别
 
         测试流程：
-        1. 创建多种类型的 agent（workflow agent、llm agent、react agent）
-        2. 创建 HierarchicalGroup，主 agent 使用 HierarchicalMainController
+        1. 创建多种类型的 single_agent（workflow single_agent、llm single_agent、react single_agent）
+        2. 创建 HierarchicalGroup，主 single_agent 使用 HierarchicalMainController
         3. 不指定路由，由 leader_agent 做意图识别并分发任务
         """
         print("\n=== 测试 HierarchicalMainController 意图识别 ===")
@@ -909,7 +909,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             questioner_type="weather"
         )
 
-        # 2、创建 agent
+        # 2、创建 single_agent
         cash_access_agent = self._create_workflow_agent(
             agent_id="cash_access_agent",
             description="银行存取钱，处理用户在指定银行进行存取钱操作",
@@ -958,7 +958,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         #     conversation_id=conversation_id
         # )
         # result = await group.invoke(message1)
-        # print(f"agent group result: {result}")
+        # print(f"single_agent group result: {result}")
         # self.assertEqual(
         #     result["output"].result,
         #     {'output': {'data': {'bank': '民生银行', 'action': '存钱', 'amount': 5000}}}
@@ -970,7 +970,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         #     conversation_id=conversation_id
         # )
         # result = await group.invoke(message2)
-        # print(f"agent group result: {result}")
+        # print(f"single_agent group result: {result}")
         # self.assertEqual(
         #     result["output"].result,
         #     {'output': {'data': {'location': '杭州', 'date': '明日', 'weather': '晴', 'temperature': '25度'}}}
@@ -1220,9 +1220,9 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         金融场景完整用例：HierarchicalGroup + 工作流中断恢复
 
         测试流程：
-        1. 创建 HierarchicalGroup，主 agent 使用 HierarchicalMainController
+        1. 创建 HierarchicalGroup，主 single_agent 使用 HierarchicalMainController
         2. 添加 2 个金融 WorkflowAgent（每个都有中断节点）
-        3. 发送转账请求 -> 路由到转账 agent -> 触发中断（询问金额）
+        3. 发送转账请求 -> 路由到转账 single_agent -> 触发中断（询问金额）
         4. 提供金额 -> 恢复工作流 -> 完成
         """
         print("\n=== 金融场景 HierarchicalGroup 测试 ===")
@@ -1264,7 +1264,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         )
         hierarchical_group = HierarchicalGroup(config)
 
-        # 4. 创建主 agent（HierarchicalMainController）
+        # 4. 创建主 single_agent（HierarchicalMainController）
         main_config = AgentConfig(
             id="main_controller",
             description="金融服务主控制器，识别用户意图并分发任务"
@@ -1272,7 +1272,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         main_controller = HierarchicalMainController()
         main_agent = ControllerAgent(main_config, controller=main_controller)
 
-        # 5. 添加所有 agent 到 group
+        # 5. 添加所有 single_agent 到 group
         hierarchical_group.add_agent("main_controller", main_agent)
         hierarchical_group.add_agent("transfer_agent", transfer_agent)
         hierarchical_group.add_agent("balance_agent", balance_agent)
@@ -1281,7 +1281,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤1: 发送转账请求 -> 中断 ==========
         # 不指定 receiver_id，让消息自动路由到 leader
-        # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 agent
+        # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 single_agent
         print("\n【步骤1】发送转账请求")
         message1 = Message.create_user_message(
             content="我要转账",
@@ -1309,7 +1309,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 步骤1成功：转账工作流触发中断，询问金额")
 
         # ========== 步骤2: 提供金额 -> 恢复 -> 完成 ==========
-        # 不指定 receiver_id，leader 会自动检测到有中断的 agent 并恢复
+        # 不指定 receiver_id，leader 会自动检测到有中断的 single_agent 并恢复
         print("\n【步骤2】提供转账金额")
         user_input = InteractiveInput()
         component_id = result1[0].payload.id
@@ -1318,7 +1318,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             content=user_input,
             conversation_id=conversation_id
         )
-        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 agent
+        # 不设置 receiver_id，leader 会通过 _get_last_interrupted_agent 恢复到中断的 single_agent
 
         try:
             result2 = await asyncio.wait_for(
@@ -1358,7 +1358,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # 3、将3个Agent、1个leader_agent加入group
         # 4、Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput恢复，通过主agent调度workflowAgent
         # @Result:
-        # agent group创建成功，会话请求正常
+        # single_agent group创建成功，会话请求正常
         # @Date:
         # @Status: New
         # @ModifyRecord: None
@@ -1430,7 +1430,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         stream1 = Runner.run_agent_group_streaming(group, message1)
         async for chunk in stream1:
             chunks1.append(chunk)
-            print(f"agent group message1 chunk: {chunk}")
+            print(f"single_agent group message1 chunk: {chunk}")
 
         # 收集所有中断
         interaction_chunks = []
@@ -1472,7 +1472,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         stream2 = Runner.run_agent_group_streaming(group, message2)
         async for chunk in stream2:
             chunks2.append(chunk)
-            print(f"agent group message2 chunk: {chunk}")
+            print(f"single_agent group message2 chunk: {chunk}")
 
         # 验证workflow完成
         final_chunk = None

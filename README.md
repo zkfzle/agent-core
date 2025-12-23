@@ -42,9 +42,9 @@ from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.utils.llm.base import BaseModelInfo
-from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.common.schema import WorkflowSchema
+from examples.agents_for_studio.workflow_agent import WorkflowAgent
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 
 # TODO：请提供用户的大模型配置信息
 os.environ.setdefault("API_BASE", "your_api_base")

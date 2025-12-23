@@ -6,11 +6,11 @@ import os
 
 import pytest
 
-from openjiuwen.agent.common.enum import ControllerType
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.react_agent import ReActAgent, create_react_agent_config
-from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.common.constants.enums import ControllerType
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.agents import ReActAgent, create_react_agent_config
+from examples.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.runner import Runner, resource_mgr
@@ -57,8 +57,8 @@ class TestAdapterTest:
         Runner.set_config(DEFAULT_RUNNER_CONFIG)
 
     async def _create_and_register_agent(self, agent_id, agent_version="0.0.1"):
-        """Create and register a React agent with common configuration"""
-        # Create agent configuration
+        """Create and register a React single_agent with common configuration"""
+        # Create single_agent configuration
         react_agent_config = create_react_agent_config(
             agent_id=agent_id,
             agent_version=agent_version,
@@ -67,10 +67,10 @@ class TestAdapterTest:
             prompt_template=[]
         )
 
-        # Create agent instance
+        # Create single_agent instance
         react_agent: ReActAgent = ReActAgent(react_agent_config)
 
-        # Register agent with runner
+        # Register single_agent with runner
         Runner.add_agent(agent_id, react_agent)
         return react_agent
 
@@ -89,25 +89,25 @@ class TestAdapterTest:
         )
 
     async def test_adapter_invoke(self):
-        """Test that adapter using real agent outputs correctly"""
+        """Test that adapter using real single_agent outputs correctly"""
 
         await Runner.start()
 
         try:
-            agent = await self._create_and_register_agent("weather-agent")
-            client = RemoteAgent(agent_id="weather-agent")
+            agent = await self._create_and_register_agent("weather-single_agent")
+            client = RemoteAgent(agent_id="weather-single_agent")
             result = await client.invoke({"query": "你好"})
             assert result["output"] is not None
         finally:
             await Runner.stop()
 
     async def test_adapter_stream(self):
-        """Test that adapter using real agent streams correctly"""
+        """Test that adapter using real single_agent streams correctly"""
         await Runner.start()
 
         try:
-            react_agent = await self._create_and_register_agent("weather-agent-stream")
-            client = RemoteAgent(agent_id="weather-agent-stream")
+            react_agent = await self._create_and_register_agent("weather-single_agent-stream")
+            client = RemoteAgent(agent_id="weather-single_agent-stream")
             chunks = []
             async for chunk in client.stream({"query": "你好"}):
                 print(f"Stream chunk received: {chunk}")
@@ -165,18 +165,18 @@ class TestAdapterTest:
             agent = WorkflowAgent(workflow_config)
             agent.bind_workflows([workflow1])
             resource_mgr.workflow().add_workflow(id + "_" + version, workflow1)
-            Runner.add_agent("workflow-agent", agent)
+            Runner.add_agent("workflow-single_agent", agent)
             # Simulate client sending request
-            client = RemoteAgent(agent_id="workflow-agent")
-            Runner.add_agent(agent_id="remote-workflow-agent", agent=client)
-            response = await Runner.run_agent("remote-workflow-agent", {"query": "London"})
+            client = RemoteAgent(agent_id="workflow-single_agent")
+            Runner.add_agent(agent_id="remote-workflow-single_agent", agent=client)
+            response = await Runner.run_agent("remote-workflow-single_agent", {"query": "London"})
             print(f"response: {response}")
             assert response['result_type'] == 'answer'
             assert response['output'].result == {'result': 'London'}
             assert response['output'].state.name == 'COMPLETED'
 
         finally:
-            Runner.remove_agent("remote-workflow-agent")
-            Runner.remove_agent("workflow-agent")
+            Runner.remove_agent("remote-workflow-single_agent")
+            Runner.remove_agent("workflow-single_agent")
 
             await Runner.stop()

@@ -5,8 +5,8 @@
 
 from typing import TYPE_CHECKING, Any
 
-from openjiuwen.core.agent.controller.group_controller import BaseGroupController
-from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.controller.group_controller import BaseGroupController
+from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -19,14 +19,14 @@ class HierarchicalGroupController(BaseGroupController):
     """HierarchicalGroup Controller - Simple Leader-Worker routing
     
     Design philosophy (Linus style):
-    - Zero special cases: Leader is just another agent in the dict
+    - Zero special cases: Leader is just another single_agent in the dict
     - Simple 3-line routing logic
     - Support both default routing (to leader) and subscription-based routing
     
     Routing logic:
-    1. If receiver_id specified → Send to that agent (point-to-point)
+    1. If receiver_id specified → Send to that single_agent (point-to-point)
     2. If message_type has subscribers → Publish to subscribers (broadcast)
-    3. Otherwise → Send to leader agent (default behavior)
+    3. Otherwise → Send to leader single_agent (default behavior)
     
     This design:
     - Preserves HierarchicalGroup's default behavior (route to leader)
@@ -38,7 +38,7 @@ class HierarchicalGroupController(BaseGroupController):
         """Initialize HierarchicalGroupController
         
         Args:
-            leader_agent_id: Leader agent ID (required)
+            leader_agent_id: Leader single_agent ID (required)
             agent_group: Associated AgentGroup (optional, injected via setup)
         """
         super().__init__(agent_group)
@@ -56,7 +56,7 @@ class HierarchicalGroupController(BaseGroupController):
         """Handle message - Route based on simple rules
         
         3-line routing logic:
-        1. Explicit receiver → Send to that agent
+        1. Explicit receiver → Send to that single_agent
         2. Message type with subscribers → Publish to subscribers
         3. Default → Send to leader
         
@@ -96,7 +96,7 @@ class HierarchicalGroupController(BaseGroupController):
             raise JiuWenBaseException(
                 StatusCode.AGENT_GROUP_CREATE_FAILED.code,
                 StatusCode.AGENT_GROUP_CREATE_FAILED.errmsg.format(
-                    reason=f"Leader agent '{self.leader_agent_id}' not found in group. "
+                    reason=f"Leader single_agent '{self.leader_agent_id}' not found in group. "
                            f"Available agents: {list(self.agent_group.agents.keys())}"
                 )
             )

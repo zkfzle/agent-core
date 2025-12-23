@@ -5,8 +5,8 @@ import os
 import unittest
 import asyncio
 
-from openjiuwen.agent.chat_agent import create_chat_agent_config, create_chat_agent
-from openjiuwen.agent.config.base import LLMCallConfig
+from examples.agents_for_studio.chat_agent import create_chat_agent_config, create_chat_agent
+from openjiuwen.core.single_agent.config import LLMCallConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool.function.function import LocalFunction, Param
 
@@ -154,7 +154,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
                   f"answer: {eval_result.answer}, label: {eval_result.case.label}")
 
     def create_agent(self, prompt: str, tools=None):
-        # 0. define a chat agent
+        # 0. define a chat single_agent
         config = create_chat_agent_config(
             agent_id='chat_agent',
             agent_version='1.0.0',

@@ -31,11 +31,11 @@ class DistributedConfig:
     request_timeout: float = 30.0
     max_request_concurrency: int = 10000
     message_queue_config: MessageQueueConfig = field(default_factory=MessageQueueConfig)
-    agent_topic_template = "openjiuwen.agent.{agent_id}.{version}"
+    agent_topic_template = "openjiuwen.single_agent.{agent_id}.{version}"
     reply_topic_template = "openjiuwen.reply.runner.{instance_id}"
 
     def get_agent_topic_template(self, env_prefix: str = "") -> str:
-        """Get agent topic template with environment prefix"""
+        """Get single_agent topic template with environment prefix"""
         if env_prefix:
             return f"{env_prefix}.{self.agent_topic_template}"
         return self.agent_topic_template
@@ -56,7 +56,7 @@ class RunnerConfig:
     instance_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
     def agent_topic_template(self) -> str:
-        """Get agent topic template with environment prefix"""
+        """Get single_agent topic template with environment prefix"""
         return self.distributed_config.get_agent_topic_template(self.env_prefix)
 
     def reply_topic_template(self) -> str:

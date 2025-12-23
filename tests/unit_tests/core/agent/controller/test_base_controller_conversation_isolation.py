@@ -8,9 +8,9 @@ import unittest
 from typing import Dict, Optional
 from unittest.mock import MagicMock
 
-from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.controller.controller import BaseController
-from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.controller.controller import BaseController
+from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.runtime import Runtime
 

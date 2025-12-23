@@ -2,7 +2,7 @@
 使用 Mock 大模型测试 ReAct Agent 功能（不使用 Runner）
 
 本测试用例通过模拟大模型返回来提升测试速度和稳定性。
-直接调用 agent.invoke() 方法，不依赖 Runner。
+直接调用 single_agent.invoke() 方法，不依赖 Runner。
 
 ## 测试场景
 
@@ -16,7 +16,7 @@
 - 使用 `MockLLMModel` 类继承 `BaseChatModel`，实现所有必要的方法
 - 预定义 2 次 LLM 调用的返回值（按调用顺序）
 - 通过 `patch` ModelFactory.get_model 来注入 mock 实例
-- 直接调用 agent.invoke()，不使用 Runner
+- 直接调用 single_agent.invoke()，不使用 Runner
 
 ## 优势
 
@@ -33,7 +33,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.agent.react_agent.react_agent import create_react_agent_config, ReActAgent
+from openjiuwen.core.single_agent.agents import create_react_agent_config, ReActAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
@@ -220,7 +220,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
             react_agent: ReActAgent = ReActAgent(react_agent_config)
             react_agent.add_tools([add_tool])
             
-            # ==================== 直接调用 agent.invoke() ====================
+            # ==================== 直接调用 single_agent.invoke() ====================
             result = await react_agent.invoke(
                 {"conversation_id": "test_session", "query": "计算1+2"}
             )

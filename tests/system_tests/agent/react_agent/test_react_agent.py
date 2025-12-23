@@ -9,8 +9,8 @@ import os
 import unittest
 from datetime import datetime
 
-from openjiuwen.agent.react_agent.react_agent import ReActAgent
-from openjiuwen.agent.config.react_config import ReActAgentConfig
+from openjiuwen.core.single_agent.agents import ReActAgent
+from examples.agents_for_studio.llm_agent import ReActAgentConfig
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool.function.function import LocalFunction
@@ -109,7 +109,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
 
-        # 1. 创建最小化配置的 agent（Linus 风格：只传必要参数）
+        # 1. 创建最小化配置的 single_agent（Linus 风格：只传必要参数）
         react_agent_config = ReActAgentConfig(
             id="react_agent_123",
             version="0.0.1",
@@ -142,7 +142,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
 
-        # 1. 创建最小化配置的 agent
+        # 1. 创建最小化配置的 single_agent
         react_agent_config = ReActAgentConfig(
             id="react_agent_stream",
             version="0.0.1",
@@ -175,7 +175,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
 
-        # 1. 创建最小化配置的 agent
+        # 1. 创建最小化配置的 single_agent
         react_agent_config = ReActAgentConfig(
             id="react_agent_no_runtime",
             version="0.0.1",
@@ -235,7 +235,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         """测试使用tool注解装饰的函数作为工具（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
-        # 1. 创建最小化配置的 agent（Linus 风格：只传必要参数）
+        # 1. 创建最小化配置的 single_agent（Linus 风格：只传必要参数）
         react_agent_config = ReActAgentConfig(
             id="react_agent_1235",
             version="0.0.3",
@@ -265,7 +265,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         """测试使用tool注解装饰的函数作为工具（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
-        # 1. 创建最小化配置的 agent（Linus 风格：只传必要参数）
+        # 1. 创建最小化配置的 single_agent（Linus 风格：只传必要参数）
         react_agent_config = ReActAgentConfig(
             id="react_agent_1235",
             version="0.0.3",

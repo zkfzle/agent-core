@@ -22,11 +22,11 @@ from datetime import datetime
 import unittest
 from unittest.mock import patch, AsyncMock
 
-from openjiuwen.agent.config.workflow_config import (
+from examples.agents_for_studio.workflow_agent.workflow_config import (
     WorkflowAgentConfig,
     DefaultResponse
 )
-from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from examples.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.llm_comp import LLMComponent, LLMCompConfig
@@ -511,7 +511,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 
-        # 创建 agent
+        # 创建 single_agent
         config = WorkflowAgentConfig(
             id="test_real_time_interrupt_agent",
             version="0.1.0",
@@ -698,7 +698,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             response_mode=None  # 批输出模式
         )
 
-        # 创建 agent
+        # 创建 single_agent
         config = WorkflowAgentConfig(
             id="test_batch_output_agent",
             version="0.1.0",
@@ -785,7 +785,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             response_mode="streaming"  # 流输出模式
         )
 
-        # 创建 agent
+        # 创建 single_agent
         config = WorkflowAgentConfig(
             id="test_stream_output_agent",
             version="0.1.0",
@@ -1235,11 +1235,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("\n✅ 测试通过：多工作流场景下根据 node_id 精确恢复正确！")
 
     @patch(
-        "openjiuwen.agent.workflow_agent.workflow_controller."
+        "openjiuwen.single_agent.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
-        "openjiuwen.core.agent.controller.reasoner.agent_reasoner."
+        "openjiuwen.core.single_agent.controller.reasoner.agent_reasoner."
         "AgentReasoner.use_intent_detection"
     )
     async def test_default_response_when_no_task_detected(
@@ -1335,11 +1335,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 测试通过：意图识别失败时正确返回默认响应: {default_text}")
 
     @patch(
-        "openjiuwen.agent.workflow_agent.workflow_controller."
+        "openjiuwen.single_agent.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
-        "openjiuwen.core.agent.controller.reasoner.agent_reasoner."
+        "openjiuwen.core.single_agent.controller.reasoner.agent_reasoner."
         "AgentReasoner.use_intent_detection"
     )
     async def test_fallback_to_first_workflow_when_no_default_response(
@@ -1434,11 +1434,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("✅ 测试通过：未配置默认响应时正确回退到第一个工作流")
 
     @patch(
-        "openjiuwen.agent.workflow_agent.workflow_controller."
+        "openjiuwen.single_agent.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
-        "openjiuwen.core.agent.controller.reasoner.agent_reasoner."
+        "openjiuwen.core.single_agent.controller.reasoner.agent_reasoner."
         "AgentReasoner.use_intent_detection"
     )
     async def test_default_response_stream_returns_workflow_final(

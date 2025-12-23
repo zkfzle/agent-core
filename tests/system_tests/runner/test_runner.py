@@ -7,8 +7,8 @@ from unittest.mock import patch, AsyncMock
 
 from mcp import StdioServerParameters
 
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
@@ -200,7 +200,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。"""
-        from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+        from examples.agents_for_studio.workflow_agent import WorkflowAgent
         workflow_id = workflow.config().metadata.id
         workflow_name = workflow.config().metadata.name
         workflow_version = workflow.config().metadata.version
@@ -208,7 +208,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         config = WorkflowAgentConfig(
             id="test_weather_agent",
             version="0.1.0",
-            description="测试用天气 agent",
+            description="测试用天气 single_agent",
             workflows=[schema],
         )
         agent = WorkflowAgent(config)
@@ -472,7 +472,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             ),
         ]
         mock_tool_result = "score: 0.85, decision: ACCEPT, review: actions verified"
-        test_inputs = {"history": "agent navigated to example.com and extracted title"}
+        test_inputs = {"history": "single_agent navigated to example.com and extracted title"}
 
         # -------------------- mock 配置 --------------------
         with patch("openjiuwen.core.foundation.tool.mcp.base.StdioClient.connect", AsyncMock(return_value=True)), \

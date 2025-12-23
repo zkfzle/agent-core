@@ -18,7 +18,7 @@ os.environ["RESTFUL_SSL_VERIFY"] = "false"
 import unittest
 from typing import Any, Dict, AsyncIterator
 
-from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.agent_group.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
@@ -26,8 +26,8 @@ from openjiuwen.agent_group.hierarchical_group import (
 from openjiuwen.agent_group.hierarchical_group.agents.main_controller import (
     HierarchicalMainController
 )
-from openjiuwen.core.agent.agent import BaseAgent, ControllerAgent
-from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.single_agent.agent import BaseAgent, ControllerAgent
+from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.stream.base import OutputSchema

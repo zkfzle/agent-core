@@ -12,15 +12,15 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class HierarchicalGroup(ControllerGroup):
-    """Hierarchical Group - Leader-Worker pattern for multi-agent coordination
+    """Hierarchical Group - Leader-Worker pattern for multi-single_agent coordination
     
     Architecture:
-    - One leader agent: receives external messages, coordinates workers
+    - One leader single_agent: receives external messages, coordinates workers
     - Multiple worker agents: execute tasks assigned by leader
     - Message flow: External → Leader → Workers → Leader → External
     
     Design principles (Linus style):
-    - Leader is just an agent in agents dict, no special status
+    - Leader is just an single_agent in agents dict, no special status
     - Simple routing: external messages → leader, leader decides rest
     - Zero complexity: HierarchicalGroupController handles all routing
     
@@ -35,7 +35,7 @@ class HierarchicalGroup(ControllerGroup):
         # 2. Create group
         hierarchical_group = HierarchicalGroup(config)
         
-        # 3. Add leader agent
+        # 3. Add leader single_agent
         hierarchical_group.add_agent("leader_001", leader_agent)
         
         # 4. Add worker agents
@@ -80,29 +80,29 @@ class HierarchicalGroup(ControllerGroup):
         )
     
     def add_agent(self, agent_id: str, agent) -> None:
-        """Add agent to group
+        """Add single_agent to group
         
         Args:
             agent_id: Agent identifier
             agent: Agent instance
         
         Note:
-            Leader agent must be added first before processing messages.
-            Leader is treated the same as any other agent in the group.
+            Leader single_agent must be added first before processing messages.
+            Leader is treated the same as any other single_agent in the group.
         """
         super().add_agent(agent_id, agent)
         
         # Log if this is the leader
         if agent_id == self.leader_agent_id:
             logger.info(
-                f"HierarchicalGroup: Leader agent added (agent_id={agent_id})"
+                f"HierarchicalGroup: Leader single_agent added (agent_id={agent_id})"
             )
     
     def get_leader_agent(self):
-        """Get leader agent instance
+        """Get leader single_agent instance
         
         Returns:
-            Leader agent instance or None if not found
+            Leader single_agent instance or None if not found
         """
         return self.agents.get(self.leader_agent_id)
     
@@ -110,10 +110,10 @@ class HierarchicalGroup(ControllerGroup):
         """Get agents in this group
         
         Args:
-            exclude_leader: If True, exclude leader agent from result
+            exclude_leader: If True, exclude leader single_agent from result
         
         Returns:
-            Dict of agents {agent_id: agent}
+            Dict of agents {agent_id: single_agent}
         """
         if exclude_leader:
             return {
@@ -127,7 +127,7 @@ class HierarchicalGroup(ControllerGroup):
         """Get all worker agents (excluding leader)
         
         Returns:
-            Dict of worker agents {agent_id: agent}
+            Dict of worker agents {agent_id: single_agent}
         """
         return self.get_agents(exclude_leader=True)
 

@@ -6,9 +6,9 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from openjiuwen.agent.common.schema import PluginSchema
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
+from openjiuwen.core.single_agent.schema.schema import PluginSchema
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from examples.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig

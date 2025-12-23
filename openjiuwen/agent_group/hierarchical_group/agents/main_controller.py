@@ -6,11 +6,11 @@
 import time
 from typing import Optional
 
-from openjiuwen.core.agent.controller.controller import BaseController
-from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
-from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
-from openjiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
-from openjiuwen.core.agent.message.message import Message
+from openjiuwen.core.controller.controller import BaseController
+from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
+from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
+from openjiuwen.core.controller.reasoner import IntentDetection
+from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -22,7 +22,7 @@ class HierarchicalMainController(BaseController):
     
     Capabilities:
     1. Auto-discover other agents in the group
-    2. LLM-based intent detection (using agent description)
+    2. LLM-based intent detection (using single_agent description)
     3. State-based interruption recovery
     4. Task dispatch via BaseController.send_to_agent
     
@@ -151,10 +151,10 @@ class HierarchicalMainController(BaseController):
         """Process message: intent detection -> interruption check -> dispatch
         
         Logic:
-        1. If message content is InteractiveInput, skip intent detection and resume last interrupted agent
+        1. If message content is InteractiveInput, skip intent detection and resume last interrupted single_agent
         2. Otherwise, detect intent first
-        3. If intent matches an interrupted agent, resume it
-        4. If intent points to a different agent, route to that agent
+        3. If intent matches an interrupted single_agent, resume it
+        4. If intent points to a different single_agent, route to that single_agent
         """
         self._ensure_reasoner_initialized(runtime)
         
@@ -165,18 +165,18 @@ class HierarchicalMainController(BaseController):
         )
         
         if is_interactive_input:
-            # Skip intent detection for InteractiveInput, directly resume last interrupted agent
+            # Skip intent detection for InteractiveInput, directly resume last interrupted single_agent
             target_id = self._get_last_interrupted_agent(runtime)
             if target_id:
                 logger.info(
                     f"HierarchicalMainController: InteractiveInput detected, "
-                    f"resume last interrupted agent -> {target_id}"
+                    f"resume last interrupted single_agent -> {target_id}"
                 )
                 return await self._dispatch(target_id, message, runtime)
             else:
                 logger.warning(
                     "HierarchicalMainController: InteractiveInput detected but no "
-                    "interrupted agent found, falling back to intent detection"
+                    "interrupted single_agent found, falling back to intent detection"
                 )
         
         # Normal flow: detect intent first
@@ -186,7 +186,7 @@ class HierarchicalMainController(BaseController):
         return await self._dispatch(target_id, message, runtime)
     
     async def _dispatch(self, agent_id: str, message: Message, runtime) -> dict:
-        """Dispatch task to target agent"""
+        """Dispatch task to target single_agent"""
         logger.info(f"HierarchicalMainController: Dispatch to {agent_id}")
         result = await self.send_to_agent(agent_id, message, runtime)
         self._update_interruption_state(agent_id, result, runtime)
@@ -252,7 +252,7 @@ class HierarchicalMainController(BaseController):
         return "hierarchical_main_controller"
     
     def _get_last_interrupted_agent(self, runtime) -> Optional[str]:
-        """Get most recently interrupted agent"""
+        """Get most recently interrupted single_agent"""
         state = runtime.get_state(self._get_state_key()) or {}
         interrupted = state.get("interrupted_agents", {})
         

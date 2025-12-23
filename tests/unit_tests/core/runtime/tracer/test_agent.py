@@ -2,11 +2,10 @@ import asyncio
 
 import pytest
 
-from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.agent import AgentRuntime
+from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.single_agent.agent import AgentRuntime
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session.stream.base import CustomSchema
 from openjiuwen.core.workflow.base import Workflow

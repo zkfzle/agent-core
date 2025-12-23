@@ -10,7 +10,7 @@ import copy
 from tqdm import tqdm
 
 from openjiuwen.agent_builder.tune.utils import TuneUtils
-from openjiuwen.core.agent.agent import Agent
+from openjiuwen.core.single_agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger

@@ -140,9 +140,9 @@ class StatusCode(Enum):
     # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999
     # Multi-Agent Orchestration - Single Runtime 131000 - 131999
     # Multi-Agent Orchestration - AgentGroup 132000 - 132999
-    AGENT_GROUP_ADD_FAILED = (132000, "failed to add agent, reason: {reason}")
-    AGENT_GROUP_CREATE_FAILED = (132001, "failed to create agent group, reason: {reason}")
-    AGENT_GROUP_EXECUTION_ERROR = (132002, "failed to execute agent group, reason: {reason}")
+    AGENT_GROUP_ADD_FAILED = (132000, "failed to add single_agent, reason: {reason}")
+    AGENT_GROUP_CREATE_FAILED = (132001, "failed to create single_agent group, reason: {reason}")
+    AGENT_GROUP_EXECUTION_ERROR = (132002, "failed to execute single_agent group, reason: {reason}")
 
     # Multi-Agent Orchestration - Multi-Agent Debug 133000 - 133999
     # Multi-Agent Orchestration - Distribution Runtime 134000 - 134999
@@ -151,13 +151,13 @@ class StatusCode(Enum):
     # Runner 134000 - 134999
     REMOTE_AGENT_REQUEST_TIMEOUT = (134001, "RemoteAgent {} request timeout")
     AGENT_NOT_FOUND = (134002, "Agent {} is not found")
-    WORKFLOW_NOT_BOUND_TO_AGENT = (134003, "workflow not bound to agent")
-    TOOL_NOT_BOUND_TO_AGENT = (134004, "tool not bound to agent")
+    WORKFLOW_NOT_BOUND_TO_AGENT = (134003, "workflow not bound to single_agent")
+    TOOL_NOT_BOUND_TO_AGENT = (134004, "tool not bound to single_agent")
     TOOL_NOT_FOUND = (134005, "Tool not found")
     RUNNER_DISTRIBUTED_MODE_REQUIRED = (134006, "Runner must be initialized with distributed_mode enabled. message: {}")
     RUNNER_STOPPED = (134007, "Runner not running: {}")
-    REMOTE_AGENT_REQUEST_CANCELLED = (134008, "Remote agent request cancelled: {}")
-    REMOTE_AGENT_PROCESS_ERROR = (134009, "Remote agent process error. code: {error_code}, message: {error_msg}")
+    REMOTE_AGENT_REQUEST_CANCELLED = (134008, "Remote single_agent request cancelled: {}")
+    REMOTE_AGENT_PROCESS_ERROR = (134009, "Remote single_agent process error. code: {error_code}, message: {error_msg}")
     # Runner Dmq 134100 - 134199
     MESSAGE_QUEUE_NOT_RUNNING = (134101, "Message queue is not running: {}")
     MESSAGE_QUEUE_INIT_ERROR = (134102, "Message queue init error: {}")
@@ -186,7 +186,7 @@ class StatusCode(Enum):
     NL2AGENT_WORKFLOW_INTENTION_DETECT_ERROR = (162000, "NL2Agent workflow intention detect error: {error_msg}")
     NL2AGENT_WORKFLOW_STATE_ERROR = (162001, "NL2Agent workflow state error: {error_msg}")
     NL2AGENT_WORKFLOW_DL_GENERATION_ERROR = (162002, "NL2Agent workflow dl generation error: {error_msg}")
-    NL2AGENT_LLM_AGENT_STATE_ERROR = (162010, "NL2Agent llm agent state error: {error_msg}")
+    NL2AGENT_LLM_AGENT_STATE_ERROR = (162010, "NL2Agent llm single_agent state error: {error_msg}")
 
     # Optimization Toolchain 170000 - 179999
     # Optimization Toolchain - Prompt Self-optimization 170000 - 170999
@@ -245,17 +245,17 @@ class StatusCode(Enum):
     RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (190013, "failed to get toolInfo of workflow, reason: {reason}")
 
     # Runtime - Resource Management - Agent Group 190040 - 190049
-    RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add agent group, reason: {reason}")
-    RUNTIME_AGENT_GROUP_GET_FAILED = (190041, "failed to get agent group, reason: {reason}")
-    RUNTIME_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove agent group, reason: {reason}")
+    RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add single_agent group, reason: {reason}")
+    RUNTIME_AGENT_GROUP_GET_FAILED = (190041, "failed to get single_agent group, reason: {reason}")
+    RUNTIME_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove single_agent group, reason: {reason}")
     
     # Runtime - Resource Management - Workflow Additional
     RUNTIME_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
     
     # Runtime - Resource Management - Agent 190050 - 190059
-    RUNTIME_AGENT_ADD_FAILED = (190050, "failed to add agent, reason: {reason}")
-    RUNTIME_AGENT_GET_FAILED = (190051, "failed to get agent, reason: {reason}")
-    RUNTIME_AGENT_REMOVE_FAILED = (190052, "failed to remove agent, reason: {reason}")
+    RUNTIME_AGENT_ADD_FAILED = (190050, "failed to add single_agent, reason: {reason}")
+    RUNTIME_AGENT_GET_FAILED = (190051, "failed to get single_agent, reason: {reason}")
+    RUNTIME_AGENT_REMOVE_FAILED = (190052, "failed to remove single_agent, reason: {reason}")
 
     RUNTIME_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
     RUNTIME_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")

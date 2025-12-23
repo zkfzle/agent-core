@@ -287,7 +287,7 @@ CONCLUDE_NODE_USER_PROMPT = Template(content=[SystemMessage(content="""
 ### Current LLM call to be summarized:
 {{node_name}}
 
-### Rough summary of the LLM agent/workflow
+### Rough summary of the LLM single_agent/workflow
 {{agent_description}}
 
 ### System prompt of the current LLM call:

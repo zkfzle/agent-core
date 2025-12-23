@@ -4,7 +4,7 @@
 from typing import Generator
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.agent.agent import Agent
+from openjiuwen.core.single_agent.agent import Agent
 from openjiuwen.agent_builder.tune.base import TuneConstant
 
 

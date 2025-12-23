@@ -6,14 +6,13 @@ import unittest
 from unittest.mock import MagicMock
 import os
 
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.controller.config.reasoner_config import IntentDetectionConfig
-from openjiuwen.core.agent.controller.reasoner.agent_reasoner import AgentReasoner
-from openjiuwen.core.agent.controller.reasoner.intent_detection import IntentDetection
-from openjiuwen.core.agent.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
-from openjiuwen.core.agent.task.task import TaskInput
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
+from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
+from openjiuwen.core.controller.reasoner import IntentDetection
+from openjiuwen.core.controller.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
+from openjiuwen.core.controller.task import TaskInput
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.runtime import Runtime

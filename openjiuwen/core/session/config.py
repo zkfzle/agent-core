@@ -5,7 +5,7 @@ import os
 from abc import ABC
 from typing import TypedDict, Any, Optional
 
-from openjiuwen.agent.config.base import AgentConfig
+from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger

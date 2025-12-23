@@ -8,8 +8,8 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, AsyncIterator
 
-from openjiuwen.core.agent.agent import AgentRuntime
-from openjiuwen.core.agent.agent import BaseAgent
+from openjiuwen.core.single_agent.agent import AgentRuntime
+from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.agent_group.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -21,7 +21,7 @@ from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMg
 class AgentGroupRuntime(AgentRuntime):
     """AgentGroup Runtime
     
-    Inherits from openjiuwen.core.agent.agent.AgentRuntime
+    Inherits from openjiuwen.core.single_agent.single_agent.AgentRuntime
     Reuses all capabilities including TaskRuntime from pre_run()
     
     Why direct inheritance:
@@ -39,7 +39,7 @@ class AgentGroupRuntime(AgentRuntime):
         """
         # Create Config with agent_config if not provided
         if config is None:
-            from openjiuwen.agent.config.base import AgentConfig
+            from openjiuwen.core.single_agent.config import AgentConfig
             config = Config()
             # Create virtual AgentConfig for Group Runtime
             agent_config = AgentConfig(id="agent_group_runtime")
@@ -54,17 +54,17 @@ class AgentGroupRuntime(AgentRuntime):
 
 class BaseGroup(ABC):
     """
-    Abstract base class for implementing agent groups.
+    Abstract base class for implementing single_agent groups.
 
     This class provides the foundational structure and common functionality
-    for managing groups of agents in a multi-agent system. It defines the
-    essential interface that all concrete agent group implementations must
+    for managing groups of agents in a multi-single_agent system. It defines the
+    essential interface that all concrete single_agent group implementations must
     follow, ensuring consistency across different group types.
     """
 
     def __init__(self, config: AgentGroupConfig):
         """
-        Initialize the agent group.
+        Initialize the single_agent group.
 
         Args:
             config (AgentGroupConfig): The configuration object for this group.
@@ -75,7 +75,7 @@ class BaseGroup(ABC):
 
     def add_agent(self, agent_id: str, agent: BaseAgent):
         """
-        Register agent
+        Register single_agent
 
         Args:
             agent_id: Agent unique identifier (primary key)
@@ -98,14 +98,14 @@ class BaseGroup(ABC):
                 )
             self.agents[agent_id] = agent
             
-            # Auto-inject group reference to agent's controller
+            # Auto-inject group reference to single_agent's controller
             # Duck typing: if controller has set_group method, inject self
             if hasattr(agent, 'controller') and agent.controller is not None:
                 if hasattr(agent.controller, 'set_group'):
                     agent.controller.set_group(self)
                     logger.debug(
                         f"BaseGroup: Auto-injected group reference to "
-                        f"agent '{agent_id}' controller"
+                        f"single_agent '{agent_id}' controller"
                     )
 
     def get_agent_count(self) -> int:
@@ -120,18 +120,18 @@ class BaseGroup(ABC):
     @abstractmethod
     async def invoke(self, message, runtime: AgentGroupRuntime = None) -> Any:
         """
-        Execute a synchronous operation on the agent group.
+        Execute a synchronous operation on the single_agent group.
 
         This method processes message through the group of agents and returns
         the collective result. It should handle the complete execution flow
-        including task distribution, agent coordination, and result aggregation.
+        including task distribution, single_agent coordination, and result aggregation.
         
         Args:
             message: Message object (for compatibility, also supports Dict for backward compatibility)
-            runtime: Runtime for agent group instance
+            runtime: Runtime for single_agent group instance
             
         Returns:
-            The collective output from the agent group
+            The collective output from the single_agent group
         """
         raise NotImplementedError(
             f"invoke method or controller method must be implemented {self.__class__.__name__}"
@@ -140,18 +140,18 @@ class BaseGroup(ABC):
     @abstractmethod
     async def stream(self, message, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
         """
-        Execute a streaming operation on the agent group.
+        Execute a streaming operation on the single_agent group.
 
         This method processes message and returns results as a stream,
-        allowing for real-time or progressive output from the agent group.
+        allowing for real-time or progressive output from the single_agent group.
         Useful for long-running operations or when intermediate results are needed.
 
         Args:
             message: Message object (for compatibility, also supports Dict for backward compatibility)
-            runtime: Runtime for agent group instance
+            runtime: Runtime for single_agent group instance
 
         Returns:
-            The collective output from the agent group
+            The collective output from the single_agent group
         """
         raise NotImplementedError(
             f"stream method must be implemented by {self.__class__.__name__}"
@@ -162,7 +162,7 @@ class ControllerGroup(BaseGroup):
     """Agent Group with Controller
     
     Design features (similar to ControllerAgent):
-    1. Inherits BaseGroup, reuses agent management capabilities
+    1. Inherits BaseGroup, reuses single_agent management capabilities
     2. Holds GroupController, fully delegates message routing logic
     3. Automatically configures GroupController (via setup_from_group)
     4. invoke/stream fully delegated to group_controller
@@ -198,7 +198,7 @@ class ControllerGroup(BaseGroup):
 
     def _convert_message(self, message):
         """Convert dict to Message if needed (backward compatibility)"""
-        from openjiuwen.core.agent.message.message import Message
+        from openjiuwen.core.controller.message.message import Message
         if isinstance(message, dict):
             return Message.create_user_message(
                 content=message.get("content") or message.get("query", ""),
@@ -247,11 +247,11 @@ class ControllerGroup(BaseGroup):
         
         Design: 
         1. Background task executes group_controller.invoke
-        2. group_controller.send_to_agent calls agent.stream and forwards chunks to runtime
+        2. group_controller.send_to_agent calls single_agent.stream and forwards chunks to runtime
         3. This method reads from runtime.stream_iterator() in real-time and yields
         
         Streaming data source:
-        - Sub-agent streaming output forwarded via shared runtime
+        - Sub-single_agent streaming output forwarded via shared runtime
         - Includes __interaction__, workflow_final and all types
         
         Args:
@@ -278,7 +278,7 @@ class ControllerGroup(BaseGroup):
             need_cleanup = False
 
         # Background task executes group_controller.invoke
-        # send_to_agent calls agent.stream and writes chunks to task_runtime
+        # send_to_agent calls single_agent.stream and writes chunks to task_runtime
         async def run_controller():
             try:
                 await self.group_controller.invoke(message, task_runtime)

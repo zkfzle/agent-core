@@ -14,10 +14,10 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 class HierarchicalGroupConfig(AgentGroupConfig):
     """Configuration for HierarchicalGroup (Leader-Worker pattern)
     
-    Extends AgentGroupConfig with leader agent information.
+    Extends AgentGroupConfig with leader single_agent information.
     
     Attributes:
-        leader_agent_id: ID of the leader agent (required)
+        leader_agent_id: ID of the leader single_agent (required)
         group_id: Group identifier (inherited)
         max_agents: Maximum number of agents (inherited)
         max_concurrent_messages: Max concurrent messages (inherited)

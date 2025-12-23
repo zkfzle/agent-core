@@ -5,9 +5,8 @@
 import asyncio
 from typing import Union, Any, List, Optional
 
-from openjiuwen.agent.chat_agent import ChatAgent
-from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.agent.agent import Agent, BaseAgent
+from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.single_agent.agent import Agent, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -172,7 +171,7 @@ class Runner:
 
     async def run_agent_streaming(self, agent: Union[str, Agent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        if isinstance(agent_instance, ChatAgent):
+        if isinstance(agent_instance, Agent):
             try:
                 async for chunk in agent_instance.stream(inputs, agent_runtime):
                     yield chunk
@@ -304,7 +303,7 @@ class Runner:
                 raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
                                           StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
             if isinstance(agent_with_runtime, RemoteAgent):
-                # Remote agent does not add runtime, keep sessionId in input
+                # Remote single_agent does not add runtime, keep sessionId in input
                 if self._AGENT_CONVERSATION_ID not in inputs:
                     inputs[self._AGENT_CONVERSATION_ID] = session_id
                 return agent_with_runtime, None

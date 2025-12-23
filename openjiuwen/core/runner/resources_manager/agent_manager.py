@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from typing import Optional, Union, Callable
 
-from openjiuwen.core.agent.agent import Agent
+from openjiuwen.core.single_agent.agent import Agent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
@@ -31,8 +31,8 @@ class AgentMgr(AbstractManager[AgentWithRuntime]):
 
     from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
     def add_agent(self, agent_id: str, agent: Union[Agent, AgentProvider, RemoteAgent, AgentAdapter]) -> None:
-        self._validate_id(agent_id, StatusCode.RUNTIME_AGENT_ADD_FAILED, "agent")
-        self._validate_resource(agent, StatusCode.RUNTIME_AGENT_ADD_FAILED, "agent cannot be None")
+        self._validate_id(agent_id, StatusCode.RUNTIME_AGENT_ADD_FAILED, "single_agent")
+        self._validate_resource(agent, StatusCode.RUNTIME_AGENT_ADD_FAILED, "single_agent cannot be None")
 
         # Define validation function for non-callable agents
         def validate_agent(agent_obj):
@@ -56,7 +56,7 @@ class AgentMgr(AbstractManager[AgentWithRuntime]):
         self._add_resource(agent_id, agent, StatusCode.RUNTIME_AGENT_ADD_FAILED, validate_agent)
 
     def remove_agent(self, agent_id: str) -> Optional[Agent | RemoteAgent | AgentAdapter]:
-        self._validate_id(agent_id, StatusCode.RUNTIME_AGENT_REMOVE_FAILED, "agent")
+        self._validate_id(agent_id, StatusCode.RUNTIME_AGENT_REMOVE_FAILED, "single_agent")
 
         agent_with_runtime = self._remove_resource(agent_id, StatusCode.RUNTIME_AGENT_REMOVE_FAILED)
         if isinstance(agent_with_runtime, (RemoteAgent, AgentAdapter)):
@@ -65,9 +65,9 @@ class AgentMgr(AbstractManager[AgentWithRuntime]):
 
     def get_agent(self, agent_id: str) -> Optional[AgentWithRuntime | RemoteAgent]:
 
-        self._validate_id(agent_id, StatusCode.RUNTIME_AGENT_GET_FAILED, "agent")
+        self._validate_id(agent_id, StatusCode.RUNTIME_AGENT_GET_FAILED, "single_agent")
 
-        # Define function to create agent from provider
+        # Define function to create single_agent from provider
         def create_agent_from_provider(provider):
             agent = provider()
             if not hasattr(agent, "config"):

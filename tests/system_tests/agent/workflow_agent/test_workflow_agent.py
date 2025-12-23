@@ -10,8 +10,8 @@ import unittest
 import pytest
 from typing import List
 
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.core.agent.agent import workflow_provider
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.agent import workflow_provider
 from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
@@ -30,7 +30,7 @@ from openjiuwen.core.session.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
+from examples.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session.base import ComponentExecutable
@@ -418,7 +418,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         config = WorkflowAgentConfig(
             id="test_weather_agent",
             version="0.1.0",
-            description="测试用天气 agent",
+            description="测试用天气 single_agent",
             workflows=[],  # 空列表，通过 add_workflows 自动填充
         )
         agent = WorkflowAgent(config)
@@ -436,7 +436,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 1. 构造真实 workflow
         _, workflow = self._build_workflow()
 
-        # 2. 构造 workflow agent 并调用
+        # 2. 构造 workflow single_agent 并调用
         agent = self._create_agent(workflow)
         result = await agent.invoke({"query": "查询上海的天气", "conversation_id": "c123"})
 
@@ -832,7 +832,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         使用 WorkflowProvider 工厂函数验证并发安全性。
 
         测试方案：
-        - 使用新的 agent.add_workflows() 方法，传入工厂函数
+        - 使用新的 single_agent.add_workflows() 方法，传入工厂函数
         - 同一个 workflow key，多个 conversation 并发调用
         - 每次 get_workflow() 调用工厂函数创建新实例
         - 验证各 conversation 状态隔离
@@ -864,7 +864,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             # 不再需要手动设置 metadata id，装饰器会自动处理
             return workflow
 
-        # 创建 agent
+        # 创建 single_agent
         config = WorkflowAgentConfig(
             id="test_provider_agent",
             version="0.1.0",
@@ -970,7 +970,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             _, workflow = self.build_interrupt_workflow()
             return workflow
 
-        # 创建 agent
+        # 创建 single_agent
         config = WorkflowAgentConfig(
             id="test_async_provider_agent",
             version="0.1.0",

@@ -58,40 +58,40 @@ class TestRunnerIntegration:
         Runner.set_config(DEFAULT_RUNNER_CONFIG)
 
     async def test_agent_normal_lifecycle(self):
-        """Test normal agent lifecycle: creation, invocation, deletion"""
+        """Test normal single_agent lifecycle: creation, invocation, deletion"""
         print("=== Test 0: Agent lifecycle ===")
         await Runner.start()
-        weather_adapter = AgentAdapter(agent_id="weather-agent")
+        weather_adapter = AgentAdapter(agent_id="weather-single_agent")
         weather_adapter.start()
 
         try:
             # Simulate client sending request
-            client = RemoteAgent(agent_id="weather-agent")
-            Runner.add_agent(agent_id="remote-weather-agent", agent=client)
+            client = RemoteAgent(agent_id="weather-single_agent")
+            Runner.add_agent(agent_id="remote-weather-single_agent", agent=client)
 
             # 1. Test batch request
             logger.info("=== Testing batch invoke ===")
-            response = await Runner.run_agent("remote-weather-agent", {"city": "London"})
+            response = await Runner.run_agent("remote-weather-single_agent", {"city": "London"})
             logger.info(f"Batch response: {response}")
             assert response is not None
 
             # 2. Test streaming response
             logger.info("=== Testing stream response ===")
             chunks = []
-            async for chunk in Runner.run_agent_streaming("remote-weather-agent", {"city": "Paris"}):
+            async for chunk in Runner.run_agent_streaming("remote-weather-single_agent", {"city": "Paris"}):
                 logger.info(f"Stream chunk received: {chunk}")
                 chunks.append(chunk)
 
             assert len(chunks) > 0
             logger.info(f"Received {len(chunks)} chunks")
 
-            # 3. Test agent removal
-            logger.info("=== Testing agent removal ===")
-            Runner.remove_agent("weather-agent")
+            # 3. Test single_agent removal
+            logger.info("=== Testing single_agent removal ===")
+            Runner.remove_agent("weather-single_agent")
 
             # 4. Verify exception is thrown after deletion
             with pytest.raises(JiuWenBaseException) as e:
-                await Runner.run_agent("weather-agent", {"city": "London"})
+                await Runner.run_agent("weather-single_agent", {"city": "London"})
             assert e.value.error_code == StatusCode.AGENT_NOT_FOUND.code
 
         except Exception as e:
@@ -103,7 +103,7 @@ class TestRunnerIntegration:
             await Runner.stop()
 
     async def test_agent_request_cancellation(self):
-        """Test request cancellation (triggering CancelledError) by sending message to a non-existent agent"""
+        """Test request cancellation (triggering CancelledError) by sending message to a non-existent single_agent"""
         print("=== Test 1: Manual task cancellation ===")
         await Runner.start()
 
@@ -131,11 +131,11 @@ class TestRunnerIntegration:
             await Runner.stop()
 
     async def test_agent_request_timeout(self):
-        """Test request timeout (triggering TimeoutError) by sending message to a non-existent agent"""
+        """Test request timeout (triggering TimeoutError) by sending message to a non-existent single_agent"""
         print("=== Test 2: Request timeout ===")
         await Runner.start()
         try:
-            client = RemoteAgent(agent_id="slow-agent")
+            client = RemoteAgent(agent_id="slow-single_agent")
 
             with pytest.raises(JiuWenBaseException) as e:
                 await client.invoke({"test": "data"}, 0.1)
@@ -151,11 +151,11 @@ class TestRunnerIntegration:
         await Runner.start()
 
         try:
-            client = RemoteAgent(agent_id="slow-agent")
-            Runner.add_agent(agent_id="slow-agent", agent=client)
+            client = RemoteAgent(agent_id="slow-single_agent")
+            Runner.add_agent(agent_id="slow-single_agent", agent=client)
 
             async def long_running_request():
-                return await Runner.run_agent("slow-agent", {"city": "Berlin"})
+                return await Runner.run_agent("slow-single_agent", {"city": "Berlin"})
 
             task = asyncio.create_task(long_running_request())
 
@@ -174,7 +174,7 @@ class TestRunnerIntegration:
             pass
 
     async def test_agent_adapter_exception_propagation(self):
-        """Test that error information is correctly passed to the client when agent adapter returns an exception"""
+        """Test that error information is correctly passed to the client when single_agent adapter returns an exception"""
         print("=== Test 4: Adapter error propagation ===")
         await Runner.start()
         original_handler = AgentAdapter._handle_invoke
@@ -186,16 +186,16 @@ class TestRunnerIntegration:
                 message="ADAPTER_ERROR")
 
         AgentAdapter._handle_invoke = error_handler
-        weather_adapter = AgentAdapter(agent_id="weather-agent")
+        weather_adapter = AgentAdapter(agent_id="weather-single_agent")
         weather_adapter.start()
 
         try:
-            client = RemoteAgent(agent_id="weather-agent")
-            Runner.add_agent(agent_id="weather-agent", agent=client)
+            client = RemoteAgent(agent_id="weather-single_agent")
+            Runner.add_agent(agent_id="weather-single_agent", agent=client)
 
             # Verify client receives exception containing error code and message
             with pytest.raises(JiuWenBaseException) as e:
-                await Runner.run_agent("weather-agent", {"city": "London"})
+                await Runner.run_agent("weather-single_agent", {"city": "London"})
 
             assert e.value.error_code == StatusCode.REMOTE_AGENT_PROCESS_ERROR.code
             assert "code: 111, message: ADAPTER_ERROR" in e.value.message
@@ -209,11 +209,11 @@ class TestRunnerIntegration:
         """Verify that Runner should report an error if not started"""
         print("=== Test 5: Runner not started ===")
         try:
-            client = RemoteAgent(agent_id="slow-agent")
-            Runner.add_agent(agent_id="slow-agent", agent=client)
+            client = RemoteAgent(agent_id="slow-single_agent")
+            Runner.add_agent(agent_id="slow-single_agent", agent=client)
 
             async def long_running_request():
-                return await Runner.run_agent("slow-agent", {"city": "Berlin"})
+                return await Runner.run_agent("slow-single_agent", {"city": "Berlin"})
 
             task = asyncio.create_task(long_running_request())
             with pytest.raises(JiuWenBaseException) as e:
@@ -228,12 +228,12 @@ class TestRunnerIntegration:
         print("=== Test 6: Performance Comparison ===")
         await Runner.start()
         # Create adapter and client
-        weather_adapter = AgentAdapter(agent_id="perf-agent")
+        weather_adapter = AgentAdapter(agent_id="perf-single_agent")
         weather_adapter.start()
 
         try:
-            client = RemoteAgent(agent_id="perf-agent")
-            Runner.add_agent(agent_id="perf-agent", agent=client)
+            client = RemoteAgent(agent_id="perf-single_agent")
+            Runner.add_agent(agent_id="perf-single_agent", agent=client)
 
             # 测试数据
             test_data = [{"city": f"City_{i}"} for i in range(10)]
@@ -243,7 +243,7 @@ class TestRunnerIntegration:
             start_time = time.time()
             sequential_results = []
             for data in test_data:
-                result = await Runner.run_agent("perf-agent", data)
+                result = await Runner.run_agent("perf-single_agent", data)
                 sequential_results.append(result)
             sequential_time = time.time() - start_time
 
@@ -251,7 +251,7 @@ class TestRunnerIntegration:
             print("Testing concurrent calls...")
             start_time = time.time()
             concurrent_results = await asyncio.gather(
-                *[Runner.run_agent("perf-agent", data) for data in test_data]
+                *[Runner.run_agent("perf-single_agent", data) for data in test_data]
             )
             concurrent_time = time.time() - start_time
 
@@ -290,12 +290,12 @@ class TestRunnerIntegration:
 
         AgentAdapter._handle_stream = mock_handle_stream
 
-        streaming_adapter = AgentAdapter(agent_id="streaming-agent")
+        streaming_adapter = AgentAdapter(agent_id="streaming-single_agent")
         streaming_adapter.start()
 
         try:
-            client = RemoteAgent(agent_id="streaming-agent")
-            Runner.add_agent(agent_id="streaming-agent", agent=client)
+            client = RemoteAgent(agent_id="streaming-single_agent")
+            Runner.add_agent(agent_id="streaming-single_agent", agent=client)
 
             # 测试数据
             test_data = [{"city": f"StreamCity_{i}"} for i in range(10)]
@@ -306,7 +306,7 @@ class TestRunnerIntegration:
             sequential_chunks = []
             for data in test_data:
                 chunk_count = 0
-                async for chunk in Runner.run_agent_streaming("streaming-agent", data):
+                async for chunk in Runner.run_agent_streaming("streaming-single_agent", data):
                     sequential_chunks.append(chunk)
                     chunk_count += 1
             sequential_time = time.time() - start_time
@@ -318,7 +318,7 @@ class TestRunnerIntegration:
 
             async def collect_streaming_chunks(data):
                 chunks = []
-                async for chunk in Runner.run_agent_streaming("streaming-agent", data):
+                async for chunk in Runner.run_agent_streaming("streaming-single_agent", data):
                     chunks.append(chunk)
                 return chunks
 

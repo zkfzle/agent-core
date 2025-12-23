@@ -6,12 +6,13 @@ from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.agent.common.enum import TaskType, ControllerType
-from openjiuwen.agent.common.schema import WorkflowSchema
-from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
-from openjiuwen.agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from openjiuwen.core.agent.task import Task, TaskInput
+from openjiuwen.core.common.constants.enums import ControllerType
+from examples.agents_for_studio.llm_agent.llm_controller import TaskType
+from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from examples.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
+from examples.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
@@ -72,7 +73,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
     # 临时关闭
     @unittest.skip("skip system test")
     @pytest.mark.asyncio
-    @patch("openjiuwen.agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
+    @patch("openjiuwen.single_agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
     @patch("openjiuwen.core.workflow.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("openjiuwen.core.workflow.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
     @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
@@ -383,7 +384,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         config = WorkflowAgentConfig(
             id="write_agent",
             version="0.1.0",
-            description="interrupt workflow agent",
+            description="interrupt workflow single_agent",
             workflows=[workflow_schema],
             controller_type=ControllerType.WorkflowController,
         )
@@ -482,7 +483,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         config = WorkflowAgentConfig(
             id="write_agent",
             version="0.1.0",
-            description="interrupt workflow agent",
+            description="interrupt workflow single_agent",
             workflows=[workflow_schema],
             controller_type=ControllerType.WorkflowController,
         )

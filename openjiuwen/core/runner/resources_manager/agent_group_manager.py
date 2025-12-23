@@ -38,7 +38,7 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
     def add_agent_group(self, agent_group_id: str, agent_group: Union[AgentGroup, AgentGroupProvider]) -> None:
         self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_ADD_FAILED, "agent_group")
         
-        # Define validation function for non-callable agent groups
+        # Define validation function for non-callable single_agent groups
         # Support both AgentGroup (legacy) and BaseGroup (new architecture)
         def validate_agent_group(group):
             if not isinstance(group, (AgentGroup, BaseGroup)):
@@ -58,7 +58,7 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
     def get_agent_group(self, agent_group_id: str) -> Optional[AgentGroup]:
         self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_GET_FAILED, "agent_group")
         
-        # Define function to create agent group from provider
+        # Define function to create single_agent group from provider
         # Support both AgentGroup (legacy) and BaseGroup (new architecture)
         def create_group_from_provider(provider):
             group = provider()

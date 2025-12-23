@@ -8,8 +8,13 @@ Manages conversation history AND summary generation with context overflow handli
 
 from typing import List, Dict, Any, Optional
 
-from examples.agents_for_studio.super_agent import get_summary_prompt
-from examples.agents_for_studio.super_agent import OpenRouterLLM, ContextLimitError
+from examples.agents_for_studio.super_agent.agent.prompt_templates import (
+    get_summary_prompt
+)
+from examples.agents_for_studio.super_agent.llm.openrouter_llm import (
+    OpenRouterLLM,
+    ContextLimitError
+)
 from openjiuwen.core.common.logging import logger
 
 

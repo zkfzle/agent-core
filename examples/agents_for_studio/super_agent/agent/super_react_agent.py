@@ -7,13 +7,24 @@ Supports both main single_agent and sub-single_agent execution with the same cla
 import inspect
 from typing import Dict, Any, AsyncIterator, List, Optional
 
-from super_agent.agent.prompt_templates import process_input, get_task_instruction_prompt
-
-from examples.agents_for_studio.super_agent.agent.context_manager import ContextManager
-from examples.agents_for_studio.super_agent import O3Handler
-from examples.agents_for_studio.super_agent import SuperAgentConfig
-from examples.agents_for_studio.super_agent import ToolCallHandler
-from examples.agents_for_studio.super_agent import OpenRouterLLM, ContextLimitError
+from examples.agents_for_studio.super_agent.agent.prompt_templates import (
+    process_input,
+    get_task_instruction_prompt
+)
+from examples.agents_for_studio.super_agent.agent.context_manager import (
+    ContextManager
+)
+from examples.agents_for_studio.super_agent.agent.o3_handler import O3Handler
+from examples.agents_for_studio.super_agent.agent.super_config import (
+    SuperAgentConfig
+)
+from examples.agents_for_studio.super_agent.agent.tool_call_handler import (
+    ToolCallHandler
+)
+from examples.agents_for_studio.super_agent.llm.openrouter_llm import (
+    OpenRouterLLM,
+    ContextLimitError
+)
 from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr

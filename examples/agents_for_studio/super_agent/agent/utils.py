@@ -1,3 +1,6 @@
+import os
+
+
 def process_input(task_description, task_file_name):
     """
     Enriches task description with file context information.

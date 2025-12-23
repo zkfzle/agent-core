@@ -23,8 +23,12 @@ for path in [REPO_ROOT, EXAMPLES_DIR]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from super_agent.agent.super_react_agent import SuperReActAgent
-from super_agent.agent.super_config import SuperAgentFactory
+from examples.agents_for_studio.super_agent.agent.super_react_agent import (
+    SuperReActAgent
+)
+from examples.agents_for_studio.super_agent.agent.super_config import (
+    SuperAgentFactory
+)
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction

@@ -13,7 +13,7 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm.base import BaseChatModel
+from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata, FunctionInfo, ToolCall
 from openjiuwen.core.foundation.llm.messages_chunk import AIMessageChunk
 

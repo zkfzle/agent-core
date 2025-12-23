@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from examples.agents_for_studio.super_agent import (
+from examples.agents_for_studio.super_agent.agent.prompt_templates import (
     get_o3_hints_prompt,
     get_o3_answer_type_prompt,
     get_o3_final_answer_prompt

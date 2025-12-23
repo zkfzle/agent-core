@@ -12,10 +12,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
-from openjiuwen.core.component.base import WorkflowComponent, ComponentConfig
-from openjiuwen.core.component.branch_router import BranchRouter
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.component.condition.condition import Condition
+from openjiuwen.core.workflow.component.base import WorkflowComponent, ComponentConfig
+from openjiuwen.core.workflow.component.branch_router import BranchRouter
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.condition.condition import Condition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input

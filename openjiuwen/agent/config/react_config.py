@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from openjiuwen.agent.common.enum import ControllerType
 from openjiuwen.agent.common.schema import PluginSchema
 from openjiuwen.agent.config.base import AgentConfig
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.memory.config.config import MemoryConfig
 
 

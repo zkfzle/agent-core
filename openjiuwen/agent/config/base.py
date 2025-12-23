@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from openjiuwen.agent.common.schema import WorkflowSchema, PluginSchema
 from openjiuwen.agent.common.enum import ControllerType
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 
 
 class AgentConfig(BaseModel):

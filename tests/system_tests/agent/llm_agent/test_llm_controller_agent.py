@@ -9,11 +9,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from openjiuwen.agent.common.schema import PluginSchema
 from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.llm_agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.workflow.component.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.memory.config.config import SysMemConfig
 from openjiuwen.core.memory.embed_models import APIEmbedModel
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine

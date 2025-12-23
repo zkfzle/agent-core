@@ -17,7 +17,7 @@ from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.session.runtime import Runtime, Workflow
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage

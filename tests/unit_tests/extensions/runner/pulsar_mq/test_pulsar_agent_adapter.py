@@ -11,7 +11,7 @@ from openjiuwen.agent.common.schema import WorkflowSchema
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.agent.react_agent import ReActAgent, create_react_agent_config
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runner.runner_config import RunnerConfig, MessageQueueConfig, DistributedConfig, PulsarConfig

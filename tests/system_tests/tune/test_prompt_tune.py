@@ -17,7 +17,7 @@ from openjiuwen.agent_builder.tune.base import Case
 from openjiuwen.agent_builder.tune.trainer.trainer import Trainer
 from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader
 from openjiuwen.core.foundation.tool.schema import ToolCall
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")

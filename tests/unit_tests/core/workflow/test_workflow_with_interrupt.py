@@ -9,13 +9,13 @@ import pytest
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.branch_comp import BranchComponent
-from openjiuwen.core.component.condition.array import ArrayCondition
-from openjiuwen.core.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.component.loop_callback.output import OutputCallback
-from openjiuwen.core.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
-from openjiuwen.core.component.set_variable_comp import SetVariableComponent
-from openjiuwen.core.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.component.branch_comp import BranchComponent
+from openjiuwen.core.workflow.component.condition.array import ArrayCondition
+from openjiuwen.core.workflow.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.component.loop_callback.output import OutputCallback
+from openjiuwen.core.workflow.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
+from openjiuwen.core.workflow.component.set_variable_comp import SetVariableComponent
+from openjiuwen.core.workflow.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
 from openjiuwen.core.session.interaction.interaction import InteractionOutput

@@ -11,7 +11,7 @@ from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder impor
                                                                                    META_TEMPLATE_NAME_PREFIX)
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import AIMessage

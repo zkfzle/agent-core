@@ -5,9 +5,9 @@ from typing import Callable, Union, Hashable, Any
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.base import WorkflowComponent
-from openjiuwen.core.component.branch_router import BranchRouter
-from openjiuwen.core.component.condition.condition import Condition
+from openjiuwen.core.workflow.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.branch_router import BranchRouter
+from openjiuwen.core.workflow.component.condition.condition import Condition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Input, Output

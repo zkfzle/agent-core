@@ -5,7 +5,7 @@ from typing import Any
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session.base import ComponentExecutable

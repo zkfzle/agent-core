@@ -41,9 +41,9 @@ import pytest
 
 from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
 from openjiuwen.agent.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.session.stream.base import OutputSchema
@@ -52,7 +52,7 @@ from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.tool.schema import ToolCall
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 

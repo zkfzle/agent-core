@@ -18,9 +18,9 @@ from typing import Any, List
 
 from openjiuwen.agent.config.workflow_config import WorkflowAgentConfig
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from openjiuwen.core.component.base import WorkflowComponent, ComponentConfig
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.base import WorkflowComponent, ComponentConfig
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session.base import ComponentExecutable
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
@@ -31,7 +31,7 @@ from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.common.logging import logger
 
@@ -252,7 +252,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         logger.info("\n========== 测试：str类型中断应该正常执行 ==========")
 
         # 导入QuestionerComponent
-        from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+        from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 
         # 创建模型配置
         model_config = ModelConfig(

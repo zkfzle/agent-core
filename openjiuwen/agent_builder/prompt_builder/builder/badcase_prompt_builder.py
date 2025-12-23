@@ -9,7 +9,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.prompt.template import Template
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 
 from openjiuwen.agent_builder.prompt_builder.base import BasePromptBuilder
 from openjiuwen.agent_builder.tune.base import EvaluatedCase

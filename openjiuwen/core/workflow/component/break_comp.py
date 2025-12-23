@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import abstractmethod, ABC
 
-from openjiuwen.core.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.base import WorkflowComponent
 from openjiuwen.core.graph.executable import Input, Output, Executable
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.common.exception.exception import JiuWenBaseException

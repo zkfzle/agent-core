@@ -25,15 +25,15 @@ from openjiuwen.agent_group.hierarchical_group.agents.main_controller import Hie
 from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.agent.message.message import Message
 from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.component.base import WorkflowComponent
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.questioner_comp import (
+from openjiuwen.core.workflow.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.questioner_comp import (
     FieldInfo,
     QuestionerComponent,
     QuestionerConfig
 )
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner.runner import Runner

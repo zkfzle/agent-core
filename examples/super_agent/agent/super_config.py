@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from openjiuwen.agent.common.schema import PluginSchema, WorkflowSchema
 from openjiuwen.agent.config.react_config import ReActAgentConfig, ConstrainConfig
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 
 
 class AgentConstraints(BaseModel):

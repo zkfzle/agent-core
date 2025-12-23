@@ -13,7 +13,7 @@ from openjiuwen.agent.config.react_config import ReActAgentConfig
 from openjiuwen.agent.llm_agent.llm_controller import LLMController
 from openjiuwen.core.agent.agent import ControllerAgent
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.stream.base import OutputSchema

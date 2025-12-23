@@ -8,7 +8,7 @@
 """
 import os
 
-from openjiuwen.core.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session.base import ComponentExecutable
@@ -27,11 +27,11 @@ from openjiuwen.agent.config.workflow_config import (
     DefaultResponse
 )
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
-from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow

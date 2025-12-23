@@ -2,9 +2,9 @@ import asyncio
 from typing import Any, AsyncIterator
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.component.base import WorkflowComponent
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Executable, Input, Output

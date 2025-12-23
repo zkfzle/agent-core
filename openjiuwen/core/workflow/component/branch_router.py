@@ -6,8 +6,8 @@ from typing import Callable, Union
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.condition.condition import Condition, FuncCondition
-from openjiuwen.core.component.condition.expression import ExpressionCondition
+from openjiuwen.core.workflow.component.condition.condition import Condition, FuncCondition
+from openjiuwen.core.workflow.component.condition.expression import ExpressionCondition
 from openjiuwen.core.session.runtime import Runtime, BaseRuntime
 from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.graph.visualization.drawable_edge import DrawableBranchRouter

@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Union, Any
+from typing import Union
 
-from openjiuwen.core.component.condition.condition import Condition
+from openjiuwen.core.workflow.component.condition.condition import Condition
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import INDEX

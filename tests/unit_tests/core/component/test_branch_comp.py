@@ -5,11 +5,11 @@ import pytest
 from openjiuwen.core.common.constants.constant import CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.component.base import WorkflowComponent
-from openjiuwen.core.component.branch_comp import BranchComponent
-from openjiuwen.core.component.branch_router import BranchRouter
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.start_comp import Start
+from openjiuwen.core.workflow.component.base import WorkflowComponent
+from openjiuwen.core.workflow.component.branch_comp import BranchComponent
+from openjiuwen.core.workflow.component.branch_router import BranchRouter
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.base import Input, Output, ComponentExecutable
 from openjiuwen.core.session.runtime import Runtime

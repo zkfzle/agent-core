@@ -2,9 +2,9 @@ from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
-from openjiuwen.core.component.end_comp import End
-from openjiuwen.core.component.start_comp import Start
-from openjiuwen.core.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
+from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.component.start_comp import Start
+from openjiuwen.core.workflow.component.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
@@ -77,7 +77,7 @@ async def test_tool_comp_invoke(mock_async_request, mock_request, mock_tool_inpu
     assert res.get('error_code') == 0
 
 
-@patch('openjiuwen.core.component.tool_comp.ToolExecutable.invoke')
+@patch('openjiuwen.core.workflow.component.tool_comp.ToolExecutable.invoke')
 @pytest.mark.asyncio
 async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, fake_ctx):
     mock_invoke.return_value = 'res'

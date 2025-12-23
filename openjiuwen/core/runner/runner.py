@@ -6,7 +6,7 @@ import asyncio
 from typing import Union, Any, List, Optional
 
 from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.single_agent.agent import Agent, BaseAgent
+from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -129,7 +129,7 @@ class Runner:
                 await self._message_queue.unsubscribe(topic, agent_group.get_subscription)
         return agent_group
 
-    def add_agent(self, agent_id, agent: Union[Agent, AgentProvider, RemoteAgent]):
+    def add_agent(self, agent_id, agent: Union[BaseAgent, AgentProvider, RemoteAgent]):
         if get_runner_config().distributed_mode:
             if not isinstance(agent, RemoteAgent):
                 mqAgentAdapter = AgentAdapter(agent_id)
@@ -137,7 +137,7 @@ class Runner:
                 self._agent_mgr.add_agent(AGENT_ADAPTER + agent_id, mqAgentAdapter)
         self._agent_mgr.add_agent(agent_id, agent)
 
-    def remove_agent(self, agent_id) -> Union[Agent, AgentProvider]:
+    def remove_agent(self, agent_id) -> Union[BaseAgent, AgentProvider]:
         if get_runner_config().distributed_mode:
             adapter = self._agent_mgr.remove_agent(AGENT_ADAPTER + agent_id)
             if adapter is not None:
@@ -157,7 +157,7 @@ class Runner:
                                                     stream_modes=stream_modes, context=context):
             yield chunk
 
-    async def run_agent(self, agent: Union[str, Agent], inputs: Any):
+    async def run_agent(self, agent: Union[str, BaseAgent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
         if isinstance(agent_instance, RemoteAgent):
             res = await agent_instance.invoke(inputs)
@@ -169,42 +169,15 @@ class Runner:
             await agent_runtime.post_run()
         return res
 
-    async def run_agent_streaming(self, agent: Union[str, Agent], inputs: Any):
+    async def run_agent_streaming(self, agent: Union[str, BaseAgent], inputs: Any):
         agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
-        if isinstance(agent_instance, Agent):
-            try:
-                async for chunk in agent_instance.stream(inputs, agent_runtime):
-                    yield chunk
-            finally:
-                await agent_runtime.post_run()
-        elif isinstance(agent_instance, RemoteAgent):
+        if isinstance(agent_instance, RemoteAgent):
             async for chunk in agent_instance.stream(inputs):
                 yield chunk
         elif isinstance(agent_instance, BaseAgent):
             # ControllerAgent handles its own runtime lifecycle
             async for chunk in agent_instance.stream(inputs, runtime=None):
                 yield chunk
-        else:
-            async def stream_process():
-                try:
-                    await agent_instance.runner_controller_stream(inputs, agent_runtime)
-                finally:
-                    await agent_runtime.post_run()
-
-            task = asyncio.create_task(stream_process())
-            async for chunk in agent_runtime.stream_iterator():
-                yield chunk
-
-            try:
-                await task
-            except Exception as e:
-                logger.error(f"{self.__class__.__name__} stream error.")
-                if UserConfig.is_sensitive():
-                    raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
-                                              f"{self.__class__.__name__} stream error.")
-                else:
-                    raise JiuWenBaseException(StatusCode.AGENT_SUB_TASK_TYPE_ERROR.code,
-                                              f"{self.__class__.__name__} stream error.") from e
 
     async def run_agent_group(self, agent_group: Union[str, AgentGroup], inputs: Any):
         agent_group_instance = self._prepare_agent_group(agent_group)
@@ -295,7 +268,7 @@ class Runner:
             workflow_runtime = runtime
         return workflow_runtime
 
-    async def _prepare_agent(self, agent: Union[str, Agent], inputs: Any):
+    async def _prepare_agent(self, agent: Union[str, BaseAgent], inputs: Any):
         session_id = inputs.get(self._AGENT_CONVERSATION_ID, self._DEFAULT_AGENT_SESSION_ID)
         if isinstance(agent, str):
             agent_with_runtime = self._agent_mgr.get_agent(agent)

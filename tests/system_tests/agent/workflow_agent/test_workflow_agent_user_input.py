@@ -299,7 +299,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         构建包含QuestionerComponent的工作流
         这个工作流会产生str格式的中断
         """
-        from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+        from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 
         # 创建模型配置
         model_config = ModelConfig(

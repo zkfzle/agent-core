@@ -4,7 +4,7 @@
 from typing import Generator
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.single_agent.agent import Agent
+from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.agent_builder.tune.base import TuneConstant
 
 
@@ -30,14 +30,14 @@ class Progress(BaseModel):
 
 
 class Callbacks:
-    def on_train_begin(self, agent: Agent, progress: Progress) -> None:
+    def on_train_begin(self, agent: BaseAgent, progress: Progress) -> None:
         pass
 
-    def on_train_end(self, agent: Agent, progress: Progress) -> None:
+    def on_train_end(self, agent: BaseAgent, progress: Progress) -> None:
         pass
 
-    def on_train_epoch_begin(self, agent: Agent, progress: Progress) -> None:
+    def on_train_epoch_begin(self, agent: BaseAgent, progress: Progress) -> None:
         pass
 
-    def on_train_epoch_end(self, agent: Agent, progress: Progress) -> None:
+    def on_train_epoch_end(self, agent: BaseAgent, progress: Progress) -> None:
         pass

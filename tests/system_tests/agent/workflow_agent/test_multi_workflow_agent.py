@@ -1224,11 +1224,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("\n✅ 测试通过：多工作流场景下根据 node_id 精确恢复正确！")
 
     @patch(
-        "openjiuwen.single_agent.workflow_agent.workflow_controller."
+        "examples.agents_for_studio.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
-        "openjiuwen.core.single_agent.controller.reasoner.agent_reasoner."
+        "openjiuwen.core.controller.reasoner.agent_reasoner."
         "AgentReasoner.use_intent_detection"
     )
     async def test_default_response_when_no_task_detected(
@@ -1324,11 +1324,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 测试通过：意图识别失败时正确返回默认响应: {default_text}")
 
     @patch(
-        "openjiuwen.single_agent.workflow_agent.workflow_controller."
+        "examples.agents_for_studio.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
-        "openjiuwen.core.single_agent.controller.reasoner.agent_reasoner."
+        "openjiuwen.core.controller.reasoner.agent_reasoner."
         "AgentReasoner.use_intent_detection"
     )
     async def test_fallback_to_first_workflow_when_no_default_response(
@@ -1423,11 +1423,11 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("✅ 测试通过：未配置默认响应时正确回退到第一个工作流")
 
     @patch(
-        "openjiuwen.single_agent.workflow_agent.workflow_controller."
+        "examples.agents_for_studio.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
-        "openjiuwen.core.single_agent.controller.reasoner.agent_reasoner."
+        "openjiuwen.core.controller.reasoner.agent_reasoner."
         "AgentReasoner.use_intent_detection"
     )
     async def test_default_response_stream_returns_workflow_final(

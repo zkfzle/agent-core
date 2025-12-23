@@ -8,7 +8,8 @@ from typing import Dict, Any, List, AsyncIterator
 
 from openjiuwen.core.single_agent.config.base import LLMCallConfig
 from examples.agents_for_studio.chat_agent.chat_config import ChatAgentConfig
-from openjiuwen.core.single_agent.agent import Agent
+from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.session.config import Config
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
@@ -38,12 +39,10 @@ def create_chat_agent(agent_config: ChatAgentConfig,
     return agent
 
 
-class ChatAgent(Agent):
+class ChatAgent(BaseAgent):
     def __init__(self, agent_config: ChatAgentConfig):
-        # Create config and init base class
-        config = Config()
-        config.set_agent_config(agent_config=agent_config)
-        super().__init__(config)
+        # Initialize BaseAgent
+        super().__init__(agent_config)
         
         # Initialize LLM Call
         llm_config = agent_config.model
@@ -80,7 +79,7 @@ class ChatAgent(Agent):
         """ChatAgent uses default configured ContextEngine"""
         context_config = ContextEngineConfig()
         return ContextEngine(
-            agent_id=self._config.get_agent_config().id,
+            agent_id=self.agent_config.id,
             config=context_config,
         )
 
@@ -132,5 +131,5 @@ class ChatAgent(Agent):
     def get_llm_calls(self) -> Dict:
         return dict(llm_call=self._llm_call)
 
-    def copy(self) -> "Agent":
-        return create_chat_agent(self._config.get_agent_config())
+    def copy(self) -> "BaseAgent":
+        return create_chat_agent(self.agent_config)

@@ -7,7 +7,7 @@ prompt optimization evaluators
 import random
 from typing import List, Optional, Dict
 
-from openjiuwen.core.single_agent.agent import Agent
+from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -91,7 +91,7 @@ class ExampleOptimizer(BaseOptimizer):
                     TuneUtils.convert_cases_to_examples(selected_examples)
                 )
 
-    def _update(self) -> Optional[Agent]:
+    def _update(self) -> Optional[BaseAgent]:
         for name, param in self._parameters.items():
             if not param.llm_call.get_freeze_user_prompt():
                 optimized_prompt = self._format_prompt(

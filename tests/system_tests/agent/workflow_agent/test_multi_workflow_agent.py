@@ -7,6 +7,7 @@
 3. 实时打断（参考 test_agent_invoke_002）
 """
 import os
+import uuid
 
 from openjiuwen.core.workflow.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
@@ -39,10 +40,10 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMet
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 
-API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
-API_KEY = os.getenv("API_KEY", "sk-fake")
-MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
+API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
+MODEL_NAME = "Qwen/Qwen3-32B"
+MODEL_PROVIDER = "siliconflow"
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 SYSTEM_PROMPT_TEMPLATE = "你是一个query改写的AI助手。今天的日期是{}。"
@@ -262,8 +263,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("questioner", "end")
 
         return flow
-
-    @unittest.skip("skip system test")
     async def test_multi_workflow_routing_via_intent_detection(self):
         """多工作流场景下，意图识别结果应跳转到目标工作流（使用真实模型）。"""
         print("=== 测试多工作流意图识别路由 ===")
@@ -304,7 +303,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             result = await asyncio.wait_for(
                 agent.invoke({
                     "query": "查看上海股票走势",
-                    "conversation_id": "conv-1"
+                    "conversation_id": str(uuid.uuid4())
                 }),
                 timeout=30.0
             )
@@ -325,8 +324,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("stock:", response_content, "应该路由到股票工作流")
         self.assertIn("股票", response_content, "响应应该包含查询内容")
         print(f"✅ 测试通过：成功路由到股票工作流，返回结果：{response_content}")
-
-    @unittest.skip
     async def test_multi_workflow_jump_and_recovery(self):
         """
         测试多工作流间的跳转和恢复功能。
@@ -469,8 +466,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"[OK] 步骤4成功：workflow2 恢复并完成，返回: {response_content_4}")
 
         print("\n[SUCCESS] 所有步骤完成！多工作流跳转和恢复测试通过！")
-
-    @unittest.skip
     async def test_real_time_interrupt_with_cancellation(self):
         """
         测试真正的实时打断场景：不等 workflow1 执行完就发送新 query。
@@ -831,8 +826,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         print("✅ 测试通过：流输出模式正确返回 end node stream 帧")
-
-    @unittest.skip
     async def test_real_time_interrupt_like_invoke_002(self):
         """
         参考 test_agent_invoke_002 构造的实时打断测试。
@@ -955,8 +948,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result3, list, "步骤4应该返回交互请求列表")
         self.assertTrue(len(result3) > 0, "步骤4应该有交互请求")
         print(f"[OK] 步骤4成功：系统恢复正常，天气查询工作流正常触发交互")
-
-    @unittest.skip("skip system test - requires network")
     async def test_interactive_input_skips_llm_intent_detection(self):
         """
         测试 InteractiveInput 类型输入跳过 LLM 意图识别。
@@ -1078,8 +1069,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         print("\n✅ 测试通过：InteractiveInput 成功跳过意图识别，直接恢复工作流！")
-
-    @unittest.skip("skip system test - requires network")
     async def test_interactive_input_resumes_correct_workflow_in_multi_workflow(
             self
     ):
@@ -1543,8 +1532,6 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print(f"workflow_final 帧内容: {workflow_final_chunk.payload}")
         print(f"✅ 测试通过：流式模式正确返回 workflow_final 帧，内容: {default_text}")
-
-    @unittest.skip("skip system test - requires network")
     async def test_questioner_state_reset_on_second_invocation(self):
         """
         测试 questioner 组件状态在第二次调用时正确重置。

@@ -8,6 +8,7 @@
 2. str类型中断（人机交互文本）- 应该正常执行工作流
 """
 import os
+import uuid
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -35,10 +36,10 @@ from openjiuwen.core.workflow.component.common.configs.model_config import Model
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.common.logging import logger
 
-API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
-API_KEY = os.getenv("API_KEY", "sk-fake")
-MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
+API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
+MODEL_NAME = "Qwen/Qwen3-32B"
+MODEL_PROVIDER = "siliconflow"
 
 
 # ============ 自定义组件：返回dict格式的中断 ============
@@ -165,8 +166,6 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("user_input", "end")
 
         return flow
-
-    @unittest.skip("skip system test - requires network")
     async def test_dict_interrupt_should_return_again(self):
         """
         测试场景1：dict类型中断应该再次返回
@@ -238,8 +237,6 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         final_chunks = [c for c in result3 if c.type == "workflow_final"]
         self.assertEqual(len(final_chunks), 1, "应该有一个workflow_final")
         logger.info(f"最终结果: {final_chunks[0].payload}")
-
-    @unittest.skip("skip system test - requires network")
     async def test_str_interrupt_should_continue(self):
         """
         测试场景2：str类型中断应该正常执行
@@ -345,8 +342,6 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("questioner", "end")
 
         return flow
-
-    @unittest.skip("skip system test - requires network")
     async def test_str_interrupt_should_continue(self):
         """
         测试场景2：str类型中断应该正常执行
@@ -442,8 +437,6 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
             final_chunks_4 = [c for c in result4 if c.type == "workflow_final"]
             self.assertEqual(len(final_chunks_4), 1, "应该完成工作流（str中断+InteractiveInput）")
             logger.info(f"第四次调用最终结果: {final_chunks_4[0].payload}")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_jump_with_mixed_interrupts(self):
         """
         测试场景3：工作流跳转与混合中断类型

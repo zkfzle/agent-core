@@ -5,7 +5,7 @@
 
 from dataclasses import dataclass
 
-from openjiuwen.core.agent_group.config import AgentGroupConfig
+from openjiuwen.core.multi_agent.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 

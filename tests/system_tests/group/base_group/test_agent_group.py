@@ -13,8 +13,8 @@ from typing import Dict, AsyncIterator, Any
 
 from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.single_agent.agent import BaseAgent
-from openjiuwen.core.agent_group import AgentGroupConfig
-from openjiuwen.core.agent_group.agent_group import BaseGroup, AgentGroupRuntime
+from openjiuwen.core.multi_agent import AgentGroupConfig
+from openjiuwen.core.multi_agent.agent_group import BaseGroup, AgentGroupRuntime
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.runner.runner import Runner
 

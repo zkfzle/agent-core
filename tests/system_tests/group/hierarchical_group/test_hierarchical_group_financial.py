@@ -17,11 +17,11 @@ from unittest.mock import patch
 from openjiuwen.core.single_agent.config import AgentConfig
 from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
 from examples.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.agent_group.hierarchical_group import (
+from openjiuwen.core.multi_agent.prebuilt_group.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
-from openjiuwen.agent_group.hierarchical_group.agents.main_controller import HierarchicalMainController
+from openjiuwen.core.multi_agent.prebuilt_group.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.single_agent.agent import ControllerAgent
 from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.constants import constant as const
@@ -996,7 +996,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     @patch(
-        "openjiuwen.agent_group.hierarchical_group.agents.main_controller."
+        "openjiuwen.multi_agent.hierarchical_group.agents.main_controller."
         "HierarchicalMainController._detect_intent"
     )
     async def test_hierarchical_with_react_agent_only(self, mock_detect_intent):
@@ -1064,7 +1064,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     @patch(
-        "openjiuwen.agent_group.hierarchical_group.agents.main_controller."
+        "openjiuwen.multi_agent.hierarchical_group.agents.main_controller."
         "HierarchicalMainController._detect_intent"
     )
     async def test_hierarchical_with_llm_agent_only(self, mock_detect_intent):
@@ -1139,7 +1139,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     @patch(
-        "openjiuwen.agent_group.hierarchical_group.agents.main_controller."
+        "openjiuwen.multi_agent.hierarchical_group.agents.main_controller."
         "HierarchicalMainController._detect_intent"
     )
     async def test_hierarchical_with_llm_agent_with_tools(self, mock_detect_intent):

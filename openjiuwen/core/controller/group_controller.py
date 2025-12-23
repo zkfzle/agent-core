@@ -13,7 +13,7 @@ from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
 
 if TYPE_CHECKING:
-    from openjiuwen.core.agent_group.agent_group import BaseGroup, AgentGroupRuntime
+    from openjiuwen.core.multi_agent.agent_group import BaseGroup, AgentGroupRuntime
 
 
 class BaseGroupController(ABC):
@@ -26,7 +26,7 @@ class BaseGroupController(ABC):
     4. Developers only need to implement handle_message()
     
     Core data structures:
-    1. agent_group.agents: Dict[agent_id -> single_agent]  # Access via group reference
+    1. multi_agent.agents: Dict[agent_id -> single_agent]  # Access via group reference
     2. subscriptions: Dict[message_type -> List[agent_id]]  # Subscription relationship table
     
     Message type system:

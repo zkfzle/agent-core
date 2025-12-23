@@ -1,5 +1,6 @@
 # tests/test_workflow_agent_invoke_real.py
 import os
+import uuid
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -37,10 +38,10 @@ from openjiuwen.core.session.base import ComponentExecutable
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.workflow.component.base import WorkflowComponent
 
-API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
-API_KEY = os.getenv("API_KEY", "sk-fake")
-MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
+API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
+MODEL_NAME = "Qwen/Qwen3-32B"
+MODEL_PROVIDER = "siliconflow"
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 # Mock RESTful Api 元信息
@@ -430,7 +431,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
     # ===== 核心测试用例 =====
     @pytest.mark.asyncio
-    @unittest.skip("skip system test ")
     async def test_real_workflow_agent_invoke(self):
         """端到端测试：WorkflowAgent.invoke 走完整链路（插件被 mock）。"""
         # 1. 构造真实 workflow
@@ -438,7 +438,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 2. 构造 workflow single_agent 并调用
         agent = self._create_agent(workflow)
-        result = await agent.invoke({"query": "查询上海的天气", "conversation_id": "c123"})
+        result = await agent.invoke({"query": "查询上海的天气", "conversation_id": str(uuid.uuid4())})
 
         # 5. 断言
         print(f"Workflow Agent输出的最终结果：{result}")
@@ -465,8 +465,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             component_id = item.payload.id
             interactive_input.update(component_id, {"location": "上海"})
         return interactive_input
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_runner_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
@@ -478,7 +476,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 第一次调用 - 应该触发中断（设置30秒超时）
         try:
             result = await asyncio.wait_for(
-                Runner.run_agent(agent, {"query": "查询天气", "conversation_id": "c123"}),
+                Runner.run_agent(agent, {"query": "查询天气", "conversation_id": str(uuid.uuid4())}),
                 timeout=60.0
             )
         except asyncio.TimeoutError:
@@ -500,7 +498,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             # 第二次调用 - 传入字符串格式的回答，agent内部会自动处理中断恢复
             try:
                 result2 = await asyncio.wait_for(
-                    Runner.run_agent(agent, {"query": "上海", "conversation_id": "c123"}),
+                    Runner.run_agent(agent, {"query": "上海", "conversation_id": str(uuid.uuid4())}),
                     timeout=60.0
                 )
             except asyncio.TimeoutError:
@@ -519,8 +517,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_runner_stream_with_dict_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。使用dict类型InteractiveInput"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
@@ -535,7 +531,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             async def collect_first_stream():
                 chunks = []
                 async for chunk in Runner.run_agent_streaming(agent,
-                                                              {"query": "查询天气", "conversation_id": "c123"}):
+                                                              {"query": "查询天气", "conversation_id": str(uuid.uuid4())}):
                     print(f"Workflow Agent第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -564,7 +560,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 async def collect_second_stream():
                     chunks = []
                     async for chunk in Runner.run_agent_streaming(agent, {"query": interactive_input,
-                                                                          "conversation_id": "c123"}):
+                                                                          "conversation_id": str(uuid.uuid4())}):
                         print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
                         chunks.append(chunk)
                     return chunks
@@ -603,8 +599,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_runner_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
@@ -619,7 +613,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             async def collect_first_stream():
                 chunks = []
                 async for chunk in Runner.run_agent_streaming(agent,
-                                                              {"query": "查询天气", "conversation_id": "c123"}):
+                                                              {"query": "查询天气", "conversation_id": str(uuid.uuid4())}):
                     print(f"Workflow Agent第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -648,7 +642,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 async def collect_second_stream():
                     chunks = []
                     async for chunk in Runner.run_agent_streaming(agent, {"query": interactive_input,
-                                                                          "conversation_id": "c123"}):
+                                                                          "conversation_id": str(uuid.uuid4())}):
                         print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
                         chunks.append(chunk)
                     return chunks
@@ -687,8 +681,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
@@ -700,7 +692,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 第一次调用 - 应该触发中断（设置30秒超时）
         try:
             result = await asyncio.wait_for(
-                agent.invoke({"query": "查询天气", "conversation_id": "c123"}),
+                agent.invoke({"query": "查询天气", "conversation_id": str(uuid.uuid4())}),
                 timeout=60.0
             )
         except asyncio.TimeoutError:
@@ -722,7 +714,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             # 第二次调用 - 传入字符串格式的回答，agent内部会自动处理中断恢复
             try:
                 result2 = await asyncio.wait_for(
-                    agent.invoke({"query": "上海", "conversation_id": "c123"}),
+                    agent.invoke({"query": "上海", "conversation_id": str(uuid.uuid4())}),
                     timeout=60.0
                 )
             except asyncio.TimeoutError:
@@ -741,8 +733,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
@@ -757,7 +747,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             async def collect_first_stream():
                 chunks = []
                 async for chunk in agent.stream(
-                        {"query": "查询天气", "conversation_id": "c123"}):
+                        {"query": "查询天气", "conversation_id": str(uuid.uuid4())}):
                     print(f"Workflow Agent第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -786,7 +776,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 async def collect_second_stream():
                     chunks = []
                     async for chunk in agent.stream({"query": interactive_input,
-                                                     "conversation_id": "c123"}):
+                                                     "conversation_id": str(uuid.uuid4())}):
                         print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
                         chunks.append(chunk)
                     return chunks
@@ -825,8 +815,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_concurrent_with_workflow_provider(self):
         """
         使用 WorkflowProvider 工厂函数验证并发安全性。
@@ -884,9 +872,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 定义多个并发会话
         conversation_configs = [
-            {"conversation_id": "provider_conv_1", "answer": "深圳"},
-            {"conversation_id": "provider_conv_2", "answer": "杭州"},
-            {"conversation_id": "provider_conv_3", "answer": "成都"},
+            {"conversation_id": str(uuid.uuid4()), "answer": "深圳"},
+            {"conversation_id": str(uuid.uuid4()), "answer": "杭州"},
+            {"conversation_id": str(uuid.uuid4()), "answer": "成都"},
         ]
 
         # ========== 阶段1: 并发发起第一次请求，触发中断 ==========
@@ -942,8 +930,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             success_count, 0,
             "至少应该有一个 conversation 成功触发中断"
         )
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_concurrent_with_async_workflow_provider(self):
         """
         使用 @workflow_provider 装饰器验证并发安全性。
@@ -987,9 +973,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 定义多个并发会话
         conversation_configs = [
-            {"conversation_id": "async_provider_conv_1", "answer": "北京"},
-            {"conversation_id": "async_provider_conv_2", "answer": "广州"},
-            {"conversation_id": "async_provider_conv_3", "answer": "武汉"},
+            {"conversation_id": str(uuid.uuid4()), "answer": "北京"},
+            {"conversation_id": str(uuid.uuid4()), "answer": "广州"},
+            {"conversation_id": str(uuid.uuid4()), "answer": "武汉"},
         ]
 
         # ========== 阶段1: 并发发起第一次请求，触发中断 ==========
@@ -1047,8 +1033,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             success_count, 0,
             "至少应该有一个 conversation 成功触发中断"
         )
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_with_multiple_interrupt_nodes_stream(self):
         """
         测试WorkflowAgent运行包含两个并行中断节点的工作流，并逐个恢复。
@@ -1074,7 +1058,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             async def collect_first_stream():
                 chunks = []
-                async for chunk in agent.stream({"query": "查询天气", "conversation_id": "test_multi_interrupt"}):
+                async for chunk in agent.stream({"query": "查询天气", "conversation_id": str(uuid.uuid4())}):
                     print(f"第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -1101,7 +1085,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             async def collect_second_stream():
                 chunks = []
                 async for chunk in agent.stream({"query": interactive_input,
-                                                 "conversation_id": "test_multi_interrupt"}):
+                                                 "conversation_id": str(uuid.uuid4())}):
                     print(f"第二次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -1131,7 +1115,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 chunks = []
                 final_chunk = None
                 async for chunk in agent.stream({"query": interactive_input,
-                                                 "conversation_id": "test_multi_interrupt"}):
+                                                 "conversation_id": str(uuid.uuid4())}):
                     print(f"第三次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -1169,8 +1153,6 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"   最终结果：{response_content}")
 
         print("\n🎉 测试完成！成功验证了并行中断节点的分步恢复功能")
-
-    @unittest.skip("skip system test - requires network")
     async def test_workflow_agent_with_multiple_interrupt_nodes_resume_all_at_once(self):
         """
         测试WorkflowAgent运行包含两个并行中断节点的工作流，并同时恢复所有中断。
@@ -1195,7 +1177,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             async def collect_first_stream():
                 chunks = []
-                async for chunk in agent.stream({"query": "查询天气", "conversation_id": "test_resume_all"}):
+                async for chunk in agent.stream({"query": "查询天气", "conversation_id": str(uuid.uuid4())}):
                     print(f"第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -1223,7 +1205,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             async def collect_second_stream():
                 chunks = []
                 final_chunk = None
-                async for chunk in agent.stream({"query": interactive_input, "conversation_id": "test_resume_all"}):
+                async for chunk in agent.stream({"query": interactive_input, "conversation_id": str(uuid.uuid4())}):
                     print(f"第二次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":

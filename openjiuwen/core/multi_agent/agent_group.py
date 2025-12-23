@@ -10,7 +10,7 @@ from typing import Any, Dict, AsyncIterator
 
 from openjiuwen.core.single_agent.agent import AgentRuntime
 from openjiuwen.core.single_agent.agent import BaseAgent
-from openjiuwen.core.agent_group.config import AgentGroupConfig
+from openjiuwen.core.multi_agent.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger

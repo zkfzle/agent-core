@@ -12,7 +12,7 @@ from examples.agents_for_studio.super_agent import SuperAgentConfig, SuperAgentF
 from examples.agents_for_studio.super_agent import SuperReActAgent
 from openjiuwen.core.single_agent.schema.schema import PluginSchema, WorkflowSchema
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.workflow.base import Workflow
 
 

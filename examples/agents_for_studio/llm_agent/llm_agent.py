@@ -18,7 +18,7 @@ from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import HumanMessage, AIMessage
-from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.workflow.base import Workflow
 
 

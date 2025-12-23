@@ -12,8 +12,8 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session.agent import AgentRuntime
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.wrapper import TaskRuntime
-from openjiuwen.core.foundation.tool.param import Param
-from openjiuwen.core.foundation.tool.tool import tool
+from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowExecutionState
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner.runner import Runner

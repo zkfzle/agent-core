@@ -31,7 +31,7 @@ from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
-from openjiuwen.core.foundation.tool.schema import ToolCall
+from openjiuwen.core.foundation.tool import ToolCall
 
 
 @dataclass

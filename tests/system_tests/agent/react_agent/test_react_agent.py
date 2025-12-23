@@ -13,10 +13,10 @@ from openjiuwen.core.single_agent.agents import ReActAgent
 from examples.agents_for_studio.llm_agent import ReActAgentConfig
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.tool.function.function import LocalFunction
-from openjiuwen.core.foundation.tool.param import Param
-from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.foundation.tool.tool import tool
+from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 

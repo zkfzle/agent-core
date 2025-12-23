@@ -29,8 +29,8 @@ from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.workflow import WorkflowRuntime
 from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.session.stream.base import BaseStreamMode
-from openjiuwen.core.foundation.tool.base import Tool
-from openjiuwen.core.foundation.tool.mcp.base import McpToolInfo
+from openjiuwen.core.foundation.tool import Tool
+from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
 
 AGENT_ADAPTER = "agent_adapter_"

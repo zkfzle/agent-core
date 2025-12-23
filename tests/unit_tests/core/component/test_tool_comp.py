@@ -9,9 +9,9 @@ from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.session.wrapper import WrappedNodeRuntime, TaskRuntime
-from openjiuwen.core.foundation.tool.param import Param
-from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
-from openjiuwen.core.foundation.tool.tool import tool
+from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode

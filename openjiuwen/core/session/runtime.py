@@ -14,8 +14,8 @@ from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template import Template
-from openjiuwen.core.foundation.tool.base import Tool
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool import Tool
+from openjiuwen.core.foundation.tool import ToolInfo
 
 ResourceManager = TypeVar("ResourceManager", contravariant=True)
 

@@ -49,7 +49,7 @@ from openjiuwen.core.runner.resources_manager.workflow_manager import generate_w
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
-from openjiuwen.core.foundation.tool.schema import ToolCall
+from openjiuwen.core.foundation.tool import ToolCall
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo

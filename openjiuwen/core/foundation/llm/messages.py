@@ -5,7 +5,7 @@
 from typing import Union, Dict, List, Optional, Any
 from pydantic import BaseModel, model_validator
 
-from openjiuwen.core.foundation.tool.schema import ToolCall
+from openjiuwen.core.foundation.tool import ToolCall
 
 
 class BaseMessage(BaseModel):

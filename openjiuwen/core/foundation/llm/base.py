@@ -8,7 +8,7 @@ from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage
-from openjiuwen.core.foundation.tool.schema import ToolInfo, Parameters
+from openjiuwen.core.foundation.tool import ToolInfo, Parameters
 from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 

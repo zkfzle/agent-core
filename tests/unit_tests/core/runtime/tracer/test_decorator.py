@@ -13,7 +13,7 @@ from openjiuwen.core.session.tracer.decorator import decorate_tool_with_trace, d
     decorate_model_with_trace
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
 from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig

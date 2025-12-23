@@ -15,7 +15,7 @@ from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.tool.base import Tool
+from openjiuwen.core.foundation.tool import Tool
 
 
 def create_chat_agent_config(agent_id: str,

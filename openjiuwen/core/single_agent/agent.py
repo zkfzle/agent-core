@@ -27,10 +27,10 @@ from openjiuwen.core.session.wrapper import (
     WrappedRuntime
 )
 from openjiuwen.core.session.stream.base import OutputSchema, CustomSchema
-from openjiuwen.core.foundation.tool.base import Tool
-from openjiuwen.core.foundation.tool.function.function import LocalFunction
-from openjiuwen.core.foundation.tool.schema import ToolInfo, Parameters
-from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.tool import Tool
+from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import ToolInfo, Parameters
+from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema, WorkflowMetadata
 

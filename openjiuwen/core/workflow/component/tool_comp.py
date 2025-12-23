@@ -15,9 +15,9 @@ from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session.base import ComponentExecutable
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.tool import constant
-from openjiuwen.core.foundation.tool.base import Tool
-from openjiuwen.core.foundation.tool.function.function import LocalFunction
-from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool import Tool
+from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import Param
 
 
 DEFAULT_EXCEPTION_ERROR_CODE = -1

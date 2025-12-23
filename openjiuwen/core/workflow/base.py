@@ -37,7 +37,7 @@ from openjiuwen.core.graph.stream_actor.base import StreamGraph
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.session.tracer.tracer import Tracer
 from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
-from openjiuwen.core.foundation.tool.schema import Parameters, ToolInfo
+from openjiuwen.core.foundation.tool import Parameters, ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
 from openjiuwen.core.graph.graph import PregelGraph

@@ -8,7 +8,7 @@ from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.messages import BaseMessage, SystemMessage
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool import ToolInfo
 
 DEFAULT_USER_PROMPT: str = "{{query}}"
 

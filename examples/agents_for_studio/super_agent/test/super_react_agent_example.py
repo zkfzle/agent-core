@@ -27,8 +27,8 @@ from super_agent.agent.super_react_agent import SuperReActAgent
 from super_agent.agent.super_config import SuperAgentFactory
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.tool.function.function import LocalFunction
-from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import Param
 
 
 # Environment configuration

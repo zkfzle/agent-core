@@ -17,7 +17,7 @@ from openjiuwen.core.workflow.component.start_comp import Start
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.foundation.llm.messages import AIMessage, BaseMessage
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata

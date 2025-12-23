@@ -18,8 +18,8 @@ from openjiuwen.core.session.tracer.tracer import Tracer
 from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template import Template
-from openjiuwen.core.foundation.tool.base import Tool
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool import Tool
+from openjiuwen.core.foundation.tool import ToolInfo
 
 
 class StaticWrappedRuntime(Runtime, ABC):

@@ -2,7 +2,8 @@
 # coding: utf-8
 """
 Super ReAct Agent Example
-Demonstrates how to use the SuperReActAgent with custom context management
+Demons
+trates how to use the SuperReActAgent with custom context management
 """
 
 import asyncio
@@ -23,15 +24,15 @@ for path in [REPO_ROOT, EXAMPLES_DIR]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from super_agent.agent.super_react_agent import SuperReActAgent
+from +.agent.super_react_agent import SuperReActAgent
 from super_agent.agent.super_config import SuperAgentFactory
 from super_agent.agent.prompt_templates import get_main_agent_system_prompt, get_browsing_agent_system_prompt
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.tool.function.function import LocalFunction
-from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import Param
 
-from openjiuwen.core.foundation.tool.mcp.base import ToolServerConfig
+from openjiuwen.core.foundation.tool import ToolServerConfig
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from mcp import StdioServerParameters
 

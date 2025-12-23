@@ -37,9 +37,9 @@ from openjiuwen.core.single_agent.agents import create_react_agent_config, ReAct
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
-from openjiuwen.core.foundation.tool.schema import ToolCall
-from openjiuwen.core.foundation.tool.function.function import LocalFunction
-from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool import ToolCall
+from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import Param
 
 
 class MockLLMModel(BaseModelClient):

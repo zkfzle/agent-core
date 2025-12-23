@@ -19,7 +19,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.llm.messages_chunk import AIMessageChunk
-from openjiuwen.core.foundation.tool.schema import ToolCall
+from openjiuwen.core.foundation.tool import ToolCall
 
 
 class RequestChatModel(BaseModelClient):

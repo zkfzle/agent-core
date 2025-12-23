@@ -18,8 +18,8 @@ from openjiuwen.core.workflow.component.set_variable_comp import SetVariableComp
 from openjiuwen.core.workflow.component.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.workflow.component.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session.runtime import BaseRuntime
-from openjiuwen.core.foundation.tool.param import Param
-from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
+from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
 from openjiuwen.core.graph.visualization.drawable import Drawable

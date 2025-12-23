@@ -176,7 +176,7 @@ class StreamProcessor:
         logger.info(f"stream processor finished for {self.node_id}, ability: [{ability.name}]")
 
     @staticmethod
-    async def is_value_from_source(path: str, source_id: str) -> bool:
+    def is_value_from_source(path: str, source_id: str) -> bool:
         return path == source_id or path.startswith(f"{source_id}.")
 
     @staticmethod

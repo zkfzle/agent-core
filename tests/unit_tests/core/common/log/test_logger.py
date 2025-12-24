@@ -197,7 +197,7 @@ class TestThreadSafety:
             t.join()
 
         for session_id, recorded_id in log_list:
-            assert session_id == recorded_id, f"线程session_id不匹配: 期望 {session_id}, 实际 {recorded_id}"
+            assert session_id == recorded_id, f"Thread session_id mismatch: expected {session_id}, actual {recorded_id}"
 
         assert get_thread_session() == ''
 
@@ -372,7 +372,7 @@ class TestLogFileOutput:
 
         set_thread_session('FILE-TEST-123')
 
-        test_message = "这是文件输出测试消息"
+        test_message = "This is a test message for file output"
         interface_logger.info(test_message)
 
         for handler in interface_logger._logger.handlers:
@@ -382,24 +382,24 @@ class TestLogFileOutput:
 
         if not os.path.exists(actual_log_file):
             stdout_output = stdout_capture.getvalue()
-            assert test_message in stdout_output, "控制台输出应该包含测试消息"
-            assert 'FILE-TEST-123' in stdout_output, "控制台输出应该包含trace_id"
+            assert test_message in stdout_output, "Console output should contain test message"
+            assert 'FILE-TEST-123' in stdout_output, "Console output should contain trace_id"
             return
 
         with open(actual_log_file, 'r', encoding='utf-8') as f:
             content = f.read()
 
         if content.strip():
-            assert test_message in content, "日志文件应该包含测试消息"
-            assert 'FILE-TEST-123' in content, "日志文件应该包含trace_id"
+            assert test_message in content, "Log file should contain test message"
+            assert 'FILE-TEST-123' in content, "Log file should contain trace_id"
         else:
             stdout_output = stdout_capture.getvalue()
-            assert test_message in stdout_output, "控制台输出应该包含测试消息"
-            assert 'FILE-TEST-123' in stdout_output, "控制台输出应该包含trace_id"
+            assert test_message in stdout_output, "Console output should contain test message"
+            assert 'FILE-TEST-123' in stdout_output, "Console output should contain trace_id"
             return
 
         stdout_output = stdout_capture.getvalue()
-        assert test_message in stdout_output, "控制台输出应该包含测试消息"
+        assert test_message in stdout_output, "Console output should contain test message"
 
 
 class TestDefaultLogger:
@@ -516,7 +516,6 @@ class TestLogDirectoryCreation:
     @staticmethod
     def test_create_nested_log_directory(temp_config_dir):
         """Test the creation of multi-level nested log directories (such as logs/run)"""
-        # 创建一个不存在的嵌套目录路径
         nested_log_path = os.path.join(temp_config_dir.name, 'logs', 'run')
         nested_log_file = os.path.join(nested_log_path, 'test.log')
 
@@ -535,20 +534,20 @@ class TestLogDirectoryCreation:
 
         logger = DefaultLogger('test_nested', config)
 
-        assert os.path.exists(nested_log_path), f"目录 {nested_log_path} 应该被创建"
-        assert os.path.isdir(nested_log_path), f"{nested_log_path} 应该是一个目录"
+        assert os.path.exists(nested_log_path), f"Directory {nested_log_path} should be created"
+        assert os.path.isdir(nested_log_path), f"{nested_log_path} should be a directory"
 
-        logger.info("测试嵌套目录日志")
+        logger.info("Test nested directory log")
 
         for handler in logger._logger.handlers:
             handler.flush()
             handler.close()
 
-        assert os.path.exists(nested_log_file), f"日志文件 {nested_log_file} 应该被创建"
+        assert os.path.exists(nested_log_file), f"Log file {nested_log_file} should be created"
 
         with open(nested_log_file, 'r', encoding='utf-8') as f:
             content = f.read()
-            assert "测试嵌套目录日志" in content
+            assert "Test nested directory log" in content
     
     @staticmethod
     def test_create_log_directory_with_relative_path(temp_config_dir):
@@ -576,15 +575,15 @@ class TestLogDirectoryCreation:
 
             abs_log_file = os.path.abspath(relative_log_file)
             abs_log_dir = os.path.dirname(abs_log_file)
-            assert os.path.exists(abs_log_dir), f"目录 {abs_log_dir} 应该被创建"
+            assert os.path.exists(abs_log_dir), f"Directory {abs_log_dir} should be created"
 
-            logger.info("测试相对路径日志")
+            logger.info("Test relative path log")
 
             for handler in logger._logger.handlers:
                 handler.flush()
                 handler.close()
 
-            assert os.path.exists(abs_log_file), f"日志文件 {abs_log_file} 应该被创建"
+            assert os.path.exists(abs_log_file), f"Log file {abs_log_file} should be created"
             
         finally:
             os.chdir(original_cwd)
@@ -640,7 +639,7 @@ class TestLogDirectoryCreation:
 
         assert os.path.exists(existing_log_path)
 
-        logger.info("测试已存在目录")
+        logger.info("Test existing directory")
 
         for handler in logger._logger.handlers:
             handler.flush()

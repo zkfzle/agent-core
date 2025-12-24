@@ -22,7 +22,6 @@ class LogConfig:
         self._log_path = self._get_log_path()
 
     def reload(self, config_path: str):
-        """重新加载日志配置。"""
         self._log_config = self._load_config(config_path)
         self._log_path = self._get_log_path()
 
@@ -53,9 +52,9 @@ class LogConfig:
                 'backup_file_pattern': None
             }
         except yaml.YAMLError as e:
-            raise ValueError(f"YAML配置文件格式错误: {e}") from e
+            raise ValueError(f"The YAML configuration file format is incorrect: {e}") from e
         except Exception as e:
-            raise Exception(f"加载配置文件失败: {e}") from e
+            raise Exception(f"Failed to load the configuration file: {e}") from e
 
     def _get_log_path(self) -> str:
         log_path = self._log_config.get('log_path', './logs/')
@@ -143,7 +142,6 @@ log_config = LogConfig()
 
 def configure_log(config_path: str):
     """
-    供外部项目调用，用于指定自定义日志 YAML 配置路径。
-    使用后会即时生效到全局 log_config。
+    It will take effect immediately upon use to the global log_config.
     """
     log_config.reload(config_path)

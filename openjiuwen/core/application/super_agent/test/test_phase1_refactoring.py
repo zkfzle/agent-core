@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from openjiuwen.core.application.agents_for_studio import ContextManager
 from openjiuwen.core.application.agents_for_studio import SuperReActAgent
 from openjiuwen.core.application.agents_for_studio import SuperAgentFactory
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 
 

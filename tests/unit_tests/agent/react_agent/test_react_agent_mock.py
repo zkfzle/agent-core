@@ -34,7 +34,7 @@ from unittest.mock import patch
 import pytest
 
 from openjiuwen.core.single_agent.agents import create_react_agent_config, ReActAgent
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall

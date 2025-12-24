@@ -8,10 +8,10 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.component.base import WorkflowComponent, SimpleComponent
-from openjiuwen.core.workflow.component.end_comp import End, EndConfig
-from openjiuwen.core.workflow.component.start_comp import Start
-from openjiuwen.core.workflow.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent, SimpleComponent
+from openjiuwen.core.workflow.components.flow_components.end_comp import End, EndConfig
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.session.base import ComponentExecutable, Input, Output

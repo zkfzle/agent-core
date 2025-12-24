@@ -4,10 +4,10 @@ import pytest
 
 from openjiuwen.core.common.constants.constant import MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.workflow.component.condition.array import ArrayCondition
-from openjiuwen.core.workflow.component.condition.condition import Condition, FuncCondition, AlwaysTrue
-from openjiuwen.core.workflow.component.condition.expression import ExpressionCondition
-from openjiuwen.core.workflow.component.condition.number import NumberCondition
+from openjiuwen.core.workflow.components.condition.array import ArrayCondition
+from openjiuwen.core.workflow.components.condition.condition import Condition, FuncCondition, AlwaysTrue
+from openjiuwen.core.workflow.components.condition.expression import ExpressionCondition
+from openjiuwen.core.workflow.components.condition.number import NumberCondition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input
 from openjiuwen.core.session.runtime import BaseRuntime

@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template import Template
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase, TuneConstant
 from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.agent_builder.tune.dataset.case_loader import CaseLoader

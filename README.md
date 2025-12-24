@@ -34,14 +34,14 @@ pip install -U openjiuwen
 ```python
 import os
 import asyncio
-from openjiuwen.core.workflow.component.start_comp import Start
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
@@ -131,7 +131,7 @@ asyncio.run(main())
 
 预期输出
 ```
-WorkflowAgent output result >>> 工作流输出文本: 鸡过马路，不会游泳也不会飞。
+WorkflowAgent output result >>> 工作流输出文本: 冰箱罢工了，因为它觉得生活太冷了。
 ```
 
 

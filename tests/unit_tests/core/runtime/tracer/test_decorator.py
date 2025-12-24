@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.component.llm_comp import LLMCompConfig, LLMExecutable
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.stream.base import StreamMode, BaseStreamMode

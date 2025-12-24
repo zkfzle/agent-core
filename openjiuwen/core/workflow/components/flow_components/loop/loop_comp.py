@@ -10,16 +10,16 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID, FINISH_INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.component.base import WorkflowComponent
-from openjiuwen.core.workflow.component.break_comp import BreakComponent, LoopController
-from openjiuwen.core.workflow.component.condition.array import ArrayConditionInRuntime
-from openjiuwen.core.workflow.component.condition.condition import Condition, AlwaysTrue, FuncCondition
-from openjiuwen.core.workflow.component.condition.expression import ExpressionCondition
-from openjiuwen.core.workflow.component.condition.number import NumberConditionInRuntime
-from openjiuwen.core.workflow.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.workflow.component.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, \
+from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.flow_components.loop.break_comp import BreakComponent, LoopController
+from openjiuwen.core.workflow.components.condition.array import ArrayConditionInRuntime
+from openjiuwen.core.workflow.components.condition.condition import Condition, AlwaysTrue, FuncCondition
+from openjiuwen.core.workflow.components.condition.expression import ExpressionCondition
+from openjiuwen.core.workflow.components.condition.number import NumberConditionInRuntime
+from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, \
     FIRST_LOOP
-from openjiuwen.core.workflow.component.loop_callback.output import OutputCallback
+from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY

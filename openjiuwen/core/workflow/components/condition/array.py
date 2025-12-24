@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Union, Any
 
-from openjiuwen.core.workflow.component.condition.condition import Condition
+from openjiuwen.core.workflow.components.condition.condition import Condition
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import INDEX

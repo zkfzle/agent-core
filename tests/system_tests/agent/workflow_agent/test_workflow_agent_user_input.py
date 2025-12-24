@@ -8,6 +8,7 @@
 2. str类型中断（人机交互文本）- 应该正常执行工作流
 """
 import os
+import uuid
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -18,15 +19,14 @@ from typing import Any, List
 
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentConfig
+from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentConfig, ComponentExecutable
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.session.base import ComponentExecutable
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.exception.exception import JiuWenBaseException

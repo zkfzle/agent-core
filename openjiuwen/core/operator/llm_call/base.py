@@ -4,7 +4,7 @@
 
 from typing import Dict, Any, Optional, List, Callable, AsyncIterator
 
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.messages import BaseMessage, SystemMessage

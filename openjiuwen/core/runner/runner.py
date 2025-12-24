@@ -19,16 +19,16 @@ from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgen
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
     get_runner_config
-from openjiuwen.core.session.agent import StaticAgentRuntime
-from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
+from openjiuwen.core.session import StaticAgentRuntime
+from openjiuwen.core.session import get_default_inmemory_checkpointer
 from openjiuwen.core.runner.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runner.resources_manager.agent_manager import AgentProvider, AgentMgr
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.session.workflow import WorkflowRuntime
-from openjiuwen.core.session.wrapper import TaskRuntime
-from openjiuwen.core.session.stream.base import BaseStreamMode
+from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import WorkflowRuntime
+from openjiuwen.core.session import TaskRuntime
+from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.workflow.base import Workflow
@@ -226,7 +226,7 @@ class Runner:
         return results[0] if single else results
 
     async def release(self, session_id: str):
-        await default_inmemory_checkpointer.release(session_id)
+        await get_default_inmemory_checkpointer().release(session_id)
 
     def _check_is_agent_tool(self, runtime, tool) -> bool:
         if not self._is_called_by_agent(runtime):

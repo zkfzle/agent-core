@@ -14,8 +14,8 @@ from openjiuwen.core.workflow.components.basic_components.intent_detection_comp 
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
-from openjiuwen.core.session.workflow import NodeRuntime, WorkflowRuntime
-from openjiuwen.core.session.wrapper import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.session import NodeRuntime, WorkflowRuntime
+from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata

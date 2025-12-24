@@ -5,7 +5,7 @@ import pytest
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.components.base import SimpleComponent
+from openjiuwen.core.workflow.components.base import SimpleComponent, Input, Output
 from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.flow_components.loop.break_comp import BreakComponent
@@ -19,12 +19,10 @@ from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp 
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.session.base import Input, Output
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.session.state import ReadableStateLike
-from openjiuwen.core.session.workflow import WorkflowRuntime
-from openjiuwen.core.session.stream.base import BaseStreamMode, CustomSchema, TraceSchema
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import WorkflowRuntime
+from openjiuwen.core.session.stream import BaseStreamMode, CustomSchema, TraceSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode, CommonNode, \
@@ -219,7 +217,7 @@ async def test_workflow_with_wait_for_all():
     for wait_for_all in [True, False]:
         flow = Workflow()
 
-        def start_input_transformer(state: ReadableStateLike):
+        def start_input_transformer(state):
             start_input_schema = {"a": "${a}", "b": "${b}", "c": "${c}",
                                   "d": "${d}"}
             return state.get(start_input_schema)

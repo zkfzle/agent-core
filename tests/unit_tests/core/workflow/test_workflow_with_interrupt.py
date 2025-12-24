@@ -16,12 +16,12 @@ from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.outp
 from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
 from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp import SetVariableComponent
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_KEY
-from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.session.interaction.interaction import InteractionOutput
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.workflow import WorkflowRuntime
-from openjiuwen.core.session.stream.base import BaseStreamMode, TraceSchema, OutputSchema
+from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_KEY
+from openjiuwen.core.session import get_default_inmemory_checkpointer
+from openjiuwen.core.session import InteractionOutput
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import WorkflowRuntime
+from openjiuwen.core.session.stream import BaseStreamMode, TraceSchema, OutputSchema
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow.base import WorkflowConfig
 from openjiuwen.core.workflow.workflow_config import ComponentAbility
@@ -1009,9 +1009,9 @@ async def test_simple_interactive_workflow_checkpointer():
                                              'payload': InteractionOutput.model_validate(
                                                  {'id': 'a', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
-    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is not None
-    first_time_workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
+    first_time_workflow_store = get_default_inmemory_checkpointer()._workflow_stores.get(session_id)
     assert first_time_workflow_store is not None
 
     user_input = InteractiveInput()
@@ -1024,9 +1024,9 @@ async def test_simple_interactive_workflow_checkpointer():
              'type': INTERACTION})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
     assert start_node.runtime == 1
-    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is not None
-    workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
+    workflow_store = get_default_inmemory_checkpointer()._workflow_stores.get(session_id)
     assert workflow_store is not None
     assert workflow_store is first_time_workflow_store
 
@@ -1035,9 +1035,9 @@ async def test_simple_interactive_workflow_checkpointer():
         result={'result': "any key"},
         state=WorkflowExecutionState.COMPLETED)
     # checkpoint will be deleted when completed
-    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is None
-    workflow_store = default_inmemory_checkpointer._workflow_stores.get(session_id)
+    workflow_store = get_default_inmemory_checkpointer()._workflow_stores.get(session_id)
     assert workflow_store is None
 
 
@@ -1072,16 +1072,16 @@ async def test_simple_interactive_workflow_checkpointer_manual_release():
                                              'payload': InteractionOutput.model_validate(
                                                  {'id': 'a', 'value': 'Please enter any key'})})],
         state=WorkflowExecutionState.INPUT_REQUIRED)
-    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is not None
-    first_time_workflow_store = getattr(default_inmemory_checkpointer, "_workflow_stores").get(session_id)
+    first_time_workflow_store = getattr(get_default_inmemory_checkpointer(), "_workflow_stores").get(session_id)
     assert first_time_workflow_store is not None
 
     # manually clear the checkpointer
-    await default_inmemory_checkpointer.release(session_id)
-    state = await default_inmemory_checkpointer.graph_store().get(session_id, workflow_id)
+    await get_default_inmemory_checkpointer().release(session_id)
+    state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is None
-    first_time_workflow_store = getattr(default_inmemory_checkpointer, "_workflow_stores").get(session_id)
+    first_time_workflow_store = getattr(get_default_inmemory_checkpointer(), "_workflow_stores").get(session_id)
     assert first_time_workflow_store is None
 
 

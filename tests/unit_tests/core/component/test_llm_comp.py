@@ -37,8 +37,8 @@ from unittest.mock import patch, AsyncMock
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
-from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
-from openjiuwen.core.session.wrapper import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.session import WorkflowRuntime, NodeRuntime
+from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 
 USER_FIELDS = "userFields"

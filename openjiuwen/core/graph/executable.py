@@ -6,7 +6,7 @@ from typing import TypeVar, Generic, AsyncIterator, Any
 
 from openjiuwen.core.common.exception.exception import InterruptException, JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session import BaseRuntime
 
 Input = TypeVar("Input", contravariant=True)
 Output = TypeVar("Output", covariant=True)

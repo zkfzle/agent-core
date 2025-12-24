@@ -12,7 +12,7 @@ from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.controller import BaseController
 from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.context_engine.context_engine import ContextEngine
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 
 
 class SimpleController(BaseController):

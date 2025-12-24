@@ -10,8 +10,8 @@ from openjiuwen.core.workflow.components.condition.expression import ExpressionC
 from openjiuwen.core.workflow.components.condition.number import NumberCondition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input
-from openjiuwen.core.session.runtime import BaseRuntime
-from openjiuwen.core.session.workflow_state import CommitState
+from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import CommitState
 
 
 class TestConditionBase:

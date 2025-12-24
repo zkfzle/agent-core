@@ -13,7 +13,7 @@ from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.tool import Tool
 

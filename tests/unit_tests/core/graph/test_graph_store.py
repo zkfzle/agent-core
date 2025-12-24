@@ -5,10 +5,8 @@
 import asyncio
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import MagicMock
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.graph.store import create_state, PendingNode, GraphStore
 from openjiuwen.core.graph.store.inmemory import InMemoryStore
 
@@ -117,8 +115,7 @@ async def _test_delete_checkpoint_by_ns_prefix():
 
 async def _test_memory_graph_store():
     saver = InMemoryStore()
-    mock_runtime = MagicMock(spec=BaseRuntime)
-    graph_checkpoint = GraphStore(runtime=mock_runtime, saver=saver)
+    graph_checkpoint = GraphStore(saver=saver)
 
     conversation_id = "conv_321"
     ns = "default_ns"

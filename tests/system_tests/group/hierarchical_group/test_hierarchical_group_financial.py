@@ -37,9 +37,9 @@ from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.session.base import ComponentExecutable
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.workflow.component import ComponentExecutable
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata

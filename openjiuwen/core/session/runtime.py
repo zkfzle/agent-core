@@ -6,12 +6,11 @@ from typing import Any, Union, Optional, List, TypeVar, Tuple
 
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.config import Config
-from openjiuwen.core.runner.resources_manager.callback_manager import CallbackManager
+from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.session.state import State
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.session.stream.manager import StreamWriterManager
 from openjiuwen.core.session.stream.writer import StreamWriter
-from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.tool import Tool
@@ -57,14 +56,11 @@ class BaseRuntime(ABC):
     def checkpointer(self):
         ...
 
-    def actor_manager(self) -> ActorManager:
+    def actor_manager(self) -> "ActorManager":
         pass
 
     async def close(self):
         pass
-
-
-Workflow = TypeVar("Workflow", contravariant=True)
 
 
 class Runtime(ABC):
@@ -153,22 +149,22 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def add_workflow(self, workflow_id: str, workflow: Workflow):
+    def add_workflow(self, workflow_id: str, workflow: "Workflow"):
         pass
 
     @abstractmethod
-    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+    def add_workflows(self, workflows: List[Tuple[str, "Workflow"]]):
         pass
 
     @abstractmethod
-    def remove_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    def remove_workflow(self, workflow_id: str) -> Optional["Workflow"]:
         pass
 
     @abstractmethod
-    async def get_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    async def get_workflow(self, workflow_id: str) -> Optional["Workflow"]:
         pass
 
-    def get_workflow_sync(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
         pass
 
     @abstractmethod

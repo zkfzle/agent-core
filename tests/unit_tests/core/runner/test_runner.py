@@ -10,8 +10,8 @@ from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session.agent import AgentRuntime
-from openjiuwen.core.session.config import Config
-from openjiuwen.core.session.wrapper import TaskRuntime
+from openjiuwen.core.session import Config
+from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowExecutionState

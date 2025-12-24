@@ -17,9 +17,9 @@ from openjiuwen.core.workflow.components.common.configs.model_config import Mode
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.workflow.base import Workflow

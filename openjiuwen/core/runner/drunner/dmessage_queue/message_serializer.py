@@ -10,8 +10,8 @@ from typing import Any, Union
 from openjiuwen.core.runner.drunner.dmessage_queue.message import (
     DmqRequestMessage, DmqResponseMessage
 )
-from openjiuwen.core.session.interaction.interaction import InteractionOutput
-from openjiuwen.core.session.stream.base import OutputSchema, CustomSchema, TraceSchema
+from openjiuwen.core.session import InteractionOutput
+from openjiuwen.core.session.stream import OutputSchema, CustomSchema, TraceSchema
 from openjiuwen.core.workflow.base import WorkflowOutput
 
 MAX_RECURSE_DEPTH = 10

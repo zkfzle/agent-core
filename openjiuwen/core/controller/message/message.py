@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, Optional, Union, List
 
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session import InteractiveInput
 
 
 class MessageType(Enum):

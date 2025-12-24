@@ -44,9 +44,9 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_a
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
+from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall

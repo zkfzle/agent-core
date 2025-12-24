@@ -8,7 +8,7 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable, Input, Output
 from openjiuwen.core.workflow.components.condition.array import ArrayCondition
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
@@ -18,8 +18,7 @@ from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp 
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
-from openjiuwen.core.session.base import ComponentExecutable, Input, Output
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.workflow.workflow_config import ComponentAbility, WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
 
@@ -37,7 +36,7 @@ from openjiuwen.core.common.logging import logger
 
 from openjiuwen.core.session.workflow import WorkflowRuntime
 from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.session.stream.base import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
+from openjiuwen.core.session.stream import CustomSchema, OutputSchema, TraceSchema, BaseStreamMode
 
 pytestmark = pytest.mark.asyncio
 

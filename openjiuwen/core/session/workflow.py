@@ -7,13 +7,12 @@ from typing import Any
 
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.config import Config
-from openjiuwen.core.runner.resources_manager.callback_manager import CallbackManager
+from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceManager, ResourceMgr
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.state import State
 from openjiuwen.core.session.workflow_state import InMemoryState
 from openjiuwen.core.session.stream.manager import StreamWriterManager
-from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.session.tracer.tracer import Tracer
 
 
@@ -53,7 +52,7 @@ class WorkflowRuntime(BaseRuntime):
     def set_context(self, context: Context) -> None:
         self._context = context
 
-    def set_actor_manager(self, queue_manager: ActorManager):
+    def set_actor_manager(self, queue_manager: "ActorManager"):
         if self._actor_manager is not None:
             return
         self._actor_manager = queue_manager
@@ -61,7 +60,7 @@ class WorkflowRuntime(BaseRuntime):
     def set_workflow_id(self, workflow_id):
         self._workflow_id = workflow_id
 
-    def actor_manager(self) -> ActorManager:
+    def actor_manager(self) -> "ActorManager":
         return self._actor_manager
 
     def config(self) -> Config:
@@ -149,7 +148,7 @@ class NodeRuntime(BaseRuntime):
     def workflow_nesting_depth(self):
         return self._workflow_nesting_depth
 
-    def actor_manager(self) -> ActorManager:
+    def actor_manager(self) -> "ActorManager":
         return self._runtime.actor_manager()
 
     def parent(self):
@@ -191,7 +190,7 @@ class NodeRuntime(BaseRuntime):
 
 
 class SubWorkflowRuntime(NodeRuntime):
-    def __init__(self, runtime: NodeRuntime, workflow_id: str, actor_manager: ActorManager = None):
+    def __init__(self, runtime: NodeRuntime, workflow_id: str, actor_manager: "ActorManager" = None):
         super().__init__(runtime=runtime.parent(), node_id=runtime.node_id(), node_type=runtime.node_type())
         self._workflow_id = workflow_id
         self._workflow_nesting_depth = runtime.workflow_nesting_depth() + 1
@@ -207,7 +206,7 @@ class SubWorkflowRuntime(NodeRuntime):
     def main_workflow_id(self):
         return self._main_workflow_id
 
-    def actor_manager(self) -> ActorManager:
+    def actor_manager(self) -> "ActorManager":
         return self._actor_manager
 
     async def close(self):

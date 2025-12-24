@@ -16,9 +16,9 @@ from openjiuwen.core.workflow.components.interact_components.questioner_comp imp
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.session.runtime import BaseRuntime
-from openjiuwen.core.session.wrapper import TaskRuntime
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import TaskRuntime
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.protocols.mcp import ToolServerConfig, SseClient, StdioClient, PlaywrightClient

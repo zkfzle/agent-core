@@ -10,7 +10,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session.agent import AgentRuntime
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
-from openjiuwen.core.session.runtime import Runtime, Workflow, BaseRuntime
+from openjiuwen.core.session.runtime import Runtime, BaseRuntime
 from openjiuwen.core.session.workflow import NodeRuntime, WorkflowRuntime
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.session.stream.writer import StreamWriter
@@ -92,19 +92,19 @@ class WrappedRuntime(Runtime, ABC):
     def get_model(self, model_id: str) -> BaseModelClient:
         return self._inner.resource_manager().model().get_model(model_id, self._inner)
 
-    def add_workflow(self, workflow_id: str, workflow: Workflow):
+    def add_workflow(self, workflow_id: str, workflow: "Workflow"):
         self._inner.resource_manager().workflow().add_workflow(workflow_id, workflow)
 
-    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+    def add_workflows(self, workflows: List[Tuple[str, "Workflow"]]):
         self._inner.resource_manager().workflow().add_workflows(workflows)
 
     def remove_workflow(self, workflow_id: str):
         self._inner.resource_manager().workflow().remove_workflow(workflow_id)
 
-    async def get_workflow(self, workflow_id: str) -> Workflow:
+    async def get_workflow(self, workflow_id: str) -> "Workflow":
         return await self._inner.resource_manager().workflow().get_workflow(workflow_id, self._inner)
 
-    def get_workflow_sync(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
         return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id, self._inner)
 
     def add_tool(self, tool_id: str, tool: Tool):
@@ -239,19 +239,19 @@ class RouterRuntime(StateRuntime):
     def get_model(self, model_id: str) -> BaseModelClient:
         pass
 
-    def add_workflow(self, workflow_id: str, workflow: Workflow):
+    def add_workflow(self, workflow_id: str, workflow: "Workflow"):
         pass
 
-    def add_workflows(self, workflows: List[Tuple[str, Workflow]]):
+    def add_workflows(self, workflows: List[Tuple[str, "Workflow"]]):
         pass
 
     def remove_workflow(self, workflow_id: str):
         pass
 
-    async def get_workflow(self, workflow_id: str) -> Workflow:
+    async def get_workflow(self, workflow_id: str) -> "Workflow":
         pass
 
-    def get_workflow_sync(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
         pass
 
     def add_tool(self, tool_id: str, tool: Tool):
@@ -311,10 +311,10 @@ class WrappedNodeRuntime(StateRuntime):
     def get_model(self, model_id: str) -> BaseModelClient:
         return self._inner.resource_manager().model().get_model(model_id)
 
-    async def get_workflow(self, workflow_id: str) -> Workflow:
+    async def get_workflow(self, workflow_id: str) -> "Workflow":
         return await self._inner.resource_manager().workflow().get_workflow(workflow_id)
 
-    def get_workflow_sync(self, workflow_id: str) -> Workflow:
+    def get_workflow_sync(self, workflow_id: str) -> "Workflow":
         return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id)
 
     def get_tool(self, tool_id: str) -> Tool:
@@ -361,10 +361,10 @@ class TaskRuntime(StateRuntime):
     def get_model(self, model_id: str) -> BaseModelClient:
         return self._inner.resource_manager().model().get_model(model_id, runtime=self._inner)
 
-    async def get_workflow(self, workflow_id: str) -> Workflow:
+    async def get_workflow(self, workflow_id: str) -> "Workflow":
         return await self._inner.resource_manager().workflow().get_workflow(workflow_id, runtime=self._inner)
 
-    def get_workflow_sync(self, workflow_id: str) -> Optional[Workflow]:
+    def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
         return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id, runtime=self._inner)
 
     def get_tool(self, tool_id: str) -> Tool:

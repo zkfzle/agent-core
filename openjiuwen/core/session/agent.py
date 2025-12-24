@@ -8,8 +8,8 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.agent_state import StateCollection
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.base import Checkpointer
-from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.runner.resources_manager.callback_manager import CallbackManager
+from openjiuwen.core.session.base import get_default_inmemory_checkpointer
+from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.state import State, InMemoryCommitState
@@ -24,7 +24,7 @@ class StaticAgentRuntime(BaseRuntime):
     def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
         self._config = config if config is not None else Config()
         self._resource_manager = ResourceMgr() if resource_mgr is None else resource_mgr
-        self._checkpointer = default_inmemory_checkpointer
+        self._checkpointer = get_default_inmemory_checkpointer()
 
     def config(self) -> Config:
         return self._config
@@ -77,7 +77,7 @@ class AgentRuntime(BaseRuntime):
         tracer = Tracer()
         tracer.init(self._stream_writer_manager, self._callback_manager)
         self._tracer = tracer
-        self._checkpointer = default_inmemory_checkpointer if checkpointer is None else checkpointer
+        self._checkpointer = get_default_inmemory_checkpointer() if checkpointer is None else checkpointer
         self._agent_span = self._tracer.tracer_agent_span_manager.create_agent_span() if self._tracer else None
 
     def config(self) -> Config:

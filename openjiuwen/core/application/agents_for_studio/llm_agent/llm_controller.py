@@ -20,14 +20,14 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine

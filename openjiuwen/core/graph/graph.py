@@ -14,20 +14,12 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.graph.base import Graph, Router, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.graph.vertex import Vertex
-from openjiuwen.core.session.interaction.base import Checkpointer
-from openjiuwen.core.session.interaction.checkpointer import default_inmemory_checkpointer
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session import Checkpointer
+from openjiuwen.core.session import get_default_inmemory_checkpointer
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.graph.pregel import Pregel, PregelBuilder, PregelConfig, MAX_RECURSIVE_LIMIT, START, END
 from openjiuwen.core.graph.store import GraphStore
-
-
-def after_step(loop):
-    runtime = loop.saver.ctx if loop.saver and hasattr(loop.saver, "ctx") else None
-    if runtime:
-        runtime.state().commit()
-    logger.debug(f"ns: {loop.config['ns']}, step: {loop.step}, active_nodes: {list(loop.active_nodes)}")
-
 
 @dataclass(slots=True)
 class Branch:
@@ -43,7 +35,7 @@ class PregelGraph(Graph):
         self.nodes: dict[str, Vertex] = {}
         self.branches: defaultdict[str, dict[str, Branch]] = defaultdict(dict)
         self.checkpointer = None
-        self._graph_store = None
+        self._runtime = None
 
     def start_node(self, node_id: str) -> Self:
         if node_id is None:
@@ -118,13 +110,17 @@ class PregelGraph(Graph):
     def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
         for node_id, node in self.nodes.items():
             node.init(runtime)
+        def after_step(loop):
+            if self._runtime:
+                self._runtime.state().commit()
+            logger.debug(f"ns: {loop.config['ns']}, step: {loop.step}, active_nodes: {list(loop.active_nodes)}")
         if self.pregel is None:
-            self.checkpointer = default_inmemory_checkpointer
-            store = GraphStore(runtime, self.checkpointer.graph_store())
+            self.checkpointer = get_default_inmemory_checkpointer()
+            store = GraphStore(self.checkpointer.graph_store())
             self.pregel = self._compile(graph_store=store, step_callback=after_step)
-            self._graph_store = store
+            self._runtime = runtime
         else:
-            self._graph_store.reset(runtime)
+            self._runtime = runtime
         return CompiledGraph(self.pregel, self.checkpointer)
 
     def _compile(self, graph_store=None, step_callback=None) -> Pregel:

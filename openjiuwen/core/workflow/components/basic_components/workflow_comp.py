@@ -5,12 +5,11 @@ from typing import AsyncIterator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session.base import ComponentExecutable
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.graph.visualization.drawable_graph import DrawableGraph
 

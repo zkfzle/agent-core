@@ -5,7 +5,7 @@ from typing import List
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
@@ -13,10 +13,9 @@ from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.session.base import ComponentExecutable
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import Runtime
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi

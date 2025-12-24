@@ -15,7 +15,7 @@ from openjiuwen.core.workflow.components.common.configs.model_config import Mode
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runner.runner_config import RunnerConfig, MessageQueueConfig, DistributedConfig, PulsarConfig
-from openjiuwen.core.session.stream.base import OutputSchema, TraceSchema
+from openjiuwen.core.session.stream import OutputSchema, TraceSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata

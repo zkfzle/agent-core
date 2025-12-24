@@ -8,18 +8,18 @@ import pytest
 
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
-from openjiuwen.core.session.interaction.interaction import InteractionOutput
-from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.session.wrapper import TaskRuntime
+from openjiuwen.core.session import InteractionOutput
+from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.graph.executable import Input
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.workflow import WorkflowRuntime
-from openjiuwen.core.session.stream.base import TraceSchema, OutputSchema
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session import WorkflowRuntime
+from openjiuwen.core.session.stream import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput

@@ -35,8 +35,8 @@ from openjiuwen.core.workflow.components.interact_components.questioner_comp imp
 )
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
-from openjiuwen.core.session.runtime import BaseRuntime
-from openjiuwen.core.session.stream.base import CustomSchema
+from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session.stream import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.tool import Param

@@ -4,7 +4,7 @@
 from typing import Union
 
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException

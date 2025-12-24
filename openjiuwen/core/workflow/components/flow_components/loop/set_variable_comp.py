@@ -5,13 +5,12 @@ from typing import Any
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session.base import ComponentExecutable
-from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.session.workflow import NodeRuntime
-from openjiuwen.core.session.utils import extract_origin_key, is_ref_path, NESTED_PATH_SPLIT
+from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import NodeRuntime
+from openjiuwen.core.session import extract_origin_key, is_ref_path, NESTED_PATH_SPLIT
 
 
 class SetVariableComponent(WorkflowComponent, ComponentExecutable):

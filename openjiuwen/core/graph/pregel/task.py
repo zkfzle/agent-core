@@ -13,13 +13,13 @@ from openjiuwen.core.graph.pregel.base import Message, PregelNode, GraphInterrup
 from openjiuwen.core.graph.pregel.config import PregelConfig, InnerPregelConfig, \
     create_inner_config
 from openjiuwen.core.graph.pregel.constants import TASK_STATUS_INTERRUPT, TASK_STATUS_ERROR, PARENT_NS, NS
-from openjiuwen.core.graph.store.base import PendingNode
 
 
 class TaskExecutorPool:
     def __init__(self, config: PregelConfig):
         self.config = config
         self.succeed_messages: List[Message] = []
+        from openjiuwen.core.graph.store.base import PendingNode
         self.failed: Dict[str, PendingNode] = {}
         self.running_tasks: Dict[asyncio.Task, PregelNode] = {}
 
@@ -33,6 +33,7 @@ class TaskExecutorPool:
         name = node.name
         if name not in self.failed:
             status = TASK_STATUS_INTERRUPT if isinstance(exc, GraphInterrupt) else TASK_STATUS_ERROR
+            from openjiuwen.core.graph.store.base import PendingNode
             self.failed[name] = PendingNode(node_name=name, status=status, exception=[exc])
 
     async def wait_all(self) -> None:

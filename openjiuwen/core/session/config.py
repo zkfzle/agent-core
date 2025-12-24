@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import contextvars
 import os
 from abc import ABC
 from typing import TypedDict, Any, Optional
 
-from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.session import workflow_runtime_vars
 from openjiuwen.core.session.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STREAM_INPUT_GEN_TIMEOUT_KEY, \
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY, END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
     WORKFLOW_EXECUTE_TIMEOUT, WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_EXECUTE_TIMEOUT_ENV_KEY, \
@@ -17,8 +16,8 @@ from openjiuwen.core.session.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STRE
     WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT_ENV_KEY, \
     LOOP_NUMBER_MAX_LIMIT_KEY, LOOP_NUMBER_MAX_LIMIT_ENV_KEY, LOOP_NUMBER_MAX_LIMIT_DEFAULT, \
     FORCE_DEL_WORKFLOW_STATE_ENV_KEY, FORCE_DEL_WORKFLOW_STATE_KEY
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 
+workflow_runtime_vars: contextvars.ContextVar[dict] = contextvars.ContextVar("workflow_runtime_vars", default={})
 
 class MetadataLike(TypedDict):
     name: str
@@ -97,8 +96,8 @@ class Config(ABC):
         """
         self._callback_metadata: dict[str, MetadataLike] = {}
         self._env: dict = {}
-        self._workflow_configs: dict[str, WorkflowConfig] = {}
-        self._agent_config: AgentConfig = None
+        self._workflow_configs: dict[str, "WorkflowConfig"] = {}
+        self._agent_config: "AgentConfig" = None
         self._load_envs_()
 
     def set_envs(self, envs: dict[str, Any]) -> None:

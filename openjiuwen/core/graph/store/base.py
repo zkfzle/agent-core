@@ -12,8 +12,6 @@ from typing import (
     Optional
 )
 
-from openjiuwen.core.session.runtime import BaseRuntime
-
 
 @dataclass
 class PendingNode:
@@ -67,12 +65,8 @@ def create_state(
 
 
 class GraphStore(Store):
-    def __init__(self, runtime: BaseRuntime, saver: Store):
+    def __init__(self, saver: Store):
         self._saver = saver
-        self.ctx = runtime
-
-    def reset(self, runtime: BaseRuntime):
-        self.ctx = runtime
 
     async def get(self, session_id: str, ns: str) -> Optional[GraphState]:
         return await self._saver.get(session_id, ns)

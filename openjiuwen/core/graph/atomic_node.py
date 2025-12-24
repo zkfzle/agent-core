@@ -7,8 +7,8 @@ from typing import Any, Optional
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.session.runtime import BaseRuntime
-from openjiuwen.core.session.workflow_state import CommitState
+from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import CommitState
 
 
 def _validate_runtime_and_state(runtime: Optional[BaseRuntime]) -> None:

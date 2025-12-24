@@ -5,7 +5,7 @@ from abc import abstractmethod, ABC
 
 from openjiuwen.core.workflow.components.base import WorkflowComponent
 from openjiuwen.core.graph.executable import Input, Output, Executable
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 

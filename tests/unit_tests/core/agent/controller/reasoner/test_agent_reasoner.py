@@ -15,7 +15,7 @@ from openjiuwen.core.controller.message.message import Message, MessageContent, 
 from openjiuwen.core.controller.task import TaskInput
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 
 

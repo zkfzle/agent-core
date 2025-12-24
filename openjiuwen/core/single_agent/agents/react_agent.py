@@ -21,8 +21,9 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.single_agent.config import AgentConfig, ConstrainConfig
 from openjiuwen.core.single_agent.schema.schema import PluginSchema
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.session.runtime import Runtime, Workflow
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.session import Runtime
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template import Template

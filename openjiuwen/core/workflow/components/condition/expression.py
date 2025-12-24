@@ -9,7 +9,7 @@ from typing import Any, Optional
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import MAX_COLLECTION_SIZE, MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
 

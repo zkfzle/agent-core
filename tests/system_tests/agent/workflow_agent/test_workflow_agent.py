@@ -13,7 +13,7 @@ from typing import List
 
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agent import workflow_provider
-from openjiuwen.core.session.wrapper import TaskRuntime
+from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
@@ -21,21 +21,21 @@ from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCom
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
-from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.stream.base import OutputSchema
+from openjiuwen.core.session import InteractiveInput
+from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.session.base import ComponentExecutable
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.workflow.components.base import ComponentExecutable
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.workflow.components.base import WorkflowComponent
 
 API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
@@ -1042,7 +1042,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
            - 但流式输出只返回第一个中断（WorkflowController设计）
         2. 第二次调用：恢复第一个节点，可能触发第二个中断
         3. 第三次调用：恢复剩余中断（如果有），工作流完成
-        
+
         注意：WorkflowController._get_first_interrupt() 在流式输出时只返回第一个中断
         """
         print("=== 测试 WorkflowAgent 运行包含两个并行中断节点的工作流 ===")
@@ -1078,7 +1078,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # WorkflowController._get_first_interrupt() 只返回第一个中断
         self.assertEqual(len(interaction_outputs), 1, "流式输出只返回第一个中断（interactive或questioner）")
         print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求（符合流式输出设计）")
-        
+
         # 记录第一个中断的组件ID
         first_interrupt_id = interaction_outputs[0].payload.id
         print(f"   第一个中断组件ID: {first_interrupt_id}")
@@ -1169,7 +1169,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         1. 首次调用：触发两个并行中断节点（interactive和questioner）
            - 但流式输出只返回第一个中断（WorkflowController设计）
         2. 第二次调用：使用InteractiveInput同时提供所有中断的输入，工作流直接完成
-        
+
         注意：WorkflowController._get_first_interrupt() 在流式输出时只返回第一个中断
         """
         print("=== 测试 WorkflowAgent 同时恢复所有并行中断节点 ===")

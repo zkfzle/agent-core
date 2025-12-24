@@ -28,12 +28,13 @@ from openjiuwen.core.application.agents_for_studio import (
 from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.session.runtime import Runtime, Workflow
+from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.protocols.mcp import ToolServerConfig
 from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.workflow.base import Workflow
 
 
 def _make_mcp_call_coroutine(server_name: str, tool_name: str):

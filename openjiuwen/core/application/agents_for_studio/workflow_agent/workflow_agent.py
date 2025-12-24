@@ -7,7 +7,7 @@ from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agent import ControllerAgent
 from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller import WorkflowController
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session import Runtime
 
 
 class WorkflowAgent(ControllerAgent):

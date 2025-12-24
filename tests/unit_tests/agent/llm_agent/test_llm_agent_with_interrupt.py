@@ -13,10 +13,10 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_a
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
-from openjiuwen.core.workflow.component.start_comp import Start
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.interact_components.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.stream.base import OutputSchema
@@ -73,8 +73,8 @@ class TestReActAgentInterrupt:  # ① 关键改动
     @unittest.skip("skip system test")
     @pytest.mark.asyncio
     @patch("openjiuwen.single_agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
-    @patch("openjiuwen.core.workflow.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
-    @patch("openjiuwen.core.workflow.component.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
+    @patch("openjiuwen.core.workflow.component.basic_components.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.workflow.component.basic_components.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
     @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_react_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_llm_inputs,
                                                                mock_extraction, mock_generate_plan_from_llm):
@@ -302,7 +302,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
 
     @pytest.mark.asyncio
-    @patch("openjiuwen.core.workflow.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.workflow.components.interact_components.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_real_workflow_agent_invoke_with_workflow_interrupt(self, mock_get_model, mock_extraction):
         # Mock LLM model
@@ -401,7 +401,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             print(f"WorkflowAgent 第二次输出结果：{result}")
 
     @pytest.mark.asyncio
-    @patch("openjiuwen.core.workflow.component.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
+    @patch("openjiuwen.core.workflow.components.interact_components.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     async def test_real_workflow_agent_stream_with_workflow_interrupt(self, mock_get_model, mock_extraction):
         # Mock LLM model

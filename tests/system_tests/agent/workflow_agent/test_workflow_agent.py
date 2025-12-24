@@ -14,13 +14,13 @@ from typing import List
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agent import workflow_provider
 from openjiuwen.core.session.wrapper import TaskRuntime
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.workflow.component.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.workflow.component.start_comp import Start
-from openjiuwen.core.workflow.component.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import Param
@@ -36,7 +36,7 @@ from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session.base import ComponentExecutable
 from openjiuwen.core.session.runtime import Runtime
-from openjiuwen.core.workflow.component.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent
 
 API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
 API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"

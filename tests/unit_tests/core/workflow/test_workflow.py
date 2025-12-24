@@ -5,19 +5,19 @@ import pytest
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.component.base import SimpleComponent
-from openjiuwen.core.workflow.component.branch_comp import BranchComponent
-from openjiuwen.core.workflow.component.branch_router import BranchRouter
-from openjiuwen.core.workflow.component.break_comp import BreakComponent
-from openjiuwen.core.workflow.component.condition.array import ArrayCondition
-from openjiuwen.core.workflow.component.condition.number import NumberCondition
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.workflow.component.loop_callback.output import OutputCallback
-from openjiuwen.core.workflow.component.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
-from openjiuwen.core.workflow.component.set_variable_comp import SetVariableComponent
-from openjiuwen.core.workflow.component.start_comp import Start
-from openjiuwen.core.workflow.component.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.base import SimpleComponent
+from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
+from openjiuwen.core.workflow.components.branch_router import BranchRouter
+from openjiuwen.core.workflow.components.flow_components.loop.break_comp import BreakComponent
+from openjiuwen.core.workflow.components.condition.array import ArrayCondition
+from openjiuwen.core.workflow.components.condition.number import NumberCondition
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
+from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
+from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp import SetVariableComponent
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.base import Input, Output
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput

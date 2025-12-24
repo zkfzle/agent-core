@@ -9,11 +9,11 @@ from mcp import StdioServerParameters
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.workflow.component.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
-from openjiuwen.core.workflow.component.start_comp import Start
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.session.runtime import BaseRuntime

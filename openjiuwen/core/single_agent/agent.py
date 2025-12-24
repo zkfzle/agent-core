@@ -703,7 +703,7 @@ class ControllerAgent(BaseAgent):
                 # Only WorkflowController writes to runtime here
                 # Other controllers (e.g. HierarchicalMainController) forward
                 # lower single_agent results, which already wrote to shared runtime
-                from openjiuwen.core.application.agents_for_studio.workflow_agent import (
+                from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller import (
                     WorkflowController
                 )
                 if isinstance(res, list) and isinstance(self.controller, WorkflowController):

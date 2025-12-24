@@ -16,7 +16,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.runtime import Runtime

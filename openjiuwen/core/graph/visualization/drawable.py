@@ -17,8 +17,8 @@ with contextlib.redirect_stdout(io.StringIO()):
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.component.base import WorkflowComponent
-from openjiuwen.core.workflow.component.branch_router import BranchRouter
+from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.graph.visualization.drawable_edge import DrawableEdge
 from openjiuwen.core.graph.visualization.drawable_graph import DrawableGraph
 from openjiuwen.core.graph.visualization.drawable_subgraph_node import DrawableSubgraphNode
@@ -49,10 +49,10 @@ class Drawable:
 
     def add_node(self, node_id: str, component: WorkflowComponent):
         """convert component to DrawableNode & save it to self._graph.nodes"""
-        from openjiuwen.core.workflow.component.loop_comp import LoopComponent, AdvancedLoopComponent
-        from openjiuwen.core.workflow.component.workflow_comp import SubWorkflowComponent
-        from openjiuwen.core.workflow.component.branch_comp import BranchComponent
-        from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent
+        from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import LoopComponent, AdvancedLoopComponent
+        from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
+        from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
+        from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent
         if isinstance(component, LoopComponent) or isinstance(component, AdvancedLoopComponent):
             subgraph = component.loop_group.drawable.get_graph()\
                 if isinstance(component, LoopComponent) else component.body.drawable.get_graph()

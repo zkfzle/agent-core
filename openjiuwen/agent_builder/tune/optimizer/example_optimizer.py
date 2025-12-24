@@ -11,7 +11,7 @@ from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.foundation.prompt.template import Template

@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, Tuple
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.memory.common.distributed_lock import DistributedLock
 from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.generation.generation import Generator

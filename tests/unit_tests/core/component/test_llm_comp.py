@@ -11,9 +11,9 @@ from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.start_comp import Start
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.foundation.llm.messages import AIMessage, BaseMessage
@@ -36,7 +36,7 @@ from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 from unittest.mock import patch, AsyncMock
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.workflow.component.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
 from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.session.wrapper import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient

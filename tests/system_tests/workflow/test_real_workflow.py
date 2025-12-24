@@ -20,21 +20,21 @@ import unittest
 from unittest.mock import patch
 
 from openjiuwen.core.session.wrapper import TaskRuntime
-from openjiuwen.core.workflow.component.branch_comp import BranchComponent
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.component.end_comp import End
-from openjiuwen.core.workflow.component.intent_detection_comp import (
+from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
+from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import (
     IntentDetectionComponent,
     IntentDetectionCompConfig,
 )
-from openjiuwen.core.workflow.component.llm_comp import LLMCompConfig, LLMComponent
-from openjiuwen.core.workflow.component.questioner_comp import (
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMComponent
+from openjiuwen.core.workflow.components.interact_components.questioner_comp import (
     FieldInfo,
     QuestionerComponent,
     QuestionerConfig,
 )
-from openjiuwen.core.workflow.component.start_comp import Start
-from openjiuwen.core.workflow.component.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.stream.base import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo

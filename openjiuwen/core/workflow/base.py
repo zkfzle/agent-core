@@ -17,9 +17,9 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.component.base import WorkflowComponent
-from openjiuwen.core.workflow.component.branch_router import BranchRouter
-from openjiuwen.core.workflow.component.end_comp import End
+from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.branch_router import BranchRouter
+from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output

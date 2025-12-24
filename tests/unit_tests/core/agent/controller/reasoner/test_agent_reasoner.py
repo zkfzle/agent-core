@@ -13,7 +13,7 @@ from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
 from openjiuwen.core.controller.reasoner import IntentDetection
 from openjiuwen.core.controller.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
 from openjiuwen.core.controller.task import TaskInput
-from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
+from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo

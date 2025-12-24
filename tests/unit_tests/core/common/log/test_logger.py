@@ -539,7 +539,8 @@ class TestLogDirectoryCreation:
 
         logger.info("Test nested directory log")
 
-        for handler in logger._logger.handlers:
+        # Access protected member for testing purposes
+        for handler in logger._logger.handlers:  # noqa: SLF001
             handler.flush()
             handler.close()
 
@@ -579,7 +580,8 @@ class TestLogDirectoryCreation:
 
             logger.info("Test relative path log")
 
-            for handler in logger._logger.handlers:
+            # Access protected member for testing purposes
+            for handler in logger._logger.handlers:  # noqa: SLF001
                 handler.flush()
                 handler.close()
 
@@ -641,7 +643,8 @@ class TestLogDirectoryCreation:
 
         logger.info("Test existing directory")
 
-        for handler in logger._logger.handlers:
+        # Access protected member for testing purposes
+        for handler in logger._logger.handlers:  # noqa: SLF001
             handler.flush()
             handler.close()
 

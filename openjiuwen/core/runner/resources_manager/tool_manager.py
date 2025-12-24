@@ -11,14 +11,16 @@ from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractMa
 from openjiuwen.core.session.tracer.decorator import decorate_tool_with_trace
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import (
-    ToolServerConfig,
     McpToolInfo,
-    McpToolClient,
-    SseClient,
-    StdioClient,
-    PlaywrightClient,
     MCPTool
 )
+from openjiuwen.core.protocols.mcp import (
+    McpClient,
+    SseClient,
+    StdioClient,
+    PlaywrightClient
+)
+from openjiuwen.core.protocols.mcp import ToolServerConfig
 from openjiuwen.core.foundation.tool import ToolInfo
 
 ToolProvider = Callable[[], Tool]
@@ -30,7 +32,7 @@ class ToolMgr(AbstractManager[Tool]):
         self._tool_infos: dict[str, ToolInfo] = {}
         self._server_tool_infos: dict[str, List[McpToolInfo]] = {}
         self._server_configs: dict[str, ToolServerConfig] = {}
-        self._mcp_clients: dict[str, McpToolClient] = {}
+        self._mcp_clients: dict[str, McpClient] = {}
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
         self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool")
@@ -191,7 +193,7 @@ class ToolMgr(AbstractManager[Tool]):
             logger.info(f"Registered MCP tool: {tool_id}")
         return True
 
-    def _create_client(self, config: ToolServerConfig) -> McpToolClient:
+    def _create_client(self, config: ToolServerConfig) -> McpClient:
         if config.client_type == "sse":
             return SseClient(config.server_path, config.server_name, \
                              config.auth_headers, config.auth_query_params)
@@ -237,7 +239,6 @@ class ToolMgr(AbstractManager[Tool]):
         copy_tool_info = deepcopy(tool_info)
         copy_tool_info.name = f'{tool_info.server_name}{delimiter}{tool_info.name}'
         return copy_tool_info
-
 
     async def stop(self):
         for client in self._mcp_clients.values():

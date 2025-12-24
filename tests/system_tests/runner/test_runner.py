@@ -20,7 +20,8 @@ from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.tool import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
+from openjiuwen.core.foundation.tool import McpToolInfo
+from openjiuwen.core.protocols.mcp import ToolServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 
@@ -392,9 +393,9 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         test_inputs = {"url": "https://example.com"}
 
         # -------------------- mock 配置 --------------------
-        with patch("openjiuwen.core.foundation.tool.mcp.base.SseClient.connect", AsyncMock(return_value=True)), \
-                patch("openjiuwen.core.foundation.tool.mcp.base.SseClient.disconnect", AsyncMock(return_value=True)), \
-                patch("openjiuwen.core.foundation.tool.mcp.base.SseClient.list_tools", AsyncMock(return_value=mock_tools)), \
+        with patch("openjiuwen.core.protocols.mcp.SseClient.connect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.protocols.mcp.SseClient.disconnect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.protocols.mcp.SseClient.list_tools", AsyncMock(return_value=mock_tools)), \
                 patch.object(SseClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
             # -------------------- 服务器配置 --------------------
             mcp_server_config = ToolServerConfig(
@@ -475,9 +476,9 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         test_inputs = {"history": "single_agent navigated to example.com and extracted title"}
 
         # -------------------- mock 配置 --------------------
-        with patch("openjiuwen.core.foundation.tool.mcp.base.StdioClient.connect", AsyncMock(return_value=True)), \
-                patch("openjiuwen.core.foundation.tool.mcp.base.StdioClient.disconnect", AsyncMock(return_value=True)), \
-                patch("openjiuwen.core.foundation.tool.mcp.base.StdioClient.list_tools", AsyncMock(return_value=mock_tools)), \
+        with patch("openjiuwen.core.protocols.mcp.StdioClient.connect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.protocols.mcp.StdioClient.disconnect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.protocols.mcp.StdioClient.list_tools", AsyncMock(return_value=mock_tools)), \
                 patch.object(StdioClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
             # -------------------- 服务器配置 --------------------
             # 参数内容可以是任意占位符，真实值不会被用到
@@ -556,9 +557,9 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         test_inputs = {"url": "https://example.com"}
 
         # -------------------- mock 配置 --------------------
-        with patch("openjiuwen.core.foundation.tool.mcp.base.PlaywrightClient.connect", AsyncMock(return_value=True)), \
-                patch("openjiuwen.core.foundation.tool.mcp.base.PlaywrightClient.disconnect", AsyncMock(return_value=True)), \
-                patch("openjiuwen.core.foundation.tool.mcp.base.PlaywrightClient.list_tools",
+        with patch("openjiuwen.core.protocols.mcp.PlaywrightClient.connect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.protocols.mcp.PlaywrightClient.disconnect", AsyncMock(return_value=True)), \
+                patch("openjiuwen.core.protocols.mcp.PlaywrightClient.list_tools",
                       AsyncMock(return_value=mock_tools)), \
                 patch.object(PlaywrightClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
             # -------------------- 服务器配置 --------------------

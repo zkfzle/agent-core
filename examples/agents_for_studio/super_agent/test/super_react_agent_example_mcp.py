@@ -39,7 +39,7 @@ from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 
-from openjiuwen.core.foundation.tool import ToolServerConfig
+from openjiuwen.core.protocols.mcp import ToolServerConfig
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 from mcp import StdioServerParameters
 

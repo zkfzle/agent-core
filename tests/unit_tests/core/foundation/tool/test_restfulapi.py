@@ -13,6 +13,7 @@ from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
 
+@pytest.mark.asyncio
 class TestRestFulApi:
     def assertEqual(self, left, right):
         assert left == right
@@ -33,7 +34,7 @@ class TestRestFulApi:
         self.mocked_functions.stop()
 
     @patch('requests.sessions.Session.request')
-    def test_ainvoke(self, mock_request):
+    async def test_invoke(self, mock_request):
         mock_data = RestfulApi(
             name="test",
             description="test",
@@ -46,14 +47,14 @@ class TestRestFulApi:
         mock_request.return_value = dict()
         try:
             os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
-            mock_data.ainvoke({})
+            await mock_data.invoke({})
             del os.environ["RESTFUL_SSL_CERT"]
         except Exception as e:
             pass
         self.assertEqual(mock_data.headers, {})
 
     @patch("requests.sessions.Session.request")
-    def test_invoke(self, mock_request):
+    async def test_stream(self, mock_request):
         mock_data = RestfulApi(
             name="test",
             description="test",
@@ -66,8 +67,8 @@ class TestRestFulApi:
         mock_request.return_value = dict()
         os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
         with pytest.raises(JiuWenBaseException) as e:
-            mock_data.invoke({})
-        assert "[182000] restful api only support ainvoke" == str(e.value)
+            await mock_data.stream({})
+        assert "[182000] Restful api not support stream mode" == str(e.value)
         del os.environ["RESTFUL_SSL_CERT"]
 
     def test_get_tool_info(self):

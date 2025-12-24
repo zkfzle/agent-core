@@ -7,7 +7,7 @@ MCP SDK（ToolServerConfig + Runner + resource_mgr.tool()）已经把MCP Server 
 
 3.把每个 McpToolInfo 转成一个 LocalFunction（名字 / 描述 / 参数来自 JSON-Schema）。
 
-4.在 LocalFunction.func 里，通过 Runner.run_tool(server_name.tool_name, arguments) 实际调用 MCP 工具。
+4.在 LocalFunction._func 里，通过 Runner.run_tool(server_name.tool_name, arguments) 实际调用 MCP 工具。
 
 5.把这些 LocalFunction 丢给 SuperReActAgent(tools=...)。
 

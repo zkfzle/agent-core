@@ -159,7 +159,7 @@ class ReActAgent(BaseAgent):
         if not tool:
             raise ValueError(f"Tool not found: {tool_name}")
 
-        result = await tool.ainvoke(tool_args)
+        result = await tool.invoke(tool_args)
 
         # Add tool result to chat history
         tool_message = ToolMessage(

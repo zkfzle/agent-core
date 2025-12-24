@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Any
+from typing import Any, AsyncIterator
 
 from pydantic import Field
 
@@ -35,14 +35,13 @@ class MCPTool(Tool):
         self.mcp_client = mcp_client
         self._tool_info = tool_info
 
-    def invoke(self, inputs: Input, **kwargs) -> Output:
-        """invoke of the MCP tool"""
+    async def stream(self, inputs: Input, **kwargs) -> AsyncIterator[Output]:
         raise JiuWenBaseException(
-            error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message="mcp tool only support ainvoke"
+            error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code,
+            message=f"mcp tool not support stream mode",
         )
 
-    async def ainvoke(self, inputs: Input, **kwargs) -> Output:
-        """Async invoke of the MCP tool"""
+    async def invoke(self, inputs: Input, **kwargs) -> Output:
         try:
             # Prepare arguments for MCP tool call
             arguments = inputs if isinstance(inputs, dict) else {}

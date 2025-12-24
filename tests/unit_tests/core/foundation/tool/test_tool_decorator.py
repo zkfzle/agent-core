@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 
-import unittest
+import pytest
 from typing import Annotated, Any, List, Dict
 from pydantic import Field, BaseModel
 
@@ -47,13 +47,14 @@ def summarize(
     return total
 
 
+@pytest.mark.asyncio
 class TestToolDecorator:
     def assertEqual(self, left, right):
         assert left == right
 
-    def test_tool(self):
+    async def test_tool(self):
         # invoke
-        sub_result = sub.invoke({"a": 5, "b": 1})
+        sub_result = await sub.invoke({"a": 5, "b": 1})
         self.assertEqual(sub.name, "local_sub")
         self.assertEqual(sub.description, "local function for sub")
         self.assertEqual(sub_result, 4)
@@ -74,7 +75,7 @@ class TestToolDecorator:
         )
         self.assertEqual(sub_res, sub_too_info)
 
-    def test_annotated(self):
+    async def test_annotated(self):
         # invoke
         input = {
             "title": "水果信息汇总",
@@ -97,7 +98,7 @@ class TestToolDecorator:
                 },
             ],
         }
-        summarize_result = summarize.invoke(input)
+        summarize_result = await summarize.invoke(input)
         self.assertEqual(summarize.name, "summarize")
         self.assertEqual(summarize.description, "汇总商品信息")
         self.assertEqual(summarize_result, 7.0)

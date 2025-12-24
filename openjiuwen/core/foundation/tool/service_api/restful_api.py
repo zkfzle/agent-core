@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
 import json
-from typing import List
+from typing import List, AsyncIterator
 
 import aiohttp
 
@@ -83,13 +83,7 @@ class RestfulApi(Tool):
                     simple_input['query'] = str(simple_input['query'])
         return inputs
 
-    def invoke(self, inputs: Input, **kwargs) -> Output:
-        """invoke api"""
-        raise JiuWenBaseException(
-            error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message="restful api only support ainvoke"
-        )
-
-    async def ainvoke(self, inputs: Input, **kwargs) -> Output:
+    async def invoke(self, inputs: Input, **kwargs) -> Output:
         """async invoke api"""
         request_params = RequestParams(self, inputs, **kwargs)
         try:
@@ -161,6 +155,12 @@ class RestfulApi(Tool):
             ) as response:
                 response_data = await _data_of_async_request(response)
         return response_data
+
+    async def stream(self, inputs: Input, **kwargs) -> AsyncIterator[Output]:
+        raise JiuWenBaseException(
+            error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code,
+            message=f"Restful api not support stream mode",
+        )
 
 
 class RequestParams:

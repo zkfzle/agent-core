@@ -206,7 +206,7 @@ class ToolCallHandler:
         logger.debug(f"Tool {tool_name} converted args: {tool_args}, types: {[(k, type(v).__name__) for k, v in tool_args.items()]}")
 
         # Execute tool
-        result = await tool.ainvoke(tool_args)
+        result = await tool.invoke(tool_args)
 
         # Ensure result is string for downstream processing/logging
         if not isinstance(result, str):

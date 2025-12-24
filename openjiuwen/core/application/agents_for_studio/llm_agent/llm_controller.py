@@ -619,7 +619,7 @@ class LLMController(BaseController):
                 message=StatusCode.TOOL_NOT_FOUND_ERROR.errmsg
             )
         try:
-            result = await tool.ainvoke(task.input.arguments)
+            result = await tool.invoke(task.input.arguments)
 
             # Prepare stream data
             payload = {"output": result, "result_type": "answer"}

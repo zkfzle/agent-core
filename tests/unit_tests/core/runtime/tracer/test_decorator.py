@@ -49,14 +49,10 @@ class MockTool(Tool):
         super().__init__()
         self.name = "mock tool"
 
-    async def ainvoke(self, inputs: Input, **kwargs) -> Output:
+    async def invoke(self, inputs: Input, **kwargs) -> Output:
         logger.info(inputs)
-        logger.info(f"begin to ainvoke , inputs={inputs}")
+        logger.info(f"begin to invoke , inputs={inputs}")
         return {}
-
-    def invoke(self, inputs: Input, **kwargs) -> Output:
-        logger.info(f"begin to invoke, inputs={inputs}")
-        return inputs
 
     def get_tool_info(self) -> ToolInfo:
         pass
@@ -154,14 +150,7 @@ class TestDecator:
         mock_runtime.span.return_value = mock_agent_span
 
         wrapped_tool = decorate_tool_with_trace(tool, mock_runtime)
-        wrapped_tool.invoke({"a": "a"}, context=3)
-        for item in results:
-            print(item)
-        assert len(results) == 2
-        assert results[0][2].get("instance_info", {}).get("class_name", "") == "mock tool"
-
-        results.clear()
-        await wrapped_tool.ainvoke({"a": "a"}, context=3)
+        await wrapped_tool.invoke({"a": "a"}, context=3)
         for item in results:
             print(item)
         assert len(results) == 2

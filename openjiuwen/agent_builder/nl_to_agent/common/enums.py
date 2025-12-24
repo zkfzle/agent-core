@@ -3,7 +3,6 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
 
 from enum import Enum
-from typing import Literal
 
 
 class AgentType(str, Enum):
@@ -17,4 +16,23 @@ class BuildStage(str, Enum):
     COMPLETED = "completed"
 
 
-AgentTypeLiteral = Literal["llm_agent", "workflow"]
+class ProgressStage(str, Enum):
+    # Common Stages
+    INITIALIZING = "initializing"
+    COMPLETED = "completed"
+    ERROR = "error"
+
+    # Build Stages
+    RESOURCE_RETRIEVING = "resource_retrieving"
+    CLARIFYING = "clarifying"
+    GENERATING = "generating"
+    VALIDATING = "validating"
+    CONVERTING = "converting"
+
+
+class ProgressStatus(str, Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
+    WARNING = "warning"

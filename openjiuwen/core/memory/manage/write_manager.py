@@ -17,7 +17,12 @@ class WriteManager:
         for mem_unit in mem_units:
             mem_type = mem_unit.mem_type.value
             if mem_type in self.managers:
-                await self.managers[mem_type].add(mem_unit)
+                try:
+                    await self.managers[mem_type].add(mem_unit)
+                except ValueError as e:
+                    logger.error(f"Failed to add {mem_type}, error: {str(e)}")
+                except Exception as e:
+                    logger.error(f"Failed to add {mem_type}, error: {str(e)}")
             else:
                 logger.warning(f"Unsupported memory type: {mem_type}")
 

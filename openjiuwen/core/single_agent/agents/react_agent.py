@@ -9,14 +9,17 @@ import asyncio
 import json
 from typing import Dict, Any, AsyncIterator, List
 
-from pydantic import ValidationError
+from pydantic import ValidationError, Field
 
-from openjiuwen.core.single_agent.config.react_config import ReActAgentConfig
+from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.common.utils.message_utils import MessageUtils
+from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.single_agent.config import AgentConfig, ConstrainConfig
+from openjiuwen.core.single_agent.schema.schema import PluginSchema
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.session.runtime import Runtime, Workflow
 from openjiuwen.core.session.stream.base import OutputSchema
@@ -24,6 +27,16 @@ from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.tool import Tool
+
+
+class ReActAgentConfig(AgentConfig):
+    """ReAct Agent configuration"""
+    controller_type: ControllerType = Field(default=ControllerType.ReActController)
+    prompt_template_name: str = Field(default="react_system_prompt")
+    prompt_template: List[Dict] = Field(default_factory=list)
+    constrain: ConstrainConfig = Field(default=ConstrainConfig())
+    plugins: List[PluginSchema] = Field(default_factory=list)
+    memory_config: MemoryConfig = Field(default=MemoryConfig())
 
 
 class ReActAgent(BaseAgent):
@@ -48,7 +61,7 @@ class ReActAgent(BaseAgent):
 
         # LLM instance (lazy creation)
         self._llm = None
-        
+
         # 通过 BaseAgent 的接口添加 tools 和 workflows（自动同步）
         if tools:
             self.add_tools(tools)
@@ -244,7 +257,7 @@ class ReActAgent(BaseAgent):
             agent_runtime = runtime
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
-            
+
             # Sync single_agent's tools to external runtime
             # When external runtime is provided, single_agent's tools need to be registered
             if hasattr(self, '_tools') and self._tools:

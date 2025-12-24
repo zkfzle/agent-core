@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from pydantic import Field
 
-from openjiuwen.core.single_agent.config.base import AgentConfig, LLMCallConfig
+from openjiuwen.core.single_agent.config import AgentConfig, LLMCallConfig
 
 
 class ChatAgentConfig(AgentConfig):

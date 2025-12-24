@@ -6,7 +6,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
-from openjiuwen.core.single_agent.config.base import AgentConfig
+from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode

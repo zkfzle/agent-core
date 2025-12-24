@@ -15,13 +15,13 @@ import unittest
 from unittest.mock import patch
 
 from openjiuwen.core.single_agent.config import AgentConfig
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
-from examples.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.multi_agent.prebuilt_group.hierarchical_group import (
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.groups.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
-from openjiuwen.core.multi_agent.prebuilt_group.hierarchical_group.agents.main_controller import HierarchicalMainController
+from openjiuwen.core.application.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.single_agent.agent import ControllerAgent
 from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.constants import constant as const
@@ -282,8 +282,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             LLMAgent 实例
         """
-        from examples.agents_for_studio.llm_agent import LLMAgent
-        from examples.agents_for_studio.llm_agent import ReActAgentConfig
+        from openjiuwen.core.application.agents_for_studio.llm_agent import LLMAgent
+        from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
         from openjiuwen.core.utils.tool.function.function import LocalFunction
         from openjiuwen.core.utils.tool.param import Param
 
@@ -328,7 +328,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             ReActAgent 实例
         """
         from openjiuwen.core.single_agent.agents import ReActAgent
-        from examples.agents_for_studio.llm_agent import ReActAgentConfig
+        from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
         from openjiuwen.core.utils.tool.function.function import LocalFunction
         from openjiuwen.core.utils.tool.param import Param
 

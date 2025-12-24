@@ -6,13 +6,10 @@ import asyncio
 import inspect
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, Iterator, List, Tuple, Union
+from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, List, Tuple, Union
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema, PluginSchema
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session.agent import StaticAgentRuntime
@@ -27,14 +24,12 @@ from openjiuwen.core.session.wrapper import (
 )
 from openjiuwen.core.session.stream.base import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import ToolInfo, Parameters
-from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema, WorkflowMetadata
 
 if TYPE_CHECKING:
-    from openjiuwen.core.controller.controller import Controller
+    pass
 
 
 class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
@@ -708,7 +703,7 @@ class ControllerAgent(BaseAgent):
                 # Only WorkflowController writes to runtime here
                 # Other controllers (e.g. HierarchicalMainController) forward
                 # lower single_agent results, which already wrote to shared runtime
-                from examples.agents_for_studio.workflow_agent.workflow_controller import (
+                from openjiuwen.core.application.agents_for_studio.workflow_agent import (
                     WorkflowController
                 )
                 if isinstance(res, list) and isinstance(self.controller, WorkflowController):

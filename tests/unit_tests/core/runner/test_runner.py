@@ -6,7 +6,7 @@ import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session.agent import AgentRuntime

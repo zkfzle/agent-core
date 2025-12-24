@@ -23,11 +23,11 @@ from datetime import datetime
 import unittest
 from unittest.mock import patch, AsyncMock
 
-from examples.agents_for_studio.workflow_agent.workflow_config import (
+from openjiuwen.core.single_agent.config import (
     WorkflowAgentConfig,
     DefaultResponse
 )
-from examples.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.llm_comp import LLMComponent, LLMCompConfig

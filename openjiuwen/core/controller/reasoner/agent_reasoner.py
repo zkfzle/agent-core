@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
 from typing import List, Optional
 
-from openjiuwen.core.single_agent.config.base import AgentConfig
+from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.reasoner.intent_detection import IntentDetection
 from openjiuwen.core.controller.reasoner.planner import Planner
 from openjiuwen.core.controller.message.message import Message

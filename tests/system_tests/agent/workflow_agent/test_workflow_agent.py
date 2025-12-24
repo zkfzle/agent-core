@@ -11,7 +11,7 @@ import unittest
 import pytest
 from typing import List
 
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agent import workflow_provider
 from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
@@ -31,7 +31,7 @@ from openjiuwen.core.session.interaction.interactive_input import InteractiveInp
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.runner.runner import Runner, resource_mgr
-from examples.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session.base import ComponentExecutable

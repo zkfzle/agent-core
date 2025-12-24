@@ -40,7 +40,7 @@ from unittest.mock import patch
 import pytest
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from examples.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
+from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.start_comp import Start

@@ -8,7 +8,7 @@ from unittest.mock import patch, AsyncMock
 from mcp import StdioServerParameters
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
@@ -201,7 +201,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。"""
-        from examples.agents_for_studio.workflow_agent import WorkflowAgent
+        from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
         workflow_id = workflow.config().metadata.id
         workflow_name = workflow.config().metadata.name
         workflow_version = workflow.config().metadata.version

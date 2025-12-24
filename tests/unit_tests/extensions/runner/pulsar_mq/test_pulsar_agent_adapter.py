@@ -8,9 +8,9 @@ import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agents import ReActAgent, create_react_agent_config
-from examples.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.runner import Runner, resource_mgr

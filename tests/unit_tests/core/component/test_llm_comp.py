@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.component.end_comp import End
@@ -321,7 +321,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from examples.agents_for_studio.workflow_agent import WorkflowAgent
+        from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
         workflow_id = flow.config().metadata.id
         workflow_name = flow.config().metadata.name
         workflow_version = flow.config().metadata.version
@@ -608,7 +608,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from examples.agents_for_studio.workflow_agent import WorkflowAgent
+        from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
         workflow_id = flow.config().metadata.id
         workflow_name = flow.config().metadata.name
         workflow_version = flow.config().metadata.version

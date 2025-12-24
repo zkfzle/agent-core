@@ -5,7 +5,7 @@ import os
 import unittest
 import asyncio
 
-from openjiuwen.agent_builder.tune.chat_agent import create_chat_agent_config, create_chat_agent
+from openjiuwen.core.application.agents_for_studio.chat_agent import create_chat_agent_config, create_chat_agent
 from openjiuwen.core.single_agent.config import LLMCallConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, Param

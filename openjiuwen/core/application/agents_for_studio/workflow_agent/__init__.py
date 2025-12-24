@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
+from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+
+__all__ = [
+    "WorkflowAgent",
+    "WorkflowAgentConfig"
+]

@@ -8,7 +8,6 @@
 2. str类型中断（人机交互文本）- 应该正常执行工作流
 """
 import os
-import uuid
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -17,8 +16,8 @@ import unittest
 from dataclasses import dataclass, field
 from typing import Any, List
 
-from examples.agents_for_studio.workflow_agent.workflow_config import WorkflowAgentConfig
-from examples.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.workflow.component.base import WorkflowComponent, ComponentConfig
 from openjiuwen.core.workflow.component.end_comp import End
 from openjiuwen.core.workflow.component.start_comp import Start

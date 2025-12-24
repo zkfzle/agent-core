@@ -143,7 +143,7 @@ class BaseMemoryEngine(ABC):
         pass
 
     @abstractmethod
-    async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
+    async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime] | None:
         """
         Retrieve a specific message by its unique identifier.
 
@@ -151,7 +151,7 @@ class BaseMemoryEngine(ABC):
             msg_id: Unique identifier of the message to retrieve
 
         Returns:
-            Tuple of (message object, creation timestamp)
+            Tuple of (message object, creation timestamp), None if message not found
         """
         pass
 
@@ -319,8 +319,11 @@ class MemoryEngine(BaseMemoryEngine):
         self.kv_store = kv_store
         data_id_generator = DataIdManager()
         user_mem_store = UserMemStore(kv_store)
-        sql_db_store = SqlDbStore(db_store)
-        self.message_manager = MessageManager(sql_db_store, data_id_generator, self._sys_mem_config.crypto_key)
+        if db_store:
+            sql_db_store = SqlDbStore(db_store)
+            self.message_manager = MessageManager(sql_db_store, data_id_generator, self._sys_mem_config.crypto_key)
+        else:
+            self.message_manager = None
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=semantic_store,
             user_mem_store=user_mem_store,
@@ -377,7 +380,7 @@ class MemoryEngine(BaseMemoryEngine):
                                                                 session_id=session_id,
                                                                 config=self._sys_mem_config)
             # when multi messages, use last msg_id
-            if self._sys_mem_config.record_message:
+            if self._sys_mem_config.record_message and self.message_manager:
                 for msg in messages:
                     msg_id = await self.message_manager.add(
                         user_id=user_id,
@@ -410,9 +413,10 @@ class MemoryEngine(BaseMemoryEngine):
             await self.write_manager.add_mem(all_memory)
             return msg_id
 
-    async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime]:
+    async def get_message_by_id(self, msg_id: str) -> Tuple[BaseMessage, datetime] | None:
         if not self.message_manager:
-            raise ValueError("Message manager is not initialized.")
+            logger.warning("Message manager is not initialized.")
+            return None
         return await self.message_manager.get_by_id(msg_id)
 
     async def delete_mem_by_id(self, user_id: str, group_id: str, mem_id: str) -> bool:
@@ -453,11 +457,21 @@ class MemoryEngine(BaseMemoryEngine):
                               threshold: float = 0.3) -> list[dict[str, Any]]:
         if not self.search_manager:
             raise ValueError("Search manager is not initialized.")
-        return await self.search_manager.search(user_id=user_id,
-                                                group_id=group_id,
-                                                query=query,
-                                                top_k=num,
-                                                threshold=threshold)
+        try:
+            return await self.search_manager.search(user_id=user_id,
+                                                    group_id=group_id,
+                                                    query=query,
+                                                    top_k=num,
+                                                    threshold=threshold)
+        except AttributeError as e:
+            logger.debug(f"Search user mem has attribute exception: {str(e)}")
+            return []
+        except ValueError as e:
+            logger.warning(f"Search user mem has value exception: {str(e)}")
+            return []
+        except BaseException as e:
+            logger.warning(f"Search user mem has exception: {str(e)}")
+            return []
 
     async def list_user_mem(self, user_id: str, group_id: str, num: int, page: int) -> list[dict[str, Any]]:
         if not self.search_manager:
@@ -521,6 +535,8 @@ class MemoryEngine(BaseMemoryEngine):
                                     ) -> list[BaseMessage]:
         threshold = config.history_window_size_to_gen_mem
         history_message_length_limit = config.ai_msg_gen_max_len
+        if not self.message_manager:
+            return []
         history_messages_tuple = await self.message_manager.get(
             user_id=user_id,
             group_id=group_id,

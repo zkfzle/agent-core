@@ -213,6 +213,8 @@ class StatusCode(Enum):
     PLUGIN_PARAMS_CHECK_FAILED = (182005, "Plugin params check failed")
 
     # Common Capabilities - Logger 183000 - 183999
+    LOG_PATH_SENSITIVE_ERROR = (183000, "Log path is sensitive or unsafe: {path}")
+    LOG_PATH_CREATE_FAILED = (183001, "Failed to create log directory: {path}, error: {error_msg}")
     # Common Capabilities - Exception Handling 184000 - 184999
     # Common Capabilities - Support Mcp Tool 185000 - 185999
 

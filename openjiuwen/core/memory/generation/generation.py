@@ -137,15 +137,25 @@ class Generator:
             history_messages,
             model,
         )
-        merged_units = await self._categories_to_memory_unit(
-            categories=categories,
-            history_messages=history_messages,
-            messages=messages,
-            user_id=user_id,
-            group_id=group_id,
-            base_chat_model=model,
-            message_mem_id=message_mem_id
-        )
+        try:
+            merged_units = await self._categories_to_memory_unit(
+                categories=categories,
+                history_messages=history_messages,
+                messages=messages,
+                user_id=user_id,
+                group_id=group_id,
+                base_chat_model=model,
+                message_mem_id=message_mem_id
+            )
+        except AttributeError as e:
+            logger.debug(f"Get conflict info has attribute exception: {str(e)}")
+            return all_memory_results
+        except ValueError as e:
+            logger.warning(f"Get conflict info has value exception: {str(e)}")
+            return all_memory_results
+        except BaseException as e:
+            logger.warning(f"Get conflict info has exception: {str(e)}")
+            return all_memory_results
         all_memory_results += merged_units
         return all_memory_results
 

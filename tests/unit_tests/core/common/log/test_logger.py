@@ -540,7 +540,7 @@ class TestLogDirectoryCreation:
         logger.info("Test nested directory log")
 
         # Access protected member for testing purposes
-        for handler in logger._logger.handlers:  # noqa: SLF001
+        for handler in logger._logger.handlers:  # pylint: disable=protected-access
             handler.flush()
             handler.close()
 
@@ -581,7 +581,7 @@ class TestLogDirectoryCreation:
             logger.info("Test relative path log")
 
             # Access protected member for testing purposes
-            for handler in logger._logger.handlers:  # noqa: SLF001
+            for handler in logger._logger.handlers:  # pylint: disable=protected-access
                 handler.flush()
                 handler.close()
 
@@ -644,7 +644,7 @@ class TestLogDirectoryCreation:
         logger.info("Test existing directory")
 
         # Access protected member for testing purposes
-        for handler in logger._logger.handlers:  # noqa: SLF001
+        for handler in logger._logger.handlers:  # pylint: disable=protected-access
             handler.flush()
             handler.close()
 

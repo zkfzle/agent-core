@@ -22,8 +22,9 @@ def build_model_input(messages: List[BaseMessage],
 
     user_input = ""
     if history != "":
-        user_input += "如果当前输入与历史消息有关联，可参考历史消息(historical_messages)，历史消息如下：\n" + history + "\n"
-    user_input += "现在开始：请根据设定的规则处理以下输入(current_messages)并生成出输出：\n" + conversation
+        user_input += (f"如果当前输入与历史消息有关联，可参考历史消息，历史消息如下：\n"
+                       f"<historical_messages>{history}</historical_messages>\n")
+    user_input += f"现在开始：请根据设定的规则处理以下输入并生成出输出：\n<current_messages>{conversation}</current_messages>\n"
     model_input.append({
         "role": "user",
         "content": user_input

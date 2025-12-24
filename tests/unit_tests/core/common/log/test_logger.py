@@ -9,14 +9,13 @@ import os
 import sys
 import threading
 from io import StringIO
-from unittest import mock
 from typing import Dict, Any
 
 from openjiuwen.core.common.logging import LogManager
-from openjiuwen.extensions.common.log import DefaultLogger
 from openjiuwen.core.common.logging import set_thread_session
 from openjiuwen.core.common.logging import get_thread_session
 from openjiuwen.core.common.logging import LoggerProtocol
+from openjiuwen.core.common.logging.default import DefaultLogger
 
 
 def thread_function(session_id, log_list, stdout_capture):
@@ -89,15 +88,15 @@ def test_config_file(temp_config_dir):
 @pytest.fixture
 def mock_log_config(test_config_file):
     """Mock日志配置"""
-    from openjiuwen.extensions.common.configs.log_config import LogConfig, log_config as original_log_config
-    from openjiuwen.extensions.common.configs.config_manager import ConfigManager, config_manager as original_config_manager
+    from openjiuwen.core.common.logging.default.log_config import LogConfig, log_config as original_log_config
+    from openjiuwen.core.common.logging.default.config_manager import ConfigManager, config_manager as original_config_manager
     
     test_log_config = LogConfig(test_config_file)
     test_config_manager = ConfigManager(test_config_file)
     
     # 替换全局配置
-    import openjiuwen.extensions.common.configs.log_config as log_config_module
-    import openjiuwen.extensions.common.configs.config_manager as config_manager_module
+    import openjiuwen.core.common.logging.default.log_config as log_config_module
+    import openjiuwen.core.common.logging.default.config_manager as config_manager_module
     
     # 保存原始引用
     _original_log_config = original_log_config
@@ -142,8 +141,7 @@ def initialized_logger(mock_log_config, stdout_capture):
 
     # 更新所有logger的handler，确保输出到捕获的stdout
     # 但保留原有的filter和formatter
-    from openjiuwen.extensions.common.log.default_impl import ThreadContextFilter
-    from openjiuwen.core.common.logging.utils import get_thread_session
+    from openjiuwen.core.common.logging.default.default_impl import ThreadContextFilter
 
     for log in LogManager.get_all_loggers().values():
         # 更新现有的StreamHandler的stream指向当前stdout（已被重定向）

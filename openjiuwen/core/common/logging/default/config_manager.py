@@ -7,7 +7,7 @@ from typing import Any
 
 import yaml
 
-from openjiuwen.extensions.common.configs.constant import DEFAULT_LOG_CONFIG
+from openjiuwen.core.common.logging.default.constant import DEFAULT_LOG_CONFIG
 from openjiuwen.core.common.security.path_checker import is_sensitive_path
 
 CRITICAL = 50

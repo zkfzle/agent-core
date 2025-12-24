@@ -7,7 +7,7 @@ from typing import Dict, Any, List
 
 import yaml
 
-from openjiuwen.extensions.common.configs.constant import DEFAULT_INNER_LOG_CONFIG
+from openjiuwen.core.common.logging.default.constant import DEFAULT_INNER_LOG_CONFIG
 
 
 class LogConfig:

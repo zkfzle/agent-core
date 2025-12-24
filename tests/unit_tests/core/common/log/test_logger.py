@@ -513,7 +513,8 @@ class TestLogManagerReset:
 class TestLogDirectoryCreation:
     """Test log directory creation function"""
     
-    def test_create_nested_log_directory(self, temp_config_dir):
+    @staticmethod
+    def test_create_nested_log_directory(temp_config_dir):
         """Test the creation of multi-level nested log directories (such as logs/run)"""
         # 创建一个不存在的嵌套目录路径
         nested_log_path = os.path.join(temp_config_dir.name, 'logs', 'run')
@@ -549,7 +550,8 @@ class TestLogDirectoryCreation:
             content = f.read()
             assert "测试嵌套目录日志" in content
     
-    def test_create_log_directory_with_relative_path(self, temp_config_dir):
+    @staticmethod
+    def test_create_log_directory_with_relative_path(temp_config_dir):
         """The test uses relative paths to create a log directory"""
         original_cwd = os.getcwd()
         try:
@@ -587,7 +589,8 @@ class TestLogDirectoryCreation:
         finally:
             os.chdir(original_cwd)
     
-    def test_create_log_directory_failure_raises_exception(self, temp_config_dir):
+    @staticmethod
+    def test_create_log_directory_failure_raises_exception(temp_config_dir):
         """An exception was thrown when the test failed to create the log directory"""
         from openjiuwen.core.common.exception.exception import JiuWenBaseException
         from openjiuwen.core.common.exception.status_code import StatusCode
@@ -616,7 +619,8 @@ class TestLogDirectoryCreation:
             assert exc_info.value.error_code == StatusCode.LOG_PATH_CREATE_FAILED.code
             assert "Failed to create log directory" in exc_info.value.message
     
-    def test_create_existing_directory_no_error(self, temp_config_dir):
+    @staticmethod
+    def test_create_existing_directory_no_error(temp_config_dir):
         """No error will be reported when the test directory already exists"""
         existing_log_path = os.path.join(temp_config_dir.name, 'logs', 'existing')
         os.makedirs(existing_log_path, exist_ok=True)
@@ -644,7 +648,8 @@ class TestLogDirectoryCreation:
 
         assert os.path.exists(existing_log_file)
     
-    def test_log_path_validation(self, temp_config_dir):
+    @staticmethod
+    def test_log_path_validation(temp_config_dir):
         """Verify the legitimacy of the test log path"""
         from openjiuwen.core.common.exception.exception import JiuWenBaseException
         from openjiuwen.core.common.exception.status_code import StatusCode

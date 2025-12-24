@@ -8,9 +8,7 @@ from typing import Dict, Any, List
 import yaml
 
 from openjiuwen.extensions.common.configs.constant import DEFAULT_INNER_LOG_CONFIG
-from openjiuwen.core.common.security.path_checker import is_sensitive_path
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.logging.utils import normalize_and_validate_log_path
 
 
 class LogConfig:
@@ -58,16 +56,7 @@ class LogConfig:
 
     def _get_log_path(self) -> str:
         log_path = self._log_config.get('log_path', './logs/')
-        try:
-            real_path = os.path.realpath(log_path)
-        except OSError:
-            real_path = os.path.abspath(os.path.expanduser(log_path))
-        
-        if is_sensitive_path(real_path):
-            raise JiuWenBaseException(
-                error_code=StatusCode.LOG_PATH_SENSITIVE_ERROR.code,
-                message=StatusCode.LOG_PATH_SENSITIVE_ERROR.errmsg.format(path=real_path)
-            )
+        normalize_and_validate_log_path(log_path)
         return log_path
 
     def _get_base_config(self, log_file: str, output: List[str] = None) -> Dict[str, Any]:
@@ -79,16 +68,7 @@ class LogConfig:
             output = self._log_config.get('output', ['console', 'file'])
 
         full_log_file = os.path.join(self._log_path, log_file)
-        try:
-            real_path = os.path.realpath(full_log_file)
-        except OSError:
-            real_path = os.path.abspath(os.path.expanduser(full_log_file))
-        
-        if is_sensitive_path(real_path):
-            raise JiuWenBaseException(
-                error_code=StatusCode.LOG_PATH_SENSITIVE_ERROR.code,
-                message=StatusCode.LOG_PATH_SENSITIVE_ERROR.errmsg.format(path=real_path)
-            )
+        normalize_and_validate_log_path(full_log_file)
 
         return {
             'log_file': full_log_file,

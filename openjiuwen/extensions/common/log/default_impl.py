@@ -11,8 +11,11 @@ from typing import Dict, Any
 from logging.handlers import RotatingFileHandler
 
 from openjiuwen.core.common.logging.protocol import LoggerProtocol
-from openjiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
-from openjiuwen.core.common.security.path_checker import is_sensitive_path
+from openjiuwen.core.common.logging.utils import (
+    get_thread_session,
+    get_log_max_bytes,
+    normalize_and_validate_log_path,
+)
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 
@@ -193,16 +196,7 @@ class DefaultLogger(LoggerProtocol):
         output = self.config.get('output', ['console'])
         log_file = self.config.get('log_file', f'{self.log_type}.log')
 
-        try:
-            real_path = os.path.realpath(log_file)
-        except OSError:
-            real_path = os.path.abspath(os.path.expanduser(log_file))
-        
-        if is_sensitive_path(real_path):
-            raise JiuWenBaseException(
-                error_code=StatusCode.LOG_PATH_SENSITIVE_ERROR.code,
-                message=StatusCode.LOG_PATH_SENSITIVE_ERROR.errmsg.format(path=real_path)
-            )
+        normalize_and_validate_log_path(log_file)
 
         for handler in self._logger.handlers[:]:
             handler.close()

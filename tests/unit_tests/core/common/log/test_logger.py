@@ -548,3 +548,188 @@ class TestLogManagerReset:
         logger3 = LogManager.get_logger('common')
         assert isinstance(logger3, DefaultLogger)
         # 注意：由于reset后重新初始化，logger3可能不是同一个实例
+
+
+class TestLogDirectoryCreation:
+    """测试日志目录创建功能"""
+    
+    def test_create_nested_log_directory(self, temp_config_dir):
+        """测试创建多层嵌套日志目录（如 logs/run）"""
+        # 创建一个不存在的嵌套目录路径
+        nested_log_path = os.path.join(temp_config_dir.name, 'logs', 'run')
+        nested_log_file = os.path.join(nested_log_path, 'test.log')
+        
+        # 确保目录不存在
+        if os.path.exists(nested_log_path):
+            import shutil
+            shutil.rmtree(os.path.join(temp_config_dir.name, 'logs'))
+        
+        # 创建配置，使用嵌套路径
+        config = {
+            'log_file': nested_log_file,
+            'output': ['file'],  # 只使用文件输出
+            'level': logging.INFO,
+            'backup_count': 5,
+            'max_bytes': 1024 * 1024,
+            'format': '%(asctime)s | %(levelname)s | %(message)s'
+        }
+        
+        # 创建 DefaultLogger，应该自动创建目录
+        logger = DefaultLogger('test_nested', config)
+        
+        # 验证目录已创建
+        assert os.path.exists(nested_log_path), f"目录 {nested_log_path} 应该被创建"
+        assert os.path.isdir(nested_log_path), f"{nested_log_path} 应该是一个目录"
+        
+        # 写入日志
+        logger.info("测试嵌套目录日志")
+        
+        # 刷新所有handler
+        for handler in logger._logger.handlers:
+            handler.flush()
+            handler.close()
+        
+        # 验证日志文件已创建
+        assert os.path.exists(nested_log_file), f"日志文件 {nested_log_file} 应该被创建"
+        
+        # 验证日志内容
+        with open(nested_log_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            assert "测试嵌套目录日志" in content
+    
+    def test_create_log_directory_with_relative_path(self, temp_config_dir):
+        """测试使用相对路径创建日志目录"""
+        # 切换到临时目录
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(temp_config_dir.name)
+            
+            # 使用相对路径
+            relative_log_file = os.path.join('logs', 'run', 'relative_test.log')
+            
+            # 确保目录不存在
+            if os.path.exists('logs'):
+                import shutil
+                shutil.rmtree('logs')
+            
+            config = {
+                'log_file': relative_log_file,
+                'output': ['file'],
+                'level': logging.INFO,
+                'backup_count': 5,
+                'max_bytes': 1024 * 1024,
+                'format': '%(asctime)s | %(levelname)s | %(message)s'
+            }
+            
+            logger = DefaultLogger('test_relative', config)
+            
+            # 验证目录已创建（使用绝对路径验证）
+            abs_log_file = os.path.abspath(relative_log_file)
+            abs_log_dir = os.path.dirname(abs_log_file)
+            assert os.path.exists(abs_log_dir), f"目录 {abs_log_dir} 应该被创建"
+            
+            # 写入日志
+            logger.info("测试相对路径日志")
+            
+            # 刷新所有handler
+            for handler in logger._logger.handlers:
+                handler.flush()
+                handler.close()
+            
+            # 验证日志文件已创建
+            assert os.path.exists(abs_log_file), f"日志文件 {abs_log_file} 应该被创建"
+            
+        finally:
+            os.chdir(original_cwd)
+    
+    def test_create_log_directory_failure_raises_exception(self, temp_config_dir):
+        """测试创建日志目录失败时抛出异常"""
+        from openjiuwen.core.common.exception.exception import JiuWenBaseException
+        from openjiuwen.core.common.exception.status_code import StatusCode
+        
+        # 创建一个无效的路径（在Windows上可能是无效的驱动器）
+        if sys.platform == 'win32':
+            # Windows上使用无效的驱动器路径
+            invalid_log_file = 'Z:\\invalid\\drive\\test.log'
+        else:
+            # Unix系统上使用根目录下的只读路径（如果可能）
+            invalid_log_file = '/proc/invalid_path/test.log'
+        
+        config = {
+            'log_file': invalid_log_file,
+            'output': ['file'],
+            'level': logging.INFO,
+            'backup_count': 5,
+            'max_bytes': 1024 * 1024,
+            'format': '%(asctime)s | %(levelname)s | %(message)s'
+        }
+        
+        # 在某些系统上可能不会失败，所以使用mock来模拟失败
+        with mock.patch('os.makedirs') as mock_makedirs:
+            mock_makedirs.side_effect = OSError("Permission denied")
+            
+            with pytest.raises(JiuWenBaseException) as exc_info:
+                DefaultLogger('test_failure', config)
+            
+            assert exc_info.value.error_code == StatusCode.LOG_PATH_CREATE_FAILED.code
+            assert "Failed to create log directory" in exc_info.value.message
+    
+    def test_create_existing_directory_no_error(self, temp_config_dir):
+        """测试目录已存在时不会报错"""
+        # 先创建目录
+        existing_log_path = os.path.join(temp_config_dir.name, 'logs', 'existing')
+        os.makedirs(existing_log_path, exist_ok=True)
+        
+        existing_log_file = os.path.join(existing_log_path, 'test.log')
+        
+        config = {
+            'log_file': existing_log_file,
+            'output': ['file'],
+            'level': logging.INFO,
+            'backup_count': 5,
+            'max_bytes': 1024 * 1024,
+            'format': '%(asctime)s | %(levelname)s | %(message)s'
+        }
+        
+        # 应该不会抛出异常
+        logger = DefaultLogger('test_existing', config)
+        
+        # 验证目录仍然存在
+        assert os.path.exists(existing_log_path)
+        
+        # 写入日志
+        logger.info("测试已存在目录")
+        
+        # 刷新所有handler
+        for handler in logger._logger.handlers:
+            handler.flush()
+            handler.close()
+        
+        # 验证日志文件已创建
+        assert os.path.exists(existing_log_file)
+    
+    def test_log_path_validation(self, temp_config_dir):
+        """测试日志路径合法性校验"""
+        from openjiuwen.core.common.exception.exception import JiuWenBaseException
+        from openjiuwen.core.common.exception.status_code import StatusCode
+        
+        # 测试敏感路径（根据系统不同）
+        if sys.platform == 'win32':
+            sensitive_path = 'C:\\Windows\\System32\\test.log'
+        else:
+            sensitive_path = '/etc/passwd'
+        
+        config = {
+            'log_file': sensitive_path,
+            'output': ['file'],
+            'level': logging.INFO,
+            'backup_count': 5,
+            'max_bytes': 1024 * 1024,
+            'format': '%(asctime)s | %(levelname)s | %(message)s'
+        }
+        
+        with pytest.raises(JiuWenBaseException) as exc_info:
+            DefaultLogger('test_sensitive', config)
+        
+        assert exc_info.value.error_code == StatusCode.LOG_PATH_SENSITIVE_ERROR.code
+        assert "sensitive" in exc_info.value.message.lower() or "unsafe" in exc_info.value.message.lower()

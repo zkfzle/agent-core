@@ -13,6 +13,8 @@ from logging.handlers import RotatingFileHandler
 from openjiuwen.core.common.logging.protocol import LoggerProtocol
 from openjiuwen.core.common.logging.utils import get_thread_session, get_log_max_bytes
 from openjiuwen.core.common.security.path_checker import is_sensitive_path
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 _EXCLUDED_SUFFIXES = ('.pyc', '.pyo')
@@ -31,6 +33,16 @@ class SafeRotatingFileHandler(RotatingFileHandler):
         """初始化安全轮转文件处理器"""
         if log_file_pattern:
             filename = self._format_filename(filename, log_file_pattern)
+
+        # 确保日志文件目录存在
+        log_dir = os.path.dirname(filename)
+        if log_dir:
+            try:
+                abs_log_dir = os.path.abspath(os.path.expanduser(log_dir))
+                os.makedirs(abs_log_dir, mode=0o750, exist_ok=True)
+            except OSError:
+                # 如果创建目录失败，让父类初始化时处理错误
+                pass
 
         super().__init__(filename, *args, **kwargs)
         self.backup_file_pattern = backup_file_pattern or "{baseFilename}.{index}"
@@ -182,8 +194,16 @@ class DefaultLogger(LoggerProtocol):
         output = self.config.get('output', ['console'])
         log_file = self.config.get('log_file', f'{self.log_type}.log')
 
-        if is_sensitive_path(log_file):
-            raise Exception("log file path is not safe")
+        try:
+            real_path = os.path.realpath(log_file)
+        except OSError:
+            real_path = os.path.abspath(os.path.expanduser(log_file))
+        
+        if is_sensitive_path(real_path):
+            raise JiuWenBaseException(
+                error_code=StatusCode.LOG_PATH_SENSITIVE_ERROR.code,
+                message=StatusCode.LOG_PATH_SENSITIVE_ERROR.errmsg.format(path=real_path)
+            )
 
         for handler in self._logger.handlers[:]:
             handler.close()
@@ -196,9 +216,20 @@ class DefaultLogger(LoggerProtocol):
             self._logger.addHandler(stream_handler)
 
         if 'file' in output:
-            log_dir = os.path.dirname(log_file)
+            try:
+                abs_log_file = os.path.abspath(os.path.expanduser(log_file))
+            except OSError:
+                abs_log_file = log_file
+
+            log_dir = os.path.dirname(abs_log_file)
             if log_dir:
-                os.makedirs(log_dir, mode=0o750, exist_ok=True)
+                try:
+                    os.makedirs(log_dir, mode=0o750, exist_ok=True)
+                except OSError as e:
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.LOG_PATH_CREATE_FAILED.code,
+                        message=StatusCode.LOG_PATH_CREATE_FAILED.errmsg.format(path=log_dir, error_msg=str(e))
+                    ) from e
 
             backup_count = self.config.get('backup_count', 20)
             max_bytes = get_log_max_bytes(self.config.get('max_bytes', 20 * 1024 * 1024))
@@ -206,7 +237,7 @@ class DefaultLogger(LoggerProtocol):
             backup_file_pattern = self.config.get('backup_file_pattern', None)
 
             file_handler = SafeRotatingFileHandler(
-                filename=log_file,
+                filename=abs_log_file,
                 maxBytes=max_bytes,
                 backupCount=backup_count,
                 encoding='utf-8',

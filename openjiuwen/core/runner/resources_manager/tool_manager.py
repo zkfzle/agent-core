@@ -11,7 +11,6 @@ from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractMa
 from openjiuwen.core.session.tracer.decorator import decorate_tool_with_trace
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import (
-    ToolServerConfig,
     McpToolInfo,
     McpToolClient,
     SseClient,
@@ -19,6 +18,7 @@ from openjiuwen.core.foundation.tool import (
     PlaywrightClient,
     MCPTool
 )
+from openjiuwen.core.protocols.mcp.base import ToolServerConfig
 from openjiuwen.core.foundation.tool import ToolInfo
 
 ToolProvider = Callable[[], Tool]

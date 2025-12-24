@@ -20,7 +20,8 @@ from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.wrapper import TaskRuntime
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.tool import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
+from openjiuwen.core.foundation.tool import McpToolInfo, SseClient, StdioClient, PlaywrightClient
+from openjiuwen.core.protocols.mcp.base import ToolServerConfig
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
 

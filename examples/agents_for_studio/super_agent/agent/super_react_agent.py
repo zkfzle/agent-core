@@ -32,7 +32,7 @@ from openjiuwen.core.session.runtime import Runtime, Workflow
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
-from openjiuwen.core.foundation.tool import ToolServerConfig
+from openjiuwen.core.protocols.mcp.base import ToolServerConfig
 from openjiuwen.core.foundation.tool import Param
 
 

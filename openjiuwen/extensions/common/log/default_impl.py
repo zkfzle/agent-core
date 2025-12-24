@@ -30,18 +30,17 @@ _EXCLUDED_KEYWORDS = (
 
 class SafeRotatingFileHandler(RotatingFileHandler):
     def __init__(self, filename, *args, log_file_pattern=None, backup_file_pattern=None, **kwargs):
-        """初始化安全轮转文件处理器"""
+        """Initialize the secure round-robin file processor"""
         if log_file_pattern:
             filename = self._format_filename(filename, log_file_pattern)
 
-        # 确保日志文件目录存在
+        # Make sure the log file directory exists
         log_dir = os.path.dirname(filename)
         if log_dir:
             try:
                 abs_log_dir = os.path.abspath(os.path.expanduser(log_dir))
                 os.makedirs(abs_log_dir, mode=0o750, exist_ok=True)
             except OSError:
-                # 如果创建目录失败，让父类初始化时处理错误
                 pass
 
         super().__init__(filename, *args, **kwargs)
@@ -49,7 +48,7 @@ class SafeRotatingFileHandler(RotatingFileHandler):
         os.chmod(self.baseFilename, 0o640)
 
     def _format_filename(self, base_filename: str, pattern: str) -> str:
-        """根据模式格式化文件名"""
+        """Format the file name according to the pattern"""
         dir_path = os.path.dirname(base_filename)
         file_name = os.path.basename(base_filename)
 
@@ -309,10 +308,10 @@ class DefaultLogger(LoggerProtocol):
         self._logger.removeFilter(filter)
 
     def get_config(self) -> Dict[str, Any]:
-        """获取日志配置"""
+        """Obtain log configuration"""
         return self.config.copy()
 
     def reconfigure(self, config: Dict[str, Any]) -> None:
-        """重新配置日志记录器"""
+        """Reconfigure the logger"""
         self.config = config
         self._setup_logger() 

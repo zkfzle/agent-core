@@ -5,6 +5,7 @@
 from typing import Optional, Any, Tuple
 
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
+from openjiuwen.core.memory.manage.episodic_memory_manager import EpisodicMemoryManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
@@ -16,7 +17,8 @@ from openjiuwen.core.memory.prompt.query_decomposer import QEURY_DECOMPOSE_SYSTE
 
 
 class SearchManager:
-    user_mem_manager_list = [MemoryType.USER_PROFILE.value, MemoryType.SEMANTIC_MEMORY.value]
+    user_mem_manager_list = [MemoryType.USER_PROFILE.value, MemoryType.SEMANTIC_MEMORY.value,
+                             MemoryType.EPISODIC_MEMORY.value]
     all_mem_manager_list = [item.value for item in MemoryType]
 
     def __init__(self,
@@ -74,7 +76,7 @@ class SearchManager:
             mem_id = item["id"]
             if mem_id not in dedup_results or item["score"] > dedup_results[mem_id]["score"]:
                 dedup_results[mem_id] = item
-        
+
         results = list(dedup_results.values())
         results.sort(key=lambda x: x["score"], reverse=True)
         return [item for item in results if item["score"] >= threshold][:top_k]
@@ -146,3 +148,12 @@ class SearchManager:
         if not isinstance(self.managers[MemoryType.VARIABLE.value], VariableManager):
             raise ValueError(f"{MemoryType.VARIABLE.value} manager class is not VariableManager")
         return await self.managers[MemoryType.VARIABLE.value].query_variable(user_id=user_id, group_id=group_id)
+
+
+    async def list_episodic_memory(self, user_id: str, group_id: str) -> list[dict]:
+        if MemoryType.EPISODIC_MEMORY.value not in self.managers:
+            raise ValueError(f"{MemoryType.EPISODIC_MEMORY.value} memory manager not inited")
+        if not isinstance(self.managers[MemoryType.EPISODIC_MEMORY.value], EpisodicMemoryManager):
+            raise ValueError(f"{MemoryType.EPISODIC_MEMORY.value} manager class is not EpisodicMemoryManager")
+        return await self.managers[MemoryType.EPISODIC_MEMORY.value].list_episodic_memory(
+            user_id=user_id, group_id=group_id)

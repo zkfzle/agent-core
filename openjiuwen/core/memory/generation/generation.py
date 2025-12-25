@@ -3,19 +3,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Tuple
 
-from openjiuwen.core.memory.generation.long_term_memory_extractor import LongTermMemoryExtractor
-
-from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
-from openjiuwen.core.memory.mem_unit.memory_unit import (MemoryType, BaseMemoryUnit,
-                                                         VariableUnit, UserProfileUnit, SummaryUnit, SemanticMemoryUnit)
-from openjiuwen.core.memory.generation.memory_analyzer import MemoryAnalyzer, VariableResult
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.generation.long_term_memory_extractor import LongTermMemoryExtractor
+from openjiuwen.core.memory.generation.memory_analyzer import MemoryAnalyzer, VariableResult
+from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
+from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit, \
+    SummaryUnit, SemanticMemoryUnit, EpisodicMemoryUnit
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 category_to_class = {
     "user_profile": MemoryType.USER_PROFILE,
-    "semantic_memory": MemoryType.SEMANTIC_MEMORY
+    "semantic_memory": MemoryType.SEMANTIC_MEMORY,
+    "episodic_memory": MemoryType.EPISODIC_MEMORY
 }
 
 
@@ -67,6 +67,28 @@ def get_semantic_memory_unit(
             ))
     return semantic_memory_units
 
+def get_episodic_memory_unit(
+        user_id: str,
+        group_id: str,
+        message_mem_id: str,
+        memory_dict: dict
+) -> list[EpisodicMemoryUnit]:
+        """Generate episodic memory unit based on input"""
+        episodic_memory_units = []
+        episodic_memory_list = memory_dict.get("episodic_memory", [])
+        if isinstance(episodic_memory_list, list) and len(episodic_memory_list) > 0:
+            for episodic_memory in episodic_memory_list:
+                if not isinstance(episodic_memory, str):
+                    logger.warning(f"episodic memory format error: {episodic_memory} is not a list")
+                    continue
+                episodic_memory_units.append(EpisodicMemoryUnit(
+                    mem_type=MemoryType.EPISODIC_MEMORY,
+                    user_id=user_id,
+                    group_id=group_id,
+                    content=episodic_memory,
+                    message_mem_id=message_mem_id,
+                ))
+        return episodic_memory_units
 
 class Generator:
     def __init__(self,
@@ -170,6 +192,12 @@ class Generator:
             memory_dict=memory_dict
         ))
         memory_units.extend(get_semantic_memory_unit(
+            user_id=user_id,
+            group_id=group_id,
+            message_mem_id=message_mem_id,
+            memory_dict=memory_dict
+        ))
+        memory_units.extend(get_episodic_memory_unit(
             user_id=user_id,
             group_id=group_id,
             message_mem_id=message_mem_id,

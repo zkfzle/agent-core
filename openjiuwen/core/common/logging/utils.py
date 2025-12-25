@@ -24,9 +24,10 @@ def get_thread_session() -> Optional[str]:
 def get_log_max_bytes(max_bytes_config) -> int:
     try:
         max_bytes = int(max_bytes_config)
-    except ValueError as e:
+    except (ValueError, TypeError) as e:
         raise JiuWenBaseException(
-            error_code=-1, message="-1"
+            error_code=StatusCode.LOG_CONFIG_INVALID_ERROR.code,
+            message=StatusCode.LOG_CONFIG_INVALID_ERROR.errmsg.format(error_msg=f"Invalid max_bytes configuration: {max_bytes_config}, error: {e}")
         ) from e
 
     default_log_max_bytes = 100 * 1024 * 1024

@@ -48,7 +48,13 @@ class SafeRotatingFileHandler(RotatingFileHandler):
 
         super().__init__(filename, *args, **kwargs)
         self.backup_file_pattern = backup_file_pattern or "{baseFilename}.{index}"
-        os.chmod(self.baseFilename, 0o640)
+        try:
+            os.chmod(self.baseFilename, 0o640)
+        except OSError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.LOG_FILE_OPERATION_ERROR.code,
+                message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(error_msg=f"Failed to set file permissions: {e}")
+            ) from e
 
     def _format_filename(self, base_filename: str, pattern: str) -> str:
         """Format the file name according to the pattern"""
@@ -94,8 +100,20 @@ class SafeRotatingFileHandler(RotatingFileHandler):
                 index=i
             )
             if os.path.exists(sfn):
-                os.chmod(sfn, 0o440)
-        os.chmod(self.baseFilename, 0o640)
+                try:
+                    os.chmod(sfn, 0o440)
+                except OSError as e:
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.LOG_FILE_OPERATION_ERROR.code,
+                        message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(error_msg=f"Failed to set backup file permissions: {e}")
+                    ) from e
+        try:
+            os.chmod(self.baseFilename, 0o640)
+        except OSError as e:
+            raise JiuWenBaseException(
+                error_code=StatusCode.LOG_FILE_OPERATION_ERROR.code,
+                message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(error_msg=f"Failed to set log file permissions: {e}")
+            ) from e
 
 
 class ThreadContextFilter(logging.Filter):
@@ -211,7 +229,8 @@ class DefaultLogger(LoggerProtocol):
         if 'file' in output:
             try:
                 abs_log_file = os.path.abspath(os.path.expanduser(log_file))
-            except OSError:
+            except (OSError, TypeError) as e:
+                # If path normalization fails, use original path and let SafeRotatingFileHandler handle it
                 abs_log_file = log_file
 
             log_dir = os.path.dirname(abs_log_file)

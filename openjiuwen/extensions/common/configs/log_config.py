@@ -34,7 +34,8 @@ class LogConfig:
             if 'logging' not in config:
                 raise JiuWenBaseException(
                     error_code=StatusCode.LOG_CONFIG_INVALID_ERROR.code,
-                    message=StatusCode.LOG_CONFIG_INVALID_ERROR.errmsg.format(error_msg="YAML configuration file is missing 'logging' section")
+                    message=StatusCode.LOG_CONFIG_INVALID_ERROR.errmsg.format(
+                        error_msg="YAML configuration file is missing 'logging' section")
                 )
 
             return config['logging']
@@ -57,17 +58,20 @@ class LogConfig:
         except yaml.YAMLError as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.LOG_CONFIG_LOAD_ERROR.code,
-                message=StatusCode.LOG_CONFIG_LOAD_ERROR.errmsg.format(error_msg=f"YAML configuration file format is incorrect: {e}")
+                message=StatusCode.LOG_CONFIG_LOAD_ERROR.errmsg.format(
+                    error_msg=f"YAML configuration file format is incorrect: {e}")
             ) from e
         except OSError as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.LOG_CONFIG_LOAD_ERROR.code,
-                message=StatusCode.LOG_CONFIG_LOAD_ERROR.errmsg.format(error_msg=f"Failed to read configuration file: {e}")
+                message=StatusCode.LOG_CONFIG_LOAD_ERROR.errmsg.format(
+                    error_msg=f"Failed to read configuration file: {e}")
             ) from e
         except Exception as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.LOG_CONFIG_LOAD_ERROR.code,
-                message=StatusCode.LOG_CONFIG_LOAD_ERROR.errmsg.format(error_msg=f"Unexpected error while loading configuration file: {e}")
+                message=StatusCode.LOG_CONFIG_LOAD_ERROR.errmsg.format(
+                    error_msg=f"Unexpected error while loading configuration file: {e}")
             ) from e
 
     def _get_log_path(self) -> str:

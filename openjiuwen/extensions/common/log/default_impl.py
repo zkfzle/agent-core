@@ -53,7 +53,8 @@ class SafeRotatingFileHandler(RotatingFileHandler):
         except OSError as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.LOG_FILE_OPERATION_ERROR.code,
-                message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(error_msg=f"Failed to set file permissions: {e}")
+                message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(
+                    error_msg=f"Failed to set file permissions: {e}")
             ) from e
 
     def _format_filename(self, base_filename: str, pattern: str) -> str:
@@ -105,14 +106,16 @@ class SafeRotatingFileHandler(RotatingFileHandler):
                 except OSError as e:
                     raise JiuWenBaseException(
                         error_code=StatusCode.LOG_FILE_OPERATION_ERROR.code,
-                        message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(error_msg=f"Failed to set backup file permissions: {e}")
+                        message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(
+                            error_msg=f"Failed to set backup file permissions: {e}")
                     ) from e
         try:
             os.chmod(self.baseFilename, 0o640)
         except OSError as e:
             raise JiuWenBaseException(
                 error_code=StatusCode.LOG_FILE_OPERATION_ERROR.code,
-                message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(error_msg=f"Failed to set log file permissions: {e}")
+                message=StatusCode.LOG_FILE_OPERATION_ERROR.errmsg.format(
+                    error_msg=f"Failed to set log file permissions: {e}")
             ) from e
 
 

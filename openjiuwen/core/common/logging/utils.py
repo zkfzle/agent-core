@@ -27,7 +27,8 @@ def get_log_max_bytes(max_bytes_config) -> int:
     except (ValueError, TypeError) as e:
         raise JiuWenBaseException(
             error_code=StatusCode.LOG_CONFIG_INVALID_ERROR.code,
-            message=StatusCode.LOG_CONFIG_INVALID_ERROR.errmsg.format(error_msg=f"Invalid max_bytes configuration: {max_bytes_config}, error: {e}")
+            message=StatusCode.LOG_CONFIG_INVALID_ERROR.errmsg.format(
+                error_msg=f"Invalid max_bytes configuration: {max_bytes_config}, error: {e}")
         ) from e
 
     default_log_max_bytes = 100 * 1024 * 1024

@@ -16,9 +16,7 @@ from openjiuwen.core.graph.pregel.config import PregelConfig, DEFAULT_PREGEL_CON
 from openjiuwen.core.graph.pregel.constants import END, TASK_STATUS_INTERRUPT, START, \
     PARENT_NS, NS, SESSION_ID, RECURSION_LIMIT
 from openjiuwen.core.graph.pregel.task import TaskExecutorPool
-
-if TYPE_CHECKING:
-    from openjiuwen.core.graph.store import GraphState, PendingNode, Store
+from openjiuwen.core.graph.store import GraphState, PendingNode, Store, create_state
 
 class PregelLoop:
     def __init__(self, graph: Pregel, config: PregelConfig):
@@ -30,7 +28,7 @@ class PregelLoop:
         self.saver = graph.store
         self.active_nodes: List[str] = []
         self.executor: TaskExecutorPool | None = None
-        self._retry_pending_nodes: Dict[str, "PendingNode"] = {}
+        self._retry_pending_nodes: Dict[str, PendingNode] = {}
         # loop subgraph version
         self.node_version: Dict[str, int] = defaultdict(int)
 
@@ -67,7 +65,7 @@ class PregelLoop:
             raise e
 
     @staticmethod
-    def _is_resume(state: "GraphState") -> bool:
+    def _is_resume(state: GraphState) -> bool:
         return state is not None and (
                 bool(state.pending_node) or bool(state.pending_buffer) or bool(state.channel_values))
 
@@ -142,7 +140,6 @@ class PregelLoop:
         if self.executor:
             pending_buffer.extend(self.executor.succeed_messages)
             pending_node = self.executor.failed
-        from openjiuwen.core.graph.store import create_state
         error_state = create_state(
             ns=self.config[NS],
             step=self.step,
@@ -164,7 +161,7 @@ class Pregel:
             nodes: Dict[str, PregelNode],
             channels: List[Channel],
             initial: str = START,
-            store: "Store" = None,
+            store: Store | None = None,
             after_step: Optional[
                 Union[
                     Callable[[PregelLoop], Any],

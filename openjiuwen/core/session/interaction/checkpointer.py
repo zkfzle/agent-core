@@ -7,6 +7,7 @@ from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.graph.store import Store
 from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.session.interaction.base import Checkpointer
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
@@ -112,7 +113,7 @@ class InMemoryCheckpointer(Checkpointer):
             self._workflow_stores.pop(session_id, None)
             self._agent_stores.pop(session_id, None)
 
-    def graph_store(self) -> "Store":
+    def graph_store(self) -> Store:
         return self._graph_store
 
 

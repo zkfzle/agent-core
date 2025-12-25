@@ -25,7 +25,7 @@ from openjiuwen.core.application.groups.hierarchical_group.agents.main_controlle
 from openjiuwen.core.single_agent.agent import ControllerAgent
 from openjiuwen.core.controller.message.message import Message
 from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import (
@@ -37,7 +37,6 @@ from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.workflow.component import ComponentExecutable
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo

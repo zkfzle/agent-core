@@ -29,10 +29,10 @@ from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 
-API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
-API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
-MODEL_NAME = "Qwen/Qwen3-32B"
-MODEL_PROVIDER = "siliconflow"
+API_BASE = os.getenv("API_BASE", "")
+API_KEY = os.getenv("API_KEY", "")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 
@@ -326,6 +326,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         MemoryEngine.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
         await MemoryEngine.create_mem_engine_instance(SysMemConfig())
         print("✅ Memory engine created")
+
+    @unittest.skip("require network")
     async def test_llm_agent_invoke_with_real_plugin(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -356,6 +358,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         # 调用
         result = await llm_agent.invoke({"query": "查询杭州的天气"})
         print(f"LLMAgent 输出结果：{result}")
+
+    @unittest.skip("require network")
     async def test_llm_agent_stream_with_real_plugin(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -384,6 +388,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         res = llm_agent.stream({"query": "查询杭州的天气"})
         async for i in res:
             print("LLMAgent 输出结果：", i)
+
+    @unittest.skip("skip system test")
     async def test_llm_agent_invoke_with_real_function_plugin(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -411,6 +417,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         llm_agent.add_tools([self._create_function_tool()])
         result = await llm_agent.invoke({"query": "计算1+2"})
         print(f"LLMAgent 最终输出结果：{result}")
+
+    @unittest.skip("skip system test")
     async def test_llm_agent_invoke_with_annotated_function_plugin(self):
         """测试使用tool注解装饰的函数作为工具"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -440,6 +448,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         llm_agent.add_tools([self._create_function_tool_with_annotation()])
         result = await llm_agent.invoke({"query": "计算1+2"})
         print(f"LLMAgent 最终输出结果：{result}")
+
+    @unittest.skip("skip system test require llm")
     async def test_llm_agent_invoke_with_workflow(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -464,6 +474,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         llm_agent.add_workflows([workflow])
         result = await llm_agent.invoke({"query": "今天上海天气很差，请生成一段文本"})
         print(f"LLMAgent 最终输出结果：{result}")
+
+    @unittest.skip("skip system test require llm")
     async def test_llm_agent_stream_with_workflow(self):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -490,6 +502,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
 
         async for i in result:
             print("LLMAgent 输出结果：", i)
+
+    @unittest.skip("skip system test require llm")
     # This ut should be at the bottom, singleton memory engine is created from this ut
     async def test_llm_agent_with_memory(self):
         await self._create_memory_engine()
@@ -531,6 +545,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         result = await memory_engine.search_user_mem(user_id=user_id, group_id=group_id, query="我叫什么名字", num=1)
         self.assertEqual(len(result), 1) # may be [] is llm_agent.invoke return too fast
         print("memory result:", result[0])
+
+    @unittest.skip("skip system test require llm")
     async def test_llm_agent_with_multi_memory(self):
         await self._create_memory_engine()
         os.environ.setdefault("LLM_SSL_VERIFY", "false")

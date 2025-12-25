@@ -8,6 +8,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import Any
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
+from openjiuwen.core.graph.store import Store
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.runtime import BaseRuntime
 
@@ -79,7 +80,7 @@ class Checkpointer(ABC):
         ...
 
     @abstractmethod
-    def graph_store(self) -> "Store":
+    def graph_store(self) -> Store:
         ...
 
 

@@ -20,10 +20,10 @@ from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.runner.runner import Runner, resource_mgr
 
 
-API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
-API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
-MODEL_NAME = "Qwen/Qwen3-32B"
-MODEL_PROVIDER = "siliconflow"
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 def build_current_date():
@@ -102,6 +102,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
     def _create_function_tool_with_annotation():
         """返回被tool注解装饰的函数"""
         return ReActAgentTest.add_function
+
+    @unittest.skip("require network")
     async def test_react_agent_invoke_with_restful_plugin(self):
         """测试 ReAct Agent 使用真实 RestfulApi 插件（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -133,6 +135,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
 
         result = await Runner.run_agent(react_agent, {"query": "查询杭州的天气"})
         print(f"ReActAgent 最终输出结果：{result}")
+
+    @unittest.skip("require network")
     async def test_react_agent_stream_with_restful_plugin(self):
         """测试 ReAct Agent 流式调用（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -164,6 +168,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         res = Runner.run_agent_streaming(react_agent, {"query": "查询杭州的天气"})
         async for i in res:
             print("ReActAgent 输出结果：", i)
+
+    @unittest.skip("require network")
     async def test_react_agent_invoke_without_runtime(self):
         """测试不传runtime的调用（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -191,6 +197,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
 
         result = await react_agent.invoke({"query": "查询杭州的天气"})
         print(f"ReActAgent 最终输出结果：{result}")
+
+    @unittest.skip("require network")
     async def test_react_agent_invoke_with_function_plugin(self):
         """测试 ReAct Agent 使用 LocalFunction 插件（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -221,6 +229,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 验证结果
         self.assertIn("output", result)
+
+    @unittest.skip("skip system test")
     async def test_react_agent_invoke_with_annotated_function(self):
         """测试使用tool注解装饰的函数作为工具（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -249,6 +259,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
 
         result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 使用注解工具最终输出结果：{result}")
+
+    @unittest.skip("require network")
     async def test_react_agent_stream_with_annotated_function(self):
         """测试使用tool注解装饰的函数作为工具（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")

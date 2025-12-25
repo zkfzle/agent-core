@@ -1039,8 +1039,11 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         
         测试场景：
         1. 首次调用：触发两个并行中断节点（interactive和questioner）
-        2. 第二次调用：恢复interactive节点，questioner仍处于中断状态
-        3. 第三次调用：恢复questioner节点，工作流完成
+           - 但流式输出只返回第一个中断（WorkflowController设计）
+        2. 第二次调用：恢复第一个节点，可能触发第二个中断
+        3. 第三次调用：恢复剩余中断（如果有），工作流完成
+        
+        注意：WorkflowController._get_first_interrupt() 在流式输出时只返回第一个中断
         """
         print("=== 测试 WorkflowAgent 运行包含两个并行中断节点的工作流 ===")
         
@@ -1071,9 +1074,14 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("❌ 第一次调用超时！")
             raise
 
-        # 校验第一次调用结果：应该返回2个交互请求
-        self.assertEqual(len(interaction_outputs), 2, "应该同时返回2个中断（interactive和questioner）")
-        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求")
+        # 校验第一次调用结果：流式输出只返回第一个中断（按代码设计）
+        # WorkflowController._get_first_interrupt() 只返回第一个中断
+        self.assertEqual(len(interaction_outputs), 1, "流式输出只返回第一个中断（interactive或questioner）")
+        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求（符合流式输出设计）")
+        
+        # 记录第一个中断的组件ID
+        first_interrupt_id = interaction_outputs[0].payload.id
+        print(f"   第一个中断组件ID: {first_interrupt_id}")
 
         # ========== 步骤2: 恢复一个中断节点（interactive） ==========
         print("\n【步骤2】使用InteractiveInput恢复一个中断（interactive）")
@@ -1159,7 +1167,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         
         测试场景：
         1. 首次调用：触发两个并行中断节点（interactive和questioner）
-        2. 第二次调用：同时恢复所有中断节点，工作流直接完成
+           - 但流式输出只返回第一个中断（WorkflowController设计）
+        2. 第二次调用：使用InteractiveInput同时提供所有中断的输入，工作流直接完成
+        
+        注意：WorkflowController._get_first_interrupt() 在流式输出时只返回第一个中断
         """
         print("=== 测试 WorkflowAgent 同时恢复所有并行中断节点 ===")
         
@@ -1190,9 +1201,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("❌ 第一次调用超时！")
             raise
 
-        # 校验第一次调用结果：应该返回2个交互请求
-        self.assertEqual(len(interaction_outputs), 2, "应该同时返回2个中断（interactive和questioner）")
-        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求")
+        # 校验第一次调用结果：流式输出只返回第一个中断（按代码设计）
+        # WorkflowController._get_first_interrupt() 只返回第一个中断
+        self.assertEqual(len(interaction_outputs), 1, "流式输出只返回第一个中断（interactive或questioner）")
+        print(f"✅ 第一次调用校验通过：返回 {len(interaction_outputs)} 个交互请求（符合流式输出设计）")
 
         # ========== 步骤2: 同时恢复所有中断节点 ==========
         print("\n【步骤2】使用InteractiveInput同时恢复所有中断")

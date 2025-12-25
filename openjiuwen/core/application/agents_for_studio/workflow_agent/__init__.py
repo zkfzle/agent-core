@@ -3,9 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller import WorkflowController
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 
 __all__ = [
     "WorkflowAgent",
-    "WorkflowAgentConfig"
+    "WorkflowAgentConfig",
+    "WorkflowController"
 ]

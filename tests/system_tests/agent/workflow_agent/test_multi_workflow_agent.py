@@ -1224,7 +1224,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("\n✅ 测试通过：多工作流场景下根据 node_id 精确恢复正确！")
 
     @patch(
-        "examples.agents_for_studio.workflow_agent.workflow_controller."
+        "openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
@@ -1324,7 +1324,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"✅ 测试通过：意图识别失败时正确返回默认响应: {default_text}")
 
     @patch(
-        "examples.agents_for_studio.workflow_agent.workflow_controller."
+        "openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(
@@ -1423,7 +1423,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("✅ 测试通过：未配置默认响应时正确回退到第一个工作流")
 
     @patch(
-        "examples.agents_for_studio.workflow_agent.workflow_controller."
+        "openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller."
         "WorkflowController._ensure_intent_detection_initialized"
     )
     @patch(

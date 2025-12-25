@@ -1140,9 +1140,6 @@ class WorkflowController(IntentDetectionController):
         if runtime_res_mgr:
             try:
                 logger.info(f"Trying to find workflow from runtime resource_mgr: {workflow_id}")
-                all_workflows = runtime_res_mgr.workflow()._resources
-                logger.info(f"Available workflows in runtime resource_mgr: {list(all_workflows.keys())}")
-
                 workflow = await runtime_res_mgr.workflow().get_workflow(workflow_id, base_runtime)
                 logger.info(f"Found workflow from runtime resource_mgr: {workflow is not None}")
                 if workflow:
@@ -1154,9 +1151,6 @@ class WorkflowController(IntentDetectionController):
         if runtime_res_mgr is None:
             try:
                 logger.info(f"Trying to find workflow from default resource_mgr: {workflow_id}")
-                all_workflows = resource_mgr.workflow()._resources
-                logger.info(f"Available workflows in default resource_mgr: {list(all_workflows.keys())}")
-
                 workflow = await resource_mgr.workflow().get_workflow(workflow_id, base_runtime)
                 logger.info(f"Found workflow from default resource_mgr: {workflow is not None}")
                 if workflow:

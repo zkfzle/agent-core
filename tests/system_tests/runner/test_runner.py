@@ -54,8 +54,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         except Exception:
             pass
 
-    @staticmethod
-    def _create_model_config() -> ModelConfig:
+    @classmethod
+    def create_model_config(cls) -> ModelConfig:
         """根据环境变量构造模型配置。"""
         return ModelConfig(
             model_provider="siliconflow",
@@ -70,10 +70,10 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         )
 
 
-    @staticmethod
-    def _create_intent_detection_component() -> IntentDetectionComponent:
+    @classmethod
+    def _create_intent_detection_component(cls) -> IntentDetectionComponent:
         """创建意图识别组件。"""
-        model_config = Testrunner._create_model_config()
+        model_config = cls.create_model_config()
         user_prompt = """
             {{user_prompt}}
     
@@ -100,8 +100,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         component.add_branch("${intent.classification_id} == 1", ["questioner"], "查询天气分支")
         return component
 
-    @staticmethod
-    def _create_questioner_component() -> QuestionerComponent:
+    @classmethod
+    def _create_questioner_component(cls) -> QuestionerComponent:
         """创建信息收集组件。"""
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -112,7 +112,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 default_value="today",
             ),
         ]
-        model_config = Testrunner._create_model_config()
+        model_config = cls.create_model_config()
         config = QuestionerConfig(
             model=model_config,
             question_content="",

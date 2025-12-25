@@ -10,8 +10,7 @@ from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
+from sqlalchemy.ext.asyncio import create_async_engine
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.message import create_tables
@@ -96,7 +95,7 @@ class TestAsyncSqlDbStore:
     async def async_get_table_columns(self, store):
         """Verify that _get_table correctly retrieves the table schema."""
         table_name = CONTEXT_CONFIG["table"]
-        table = await store.get_table(table_name)
+        table = await store._get_table(table_name)
 
         expected_cols = list(CONTEXT_CONFIG["columns"].keys())
 

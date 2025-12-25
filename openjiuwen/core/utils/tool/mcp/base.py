@@ -19,7 +19,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 
 class ToolServerConfig(BaseModel):
     server_name: str
-    server_path: str
+    server_path: str | List[str]
     client_type: str = 'sse'
     params: Dict[str, Any] = Field(default_factory=dict)
 

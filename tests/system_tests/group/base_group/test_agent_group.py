@@ -16,7 +16,7 @@ from openjiuwen.core.agent.agent import BaseAgent
 from openjiuwen.core.agent_group import AgentGroupConfig
 from openjiuwen.core.agent_group.agent_group import BaseGroup, AgentGroupRuntime
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -79,9 +79,9 @@ class SummaryAgent(BaseAgent):
 
 class CustomAgentGroup(BaseGroup):
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        result_plan = await Runner.run_agent(self.agents["planner"], inputs)
-        result_execute = await Runner.run_agent(self.agents["executor"], result_plan)
-        result_summary = await Runner.run_agent(self.agents["reporter"], result_execute)
+        result_plan = await runner.run_agent(self.agents["planner"], inputs)
+        result_execute = await runner.run_agent(self.agents["executor"], result_plan)
+        result_summary = await runner.run_agent(self.agents["reporter"], result_execute)
         return result_summary
 
     async def stream(self, inputs: Dict, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
@@ -92,10 +92,10 @@ class AgentGroupTest(unittest.IsolatedAsyncioTestCase):
     """Unit tests for AgentGroup"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     async def test_agent_group(self):
         """Test Case for AgentGroup"""

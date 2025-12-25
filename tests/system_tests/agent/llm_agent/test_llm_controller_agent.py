@@ -13,7 +13,7 @@ from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.utils.tool.tool import tool
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.workflow.base import Workflow
@@ -41,10 +41,10 @@ def build_current_date():
 
 class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_model_config():

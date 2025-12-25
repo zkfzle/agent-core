@@ -38,7 +38,7 @@ from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.component.end_comp import End
 from openjiuwen.core.component.llm_comp import LLMComponent, LLMCompConfig
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.utils.llm.base import BaseModelInfo
@@ -120,7 +120,7 @@ workflow_agent.bind_workflows([flow])
 
 # 运行Agent
 async def main():
-    invoke_result = await Runner.run_agent(workflow_agent, {"query": "你好,请生成一则笑话,不要超过20个字"})
+    invoke_result = await runner.run_agent(workflow_agent, {"query": "你好,请生成一则笑话,不要超过20个字"})
     output_result = invoke_result.get("output").result
     print(f"WorkflowAgent output result >>> {output_result.get('responseContent')}")
 

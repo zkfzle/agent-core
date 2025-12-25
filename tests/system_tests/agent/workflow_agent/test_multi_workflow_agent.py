@@ -36,7 +36,7 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -75,10 +75,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     """专门用于测试多工作流场景的类。"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_model_config() -> ModelConfig:

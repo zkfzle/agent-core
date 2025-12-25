@@ -16,7 +16,7 @@ from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.component.base import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
@@ -75,10 +75,10 @@ class MockInteractiveTool:
 
 class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_model():
@@ -330,7 +330,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def test_llm_agent_with_workflow_interrupt_agent_invoke(self):
         llm_agent = self._setup_test_environment_and_agent()
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "昨天天气查询"})
+        result = await runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "昨天天气查询"})
         print(f"LLMAgent 第一次输出结果：{result}")
         self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
         self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
@@ -340,7 +340,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
             interactive_input = InteractiveInput()
             interactive_input.update("questioner", "上海")
-            result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
+            result = await runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
             print(f"LLMAgent 第二次输出结果：{result}")
 
             self.assertIsInstance(result, dict, "第二次调用应该返回字典")
@@ -376,7 +376,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         llm_agent = self._setup_test_environment_and_agent()
 
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "c123"}):
+        async for chunk in runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "c123"}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -388,7 +388,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 component_id = item.payload.id
                 user_input.update(component_id, {"location": "杭州"})
             final_chunk = None
-            async for chunk in Runner.run_agent_streaming(llm_agent, {"query": user_input, "conversation_id": "c123"}):
+            async for chunk in runner.run_agent_streaming(llm_agent, {"query": user_input, "conversation_id": "c123"}):
                 print(f"LLMAgent 第二次输出结果 >>> {chunk}")
                 if chunk.type == "answer":
                     final_chunk = chunk
@@ -399,13 +399,13 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def test_llm_agent_with_workflow_interrupt_agent_invoke_multi_rounds(self):
         llm_agent = self._setup_test_environment_and_agent()
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "今天天气查询"})
+        result = await runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "今天天气查询"})
         print(f"LLMAgent 第一次输出结果：{result}")
         self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
         self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
         print(f"✅ 第一次调用校验通过：返回交互请求")
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "随机森林算法是什么"})
+        result = await runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "随机森林算法是什么"})
         print(f"LLMAgent 第二次输出结果：{result}")
         self.assertIsInstance(result, dict, "第二次调用应该返回字典")
         self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
@@ -413,7 +413,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         interactive_input = InteractiveInput()
         interactive_input.update("questioner", "上海")
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
+        result = await runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
         print(f"LLMAgent 第三次输出结果：{result}")
         self.assertIsInstance(result, dict, "第三次调用应该返回字典")
         self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
@@ -450,7 +450,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         构建包含interactive和questioner2个中断组件的workflow
         注意：interactive和questioner在同一个超步（并行执行）
 
-        Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput分次恢复
+        runner.run_agent_group_streaming进行会话操作，使用InteractiveInput分次恢复
         """
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -491,7 +491,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         print("\n【步骤1】发送天气查询请求，触发并行中断")
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
+        async for chunk in runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -530,7 +530,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         构建包含interactive和questioner2个中断组件的workflow
         注意：interactive和questioner在同一个超步（并行执行）
 
-        Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput一次恢复所有的中断
+        runner.run_agent_group_streaming进行会话操作，使用InteractiveInput一次恢复所有的中断
         """
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
@@ -571,7 +571,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         print("\n【步骤1】发送天气查询请求，触发并行中断")
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
+        async for chunk in runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)

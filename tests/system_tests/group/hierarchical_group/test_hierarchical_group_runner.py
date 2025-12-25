@@ -5,9 +5,9 @@
 HierarchicalGroup Runner 测试
 
 场景：
-- 测试通过 Runner.run_agent_group 运行 HierarchicalGroup
-- 测试通过 Runner.run_agent_group_streaming 运行 HierarchicalGroup
-- 测试通过 Runner.add_agent_group 注册并按 ID 运行
+- 测试通过 runner.run_agent_group 运行 HierarchicalGroup
+- 测试通过 runner.run_agent_group_streaming 运行 HierarchicalGroup
+- 测试通过 runner.add_agent_group 注册并按 ID 运行
 """
 
 import os
@@ -29,7 +29,7 @@ from openjiuwen.agent_group.hierarchical_group.agents.main_controller import (
 )
 from openjiuwen.core.agent.agent import BaseAgent, ControllerAgent
 from openjiuwen.core.agent.message.message import Message
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import OutputSchema
 
@@ -76,10 +76,10 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
     """Runner 运行 HierarchicalGroup 测试"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     def _create_echo_agent(self, agent_id: str, description: str) -> SimpleEchoAgent:
         """创建简单的回显 Agent"""
@@ -116,8 +116,8 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         return group
 
     async def test_run_agent_group_with_instance(self):
-        """测试 Runner.run_agent_group 直接传入 Group 实例"""
-        print("\n=== 测试 Runner.run_agent_group (传入实例) ===")
+        """测试 runner.run_agent_group 直接传入 Group 实例"""
+        print("\n=== 测试 runner.run_agent_group (传入实例) ===")
 
         group = self._create_hierarchical_group("runner_test_instance")
 
@@ -129,22 +129,22 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         message.message_type = "notification"
 
-        result = await Runner.run_agent_group(group, message)
+        result = await runner.run_agent_group(group, message)
         print(f"结果: {result}")
 
         self.assertIsInstance(result, dict)
         self.assertIn("worker_a", result.get("output", ""))
-        print("✅ Runner.run_agent_group (传入实例) 测试通过")
+        print("✅ runner.run_agent_group (传入实例) 测试通过")
 
     async def test_run_agent_group_with_id(self):
-        """测试 Runner.run_agent_group 通过 ID 运行已注册的 Group"""
-        print("\n=== 测试 Runner.run_agent_group (通过 ID) ===")
+        """测试 runner.run_agent_group 通过 ID 运行已注册的 Group"""
+        print("\n=== 测试 runner.run_agent_group (通过 ID) ===")
 
         group = self._create_hierarchical_group("runner_test_by_id")
 
         group.group_controller.subscribe("alert", ["worker_b"])
 
-        await Runner.add_agent_group("runner_test_by_id", group)
+        await runner.add_agent_group("runner_test_by_id", group)
 
         message = Message.create_user_message(
             content="通过 Group ID 发送的消息",
@@ -152,18 +152,18 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         message.message_type = "alert"
 
-        result = await Runner.run_agent_group("runner_test_by_id", message)
+        result = await runner.run_agent_group("runner_test_by_id", message)
         print(f"结果: {result}")
 
         self.assertIsInstance(result, dict)
         self.assertIn("worker_b", result.get("output", ""))
 
-        await Runner.remove_agent_group("runner_test_by_id")
-        print("✅ Runner.run_agent_group (通过 ID) 测试通过")
+        await runner.remove_agent_group("runner_test_by_id")
+        print("✅ runner.run_agent_group (通过 ID) 测试通过")
 
     async def test_run_agent_group_broadcast(self):
-        """测试 Runner.run_agent_group 广播到多个 Agent"""
-        print("\n=== 测试 Runner.run_agent_group 广播 ===")
+        """测试 runner.run_agent_group 广播到多个 Agent"""
+        print("\n=== 测试 runner.run_agent_group 广播 ===")
 
         group = self._create_hierarchical_group("runner_test_broadcast")
 
@@ -177,17 +177,17 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         message.message_type = "broadcast_msg"
 
-        result = await Runner.run_agent_group(group, message)
+        result = await runner.run_agent_group(group, message)
         print(f"结果类型: {type(result)}")
         print(f"结果: {result}")
 
         self.assertIsInstance(result, list)
         self.assertEqual(len(result), 2)
-        print("✅ Runner.run_agent_group 广播测试通过")
+        print("✅ runner.run_agent_group 广播测试通过")
 
     async def test_run_agent_group_streaming_with_instance(self):
-        """测试 Runner.run_agent_group_streaming 直接传入 Group 实例"""
-        print("\n=== 测试 Runner.run_agent_group_streaming (传入实例) ===")
+        """测试 runner.run_agent_group_streaming 直接传入 Group 实例"""
+        print("\n=== 测试 runner.run_agent_group_streaming (传入实例) ===")
 
         group = self._create_hierarchical_group("runner_stream_instance")
 
@@ -200,7 +200,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_event"
 
         chunks = []
-        stream = Runner.run_agent_group_streaming(group, message)
+        stream = runner.run_agent_group_streaming(group, message)
         async for chunk in stream:
             chunks.append(chunk)
             chunk_type = chunk.type if hasattr(chunk, 'type') else type(chunk)
@@ -208,17 +208,17 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         print(f"总共收到 {len(chunks)} 个 chunks")
         self.assertTrue(len(chunks) > 0, "应该收到流式输出")
-        print("✅ Runner.run_agent_group_streaming (传入实例) 测试通过")
+        print("✅ runner.run_agent_group_streaming (传入实例) 测试通过")
 
     async def test_run_agent_group_streaming_with_id(self):
-        """测试 Runner.run_agent_group_streaming 通过 ID 运行"""
-        print("\n=== 测试 Runner.run_agent_group_streaming (通过 ID) ===")
+        """测试 runner.run_agent_group_streaming 通过 ID 运行"""
+        print("\n=== 测试 runner.run_agent_group_streaming (通过 ID) ===")
 
         group = self._create_hierarchical_group("runner_stream_by_id")
 
         group.group_controller.subscribe("stream_data", ["worker_b"])
 
-        await Runner.add_agent_group("runner_stream_by_id", group)
+        await runner.add_agent_group("runner_stream_by_id", group)
 
         message = Message.create_user_message(
             content="通过 ID 发送流式消息",
@@ -227,7 +227,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_data"
 
         chunks = []
-        stream = Runner.run_agent_group_streaming(
+        stream = runner.run_agent_group_streaming(
             "runner_stream_by_id", message
         )
         async for chunk in stream:
@@ -238,12 +238,12 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         print(f"总共收到 {len(chunks)} 个 chunks")
         self.assertTrue(len(chunks) > 0, "应该收到流式输出")
 
-        await Runner.remove_agent_group("runner_stream_by_id")
-        print("✅ Runner.run_agent_group_streaming (通过 ID) 测试通过")
+        await runner.remove_agent_group("runner_stream_by_id")
+        print("✅ runner.run_agent_group_streaming (通过 ID) 测试通过")
 
     async def test_run_agent_group_streaming_broadcast(self):
-        """测试 Runner.run_agent_group_streaming 广播流式输出"""
-        print("\n=== 测试 Runner.run_agent_group_streaming 广播 ===")
+        """测试 runner.run_agent_group_streaming 广播流式输出"""
+        print("\n=== 测试 runner.run_agent_group_streaming 广播 ===")
 
         group = self._create_hierarchical_group("runner_stream_broadcast")
 
@@ -258,7 +258,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         message.message_type = "stream_broadcast"
 
         chunks = []
-        stream = Runner.run_agent_group_streaming(group, message)
+        stream = runner.run_agent_group_streaming(group, message)
         async for chunk in stream:
             chunks.append(chunk)
             chunk_type = chunk.type if hasattr(chunk, 'type') else type(chunk)
@@ -271,11 +271,11 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         worker_b = group.agents["worker_b"]
         self.assertEqual(len(worker_a.received_messages), 1)
         self.assertEqual(len(worker_b.received_messages), 1)
-        print("✅ Runner.run_agent_group_streaming 广播测试通过")
+        print("✅ runner.run_agent_group_streaming 广播测试通过")
 
     async def test_run_agent_group_with_receiver_id(self):
-        """测试 Runner.run_agent_group 通过 receiver_id 指定目标"""
-        print("\n=== 测试 Runner.run_agent_group (receiver_id 路由) ===")
+        """测试 runner.run_agent_group 通过 receiver_id 指定目标"""
+        print("\n=== 测试 runner.run_agent_group (receiver_id 路由) ===")
 
         group = self._create_hierarchical_group("runner_receiver_test")
 
@@ -285,7 +285,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         message.receiver_id = "worker_a"
 
-        result = await Runner.run_agent_group(group, message)
+        result = await runner.run_agent_group(group, message)
         print(f"结果: {result}")
 
         self.assertIsInstance(result, dict)
@@ -295,11 +295,11 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         worker_b = group.agents["worker_b"]
         self.assertEqual(len(worker_a.received_messages), 1)
         self.assertEqual(len(worker_b.received_messages), 0)
-        print("✅ Runner.run_agent_group (receiver_id 路由) 测试通过")
+        print("✅ runner.run_agent_group (receiver_id 路由) 测试通过")
 
     async def test_run_agent_group_fallback_to_leader(self):
-        """测试 Runner.run_agent_group 无订阅者时回退到 Leader"""
-        print("\n=== 测试 Runner.run_agent_group (回退到 Leader) ===")
+        """测试 runner.run_agent_group 无订阅者时回退到 Leader"""
+        print("\n=== 测试 runner.run_agent_group (回退到 Leader) ===")
 
         config = HierarchicalGroupConfig(
             group_id="runner_fallback_test",
@@ -319,16 +319,16 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         message.message_type = "unknown_type"
 
-        result = await Runner.run_agent_group(group, message)
+        result = await runner.run_agent_group(group, message)
         print(f"结果: {result}")
 
         self.assertEqual(len(leader.received_messages), 1)
         self.assertEqual(len(worker.received_messages), 0)
-        print("✅ Runner.run_agent_group (回退到 Leader) 测试通过")
+        print("✅ runner.run_agent_group (回退到 Leader) 测试通过")
 
     async def test_run_agent_group_multiple_message_types(self):
-        """测试 Runner.run_agent_group 多种消息类型路由"""
-        print("\n=== 测试 Runner.run_agent_group 多消息类型 ===")
+        """测试 runner.run_agent_group 多种消息类型路由"""
+        print("\n=== 测试 runner.run_agent_group 多消息类型 ===")
 
         group = self._create_hierarchical_group("runner_multi_type")
 
@@ -341,7 +341,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         msg_a.message_type = "type_a"
 
-        result_a = await Runner.run_agent_group(group, msg_a)
+        result_a = await runner.run_agent_group(group, msg_a)
         print(f"类型A结果: {result_a}")
         self.assertIn("worker_a", result_a.get("output", ""))
 
@@ -351,7 +351,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         )
         msg_b.message_type = "type_b"
 
-        result_b = await Runner.run_agent_group(group, msg_b)
+        result_b = await runner.run_agent_group(group, msg_b)
         print(f"类型B结果: {result_b}")
         self.assertIn("worker_b", result_b.get("output", ""))
 
@@ -359,11 +359,11 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         worker_b = group.agents["worker_b"]
         self.assertEqual(len(worker_a.received_messages), 1)
         self.assertEqual(len(worker_b.received_messages), 1)
-        print("✅ Runner.run_agent_group 多消息类型测试通过")
+        print("✅ runner.run_agent_group 多消息类型测试通过")
 
     async def test_run_agent_group_streaming_sequential(self):
-        """测试 Runner.run_agent_group_streaming 连续多次调用"""
-        print("\n=== 测试 Runner.run_agent_group_streaming 连续调用 ===")
+        """测试 runner.run_agent_group_streaming 连续多次调用"""
+        print("\n=== 测试 runner.run_agent_group_streaming 连续调用 ===")
 
         group = self._create_hierarchical_group("runner_stream_seq")
 
@@ -377,7 +377,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
             message.message_type = "seq_event"
 
             chunks = []
-            stream = Runner.run_agent_group_streaming(group, message)
+            stream = runner.run_agent_group_streaming(group, message)
             async for chunk in stream:
                 chunks.append(chunk)
 
@@ -386,7 +386,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         worker_a = group.agents["worker_a"]
         self.assertEqual(len(worker_a.received_messages), 3)
-        print("✅ Runner.run_agent_group_streaming 连续调用测试通过")
+        print("✅ runner.run_agent_group_streaming 连续调用测试通过")
 
 
 if __name__ == "__main__":

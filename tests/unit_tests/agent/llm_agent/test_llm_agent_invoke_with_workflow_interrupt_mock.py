@@ -53,7 +53,7 @@ from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.component.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner.runner import runner, resource_mgr
 
 
 def build_current_date():
@@ -141,11 +141,11 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
     
     async def asyncSetUp(self):
         """测试前准备"""
-        await Runner.start()
+        await runner.start()
         
     async def asyncTearDown(self):
         """测试后清理"""
-        await Runner.stop()
+        await runner.stop()
     
     @staticmethod
     def _create_model():
@@ -341,7 +341,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             )
             
             # ==================== 第一次调用：触发中断 ====================
-            result = await Runner.run_agent(
+            result = await runner.run_agent(
                 react_agent, 
                 {"conversation_id": "12345", "query": "今天天气查询"}
             )
@@ -360,7 +360,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 interactive_input = InteractiveInput()
                 interactive_input.update("questioner", "上海")
                 
-                result = await Runner.run_agent(
+                result = await runner.run_agent(
                     react_agent, 
                     {"conversation_id": "12345", "query": interactive_input}
                 )

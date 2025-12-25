@@ -16,7 +16,7 @@ from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.tool import tool
 from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowExecutionState
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from tests.unit_tests.core.workflow.mock_nodes import MockEndNode, Node1, MockStartNode
 
 
@@ -101,11 +101,11 @@ class TestRunner:
         name = "test_workflow"
         version = "1"
         workflow = self._build_workflow(name, workflow_id, version)
-        result = await Runner.run_workflow(workflow, inputs = {"query": "query workflow"}, runtime=runtime)
+        result = await runner.run_workflow(workflow, inputs = {"query": "query workflow"}, runtime=runtime)
         assert result == WorkflowOutput(result={"result": "query workflow"}, state=WorkflowExecutionState.COMPLETED)
 
     async def test_run_tool(self, runtime):
-        result = await Runner.run_tool(tool=self.add_function, inputs={"a": 1, "b": 2}, runtime=runtime)
+        result = await runner.run_tool(tool=self.add_function, inputs={"a": 1, "b": 2}, runtime=runtime)
         assert result == 3
 
     async def test_run_workflow_not_bound(self, runtime):
@@ -114,13 +114,13 @@ class TestRunner:
         version = "1"
         workflow = self._build_workflow(name, workflow_id, version)
         with pytest.raises(JiuWenBaseException) as exc_info:
-            await Runner.run_workflow(workflow, inputs={"query": "query workflow"}, runtime=runtime)
+            await runner.run_workflow(workflow, inputs={"query": "query workflow"}, runtime=runtime)
         assert exc_info.value.error_code == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code
         assert exc_info.value.message == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.errmsg
 
     async def test_run_tool_not_bound(self, runtime):
         with pytest.raises(JiuWenBaseException) as exc_info:
-            await Runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, runtime=runtime)
+            await runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, runtime=runtime)
         assert exc_info.value.error_code == StatusCode.TOOL_NOT_BOUND_TO_AGENT.code
         assert exc_info.value.message == StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg
 

@@ -25,7 +25,7 @@ from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runtime.base import ComponentExecutable
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.runtime.runtime import Runtime
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
@@ -102,10 +102,10 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
     """测试 WorkflowController 对不同类型中断的处理逻辑"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_start_component():

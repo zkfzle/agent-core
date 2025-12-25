@@ -31,7 +31,7 @@ from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMet
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.runtime.resources_manager.workflow_manager import generate_workflow_key
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner.runner import runner, resource_mgr
 from openjiuwen.agent.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
@@ -115,10 +115,10 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     """专门用于测试 WorkflowAgent.invoke 的类。"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_model_config() -> ModelConfig:
@@ -480,7 +480,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 第一次调用 - 应该触发中断（设置30秒超时）
         try:
             result = await asyncio.wait_for(
-                Runner.run_agent(agent, {"query": "查询天气", "conversation_id": "c123"}),
+                runner.run_agent(agent, {"query": "查询天气", "conversation_id": "c123"}),
                 timeout=60.0
             )
         except asyncio.TimeoutError:
@@ -502,7 +502,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             # 第二次调用 - 传入字符串格式的回答，agent内部会自动处理中断恢复
             try:
                 result2 = await asyncio.wait_for(
-                    Runner.run_agent(agent, {"query": "上海", "conversation_id": "c123"}),
+                    runner.run_agent(agent, {"query": "上海", "conversation_id": "c123"}),
                     timeout=60.0
                 )
             except asyncio.TimeoutError:
@@ -536,7 +536,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             async def collect_first_stream():
                 chunks = []
-                async for chunk in Runner.run_agent_streaming(agent,
+                async for chunk in runner.run_agent_streaming(agent,
                                                               {"query": "查询天气", "conversation_id": "c123"}):
                     print(f"Workflow Agent第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
@@ -565,7 +565,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             try:
                 async def collect_second_stream():
                     chunks = []
-                    async for chunk in Runner.run_agent_streaming(agent, {"query": interactive_input,
+                    async for chunk in runner.run_agent_streaming(agent, {"query": interactive_input,
                                                                           "conversation_id": "c123"}):
                         print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
                         chunks.append(chunk)
@@ -620,7 +620,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         try:
             async def collect_first_stream():
                 chunks = []
-                async for chunk in Runner.run_agent_streaming(agent,
+                async for chunk in runner.run_agent_streaming(agent,
                                                               {"query": "查询天气", "conversation_id": "c123"}):
                     print(f"Workflow Agent第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
@@ -649,7 +649,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             try:
                 async def collect_second_stream():
                     chunks = []
-                    async for chunk in Runner.run_agent_streaming(agent, {"query": interactive_input,
+                    async for chunk in runner.run_agent_streaming(agent, {"query": interactive_input,
                                                                           "conversation_id": "c123"}):
                         print(f"Workflow Agent中断恢复后输出结果 >>> {chunk}")
                         chunks.append(chunk)
@@ -877,7 +877,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 使用新的 add_workflows 方法，传入装饰器包装的 WorkflowFactory
         agent.add_workflows([create_interrupt_workflow_instance])
-        toolinfos = resource_mgr.workflow().get_tool_infos(
+        toolinfos = agent.resource_mgr().workflow().get_tool_infos(
             [generate_workflow_key(workflow_id="test_provider_workflow", workflow_version="1.0")])
         print(toolinfos)
 

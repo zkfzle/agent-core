@@ -33,7 +33,7 @@ from openjiuwen.core.component.questioner_comp import (
 )
 from openjiuwen.core.component.start_comp import Start
 from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
@@ -56,10 +56,10 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
     """金融场景测试 - HierarchicalGroup + HierarchicalMainController + WorkflowAgent"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_model_config() -> ModelConfig:
@@ -1356,7 +1356,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # 1、创建1个WorkflowAgent(相同超步提问器/中断组件)、 llmAgent 、ReactAgent
         # 2、创建 HierarchicalGroup
         # 3、将3个Agent、1个leader_agent加入group
-        # 4、Runner.run_agent_group_streaming进行会话操作，使用InteractiveInput恢复，通过主agent调度workflowAgent
+        # 4、runner.run_agent_group_streaming进行会话操作，使用InteractiveInput恢复，通过主agent调度workflowAgent
         # @Result:
         # agent group创建成功，会话请求正常
         # @Date:
@@ -1427,7 +1427,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print("\n【步骤1】发送银行存取钱请求，触发并行中断")
         message1 = Message.create_user_message(content="我想在民生银行存取款", conversation_id=conversation_id)
         chunks1 = []
-        stream1 = Runner.run_agent_group_streaming(group, message1)
+        stream1 = runner.run_agent_group_streaming(group, message1)
         async for chunk in stream1:
             chunks1.append(chunk)
             print(f"agent group message1 chunk: {chunk}")
@@ -1469,7 +1469,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         message2 = Message.create_user_message(content=user_input, conversation_id=conversation_id)
         chunks2 = []
-        stream2 = Runner.run_agent_group_streaming(group, message2)
+        stream2 = runner.run_agent_group_streaming(group, message2)
         async for chunk in stream2:
             chunks2.append(chunk)
             print(f"agent group message2 chunk: {chunk}")
@@ -1501,7 +1501,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print("   ✓ 成功创建包含多个workflow的WorkflowAgent")
         print("   ✓ 成功创建LLMAgent和ReactAgent")
         print("   ✓ 成功创建HierarchicalGroup并添加所有agents")
-        print("   ✓ 使用Runner.run_agent_group_streaming进行流式交互")
+        print("   ✓ 使用runner.run_agent_group_streaming进行流式交互")
         print("   ✓ 第一次调用返回2个并行中断（同一个超步）")
         print("   ✓ 使用InteractiveInput同时恢复多个中断组件")
         print("   ✓ 验证：通过HierarchicalGroup时，InteractiveInput能跳过意图识别直接恢复")

@@ -17,7 +17,7 @@ from openjiuwen.core.utils.tool.function.function import LocalFunction
 from openjiuwen.core.utils.tool.param import Param
 from openjiuwen.core.utils.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.utils.tool.tool import tool
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner.runner import runner, resource_mgr
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -35,10 +35,10 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
     """ReAct Agent 测试套件"""
 
     async def asyncSetUp(self):
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
-        await Runner.stop()
+        await runner.stop()
 
     @staticmethod
     def _create_model():
@@ -133,7 +133,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         # 4. 添加工具到 resource_mgr（Runner 需要）
         resource_mgr.tool().add_tool("WeatherReporter", weather_tool)
 
-        result = await Runner.run_agent(react_agent, {"query": "查询杭州的天气"})
+        result = await runner.run_agent(react_agent, {"query": "查询杭州的天气"})
         print(f"ReActAgent 最终输出结果：{result}")
 
     @unittest.skip("require network")
@@ -165,7 +165,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         # 4. 添加工具到 resource_mgr
         resource_mgr.tool().add_tool("WeatherReporter", weather_tool)
 
-        res = Runner.run_agent_streaming(react_agent, {"query": "查询杭州的天气"})
+        res = runner.run_agent_streaming(react_agent, {"query": "查询杭州的天气"})
         async for i in res:
             print("ReActAgent 输出结果：", i)
 
@@ -224,7 +224,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         # 4. 添加工具到 resource_mgr
         resource_mgr.tool().add_tool("add", add_tool)
 
-        result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
+        result = await runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 最终输出结果：{result}")
 
         # 验证结果
@@ -257,7 +257,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         # 4. 添加工具到 resource_mgr
         resource_mgr.tool().add_tool("add", annotated_tool)
 
-        result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
+        result = await runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 使用注解工具最终输出结果：{result}")
 
     @unittest.skip("require network")
@@ -287,7 +287,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         # 4. 添加工具到 resource_mgr
         resource_mgr.tool().add_tool("add", annotated_tool)
 
-        result = Runner.run_agent_streaming(react_agent, {"query": "计算1+2"})
+        result = runner.run_agent_streaming(react_agent, {"query": "计算1+2"})
         async for i in result:
             print("ReActAgent 输出结果：", i)
 

@@ -19,7 +19,7 @@ from openjiuwen.core.stream.base import OutputSchema
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner.runner import runner, resource_mgr
 from openjiuwen.core.utils.tool.mcp.base import ToolServerConfig, McpToolInfo, SseClient, StdioClient, PlaywrightClient
 from mcp import StdioServerParameters
 
@@ -44,13 +44,13 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
         except Exception:
             pass
-        await Runner.start()
+        await runner.start()
 
     async def asyncTearDown(self):
         try:
             resource_mgr.workflow().remove_workflow(
                 generate_workflow_key(self.workflow.config().metadata.id, self.workflow.config().metadata.version))
-            await Runner.stop()
+            await runner.stop()
         except Exception:
             pass
 
@@ -73,7 +73,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def _create_intent_detection_component() -> IntentDetectionComponent:
         """创建意图识别组件。"""
-        model_config = TestRunner._create_model_config()
+        model_config = Testrunner._create_model_config()
         user_prompt = """
             {{user_prompt}}
     
@@ -112,7 +112,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 default_value="today",
             ),
         ]
-        model_config = TestRunner._create_model_config()
+        model_config = Testrunner._create_model_config()
         config = QuestionerConfig(
             model=model_config,
             question_content="",
@@ -229,7 +229,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # 第一次调用 - 应该触发中断（设置30秒超时）
         try:
             result = await asyncio.wait_for(
-                Runner.run_agent(agent, {"query": "查询天气", "conversation_id": "c123"}),
+                runner.run_agent(agent, {"query": "查询天气", "conversation_id": "c123"}),
                 timeout=50.0
             )
         except asyncio.TimeoutError:
@@ -251,7 +251,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             # 第二次调用 - 传入字符串格式的回答，agent内部会自动处理中断恢复
             try:
                 result2 = await asyncio.wait_for(
-                    Runner.run_agent(agent, {"query": "上海", "conversation_id": "c123"}),
+                    runner.run_agent(agent, {"query": "上海", "conversation_id": "c123"}),
                     timeout=30.0
                 )
             except asyncio.TimeoutError:
@@ -273,7 +273,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     async def test_runner_agent_resource_management(self):
-        """端到端测试：验证Runner的资源管理功能 - 通过Runner.add_agent添加智能体并执行，包含交互流程。"""
+        """端到端测试：验证Runner的资源管理功能 - 通过runner.add_agent添加智能体并执行，包含交互流程。"""
         print("=== 测试 Runner 资源管理功能 ===")
         
         # 创建智能体
@@ -283,8 +283,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         
         try:
             # 1. 测试添加智能体
-            print(f"Step 1: 通过Runner.add_agent添加智能体，ID: {agent_id}")
-            Runner.add_agent(agent_id=agent_id, agent=agent)
+            print(f"Step 1: 通过runner.add_agent添加智能体，ID: {agent_id}")
+            runner.add_agent(agent_id=agent_id, agent=agent)
             print("✅ 智能体添加成功")
             
             # 2. 测试通过ID运行智能体 - 第一次调用，获取交互请求
@@ -292,7 +292,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             try:
                 # 第一次调用 - 应该触发中断
                 result = await asyncio.wait_for(
-                    Runner.run_agent(agent_id, {"query": "查询天气", "conversation_id": conversation_id}),
+                    runner.run_agent(agent_id, {"query": "查询天气", "conversation_id": conversation_id}),
                     timeout=50.0
                 )
                 print(f"Runner运行智能体结果（第一次调用）>>> {result}")
@@ -311,7 +311,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                     print("Step 3: 第二次调用，传入回答")
                     try:
                         result2 = await asyncio.wait_for(
-                            Runner.run_agent(agent_id, {"query": "上海", "conversation_id": conversation_id}),
+                            runner.run_agent(agent_id, {"query": "上海", "conversation_id": conversation_id}),
                             timeout=30.0
                         )
                         print(f"Runner运行智能体结果（第二次调用）>>> {result2}")
@@ -335,14 +335,14 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                     
                 # 4. 测试移除智能体
                 print("Step 4: 移除智能体")
-                removed_agent = Runner.remove_agent(agent_id)
+                removed_agent = runner.remove_agent(agent_id)
                 self.assertIsNotNone(removed_agent, "移除的智能体不应为None")
                 print("✅ 智能体移除成功")
                 
                 # 5. 测试移除后再次运行应失败
                 print("Step 5: 验证移除后再次运行智能体应失败")
                 with self.assertRaises(Exception):
-                    await Runner.run_agent(agent_id, {"query": "查询天气", "conversation_id": conversation_id})
+                    await runner.run_agent(agent_id, {"query": "查询天气", "conversation_id": conversation_id})
                 print("✅ 验证通过：移除后的智能体无法运行")
                 
             except asyncio.TimeoutError:
@@ -355,7 +355,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         finally:
             # 清理资源，确保即使测试失败也移除智能体
             try:
-                Runner.remove_agent(agent_id)
+                runner.remove_agent(agent_id)
             except:
                 pass
             print("✅ 测试完成，资源清理")
@@ -413,13 +413,13 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert server_tools[0].name == "browser-use-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.list_tools("browser-use-server")
+            tools = await runner.list_tools("browser-use-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
-            result = await Runner.run_tool(tool_id, test_inputs)
+            result = await runner.run_tool(tool_id, test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
@@ -498,13 +498,13 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert server_tools[0].name == "doubter-mcp-server.doubter"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.list_tools("doubter-mcp-server")
+            tools = await runner.list_tools("doubter-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
-            result = await Runner.run_tool(tool_id, test_inputs)
+            result = await runner.run_tool(tool_id, test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
@@ -579,13 +579,13 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert server_tools[0].name == "playwright-mcp-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.list_tools("playwright-mcp-server")
+            tools = await runner.list_tools("playwright-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
-            result = await Runner.run_tool(tool_id, test_inputs)
+            result = await runner.run_tool(tool_id, test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(

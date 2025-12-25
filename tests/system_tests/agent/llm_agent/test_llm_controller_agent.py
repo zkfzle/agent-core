@@ -304,9 +304,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
             base_url=os.getenv("EMBED_API_BASE"),
             model_name=os.getenv("EMBED_MODEL_NAME"),
             api_key=os.getenv("EMBED_API_KEY"),
-            timeout=os.getenv("EMBED_TIMEOUT"),
-            max_retries=os.getenv("EMBED_MAX_RETRIES"),
-            max_batch_size=os.getenv("EMBED_MAX_BATCH_SIZE", 4),
+            timeout=int(os.getenv("EMBED_TIMEOUT", 60)),
+            max_retries=int(os.getenv("EMBED_MAX_RETRIES", 3)),
         )
         semantic_store = MilvusSemanticStore(
             milvus_host=os.getenv("MILVUS_HOST"),

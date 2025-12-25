@@ -25,7 +25,7 @@ from openjiuwen.core.common.utlis.hash_util import generate_key
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.stream.base import OutputSchema
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner.runner import runner
 from openjiuwen.core.runtime.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.utils.llm.messages import AIMessage, ToolMessage
@@ -548,7 +548,7 @@ class LLMController(BaseController):
             task.status = TaskStatus.RUNNING
 
             # Execute workflow
-            result = await Runner.run_workflow(
+            result = await runner.run_workflow(
                 workflow,
                 inputs=task.input.arguments,
                 runtime=workflow_runtime,

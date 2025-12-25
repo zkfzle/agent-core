@@ -384,10 +384,6 @@ class WorkflowFactory:
                                                                     WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
                 self.input_schema)
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
-            from openjiuwen.core.runner.runner import resource_mgr
-            resource_mgr.workflow()._workflow_tool_infos[
-                generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
-                workflow_input_schema)
         else:
             self._tool_info = None
 
@@ -502,6 +498,10 @@ class BaseAgent(ABC):
     def context_engine(self) -> ContextEngine:
         """Get Context Engine - Unified public interface"""
         return self._context_engine
+
+    def resource_mgr(self):
+        """Get the runtime resource manager"""
+        return self._runtime.resource_mgr()
 
     def _create_context_engine(self) -> ContextEngine:
         """Create ContextEngine - Internal method, called during base class initialization"""
@@ -704,13 +704,15 @@ class BaseAgent(ABC):
             to_register = provider if is_provider else workflow
             self._runtime.add_workflows([(workflow_key, to_register)])
 
-            # 3. Also add to global resource_mgr (for cross-runtime access)
+            # 3. Also add to global resource_mgr when sharing the default resource manager
             try:
                 from openjiuwen.core.runner.runner import resource_mgr
-                logger.info(f"Adding workflow {'provider' if is_provider else 'instance'} "
-                            f"{workflow_key} to global resource_mgr")
-                resource_mgr.workflow().add_workflow(workflow_key, to_register)
-                logger.info(f"Successfully added workflow {'provider' if is_provider else 'instance'} {workflow_key}")
+                if self.resource_mgr() is resource_mgr:
+                    logger.info(f"Adding workflow {'provider' if is_provider else 'instance'} "
+                                f"{workflow_key} to global resource_mgr")
+                    resource_mgr.workflow().add_workflow(workflow_key, to_register)
+                    logger.info(
+                        f"Successfully added workflow {'provider' if is_provider else 'instance'} {workflow_key}")
             except Exception as e:
                 logger.error(f"Failed to add workflow to global resource_mgr: {e}")
 
@@ -753,11 +755,12 @@ class BaseAgent(ABC):
             self._runtime.remove_workflow(workflow_key)
             logger.info(f"Removed workflow {workflow_key} from runtime")
 
-            # 3. Remove from global resource_mgr
+            # 3. Remove from global resource_mgr when sharing the default resource manager
             try:
                 from openjiuwen.core.runner.runner import resource_mgr
-                resource_mgr.workflow().remove_workflow(workflow_key)
-                logger.info(f"Successfully removed workflow {workflow_key} from global resource_mgr")
+                if self.resource_mgr() is resource_mgr:
+                    resource_mgr.workflow().remove_workflow(workflow_key)
+                    logger.info(f"Successfully removed workflow {workflow_key} from global resource_mgr")
             except Exception as e:
                 logger.error(f"Failed to remove workflow from global resource_mgr: {e}")
 

@@ -26,7 +26,7 @@ from openjiuwen.core.agent.message.message import Message, MessageContent
 from openjiuwen.core.agent.task.task import Task, TaskInput
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner.runner import runner, resource_mgr
 from openjiuwen.core.runtime.interaction.interaction import InteractionOutput
 from openjiuwen.core.runtime.runtime import Runtime
 from openjiuwen.core.stream.base import CustomSchema, OutputSchema
@@ -217,8 +217,8 @@ class WorkflowController(IntentDetectionController):
         """Execute workflow task
         
         Execution method depends on task.status:
-        - PENDING: New task, use Runner.run_workflow
-        - INTERRUPTED: Resume task, use Runner.run_workflow with InteractiveInput
+        - PENDING: New task, use runner.run_workflow
+        - INTERRUPTED: Resume task, use runner.run_workflow with InteractiveInput
         
         Args:
             message_content: Message content
@@ -288,7 +288,7 @@ class WorkflowController(IntentDetectionController):
             #    - workflow_final (completion result)
             # Stream data written to runtime, agent layer's stream_iterator can read
             async def run_workflow_streaming():
-                workflow_stream = Runner.run_workflow_streaming(
+                workflow_stream = runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
                     runtime=workflow_runtime,
@@ -1129,19 +1129,40 @@ class WorkflowController(IntentDetectionController):
         Returns:
             Workflow object, None if not found
         """
-        # First try to find from Runner's global resource_mgr
-        try:
-            logger.info(f"Trying to find workflow from resource_mgr: {workflow_id}")
-            # List all available workflows
-            all_workflows = resource_mgr.workflow()._resources
-            logger.info(f"Available workflows in resource_mgr: {list(all_workflows.keys())}")
+        base_runtime = None
+        runtime_res_mgr = None
+        if runtime and hasattr(runtime, "base"):
+            base_runtime = runtime.base()
+            if base_runtime and hasattr(base_runtime, "resource_manager"):
+                runtime_res_mgr = base_runtime.resource_manager()
 
-            workflow = await resource_mgr.workflow().get_workflow(workflow_id, runtime.base())
-            logger.info(f"Found workflow from resource_mgr: {workflow is not None}")
-            if workflow:
-                return workflow
-        except Exception as e:
-            logger.warning(f"Failed to find workflow from resource_mgr {workflow_id}: {e}")
+        # First try to find from runtime's resource manager (preferred for multi-runner)
+        if runtime_res_mgr:
+            try:
+                logger.info(f"Trying to find workflow from runtime resource_mgr: {workflow_id}")
+                all_workflows = runtime_res_mgr.workflow()._resources
+                logger.info(f"Available workflows in runtime resource_mgr: {list(all_workflows.keys())}")
+
+                workflow = await runtime_res_mgr.workflow().get_workflow(workflow_id, base_runtime)
+                logger.info(f"Found workflow from runtime resource_mgr: {workflow is not None}")
+                if workflow:
+                    return workflow
+            except Exception as e:
+                logger.warning(f"Failed to find workflow from runtime resource_mgr {workflow_id}: {e}")
+
+        # Fallback to the default runner's resource_mgr when runtime is unavailable
+        if runtime_res_mgr is None:
+            try:
+                logger.info(f"Trying to find workflow from default resource_mgr: {workflow_id}")
+                all_workflows = resource_mgr.workflow()._resources
+                logger.info(f"Available workflows in default resource_mgr: {list(all_workflows.keys())}")
+
+                workflow = await resource_mgr.workflow().get_workflow(workflow_id, base_runtime)
+                logger.info(f"Found workflow from default resource_mgr: {workflow is not None}")
+                if workflow:
+                    return workflow
+            except Exception as e:
+                logger.warning(f"Failed to find workflow from default resource_mgr {workflow_id}: {e}")
 
         # Then try to get from controller's _runtime
         try:

@@ -1,8 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
 import uuid
-import tiktoken
 from typing import List, Optional, Any, Dict
+
+import tiktoken
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.indexing.processor.chunker.base import Chunker

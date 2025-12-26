@@ -137,7 +137,6 @@ class APIEmbedding(Embedding):
         self, text: str | List[str], **kwargs
     ) -> List[List[float]]:
         """获取嵌入向量"""
-        import asyncio
         
         payload = {"model": self.model_name, "input": text, **kwargs}
         

@@ -4,8 +4,9 @@
 
 包含 Triple 数据模型。
 """
-from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
+
+from pydantic import BaseModel, Field
 
 
 class Triple(BaseModel):

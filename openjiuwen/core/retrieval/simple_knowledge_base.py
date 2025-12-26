@@ -214,8 +214,6 @@ class SimpleKnowledgeBase(KnowledgeBase):
         chunks = self.chunker.chunk_documents(documents)
 
         # 更新索引
-        from openjiuwen.core.retrieval.common.config import IndexConfig
-
         index_config = IndexConfig(
             index_name=f"kb_{self.config.kb_id}_chunks",
             index_type=self.config.index_type,

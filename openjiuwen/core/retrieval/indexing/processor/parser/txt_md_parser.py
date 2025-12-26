@@ -1,8 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
-import chardet
-import aiofiles
 from typing import Any, Optional
+
+import aiofiles
+import chardet
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.indexing.processor.parser.base import Parser

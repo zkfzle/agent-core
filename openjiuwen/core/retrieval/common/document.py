@@ -5,8 +5,9 @@
 包含 Document 和 TextChunk 数据模型。
 """
 import uuid
-from pydantic import BaseModel, Field
 from typing import Dict, Any
+
+from pydantic import BaseModel, Field
 
 
 class Document(BaseModel):
@@ -34,7 +35,7 @@ class TextChunk(BaseModel):
     def from_document(cls, doc: Document, chunk_text: str, id_: str = "") -> "TextChunk":
         """从 Document 创建 TextChunk"""
         return cls(
-            id_= id_ if id_ else str(uuid.uuid4()),
+            id_=id_ if id_ else str(uuid.uuid4()),
             text=chunk_text,
             doc_id=doc.id_,
             metadata=doc.metadata,

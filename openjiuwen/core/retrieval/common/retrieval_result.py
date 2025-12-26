@@ -4,8 +4,9 @@
 
 包含 SearchResult 和 RetrievalResult 数据模型。
 """
-from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
+
+from pydantic import BaseModel, Field
 
 
 class SearchResult(BaseModel):

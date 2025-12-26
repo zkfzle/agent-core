@@ -37,6 +37,7 @@ class Chunker(Processor):
         self.chunk_overlap = chunk_overlap
         self.length_function = length_function or len
 
+    @abstractmethod
     def chunk_text(self, text: str) -> List[str]:
         """
         分块文本

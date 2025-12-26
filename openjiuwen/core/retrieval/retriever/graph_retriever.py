@@ -67,18 +67,15 @@ class GraphRetriever(Retriever):
             )
 
     def _retriever_supports_mode(self, retriever: Retriever, mode: str) -> bool:
-        try:
-            from openjiuwen.core.retrieval.retriever.vector_retriever import VectorRetriever
-            from openjiuwen.core.retrieval.retriever.sparse_retriever import SparseRetriever
-            from openjiuwen.core.retrieval.retriever.hybrid_retriever import HybridRetriever
-        except Exception:
-            VectorRetriever = SparseRetriever = HybridRetriever = None
+        from openjiuwen.core.retrieval.retriever.vector_retriever import VectorRetriever
+        from openjiuwen.core.retrieval.retriever.sparse_retriever import SparseRetriever
+        from openjiuwen.core.retrieval.retriever.hybrid_retriever import HybridRetriever
 
-        if VectorRetriever and isinstance(retriever, VectorRetriever):
+        if isinstance(retriever, VectorRetriever):
             return mode == "vector"
-        if SparseRetriever and isinstance(retriever, SparseRetriever):
+        if isinstance(retriever, SparseRetriever):
             return mode == "sparse"
-        if HybridRetriever and isinstance(retriever, HybridRetriever):
+        if isinstance(retriever, HybridRetriever):
             return mode in {"vector", "sparse", "hybrid"}
 
         supported = getattr(retriever, "SUPPORTED_MODES", None)

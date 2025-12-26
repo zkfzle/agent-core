@@ -16,6 +16,7 @@ from openjiuwen.core.retrieval.indexing.processor.extractor.base import Extracto
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
+from openjiuwen.core.common.logging import logger
 
 
 class KnowledgeBase(ABC):
@@ -115,7 +116,7 @@ class KnowledgeBase(ABC):
                 try:
                     obj.close()
                 except Exception:
-                    pass
+                    logger.warning("Failed to close object", exc_info=True)
 
         await _maybe_await(self.vector_store)
         await _maybe_await(self.index_manager)

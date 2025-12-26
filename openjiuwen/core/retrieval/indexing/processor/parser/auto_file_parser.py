@@ -31,7 +31,8 @@ def register_parser(file_extensions: List[str]):
     def decorator(parser_class: Type[Parser]) -> Type[Parser]:
         for ext in file_extensions:
             normalized_ext = ext.lower()
-            _PARSER_REGISTRY[normalized_ext] = lambda cls=parser_class: cls()
+            parser_factory = lambda cls=parser_class: cls()
+            _PARSER_REGISTRY[normalized_ext] = parser_factory
             logger.info(f"Registered parser {parser_class.__name__} for {normalized_ext}")
         return parser_class
     return decorator

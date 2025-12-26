@@ -1,9 +1,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 
-import json
 import asyncio
-import aiofiles
+import json
 from typing import Any, Optional
+
+import aiofiles
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.indexing.processor.parser.base import Parser

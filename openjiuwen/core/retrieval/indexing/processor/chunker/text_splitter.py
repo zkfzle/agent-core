@@ -140,6 +140,7 @@ class IndexSentenceSplitter(TextSplitter):
                     if val and val != float("inf"):
                         return val
                 except Exception:
+                    logger.warning("Failed to get max length", exc_info=True)
                     continue
         return None
 

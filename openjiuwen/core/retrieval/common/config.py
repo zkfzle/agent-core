@@ -4,8 +4,9 @@
 
 所有配置类统一放在此文件中。
 """
-from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal, Dict, Any
+
+from pydantic import BaseModel, Field, model_validator
 
 
 class KnowledgeBaseConfig(BaseModel):

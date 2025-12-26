@@ -17,6 +17,7 @@ from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.vector_store.milvus_store import MilvusVectorStore
 from openjiuwen.core.retrieval.common.config import VectorStoreConfig
 
+
 class MilvusIndexer(Indexer):
     """Milvus 索引管理器实现"""
 
@@ -214,6 +215,7 @@ class MilvusIndexer(Indexer):
                                 row_count = int(item.get("value") or 0)
                                 break
                             except Exception:
+                                logger.warning("Failed to get row count", exc_info=True)
                                 continue
 
             collection_info = await asyncio.to_thread(

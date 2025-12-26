@@ -4,6 +4,7 @@ ChromaDB 向量存储实现
 
 支持向量搜索、稀疏搜索（文本匹配）和混合搜索。
 """
+from math import log
 import uuid
 import asyncio
 import json
@@ -160,6 +161,7 @@ class ChromaVectorStore(VectorStore):
                     try:
                         metadata.update(json.loads(raw_metadata))
                     except Exception:
+                        logger.warning(f"Failed to load metadata: {raw_metadata}")
                         pass
             
             # 添加其他字段到元数据
@@ -433,6 +435,7 @@ class ChromaVectorStore(VectorStore):
                     sparse_vec = json.loads(metadata[self.sparse_vector_field])
                     metadata[self.sparse_vector_field] = sparse_vec
                 except Exception:
+                    logger.warning(f"Failed to load sparse vector: {metadata[self.sparse_vector_field]}")
                     pass
             
             # 计算分数

@@ -15,6 +15,7 @@ from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
 from openjiuwen.core.retrieval.common.config import VectorStoreConfig
 from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
 
+
 class MilvusVectorStore(VectorStore):
     """Milvus 向量存储实现"""
 

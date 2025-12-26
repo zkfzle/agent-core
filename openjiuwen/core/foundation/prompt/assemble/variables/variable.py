@@ -30,5 +30,5 @@ class Variable:
 
     def _prepare_inputs(self, **kwargs) -> dict:
         """prepare input key-value pairs."""
-        input_kwargs = {k: v for k, v in kwargs.items() if k in self.input_keys}
+        input_kwargs = {k:v for k, v in kwargs.items() if k in self.input_keys}
         return input_kwargs

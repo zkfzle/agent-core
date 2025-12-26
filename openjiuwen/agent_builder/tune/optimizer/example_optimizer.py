@@ -14,13 +14,13 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.agent_builder.tune.base import Case, TuneConstant, EvaluatedCase
 from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer
 
 
-EXAMPLE_SELECTION_TEMPLATE = Template(content="""作为提示词优化专家,我的任务是帮助代理高效且成功地完成任务。
+EXAMPLE_SELECTION_TEMPLATE = PromptTemplate(content="""作为提示词优化专家,我的任务是帮助代理高效且成功地完成任务。
 当前任务描述:
 [任务描述]
 {{task_description}}
@@ -120,7 +120,7 @@ class ExampleOptimizer(BaseOptimizer):
                 )
 
     @staticmethod
-    def _format_prompt(prompt: Template, gradient: str):
+    def _format_prompt(prompt: PromptTemplate, gradient: str):
         content = TuneUtils.get_content_string_from_template(prompt)
         if gradient is None:
             return content
@@ -157,8 +157,8 @@ class ExampleOptimizer(BaseOptimizer):
         return selected_examples + random.sample(remaining_cases, num_examples_to_fill)
 
     def _select_best_examples(self,
-                              system_prompt: Template,
-                              user_prompt: Template,
+                              system_prompt: PromptTemplate,
+                              user_prompt: PromptTemplate,
                               evaluated_cases: List[EvaluatedCase],
                               ) -> List[Case]:
         """select best examples"""

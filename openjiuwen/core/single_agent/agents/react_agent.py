@@ -26,7 +26,7 @@ from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 
 
@@ -102,7 +102,7 @@ class ReActAgent(BaseAgent):
         messages = []
         # Add system prompt
         try:
-            system_prompt = Template(content=self.agent_config.prompt_template).to_messages()
+            system_prompt = PromptTemplate(content=self.agent_config.prompt_template).to_messages()
             for prompt in system_prompt:
                 prompt_dict = prompt.model_dump(exclude_none=True)
                 messages.append(prompt_dict)

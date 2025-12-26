@@ -38,7 +38,7 @@ from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.session.stream import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.workflow import Workflow
@@ -156,7 +156,7 @@ class RealWorkflowTest(unittest.TestCase):
             category_name_list=["旅游", "天气"],
             default_class="分类1",
             model=model_config,
-            intent_detection_template=Template(
+            intent_detection_template=PromptTemplate(
                 name="default",
                 content=[{"role": "user", "content": user_prompt}],
             ),

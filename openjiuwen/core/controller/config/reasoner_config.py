@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 
 DEFAULT_SYSTEM_PROMPT = """你是一个意图分类助手，擅长判断用户的输入属于哪个分类。
 当用户输入没有明确意图或者你无法判断用户输入意图时请选择 {{default_class}}。
@@ -26,19 +27,18 @@ DEFAULT_USER_PROMPT = """
 
 
 def get_default_template():
-    return Template(
+    return PromptTemplate(
                 content=[
-                    {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-                    {"role": "user", "content": DEFAULT_USER_PROMPT}
+                    SystemMessage(content=DEFAULT_SYSTEM_PROMPT),
+                    HumanMessage(content=DEFAULT_USER_PROMPT),
                 ]
             )
-
 
 class IntentDetectionConfig(BaseModel):
     """config of Intent Detection Component"""
     category_info: str = Field(default='')
     category_list: List[str] = Field(default_factory=list)
-    intent_detection_template: Template = field(default_factory=get_default_template)
+    intent_detection_template: PromptTemplate = field(default_factory=get_default_template)
     user_prompt: str = Field(default=DEFAULT_USER_PROMPT)
     chat_history_max_turn: int = Field(default=100)
     default_class: str = Field(default='分类0')

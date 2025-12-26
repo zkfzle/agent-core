@@ -6,9 +6,9 @@ import json
 from typing import List, Dict, Any
 
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 
-OUTPUT_CHANGE_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+OUTPUT_CHANGE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are the dedicated feedback engine for output of a multi-stage workflow.
 Your only responsibility is to analyze a single candidate response and produce a constructive, metric-driven feedback that, when applied, maximizes its score under a simgle metric.
 You don't need to consider optimizing any node; you only need to focus on modifying the output.
@@ -27,7 +27,7 @@ Specifications:
 """)])
 
 
-OUTPUT_CHANGE_USER_PROMPT = Template(content=[HumanMessage(content="""
+OUTPUT_CHANGE_USER_PROMPT = PromptTemplate(content=[HumanMessage(content="""
 Here is the information for your feedback task:
 
 - <WORKFLOW_DESCRIPTION> {{workflow_description}} </WORKFLOW_DESCRIPTION>
@@ -44,7 +44,7 @@ Here is the information for your feedback task:
 """)])
 
 
-DEEP_OUTPUT_ANALYSIS_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+DEEP_OUTPUT_ANALYSIS_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are the deep-dive analysis assistant for workflow outputs.
 Your task is to explain **why** the workflow's actual output deviates from the expected output, using only the provided external knowledge-without considering or replying on nodes' prompt.
 
@@ -61,7 +61,7 @@ Requirements:
 """)])
 
 
-DEEP_OUTPUT_ANALYSIS_USER_PROMPT = Template(content=[HumanMessage(content="""
+DEEP_OUTPUT_ANALYSIS_USER_PROMPT = PromptTemplate(content=[HumanMessage(content="""
 Here is the information for your analysis:
 
 - <WORKFLOW_DESCRIPTION> {{workflow_description}} </WORKFLOW_DESCRIPTION>
@@ -82,7 +82,7 @@ Provide deep reasons why the <CURRENT_OUTPUT> fails to comply with <EXTERNAL_KNO
 """)])
 
 
-EXPECTED_OUTPUT_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+EXPECTED_OUTPUT_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are the optimization assistant for a specific LLM node within a multi-stage workflow.
 
 Requirements:
@@ -95,7 +95,7 @@ Requirements:
 """)])
 
 
-EXPECTED_OUTPUT_USER_PROMPT = Template(content=[HumanMessage(content="""
+EXPECTED_OUTPUT_USER_PROMPT = PromptTemplate(content=[HumanMessage(content="""
 Here is the information for your task:
 
 - <DEPENDENCY> {{dependency_from_this_workflow_final_output}} </DEPENDENCY> (Dependency and job description, how this node's output affects the final output)
@@ -109,7 +109,7 @@ Think step by step ("Reasoning:") and then produce all the exact text this node 
 </OBJECT>
 """)])
 
-GRADIENT_GENERATE_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+GRADIENT_GENERATE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are the optimization assistant for a specific LLM node prompt within a multi-stage workflow.
 Your task is to analyze the current prompt, job of the node, input, actual output, and the expected output for a single case, then give 1~5 reasons why the prompt could have gotten this case wrong.
 
@@ -123,7 +123,7 @@ Requirements:
 """)])
 
 
-GRADIENT_GENERATE_USER_PROMPT = Template(content=[HumanMessage(content="""
+GRADIENT_GENERATE_USER_PROMPT = PromptTemplate(content=[HumanMessage(content="""
 Here is the information for your optimization task:
 
 - <NODE_JOB> {{node_job}} </NODE_JOB>
@@ -139,7 +139,7 @@ Based on the above, modify the <CURRENT_PROMPT> so that the node-when fed <NODE_
 """)])
 
 
-GRADIENT_REDUCE_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+GRADIENT_REDUCE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are the summarization assistant for prompt optimization across multiple cases.
 You task is to:
 
@@ -152,7 +152,7 @@ You task is to:
 """)])
 
 
-GRADIENT_REDUCE_USER_PROMPT = Template(content=[HumanMessage(content="""
+GRADIENT_REDUCE_USER_PROMPT = PromptTemplate(content=[HumanMessage(content="""
 Here are the accumulated reasoning outputs from individual cases:
 <REASON>
 {{all_reasons}}
@@ -175,7 +175,7 @@ The current prompt requiring improvement is:
 """)])
 
 
-PROMPT_UPDATE_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+PROMPT_UPDATE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are an expert prompt engineer.
 When given a prompt that underperforms, analysis of its failures, and a concise feedback summary, you will generate a revised prompt that addresses those failures.
 Your output must consist **only** the "Reasoning:" section and the improved prompt wrapped in <REVISED_PROMPT>...</REVISED_PROMPT> tags.
@@ -184,7 +184,7 @@ You always output in Chinese.
 """)])
 
 
-PROMPT_UPDATE_USER_PROMPT = Template(content=[HumanMessage(content="""
+PROMPT_UPDATE_USER_PROMPT = PromptTemplate(content=[HumanMessage(content="""
 I'm trying to refine a prompt for a large language model.
 
 My current prompt is:
@@ -207,7 +207,7 @@ Think step by step ("Reasoning:") and then produce the revised prompt.
 Wrap your revised prompt exactly in <REVISED_PROMPT>...</REVISED_PROMPT> tags, and include nothing else.
 """)])
 
-CONCLUDE_AGENT_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+CONCLUDE_AGENT_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 ## Role
 You are a master of LLM-workflow analysis, capable of precisely identifying the task of the entire workflow, the responsibility of every LLM node, and the dependency between each node’s output and the final result.
 
@@ -229,7 +229,7 @@ The correlation and impact of each node on the final output
 """)])
 
 
-CONCLUDE_AGENT_USER_PROMPT = Template(content=[SystemMessage(content="""
+CONCLUDE_AGENT_USER_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 ## forward-pass code of the LLM workflow
 ```python
 {{forward_code}}
@@ -243,7 +243,7 @@ CONCLUDE_AGENT_USER_PROMPT = Template(content=[SystemMessage(content="""
 """)])
 
 
-CONCLUDE_NODE_SYSTEM_PROMPT = Template(content=[SystemMessage(content="""
+CONCLUDE_NODE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 ## Role  
 You are a workflow-analysis master who excels at pinpointing how a **single LLM call** affects the **final workflow output**.  
 Based on the **inputs & outputs of that LLM node** and the **final result** in **multiple good cases**, as well as a rough summary of the LLM node's duties, you further refine the **exact responsibility** of that LLM call (a member of `self.nodes`).
@@ -283,7 +283,7 @@ The summary of node responsibility should be concise.
 """)])
 
 
-CONCLUDE_NODE_USER_PROMPT = Template(content=[SystemMessage(content="""
+CONCLUDE_NODE_USER_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 ### Current LLM call to be summarized:
 {{node_name}}
 

@@ -6,15 +6,15 @@ from typing import List, Tuple, Optional
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.runner.resources_manager.thread_safe_dict import ThreadSafeDict
 
 
 class PromptMgr:
     def __init__(self) -> None:
-        self._repo: ThreadSafeDict[str, Template] = ThreadSafeDict()
+        self._repo: ThreadSafeDict[str, PromptTemplate] = ThreadSafeDict()
 
-    def add_prompt(self, template_id: str, template: Template) -> None:
+    def add_prompt(self, template_id: str, template: PromptTemplate) -> None:
         if template_id is None:
             raise JiuWenBaseException(StatusCode.RUNTIME_PROMPT_ADD_FAILED.code,
                                       StatusCode.RUNTIME_PROMPT_ADD_FAILED.errmsg.format(
@@ -25,16 +25,16 @@ class PromptMgr:
                                           reason='template is invalid, can not be None'))
         self._repo[template_id] = template
 
-    def add_prompts(self, templates: List[Tuple[str, Template]]) -> None:
+    def add_prompts(self, templates: List[Tuple[str, PromptTemplate]]) -> None:
         if templates is None:
             return
         for template_id, template in templates:
             self.add_prompt(template_id, template)
 
-    def remove_prompt(self, template_id: str) -> Optional[Template]:
+    def remove_prompt(self, template_id: str) -> Optional[PromptTemplate]:
         return self._repo.pop(template_id, None)
 
-    def get_prompt(self, template_id: str) -> Optional[Template]:
+    def get_prompt(self, template_id: str) -> Optional[PromptTemplate]:
         if template_id is None:
             raise JiuWenBaseException(StatusCode.RUNTIME_PROMPT_GET_FAILED.code,
                                       StatusCode.RUNTIME_PROMPT_GET_FAILED.errmsg.format(

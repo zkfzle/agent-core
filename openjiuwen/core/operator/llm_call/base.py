@@ -5,7 +5,7 @@
 from typing import Dict, Any, Optional, List, Callable, AsyncIterator
 
 from openjiuwen.core.session import Runtime
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.messages import BaseMessage, SystemMessage
 from openjiuwen.core.foundation.tool import ToolInfo
@@ -25,8 +25,8 @@ class LLMCall:
                  ) -> None:
         self._llm = llm
         self._model_name = model_name
-        self._system_prompt = Template(content=system_prompt)
-        self._user_prompt = Template(content=user_prompt or DEFAULT_USER_PROMPT)
+        self._system_prompt = PromptTemplate(content=system_prompt)
+        self._user_prompt = PromptTemplate(content=user_prompt or DEFAULT_USER_PROMPT)
         self._freeze_system_prompt = freeze_system_prompt
         self._freeze_user_prompt = freeze_user_prompt
         self._optimizer_callback: Optional[Callable] = None
@@ -62,19 +62,19 @@ class LLMCall:
     def set_optimizer_callback(self, callback: Optional[Callable]) -> None:
         self._optimizer_callback = callback
 
-    def get_system_prompt(self) -> Template:
+    def get_system_prompt(self) -> PromptTemplate:
         return self._system_prompt
 
-    def get_user_prompt(self) -> Template:
+    def get_user_prompt(self) -> PromptTemplate:
         return self._user_prompt
 
     def update_system_prompt(self, system_prompt: str | List[BaseMessage] | List[Dict]) -> None:
         if not self._freeze_system_prompt:
-            self._system_prompt = Template(content=system_prompt)
+            self._system_prompt = PromptTemplate(content=system_prompt)
 
     def update_user_prompt(self, user_prompt: str | List[BaseMessage] | List[Dict]) -> None:
         if not self._freeze_user_prompt:
-            self._user_prompt = Template(content=user_prompt)
+            self._user_prompt = PromptTemplate(content=user_prompt)
 
     def set_freeze_system_prompt(self, switch: bool) -> None:
         self._freeze_system_prompt = switch

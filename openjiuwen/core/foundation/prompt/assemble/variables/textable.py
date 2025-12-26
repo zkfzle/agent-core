@@ -3,23 +3,25 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import re
+import logging
 
-from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.prompt.assemble.variables.variable import Variable
 
-TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN = r"\{\{([^{}]*)\}\}"
-
+logger = logging.getLogger(__name__)
 
 class TextableVariable(Variable):
     """Variable class for processing string-type placeholders"""
-    def __init__(self, text: str, name: str = "default"):
-        clean_text = text
+    def __init__(self, text: str, name: str = "default", prefix: str = "{{", suffix: str = "}}"):
+        self.text = text
+        self.name = name
+        self.prefix = prefix
+        self.suffix = suffix
+
+        pattern = re.compile(re.escape(prefix) + r"([^{}]*?)" + re.escape(suffix))
         placeholders = []
-        input_keys = []
-        placeholder_matches = re.finditer(TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN, text)
-        for match in placeholder_matches:
+        for match in pattern.finditer(text):
             placeholder = match.group(1).strip()
             if len(placeholder) == 0:
                 raise JiuWenBaseException(
@@ -28,12 +30,15 @@ class TextableVariable(Variable):
                 )
             if placeholder not in placeholders:
                 placeholders.append(placeholder)
+
+        input_keys = []
+        for placeholder in placeholders:
             input_key = placeholder.split(".")[0]
             if input_key not in input_keys:
                 input_keys.append(input_key)
-            clean_text = clean_text.replace(match.group(0), "{{" + placeholder + "}}")
-        self.text = clean_text
+
         self.placeholders = placeholders
+        self.input_keys = input_keys
         super().__init__(name, input_keys=input_keys)
 
     def update(self, **kwargs):
@@ -59,5 +64,6 @@ class TextableVariable(Variable):
             if not isinstance(value, (str, int, float, bool)):
                 logger.info(f"Converting non-string value `{placeholder}` using str()."
                             f" Please check if the style is describe.")
-            formatted_text = formatted_text.replace("{{" + placeholder + "}}", str(value))
+            placeholder_str = f"{self.prefix}{placeholder}{self.suffix}"
+            formatted_text = formatted_text.replace(placeholder_str, str(value))
         self.value = formatted_text

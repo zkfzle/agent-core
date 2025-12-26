@@ -20,7 +20,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow import WorkflowConfig
 
@@ -70,7 +70,7 @@ class TestQuestionComp:
             dict(role="system", content="系统提示词"),
             dict(role="user", content="你是一个AI助手")
         ]
-        mock_init_prompt.return_value = Template(name="test", content=mock_prompt_template)
+        mock_init_prompt.return_value = PromptTemplate(name="test", content=mock_prompt_template)
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
@@ -215,7 +215,7 @@ class TestQuestionComp:
             dict(role="system", content="系统提示词"),
             dict(role="user", content="你是一个AI助手")
         ]
-        mock_init_prompt.return_value = Template(name="test", content=mock_prompt_template)
+        mock_init_prompt.return_value = PromptTemplate(name="test", content=mock_prompt_template)
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
@@ -505,7 +505,7 @@ class TestQuestionerStream:
             dict(role="system", content="系统提示词"),
             dict(role="user", content="你是一个AI助手")
         ]
-        mock_init_prompt.return_value = Template(name="test", content=mock_prompt_template)
+        mock_init_prompt.return_value = PromptTemplate(name="test", content=mock_prompt_template)
         mock_llm_inputs.return_value = mock_prompt_template
         
         # 第一次调用时返回空字典（触发交互），第二次调用返回 "张三"

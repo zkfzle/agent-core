@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 
 from openjiuwen.agent_builder.prompt_builder.base import BasePromptBuilder
@@ -23,7 +23,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
         super().__init__(model_config)
 
     def build(self,
-              prompt: str | Template,
+              prompt: str | PromptTemplate,
               cases: List[EvaluatedCase],
               ) -> Optional[str]:
         prompt = TEMPLATE.get_string_prompt(prompt)
@@ -32,7 +32,7 @@ class BadCasePromptBuilder(BasePromptBuilder):
         return response.content
 
     def stream_build(self,
-                     prompt: str | Template,
+                     prompt: str | PromptTemplate,
                      cases: List[EvaluatedCase],
                      ) -> Generator:
         prompt = TEMPLATE.get_string_prompt(prompt)

@@ -23,7 +23,7 @@ from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.tool import ToolCall
 from openjiuwen.core.workflow import WorkflowOutput
 
@@ -47,8 +47,7 @@ class MessageHandlerUtils:
         if keywords:
             user_fields.update(keywords)
 
-        system_prompt = (Template(
-            name=config.prompt_template_name,
+        system_prompt = (PromptTemplate(
             content=config.prompt_template
         ).format(user_fields).to_messages())
 

@@ -21,9 +21,9 @@ from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage, SystemMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.common.security.user_config import UserConfig
 
 
@@ -99,10 +99,10 @@ reason: 说明为何选择该分类
 
 
 def get_default_template():
-    return Template(
+    return PromptTemplate(
                 content=[
-                    {"role": "system", "content": DEFAULT_SYSTEM_PROMPT},
-                    {"role": "user", "content": DEFAULT_USER_PROMPT}
+                    SystemMessage(content=DEFAULT_SYSTEM_PROMPT),
+                    HumanMessage(content=DEFAULT_USER_PROMPT),
                 ]
             )
 
@@ -120,7 +120,7 @@ class IntentDetectionCompConfig(ComponentConfig):
 @dataclass
 class IntentDetectionDefaultConfig:
     category_list: list[str] = field(default_factory=list)
-    intent_detection_template: Template = field(default_factory=get_default_template)
+    intent_detection_template: PromptTemplate = field(default_factory=get_default_template)
     default_class: str = '分类0'
     enable_input: bool = True
 

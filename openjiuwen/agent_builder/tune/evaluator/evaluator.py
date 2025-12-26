@@ -11,7 +11,7 @@ from tqdm import tqdm
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase, TuneConstant
 from openjiuwen.agent_builder.tune.utils import TuneUtils
@@ -49,7 +49,7 @@ class BaseEvaluator(ABC):
             return list(tqdm(evaluated_cases, desc=f"evaluate", total=len(cases)))
 
 
-LLM_METRIC_TEMPLATE = Template(content="""
+LLM_METRIC_TEMPLATE = PromptTemplate(content="""
 你是一个答案校验专家，负责校验给定的模型回答和标准答案之间的含义和结论一致性。请根据以下标准判断模型回答是否与标准答案的含义和结论一致。
 
 - 如果模型回答和标准答案含义一致，返回`true`。
@@ -80,7 +80,7 @@ LLM_METRIC_TEMPLATE = Template(content="""
 )
 
 
-LLM_METRIC_RETRY_TEMPLATE = Template(content="""
+LLM_METRIC_RETRY_TEMPLATE = PromptTemplate(content="""
 你是一个答案校验专家，负责修复不规范的评估结果。
 
 ## 原始待评估结果评估

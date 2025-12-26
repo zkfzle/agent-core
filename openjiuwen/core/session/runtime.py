@@ -12,7 +12,7 @@ from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.session.stream.manager import StreamWriterManager
 from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
 
@@ -117,19 +117,19 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def add_prompt(self, template_id: str, template: Template):
+    def add_prompt(self, template_id: str, template: PromptTemplate):
         pass
 
     @abstractmethod
-    def add_prompts(self, templates: List[Tuple[str, Template]]):
+    def add_prompts(self, templates: List[Tuple[str, PromptTemplate]]):
         pass
 
     @abstractmethod
-    def remove_prompt(self, template_id: str) -> Optional[Template]:
+    def remove_prompt(self, template_id: str) -> Optional[PromptTemplate]:
         pass
 
     @abstractmethod
-    def get_prompt(self, template_id: str) -> Optional[Template]:
+    def get_prompt(self, template_id: str) -> Optional[PromptTemplate]:
         pass
 
     @abstractmethod

@@ -1,87 +1,88 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
-import re
 import copy
-from typing import Union, List, Dict, Optional
+from typing import Union, List
 
 from pydantic import BaseModel, Field
 
-
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.schema.card import BaseCard
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
-from openjiuwen.core.foundation.prompt.assemble.assembler import Assembler
-from openjiuwen.core.foundation.prompt.assemble.variables.textable import TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN
+from openjiuwen.core.foundation.llm.messages import BaseMessage,HumanMessage
+from openjiuwen.core.foundation.prompt.assemble.assembler import PromptAssembler
 
 
-message_map = {
-    "user": HumanMessage,
-    "assistant": AIMessage,
-    "system": SystemMessage,
-    "tool": ToolMessage
-}
-
-
-class Template(BaseModel):
+class PromptTemplateCard(BaseCard):
     """
-    template data
+    Visual card component for PromptTemplate rendering.
 
+    Extends BaseCard to provide a UI wrapper around the PromptTemplate model,
+    enabling visual rendering, theming, and card-level metadata for
+    template-based content.
     """
-    name: str = Field(default='')
-    content: Union[List[Dict], List[BaseMessage], str]
-    filters: Optional[dict] = Field(default=None)
+    pass
+
+
+class PromptTemplate(BaseModel):
+    """
+    Interpolatable text prompt template with configurable placeholders.
+    Supports both string and BaseMessage list as content,
+    and provides to_messages() and format() methods for placeholder replacement.
+
+    Attributes
+    ----------
+    card : PromptTemplateCard | None
+        Optional visual card component for UI rendering.
+    content : str | List[BaseMessage]
+        Template content (string or message list).
+    placeholder_prefix : str
+        Left delimiter for placeholders (default "{{").
+    placeholder_suffix : str
+        Right delimiter for placeholders (default "}}").
+    """
+    card: PromptTemplateCard | None = Field(default=None)
+    content: Union[str, List[BaseMessage]] = Field(default="")
+    placeholder_prefix: str = Field(default="{{")
+    placeholder_suffix: str = Field(default="}}")
+
 
     def to_messages(self) -> List[BaseMessage]:
-        """Return Template as a list of Messages."""
-        messages = []
-        if self.content is None or len(self.content) == 0:
-            self.content = []
-            return messages
+        """
+        Converts the prompt template content (string or BaseMessage list) to a list of BaseMessage objects.
+        If content is a string, it is wrapped as a single UserMessage; if it is already a list,
+        the list is returned as-is.
+        """
+        if not self.content:
+            return []
 
         if isinstance(self.content, str):
-            messages.append(HumanMessage(content=self.content))
-            return messages
+            return [HumanMessage(content=self.content)]
 
-        for msg in self.content:
-            if isinstance(msg, BaseMessage):
-                messages.append(copy.deepcopy(msg))
-            elif isinstance(msg, dict):
-                message_cls = message_map.get(msg.get("role", ""))
-                if message_cls:
-                    messages.append(message_cls(**msg))
-            else:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
-                    message=f"Template type must be in str, list[dict] or list[BaseMessage]."
-                )
-        self._validate_template_content_assembled()
-        return messages
+        if not all(isinstance(msg, BaseMessage) for msg in self.content):
+            raise JiuWenBaseException(
+                error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
+                message=f"Prompt template type must be in str or list[BaseMessage]."
+            )
 
-    def format(self, keywords: dict[str, str] = None) -> "Template":
-        """format prompt"""
-        assembler = Assembler(copy.deepcopy(self.content))
+        return [copy.deepcopy(msg) for msg in self.content]
+
+
+    def format(self, keywords: dict = None) -> "PromptTemplate":
+        """
+        Replaces all placeholders in the prompt template content with the provided keywords
+        and returns a new PromptTemplate instance with the interpolated content.
+        Placeholders are identified by the configured prefix and suffix.
+        If keywords is None or empty, the original prompt template is returned unchanged.
+        """
+        if not keywords:
+            return copy.deepcopy(self)
+        assembler = PromptAssembler(
+            prompt_template_content=copy.deepcopy(self.content),
+            placeholder_prefix=self.placeholder_prefix,
+            placeholder_suffix=self.placeholder_suffix
+        )
         input_keys = assembler.input_keys
-        format_dict = {}
-        for key in input_keys:
-            if keywords and keywords.get(key) is not None:
-                format_dict[key] = keywords.get(key)
-        content = assembler.assemble(**format_dict)
-        return Template(name=self.name, content=content, filters=self.filters)
-
-    def _validate_template_content_assembled(self):
-        if isinstance(self.content, str):
-            placeholder_matches = re.findall(TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN, self.content)
-            if placeholder_matches:
-                logger.warning(f"template content has not assembled "
-                            f"with variable placeholders: {len(placeholder_matches)}")
-            return
-        for message in self.content:
-            content = message.content if isinstance(message, BaseMessage) else message.get('content', '')
-            placeholder_matches = re.findall(TEMPLATE_VARIABLE_PLACEHOLDER_PATTERN, content)
-            if placeholder_matches:
-                logger.warning(f"template content has not assembled "
-                            f"with variable placeholders: {len(placeholder_matches)}")
-        return
+        valid_keywords = dict([(key, keywords[key]) for key in input_keys if key in keywords])
+        content = assembler.prompt_assemble(**valid_keywords)
+        return PromptTemplate(card=copy.deepcopy(self.card), content=content)

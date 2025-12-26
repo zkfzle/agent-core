@@ -20,9 +20,9 @@ from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage
+from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage, SystemMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 
 START_STR = "start"
 END_STR = "end"
@@ -63,8 +63,8 @@ QUESTIONER_USER_TEMPLATE = """\
 
 def questioner_default_template():
     return [
-        {"role": "system", "content": QUESTIONER_SYSTEM_TEMPLATE},
-        {"role": "user", "content": QUESTIONER_USER_TEMPLATE},
+        SystemMessage(content=QUESTIONER_SYSTEM_TEMPLATE),
+        HumanMessage(content=QUESTIONER_USER_TEMPLATE),
     ]
 
 
@@ -108,7 +108,7 @@ class QuestionerConfig(ComponentConfig):
 
 @dataclass
 class QuestionerDefaultConfig:
-    prompt_template: List[Dict] = field(default_factory=questioner_default_template)
+    prompt_template: List[BaseMessage] = field(default_factory=questioner_default_template)
 
 
 class QuestionerInput(BaseModel):
@@ -388,7 +388,7 @@ class QuestionerDirectReplyHandler:
 
     def _build_llm_inputs(self, chat_history: list = None) -> List[BaseMessage]:
         prompt_template_input = self._create_prompt_template_keywords(chat_history)
-        formatted_template: Template = self._prompt.format(prompt_template_input)
+        formatted_template: PromptTemplate = self._prompt.format(prompt_template_input)
         return formatted_template.to_messages()
 
     def _create_prompt_template_keywords(self, chat_history: List[BaseMessage]):
@@ -508,7 +508,7 @@ class QuestionerExecutable(ComponentExecutable):
         self._config = config
         self._default_config = QuestionerDefaultConfig()
         self._llm = self._create_llm_instance()
-        self._prompt: Template = self._init_prompt()
+        self._prompt: PromptTemplate = self._init_prompt()
         self._state = None
 
     @staticmethod
@@ -584,8 +584,8 @@ class QuestionerExecutable(ComponentExecutable):
                                             api_base=self._config.model.model_info.api_base,
                                             api_key=self._config.model.model_info.api_key)
 
-    def _init_prompt(self) -> Template:
-        return Template(content=self._default_config.prompt_template)
+    def _init_prompt(self) -> PromptTemplate:
+        return PromptTemplate(content=self._default_config.prompt_template)
 
     async def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime, context):
         handler = (QuestionerDirectReplyHandler()

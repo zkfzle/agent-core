@@ -20,7 +20,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 _ROLE = "role"
@@ -499,7 +499,7 @@ class LLMExecutable(ComponentExecutable):
     def _build_user_prompt_content(self, inputs: dict) -> list[dict]:
         template_content_list = self._config.template_content
         user_prompt = [element for element in template_content_list if element.get(_ROLE, "") == MessageRole.USER.value]
-        return Template(content=[user_prompt[0]]).format(inputs).content
+        return PromptTemplate(content=[user_prompt[0]]).format(inputs).content
 
     def _get_model_input(self, inputs: dict):
         system_prompt = self._build_system_prompt(inputs)
@@ -581,7 +581,7 @@ class LLMExecutable(ComponentExecutable):
                 system_prompt.append(element)
             else:
                 break
-        return Template(content=system_prompt).format(inputs).content
+        return PromptTemplate(content=system_prompt).format(inputs).content
 
     def _validate_config(self, config: LLMCompConfig):
         self._validate_template_content(config.template_content)

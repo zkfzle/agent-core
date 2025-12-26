@@ -15,7 +15,7 @@ from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 
 
 class MockLLMModel(BaseModelClient):
@@ -99,7 +99,7 @@ def test_register_custom_template():
         builder._meta_template_manager.pop(META_TEMPLATE_NAME_PREFIX + "custom_general")
 
         # register string-Template template
-        template = Template(content="this is a string meta template")
+        template = PromptTemplate(content="this is a string meta template")
         builder.register_meta_template("custom_general", template)
         meta_template = builder._meta_template_manager.get(META_TEMPLATE_NAME_PREFIX + "custom_general")
         assert meta_template.content == template.content

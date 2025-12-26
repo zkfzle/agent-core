@@ -17,7 +17,7 @@ from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.session.tracer.tracer import Tracer
 from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.prompt.template import Template
+from openjiuwen.core.foundation.prompt.template import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
 
@@ -68,16 +68,16 @@ class WrappedRuntime(Runtime, ABC):
     def __init__(self, inner: BaseRuntime):
         self._inner = inner
 
-    def add_prompt(self, template_id: str, template: Template):
+    def add_prompt(self, template_id: str, template: PromptTemplate):
         self._inner.resource_manager().prompt().add_prompt(template_id, template)
 
-    def add_prompts(self, templates: List[Tuple[str, Template]]):
+    def add_prompts(self, templates: List[Tuple[str, PromptTemplate]]):
         self._inner.resource_manager().prompt().add_prompts(templates)
 
     def remove_prompt(self, template_id: str):
         self._inner.resource_manager().prompt().remove_prompt(template_id)
 
-    def get_prompt(self, template_id: str) -> Template:
+    def get_prompt(self, template_id: str) -> PromptTemplate:
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def add_model(self, model_id: str, model: BaseModelClient):
@@ -215,16 +215,16 @@ class RouterRuntime(StateRuntime):
     def update_state(self, data: dict):
         pass
 
-    def add_prompt(self, template_id: str, template: Template):
+    def add_prompt(self, template_id: str, template: PromptTemplate):
         pass
 
-    def add_prompts(self, templates: List[Tuple[str, Template]]):
+    def add_prompts(self, templates: List[Tuple[str, PromptTemplate]]):
         pass
 
     def remove_prompt(self, template_id: str):
         pass
 
-    def get_prompt(self, template_id: str) -> Template:
+    def get_prompt(self, template_id: str) -> PromptTemplate:
         pass
 
     def add_model(self, model_id: str, model: BaseModelClient):
@@ -305,7 +305,7 @@ class WrappedNodeRuntime(StateRuntime):
             self._interaction = WorkflowInteraction(self._inner)
         return await self._interaction.wait_user_inputs(value)
 
-    def get_prompt(self, template_id: str) -> Template:
+    def get_prompt(self, template_id: str) -> PromptTemplate:
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseModelClient:
@@ -355,7 +355,7 @@ class TaskRuntime(StateRuntime):
             self._interaction = SimpleAgentInteraction(self._inner)
         await self._interaction.wait_user_inputs(value)
 
-    def get_prompt(self, template_id: str) -> Template:
+    def get_prompt(self, template_id: str) -> PromptTemplate:
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseModelClient:

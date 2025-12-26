@@ -193,7 +193,8 @@ class ToolMgr(AbstractManager[Tool]):
 
     def _create_client(self, config: ToolServerConfig) -> McpToolClient:
         if config.client_type == "sse":
-            return SseClient(config.server_path, config.server_name)
+            return SseClient(config.server_path, config.server_name,
+                             config.auth_headers, config.auth_query_params)
         elif config.client_type == "stdio":
             return StdioClient(config.server_path, config.server_name, config.params)
         elif config.client_type == "playwright":

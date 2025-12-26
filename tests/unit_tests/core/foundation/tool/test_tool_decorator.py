@@ -8,7 +8,7 @@ from pydantic import Field, BaseModel
 
 from openjiuwen.core.foundation.tool.tool import tool
 from openjiuwen.core.foundation.tool.param import Param
-from openjiuwen.core.foundation.tool.schema import Parameters, ToolInfo
+from openjiuwen.core.foundation.tool.schema import ToolInfo
 
 
 @tool(
@@ -64,14 +64,14 @@ class TestToolDecorator:
         sub_too_info = ToolInfo(
             name="local_sub",
             description="local function for sub",
-            parameters=Parameters(
-                type="object",
-                properties={
+            parameters={
+                "type": "object",
+                "properties": {
                     "a": {"description": "first arg", "type": "integer"},
                     "b": {"description": "second arg", "type": "integer"},
                 },
-                required=["a", "b"],
-            )
+                "required": ["a", "b"],
+            },
         )
         self.assertEqual(sub_res, sub_too_info)
 
@@ -108,9 +108,9 @@ class TestToolDecorator:
         summarize_tool_info = ToolInfo(
             name="summarize",
             description="汇总商品信息",
-            parameters=Parameters(
-                type="object",
-                properties={
+            parameters={
+                "type": "object",
+                "properties": {
                     "title": {"description": "汇总标题", "type": "string"},
                     "products": {
                         "description": "商品列表",
@@ -138,7 +138,7 @@ class TestToolDecorator:
                         },
                     },
                 },
-                required=["title", "products"],
-            )
+                "required": ["title", "products"],
+            },
         )
         self.assertEqual(summarize_res, summarize_tool_info)

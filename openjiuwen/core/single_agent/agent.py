@@ -23,7 +23,7 @@ from openjiuwen.core.session import (
 )
 from openjiuwen.core.session.stream import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.foundation.tool import ToolInfo, Parameters
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema, WorkflowMetadata
 
@@ -120,11 +120,11 @@ class WorkflowFactory:
                 generate_workflow_key(self.id, self.version)] = deepcopy(self._tool_info)
 
     def _convert_to_tool_info(self, workflow_input_schema) -> ToolInfo:
-        parameters = Parameters(
-            type=workflow_input_schema.type,
-            properties=workflow_input_schema.properties,
-            required=workflow_input_schema.required
-        )
+        parameters = {
+            "type": workflow_input_schema.type,
+            "properties": workflow_input_schema.properties,
+            "required": workflow_input_schema.required,
+        }
         return ToolInfo(
             name=self.name,
             description=self.workflow_description,

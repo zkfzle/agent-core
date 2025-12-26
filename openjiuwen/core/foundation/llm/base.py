@@ -8,7 +8,7 @@ from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
 from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage
-from openjiuwen.core.foundation.tool import ToolInfo, Parameters
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 
@@ -71,7 +71,6 @@ class BaseModelClient:
                         break
             finally:
                 loop.close()
-
 
     async def astream(self, model_name: str, messages: Union[List[BaseMessage], List[Dict], str],
                tools: Union[List[ToolInfo], List[Dict]] = None, temperature: Optional[float] = None,
@@ -147,14 +146,7 @@ class BaseModelClient:
 
     @staticmethod
     def _convert_tool_info_to_dict(tool: ToolInfo):
-        return {
-            "type": tool.type,
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.parameters.model_dump() if tool.parameters else {}
-            }
-        }
+        return tool.model_dump()
 
     # switch ToolInfo
     @staticmethod
@@ -163,7 +155,7 @@ class BaseModelClient:
         func = tool_dict.get('function', {})
 
         params_dict = func.get('parameters', {})
-        parameters = None
+        parameters = {}
         if params_dict:
             properties = params_dict.get('properties', {})
             cleaned_properties = {}
@@ -171,11 +163,11 @@ class BaseModelClient:
                 cleaned_value = {k: v for k, v in value.items() if k != 'required'}
                 cleaned_properties[key] = cleaned_value
 
-            parameters = Parameters(
-                type=params_dict.get('type', 'object'),
-                properties=cleaned_properties,
-                required=params_dict.get('required', [])
-            )
+            parameters = {
+                "type": params_dict.get("type", "object"),
+                "properties": cleaned_properties,
+                "required": params_dict.get("required", []),
+            }
 
         tool_info = ToolInfo(
             type=tool_dict.get('type', 'function'),

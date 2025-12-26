@@ -10,7 +10,7 @@ from openjiuwen.core.foundation.tool.mcp.base import (
     McpToolInfo,
 )
 from openjiuwen.core.foundation.tool.param import Param
-from openjiuwen.core.foundation.tool.schema import Parameters, ToolCall, ToolInfo
+from openjiuwen.core.foundation.tool.schema import ToolCall, ToolInfo
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.foundation.tool.tool import tool
 __all__ = [
@@ -24,10 +24,9 @@ __all__ = [
     "RestfulApi",
     "MCPTool",
     # for tool info/tool call
-    "Parameters",
     "Param",
     "ToolInfo",
     "ToolCall",
     # for mcp tool
-    "McpToolInfo"
+    "McpToolInfo",
 ]

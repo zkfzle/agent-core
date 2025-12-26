@@ -37,7 +37,7 @@ from openjiuwen.core.graph.stream_actor.base import StreamGraph
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.session.tracer import Tracer
 from openjiuwen.core.session.tracer import TracerWorkflowUtils
-from openjiuwen.core.foundation.tool import Parameters, ToolInfo
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
     NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
 from openjiuwen.core.graph.graph import PregelGraph
@@ -408,11 +408,11 @@ class Workflow(BaseWorkFlow):
         self.inputs_schema = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
 
     def _convert_to_tool_info(self, inputs_schema: WorkflowInputsSchema) -> ToolInfo:
-        parameters = Parameters(
-            type=inputs_schema.type,
-            properties=inputs_schema.properties,
-            required=inputs_schema.required
-        )
+        parameters = {
+            "type": inputs_schema.type,
+            "properties": inputs_schema.properties,
+            "required": inputs_schema.required,
+        }
         return ToolInfo(
             name=self._workflow_config.metadata.name,
             description=self._workflow_config.metadata.description,
@@ -633,7 +633,6 @@ class Workflow(BaseWorkFlow):
         finally:
             await runtime.close()
             await self._graph.reset()
-
 
     async def _execute_with_timeout(self, func, timeout, status_code):
         task = asyncio.create_task(func())

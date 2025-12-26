@@ -6,7 +6,7 @@ from typing import List, Optional
 from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.reasoner.intent_detection import IntentDetection
 from openjiuwen.core.controller.reasoner.planner import Planner
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task.task import Task
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine.context_engine import ContextEngine
@@ -33,7 +33,7 @@ class AgentReasoner:
         self.intent_detection: Optional[IntentDetection] = None
         self.planner: Optional[Planner] = None
         
-    async def process_message(self, message: Message) -> List[Task]:
+    async def process_message(self, event: Event) -> List[Task]:
         """
         Process message - unified decision entry point
         
@@ -44,7 +44,7 @@ class AgentReasoner:
             List[Task]: Generated task list
         """
         # Currently uses intent detection by default
-        tasks = await self.use_intent_detection(message)
+        tasks = await self.use_intent_detection(event)
         return tasks
 
     def set_intent_detection(self, intent_detection: IntentDetection) -> 'AgentReasoner':
@@ -74,7 +74,7 @@ class AgentReasoner:
         self.planner = planner
         return self
 
-    async def use_intent_detection(self, message: Message) -> List[Task]:
+    async def use_intent_detection(self, event: Event) -> List[Task]:
         """
         Process message using intent detection module
         
@@ -86,9 +86,9 @@ class AgentReasoner:
         """
         if not self.intent_detection:
             raise ValueError("Intent detection module not set")
-        return await self.intent_detection.process_message(message)
+        return await self.intent_detection.process_message(event)
 
-    async def use_planner(self, message: Message) -> List[Task]:
+    async def use_planner(self, event: Event) -> List[Task]:
         """
         Process message using planner module
         
@@ -100,7 +100,7 @@ class AgentReasoner:
         """
         if not self.planner:
             raise ValueError("Planner module not set")
-        return await self.planner.process_message(message)
+        return await self.planner.process_message(event)
 
     @property
     def intent_detection_module(self) -> Optional[IntentDetection]:

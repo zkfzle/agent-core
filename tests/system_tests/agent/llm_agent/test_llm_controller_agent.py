@@ -460,6 +460,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         llm_agent_config = create_llm_agent_config(
             agent_id="react_agent_123",
             agent_version="0.0.1",
+
             description="AI助手",
             plugins=[],
             workflows=[self._create_workflow_schema()],

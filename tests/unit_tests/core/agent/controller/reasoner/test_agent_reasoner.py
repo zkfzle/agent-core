@@ -11,7 +11,7 @@ from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
 from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
 from openjiuwen.core.controller.reasoner import IntentDetection
-from openjiuwen.core.controller.message.message import Message, MessageContent, MessageSource, MessageType, SourceType
+from openjiuwen.core.controller.event.event import Event, EventContent, EventSource, EventType, SourceType
 from openjiuwen.core.controller.task import TaskInput
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
@@ -78,12 +78,12 @@ class TestAgentReasoner(unittest.IsolatedAsyncioTestCase):
     async def test_process_message_with_intent_detection(self):
         """测试process_message方法正常调用intent_detection处理消息"""
         # 设置测试数据
-        test_message = Message(
+        test_message = Event(
             msg_id="test_message_id",
-            msg_type=MessageType.USER_INPUT,
-            content=MessageContent(
+            msg_type=EventType.USER_INPUT,
+            content=EventContent(
                 text="天气"),
-            source=MessageSource(
+            source=EventSource(
                 conversation_id="test_conversation_id",
                 source_type=SourceType.USER
             )
@@ -93,7 +93,7 @@ class TestAgentReasoner(unittest.IsolatedAsyncioTestCase):
         expected_task_input = TaskInput(
             target_id="weather_workflow_id",
             target_name="天气",
-            arguments=MessageContent(text="天气")
+            arguments=EventContent(text="天气")
         )
         
         # 设置intent_detection模块

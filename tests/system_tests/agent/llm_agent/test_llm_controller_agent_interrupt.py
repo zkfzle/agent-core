@@ -1,4 +1,5 @@
 import os
+import uuid
 import unittest
 from datetime import datetime
 from typing import List
@@ -117,7 +118,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
     @staticmethod
     def _create_prompt_template():
-        system_prompt = "你是一个AI助手，在适当的时候调用合适的工具，帮助我完成任务！注意如果是查询天气，必须调用工具。今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。"
+        system_prompt = "你是一个AI助手，在适当的时候调用合适的工具或工作流，帮助我完成任务！注意如果是查询天气相关的问题，必须调用相应的工作流或工具。今天的日期为：{}\n注意：1. 如果用户请求中未指定具体时间，则默认为今天。2. 对于天气查询，优先使用工作流处理。"
         return [
             dict(role="system", content=system_prompt.format(build_current_date()))
         ]
@@ -329,7 +330,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def test_llm_agent_with_workflow_interrupt_agent_invoke(self):
         llm_agent = self._setup_test_environment_and_agent()
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "昨天天气查询"})
+        result = await Runner.run_agent(llm_agent, {"conversation_id": str(uuid.uuid4()), "query": "昨天天气查询"})
         print(f"LLMAgent 第一次输出结果：{result}")
         
         # 适配两种情况：1) LLM调用工作流返回交互请求  2) LLM直接回答
@@ -341,7 +342,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
             # 第二次大模型恢复上次中断workflow
             interactive_input = InteractiveInput()
             interactive_input.update("questioner", "上海")
-            result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
+            result = await Runner.run_agent(llm_agent, {"conversation_id": str(uuid.uuid4()), "query": interactive_input})
             print(f"LLMAgent 第二次输出结果：{result}")
 
             self.assertIsInstance(result, dict, "第二次调用应该返回字典")
@@ -359,7 +360,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         llm_agent = self._setup_test_environment_and_agent()
 
         interaction_output_schema = []
-        async for chunk in llm_agent.stream({"query": "昨天天气查询", "conversation_id": "c123"}):
+        async for chunk in llm_agent.stream({"query": "昨天天气查询", "conversation_id": str(uuid.uuid4())}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -371,7 +372,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
             final_chunk = None
-            async for chunk in llm_agent.stream({"query": user_input, "conversation_id": "c123"}):
+            async for chunk in llm_agent.stream({"query": user_input, "conversation_id": str(uuid.uuid4())}):
                 print(f"LLMAgent 第二次输出结果 >>> {chunk}")
                 if chunk.type == "answer":
                     final_chunk = chunk
@@ -383,7 +384,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         llm_agent = self._setup_test_environment_and_agent()
 
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "c123"}):
+        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": str(uuid.uuid4())}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -395,7 +396,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 component_id = item.payload.id
                 user_input.update(component_id, {"location": "杭州"})
             final_chunk = None
-            async for chunk in Runner.run_agent_streaming(llm_agent, {"query": user_input, "conversation_id": "c123"}):
+            async for chunk in Runner.run_agent_streaming(llm_agent, {"query": user_input, "conversation_id": str(uuid.uuid4())}):
                 print(f"LLMAgent 第二次输出结果 >>> {chunk}")
                 if chunk.type == "answer":
                     final_chunk = chunk
@@ -406,13 +407,13 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     async def test_llm_agent_with_workflow_interrupt_agent_invoke_multi_rounds(self):
         llm_agent = self._setup_test_environment_and_agent()
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "今天天气查询"})
+        result = await Runner.run_agent(llm_agent, {"conversation_id": str(uuid.uuid4()), "query": "今天天气查询"})
         print(f"LLMAgent 第一次输出结果：{result}")
         self.assertIsInstance(result, list, "第一次调用应该返回交互请求列表")
         self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
         print(f"✅ 第一次调用校验通过：返回交互请求")
 
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": "随机森林算法是什么"})
+        result = await Runner.run_agent(llm_agent, {"conversation_id": str(uuid.uuid4()), "query": "随机森林算法是什么"})
         print(f"LLMAgent 第二次输出结果：{result}")
         self.assertIsInstance(result, dict, "第二次调用应该返回字典")
         self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
@@ -420,7 +421,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         interactive_input = InteractiveInput()
         interactive_input.update("questioner", "上海")
-        result = await Runner.run_agent(llm_agent, {"conversation_id": "12345", "query": interactive_input})
+        result = await Runner.run_agent(llm_agent, {"conversation_id": str(uuid.uuid4()), "query": interactive_input})
         print(f"LLMAgent 第三次输出结果：{result}")
         self.assertIsInstance(result, dict, "第三次调用应该返回字典")
         self.assertEqual(result['result_type'], 'answer', "应该返回answer类型")
@@ -431,20 +432,20 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         llm_agent = self._setup_test_environment_and_agent()
 
         interaction_output_schema = []
-        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "昨天天气查询"}):
+        async for chunk in llm_agent.stream({"conversation_id": str(uuid.uuid4()), "query": "昨天天气查询"}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
                 print(f"✅ 第一次调用校验通过：返回交互请求")
 
-        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": "今天是周几"}):
+        async for chunk in llm_agent.stream({"conversation_id": str(uuid.uuid4()), "query": "今天是周几"}):
             print(f"LLMAgent 第二次输出结果 >>> {chunk}")
         print(f"✅ 第二次调用校验通过：调用完成，返回结果正确")
 
         interactive_input = InteractiveInput()
         interactive_input.update("questioner", {"location": "上海"})
         final_chunk = None
-        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+        async for chunk in llm_agent.stream({"conversation_id": str(uuid.uuid4()), "query": interactive_input}):
             print(f"LLMAgent 第三次输出结果 >>> {chunk}")
             if chunk.type == "answer":
                 final_chunk = chunk
@@ -466,7 +467,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         flow = self._build_workflow(
             workflow_id="questioner_weather_workflow",
             workflow_name="questioner_weather_workflow",
-            workflow_desc="天气查询"
+            workflow_desc="天气查询工具，专门用于处理天气查询请求、温度查询、气象数据查询等场景"
         )
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
@@ -496,9 +497,12 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         # 动态绑定workflow
         llm_agent.add_workflows([flow])
 
+        # 使用固定的 conversation_id 保持会话状态
+        conversation_id = str(uuid.uuid4())
+        
         print("\n【步骤1】发送天气查询请求，触发并行中断")
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
+        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": conversation_id}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -520,7 +524,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
             second_interrupt_expected = "interactive"
         
         interaction_output_schema = []
-        async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+        async for chunk in llm_agent.stream({"conversation_id": conversation_id, "query": interactive_input}):
             print(f"LLMAgent 第二次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -539,7 +543,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 interactive_input.update("questioner", {"location": "上海"})
             
             interaction_output_schema = []
-            async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+            async for chunk in llm_agent.stream({"conversation_id": conversation_id, "query": interactive_input}):
                 print(f"LLMAgent 第三次输出结果 >>> {chunk}")
                 if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                     interaction_output_schema.append(chunk)
@@ -563,7 +567,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         flow = self._build_workflow(
             workflow_id="questioner_weather_workflow",
             workflow_name="questioner_weather_workflow",
-            workflow_desc="天气查询"
+            workflow_desc="天气查询工具，专门用于处理天气查询请求、温度查询、气象数据查询等场景"
         )
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
                                    model_info=BaseModelInfo(
@@ -593,9 +597,12 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         # 动态绑定workflow
         llm_agent.add_workflows([flow])
 
+        # 使用固定的 conversation_id 保持会话状态
+        conversation_id = str(uuid.uuid4())
+        
         print("\n【步骤1】发送天气查询请求，触发并行中断")
         interaction_output_schema = []
-        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": "12345"}):
+        async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": conversation_id}):
             print(f"LLMAgent 第一次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
@@ -615,7 +622,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         max_retries = 3
         for i in range(max_retries):
             interaction_output_schema = []
-            async for chunk in llm_agent.stream({"conversation_id": "12345", "query": interactive_input}):
+            async for chunk in llm_agent.stream({"conversation_id": conversation_id, "query": interactive_input}):
                 print(f"LLMAgent 第{i+2}次输出结果 >>> {chunk}")
                 if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                     interaction_output_schema.append(chunk)

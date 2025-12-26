@@ -10,26 +10,26 @@ from typing import Dict, Any, Optional, Union, List
 from openjiuwen.core.session import InteractiveInput
 
 
-class MessageType(Enum):
-    """Message type enum"""
+class EventType(Enum):
+    """Event type enum"""
     # User interaction
-    USER_INPUT = "user_input"  # User input message
-
+    USER_INPUT = "user_input"  # User input event
+    
     # Agent interaction
-    AGENT_RESPONSE = "agent_response"  # Agent response message
+    AGENT_RESPONSE = "agent_response"  # Agent response event
     AGENT_HANDOFF = "agent_handoff"  # Agent handoff
-
+    
     # Task execution
     TASK_COMPLETED = "task_completed"  # Task completed
     TASK_INTERRUPTED = "task_interrupted"  # Task interrupted
-
+    
     # Event notification
-    ERROR = "error"  # Error message
-    INFO = "info"  # Info message
+    ERROR = "error"  # Error event
+    INFO = "info"  # Info event
 
 
-class MessagePriority(Enum):
-    """Message priority enum"""
+class EventPriority(Enum):
+    """Event priority enum"""
     LOW = 1
     NORMAL = 2
     HIGH = 3
@@ -37,7 +37,7 @@ class MessagePriority(Enum):
 
 
 class SourceType(Enum):
-    """Message source type enum"""
+    """Event source type enum"""
     USER = "user"  # User
     AGENT = "single_agent"  # Agent
     TASK = "task"  # Task
@@ -46,16 +46,16 @@ class SourceType(Enum):
 
 
 @dataclass
-class MessageSource:
-    """Message source info"""
+class EventSource:
+    """Event source info"""
     conversation_id: str  # Conversation ID
     source_type: SourceType  # Source type
     user_id: Optional[str] = None
 
 
 @dataclass
-class MessageContent:
-    """Message content - explicit fields, no magic strings, clear types"""
+class EventContent:
+    """Event content - explicit fields, no magic strings, clear types"""
     # Text content
     query: Optional[str] = None
     
@@ -105,9 +105,9 @@ class MessageContent:
 
 
 @dataclass
-class MessageContext:
-    """Message context info"""
-    correlation_id: Optional[str] = None  # Correlation ID (for message chain tracking)
+class EventContext:
+    """Event context info"""
+    correlation_id: Optional[str] = None  # Correlation ID (for event chain tracking)
     conversation_id: Optional[str] = None  # Conversation ID
     task_id: Optional[str] = None  # Related task ID
     workflow_id: Optional[str] = None  # Related workflow ID
@@ -117,21 +117,21 @@ class MessageContext:
 
 
 @dataclass
-class Message:
-    """Unified message class"""
+class Event:
+    """Unified event class"""
     # Basic info
-    msg_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    msg_type: MessageType = MessageType.USER_INPUT
-    priority: MessagePriority = MessagePriority.NORMAL
+    event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    event_type: EventType = EventType.USER_INPUT
+    priority: EventPriority = EventPriority.NORMAL
 
     # Source
-    source: MessageSource = field(default_factory=lambda: MessageSource("unknown", SourceType.SYSTEM))
+    source: EventSource = field(default_factory=lambda: EventSource("unknown", SourceType.SYSTEM))
 
     # Content
-    content: MessageContent = field(default_factory=MessageContent)
+    content: EventContent = field(default_factory=EventContent)
 
     # Context
-    context: MessageContext = field(default_factory=MessageContext)
+    context: EventContext = field(default_factory=EventContext)
 
     # Time info
     created_at: datetime = field(default_factory=datetime.now)
@@ -141,7 +141,7 @@ class Message:
 
     # AgentGroup routing support
     receiver_id: Optional[str] = None  # Target Agent ID (for point-to-point)
-    message_type: Optional[str] = None  # Custom message type (for subscription routing)
+    custom_event_type: Optional[str] = None  # Custom event type (for subscription routing)
 
     def __post_init__(self):
         if self.metadata is None:
@@ -150,10 +150,10 @@ class Message:
     # ========== Factory methods ==========
 
     @classmethod
-    def create_user_message(cls, content: Union[str, InteractiveInput], conversation_id: str = "default",
-                            user_id: Optional[str] = None, extensions: Dict[str, Any] = None) -> 'Message':
-        """Create user message - unified handling for str and InteractiveInput"""
-        source = MessageSource(
+    def create_user_event(cls, content: Union[str, InteractiveInput], conversation_id: str = "default",
+                          user_id: Optional[str] = None, extensions: Dict[str, Any] = None) -> 'Event':
+        """Create user event - unified handling for str and InteractiveInput"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=SourceType.USER,
             user_id=user_id
@@ -161,66 +161,66 @@ class Message:
         
         # Assign to different fields by type
         if isinstance(content, InteractiveInput):
-            msg_content = MessageContent(interactive_input=content)
+            event_content = EventContent(interactive_input=content)
         else:
-            msg_content = MessageContent(query=str(content))
+            event_content = EventContent(query=str(content))
 
         if extensions:
-            msg_content.extensions = extensions
+            event_content.extensions = extensions
 
-        context = MessageContext(
+        context = EventContext(
             conversation_id=conversation_id,
             correlation_id=str(uuid.uuid4())
         )
 
         return cls(
-            msg_type=MessageType.USER_INPUT,
+            event_type=EventType.USER_INPUT,
             source=source,
-            content=msg_content,
+            content=event_content,
             context=context
         )
 
     @classmethod
     def create_agent_response(cls, content: str, conversation_id: str,
-                              reply_to_msg_id: Optional[str] = None) -> 'Message':
-        """Create Agent response message"""
-        source = MessageSource(
+                              reply_to_event_id: Optional[str] = None) -> 'Event':
+        """Create Agent response event"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=SourceType.AGENT
         )
-        msg_content = MessageContent(query=content)
-        context = MessageContext(
+        event_content = EventContent(query=content)
+        context = EventContext(
             conversation_id=conversation_id,
-            correlation_id=reply_to_msg_id
+            correlation_id=reply_to_event_id
         )
 
         return cls(
-            msg_type=MessageType.AGENT_RESPONSE,
+            event_type=EventType.AGENT_RESPONSE,
             source=source,
-            content=msg_content,
+            content=event_content,
             context=context
         )
 
     @classmethod
     def create_agent_handoff(cls, conversation_id: str, to_agent_id: str,
-                             handoff_reason: str) -> 'Message':
-        """Create Agent handoff message"""
-        source = MessageSource(
+                             handoff_reason: str) -> 'Event':
+        """Create Agent handoff event"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=SourceType.AGENT
         )
-        msg_content = MessageContent(
+        event_content = EventContent(
             query=handoff_reason,
             extensions={"to_agent_id": to_agent_id}
         )
-        context = MessageContext(
+        context = EventContext(
             conversation_id=conversation_id
         )
 
         return cls(
-            msg_type=MessageType.AGENT_HANDOFF,
+            event_type=EventType.AGENT_HANDOFF,
             source=source,
-            content=msg_content,
+            content=event_content,
             context=context
         )
 
@@ -228,9 +228,9 @@ class Message:
     def create_task_completed(cls, conversation_id: str, task_id: str,
                               task_result: Any,  # TaskResult, use Any to avoid circular import
                               workflow_id: Optional[str] = None,
-                              stream_data: Optional[List[Any]] = None) -> 'Message':
-        """Create task completed message"""
-        source = MessageSource(
+                              stream_data: Optional[List[Any]] = None) -> 'Event':
+        """Create task completed event"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
@@ -239,21 +239,21 @@ class Message:
         if stream_data is None:
             stream_data = []
         
-        msg_content = MessageContent(
+        event_content = EventContent(
             stream_data=stream_data,
             task_result=task_result
         )
 
-        context = MessageContext(
+        context = EventContext(
             conversation_id=conversation_id,
             task_id=task_id,
             workflow_id=workflow_id
         )
 
         return cls(
-            msg_type=MessageType.TASK_COMPLETED,
+            event_type=EventType.TASK_COMPLETED,
             source=source,
-            content=msg_content,
+            content=event_content,
             context=context
         )
 
@@ -261,9 +261,9 @@ class Message:
     def create_task_interrupted(cls, conversation_id: str, task_id: str, reason: str,
                                 task_result: Any,  # TaskResult, use Any to avoid circular import
                                 workflow_id: Optional[str] = None,
-                                stream_data: Optional[List[Any]] = None) -> 'Message':
-        """Create task interrupted message"""
-        source = MessageSource(
+                                stream_data: Optional[List[Any]] = None) -> 'Event':
+        """Create task interrupted event"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=SourceType.TASK
         )
@@ -272,56 +272,56 @@ class Message:
         if stream_data is None:
             stream_data = []
         
-        msg_content = MessageContent(
+        event_content = EventContent(
             query=reason,
             stream_data=stream_data,
             task_result=task_result
         )
-        context = MessageContext(
+        context = EventContext(
             conversation_id=conversation_id,
             task_id=task_id,
             workflow_id=workflow_id
         )
 
         return cls(
-            msg_type=MessageType.TASK_INTERRUPTED,
+            event_type=EventType.TASK_INTERRUPTED,
             source=source,
-            content=msg_content,
+            content=event_content,
             context=context,
-            priority=MessagePriority.HIGH
+            priority=EventPriority.HIGH
         )
 
     @classmethod
-    def create_error_message(cls, conversation_id: str, error_msg: str,
-                             source_type: SourceType = SourceType.SYSTEM) -> 'Message':
-        """Create error message"""
-        source = MessageSource(
+    def create_error_event(cls, conversation_id: str, error_info: str,
+                           source_type: SourceType = SourceType.SYSTEM) -> 'Event':
+        """Create error event"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=source_type
         )
-        msg_content = MessageContent(query=error_msg)
+        event_content = EventContent(query=error_info)
 
         return cls(
-            msg_type=MessageType.ERROR,
+            event_type=EventType.ERROR,
             source=source,
-            content=msg_content,
-            priority=MessagePriority.HIGH
+            content=event_content,
+            priority=EventPriority.HIGH
         )
 
     @classmethod
-    def create_info_message(cls, conversation_id: str, info_msg: str,
-                            source_type: SourceType = SourceType.SYSTEM) -> 'Message':
-        """Create info message"""
-        source = MessageSource(
+    def create_info_event(cls, conversation_id: str, info_text: str,
+                          source_type: SourceType = SourceType.SYSTEM) -> 'Event':
+        """Create info event"""
+        source = EventSource(
             conversation_id=conversation_id,
             source_type=source_type
         )
-        msg_content = MessageContent(query=info_msg)
+        event_content = EventContent(query=info_text)
 
         return cls(
-            msg_type=MessageType.INFO,
+            event_type=EventType.INFO,
             source=source,
-            content=msg_content
+            content=event_content
         )
 
     # ========== Convenience methods ==========
@@ -374,3 +374,12 @@ class Message:
             result['created_at'] = self.created_at.isoformat()
 
         return result
+
+
+# Backward compatibility aliases
+Message = Event
+MessageType = EventType
+MessagePriority = EventPriority
+MessageSource = EventSource
+MessageContent = EventContent
+MessageContext = EventContext

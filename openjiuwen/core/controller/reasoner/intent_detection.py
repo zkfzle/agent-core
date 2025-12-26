@@ -11,7 +11,7 @@ from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
 from openjiuwen.core.controller.constants import IntentDetectionConstants
 from openjiuwen.core.controller.utils import ReasonerUtils
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task.task import Task, TaskInput
 from openjiuwen.core.common.constants.enums import TaskType
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -42,9 +42,9 @@ class IntentDetection:
         self.context_engine = context_engine
         self.runtime = runtime
 
-    async def process_message(self, message: Message) -> List[Task]:
+    async def process_message(self, event: Event) -> List[Task]:
         """
-        Process message, detect intent and generate tasks
+        Process event, detect intent and generate tasks
         
         Args:
             message: Input message
@@ -53,7 +53,7 @@ class IntentDetection:
             List[Task]: Generated task list
         """
         # 1. Detect intent
-        llm_inputs = self._prepare_detection_input(message)
+        llm_inputs = self._prepare_detection_input(event)
         session_id = self.runtime.session_id()
         if UserConfig.is_sensitive():
             logger.info(f"[%s] <LLM Input>", session_id)
@@ -69,11 +69,11 @@ class IntentDetection:
         detected_intent_id = self._parse_intent_from_output(llm_output)
         
         # 3. Create tasks from intent
-        tasks = self._generate_tasks_from_intent(detected_intent_id, message)
+        tasks = self._generate_tasks_from_intent(detected_intent_id, event)
         return tasks
 
     def _generate_tasks_from_intent(
-        self, intent_id: str, message: Message
+        self, intent_id: str, event: Event
     ) -> List[Task]:
         """
         Create task objects
@@ -96,7 +96,7 @@ class IntentDetection:
         # If no workflows, use intent_id as target
         workflows = getattr(self.agent_config, 'workflows', None) or []
         if not workflows:
-            task_input = TaskInput(target_id=intent_id, target_name=intent_id, arguments=message.content)
+            task_input = TaskInput(target_id=intent_id, target_name=intent_id, arguments=event.content)
             task = Task(
                 agent_id=self.agent_config.id,
                 task_id=task_unique_id,
@@ -113,7 +113,7 @@ class IntentDetection:
         # Match workflow when workflows exist
         for workflow in workflows:
             if workflow.id == intent_id:
-                task_input = TaskInput(target_id=workflow.id, target_name=workflow.name, arguments=message.content)
+                task_input = TaskInput(target_id=workflow.id, target_name=workflow.name, arguments=event.content)
                 task = Task(
                     agent_id=self.agent_config.id,
                     task_id=task_unique_id,
@@ -197,7 +197,7 @@ class IntentDetection:
 
         return llm_output_content
 
-    def _prepare_detection_input(self, message: Message) -> str:
+    def _prepare_detection_input(self, event: Event) -> str:
         """
         Prepare intent detection input
         
@@ -233,6 +233,6 @@ class IntentDetection:
 
         # Process current input
         if self.intent_config.enable_input:
-            current_inputs.update({IntentDetectionConstants.INPUT: message.content.get_query() or ""})
+            current_inputs.update({IntentDetectionConstants.INPUT: event.content.get_query() or ""})
         llm_inputs = self.intent_config.intent_detection_template.format(current_inputs).to_messages()
         return llm_inputs

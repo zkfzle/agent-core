@@ -10,7 +10,7 @@ from openjiuwen.core.controller.controller import BaseController
 from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
 from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
 from openjiuwen.core.controller.reasoner import IntentDetection
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -31,7 +31,7 @@ class HierarchicalMainController(BaseController):
         leader = ControllerAgent(config, HierarchicalMainController())
         hierarchical_group.add_agent("leader", leader)
         hierarchical_group.add_agent("agent_a", agent_a)
-        result = await hierarchical_group.invoke(message, runtime)
+        result = await hierarchical_group.invoke(event, runtime)
     """
     
     def __init__(self):
@@ -147,7 +147,7 @@ class HierarchicalMainController(BaseController):
             logger.error(f"HierarchicalMainController: Reasoner init failed: {e}")
             self.reasoner = None
     
-    async def handle_message(self, message: Message, runtime) -> dict:
+    async def handle_event(self, event: Event, runtime) -> dict:
         """Process message: intent detection -> interruption check -> dispatch
         
         Logic:
@@ -160,8 +160,8 @@ class HierarchicalMainController(BaseController):
         
         # Check if message content is InteractiveInput
         is_interactive_input = (
-            hasattr(message.content, 'interactive_input') 
-            and message.content.interactive_input is not None
+            hasattr(event.content, 'interactive_input') 
+            and event.content.interactive_input is not None
         )
         
         if is_interactive_input:
@@ -172,7 +172,7 @@ class HierarchicalMainController(BaseController):
                     f"HierarchicalMainController: InteractiveInput detected, "
                     f"resume last interrupted single_agent -> {target_id}"
                 )
-                return await self._dispatch(target_id, message, runtime)
+                return await self._dispatch(target_id, event, runtime)
             else:
                 logger.warning(
                     "HierarchicalMainController: InteractiveInput detected but no "
@@ -180,19 +180,19 @@ class HierarchicalMainController(BaseController):
                 )
         
         # Normal flow: detect intent first
-        target_id = await self._detect_intent(message)
+        target_id = await self._detect_intent(event)
         logger.info(f"HierarchicalMainController: Intent -> {target_id}")
         
-        return await self._dispatch(target_id, message, runtime)
+        return await self._dispatch(target_id, event, runtime)
     
-    async def _dispatch(self, agent_id: str, message: Message, runtime) -> dict:
+    async def _dispatch(self, agent_id: str, event: Event, runtime) -> dict:
         """Dispatch task to target single_agent"""
         logger.info(f"HierarchicalMainController: Dispatch to {agent_id}")
-        result = await self.send_to_agent(agent_id, message, runtime)
+        result = await self.send_to_agent(agent_id, event, runtime)
         self._update_interruption_state(agent_id, result, runtime)
         return result
     
-    async def _detect_intent(self, message: Message) -> str:
+    async def _detect_intent(self, event: Event) -> str:
         """Detect intent via reasoner
         
         Returns agent_id by mapping from detected description.
@@ -215,7 +215,7 @@ class HierarchicalMainController(BaseController):
             )
         
         try:
-            tasks = await self.reasoner.use_intent_detection(message)
+            tasks = await self.reasoner.use_intent_detection(event)
             if tasks and len(tasks) > 0:
                 detected_desc = tasks[0].input.target_name
                 # Map description back to agent_id

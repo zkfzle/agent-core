@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 
 from openjiuwen.core.common.constants.enums import TaskType
 from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -212,10 +212,10 @@ class MessageHandlerUtils:
             agent_context.add_message(ai_message)
 
     @staticmethod
-    def add_tool_result(message: Message, context_engine: ContextEngine, runtime: Runtime):
-        if message:
+    def add_tool_result(event: Event, context_engine: ContextEngine, runtime: Runtime):
+        if event:
             agent_context = context_engine.get_agent_context(runtime.session_id())
-            tool_result = message.content.task_result.output
+            tool_result = event.content.task_result.output
             if isinstance(tool_result, OutputSchema):
                 payload = tool_result.payload
                 if isinstance(payload, dict):
@@ -224,7 +224,7 @@ class MessageHandlerUtils:
                 tool_result = tool_result.result
             content = JsonUtils.safe_json_dumps(tool_result, str(tool_result), ensure_ascii=False)
             tool_message = ToolMessage(content=content,
-                                       tool_call_id=message.context.task_id)
+                                       tool_call_id=event.context.task_id)
             agent_context.add_message(tool_message)
 
     @staticmethod

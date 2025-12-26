@@ -23,7 +23,7 @@ from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
 from openjiuwen.core.controller.reasoner import (
     IntentDetection
 )
-from openjiuwen.core.controller.message.message import Message, MessageContent
+from openjiuwen.core.controller.event.event import Event, EventContent
 from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
@@ -90,7 +90,7 @@ class WorkflowController(IntentDetectionController):
 
     async def intent_detection(
             self,
-            message: Message,
+            event: Event,
             runtime: Runtime
     ) -> Intent:
         """Intent detection: Select workflow + Check interruption state
@@ -103,7 +103,7 @@ class WorkflowController(IntentDetectionController):
         5. Return Intent (ExecNewTask or ResumeTask)
         
         Args:
-            message: Message object
+            event: Event object
             runtime: Runtime context
             
         Returns:
@@ -116,7 +116,7 @@ class WorkflowController(IntentDetectionController):
 
         # 0. Fast path: InteractiveInput with node_id - directly resume workflow
         # When user provides InteractiveInput, always resume (don't return interruption again)
-        interactive_input = getattr(message.content, 'interactive_input', None)
+        interactive_input = getattr(event.content, 'interactive_input', None)
         if interactive_input is not None and interactive_input.user_inputs:
             resume_result = self._find_interrupted_task_by_node_id(
                 interactive_input, runtime
@@ -142,7 +142,7 @@ class WorkflowController(IntentDetectionController):
         else:
             # Multiple workflows: LLM recognition
             detected_workflow = await self._detect_workflow_via_llm(
-                message, runtime
+                event, runtime
             )
             # Check if default_response should be used
             if detected_workflow is None:
@@ -167,7 +167,7 @@ class WorkflowController(IntentDetectionController):
             # Found interrupted task for this workflow
             # Check if we should resume or return the interruption again
             should_resume = self._should_resume_interrupted_task(
-                interrupted_task, message, runtime
+                interrupted_task, event, runtime
             )
 
             if should_resume:
@@ -202,7 +202,7 @@ class WorkflowController(IntentDetectionController):
                 f"No interrupted task for workflow {detected_workflow.name}, "
                 f"creating new task"
             )
-            new_task = self._create_new_task(message, detected_workflow)
+            new_task = self._create_new_task(event, detected_workflow)
             return Intent(
                 intent_type=IntentType.ExecNewTask,
                 task=new_task,
@@ -211,7 +211,7 @@ class WorkflowController(IntentDetectionController):
 
     async def exec_task(
             self,
-            message_content: MessageContent,
+            message_content: EventContent,
             task: Task,
             runtime: Runtime
     ) -> Dict:
@@ -435,7 +435,7 @@ class WorkflowController(IntentDetectionController):
 
     async def _handle_resume(
             self,
-            message: Message,
+            event: Event,
             intent: Intent,
             runtime: Runtime
     ) -> Dict:
@@ -445,7 +445,7 @@ class WorkflowController(IntentDetectionController):
         directly return the saved interruption instead of executing workflow.
 
         Args:
-            message: Message object
+            event: Event object
             intent: Intent object
             runtime: Runtime context
 
@@ -463,14 +463,14 @@ class WorkflowController(IntentDetectionController):
 
             if not state:
                 logger.warning("No workflow_controller state found, falling back to normal resume")
-                return await super()._handle_resume(message, intent, runtime)
+                return await super()._handle_resume(event, intent, runtime)
 
             state_key = workflow_id.replace('.', '_')
             interrupted_info = state.get("interrupted_tasks", {}).get(state_key)
 
             if not interrupted_info:
                 logger.warning("No interrupted task info found, falling back to normal resume")
-                return await super()._handle_resume(message, intent, runtime)
+                return await super()._handle_resume(event, intent, runtime)
 
             # Reconstruct the interruption OutputSchema
             component_id = interrupted_info.get("component_id", "questioner")
@@ -478,7 +478,7 @@ class WorkflowController(IntentDetectionController):
 
             if last_interaction_value is None:
                 logger.warning("No last_interaction_value found, falling back to normal resume")
-                return await super()._handle_resume(message, intent, runtime)
+                return await super()._handle_resume(event, intent, runtime)
 
             # Create InteractionOutput
             interaction_output = InteractionOutput(
@@ -496,7 +496,7 @@ class WorkflowController(IntentDetectionController):
             ]
 
         # Normal resume flow
-        return await super()._handle_resume(message, intent, runtime)
+        return await super()._handle_resume(event, intent, runtime)
 
     async def interrupt_task(
             self,
@@ -561,7 +561,7 @@ class WorkflowController(IntentDetectionController):
 
     async def _detect_workflow_via_llm(
             self,
-            message: Message,
+            event: Event,
             runtime: Runtime
     ) -> Optional[WorkflowSchema]:
         """Use LLM to detect workflow
@@ -570,7 +570,7 @@ class WorkflowController(IntentDetectionController):
         Otherwise return the first workflow
         
         Args:
-            message: Message object
+            event: Event object
             runtime: Runtime context
             
         Returns:
@@ -587,7 +587,7 @@ class WorkflowController(IntentDetectionController):
             self._ensure_intent_detection_initialized(runtime)
 
             # Call reasoner to detect intent
-            detected_tasks = await self.reasoner.use_intent_detection(message)
+            detected_tasks = await self.reasoner.use_intent_detection(event)
 
             if not detected_tasks:
                 # Check if default_response.text is configured
@@ -676,7 +676,7 @@ class WorkflowController(IntentDetectionController):
     def _should_resume_interrupted_task(
             self,
             task: Task,
-            message: Message,
+            event: Event,
             runtime: Runtime
     ) -> bool:
         """Check if interrupted task should resume or return interruption again
@@ -695,7 +695,7 @@ class WorkflowController(IntentDetectionController):
             bool: True if should resume, False if should return interruption again
         """
         # 1. Check if user provides InteractiveInput
-        interactive_input = getattr(message.content, 'interactive_input', None)
+        interactive_input = getattr(event.content, 'interactive_input', None)
         if interactive_input is not None and interactive_input.user_inputs:
             logger.info("User provided InteractiveInput, will resume task")
             return True
@@ -857,7 +857,7 @@ class WorkflowController(IntentDetectionController):
 
     def _create_new_task(
             self,
-            message: Message,
+            event: Event,
             workflow: WorkflowSchema
     ) -> Task:
         """Create new workflow task
@@ -865,11 +865,11 @@ class WorkflowController(IntentDetectionController):
         Extract query from message and filter parameters based on workflow.inputs
         """
         # Get query
-        query = message.content.get_query() if hasattr(message.content, 'get_query') else ""
+        query = event.content.get_query() if hasattr(event.content, 'get_query') else ""
 
         # Filter input parameters
         user_data = {"query": query}
-        user_data.update(message.content.extensions or {})
+        user_data.update(event.content.extensions or {})
         filtered_inputs = self._filter_workflow_inputs(
             workflow.inputs or {},
             user_data
@@ -879,7 +879,7 @@ class WorkflowController(IntentDetectionController):
 
         # Create task
         task = Task(
-            task_id=f"workflow_{message.msg_id}",
+            task_id=f"workflow_{event.event_id}",
             task_type=TaskType.WORKFLOW,
             status=TaskStatus.PENDING,
             input=TaskInput(

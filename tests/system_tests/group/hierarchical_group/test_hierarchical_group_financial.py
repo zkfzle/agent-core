@@ -11,6 +11,7 @@ HierarchicalGroup 金融场景测试 - 使用 HierarchicalMainController + Workf
 """
 import asyncio
 import os
+import uuid
 import unittest
 from unittest.mock import patch
 
@@ -23,7 +24,7 @@ from openjiuwen.core.application.groups.hierarchical_group import (
 )
 from openjiuwen.core.application.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.single_agent.agent import ControllerAgent
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
@@ -283,8 +284,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         """
         from openjiuwen.core.application.agents_for_studio.llm_agent import LLMAgent
         from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
-        from openjiuwen.core.utils.tool.function.function import LocalFunction
-        from openjiuwen.core.utils.tool.param import Param
+        from openjiuwen.core.foundation.tool.function.function import LocalFunction
+        from openjiuwen.core.foundation.tool.param import Param
 
         model_config = self._create_model_config()
         prompt_template = [
@@ -328,8 +329,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         """
         from openjiuwen.core.single_agent.agents import ReActAgent
         from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
-        from openjiuwen.core.utils.tool.function.function import LocalFunction
-        from openjiuwen.core.utils.tool.param import Param
+        from openjiuwen.core.foundation.tool.function.function import LocalFunction
+        from openjiuwen.core.foundation.tool.param import Param
 
         model_config = self._create_model_config()
         prompt_template = [
@@ -444,7 +445,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # 不指定 receiver_id，让消息自动路由到 leader
         # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 single_agent
         print("\n【步骤1】发送转账请求")
-        message1 = Message.create_user_message(
+        message1 = Event.create_user_event(
             content="我要转账",
             conversation_id=conversation_id
         )
@@ -472,7 +473,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # ========== 步骤2: 提供金额 -> 恢复 -> 完成 ==========
         # 不指定 receiver_id，leader 会自动检测到有中断的 single_agent 并恢复
         print("\n【步骤2】提供转账金额")
-        message2 = Message.create_user_message(
+        message2 = Event.create_user_event(
             content="100元",
             conversation_id=conversation_id
         )
@@ -585,7 +586,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # ========== 步骤1: 使用 stream 发送转账请求 -> 中断 ==========
         # 不指定 receiver_id，让消息自动路由到 leader
         print("\n【步骤1】使用 stream 发送转账请求")
-        message1 = Message.create_user_message(
+        message1 = Event.create_user_event(
             content="我要转账",
             conversation_id=conversation_id
         )
@@ -618,7 +619,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # ========== 步骤2: 使用 stream 提供金额 -> 恢复 -> 完成 ==========
         # 不指定 receiver_id，leader 会自动检测到有中断的 single_agent 并恢复
         print("\n【步骤2】使用 stream 提供转账金额")
-        message2 = Message.create_user_message(
+        message2 = Event.create_user_event(
             content="200元",
             conversation_id=conversation_id
         )
@@ -746,7 +747,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤1: 发送转账请求 -> transfer_agent 中断 ==========
         print("\n【步骤1】发送转账请求 -> transfer_agent 中断")
-        message1 = Message.create_user_message(
+        message1 = Event.create_user_event(
             content="我要转账",
             conversation_id=conversation_id
         )
@@ -775,7 +776,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤2: 发送理财请求 -> invest_agent 中断 ==========
         print("\n【步骤2】发送理财请求 -> invest_agent 中断（跳转到新Agent）")
-        message2 = Message.create_user_message(
+        message2 = Event.create_user_event(
             content="我想理财",
             conversation_id=conversation_id
         )
@@ -804,7 +805,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤3: 提供金额 -> 恢复 transfer_agent -> 完成 ==========
         print("\n【步骤3】提供金额 -> 恢复 transfer_agent -> 完成转账")
-        message3 = Message.create_user_message(
+        message3 = Event.create_user_event(
             content="我要转账100元",
             conversation_id=conversation_id
         )
@@ -841,7 +842,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # ========== 步骤4: 提供产品 -> 恢复 invest_agent -> 完成 ==========
         print("\n【步骤4】提供产品 -> 恢复 invest_agent -> 完成理财")
-        message4 = Message.create_user_message(
+        message4 = Event.create_user_event(
             content="我要购买稳健型理财产品",
             conversation_id=conversation_id
         )
@@ -952,7 +953,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         group.add_agent("sum_agent", sum_agent)
 
         # 6-1、 与第1个agent进行交互（存取钱）
-        # message1 = Message.create_user_message(
+        # message1 = Event.create_user_event(
         #     content="民生银行存钱5000元",
         #     conversation_id=conversation_id
         # )
@@ -964,7 +965,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # )
 
         # 6-2、 与第2个agent进行交互（天气查询）
-        # message2 = Message.create_user_message(
+        # message2 = Event.create_user_event(
         #     content="杭州明日天气晴温度25度",
         #     conversation_id=conversation_id
         # )
@@ -976,7 +977,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # )
 
         # 6-3、 与第3个agent进行交互（翻倍运算 - LLM Agent）
-        message3 = Message.create_user_message(
+        message3 = Event.create_user_event(
             content="帮我把数字5翻倍，然后用模板格式输出结果",
             conversation_id=conversation_id
         )
@@ -984,7 +985,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         print(f"LLM Agent (翻倍运算) result: {result3}")
 
         # 6-4、与第4个agent进行交互（求和运算 - React Agent）
-        message4 = Message.create_user_message(
+        message4 = Event.create_user_event(
             content="请计算 3 加 5 的和是多少",
             conversation_id=conversation_id
         )
@@ -995,7 +996,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     @patch(
-        "openjiuwen.multi_agent.hierarchical_group.agents.main_controller."
+        "openjiuwen.core.application.groups.hierarchical_group.agents.main_controller."
         "HierarchicalMainController._detect_intent"
     )
     async def test_hierarchical_with_react_agent_only(self, mock_detect_intent):
@@ -1041,7 +1042,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         mock_detect_intent.return_value = "sum_agent"
 
         # 6. 发送消息
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="请计算 3 加 5 的和是多少",
             conversation_id=conversation_id
         )
@@ -1063,7 +1064,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     @patch(
-        "openjiuwen.multi_agent.hierarchical_group.agents.main_controller."
+        "openjiuwen.core.application.groups.hierarchical_group.agents.main_controller."
         "HierarchicalMainController._detect_intent"
     )
     async def test_hierarchical_with_llm_agent_only(self, mock_detect_intent):
@@ -1109,7 +1110,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         mock_detect_intent.return_value = "double_agent"
 
         # 6. 发送消息
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="帮我把数字 5 翻倍",
             conversation_id=conversation_id
         )
@@ -1138,7 +1139,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
     @unittest.skip("skip system test - requires network")
     @patch(
-        "openjiuwen.multi_agent.hierarchical_group.agents.main_controller."
+        "openjiuwen.core.application.groups.hierarchical_group.agents.main_controller."
         "HierarchicalMainController._detect_intent"
     )
     async def test_hierarchical_with_llm_agent_with_tools(self, mock_detect_intent):
@@ -1185,7 +1186,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         mock_detect_intent.return_value = "calc_agent"
 
         # 6. 发送消息
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="计算 5 乘以 3",
             conversation_id=conversation_id
         )
@@ -1282,7 +1283,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # 不指定 receiver_id，让消息自动路由到 leader
         # Leader (HierarchicalMainController) 会通过 LLM 意图识别找到目标 single_agent
         print("\n【步骤1】发送转账请求")
-        message1 = Message.create_user_message(
+        message1 = Event.create_user_event(
             content="我要转账",
             conversation_id=conversation_id
         )
@@ -1313,7 +1314,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         user_input = InteractiveInput()
         component_id = result1[0].payload.id
         user_input.update(component_id, {"amount": "100元"})
-        message2 = Message.create_user_message(
+        message2 = Event.create_user_event(
             content=user_input,
             conversation_id=conversation_id
         )
@@ -1424,7 +1425,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # 9、与bank_agent下面的cash_access_flow进行交互
         print("\n【步骤1】发送银行存取钱请求，触发并行中断")
-        message1 = Message.create_user_message(content="我想在民生银行存取款", conversation_id=conversation_id)
+        message1 = Event.create_user_event(content="我想在民生银行存取款", conversation_id=conversation_id)
         chunks1 = []
         stream1 = Runner.run_agent_group_streaming(group, message1)
         async for chunk in stream1:
@@ -1466,7 +1467,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
                     user_input.update(interaction_id, "在民生银行存钱5000元")
                     print(f"  填充中断 [{interaction_id}]: 在民生银行存钱5000元")
 
-        message2 = Message.create_user_message(content=user_input, conversation_id=conversation_id)
+        message2 = Event.create_user_event(content=user_input, conversation_id=conversation_id)
         chunks2 = []
         stream2 = Runner.run_agent_group_streaming(group, message2)
         async for chunk in stream2:

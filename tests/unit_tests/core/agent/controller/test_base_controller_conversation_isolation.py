@@ -10,7 +10,7 @@ from unittest.mock import MagicMock
 
 from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.controller import BaseController
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session import Runtime
 
@@ -18,8 +18,8 @@ from openjiuwen.core.session import Runtime
 class SimpleController(BaseController):
     """Simple test implementation of BaseController"""
 
-    async def handle_message(
-        self, message: Message, runtime: Runtime
+    async def handle_event(
+        self, message: Event, runtime: Runtime
     ) -> Optional[Dict]:
         """Simple echo implementation"""
         return {
@@ -75,11 +75,11 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
         # Create two conversations concurrently
         tasks = [
             controller.invoke(
-                {"conversation_id": "conv_001", "query": "Message 1"},
+                {"conversation_id": "conv_001", "query": "Event 1"},
                 self.runtime
             ),
             controller.invoke(
-                {"conversation_id": "conv_002", "query": "Message 2"},
+                {"conversation_id": "conv_002", "query": "Event 2"},
                 self.runtime
             ),
         ]
@@ -88,10 +88,10 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
 
         # Verify both conversations got correct results
         self.assertEqual(results[0]["conversation_id"], "conv_001")
-        self.assertEqual(results[0]["content"], "Message 1")
+        self.assertEqual(results[0]["content"], "Event 1")
 
         self.assertEqual(results[1]["conversation_id"], "conv_002")
-        self.assertEqual(results[1]["content"], "Message 2")
+        self.assertEqual(results[1]["content"], "Event 2")
 
         # Verify two subscriptions created
         self.assertIn("conv_001", controller._subscriptions)
@@ -140,7 +140,7 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
         # Multiple concurrent calls with same conversation_id
         tasks = [
             controller.invoke(
-                {"conversation_id": "conv_001", "query": f"Message {i}"},
+                {"conversation_id": "conv_001", "query": f"Event {i}"},
                 self.runtime
             )
             for i in range(5)

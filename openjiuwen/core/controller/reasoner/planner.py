@@ -4,7 +4,7 @@
 
 from typing import List
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task import Task
 from openjiuwen.core.controller.task.task import TaskStatus
 from openjiuwen.core.common.constants.enums import TaskType
@@ -27,19 +27,19 @@ class Planner:
         self.runtime = runtime
 
     @staticmethod
-    def _create_default_task(message: Message) -> Task:
+    def _create_default_task(event: Event) -> Task:
         # Temporary: return default task
         return Task(
             task_type=TaskType.UNDEFINED,
-            description=f"Planner task for message: {message.content.get_query() if message.content else 'No content'}",
+            description=f"Planner task for message: {event.content.get_query() if event.content else 'No content'}",
             status=TaskStatus.PENDING,
             metadata={
-                "original_message_id": message.msg_id,
+                "original_message_id": event.event_id,
                 "task_source": "planner"
             }
         )
 
-    async def process_message(self, message: Message) -> List[Task]:
+    async def process_message(self, event: Event) -> List[Task]:
         """
         Process message, plan tasks and generate task list
         
@@ -55,5 +55,5 @@ class Planner:
         # 3. Generate task list, set task dependencies
         # 4. Return task list
 
-        logger.debug(f"Processing message {message.msg_id} with Planner")
-        return [self._create_default_task(message)]
+        logger.debug(f"Processing message {event.event_id} with Planner")
+        return [self._create_default_task(event)]

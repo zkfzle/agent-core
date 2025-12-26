@@ -27,10 +27,10 @@ from openjiuwen.core.application.groups.hierarchical_group.agents.main_controlle
     HierarchicalMainController
 )
 from openjiuwen.core.single_agent.agent import BaseAgent, ControllerAgent
-from openjiuwen.core.controller.message.message import Message
-from openjiuwen.core.runner import Runner
-from openjiuwen.core.session import Runtime
-from openjiuwen.core.session.stream import OutputSchema
+from openjiuwen.core.controller.event.event import Event
+from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.stream.base import OutputSchema
 
 
 class SimpleEchoAgent(BaseAgent):
@@ -122,7 +122,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         group.group_controller.subscribe("notification", ["worker_a"])
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="通过 Runner 发送的消息",
             conversation_id="runner_instance_001"
         )
@@ -145,7 +145,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         await Runner.add_agent_group("runner_test_by_id", group)
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="通过 Group ID 发送的消息",
             conversation_id="runner_by_id_001"
         )
@@ -170,7 +170,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
             "broadcast_msg", ["worker_a", "worker_b"]
         )
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="广播消息",
             conversation_id="runner_broadcast_001"
         )
@@ -192,7 +192,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         group.group_controller.subscribe("stream_event", ["worker_a"])
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="流式消息",
             conversation_id="runner_stream_001"
         )
@@ -219,7 +219,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         await Runner.add_agent_group("runner_stream_by_id", group)
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="通过 ID 发送流式消息",
             conversation_id="runner_stream_id_001"
         )
@@ -250,7 +250,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
             "stream_broadcast", ["worker_a", "worker_b"]
         )
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="广播流式消息",
             conversation_id="runner_stream_broadcast_001"
         )
@@ -278,7 +278,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         group = self._create_hierarchical_group("runner_receiver_test")
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="直接发送给 worker_a",
             conversation_id="runner_receiver_001"
         )
@@ -312,7 +312,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         group.add_agent("leader", leader)
         group.add_agent("worker", worker)
 
-        message = Message.create_user_message(
+        message = Event.create_user_event(
             content="未知类型消息",
             conversation_id="runner_fallback_001"
         )
@@ -334,7 +334,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         group.group_controller.subscribe("type_a", ["worker_a"])
         group.group_controller.subscribe("type_b", ["worker_b"])
 
-        msg_a = Message.create_user_message(
+        msg_a = Event.create_user_event(
             content="类型A消息",
             conversation_id="runner_multi_001"
         )
@@ -344,7 +344,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         print(f"类型A结果: {result_a}")
         self.assertIn("worker_a", result_a.get("output", ""))
 
-        msg_b = Message.create_user_message(
+        msg_b = Event.create_user_event(
             content="类型B消息",
             conversation_id="runner_multi_002"
         )
@@ -369,7 +369,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         group.group_controller.subscribe("seq_event", ["worker_a"])
 
         for i in range(3):
-            message = Message.create_user_message(
+            message = Event.create_user_event(
                 content=f"第 {i+1} 条消息",
                 conversation_id=f"runner_stream_seq_{i}"
             )

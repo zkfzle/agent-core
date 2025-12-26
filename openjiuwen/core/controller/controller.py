@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 
 from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -176,12 +176,12 @@ class BaseController(ABC):
         # 3. Get conversation-specific topic
         topic = f"controller_messages_{conversation_id}"
 
-        # 4. Create message
-        message = self.create_message(inputs)
+        # 4. Create event
+        event = self.create_message(inputs)
 
         # 5. Create queue message and publish
         queue_message = InvokeQueueMessage()
-        queue_message.payload = {"message": message, "runtime": runtime}
+        queue_message.payload = {"message": event, "runtime": runtime}
         queue_message.response = asyncio.Future()
 
         # 6. Publish to conversation-specific topic
@@ -196,24 +196,24 @@ class BaseController(ABC):
         """Message processing wrapper - Automatically called by message queue
 
         Args:
-            request: Dictionary containing message and runtime
+            request: Dictionary containing event and runtime
             
         Returns:
             dict: Processing result
         """
-        message = request.get("message")
+        event = request.get("message")
         runtime = request.get("runtime")
         try:
-            result = await self.handle_message(message, runtime)
+            result = await self.handle_event(event, runtime)
             result_type = type(result)
             has_result = result is not None
             logger.info(
-                f"BaseController: handle_message returned: "
+                f"BaseController: handle_event returned: "
                 f"{result_type}, {has_result}"
             )
             return result
         except Exception as e:
-            error_msg = f"BaseController: handle_message raised exception: {e}"
+            error_msg = f"BaseController: handle_event raised exception: {e}"
             logger.error(error_msg, exc_info=True)
             if isinstance(e, JiuWenBaseException):
                 raise e
@@ -222,17 +222,17 @@ class BaseController(ABC):
 
     # ===== Abstract methods (developers must implement) =====
     @abstractmethod
-    async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
+    async def handle_event(self, event: Event, runtime: Runtime) -> Optional[Dict]:
         """Core method for message processing (must be implemented)
 
         Args:
-            message: Message object
+            event: Event object
             runtime: Runtime context
         Returns:
             Optional[Dict]: Processing result
 
         Developers implement all business logic here:
-        - Dispatch processing based on message.msg_type
+        - Dispatch processing based on event.event_type
         - Execute tasks (synchronously or asynchronously)
         - Manage state
         - Handle interruptions
@@ -241,7 +241,7 @@ class BaseController(ABC):
         pass
 
     # ===== Extension methods (developers can optionally override) =====
-    def create_message(self, inputs: Dict) -> Message:
+    def create_message(self, inputs: Dict) -> Event:
         """Create message object (can be overridden)
 
         Default: Extract content/query from inputs, create user input message
@@ -253,7 +253,7 @@ class BaseController(ABC):
         # Unified: get content from query field (supports str or InteractiveInput)
         content = inputs.get("query", "")
 
-        return Message.create_user_message(
+        return Event.create_user_event(
             content=content,
             conversation_id=conversation_id,
             user_id=user_id,
@@ -310,17 +310,17 @@ class BaseController(ABC):
     async def send_to_agent(
         self,
         agent_id: str,
-        message: Message,
+        event: Event,
         runtime
     ) -> Any:
-        """Send message to specified single_agent (point-to-point)
+        """Send event to specified single_agent (point-to-point)
         
         This method delegates to the group's controller for actual routing.
         Only works when this controller's single_agent is part of a group.
         
         Args:
             agent_id: Target single_agent ID
-            message: Message object
+            event: Event object
             runtime: Runtime context
         
         Returns:
@@ -331,7 +331,7 @@ class BaseController(ABC):
         """
         if self._group and hasattr(self._group, 'group_controller'):
             return await self._group.group_controller.send_to_agent(
-                message, agent_id, runtime
+                event, agent_id, runtime
             )
         raise RuntimeError(
             f"{self.__class__.__name__}: Cannot send_to_agent('{agent_id}'). "
@@ -340,16 +340,16 @@ class BaseController(ABC):
 
     async def publish(
         self,
-        message: Message,
+        event: Event,
         runtime
     ) -> List[Any]:
-        """Publish message to subscribers (broadcast)
+        """Publish event to subscribers (broadcast)
         
         This method delegates to the group's controller for actual routing.
         Only works when this controller's single_agent is part of a group.
         
         Args:
-            message: Message object (must have message_type set)
+            event: Event object (must have custom_event_type set)
             runtime: Runtime context
         
         Returns:
@@ -359,7 +359,7 @@ class BaseController(ABC):
             RuntimeError: If single_agent is not part of a group
         """
         if self._group and hasattr(self._group, 'group_controller'):
-            return await self._group.group_controller.publish(message, runtime)
+            return await self._group.group_controller.publish(event, runtime)
         raise RuntimeError(
             f"{self.__class__.__name__}: Cannot publish(). "
             "Agent is not part of a group with a controller."

@@ -10,7 +10,7 @@ from typing import Dict, Optional, List, Any
 
 from openjiuwen.core.single_agent.agents.react_agent import ReActAgentConfig
 from openjiuwen.core.controller.controller import BaseController
-from openjiuwen.core.controller.message.message import Message, MessageType
+from openjiuwen.core.controller.event.event import Event, EventType
 from openjiuwen.core.controller.task import Task, TaskResult, TaskStatus
 from openjiuwen.core.controller.utils import MessageHandlerUtils
 from openjiuwen.core.common.utils.message_utils import MessageUtils
@@ -81,7 +81,7 @@ class LLMController(BaseController):
         self.config = config
         self.enable_memory = enable_memory
 
-    async def handle_message(self, message: Message, runtime: Runtime) -> Optional[Dict]:
+    async def handle_event(self, event: Event, runtime: Runtime) -> Optional[Dict]:
         """Handle Message - only handles user input
 
         Notes:
@@ -89,19 +89,19 @@ class LLMController(BaseController):
         - Task execution results are handled directly in _execute_tasks_loop
 
         Args:
-            message: Message object (only USER_INPUT type)
+            event: Event object (only USER_INPUT type)
             runtime: Runtime context
 
         Returns:
             Final result
         """
-        if message.msg_type != MessageType.USER_INPUT:
-            logger.warning(f"Unexpected message type: {message.msg_type}, expected USER_INPUT")
+        if event.event_type != EventType.USER_INPUT:
+            logger.warning(f"Unexpected event type: {event.event_type}, expected USER_INPUT")
             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_HANDLE_USER_INPUT_ERROR.code,
-                                           f"{message.msg_type} is unexpected message type, should be USER_INPUT")
+                                           f"{event.event_type} is unexpected event type, should be USER_INPUT")
 
         try:
-            return await self._handle_user_input(message, runtime)
+            return await self._handle_user_input(event, runtime)
         except Exception as e:
             logger.error(f"Error in handling message: {e}")
             if isinstance(e, JiuWenBaseException):
@@ -109,7 +109,7 @@ class LLMController(BaseController):
             else:
                 ExceptionUtils.raise_exception(StatusCode.CONTROLLER_RUNTIME_ERROR, str(e), e)
 
-    async def _handle_user_input(self, message: Message, runtime: Runtime) -> Optional[Dict]:
+    async def _handle_user_input(self, event: Event, runtime: Runtime) -> Optional[Dict]:
         """Handle user input - ReAct core: LLM reasoning to generate plan
 
         Process:
@@ -121,10 +121,10 @@ class LLMController(BaseController):
         """
 
         # Add user message to conversation history
-        MessageUtils.add_user_message(message.get_display_content(), self._context_engine, runtime)
+        MessageUtils.add_user_message(event.get_display_content(), self._context_engine, runtime)
 
         # 0. Fast path: Check if message has InteractiveInput with node_id - directly resume workflow
-        interactive_input = getattr(message.content, 'interactive_input', None)
+        interactive_input = getattr(event.content, 'interactive_input', None)
         if interactive_input is not None and interactive_input.user_inputs:
             resume_result = self._find_interrupted_task_by_node_id(
                 interactive_input, runtime
@@ -160,7 +160,7 @@ class LLMController(BaseController):
                            "falling through to normal LLM detection")
 
         # 1. Normal path: Call LLM model to generate plans
-        tasks, llm_output = await self._generate_plan_from_llm(message, runtime)
+        tasks, llm_output = await self._generate_plan_from_llm(event, runtime)
 
         if not tasks:
             logger.info("ReAct Iteration: 1 end, No task is generated")
@@ -196,11 +196,11 @@ class LLMController(BaseController):
                 interrupted_task = remaining_tasks[0]
 
                 # Build correct InteractiveInput for workflow resume
-                if message.content.interactive_input is not None:
-                    interactive_input = message.content.interactive_input
+                if event.content.interactive_input is not None:
+                    interactive_input = event.content.interactive_input
                 else:
                     # Create InteractiveInput with component_ids
-                    user_query = message.get_display_content()
+                    user_query = event.get_display_content()
                     interactive_input = InteractiveInput()
                     if component_ids:
                         # Use first component_id to bind user input
@@ -253,14 +253,14 @@ class LLMController(BaseController):
         # Add tool_msg for completed task
         if output and len(output) > 0:
             if output[0].type in ("plugin_final", "workflow_final"):
-                temp_message = Message.create_task_completed(
+                temp_event = Event.create_task_completed(
                     conversation_id=runtime.session_id(),
                     task_id=task.task_id,
                     task_result=task.result,
                     workflow_id=workflow_id,
                     stream_data=output
                 )
-                MessageHandlerUtils.add_tool_result(temp_message, self._context_engine, runtime)
+                MessageHandlerUtils.add_tool_result(temp_event, self._context_engine, runtime)
                 logger.info(f"Added tool_message for completed task: {task.task_id}")
 
         # Clear workflow interrupted state (if any)
@@ -286,8 +286,8 @@ class LLMController(BaseController):
         Returns:
             tuple: (tasks, llm_output)
         """
-        # Create temporary Message for LLM reasoning (maintain compatibility)
-        temp_message = Message.create_task_completed(
+        # Create temporary Event for LLM reasoning (maintain compatibility)
+        temp_event = Event.create_task_completed(
             conversation_id=runtime.session_id(),
             task_id=task.task_id,
             task_result=task.result,
@@ -295,7 +295,7 @@ class LLMController(BaseController):
             stream_data=output
         )
 
-        return await self._generate_plan_from_llm(temp_message, runtime)
+        return await self._generate_plan_from_llm(temp_event, runtime)
 
     async def _handle_task_completed(
             self,
@@ -649,10 +649,10 @@ class LLMController(BaseController):
                 message=StatusCode.TOOL_EXECUTION_ERROR.errmsg.format(msg=str(e))
             )
 
-    async def _generate_plan_from_llm(self, message: Message, runtime: Runtime):
+    async def _generate_plan_from_llm(self, event: Event, runtime: Runtime):
         """Call LLM to generate plan - ReAct core method"""
-        inputs = message.get_display_content()
-        user_id = message.source.user_id
+        inputs = event.get_display_content()
+        user_id = event.source.user_id
         tools = runtime.get_tool_info()
         logger.info(f"Loaded {len(tools)} Tool(s) for generating plans")
         system_prompt_keywords = await self._get_system_prompt_keywords(inputs, user_id)
@@ -892,7 +892,7 @@ class LLMController(BaseController):
         logger.info(f"No interrupted task found for workflow {workflow_task.input.target_name}")
         return None, None, None, None
 
-    def _create_resume_task(self, message: Message, interrupted_task: Task) -> Task:
+    def _create_resume_task(self, event: Event, interrupted_task: Task) -> Task:
         """Create resume task
 
         - If message has InteractiveInput, use it directly
@@ -901,19 +901,19 @@ class LLMController(BaseController):
         - Update task status to Interrupted
 
         Args:
-            message: Message
+            event: Event
             interrupted_task: Interrupted task recovered from state
 
         Returns:
             Task: Resumed task object
         """
         # Check if message content already has InteractiveInput
-        if message.content.interactive_input is not None:
-            interactive_input = message.content.interactive_input
+        if event.content.interactive_input is not None:
+            interactive_input = event.content.interactive_input
             logger.info(f"Using InteractiveInput from message for resuming workflow directly")
         else:
             # Create InteractiveInput from query
-            query = message.content.get_query()
+            query = event.content.get_query()
             logger.info(f"Creating InteractiveInput from query: {query}")
             interactive_input = InteractiveInput(raw_inputs=query)
 
@@ -1231,13 +1231,13 @@ class LLMController(BaseController):
 
         return count
 
-    def create_message(self, inputs: Dict) -> Message:
+    def create_message(self, inputs: Dict) -> Event:
         """Create message object - override to support query field"""
         query = inputs.get("query", inputs.get("content", ""))
         conversation_id = inputs.get("conversation_id", "default_session")
         user_id = inputs.get("user_id")
 
-        return Message.create_user_message(
+        return Event.create_user_event(
             content=query,
             conversation_id=conversation_id,
             user_id=user_id

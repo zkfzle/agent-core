@@ -6,7 +6,7 @@
 from typing import TYPE_CHECKING, Any
 
 from openjiuwen.core.controller.group_controller import BaseGroupController
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -48,9 +48,9 @@ class HierarchicalGroupController(BaseGroupController):
             f"leader_agent_id={leader_agent_id}"
         )
 
-    async def handle_message(
+    async def handle_event(
         self,
-        message: Message,
+        event: Event,
         runtime: 'AgentGroupRuntime'
     ) -> Any:
         """Handle message - Route based on simple rules
@@ -61,30 +61,30 @@ class HierarchicalGroupController(BaseGroupController):
         3. Default → Send to leader
         
         Args:
-            message: Message object
+            event: Event object
             runtime: Runtime context
         
         Returns:
             Processing result (single result for 1 subscriber, list for multiple)
         """
         # Rule 1: Explicit receiver_id (highest priority)
-        if message.receiver_id:
+        if event.receiver_id:
             logger.info(
                 f"HierarchicalGroupController: Routing to explicit "
-                f"receiver_id={message.receiver_id}"
+                f"receiver_id={event.receiver_id}"
             )
-            return await self.send_to_agent(message, message.receiver_id, runtime)
+            return await self.send_to_agent(event, event.receiver_id, runtime)
 
         # Rule 2: Message type with subscribers
-        if message.message_type:
-            subscribers = self.get_subscribers(message.message_type)
+        if event.custom_event_type:
+            subscribers = self.get_subscribers(event.custom_event_type)
             if subscribers:
                 logger.info(
                     f"HierarchicalGroupController: Publishing to "
                     f"{len(subscribers)} subscribers "
-                    f"for message_type={message.message_type}"
+                    f"for message_type={event.custom_event_type}"
                 )
-                results = await self.publish(message, runtime)
+                results = await self.publish(event, runtime)
                 
                 # Return single result for single subscriber
                 # Return list for multiple subscribers (explicit broadcast)
@@ -105,5 +105,5 @@ class HierarchicalGroupController(BaseGroupController):
             f"HierarchicalGroupController: Routing to leader (default), "
             f"leader_agent_id={self.leader_agent_id}"
         )
-        return await self.send_to_agent(message, self.leader_agent_id, runtime)
+        return await self.send_to_agent(event, self.leader_agent_id, runtime)
 

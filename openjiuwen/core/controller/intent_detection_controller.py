@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional
 
 from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.controller.controller import BaseController
-from openjiuwen.core.controller.message.message import Message
+from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task.task import Task, TaskStatus
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session import InteractiveInput
@@ -161,7 +161,7 @@ class IntentDetectionController(BaseController):
         self.task_queue = TaskQueue()
         
         # Track currently processing handlers (conversation_id -> asyncio.Task)
-        # This tracks at handle_message level, earlier than TaskQueue
+        # This tracks at handle_event level, earlier than TaskQueue
         self._processing_handlers: Dict[str, asyncio.Task] = {}
         self._handler_lock = asyncio.Lock()
 
@@ -206,7 +206,7 @@ class IntentDetectionController(BaseController):
         # Call parent's invoke (sends message to queue)
         return await super().invoke(inputs, runtime)
 
-    async def handle_message(self, message: Message, runtime: Runtime) -> Dict:
+    async def handle_event(self, event: Event, runtime: Runtime) -> Dict:
         """Standard message processing flow: Intent detection -> Route processing
         
         Supports real-time interruption:
@@ -215,13 +215,13 @@ class IntentDetectionController(BaseController):
         - Returns cancelled status if interrupted
         
         Args:
-            message: Message object
+            event: Event object
             runtime: Runtime context
             
         Returns:
             Processing result
         """
-        conversation_id = message.source.conversation_id
+        conversation_id = event.source.conversation_id
         current_task = asyncio.current_task()
         
         # Register current handler task for cancellation tracking
@@ -233,23 +233,23 @@ class IntentDetectionController(BaseController):
         
         try:
             # 1. Intent detection
-            intent = await self.intent_detection(message, runtime)
+            intent = await self.intent_detection(event, runtime)
 
             MessageUtils.add_user_message(
-                message.get_display_content(), self._context_engine, runtime
+                event.get_display_content(), self._context_engine, runtime
             )
 
             # 2. Route processing based on intent type
             if intent.intent_type == IntentType.ExecNewTask:
-                result = await self._handle_new_task(message, intent, runtime)
+                result = await self._handle_new_task(event, intent, runtime)
             elif intent.intent_type == IntentType.ResumeTask:
-                result = await self._handle_resume(message, intent, runtime)
+                result = await self._handle_resume(event, intent, runtime)
             elif intent.intent_type == IntentType.CancelTask:
-                result = await self._handle_cancel(message, intent, runtime)
+                result = await self._handle_cancel(event, intent, runtime)
             elif intent.intent_type == IntentType.DefaultResponse:
-                result = await self._handle_default_response(message, intent, runtime)
+                result = await self._handle_default_response(event, intent, runtime)
             else:
-                result = await self._handle_unknown_intent(message, intent, runtime)
+                result = await self._handle_unknown_intent(event, intent, runtime)
 
             return result
             
@@ -273,7 +273,7 @@ class IntentDetectionController(BaseController):
 
     async def _handle_new_task(
             self,
-            message: Message,
+            event: Event,
             intent: Intent,
             runtime: Runtime
     ) -> Dict:
@@ -284,7 +284,7 @@ class IntentDetectionController(BaseController):
         - Simplifies implementation, avoids extra queue waiting
         
         Args:
-            message: Message object
+            event: Event object
             intent: Intent object
             runtime: Runtime context
             
@@ -299,12 +299,12 @@ class IntentDetectionController(BaseController):
 
         # Execute task directly
         logger.info(f"Handling new task: task_id={task.task_id}")
-        result = await self.exec_task(message.content, task, runtime)
+        result = await self.exec_task(event.content, task, runtime)
         return result
 
     async def _handle_resume(
             self,
-            message: Message,
+            event: Event,
             intent: Intent,
             runtime: Runtime
     ) -> Dict:
@@ -313,7 +313,7 @@ class IntentDetectionController(BaseController):
         Key: Must create InteractiveInput with new user input to update task parameters
         
         Args:
-            message: Message object
+            event: Event object
             intent: Intent object
             runtime: Runtime context
             
@@ -352,9 +352,9 @@ class IntentDetectionController(BaseController):
         )
 
         # Check if InteractiveInput is already provided
-        if (hasattr(message.content, 'interactive_input') and 
-                message.content.interactive_input is not None):
-            provided_input = message.content.interactive_input
+        if (hasattr(event.content, 'interactive_input') and 
+                event.content.interactive_input is not None):
+            provided_input = event.content.interactive_input
             logger.info(
                 f"Provided InteractiveInput: {provided_input}"
             )
@@ -391,8 +391,8 @@ class IntentDetectionController(BaseController):
                 interactive_input = provided_input
         else:
             # Create InteractiveInput from user query text
-            if hasattr(message.content, 'query'):
-                query_text = message.content.query
+            if hasattr(event.content, 'query'):
+                query_text = event.content.query
             else:
                 query_text = ""
 
@@ -414,19 +414,19 @@ class IntentDetectionController(BaseController):
         task.input.arguments = interactive_input
 
         # Execute task (resume)
-        result = await self.exec_task(message.content, task, runtime)
+        result = await self.exec_task(event.content, task, runtime)
         return result
 
     async def _handle_cancel(
             self,
-            message: Message,
+            event: Event,
             intent: Intent,
             runtime: Runtime
     ) -> Dict:
         """Handle task cancellation
         
         Args:
-            message: Message object
+            event: Event object
             intent: Intent object
             runtime: Runtime context
             
@@ -445,14 +445,14 @@ class IntentDetectionController(BaseController):
 
     async def _handle_default_response(
             self,
-            message: Message,
+            event: Event,
             intent: Intent,
             runtime: Runtime
     ) -> Dict:
         """Handle default response when no task could be detected
         
         Args:
-            message: Message object
+            event: Event object
             intent: Intent object (with default_response_text in metadata)
             runtime: Runtime context
             
@@ -484,14 +484,14 @@ class IntentDetectionController(BaseController):
 
     async def _handle_unknown_intent(
             self,
-            message: Message,
+            event: Event,
             intent: Intent,
             runtime: Runtime
     ) -> Dict:
         """Handle unknown intent
         
         Args:
-            message: Message object
+            event: Event object
             intent: Intent object
             runtime: Runtime context
             
@@ -509,7 +509,7 @@ class IntentDetectionController(BaseController):
     @abstractmethod
     async def intent_detection(
             self,
-            message: Message,
+            event: Event,
             runtime: Runtime
     ) -> Intent:
         """Intent detection (subclasses must implement)
@@ -520,7 +520,7 @@ class IntentDetectionController(BaseController):
         - Return Intent object
         
         Args:
-            message: Message object
+            event: Event object
             runtime: Runtime context
             
         Returns:

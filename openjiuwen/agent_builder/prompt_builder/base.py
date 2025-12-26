@@ -7,7 +7,7 @@ from typing import Generator, Optional
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 
 
 class BasePromptBuilder(ABC):

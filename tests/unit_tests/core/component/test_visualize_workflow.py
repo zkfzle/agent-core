@@ -6,23 +6,24 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
-from openjiuwen.core.workflow.components.branch_router import BranchRouter
-from openjiuwen.core.workflow.components.condition.number import NumberCondition
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionCompConfig, IntentDetectionComponent
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMComponent
+from openjiuwen.core.workflow import BranchComponent
+from openjiuwen.core.workflow import BranchRouter
+from openjiuwen.core.workflow import NumberCondition
+from openjiuwen.core.workflow import IntentDetectionCompConfig, IntentDetectionComponent
+from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
-from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import AdvancedLoopComponent, LoopGroup, LoopComponent
-from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp import SetVariableComponent
-from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.workflow import LoopGroup, LoopComponent
+from openjiuwen.core.workflow import SetVariableComponent
+from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.visualization.drawable import Drawable
+from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, MockEndNode, MockStartNode, CommonNode, \
     StreamCompNode, CollectCompNode, Node1
 

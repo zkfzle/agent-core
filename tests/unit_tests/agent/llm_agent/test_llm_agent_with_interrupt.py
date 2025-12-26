@@ -13,17 +13,17 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_a
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import FieldInfo, QuestionerConfig, QuestionerComponent
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")

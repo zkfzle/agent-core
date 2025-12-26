@@ -9,11 +9,11 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from openjiuwen.core.single_agent.schema.schema import PluginSchema
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.memory.config.config import SysMemConfig
 from openjiuwen.core.memory.embed_models import APIEmbedModel
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
@@ -26,8 +26,8 @@ from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.foundation.tool import tool
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

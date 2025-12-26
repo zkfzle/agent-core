@@ -8,7 +8,7 @@ from openjiuwen.core.session import Config
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session.stream import CustomSchema
-from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow import Workflow
 from tests.unit_tests.core.runtime.tracer.mock_node_with_tracer import StreamNodeWithTracer
 from tests.unit_tests.core.runtime.tracer.test_workflow_tracer import record_tracer_info
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode

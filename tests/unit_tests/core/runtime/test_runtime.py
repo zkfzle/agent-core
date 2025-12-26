@@ -1,7 +1,8 @@
 from openjiuwen.core.session.agent import AgentRuntime
 from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.session.state import ReadableStateLike
-from openjiuwen.core.session.utils import update_dict, get_by_schema, root_to_index
+from openjiuwen.core.session import get_by_schema
+from openjiuwen.core.session.utils import update_dict, root_to_index
 from openjiuwen.core.session.wrapper import TaskRuntime
 
 

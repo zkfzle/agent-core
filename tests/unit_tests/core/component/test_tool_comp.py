@@ -2,9 +2,9 @@ from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponentConfig, ToolExecutable, ToolComponent
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import Start
+from openjiuwen.core.workflow import ToolComponentConfig, ToolComponent
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session import WorkflowRuntime, NodeRuntime
@@ -12,8 +12,9 @@ from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.foundation.tool import tool
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
+from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolExecutable
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 

@@ -38,10 +38,11 @@ from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.session.tracer import Tracer
 from openjiuwen.core.session.tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, \
-    NodeSpec, CompIOConfig, WorkflowInputsSchema, WorkflowMetadata
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowInputsSchema, WorkflowMetadata
+from openjiuwen.core.common.schema.workflow_spec import CompIOConfig, NodeSpec
+from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
-from openjiuwen.core.graph.visualization.drawable import Drawable
+
 
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
@@ -94,6 +95,7 @@ class BaseWorkFlow:
         self._runtime = ProxyRuntime()
         self._drawable = None
         if os.environ.get(WORKFLOW_DRAWABLE, "false").lower() == "true":
+            from openjiuwen.core.graph.visualization.drawable import Drawable
             self._drawable = Drawable()
 
     def config(self):
@@ -743,3 +745,7 @@ class Workflow(BaseWorkFlow):
                 assistant_messages.append({"role": "assistant", "content": assistant_reply})
 
         context.batch_add_messages(user_messages + assistant_messages)
+
+
+def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:
+    return f"{workflow_id}_{workflow_version}"

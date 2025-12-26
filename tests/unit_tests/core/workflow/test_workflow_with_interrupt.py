@@ -9,12 +9,12 @@ import pytest
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
-from openjiuwen.core.workflow.components.condition.array import ArrayCondition
+from openjiuwen.core.workflow import BranchComponent
+from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
-from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import LoopGroup, AdvancedLoopComponent, LoopComponent
-from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp import SetVariableComponent
+from openjiuwen.core.workflow import LoopGroup, LoopComponent
+from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.session import get_default_inmemory_checkpointer
@@ -22,10 +22,11 @@ from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import BaseStreamMode, TraceSchema, OutputSchema
-from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.workflow.base import WorkflowConfig
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
-from openjiuwen.core.workflow.workflow_config import WorkflowMetadata
+from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.workflow import WorkflowConfig
+from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow import WorkflowMetadata
+from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import (
     InteractiveNode4StreamCp,
     MockStartNode,

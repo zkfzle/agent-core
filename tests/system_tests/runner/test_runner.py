@@ -9,11 +9,11 @@ from mcp import StdioServerParameters
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.workflow import QuestionerComponent, FieldInfo, QuestionerConfig
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import BaseRuntime
@@ -22,8 +22,8 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.protocols.mcp import ToolServerConfig, SseClient, StdioClient, PlaywrightClient
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 
 API_BASE = "https://mock.com/v1"
 API_KEY = os.getenv("API_KEY", "sk-fake")

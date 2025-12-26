@@ -16,10 +16,10 @@ from openjiuwen.core.application.super_agent import (
     SuperReActAgent
 )
 from openjiuwen.core.single_agent.schema.schema import PluginSchema, WorkflowSchema
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo as ModelInfo
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow import Workflow
 
 
 def create_super_main_agent(

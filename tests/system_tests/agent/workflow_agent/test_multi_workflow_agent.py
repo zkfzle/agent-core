@@ -9,10 +9,10 @@
 import os
 import uuid
 
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow import WorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.workflow.components.base import ComponentExecutable
+from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Runtime
 
 os.environ["LLM_SSL_VERIFY"] = "false"
@@ -28,15 +28,15 @@ from openjiuwen.core.single_agent.config import (
     DefaultResponse
 )
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 

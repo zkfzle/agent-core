@@ -32,7 +32,7 @@ from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import CustomSchema, OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
+from openjiuwen.core.workflow import WorkflowOutput, WorkflowExecutionState
 
 
 class WorkflowController(IntentDetectionController):

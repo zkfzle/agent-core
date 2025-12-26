@@ -14,7 +14,7 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import (
     ReActAgentConfig,
     ConstrainConfig
 )
-from openjiuwen.core.workflow.components.common.configs.model_config import (
+from openjiuwen.core.foundation.llm.schema.model_config import (
     ModelConfig
 )
 

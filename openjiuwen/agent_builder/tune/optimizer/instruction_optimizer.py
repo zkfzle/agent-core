@@ -10,7 +10,7 @@ from typing import List, Optional, Dict
 
 from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.prompt.assemble.assembler import Assembler

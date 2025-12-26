@@ -31,7 +31,7 @@ from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.workflow import generate_workflow_key
-from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow import Workflow
 
 AGENT_ADAPTER = "agent_adapter_"
 

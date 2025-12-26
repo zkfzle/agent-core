@@ -7,21 +7,20 @@ from asyncio import CancelledError
 from typing import Any, Optional, AsyncIterator, Literal
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
+from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.graph.atomic_node import AsyncAtomicNode
 from openjiuwen.core.graph.executable import Executable, Output
 from openjiuwen.core.graph.graph_state import GraphState
-from openjiuwen.core.session import COMP_STREAM_CALL_TIMEOUT_KEY
+from openjiuwen.core.session import COMP_STREAM_CALL_TIMEOUT_KEY, get_by_schema
 from openjiuwen.core.session import BaseRuntime
-from openjiuwen.core.session import get_by_schema
 from openjiuwen.core.session import NodeRuntime
 from openjiuwen.core.session.stream import StreamSchemas, OutputSchema
 from openjiuwen.core.session.stream import StreamEmitter
 from openjiuwen.core.graph.stream_actor.base import StreamConsumer
 from openjiuwen.core.session.tracer import TracerWorkflowUtils
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
 from openjiuwen.core.graph.pregel import GraphInterrupt
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"

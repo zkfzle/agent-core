@@ -34,7 +34,7 @@ from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.protocols.mcp import ToolServerConfig
 from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow import Workflow
 
 
 def _make_mcp_call_coroutine(server_name: str, tool_name: str):

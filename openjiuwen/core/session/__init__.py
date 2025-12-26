@@ -33,7 +33,6 @@ from openjiuwen.core.session.utils import (
 )
 from openjiuwen.core.session.workflow import NodeRuntime, SubWorkflowRuntime, WorkflowRuntime
 
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 from openjiuwen.core.session.workflow_state import CommitState
 from openjiuwen.core.session.wrapper import (
     RouterRuntime,
@@ -72,7 +71,6 @@ __all__ = [
 
     # config
     "Config",
-    "WorkflowConfig",
 
     # constants
     "COMP_STREAM_CALL_TIMEOUT_KEY",
@@ -95,4 +93,3 @@ __all__ = [
     "is_ref_path",
     "Transformer",
 ]
-

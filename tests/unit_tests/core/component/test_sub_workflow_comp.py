@@ -4,16 +4,16 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable, Input, Output
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable, Input, Output
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig
 
 pytestmark = pytest.mark.asyncio
 

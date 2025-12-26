@@ -11,7 +11,7 @@ from datetime import datetime
 
 from openjiuwen.core.single_agent.agents import ReActAgent
 from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param

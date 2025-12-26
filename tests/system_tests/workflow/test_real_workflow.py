@@ -20,29 +20,29 @@ import unittest
 from unittest.mock import patch
 
 from openjiuwen.core.session.wrapper import TaskRuntime
-from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import (
+from openjiuwen.core.workflow import BranchComponent
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import (
     IntentDetectionComponent,
     IntentDetectionCompConfig,
 )
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMComponent
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import (
+from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
+from openjiuwen.core.workflow import (
     FieldInfo,
     QuestionerComponent,
     QuestionerConfig,
 )
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.workflow import Start
+from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.session.stream import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template import Template
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 # 注意：切勿将真实密钥提交到仓库！

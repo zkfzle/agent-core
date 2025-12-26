@@ -11,14 +11,14 @@ from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agents import ReActAgent, create_react_agent_config
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.runner.runner_config import RunnerConfig, MessageQueueConfig, DistributedConfig, PulsarConfig
 from openjiuwen.core.session.stream import OutputSchema, TraceSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 API_BASE = os.getenv("API_BASE")

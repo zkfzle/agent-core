@@ -15,7 +15,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.workflow.components.base import ComponentConfig, ComponentExecutable, WorkflowComponent
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Runtime

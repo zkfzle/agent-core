@@ -12,18 +12,18 @@ from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.common.constants.constant import INTERACTION
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import FieldInfo, QuestionerConfig, QuestionerComponent
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import FieldInfo, QuestionerConfig, QuestionerComponent
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.graph.executable import Input
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt.template import Template
-from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig
+from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.workflow import WorkflowConfig
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")

@@ -3,15 +3,15 @@ from typing import AsyncIterator
 import pytest
 
 from openjiuwen.core.common.constants.constant import END_NODE_STREAM
-from openjiuwen.core.workflow.components.base import ComponentExecutable, WorkflowComponent, Input, Output
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent, Input, Output
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema
-from openjiuwen.core.workflow.base import Workflow, WorkflowExecutionState
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
+from openjiuwen.core.workflow import Workflow, WorkflowExecutionState
+from openjiuwen.core.common.constants.enums import ComponentAbility
 from tests.unit_tests.core.workflow.mock_nodes import (ComputeComponent2,
                                                        Node1, StreamCompNode)
 

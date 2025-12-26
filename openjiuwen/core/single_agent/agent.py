@@ -14,7 +14,6 @@ from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session import StaticAgentRuntime
 from openjiuwen.core.session import Config
-from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import (
     StaticWrappedRuntime,
@@ -24,8 +23,7 @@ from openjiuwen.core.session import (
 from openjiuwen.core.session.stream import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowInputsSchema, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow, generate_workflow_key, WorkflowInputsSchema, WorkflowMetadata
 
 if TYPE_CHECKING:
     pass

@@ -221,7 +221,7 @@ def root_to_path(nested_path: str, source: dict, create_if_absent: bool = False)
 
                 if not create_if_absent and current[path] is None:
                     return (None, None)
-                
+
                 current = current[path]
             else:
                 return (None, None)
@@ -283,7 +283,7 @@ def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], crea
     If create_if_absent is True, it will automatically create missing list elements
     (with None placeholders) to reach the target location. Tuples are immutable and
     cannot be modified.
-    
+
     Returns:
         tuple: (index, container) - The final index and its container
     """
@@ -354,7 +354,7 @@ def root_to_index(indexes: list[int], source: Union[list[Any], tuple[Any]], crea
         # Use safe extension method for final index (append {})
         if not _safe_extend_container(current, adjusted_final_idx, is_final_index=True):
             return None, None
-    
+
     # Final validation: ensure adjusted_final_idx is valid after potential extension
     if adjusted_final_idx < 0 or (adjusted_final_idx >= len(current) and isinstance(current, tuple)):
         return None, None

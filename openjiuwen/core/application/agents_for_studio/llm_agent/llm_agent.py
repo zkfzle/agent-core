@@ -13,13 +13,13 @@ from openjiuwen.core.single_agent.agents.react_agent import ReActAgentConfig
 from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller import LLMController
 from openjiuwen.core.single_agent.agent import ControllerAgent
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.workflow.base import Workflow
+from openjiuwen.core.workflow import Workflow
 
 
 def create_llm_agent_config(agent_id: str,

@@ -7,20 +7,21 @@ from typing import Any, Union, List, Dict, AsyncIterator
 import pytest
 from unittest.mock import Mock
 
-from openjiuwen.core.common.constants.enums import ControllerType
+from openjiuwen.core.common.constants.enums import ControllerType, ComponentAbility
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.foundation.llm.messages import AIMessage, BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, ComponentAbility, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMExecutable
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()
@@ -36,7 +37,7 @@ from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 from unittest.mock import patch, AsyncMock
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMExecutable, LLMComponent
+from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
 from openjiuwen.core.session import WorkflowRuntime, NodeRuntime
 from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient

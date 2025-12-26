@@ -12,7 +12,7 @@ from openjiuwen.core.runner.drunner.dmessage_queue.message import (
 )
 from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session.stream import OutputSchema, CustomSchema, TraceSchema
-from openjiuwen.core.workflow.base import WorkflowOutput
+from openjiuwen.core.workflow import WorkflowOutput
 
 MAX_RECURSE_DEPTH = 10
 

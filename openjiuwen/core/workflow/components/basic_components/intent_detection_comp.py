@@ -14,7 +14,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentConfig, ComponentExecutable
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow.components.condition.condition import Condition
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.base import Graph

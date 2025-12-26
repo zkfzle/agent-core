@@ -3,16 +3,16 @@ import pytest
 from openjiuwen.core.common.constants.constant import CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import ComponentExecutable, Input, Output, WorkflowComponent
-from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
-from openjiuwen.core.workflow.components.branch_router import BranchRouter
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow import ComponentExecutable, Input, Output, WorkflowComponent
+from openjiuwen.core.workflow import BranchComponent
+from openjiuwen.core.workflow import BranchRouter
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1
 
 pytestmark = pytest.mark.asyncio

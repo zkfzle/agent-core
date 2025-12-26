@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMCompConfig, LLMExecutable
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import LLMCompConfig
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode
@@ -16,7 +16,8 @@ from openjiuwen.core.foundation.llm.messages import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
-from openjiuwen.core.workflow.workflow_config import WorkflowMetadata, WorkflowConfig
+from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
+from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMExecutable
 
 pytestmark = pytest.mark.asyncio
 

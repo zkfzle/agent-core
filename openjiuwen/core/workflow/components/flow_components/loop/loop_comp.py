@@ -29,7 +29,7 @@ from openjiuwen.core.session import BaseRuntime, Runtime
 from openjiuwen.core.session import NodeRuntime, SubWorkflowRuntime
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
-from openjiuwen.core.workflow.workflow_config import ComponentAbility
+from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
 from openjiuwen.core.graph.pregel import GraphInterrupt, START, END
 

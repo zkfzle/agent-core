@@ -9,7 +9,7 @@ from openjiuwen.core.runner.drunner.dmessage_queue.message import DmqResponseMes
 from openjiuwen.core.runner.drunner.dmessage_queue.message_serializer import serialize_message, deserialize_message
 from openjiuwen.core.session.interaction.interaction import InteractionOutput
 from openjiuwen.core.session.stream.base import CustomSchema, OutputSchema, TraceSchema
-from openjiuwen.core.workflow.base import WorkflowOutput, WorkflowExecutionState
+from openjiuwen.core.workflow import WorkflowOutput, WorkflowExecutionState
 
 
 class TestMessageSerializer:

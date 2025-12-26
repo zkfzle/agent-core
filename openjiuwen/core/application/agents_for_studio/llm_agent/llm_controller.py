@@ -28,7 +28,7 @@ from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.workflow import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.foundation.tool import ToolCall

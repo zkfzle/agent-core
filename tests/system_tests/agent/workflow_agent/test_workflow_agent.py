@@ -14,19 +14,19 @@ from typing import List
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.agent import workflow_provider
 from openjiuwen.core.session import TaskRuntime
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig
-from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
+from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
+from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow import Start
+from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
-from openjiuwen.core.workflow.base import Workflow
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import generate_workflow_key
@@ -34,9 +34,9 @@ from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.workflow.components.base import ComponentExecutable
+from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Runtime
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow import WorkflowComponent
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")

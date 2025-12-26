@@ -14,8 +14,8 @@ from openjiuwen.core.session import Config
 from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import tool
-from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowExecutionState
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowExecutionState
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner import Runner
 from tests.unit_tests.core.workflow.mock_nodes import MockEndNode, Node1, MockStartNode
 

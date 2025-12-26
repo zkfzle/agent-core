@@ -8,21 +8,22 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.components.base import WorkflowComponent, SimpleComponent, Input, Output
-from openjiuwen.core.workflow.components.flow_components.end_comp import End, EndConfig
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
+from openjiuwen.core.workflow import WorkflowComponent, Input, Output
+from openjiuwen.core.workflow import End, EndConfig
+from openjiuwen.core.workflow import Start
+from openjiuwen.core.workflow.components.base import SimpleComponent
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Executable
-from openjiuwen.core.workflow.components.base import ComponentExecutable
+from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import BaseRuntime, Runtime
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode, OutputSchema
-from openjiuwen.core.workflow.base import Workflow, WorkflowOutput, WorkflowChunk
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, ComponentAbility, \
-    WorkflowInputsSchema
+from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowChunk
+from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.common.constants.enums import ComponentAbility
 from tests.unit_tests.core.workflow.mock_nodes import ComputeComponent2, DualAbilityWithErrorComponent
 
 pytestmark = pytest.mark.asyncio

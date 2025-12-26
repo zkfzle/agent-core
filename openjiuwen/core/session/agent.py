@@ -10,7 +10,7 @@ from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.base import Checkpointer
 from openjiuwen.core.session.base import get_default_inmemory_checkpointer
 from openjiuwen.core.session.callback_manager import CallbackManager
-from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
+
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.state import State, InMemoryCommitState
 from openjiuwen.core.session.workflow import WorkflowRuntime
@@ -21,15 +21,16 @@ from openjiuwen.core.session.tracer.tracer import Tracer
 
 
 class StaticAgentRuntime(BaseRuntime):
-    def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
+    def __init__(self, config: Config = None, resource_mgr: "ResourceManager" = None):
         self._config = config if config is not None else Config()
+        from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
         self._resource_manager = ResourceMgr() if resource_mgr is None else resource_mgr
         self._checkpointer = get_default_inmemory_checkpointer()
 
     def config(self) -> Config:
         return self._config
 
-    def resource_manager(self) -> ResourceManager:
+    def resource_manager(self) -> "ResourceManager":
         return self._resource_manager
 
     def checkpointer(self) -> Checkpointer:
@@ -64,11 +65,12 @@ class AgentRuntime(BaseRuntime):
             self,
             session_id: str,
             config: Config = None,
-            resource_manager: ResourceManager = None,
+            resource_manager: "ResourceMgr" = None,
             checkpointer: Checkpointer | None = None,
             context: Context = None):
         self._session_id = session_id
         self._config = config
+        from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
         self._resource_manager = resource_manager if resource_manager is not None else ResourceMgr()
         self._context = context
         self._state = StateCollection()
@@ -104,7 +106,7 @@ class AgentRuntime(BaseRuntime):
     def context(self) -> Context:
         return self._context
 
-    def resource_manager(self) -> ResourceManager:
+    def resource_manager(self) -> "ResourceManager":
         return self._resource_manager
 
     def checkpointer(self) -> Checkpointer:

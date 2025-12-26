@@ -35,7 +35,7 @@ class MqRemoteClient(RemoteClient):
         async with self._lock:
             if self._started:
                 return
-        from openjiuwen.core.runner.runner import Runner
+        from openjiuwen.core.runner import Runner
         self.mq = Runner.distribute_message_queue()
         self.system_reply_sub = Runner.system_reply_sub
         if self.system_reply_sub is None:

@@ -28,7 +28,7 @@ from openjiuwen.core.application.groups.hierarchical_group.agents.main_controlle
 )
 from openjiuwen.core.single_agent.agent import BaseAgent, ControllerAgent
 from openjiuwen.core.controller.message.message import Message
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import OutputSchema
 

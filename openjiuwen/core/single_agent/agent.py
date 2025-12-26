@@ -14,8 +14,7 @@ from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
 from openjiuwen.core.context_engine.context_engine import ContextEngine
 from openjiuwen.core.session import StaticAgentRuntime
 from openjiuwen.core.session import Config
-from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import (
     StaticWrappedRuntime,
@@ -37,7 +36,7 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
     deprecated
     """
 
-    def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
+    def __init__(self, config: Config = None, resource_mgr: "ResourceMgr" = None):
         inner = StaticAgentRuntime(config, resource_mgr=resource_mgr)
         super().__init__(inner)
         self._runtime = inner
@@ -108,7 +107,7 @@ class WorkflowFactory:
                                                                     WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
                 self.input_schema)
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
-            from openjiuwen.core.runner.runner import resource_mgr
+            from openjiuwen.core.runner import resource_mgr
             resource_mgr.workflow()._workflow_tool_infos[
                 generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
                 workflow_input_schema)
@@ -430,7 +429,7 @@ class BaseAgent(ABC):
 
             # 3. Also add to global resource_mgr (for cross-runtime access)
             try:
-                from openjiuwen.core.runner.runner import resource_mgr
+                from openjiuwen.core.runner import resource_mgr
                 logger.info(f"Adding workflow {'provider' if is_provider else 'instance'} "
                             f"{workflow_key} to global resource_mgr")
                 resource_mgr.workflow().add_workflow(workflow_key, to_register)
@@ -479,7 +478,7 @@ class BaseAgent(ABC):
 
             # 3. Remove from global resource_mgr
             try:
-                from openjiuwen.core.runner.runner import resource_mgr
+                from openjiuwen.core.runner import resource_mgr
                 resource_mgr.workflow().remove_workflow(workflow_key)
                 logger.info(f"Successfully removed workflow {workflow_key} from global resource_mgr")
             except Exception as e:

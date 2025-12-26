@@ -20,7 +20,7 @@ from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param

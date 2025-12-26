@@ -8,7 +8,6 @@ from typing import Any
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.callback_manager import CallbackManager
-from openjiuwen.core.runner.resources_manager.resource_manager import ResourceManager, ResourceMgr
 from openjiuwen.core.session.runtime import BaseRuntime
 from openjiuwen.core.session.state import State
 from openjiuwen.core.session.workflow_state import InMemoryState
@@ -32,6 +31,7 @@ class WorkflowRuntime(BaseRuntime):
             if self._session_id is None:
                 self._session_id = uuid.uuid4().hex
             self._config = Config()
+            from openjiuwen.core.runner.resources_manager.resource_manager import ResourceManager, ResourceMgr
             self._resource_manager = ResourceMgr()
             self._tracer = None
 
@@ -81,7 +81,7 @@ class WorkflowRuntime(BaseRuntime):
     def session_id(self) -> str:
         return self._session_id
 
-    def resource_manager(self) -> ResourceManager:
+    def resource_manager(self) -> "ResourceManager":
         return self._resource_manager
 
     def context(self) -> Context:

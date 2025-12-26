@@ -45,7 +45,7 @@ from openjiuwen.core.workflow.components.common.configs.model_config import Mode
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.session import InteractiveInput
-from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
@@ -53,7 +53,7 @@ from openjiuwen.core.foundation.tool import ToolCall
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner, resource_mgr
 
 
 def build_current_date():

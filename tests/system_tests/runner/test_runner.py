@@ -14,8 +14,8 @@ from openjiuwen.core.workflow.components.flow_components.end_comp import End
 from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, FieldInfo, QuestionerConfig
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.runner.runner import Runner, resource_mgr
-from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
+from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.session.stream import OutputSchema

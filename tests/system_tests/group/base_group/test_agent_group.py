@@ -16,7 +16,7 @@ from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.multi_agent import AgentGroupConfig
 from openjiuwen.core.multi_agent.agent_group import BaseGroup, AgentGroupRuntime
 from openjiuwen.core.session import Runtime
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")

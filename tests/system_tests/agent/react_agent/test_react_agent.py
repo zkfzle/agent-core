@@ -17,7 +17,7 @@ from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.foundation.tool import tool
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner, resource_mgr
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")

@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.runner.runner_config import RunnerConfig, DistributedConfig, MessageQueueConfig, PulsarConfig, \
     DEFAULT_RUNNER_CONFIG
 

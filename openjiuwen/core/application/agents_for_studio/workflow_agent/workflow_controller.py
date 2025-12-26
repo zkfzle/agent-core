@@ -27,7 +27,7 @@ from openjiuwen.core.controller.message.message import Message, MessageContent
 from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runner.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import CustomSchema, OutputSchema

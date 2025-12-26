@@ -37,7 +37,7 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 
 API_BASE = "https://api.siliconflow.cn/v1/chat/completions"

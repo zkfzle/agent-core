@@ -25,7 +25,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow.base import WorkflowExecutionState, WorkflowOutput

@@ -30,12 +30,12 @@ class AgentAdapter:
         await self.server.stop()
 
     async def _handle_invoke(self, inputs: dict) -> Any:
-        from openjiuwen.core.runner.runner import Runner
+        from openjiuwen.core.runner import Runner
         agent_result = await Runner.run_agent(self.agent_id, inputs)
         return agent_result
 
     async def _handle_stream(self, inputs: dict) -> AsyncIterator[Any]:
-        from openjiuwen.core.runner.runner import Runner
+        from openjiuwen.core.runner import Runner
         async for item in Runner.run_agent_streaming(self.agent_id, inputs):
             yield item
 

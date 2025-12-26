@@ -24,13 +24,13 @@ from openjiuwen.core.session import get_default_inmemory_checkpointer
 from openjiuwen.core.runner.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runner.resources_manager.agent_manager import AgentProvider, AgentMgr
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.runner.resources_manager.workflow_manager import generate_workflow_key
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import McpToolInfo
+from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.workflow.base import Workflow
 
 AGENT_ADAPTER = "agent_adapter_"

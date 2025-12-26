@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
-from typing import List, Tuple, TypeVar, Optional, Union, Callable, Awaitable
+from typing import List, Tuple, Optional, Union, Callable, Awaitable
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -11,22 +11,14 @@ from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractMa
 from openjiuwen.core.session.tracer import decorate_workflow_with_trace
 from openjiuwen.core.foundation.tool import ToolInfo
 
-Workflow = TypeVar("Workflow", contravariant=True)
+WorkflowProvider = Union[Callable[[], "Workflow"], Callable[[], Awaitable["Workflow"]]]
 
-
-def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:
-    return f"{workflow_id}_{workflow_version}"
-
-
-WorkflowProvider = Union[Callable[[], Workflow], Callable[[], Awaitable[Workflow]]]
-
-
-class WorkflowMgr(AbstractManager[Workflow]):
+class WorkflowMgr(AbstractManager["Workflow"]):
     def __init__(self):
         super().__init__()
         self._workflow_tool_infos: dict[str, ToolInfo] = {}
 
-    def add_workflow(self, workflow_id: str, workflow: Union[Workflow, WorkflowProvider]) -> None:
+    def add_workflow(self, workflow_id: str, workflow: Union["Workflow", WorkflowProvider]) -> None:
         self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, "workflow")
         self._validate_resource(workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED,
                                 "workflow is invalid, can not be None")
@@ -41,13 +33,13 @@ class WorkflowMgr(AbstractManager[Workflow]):
 
         self._add_resource(workflow_id, workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, validate_workflow)
 
-    def add_workflows(self, workflows: List[Tuple[str, Union[Workflow, WorkflowProvider]]]):
+    def add_workflows(self, workflows: List[Tuple[str, Union["Workflow", WorkflowProvider]]]):
         if not workflows:
             return
         for key, workflow in workflows:
             self.add_workflow(key, workflow)
 
-    def get_workflow_sync(self, workflow_id: str, runtime=None) -> Workflow:
+    def get_workflow_sync(self, workflow_id: str, runtime=None) -> "Workflow":
         try:
             loop = asyncio.get_running_loop()
             return asyncio.run_coroutine_threadsafe(self.get_workflow(workflow_id, runtime), loop=loop).result()
@@ -84,7 +76,7 @@ class WorkflowMgr(AbstractManager[Workflow]):
         except Exception as e:
             self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "get")
 
-    def remove_workflow(self, workflow_id: str) -> Optional[Workflow]:
+    def remove_workflow(self, workflow_id: str) -> Optional["Workflow"]:
         self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED, "workflow")
 
         try:
@@ -111,7 +103,7 @@ class WorkflowMgr(AbstractManager[Workflow]):
             self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED, "get_tool_info")
             return []
     
-    def get_all_workflows(self) -> dict[str, Union[Workflow, WorkflowProvider]]:
+    def get_all_workflows(self) -> dict[str, Union["Workflow", WorkflowProvider]]:
         """
         Get all registered workflows including both instances and providers.
         

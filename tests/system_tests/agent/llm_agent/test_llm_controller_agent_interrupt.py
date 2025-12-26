@@ -12,7 +12,7 @@ from openjiuwen.core.workflow.components.interact_components.questioner_comp imp
 from openjiuwen.core.workflow.components.flow_components.start_comp import Start
 from openjiuwen.core.context_engine.base import Context
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.runner.runner import Runner
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import OutputSchema

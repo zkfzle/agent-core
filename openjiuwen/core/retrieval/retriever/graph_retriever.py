@@ -117,7 +117,10 @@ class GraphRetriever(Retriever):
         collection_name = self.chunk_collection if is_chunk else self.triple_collection
         self.vector_store.collection_name = collection_name
         if not collection_name:
-            raise ValueError(f"{'chunk' if is_chunk else 'triple'}_collection is required for dynamic retriever creation")
+            collection_type = "chunk" if is_chunk else "triple"
+            raise ValueError(
+                f"{collection_type}_collection is required for dynamic retriever creation"
+            )
 
         # 根据 mode 创建对应的检索器
         if mode == "vector":
@@ -288,8 +291,6 @@ class GraphRetriever(Retriever):
         **kwargs: Any,
     ) -> List[List[RetrievalResult]]:
         """批量检索"""
-        import asyncio
-
         # 并发执行多个检索
         tasks = [self.retrieve(query, top_k=top_k, **kwargs) for query in queries]
         results = await asyncio.gather(*tasks)

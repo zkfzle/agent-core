@@ -29,10 +29,12 @@ def register_parser(file_extensions: List[str]):
         装饰器函数
     """
     def decorator(parser_class: Type[Parser]) -> Type[Parser]:
+        def _create_parser_instance(cls=parser_class):
+            return cls()
+        
         for ext in file_extensions:
             normalized_ext = ext.lower()
-            parser_factory = lambda cls=parser_class: cls()
-            _PARSER_REGISTRY[normalized_ext] = parser_factory
+            _PARSER_REGISTRY[normalized_ext] = _create_parser_instance
             logger.info(f"Registered parser {parser_class.__name__} for {normalized_ext}")
         return parser_class
     return decorator

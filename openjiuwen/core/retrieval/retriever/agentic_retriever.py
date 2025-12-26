@@ -127,8 +127,6 @@ class AgenticRetriever(Retriever):
         top_k: int = 5,
         **kwargs: Any,
     ) -> List[List[RetrievalResult]]:
-        import asyncio
-
         tasks = [self.retrieve(query, top_k=top_k, **kwargs) for query in queries]
         return await asyncio.gather(*tasks)
 

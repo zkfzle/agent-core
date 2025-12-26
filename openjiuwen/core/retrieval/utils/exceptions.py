@@ -16,12 +16,12 @@ class KnowledgeBaseError(RAGException):
     pass
 
 
-class IndexError(RAGException):
+class KnowledgeBaseIndexError(RAGException):
     """索引错误"""
     pass
 
 
-class RetrievalError(RAGException):
+class KnowledgeBaseRetrievalError(RAGException):
     """检索错误"""
     pass
 

@@ -658,7 +658,10 @@ class TestExpressionCondition(TestConditionBase):
         """Test string comparison with 'true' string literal"""
         # Set up mock data - variable a has string value "true"
         expression = '${a} =="true"'
-        self.mock_state.get_global.side_effect = lambda x: "true" if x == "a" else None
+
+        def _mock_get_global_true(x):
+            return "true" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_true
         
         # Create ExpressionCondition instance
         expr_condition = ExpressionCondition(expression)
@@ -668,9 +671,11 @@ class TestExpressionCondition(TestConditionBase):
         
         # Verify results - string "true" should equal string "true"
         assert result is True
-        
+
         # Test with different string value - should return False
-        self.mock_state.get_global.side_effect = lambda x: "false" if x == "a" else None
+        def _mock_get_global_false(x):
+            return "false" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_false
         result = expr_condition.invoke({}, self.mock_runtime)
         assert result is False
 
@@ -678,7 +683,10 @@ class TestExpressionCondition(TestConditionBase):
         """Test string comparison with 'false' string literal"""
         # Set up mock data - variable a has string value "false"
         expression = '${a} =="false"'
-        self.mock_state.get_global.side_effect = lambda x: "false" if x == "a" else None
+
+        def _mock_get_global_false(x):
+            return "false" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_false
         
         # Create ExpressionCondition instance
         expr_condition = ExpressionCondition(expression)
@@ -688,35 +696,85 @@ class TestExpressionCondition(TestConditionBase):
         
         # Verify results - string "false" should equal string "false"
         assert result is True
-        
+
         # Test with different string value - should return False
-        self.mock_state.get_global.side_effect = lambda x: "true" if x == "a" else None
+        def _mock_get_global_true(x):
+            return "true" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_true
         result = expr_condition.invoke({}, self.mock_runtime)
         assert result is False
 
     def test_string_literal_preservation_with_boolean_identifier(self):
         """Test that string literals are preserved while boolean identifiers are replaced"""
-        # Test mixed scenario: string literal "true" should be preserved, 
+        # Test mixed scenario: string literal "true" should be preserved,
         # but boolean identifier true should be replaced with True
         expression = '${a} =="true" && true'
-        self.mock_state.get_global.side_effect = lambda x: "true" if x == "a" else None
-        
+
+        def _mock_get_global_true(x):
+            return "true" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_true
+
         # Create ExpressionCondition instance
         expr_condition = ExpressionCondition(expression)
-        
+
         # Test invoke method
         result = expr_condition.invoke({}, self.mock_runtime)
-        
+
         # Verify results - both conditions should be True
         assert result is True
-        
+
         # Test with false string value but true boolean
         expression2 = '${a} =="false" && true'
-        self.mock_state.get_global.side_effect = lambda x: "false" if x == "a" else None
+
+        def _mock_get_global_false(x):
+            return "false" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_false
         expr_condition2 = ExpressionCondition(expression2)
         result2 = expr_condition2.invoke({}, self.mock_runtime)
         # First part is True (string comparison), second part is True (boolean), so overall is True
         assert result2 is True
+
+    def test_single_quote_string_literal_preservation(self):
+        """Test that single quote string literals are preserved"""
+        # Test single quote string literal with "true"
+        expression1 = "${a} =='true'"
+
+        def _mock_get_global_true(x):
+            return "true" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_true
+        expr_condition1 = ExpressionCondition(expression1)
+        result1 = expr_condition1.invoke({}, self.mock_runtime)
+        assert result1 is True
+
+        # Test single quote string literal with "false"
+        expression2 = "${a} =='false'"
+
+        def _mock_get_global_false(x):
+            return "false" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_false
+        expr_condition2 = ExpressionCondition(expression2)
+        result2 = expr_condition2.invoke({}, self.mock_runtime)
+        assert result2 is True
+
+        # Test single quote string with different value should return False
+        expression3 = "${a} =='true'"
+
+        def _mock_get_global_false2(x):
+            return "false" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_false2
+        expr_condition3 = ExpressionCondition(expression3)
+        result3 = expr_condition3.invoke({}, self.mock_runtime)
+        assert result3 is False
+
+        # Test mixed scenario with single quotes and boolean identifier
+        expression4 = "${a} =='true' && true"
+
+        def _mock_get_global_true2(x):
+            return "true" if x == "a" else None
+        self.mock_state.get_global.side_effect = _mock_get_global_true2
+        expr_condition4 = ExpressionCondition(expression4)
+        result4 = expr_condition4.invoke({}, self.mock_runtime)
+        assert result4 is True
 
 
 if __name__ == "__main__":

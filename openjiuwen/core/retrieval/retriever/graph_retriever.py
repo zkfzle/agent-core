@@ -272,8 +272,10 @@ class GraphRetriever(Retriever):
         )
         expanded_chunks: List[RetrievalResult] = []
         for c in candidate_chunks:
-            if (c.chunk_id and c.chunk_id in target_chunk_ids) or (c.doc_id and c.doc_id in target_doc_ids):
-                if score_threshold is not None and c.score is not None and c.score < score_threshold:
+            if score_threshold is not None and c.score is not None and c.score < score_threshold:
+                if c.chunk_id and c.chunk_id in target_chunk_ids:
+                    continue
+                if c.doc_id and c.doc_id in target_doc_ids:
                     continue
                 expanded_chunks.append(c)
                 current_chunk_ids.add(c.chunk_id)

@@ -3,7 +3,7 @@
 from typing import Any, Optional
 
 import aiofiles
-import chardet
+from charset_normalizer import detect
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.indexing.processor.parser.base import Parser
@@ -22,7 +22,19 @@ class TxtMdParser(Parser):
         try:
             async with aiofiles.open(file_path, "rb") as f:
                 raw_data = await f.read()
-                encoding = chardet.detect(raw_data)["encoding"] or "utf-8"
+                # 使用 charset-normalizer 检测编码
+                detected = detect(raw_data)
+                # 处理不同的返回类型：CharsetMatch对象、dict或None
+                if detected is None:
+                    encoding = "utf-8"
+                elif isinstance(detected, dict):
+                    # 如果返回的是dict，尝试获取encoding字段
+                    encoding = detected.get("encoding", "utf-8") or "utf-8"
+                elif hasattr(detected, "encoding"):
+                    # 如果是CharsetMatch对象，获取encoding属性
+                    encoding = detected.encoding if detected.encoding else "utf-8"
+                else:
+                    encoding = "utf-8"
 
             async with aiofiles.open(
                 file_path, "r", encoding=encoding, errors="ignore"

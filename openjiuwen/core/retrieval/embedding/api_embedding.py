@@ -51,60 +51,30 @@ class APIEmbedding(Embedding):
 
     @property
     def dimension(self) -> int:
-        """返回嵌入维度
+        """Return embedding dimension.
         
-        通过 embed_query 自适应获取维度，
-        最多重试10次。
+        Uses sync method to get dimension, safe to call from any context.
         """
         if self._dimension is not None:
             return self._dimension
         
-        # 通过 embed_query 自适应获取维度，最多重试10次
-        max_attempts = 10
-        test_text = "test"
-        
-        for attempt in range(max_attempts):
-            try:
-                # 尝试获取或创建事件循环
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        # 如果事件循环正在运行，创建新的事件循环
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        try:
-                            embedding = loop.run_until_complete(self.embed_query(test_text))
-                        finally:
-                            loop.close()
-                    else:
-                        embedding = loop.run_until_complete(self.embed_query(test_text))
-                except RuntimeError:
-                    # 没有事件循环，创建新的
-                    embedding = asyncio.run(self.embed_query(test_text))
-                
-                # 成功获取嵌入向量，提取维度并缓存
-                self._dimension = len(embedding)
-                logger.debug(f"Determined embedding dimension: {self._dimension} via embed_query")
-                return self._dimension
-                
-            except Exception as e:
-                if attempt == max_attempts - 1:
-                    logger.error(
-                        f"Failed to determine embedding dimension after {max_attempts} attempts: {e}"
-                    )
-                    raise RuntimeError(
-                        f"Failed to determine embedding dimension after {max_attempts} attempts"
-                    ) from e
-                logger.warning(
-                    f"Attempt {attempt + 1}/{max_attempts} to determine dimension failed: {e}"
-                )
-        
-        raise RuntimeError("Unreachable code in dimension property")
+        # Use sync method to get dimension
+        embedding = self.embed_query_sync("test")
+        self._dimension = len(embedding)
+        logger.debug(f"Determined embedding dimension: {self._dimension}")
+        return self._dimension
 
     async def embed_query(self, text: str, **kwargs: Any) -> List[float]:
         if not text.strip():
             raise ValueError("Empty text provided for embedding")
         embeddings = await self._get_embeddings(text, **kwargs)
+        return embeddings[0]
+
+    def embed_query_sync(self, text: str, **kwargs: Any) -> List[float]:
+        """Embed a single query text (sync version)."""
+        if not text.strip():
+            raise ValueError("Empty text provided for embedding")
+        embeddings = self._get_embeddings_sync(text, **kwargs)
         return embeddings[0]
 
     async def embed_documents(
@@ -189,3 +159,59 @@ class APIEmbedding(Embedding):
                     e,
                 )
         raise RuntimeError("Unreachable code in _get_embeddings")
+
+    def _get_embeddings_sync(
+        self, text: str | List[str], **kwargs
+    ) -> List[List[float]]:
+        """Get embedding vectors (sync version)."""
+        
+        payload = {"model": self.model_name, "input": text, **kwargs}
+        
+        for attempt in range(self.max_retries):
+            try:
+                resp = requests.post(
+                    self.api_url,
+                    json=payload,
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                resp.raise_for_status()
+                result = resp.json()
+                if "embedding" in result:
+                    emb = result["embedding"]
+                    if isinstance(emb[0], list):
+                        embeddings = emb
+                    else:
+                        embeddings = [emb]
+                elif "embeddings" in result:
+                    embeddings = result["embeddings"]
+                elif "data" in result and isinstance(result["data"], list):
+                    embeddings = []
+                    for item in result["data"]:
+                        if "embedding" in item:
+                            embeddings.append(item["embedding"])
+                    if not embeddings:
+                        raise ValueError(
+                            f"No embeddings field found in data items: {result}"
+                        )
+                else:
+                    raise ValueError(f"No embeddings in response: {result}")
+                
+                # Cache dimension if not yet determined
+                if self._dimension is None and embeddings and embeddings[0]:
+                    self._dimension = len(embeddings[0])
+                    logger.debug(f"Determined embedding dimension: {self._dimension}")
+                
+                return embeddings
+            except requests.exceptions.RequestException as e:
+                if attempt == self.max_retries - 1:
+                    raise RuntimeError(
+                        f"Failed to get embedding after {self.max_retries} attempts"
+                    ) from e
+                logger.warning(
+                    "Embedding request failed (attempt %s/%s): %s",
+                    attempt + 1,
+                    self.max_retries,
+                    e,
+                )
+        raise RuntimeError("Unreachable code in _get_embeddings_sync")

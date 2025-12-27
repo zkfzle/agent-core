@@ -106,11 +106,10 @@ class HybridRetriever(Retriever):
         retrieval_results = []
         for result in search_results:
             # Apply score threshold filtering
-            if (mode == "vector" and
-                    score_threshold is not None and
-                    result.score is not None and
-                    result.score < score_threshold):
-                continue
+            if (mode == "vector" and score_threshold is not None
+                and result.score is not None):
+                if result.score < score_threshold:
+                    continue
 
             retrieval_result = RetrievalResult(
                 text=result.text,

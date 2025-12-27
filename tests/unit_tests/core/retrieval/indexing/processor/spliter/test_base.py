@@ -43,9 +43,15 @@ class TestSplitter:
 
     def test_init_with_tokenizer(self):
         """Test initialization with tokenizer"""
+        def encode_fn(x):
+            return x.split()
+        
+        def decode_fn(x):
+            return " ".join(x)
+        
         mock_tokenizer = MagicMock()
-        mock_tokenizer.encode = lambda x: x.split()
-        mock_tokenizer.decode = lambda x: " ".join(x)
+        mock_tokenizer.encode = encode_fn
+        mock_tokenizer.decode = decode_fn
 
         splitter = ConcreteSplitter(tokenizer=mock_tokenizer)
         assert splitter.tokenizer == mock_tokenizer

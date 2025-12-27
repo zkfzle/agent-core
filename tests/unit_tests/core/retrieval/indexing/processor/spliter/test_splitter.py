@@ -9,12 +9,20 @@ import pytest
 from openjiuwen.core.retrieval.indexing.processor.spliter.splitter import SentenceSplitter
 
 
+def _mock_encode(x):
+    return x.split()
+
+
+def _mock_decode(x):
+    return " ".join(x)
+
+
 @pytest.fixture
 def mock_tokenizer():
     """Create mock tokenizer"""
     tokenizer = MagicMock()
-    tokenizer.encode = lambda x: x.split()
-    tokenizer.decode = lambda x: " ".join(x)
+    tokenizer.encode = _mock_encode
+    tokenizer.decode = _mock_decode
     return tokenizer
 
 

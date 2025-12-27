@@ -115,8 +115,11 @@ class TestIndexSentenceSplitter:
 
     def test_init_with_default_splitter_config(self):
         """Test initialization with default splitter configuration"""
+        def tokenize_fn(x):
+            return x.split()
+        
         mock_tokenizer = MagicMock()
-        mock_tokenizer.tokenize = lambda x: x.split()
+        mock_tokenizer.tokenize = tokenize_fn
 
         with patch(
             "openjiuwen.core.retrieval.indexing.processor.chunker.text_splitter.SentenceSplitter"
@@ -131,8 +134,11 @@ class TestIndexSentenceSplitter:
 
     def test_resolve_tokenizer_fallback_tiktoken(self):
         """Test resolving tokenizer (fallback to tiktoken)"""
+        def encode_fn(x):
+            return x.split()
+        
         mock_encoding = MagicMock()
-        mock_encoding.encode = lambda x: x.split()
+        mock_encoding.encode = encode_fn
 
         with patch(
             "openjiuwen.core.retrieval.indexing.processor.chunker.text_splitter.tiktoken"
@@ -145,8 +151,11 @@ class TestIndexSentenceSplitter:
 
     def test_split_with_document(self):
         """Test splitting document"""
+        def tokenize_fn(x):
+            return x.split()
+        
         mock_tokenizer = MagicMock()
-        mock_tokenizer.tokenize = lambda x: x.split()
+        mock_tokenizer.tokenize = tokenize_fn
 
         with patch(
             "openjiuwen.core.retrieval.indexing.processor.chunker.text_splitter.SentenceSplitter"
@@ -168,8 +177,11 @@ class TestIndexSentenceSplitter:
 
     def test_split_with_text_chunk(self):
         """Test splitting text chunk"""
+        def tokenize_fn(x):
+            return x.split()
+        
         mock_tokenizer = MagicMock()
-        mock_tokenizer.tokenize = lambda x: x.split()
+        mock_tokenizer.tokenize = tokenize_fn
 
         with patch(
             "openjiuwen.core.retrieval.indexing.processor.chunker.text_splitter.SentenceSplitter"

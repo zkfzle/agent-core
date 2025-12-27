@@ -33,15 +33,17 @@ class TestChunker:
 
     def test_init_with_custom_values(self):
         """Test initialization with custom values"""
-        custom_length_fn = lambda x: len(x.split())
+        def word_count_length(x):
+            return len(x.split())
+        
         chunker = ConcreteChunker(
             chunk_size=1024,
             chunk_overlap=100,
-            length_function=custom_length_fn,
+            length_function=word_count_length,
         )
         assert chunker.chunk_size == 1024
         assert chunker.chunk_overlap == 100
-        assert chunker.length_function == custom_length_fn
+        assert chunker.length_function == word_count_length
 
     def test_init_invalid_overlap(self):
         """Test invalid overlap size"""

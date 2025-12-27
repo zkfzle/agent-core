@@ -7,7 +7,7 @@ from typing import Optional, Union
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.runner.agent_group import AgentGroup
-from openjiuwen.core.multi_agent.agent_group import BaseGroup
+from openjiuwen.core.multi_agent import BaseGroup
 
 
 class AgentGroupProvider(ABC):

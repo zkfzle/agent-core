@@ -13,7 +13,7 @@ from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
 
 if TYPE_CHECKING:
-    from openjiuwen.core.multi_agent.agent_group import BaseGroup, AgentGroupRuntime
+    from openjiuwen.core.multi_agent import BaseGroup, AgentGroupRuntime
 
 
 class BaseGroupController(ABC):

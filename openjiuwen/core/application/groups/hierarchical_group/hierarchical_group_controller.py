@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 if TYPE_CHECKING:
-    from openjiuwen.core.multi_agent.agent_group import AgentGroupRuntime
+    from openjiuwen.core.multi_agent import AgentGroupRuntime
 
 
 class HierarchicalGroupController(BaseGroupController):

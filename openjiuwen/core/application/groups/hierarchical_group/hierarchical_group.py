@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Hierarchical Group - Leader-Worker pattern implementation"""
 
-from openjiuwen.core.multi_agent.agent_group import ControllerGroup
+from openjiuwen.core.multi_agent import ControllerGroup
 from openjiuwen.core.application.groups.hierarchical_group.config import HierarchicalGroupConfig
 from openjiuwen.core.application.groups.hierarchical_group.hierarchical_group_controller import HierarchicalGroupController
 from openjiuwen.core.common.logging import logger

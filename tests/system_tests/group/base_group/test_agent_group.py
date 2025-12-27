@@ -12,8 +12,7 @@ from datetime import datetime
 from typing import Dict, AsyncIterator, Any
 
 from openjiuwen.core.single_agent import AgentConfig, BaseAgent
-from openjiuwen.core.multi_agent import AgentGroupConfig
-from openjiuwen.core.multi_agent.agent_group import BaseGroup, AgentGroupRuntime
+from openjiuwen.core.multi_agent import AgentGroupConfig, AgentGroupRuntime, BaseGroup
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.runner import Runner
 

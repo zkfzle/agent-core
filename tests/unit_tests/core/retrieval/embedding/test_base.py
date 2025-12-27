@@ -43,7 +43,8 @@ class TestEmbedding:
         assert len(embeddings) == 3
         assert all(len(emb) == 384 for emb in embeddings)
 
-    def test_dimension(self):
+    @staticmethod
+    def test_dimension():
         """Test dimension property"""
         model = ConcreteEmbedding()
         assert model.dimension == 384

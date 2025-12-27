@@ -11,27 +11,31 @@ from openjiuwen.core.retrieval.common.document import Document, TextChunk
 class TestDocument:
     """Document data model tests"""
 
-    def test_create_document(self):
+    @staticmethod
+    def test_create_document():
         """Test creating document"""
         doc = Document(text="Test document")
         assert doc.text == "Test document"
         assert doc.id_ is not None
         assert doc.metadata == {}
 
-    def test_create_document_with_metadata(self):
+    @staticmethod
+    def test_create_document_with_metadata():
         """Test creating document with metadata"""
         metadata = {"source": "test", "author": "test_author"}
         doc = Document(text="Test document", metadata=metadata)
         assert doc.text == "Test document"
         assert doc.metadata == metadata
 
-    def test_create_document_with_id(self):
+    @staticmethod
+    def test_create_document_with_id():
         """Test creating document with ID"""
         doc = Document(id_="test_id", text="Test document")
         assert doc.id_ == "test_id"
         assert doc.text == "Test document"
 
-    def test_missing_text(self):
+    @staticmethod
+    def test_missing_text():
         """Test missing required text"""
         with pytest.raises(ValidationError):
             Document()
@@ -40,7 +44,8 @@ class TestDocument:
 class TestTextChunk:
     """Text chunk data model tests"""
 
-    def test_create_text_chunk(self):
+    @staticmethod
+    def test_create_text_chunk():
         """Test creating text chunk"""
         chunk = TextChunk(
             id_="chunk_1",
@@ -53,7 +58,8 @@ class TestTextChunk:
         assert chunk.metadata == {}
         assert chunk.embedding is None
 
-    def test_create_text_chunk_with_metadata(self):
+    @staticmethod
+    def test_create_text_chunk_with_metadata():
         """Test creating text chunk with metadata"""
         metadata = {"chunk_index": 0, "source": "test"}
         chunk = TextChunk(
@@ -64,7 +70,8 @@ class TestTextChunk:
         )
         assert chunk.metadata == metadata
 
-    def test_create_text_chunk_with_embedding(self):
+    @staticmethod
+    def test_create_text_chunk_with_embedding():
         """Test creating text chunk with embedding"""
         embedding = [0.1, 0.2, 0.3]
         chunk = TextChunk(
@@ -75,7 +82,8 @@ class TestTextChunk:
         )
         assert chunk.embedding == embedding
 
-    def test_from_document(self):
+    @staticmethod
+    def test_from_document():
         """Test creating text chunk from document"""
         doc = Document(id_="doc_1", text="Test document", metadata={"source": "test"})
         chunk = TextChunk.from_document(doc, "Test chunk", "chunk_1")
@@ -84,7 +92,8 @@ class TestTextChunk:
         assert chunk.doc_id == "doc_1"
         assert chunk.metadata == {"source": "test"}
 
-    def test_from_document_without_id(self):
+    @staticmethod
+    def test_from_document_without_id():
         """Test creating text chunk from document (auto-generate ID)"""
         doc = Document(id_="doc_1", text="Test document")
         chunk = TextChunk.from_document(doc, "Test chunk")
@@ -92,7 +101,8 @@ class TestTextChunk:
         assert chunk.text == "Test chunk"
         assert chunk.doc_id == "doc_1"
 
-    def test_missing_required_fields(self):
+    @staticmethod
+    def test_missing_required_fields():
         """Test missing required fields"""
         with pytest.raises(ValidationError):
             TextChunk()

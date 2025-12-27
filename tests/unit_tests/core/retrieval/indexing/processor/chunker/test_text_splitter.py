@@ -24,7 +24,8 @@ class ConcreteTextSplitter(TextSplitter):
 class TestTextSplitter:
     """Text splitter abstract base class tests"""
 
-    def test_cannot_instantiate_abstract_class(self):
+    @staticmethod
+    def test_cannot_instantiate_abstract_class():
         """Test cannot directly instantiate abstract class"""
         with pytest.raises(TypeError):
             TextSplitter()
@@ -33,35 +34,41 @@ class TestTextSplitter:
 class TestCharSplitter:
     """Character splitter tests"""
 
-    def test_init_with_defaults(self):
+    @staticmethod
+    def test_init_with_defaults():
         """Test initialization with default values"""
         splitter = CharSplitter()
         assert splitter.chunk_size == 200  # DEFAULT_CHAR_CHUNK_SIZE
         assert splitter.chunk_overlap == 40  # DEFAULT_CHAR_CHUNK_OVERLAP
 
-    def test_init_with_custom_values(self):
+    @staticmethod
+    def test_init_with_custom_values():
         """Test initialization with custom values"""
         splitter = CharSplitter(chunk_size=512, chunk_overlap=50)
         assert splitter.chunk_size == 512
         assert splitter.chunk_overlap == 50
 
-    def test_init_overlap_adjusted(self):
+    @staticmethod
+    def test_init_overlap_adjusted():
         """Test automatic overlap size adjustment"""
         # Overlap size should be less than chunk size
         splitter = CharSplitter(chunk_size=100, chunk_overlap=150)
         assert splitter.chunk_overlap < splitter.chunk_size
 
-    def test_init_overlap_negative(self):
+    @staticmethod
+    def test_init_overlap_negative():
         """Test negative overlap size"""
         splitter = CharSplitter(chunk_size=100, chunk_overlap=-10)
         assert splitter.chunk_overlap >= 0
 
-    def test_init_chunk_size_minimum(self):
+    @staticmethod
+    def test_init_chunk_size_minimum():
         """Test minimum chunk size"""
         splitter = CharSplitter(chunk_size=0)
         assert splitter.chunk_size >= 1
 
-    def test_split_short_text(self):
+    @staticmethod
+    def test_split_short_text():
         """Test splitting short text"""
         splitter = CharSplitter(chunk_size=100, chunk_overlap=10)
         doc = Document(id_="doc_1", text="Short text")
@@ -70,7 +77,8 @@ class TestCharSplitter:
         assert chunks[0].text == "Short text"
         assert chunks[0].doc_id == "doc_1"
 
-    def test_split_long_text(self):
+    @staticmethod
+    def test_split_long_text():
         """Test splitting long text"""
         splitter = CharSplitter(chunk_size=10, chunk_overlap=2)
         text = "This is a longer text that needs to be split into multiple chunks"
@@ -80,7 +88,8 @@ class TestCharSplitter:
         # Verify all chunks belong to the same document
         assert all(chunk.doc_id == "doc_1" for chunk in chunks)
 
-    def test_split_with_overlap(self):
+    @staticmethod
+    def test_split_with_overlap():
         """Test splitting with overlap"""
         splitter = CharSplitter(chunk_size=10, chunk_overlap=3)
         text = "This is a test text for splitting"
@@ -96,7 +105,8 @@ class TestCharSplitter:
             assert len(first_end) == 3
             assert len(second_start) >= 3
 
-    def test_split_preserves_metadata(self):
+    @staticmethod
+    def test_split_preserves_metadata():
         """Test preserving metadata"""
         splitter = CharSplitter(chunk_size=10, chunk_overlap=2)
         doc = Document(
@@ -113,7 +123,8 @@ class TestCharSplitter:
 class TestIndexSentenceSplitter:
     """Index sentence splitter tests"""
 
-    def test_init_with_default_splitter_config(self):
+    @staticmethod
+    def test_init_with_default_splitter_config():
         """Test initialization with default splitter configuration"""
         mock_tokenizer = MagicMock()
         mock_tokenizer.tokenize = lambda x: x.split()
@@ -129,7 +140,8 @@ class TestIndexSentenceSplitter:
             call_args = mock_sentence_splitter_class.call_args
             assert call_args is not None
 
-    def test_resolve_tokenizer_fallback_tiktoken(self):
+    @staticmethod
+    def test_resolve_tokenizer_fallback_tiktoken():
         """Test resolving tokenizer (fallback to tiktoken)"""
         mock_encoding = MagicMock()
         mock_encoding.encode = lambda x: x.split()
@@ -143,7 +155,8 @@ class TestIndexSentenceSplitter:
             assert callable(tokenizer_fn)
             mock_tiktoken.get_encoding.assert_called_once_with("cl100k_base")
 
-    def test_split_with_document(self):
+    @staticmethod
+    def test_split_with_document():
         """Test splitting document"""
         mock_tokenizer = MagicMock()
         mock_tokenizer.tokenize = lambda x: x.split()
@@ -166,7 +179,8 @@ class TestIndexSentenceSplitter:
             assert len(chunks) == 2
             mock_sentence_splitter.get_nodes_from_documents.assert_called_once()
 
-    def test_split_with_text_chunk(self):
+    @staticmethod
+    def test_split_with_text_chunk():
         """Test splitting text chunk"""
         mock_tokenizer = MagicMock()
         mock_tokenizer.tokenize = lambda x: x.split()

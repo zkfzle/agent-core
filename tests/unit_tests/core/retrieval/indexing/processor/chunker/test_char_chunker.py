@@ -13,13 +13,15 @@ from openjiuwen.core.retrieval.common.document import Document, TextChunk
 class TestCharChunker:
     """Fixed-size chunker tests"""
 
-    def test_init_with_defaults(self):
+    @staticmethod
+    def test_init_with_defaults():
         """Test initialization with default values"""
         chunker = CharChunker()
         assert chunker.chunk_size == 512
         assert chunker.chunk_overlap == 50
 
-    def test_init_with_custom_values(self):
+    @staticmethod
+    def test_init_with_custom_values():
         """Test initialization with custom values"""
         chunker = CharChunker(chunk_size=256, chunk_overlap=25)
         assert chunker.chunk_size == 256
@@ -44,13 +46,15 @@ class TestCharChunker:
             chunk_size=10, chunk_overlap=2
         )
 
-    def test_chunk_text_empty(self):
+    @staticmethod
+    def test_chunk_text_empty():
         """Test chunking empty text"""
         chunker = CharChunker()
         chunks = chunker.chunk_text("")
         assert chunks == []
 
-    def test_chunk_text_none(self):
+    @staticmethod
+    def test_chunk_text_none():
         """Test chunking None"""
         chunker = CharChunker()
         chunks = chunker.chunk_text(None)

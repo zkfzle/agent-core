@@ -25,19 +25,22 @@ class ConcretePreprocessor(TextPreprocessor):
 class TestTextPreprocessor:
     """Text preprocessor abstract base class tests"""
 
-    def test_process(self):
+    @staticmethod
+    def test_process():
         """Test process method"""
         preprocessor = ConcretePreprocessor()
         result = preprocessor.process("test")
         assert result == "TEST"
 
-    def test_call(self):
+    @staticmethod
+    def test_call():
         """Test callable interface"""
         preprocessor = ConcretePreprocessor()
         result = preprocessor("test")
         assert result == "TEST"
 
-    def test_cannot_instantiate_abstract_class(self):
+    @staticmethod
+    def test_cannot_instantiate_abstract_class():
         """Test cannot directly instantiate abstract class"""
         with pytest.raises(TypeError):
             TextPreprocessor()
@@ -46,55 +49,63 @@ class TestTextPreprocessor:
 class TestWhitespaceNormalizer:
     """Whitespace normalizer tests"""
 
-    def test_process_normal_text(self):
+    @staticmethod
+    def test_process_normal_text():
         """Test processing normal text"""
         normalizer = WhitespaceNormalizer()
         text = "This is a test"
         result = normalizer.process(text)
         assert result == "This is a test"
 
-    def test_process_multiple_spaces(self):
+    @staticmethod
+    def test_process_multiple_spaces():
         """Test processing multiple spaces"""
         normalizer = WhitespaceNormalizer()
         text = "This   is    a     test"
         result = normalizer.process(text)
         assert result == "This is a test"
 
-    def test_process_newlines(self):
+    @staticmethod
+    def test_process_newlines():
         """Test processing newlines"""
         normalizer = WhitespaceNormalizer()
         text = "This\nis\na\ntest"
         result = normalizer.process(text)
         assert result == "This is a test"
 
-    def test_process_tabs(self):
+    @staticmethod
+    def test_process_tabs():
         """Test processing tabs"""
         normalizer = WhitespaceNormalizer()
         text = "This\tis\ta\ttest"
         result = normalizer.process(text)
         assert result == "This is a test"
 
-    def test_process_mixed_whitespace(self):
+    @staticmethod
+    def test_process_mixed_whitespace():
         """Test processing mixed whitespace"""
         normalizer = WhitespaceNormalizer()
         text = "This  \n\t  is  \n\t  a  \n\t  test"
         result = normalizer.process(text)
         assert result == "This is a test"
 
-    def test_process_leading_trailing_whitespace(self):
+    @staticmethod
+    def test_process_leading_trailing_whitespace():
         """Test processing leading and trailing whitespace"""
         normalizer = WhitespaceNormalizer()
         text = "   This is a test   "
         result = normalizer.process(text)
         assert result == "This is a test"
 
-    def test_process_empty_string(self):
+    @staticmethod
+    def test_process_empty_string():
         """Test processing empty string"""
         normalizer = WhitespaceNormalizer()
         result = normalizer.process("")
         assert result == ""
 
-    def test_process_none(self):
+    @staticmethod
+    def test_process_none():
         """Test processing None"""
         normalizer = WhitespaceNormalizer()
         result = normalizer.process(None)
@@ -104,14 +115,16 @@ class TestWhitespaceNormalizer:
 class TestURLEmailRemover:
     """URL and email remover tests"""
 
-    def test_init_defaults(self):
+    @staticmethod
+    def test_init_defaults():
         """Test initialization with default values"""
         remover = URLEmailRemover()
         assert remover.remove_urls is True
         assert remover.remove_emails is True
         assert remover.replacement == ""
 
-    def test_init_custom(self):
+    @staticmethod
+    def test_init_custom():
         """Test initialization with custom values"""
         remover = URLEmailRemover(
             remove_urls=False,
@@ -122,35 +135,40 @@ class TestURLEmailRemover:
         assert remover.remove_emails is True
         assert remover.replacement == "[removed]"
 
-    def test_remove_urls_http(self):
+    @staticmethod
+    def test_remove_urls_http():
         """Test removing HTTP URL"""
         remover = URLEmailRemover()
         text = "Visit http://example.com for more info"
         result = remover.process(text)
         assert "http://example.com" not in result
 
-    def test_remove_urls_https(self):
+    @staticmethod
+    def test_remove_urls_https():
         """Test removing HTTPS URL"""
         remover = URLEmailRemover()
         text = "Visit https://example.com for more info"
         result = remover.process(text)
         assert "https://example.com" not in result
 
-    def test_remove_urls_www(self):
+    @staticmethod
+    def test_remove_urls_www():
         """Test removing www URL"""
         remover = URLEmailRemover()
         text = "Visit www.example.com for more info"
         result = remover.process(text)
         assert "www.example.com" not in result
 
-    def test_remove_emails(self):
+    @staticmethod
+    def test_remove_emails():
         """Test removing email addresses"""
         remover = URLEmailRemover()
         text = "Contact us at test@example.com for support"
         result = remover.process(text)
         assert "test@example.com" not in result
 
-    def test_remove_urls_with_replacement(self):
+    @staticmethod
+    def test_remove_urls_with_replacement():
         """Test removing URL with replacement string"""
         remover = URLEmailRemover(replacement="[URL]")
         text = "Visit http://example.com for more info"
@@ -158,7 +176,8 @@ class TestURLEmailRemover:
         assert "[URL]" in result
         assert "http://example.com" not in result
 
-    def test_remove_emails_with_replacement(self):
+    @staticmethod
+    def test_remove_emails_with_replacement():
         """Test removing email with replacement string"""
         remover = URLEmailRemover(replacement="[EMAIL]")
         text = "Contact test@example.com"
@@ -166,20 +185,23 @@ class TestURLEmailRemover:
         assert "[EMAIL]" in result
         assert "test@example.com" not in result
 
-    def test_disable_url_removal(self):
+    @staticmethod
+    def test_disable_url_removal():
         """Test disabling URL removal"""
         remover = URLEmailRemover(remove_urls=False)
         text = "Visit http://example.com for more info"
         result = remover.process(text)
         assert "http://example.com" in result
 
-    def test_process_empty_string(self):
+    @staticmethod
+    def test_process_empty_string():
         """Test processing empty string"""
         remover = URLEmailRemover()
         result = remover.process("")
         assert result == ""
 
-    def test_process_none(self):
+    @staticmethod
+    def test_process_none():
         """Test processing None"""
         remover = URLEmailRemover()
         result = remover.process(None)
@@ -189,25 +211,29 @@ class TestURLEmailRemover:
 class TestSpecialCharacterNormalizer:
     """Special character normalizer tests"""
 
-    def test_init_defaults(self):
+    @staticmethod
+    def test_init_defaults():
         """Test initialization with default values"""
         normalizer = SpecialCharacterNormalizer()
         assert normalizer.chars_to_remove == ""
         assert normalizer.chars_to_replace == {}
 
-    def test_init_with_chars_to_remove(self):
+    @staticmethod
+    def test_init_with_chars_to_remove():
         """Test initialization with characters to remove"""
         normalizer = SpecialCharacterNormalizer(chars_to_remove="!@#")
         assert normalizer.chars_to_remove == "!@#"
 
-    def test_init_with_chars_to_replace(self):
+    @staticmethod
+    def test_init_with_chars_to_replace():
         """Test initialization with characters to replace"""
         normalizer = SpecialCharacterNormalizer(
             chars_to_replace={"&": "and", "@": "at"}
         )
         assert normalizer.chars_to_replace == {"&": "and", "@": "at"}
 
-    def test_remove_control_characters(self):
+    @staticmethod
+    def test_remove_control_characters():
         """Test removing control characters"""
         normalizer = SpecialCharacterNormalizer()
         text = "Test\x00text\x1Fwith\x7Fcontrol"
@@ -216,7 +242,8 @@ class TestSpecialCharacterNormalizer:
         assert "\x1F" not in result
         assert "\x7F" not in result
 
-    def test_replace_characters(self):
+    @staticmethod
+    def test_replace_characters():
         """Test replacing characters"""
         normalizer = SpecialCharacterNormalizer(
             chars_to_replace={"&": "and", "@": "at"}
@@ -228,7 +255,8 @@ class TestSpecialCharacterNormalizer:
         assert "&" not in result
         assert "@" not in result
 
-    def test_remove_specified_characters(self):
+    @staticmethod
+    def test_remove_specified_characters():
         """Test removing specified characters"""
         normalizer = SpecialCharacterNormalizer(chars_to_remove="!@#")
         text = "Test!text@with#special"
@@ -237,13 +265,15 @@ class TestSpecialCharacterNormalizer:
         assert "@" not in result
         assert "#" not in result
 
-    def test_process_empty_string(self):
+    @staticmethod
+    def test_process_empty_string():
         """Test processing empty string"""
         normalizer = SpecialCharacterNormalizer()
         result = normalizer.process("")
         assert result == ""
 
-    def test_process_none(self):
+    @staticmethod
+    def test_process_none():
         """Test processing None"""
         normalizer = SpecialCharacterNormalizer()
         result = normalizer.process(None)
@@ -253,19 +283,22 @@ class TestSpecialCharacterNormalizer:
 class TestPreprocessingPipeline:
     """Preprocessing pipeline tests"""
 
-    def test_init_empty(self):
+    @staticmethod
+    def test_init_empty():
         """Test initializing empty pipeline"""
         pipeline = PreprocessingPipeline()
         assert len(pipeline.preprocessors) == 0
 
-    def test_init_with_preprocessors(self):
+    @staticmethod
+    def test_init_with_preprocessors():
         """Test initialization with preprocessors"""
         preprocessor1 = WhitespaceNormalizer()
         preprocessor2 = URLEmailRemover()
         pipeline = PreprocessingPipeline([preprocessor1, preprocessor2])
         assert len(pipeline.preprocessors) == 2
 
-    def test_add_preprocessor(self):
+    @staticmethod
+    def test_add_preprocessor():
         """Test adding preprocessor"""
         pipeline = PreprocessingPipeline()
         preprocessor = WhitespaceNormalizer()
@@ -273,14 +306,16 @@ class TestPreprocessingPipeline:
         assert len(pipeline.preprocessors) == 1
         assert pipeline.preprocessors[0] == preprocessor
 
-    def test_process_single_preprocessor(self):
+    @staticmethod
+    def test_process_single_preprocessor():
         """Test processing single preprocessor"""
         pipeline = PreprocessingPipeline([WhitespaceNormalizer()])
         text = "This   is   a   test"
         result = pipeline.process(text)
         assert result == "This is a test"
 
-    def test_process_order(self):
+    @staticmethod
+    def test_process_order():
         """Test processing order"""
         # Create a preprocessor that tracks processing order
         class OrderTracker(TextPreprocessor):
@@ -299,14 +334,16 @@ class TestPreprocessingPipeline:
         assert pipeline.preprocessors[0].name == "first"
         assert pipeline.preprocessors[1].name == "second"
 
-    def test_call(self):
+    @staticmethod
+    def test_call():
         """Test callable interface"""
         pipeline = PreprocessingPipeline([WhitespaceNormalizer()])
         text = "This   is   a   test"
         result = pipeline(text)
         assert result == "This is a test"
 
-    def test_len(self):
+    @staticmethod
+    def test_len():
         """Test length method"""
         pipeline = PreprocessingPipeline([
             WhitespaceNormalizer(),
@@ -314,7 +351,8 @@ class TestPreprocessingPipeline:
         ])
         assert len(pipeline) == 2
 
-    def test_process_empty_string(self):
+    @staticmethod
+    def test_process_empty_string():
         """Test processing empty string"""
         pipeline = PreprocessingPipeline([WhitespaceNormalizer()])
         result = pipeline.process("")

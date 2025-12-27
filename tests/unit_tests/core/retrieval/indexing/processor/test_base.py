@@ -26,7 +26,8 @@ class TestProcessor:
         result = await processor.process("test", key="value")
         assert result == "processed_result"
 
-    def test_cannot_instantiate_abstract_class(self):
+    @staticmethod
+    def test_cannot_instantiate_abstract_class():
         """Test cannot directly instantiate abstract class"""
         with pytest.raises(TypeError):
             Processor()

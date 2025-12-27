@@ -14,7 +14,8 @@ from openjiuwen.core.retrieval.common.retrieval_result import (
 class TestSearchResult:
     """Search result data model tests"""
 
-    def test_create_search_result(self):
+    @staticmethod
+    def test_create_search_result():
         """Test creating search result"""
         result = SearchResult(
             id="result_1",
@@ -26,7 +27,8 @@ class TestSearchResult:
         assert result.score == 0.95
         assert result.metadata == {}
 
-    def test_create_search_result_with_metadata(self):
+    @staticmethod
+    def test_create_search_result_with_metadata():
         """Test creating search result with metadata"""
         metadata = {"doc_id": "doc_1", "source": "test"}
         result = SearchResult(
@@ -37,7 +39,8 @@ class TestSearchResult:
         )
         assert result.metadata == metadata
 
-    def test_missing_required_fields(self):
+    @staticmethod
+    def test_missing_required_fields():
         """Test missing required fields"""
         with pytest.raises(ValidationError):
             SearchResult()
@@ -52,7 +55,8 @@ class TestSearchResult:
 class TestRetrievalResult:
     """Retrieval result data model tests"""
 
-    def test_create_retrieval_result(self):
+    @staticmethod
+    def test_create_retrieval_result():
         """Test creating retrieval result"""
         result = RetrievalResult(
             text="Test result",
@@ -64,7 +68,8 @@ class TestRetrievalResult:
         assert result.doc_id is None
         assert result.chunk_id is None
 
-    def test_create_retrieval_result_with_all_fields(self):
+    @staticmethod
+    def test_create_retrieval_result_with_all_fields():
         """Test creating retrieval result with all fields"""
         metadata = {"source": "test"}
         result = RetrievalResult(
@@ -80,7 +85,8 @@ class TestRetrievalResult:
         assert result.doc_id == "doc_1"
         assert result.chunk_id == "chunk_1"
 
-    def test_missing_required_fields(self):
+    @staticmethod
+    def test_missing_required_fields():
         """Test missing required fields"""
         with pytest.raises(ValidationError):
             RetrievalResult()

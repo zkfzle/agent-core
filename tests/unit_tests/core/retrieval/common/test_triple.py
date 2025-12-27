@@ -11,7 +11,8 @@ from openjiuwen.core.retrieval.common.triple import Triple
 class TestTriple:
     """Triple data model tests"""
 
-    def test_create_triple(self):
+    @staticmethod
+    def test_create_triple():
         """Test creating triple"""
         triple = Triple(
             subject="Alice",
@@ -24,7 +25,8 @@ class TestTriple:
         assert triple.confidence is None
         assert triple.metadata == {}
 
-    def test_create_triple_with_confidence(self):
+    @staticmethod
+    def test_create_triple_with_confidence():
         """Test creating triple with confidence"""
         triple = Triple(
             subject="Alice",
@@ -34,7 +36,8 @@ class TestTriple:
         )
         assert triple.confidence == 0.95
 
-    def test_create_triple_with_metadata(self):
+    @staticmethod
+    def test_create_triple_with_metadata():
         """Test creating triple with metadata"""
         metadata = {"source": "test", "doc_id": "doc_1"}
         triple = Triple(
@@ -45,7 +48,8 @@ class TestTriple:
         )
         assert triple.metadata == metadata
 
-    def test_create_triple_with_all_fields(self):
+    @staticmethod
+    def test_create_triple_with_all_fields():
         """Test creating triple with all fields"""
         metadata = {"source": "test"}
         triple = Triple(
@@ -61,7 +65,8 @@ class TestTriple:
         assert triple.confidence == 0.95
         assert triple.metadata == metadata
 
-    def test_missing_required_fields(self):
+    @staticmethod
+    def test_missing_required_fields():
         """Test missing required fields"""
         with pytest.raises(ValidationError):
             Triple()

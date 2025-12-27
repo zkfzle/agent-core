@@ -13,14 +13,16 @@ from openjiuwen.core.retrieval.common.document import Document
 class TestTextChunker:
     """Text chunker tests"""
 
-    def test_init_with_char_unit(self):
+    @staticmethod
+    def test_init_with_char_unit():
         """Test initialization with character unit"""
         chunker = TextChunker(chunk_size=512, chunk_overlap=50, chunk_unit="char")
         assert chunker.chunk_size == 512
         assert chunker.chunk_overlap == 50
         assert isinstance(chunker.chunker, type(chunker.get_chunker(512, 50, "char", None)))
 
-    def test_init_with_token_unit_no_tiktoken(self):
+    @staticmethod
+    def test_init_with_token_unit_no_tiktoken():
         """Test initialization with token unit but tiktoken unavailable"""
         with patch("openjiuwen.core.retrieval.indexing.processor.chunker.chunking.tiktoken", None):
             with pytest.raises(ValueError, match="requires embed_model with tokenizer or tiktoken"):
@@ -30,7 +32,8 @@ class TestTextChunker:
                     chunk_unit="token",
                 )
 
-    def test_init_with_preprocess_options(self):
+    @staticmethod
+    def test_init_with_preprocess_options():
         """Test initialization with preprocess options"""
         chunker = TextChunker(
             chunk_size=512,
@@ -42,7 +45,8 @@ class TestTextChunker:
         )
         assert len(chunker.pipeline.preprocessors) == 2
 
-    def test_init_with_normalize_whitespace(self):
+    @staticmethod
+    def test_init_with_normalize_whitespace():
         """Test initialization with whitespace normalization"""
         chunker = TextChunker(
             chunk_size=512,
@@ -51,7 +55,8 @@ class TestTextChunker:
         )
         assert len(chunker.pipeline.preprocessors) == 1
 
-    def test_init_with_remove_url_email(self):
+    @staticmethod
+    def test_init_with_remove_url_email():
         """Test initialization with URL/email removal"""
         chunker = TextChunker(
             chunk_size=512,
@@ -60,12 +65,14 @@ class TestTextChunker:
         )
         assert len(chunker.pipeline.preprocessors) == 1
 
-    def test_init_without_preprocess_options(self):
+    @staticmethod
+    def test_init_without_preprocess_options():
         """Test initialization without preprocess options"""
         chunker = TextChunker(chunk_size=512, chunk_overlap=50)
         assert len(chunker.pipeline.preprocessors) == 0
 
-    def test_chunk_documents_with_preprocessing(self):
+    @staticmethod
+    def test_chunk_documents_with_preprocessing():
         """Test chunking documents (with preprocessing)"""
         chunker = TextChunker(
             chunk_size=100,
@@ -86,7 +93,8 @@ class TestTextChunker:
         assert all(chunk.doc_id == "doc_1" for chunk in chunks)
         assert all("chunk_index" in chunk.metadata for chunk in chunks)
 
-    def test_chunk_documents_without_preprocessing(self):
+    @staticmethod
+    def test_chunk_documents_without_preprocessing():
         """Test chunking documents (without preprocessing)"""
         chunker = TextChunker(chunk_size=100, chunk_overlap=10)
         documents = [
@@ -100,7 +108,8 @@ class TestTextChunker:
         assert len(chunks) > 0
         assert all(chunk.doc_id == "doc_1" for chunk in chunks)
 
-    def test_chunk_documents_multiple_docs(self):
+    @staticmethod
+    def test_chunk_documents_multiple_docs():
         """Test chunking multiple documents"""
         chunker = TextChunker(chunk_size=100, chunk_overlap=10)
         documents = [
@@ -113,7 +122,8 @@ class TestTextChunker:
         assert "doc_1" in doc_ids
         assert "doc_2" in doc_ids
 
-    def test_chunk_documents_preserves_metadata(self):
+    @staticmethod
+    def test_chunk_documents_preserves_metadata():
         """Test preserving metadata"""
         chunker = TextChunker(chunk_size=100, chunk_overlap=10)
         documents = [
@@ -129,14 +139,16 @@ class TestTextChunker:
         assert all(chunk.metadata["source"] == "test" for chunk in chunks)
         assert all("author" in chunk.metadata for chunk in chunks)
 
-    def test_get_chunker_char_unit(self):
+    @staticmethod
+    def test_get_chunker_char_unit():
         """Test getting character chunker"""
         chunker = TextChunker(chunk_size=512, chunk_overlap=50)
         result = chunker.get_chunker(512, 50, "char", None)
         from openjiuwen.core.retrieval.indexing.processor.chunker.char_chunker import CharChunker
         assert isinstance(result, CharChunker)
 
-    def test_get_chunker_token_unit_adjusts_size(self):
+    @staticmethod
+    def test_get_chunker_token_unit_adjusts_size():
         """Test token chunker automatically adjusts size"""
         mock_tokenizer = MagicMock()
         mock_tokenizer.model_max_length = 256

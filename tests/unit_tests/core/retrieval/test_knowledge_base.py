@@ -35,7 +35,8 @@ class ConcreteKnowledgeBase(KnowledgeBase):
 class TestKnowledgeBase:
     """Knowledge base abstract base class tests"""
 
-    def test_init(self):
+    @staticmethod
+    def test_init():
         """Test initialization"""
         config = KnowledgeBaseConfig(kb_id="test_kb")
         kb = ConcreteKnowledgeBase(config=config)
@@ -48,7 +49,8 @@ class TestKnowledgeBase:
         assert kb.index_manager is None
         assert kb.llm_client is None
 
-    def test_init_with_components(self):
+    @staticmethod
+    def test_init_with_components():
         """Test initialization with components"""
         config = KnowledgeBaseConfig(kb_id="test_kb")
         mock_vector_store = MagicMock()

@@ -14,7 +14,8 @@ from openjiuwen.core.retrieval.indexing.processor.parser.pdf_parser import PDFPa
 class TestPDFParser:
     """PDF file parser tests"""
 
-    def test_init(self):
+    @staticmethod
+    def test_init():
         """Test initialization"""
         parser = PDFParser()
         assert parser is not None

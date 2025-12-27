@@ -17,7 +17,7 @@ from openjiuwen.core.common.constants.enums import TaskType
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.messages import BaseMessage

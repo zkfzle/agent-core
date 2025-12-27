@@ -11,7 +11,7 @@ from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput

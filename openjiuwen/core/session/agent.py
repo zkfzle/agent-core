@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session.agent_state import StateCollection
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.base import Checkpointer

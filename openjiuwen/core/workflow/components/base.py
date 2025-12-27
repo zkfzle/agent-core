@@ -11,7 +11,7 @@ from typing import AsyncIterator, TypeVar
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.session import Runtime, BaseRuntime
 from openjiuwen.core.session import NodeRuntime

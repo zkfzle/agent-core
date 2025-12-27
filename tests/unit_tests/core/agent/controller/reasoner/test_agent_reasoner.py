@@ -14,7 +14,7 @@ from openjiuwen.core.controller.reasoner import IntentDetection
 from openjiuwen.core.controller.event.event import Event, EventContent, EventSource, EventType, SourceType
 from openjiuwen.core.controller.task import TaskInput
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 

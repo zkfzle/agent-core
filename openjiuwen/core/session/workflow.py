@@ -5,7 +5,7 @@
 import uuid
 from typing import Any
 
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.session.runtime import BaseRuntime

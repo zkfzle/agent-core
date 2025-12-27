@@ -5,8 +5,8 @@ import re
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
-from openjiuwen.agent_builder.prompt_builder.builder.badcase_prompt_builder import BadCasePromptBuilder
-from openjiuwen.agent_builder.tune.base import EvaluatedCase, Case
+from openjiuwen.agent_builder.prompt_builder import BadCasePromptBuilder
+from openjiuwen.agent_builder.tune import EvaluatedCase, Case
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.base import BaseModelInfo

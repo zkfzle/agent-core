@@ -8,7 +8,7 @@ from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import Condition, FuncCondition, AlwaysTrue
 from openjiuwen.core.workflow import ExpressionCondition
 from openjiuwen.core.workflow import NumberCondition
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input
 from openjiuwen.core.session import BaseRuntime
 from openjiuwen.core.session import CommitState

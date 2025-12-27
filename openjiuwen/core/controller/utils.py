@@ -17,7 +17,7 @@ from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.runtime import Runtime
 from openjiuwen.core.session.stream.base import OutputSchema

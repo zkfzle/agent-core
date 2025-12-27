@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import ComponentConfig, WorkflowComponent, ComponentExecutable
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.foundation.tool import constant

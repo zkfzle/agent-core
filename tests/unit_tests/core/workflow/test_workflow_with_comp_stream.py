@@ -13,7 +13,7 @@ from openjiuwen.core.workflow import End, EndConfig
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.base import SimpleComponent
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT

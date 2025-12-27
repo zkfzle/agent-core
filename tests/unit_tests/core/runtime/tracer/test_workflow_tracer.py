@@ -17,7 +17,7 @@ from openjiuwen.core.workflow import LoopGroup
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.constants.enums import ComponentAbility

@@ -12,8 +12,7 @@ from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionCompConfig, \
     IntentDetectionComponent
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.session import NodeRuntime, WorkflowRuntime
 from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
 from openjiuwen.core.foundation.llm.base import BaseModelInfo

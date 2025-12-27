@@ -6,7 +6,7 @@ from openjiuwen.core.common.constants.constant import END_NODE_STREAM
 from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent, Input, Output
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema

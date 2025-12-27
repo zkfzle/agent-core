@@ -20,7 +20,7 @@ from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.inte
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, \
     FIRST_LOOP
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY
 from openjiuwen.core.graph.executable import Output, Input, Executable

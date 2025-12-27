@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import ComponentExecutable, WorkflowComponent
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Runtime

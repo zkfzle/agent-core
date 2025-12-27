@@ -10,7 +10,7 @@ import os
 import uuid
 
 from openjiuwen.core.workflow import WorkflowComponent
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Runtime

@@ -6,7 +6,7 @@ from typing import Any
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Runtime, NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
 from openjiuwen.core.session import NodeRuntime

@@ -20,7 +20,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.workflow.components.base import WorkflowComponent
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.flow_components.end_comp import End
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import WORKFLOW_EXECUTE_TIMEOUT, \

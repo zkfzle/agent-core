@@ -8,7 +8,7 @@ from openjiuwen.core.workflow import BranchComponent
 from openjiuwen.core.workflow import BranchRouter
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.workflow import Workflow

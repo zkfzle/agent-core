@@ -1,7 +1,7 @@
 import asyncio
 import random
 
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Runtime
 from tests.unit_tests.core.workflow.mock_nodes import MockNodeBase

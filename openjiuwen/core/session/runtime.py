@@ -4,7 +4,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Union, Optional, List, TypeVar, Tuple
 
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.session.state import State

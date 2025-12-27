@@ -6,8 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import TaskRuntime

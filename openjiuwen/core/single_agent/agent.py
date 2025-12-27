@@ -10,8 +10,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, List, Tupl
 
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngine, ContextEngineConfig
 from openjiuwen.core.session import StaticAgentRuntime
 from openjiuwen.core.session import Config
 from openjiuwen.core.session import Runtime

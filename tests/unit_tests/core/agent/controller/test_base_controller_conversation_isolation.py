@@ -11,7 +11,7 @@ from unittest.mock import MagicMock
 from openjiuwen.core.single_agent.config import AgentConfig
 from openjiuwen.core.controller.controller import BaseController
 from openjiuwen.core.controller.event.event import Event
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session import Runtime
 
 

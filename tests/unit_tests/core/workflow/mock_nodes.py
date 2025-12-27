@@ -5,7 +5,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Runtime, is_ref_path, extract_origin_key

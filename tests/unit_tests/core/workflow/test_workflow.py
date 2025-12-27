@@ -19,7 +19,7 @@ from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.session import WorkflowRuntime

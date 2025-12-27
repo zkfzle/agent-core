@@ -14,8 +14,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
-from openjiuwen.core.context_engine.context_engine import ContextEngine
+from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.foundation.llm.messages import AIMessage, BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk

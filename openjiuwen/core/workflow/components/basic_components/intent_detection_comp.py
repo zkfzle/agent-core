@@ -16,7 +16,7 @@ from openjiuwen.core.workflow.components.base import WorkflowComponent, Componen
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.context_engine.base import Context
+from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session import Runtime

@@ -10,7 +10,7 @@ from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import AIMessage
 
-from openjiuwen.agent_builder.prompt_builder.builder.feedback_prompt_builder import FeedbackPromptBuilder
+from openjiuwen.agent_builder.prompt_builder import FeedbackPromptBuilder
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
 MOCK_INTENT = '''```json{"intent": "true",

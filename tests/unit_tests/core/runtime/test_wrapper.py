@@ -2,8 +2,7 @@ import asyncio
 
 import pytest
 
-from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.single_agent.agent import AgentRuntime
+from openjiuwen.core.single_agent import AgentConfig, AgentRuntime
 from openjiuwen.core.session.config import Config
 
 pytestmark = pytest.mark.asyncio

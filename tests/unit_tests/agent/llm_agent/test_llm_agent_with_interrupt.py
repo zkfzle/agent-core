@@ -7,11 +7,10 @@ from unittest.mock import patch
 import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType, TaskType
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.controller.task import Task, TaskInput
+from openjiuwen.core.controller import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End

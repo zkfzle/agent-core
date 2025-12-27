@@ -5,8 +5,7 @@
 import asyncio
 from typing import Union, Any, List, Optional
 
-from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent import AgentConfig, BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger

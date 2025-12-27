@@ -8,10 +8,8 @@ from datetime import timezone
 from typing import Dict, List, Any, AsyncIterator, Optional
 
 from openjiuwen.core.common.constants.enums import ControllerType
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema, PluginSchema
-from openjiuwen.core.single_agent.agents.react_agent import ReActAgentConfig
+from openjiuwen.core.single_agent import ControllerAgent, PluginSchema, ReActAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller import LLMController
-from openjiuwen.core.single_agent.agent import ControllerAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine

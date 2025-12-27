@@ -9,7 +9,7 @@ from typing import List, Dict, Optional
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.single_agent.schema.schema import PluginSchema, WorkflowSchema
+from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import (
     ReActAgentConfig,
     ConstrainConfig

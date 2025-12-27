@@ -9,7 +9,7 @@ import os
 import unittest
 from datetime import datetime
 
-from openjiuwen.core.single_agent.agents import ReActAgent
+from openjiuwen.core.single_agent import ReActAgent
 from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo

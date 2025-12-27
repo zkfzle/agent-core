@@ -6,22 +6,21 @@
 import asyncio
 from typing import Dict, List, Optional, Union
 
-from openjiuwen.core.controller.task.task import TaskStatus
 from openjiuwen.core.common.constants.enums import TaskType
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.single_agent import AgentConfig, WorkflowSchema
 from openjiuwen.core.common.utils.message_utils import MessageUtils
-from openjiuwen.core.controller.config.reasoner_config import (
-    IntentDetectionConfig
-)
-from openjiuwen.core.controller.intent_detection_controller import (
+from openjiuwen.core.controller import (
+    TaskStatus,
+    IntentDetectionConfig,
     Intent,
     IntentDetectionController,
-    IntentType
+    IntentType,
+    IntentDetector,
+    Event,
+    EventContent,
+    Task,
+    TaskInput
 )
-from openjiuwen.core.controller.reasoner import IntentDetector
-from openjiuwen.core.controller.event.event import Event, EventContent
-from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner import Runner, resource_mgr

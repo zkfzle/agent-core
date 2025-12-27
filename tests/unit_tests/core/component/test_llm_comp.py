@@ -8,8 +8,7 @@ import pytest
 from unittest.mock import Mock
 
 from openjiuwen.core.common.constants.enums import ControllerType, ComponentAbility
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End

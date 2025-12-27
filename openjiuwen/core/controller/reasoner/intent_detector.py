@@ -7,12 +7,12 @@ import re
 import secrets
 from typing import List, Union
 
-from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.single_agent import AgentConfig
 from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
-from openjiuwen.core.controller.constants import IntentDetectionConstants
-from openjiuwen.core.controller.utils import ReasonerUtils
 from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task.task import Task, TaskInput
+from openjiuwen.core.controller.constants import IntentDetectionConstants
+from openjiuwen.core.controller.utils import ReasonerUtils
 from openjiuwen.core.common.constants.enums import TaskType
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger

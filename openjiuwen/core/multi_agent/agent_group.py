@@ -8,8 +8,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, AsyncIterator
 
-from openjiuwen.core.single_agent.agent import AgentRuntime
-from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent import AgentRuntime, BaseAgent
 from openjiuwen.core.multi_agent.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -37,7 +36,7 @@ class AgentGroupRuntime(AgentRuntime):
         """
         # Create Config with agent_config if not provided
         if config is None:
-            from openjiuwen.core.single_agent.config import AgentConfig
+            from openjiuwen.core.single_agent import AgentConfig
             config = Config()
             # Create virtual AgentConfig for Group Runtime
             agent_config = AgentConfig(id="agent_group_runtime")
@@ -196,7 +195,7 @@ class ControllerGroup(BaseGroup):
 
     def _convert_message(self, message):
         """Convert dict to Message if needed (backward compatibility)"""
-        from openjiuwen.core.controller.event.event import Event
+        from openjiuwen.core.controller import Event
         if isinstance(message, dict):
             return Event.create_user_event(
                 content=message.get("content") or message.get("query", ""),

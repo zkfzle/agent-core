@@ -14,7 +14,7 @@ from openjiuwen.agent_builder.tune import (
     Trainer,
     CaseLoader
 )
-from openjiuwen.core.single_agent.config import LLMCallConfig
+from openjiuwen.core.single_agent import LLMCallConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, Param
 

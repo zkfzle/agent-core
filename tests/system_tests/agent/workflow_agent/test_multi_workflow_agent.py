@@ -23,7 +23,7 @@ from datetime import datetime
 import unittest
 from unittest.mock import patch, AsyncMock
 
-from openjiuwen.core.single_agent.config import (
+from openjiuwen.core.single_agent import (
     WorkflowAgentConfig,
     DefaultResponse
 )

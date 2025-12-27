@@ -11,8 +11,7 @@ import unittest
 import pytest
 from typing import List
 
-from openjiuwen.core.single_agent.config import WorkflowAgentConfig
-from openjiuwen.core.single_agent.agent import workflow_provider
+from openjiuwen.core.single_agent import WorkflowAgentConfig, workflow_provider
 from openjiuwen.core.session import TaskRuntime
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End

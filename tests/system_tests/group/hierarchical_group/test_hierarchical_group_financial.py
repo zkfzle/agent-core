@@ -15,16 +15,14 @@ import uuid
 import unittest
 from unittest.mock import patch
 
-from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+from openjiuwen.core.single_agent import AgentConfig, ControllerAgent, WorkflowAgentConfig
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.application.groups.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
 from openjiuwen.core.application.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
-from openjiuwen.core.single_agent.agent import ControllerAgent
-from openjiuwen.core.controller.event.event import Event
+from openjiuwen.core.controller import Event
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.foundation.llm import ModelConfig
@@ -327,7 +325,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             ReActAgent 实例
         """
-        from openjiuwen.core.single_agent.agents import ReActAgent
+        from openjiuwen.core.single_agent import ReActAgent
         from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
         from openjiuwen.core.foundation.tool.function.function import LocalFunction
         from openjiuwen.core.foundation.tool.param import Param

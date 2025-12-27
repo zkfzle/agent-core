@@ -6,9 +6,8 @@ ChatAgent - simplest llm chat single_agent
 """
 from typing import Dict, Any, List, AsyncIterator
 
-from openjiuwen.core.single_agent.config import LLMCallConfig
+from openjiuwen.core.single_agent import BaseAgent, LLMCallConfig
 from openjiuwen.agent_builder.tune.chat_agent.chat_config import ChatAgentConfig
-from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.operator.llm_call import LLMCall

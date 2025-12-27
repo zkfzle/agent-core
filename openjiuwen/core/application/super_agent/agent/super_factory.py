@@ -15,7 +15,7 @@ from openjiuwen.core.application.agents_for_studio import (
 from openjiuwen.core.application.super_agent import (
     SuperReActAgent
 )
-from openjiuwen.core.single_agent.schema.schema import PluginSchema, WorkflowSchema
+from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo as ModelInfo
 from openjiuwen.core.foundation.tool import Tool

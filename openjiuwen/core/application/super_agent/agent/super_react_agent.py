@@ -25,7 +25,7 @@ from openjiuwen.core.application.agents_for_studio import (
     OpenRouterLLM,
     ContextLimitError
 )
-from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import Runtime

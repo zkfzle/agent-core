@@ -11,8 +11,7 @@ import unittest
 from datetime import datetime
 from typing import Dict, AsyncIterator, Any
 
-from openjiuwen.core.single_agent.config import AgentConfig
-from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent import AgentConfig, BaseAgent
 from openjiuwen.core.multi_agent import AgentGroupConfig
 from openjiuwen.core.multi_agent.agent_group import BaseGroup, AgentGroupRuntime
 from openjiuwen.core.session import Runtime

@@ -6,9 +6,9 @@ import copy
 from typing import List, Dict, Any, Optional
 
 from openjiuwen.core.common.constants.enums import TaskType
-from openjiuwen.core.single_agent.config import AgentConfig
+from openjiuwen.core.single_agent import AgentConfig
 from openjiuwen.core.controller.event.event import Event
-from openjiuwen.core.controller.task import Task, TaskInput
+from openjiuwen.core.controller.task.task import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger

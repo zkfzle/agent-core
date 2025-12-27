@@ -6,8 +6,7 @@ from pathlib import Path
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from openjiuwen.core.single_agent.schema.schema import PluginSchema
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End

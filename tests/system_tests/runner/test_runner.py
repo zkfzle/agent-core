@@ -7,8 +7,7 @@ from unittest.mock import patch, AsyncMock
 
 from mcp import StdioServerParameters
 
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
-from openjiuwen.core.single_agent.config import WorkflowAgentConfig
+from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig

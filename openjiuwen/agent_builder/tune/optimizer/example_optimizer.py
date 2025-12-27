@@ -7,7 +7,7 @@ prompt optimization evaluators
 import random
 from typing import List, Optional, Dict
 
-from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode

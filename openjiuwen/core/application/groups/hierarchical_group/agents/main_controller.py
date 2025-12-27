@@ -7,9 +7,7 @@ import time
 from typing import Optional
 
 from openjiuwen.core.controller.controller import BaseController
-from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
-from openjiuwen.core.controller.reasoner import IntentDetector
-from openjiuwen.core.controller.event.event import Event
+from openjiuwen.core.controller import IntentDetectionConfig, IntentDetector, Event
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException

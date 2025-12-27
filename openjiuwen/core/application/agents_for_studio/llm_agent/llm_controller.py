@@ -8,10 +8,8 @@ from datetime import datetime, timezone
 
 from typing import Dict, Optional, List, Any
 
-from openjiuwen.core.single_agent.agents.react_agent import ReActAgentConfig
-from openjiuwen.core.controller.controller import BaseController
-from openjiuwen.core.controller.event.event import Event, EventType
-from openjiuwen.core.controller.task import Task, TaskResult, TaskStatus
+from openjiuwen.core.single_agent import ReActAgentConfig
+from openjiuwen.core.controller import BaseController, Event, EventType, Task, TaskResult, TaskStatus
 from openjiuwen.core.controller.utils import MessageHandlerUtils
 from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.common.constants.enums import TaskType

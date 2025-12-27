@@ -4,6 +4,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from typing import Any, Tuple
+from functools import partial
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -462,12 +463,31 @@ class MemoryEngine(BaseMemoryEngine):
                               threshold: float = 0.3) -> list[dict[str, Any]]:
         if not self.search_manager:
             raise ValueError("Search manager is not initialized.")
+
+        group_mem_config = self._get_group_config(group_id)
+        if group_mem_config.enable_query_decompose:
+            llm = self._get_group_llm(group_id)
+            search_method = partial(
+                self.search_manager.rewrite_and_search,
+                base_chat_model=llm,
+                user_id=user_id,
+                group_id=group_id,
+                query=query,
+                top_k=num,
+                threshold=threshold
+            )
+        else:
+            search_method = partial(
+                self.search_manager.search,
+                user_id=user_id,
+                group_id=group_id,
+                query=query,
+                top_k=num,
+                threshold=threshold
+            )
+
         try:
-            return await self.search_manager.search(user_id=user_id,
-                                                    group_id=group_id,
-                                                    query=query,
-                                                    top_k=num,
-                                                    threshold=threshold)
+            return await search_method()
         except AttributeError as e:
             logger.debug(f"Search user mem has attribute exception: {str(e)}")
             return []

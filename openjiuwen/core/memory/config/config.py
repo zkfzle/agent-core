@@ -27,3 +27,4 @@ class SysMemConfig(BaseModel):
 class MemoryConfig(BaseModel):
     mem_variables: dict[str, str] = Field(default_factory=dict)  # memory variables config
     enable_long_term_mem: bool = Field(default=True)  # enable long term memory or not
+    enable_query_decompose: bool = Field(default=True) # enable search with query decomposition or not

@@ -2,13 +2,17 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Optional, Any
+from typing import Optional, Any, Tuple
 
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
+from openjiuwen.core.utils.llm.base import BaseModelClient
+from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.memory.prompt.query_decomposer import QEURY_DECOMPOSE_SYSTEM, QEURY_DECOMPOSE_USER
 
 
 class SearchManager:
@@ -49,6 +53,62 @@ class SearchManager:
         if len(result) > top_k:
             result.sort(key=lambda item: item["score"], reverse=True)
         return [item for item in result if item["score"] >= threshold][:top_k]
+
+    async def rewrite_and_search(self, base_chat_model: Tuple[str, BaseModelClient], user_id: str, group_id: str,
+                                query: str, top_k: int = 5, threshold: float = 0.3, search_type: Optional[str] = None,
+                                **kwargs) -> list[dict[str, Any]] | None:
+
+        decomposed_queries = await self.decompose_query(base_chat_model=base_chat_model, query=query)
+        if not decomposed_queries:
+            logger.warning(f"Failed to decompose query, use original query for retrieval")
+            decomposed_queries = [query]
+        retrieval_results = []
+
+        for subquery in decomposed_queries:
+            subresults = await self.search(user_id=user_id, group_id=group_id, query=subquery, top_k=top_k,
+                                            threshold=threshold, search_type=search_type, **kwargs)
+            retrieval_results.extend(subresults)
+
+        dedup_results = {}
+        for item in retrieval_results:
+            mem_id = item["id"]
+            if mem_id not in dedup_results or item["score"] > dedup_results[mem_id]["score"]:
+                dedup_results[mem_id] = item
+        
+        results = list(dedup_results.values())
+        results.sort(key=lambda x: x["score"], reverse=True)
+        return [item for item in results if item["score"] >= threshold][:top_k]
+
+
+    async def decompose_query(self, base_chat_model: Tuple[str, BaseModelClient], query: str) -> list[str] | None:
+        model_name, model_client = base_chat_model
+        # get a list of decomposed queries
+        model_input = [
+            {
+                "role": "system",
+                "content": QEURY_DECOMPOSE_SYSTEM
+            },
+            {
+                "role": "user",
+                "content": QEURY_DECOMPOSE_USER.format(query=query)
+            }
+        ]
+
+        response = await model_client.ainvoke(
+            model_name,
+            model_input
+        )
+
+        try:
+            parser = JsonOutputParser()
+            result = await parser.parse(response.content)
+            if not result or not isinstance(result, list):
+                logger.error(f"Failed to parse query decomposition result, response []")
+                return []
+            return result
+        except Exception as e:
+            logger.error(f"Failed to decompose query with error: {str(e)}")
+            return []
 
     async def list_user_mem(self, user_id: str, group_id: str, nums: int, pages: int) -> list[dict[str, Any]] | None:
         list_res = await self.mem_store.get_in_range(user_id, group_id, nums * (pages - 1), nums * pages)

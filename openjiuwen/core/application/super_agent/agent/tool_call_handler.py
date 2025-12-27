@@ -11,8 +11,7 @@ from typing import Dict, Any, List, Optional
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session import Session
-from openjiuwen.core.foundation.tool import LocalFunction
-from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 
 
 class ToolCallHandler:
@@ -59,17 +58,21 @@ class ToolCallHandler:
 
         # Create the tool with proper parameters
         sub_agent_tool = LocalFunction(
-            name=agent_name,
-            description=f"{description}. Delegate a subtask to this specialized single_agent by providing a clear task description.",
-            params=[
-                Param(
-                    name="subtask",
-                    description="The task or question to delegate to this sub-single_agent. Be specific and provide all necessary context.",
-                    param_type="string",
-                    required=True
-                )
-            ],
-            func=sub_agent_placeholder
+            card=ToolCard(
+                name=agent_name,
+                description=f"{description}. Delegate a subtask to this specialized single_agent by providing a clear task description.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "subtask": {
+                            "description": "The task or question to delegate to this sub-single_agent. Be specific and provide all necessary context.",
+                            "type": "string",
+                        },
+                    },
+                    "required": ["subtask"],
+                },
+            ),
+            func=sub_agent_placeholder,
         )
 
         logger.info(f"Created tool wrapper for sub-single_agent '{agent_name}'")

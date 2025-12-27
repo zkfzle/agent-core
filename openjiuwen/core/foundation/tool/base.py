@@ -5,14 +5,24 @@
 from abc import abstractmethod
 from typing import AsyncIterator
 
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool.schema import ToolInfo, ToolCard
 from openjiuwen.core.foundation.tool.constant import Input, Output
 
 
 class Tool:
     """tool class that defined the data types and content for LLM modules"""
-    def __init__(self):
-        pass
+    def __init__(self, card: ToolCard):
+        """Constructs a new tool instance with the given configuration.
+
+        Args:
+            card: ToolCard configuration defining tool behavior and parameters
+
+        Note:
+            The tool card is stored internally and used for validation and
+            metadata purposes throughout the tool's lifecycle.
+        """
+        self.name = card.name
+        self.card = card
 
     @abstractmethod
     async def invoke(self, inputs: Input, **kwargs) -> Output:
@@ -51,7 +61,20 @@ class Tool:
         """
         pass
 
-    @abstractmethod
     def get_tool_info(self) -> ToolInfo:
-        """get tool info"""
-        pass
+        """Generate comprehensive tool information for large language model integration.
+
+        Converts the internal ToolCard configuration into a structured ToolInfo object
+        optimized for LLM consumption. This includes formatting tool descriptions and
+        parameter schemas in a way that helps language models understand and correctly
+        invoke the tool.
+
+        Returns:
+            ToolInfo: Complete tool metadata including name, description,
+                     parameter schemas, execution capabilities, and version info
+
+        Note:
+            This method typically extracts information from the tool card
+            and may augment it with session-derived metadata.
+        """
+        return ToolInfo(name=self.name, description=self.card.description, parameters=self.card.parameters)

@@ -10,10 +10,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
 from openjiuwen.core.session.tracer import decorate_tool_with_trace
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.foundation.tool import (
-    McpToolInfo,
-    MCPTool
-)
+from openjiuwen.core.foundation.tool import McpToolCard, MCPTool
 from openjiuwen.core.protocols.mcp import (
     McpClient,
     SseClient,
@@ -30,7 +27,7 @@ class ToolMgr(AbstractManager[Tool]):
     def __init__(self) -> None:
         super().__init__()
         self._tool_infos: dict[str, ToolInfo] = {}
-        self._server_tool_infos: dict[str, List[McpToolInfo]] = {}
+        self._server_tool_infos: dict[str, List[McpToolCard]] = {}
         self._server_configs: dict[str, ToolServerConfig] = {}
         self._mcp_clients: dict[str, McpClient] = {}
 
@@ -109,8 +106,9 @@ class ToolMgr(AbstractManager[Tool]):
             self._handle_exception(e, StatusCode.SESSION_TOOL_GET_FAILED, "remove")
             return None
 
-    def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None) \
-            -> Optional[List[Union[ToolInfo, McpToolInfo]]]:
+    def get_tool_infos(
+        self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None
+    ) -> Optional[List[Union[ToolInfo, McpToolCard]]]:
         try:
             delimiter = self._normalize_delimiter(name_delimiter, default_delimiter=".")
             if tool_server_name:
@@ -233,7 +231,7 @@ class ToolMgr(AbstractManager[Tool]):
 
     @staticmethod
     def _normalize_mcp_tool_info(tool_info: ToolInfo, delimiter: str):
-        if not isinstance(tool_info, McpToolInfo):
+        if not isinstance(tool_info, McpToolCard):
             return tool_info
 
         copy_tool_info = deepcopy(tool_info)

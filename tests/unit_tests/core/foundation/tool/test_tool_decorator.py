@@ -6,18 +6,29 @@ import pytest
 from typing import Annotated, Any, List, Dict
 from pydantic import Field, BaseModel
 
-from openjiuwen.core.foundation.tool.tool import tool
-from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool.tool import tool, ToolCard
 from openjiuwen.core.foundation.tool.schema import ToolInfo
 
 
 @tool(
-    name="local_sub",
-    description="local function for sub",
-    params=[
-        Param(name="a", description="first arg", param_type="int", required=True),
-        Param(name="b", description="second arg", param_type="int", required=True),
-    ],
+    card=ToolCard(
+        name="local_sub",
+        description="local function for sub",
+        parameters={
+            "type": "object",
+            "properties": {
+                "a": {
+                    "description": "first arg",
+                    "type": "integer",
+                },
+                "b": {
+                    "description": "second arg",
+                    "type": "integer",
+                },
+            },
+            "required": ["a", "b"],
+        },
+    )
 )
 def sub(a: int, b: int):
     return a - b
@@ -56,7 +67,7 @@ class TestToolDecorator:
         # invoke
         sub_result = await sub.invoke({"a": 5, "b": 1})
         self.assertEqual(sub.name, "local_sub")
-        self.assertEqual(sub.description, "local function for sub")
+        self.assertEqual(sub.card.description, "local function for sub")
         self.assertEqual(sub_result, 4)
 
         # get_tool_info
@@ -86,7 +97,7 @@ class TestToolDecorator:
                     "price": 1.5,
                     "is_season": True,
                     "color": ["red", "yellow"],
-                    "note": {"备注": "苹果不好卖"},
+                    "note": {"key": "备注", "value": 10},
                 },
                 {
                     "name": "香蕉",
@@ -94,51 +105,63 @@ class TestToolDecorator:
                     "price": 1,
                     "is_season": False,
                     "color": ["yellow"],
-                    "note": {"备注": "香蕉好卖"},
+                    "note": {"key": "备注", "value": 20},
                 },
             ],
         }
         summarize_result = await summarize.invoke(input)
         self.assertEqual(summarize.name, "summarize")
-        self.assertEqual(summarize.description, "汇总商品信息")
+        self.assertEqual(summarize.card.description, "汇总商品信息")
         self.assertEqual(summarize_result, 7.0)
 
         # get_tool_info
         summarize_res = summarize.get_tool_info()
         summarize_tool_info = ToolInfo(
+            type="function",
             name="summarize",
             description="汇总商品信息",
             parameters={
-                "type": "object",
-                "properties": {
-                    "title": {"description": "汇总标题", "type": "string"},
-                    "products": {
-                        "description": "商品列表",
-                        "type": "array",
-                        "items": {
-                            "name": {"description": "商品名称", "type": "string"},
-                            "required": ["name", "is_season", "color", "note"],
-                            "sales": {"description": "销量", "type": "integer"},
-                            "price": {"description": "价格必须大于0", "type": "number"},
-                            "is_season": {"description": "是否当季", "type": "boolean"},
+                "$defs": {
+                    "Note": {
+                        "properties": {
+                            "key": {"title": "Key", "type": "string"},
+                            "value": {"title": "Value", "type": "integer"},
+                        },
+                        "required": ["key", "value"],
+                        "title": "Note",
+                        "type": "object",
+                    },
+                    "ProductInfo": {
+                        "properties": {
+                            "name": {"description": "商品名称", "title": "Name", "type": "string"},
+                            "sales": {"default": 0, "description": "销量", "title": "Sales", "type": "integer"},
+                            "price": {
+                                "default": 1.0,
+                                "description": "价格必须大于0",
+                                "title": "Price",
+                                "type": "number",
+                            },
+                            "is_season": {"description": "是否当季", "title": "Is Season", "type": "boolean"},
                             "color": {
                                 "description": "颜色",
+                                "items": {"type": "string"},
+                                "title": "Color",
                                 "type": "array",
-                                "items": {"description": "颜色", "type": "string"},
                             },
-                            "note": {
-                                "description": "备注",
-                                "type": "object",
-                                "properties": {
-                                    "key": {"description": "", "type": "string"},
-                                    "required": ["key", "value"],
-                                    "value": {"description": "", "type": "integer"},
-                                },
-                            },
+                            "note": {"$ref": "#/$defs/Note", "description": "备注"},
                         },
+                        "required": ["name", "is_season", "color", "note"],
+                        "title": "ProductInfo",
+                        "type": "object",
                     },
                 },
+                "properties": {
+                    "title": {"title": "Title", "type": "string"},
+                    "products": {"items": {"$ref": "#/$defs/ProductInfo"}, "title": "Products", "type": "array"},
+                },
                 "required": ["title", "products"],
+                "title": "summarize_tool_input",
+                "type": "object",
             },
         )
         self.assertEqual(summarize_res, summarize_tool_info)

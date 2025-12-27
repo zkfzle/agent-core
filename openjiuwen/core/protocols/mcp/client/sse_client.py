@@ -9,7 +9,7 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.tool import McpToolInfo
+from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.protocols.mcp.base import NO_TIMEOUT
 from openjiuwen.core.protocols.mcp.client.mcp_client import McpClient
 
@@ -76,7 +76,7 @@ class SseClient(McpClient):
             logger.error(f"SSE disconnection failed: {e}")
             return False
 
-    async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
+    async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[Any]:
         """List available tools via SSE"""
         if not self._session:
             raise RuntimeError("Not connected to SSE server")
@@ -84,10 +84,10 @@ class SseClient(McpClient):
         try:
             tools_response = await self._session.list_tools()
             tools_list = [
-                McpToolInfo(
+                McpToolCard(
                     name=tool.name,
                     description=getattr(tool, "description", ""),
-                    input_schema=getattr(tool, "inputSchema", {})
+                    input_schema=getattr(tool, "inputSchema", {}),
                 )
                 for tool in tools_response.tools
             ]
@@ -115,7 +115,7 @@ class SseClient(McpClient):
             logger.error(f"Tool call failed via SSE: {e}")
             raise
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[McpToolInfo]:
+    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
         """Get specific tool info via SSE"""
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:

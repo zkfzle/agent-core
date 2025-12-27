@@ -36,8 +36,7 @@ from openjiuwen.core.application.agents_for_studio import (
 )
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import LocalFunction
-from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 
 from openjiuwen.core.protocols.mcp import ToolServerConfig
 from openjiuwen.core.runner import Runner, resource_mgr
@@ -136,35 +135,53 @@ def create_math_tools():
     """Create basic math tools"""
     # Addition tool
     add_tool = LocalFunction(
-        name="add",
-        description="Add two numbers together",
-        params=[
-            Param(name="a", description="First number", param_type="integer", required=True),
-            Param(name="b", description="Second number", param_type="integer", required=True),
-        ],
-        func=lambda a, b: a + b
+        card=ToolCard(
+            name="add",
+            description="Add two numbers together",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "First number", "type": "integer"},
+                    "b": {"description": "Second number", "type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+        ),
+        func=lambda a, b: a + b,
     )
 
     # Multiplication tool
     multiply_tool = LocalFunction(
-        name="multiply",
-        description="Multiply two numbers together",
-        params=[
-            Param(name="a", description="First number", param_type="integer", required=True),
-            Param(name="b", description="Second number", param_type="integer", required=True),
-        ],
-        func=lambda a, b: a * b
+        card=ToolCard(
+            name="multiply",
+            description="Multiply two numbers together",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "First number", "type": "integer"},
+                    "b": {"description": "Second number", "type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+        ),
+        func=lambda a, b: a * b,
     )
 
     # Subtraction tool
     subtract_tool = LocalFunction(
-        name="subtract",
-        description="Subtract two numbers",
-        params=[
-            Param(name="a", description="First number", param_type="integer", required=True),
-            Param(name="b", description="Second number to subtract", param_type="integer", required=True),
-        ],
-        func=lambda a, b: a - b
+        card=ToolCard(
+            name="subtract",
+            description="Subtract two numbers",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "First number", "type": "integer"},
+                    "b": {"description": "Second number to subtract", "type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+        ),
+        func=lambda a, b: a - b,
     )
 
     return [add_tool, multiply_tool, subtract_tool]
@@ -178,10 +195,11 @@ def create_date_tool():
         return current_datetime.strftime("%Y-%m-%d")
 
     date_tool = LocalFunction(
-        name="get_current_date",
-        description="Get the current date in YYYY-MM-DD format",
-        params=[],
-        func=get_current_date
+        card=ToolCard(
+            name="get_current_date",
+            description="Get the current date in YYYY-MM-DD format",
+        ),
+        func=get_current_date,
     )
 
     return date_tool
@@ -241,30 +259,18 @@ async def _register_mcp_server_as_local_tools(
 
     for info in tool_infos:
         schema = getattr(info, "schema", {}) or {}
-        properties = schema.get("properties", {}) or {}
-        required = set(schema.get("required", []) or [])
-
-        # 3. 把 JSON-Schema 转成 Param 列表
-        params_def = []
-        for pname, pinfo in properties.items():
-            params_def.append(
-                Param(
-                    name=pname,
-                    description=pinfo.get("description", ""),
-                    param_type=pinfo.get("type", "string"),
-                    required=pname in required,
-                )
-            )
 
         # 4. 为每个 tool 生成自己独立的 coroutine wrapper
         async_func = _make_mcp_call_coroutine(server_name, info.name)
 
         #  LocalFunction 支持 func 是 async 函数?
         mcp_local_tool = LocalFunction(
-            name=info.name,
-            description=getattr(info, "description", "") or f"MCP tool {info.name} from {server_name}",
-            params=params_def,
-            func=async_func,   # 传入的是 async 函数
+            card=ToolCard(
+                name=info.name,
+                description=getattr(info, "description", "") or f"MCP tool {info.name} from {server_name}",
+                parameters=schema,
+            ),
+            func=async_func,  # 传入的是 async 函数
         )
 
         local_tools.append(mcp_local_tool)

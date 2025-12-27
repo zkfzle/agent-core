@@ -8,8 +8,7 @@ from openjiuwen.core.workflow import ToolComponentConfig, ToolComponent
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.session import WorkflowSession, NodeSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
@@ -38,14 +37,21 @@ def mock_tool_input():
 @pytest.fixture
 def mock_tool():
     return RestfulApi(
-        name="test",
-        description="test",
-        params=[Param(name="location", description="location", type='string'),
-                Param(name="date", description="date", type='int')],
-        path="http://127.0.0.1:8000",
-        headers={},
-        method="GET",
-        response=[],
+        card=RestfulApiCard(
+            name="test",
+            description="test",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "location": {"description": "location", "type": "string"},
+                    "date": {"description": "date", "type": "integer"},
+                },
+                "required": ["location", "date"],
+            },
+            path="http://127.0.0.1:8000",
+            headers={},
+            method="GET",
+        ),
     )
 
 
@@ -98,12 +104,18 @@ async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, f
 
 
 @tool(
-    name="test_local_function",
-    description="测试本地函数",
-    params=[
-        Param(name="a", description="参数1", param_type="string", required=True),
-        Param(name="b", description="参数2", param_type="integer", default_value=789, required=True),
-    ],
+    card=ToolCard(
+        name="test_local_function",
+        description="测试本地函数",
+        parameters={
+            "type": "object",
+            "properties": {
+                "a": {"description": "参数1", "type": "string"},
+                "b": {"description": "参数2", "type": "integer", "default": 789},
+            },
+            "required": ["a"],
+        },
+    )
 )
 def test_local_function(a, b):
     return dict(res=a, info=b)

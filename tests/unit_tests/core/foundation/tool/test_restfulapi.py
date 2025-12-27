@@ -7,8 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from openjiuwen.core.foundation.tool.schema import ToolInfo
-from openjiuwen.core.foundation.tool.param import Param
+from openjiuwen.core.foundation.tool import ToolInfo, RestfulApiCard
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
@@ -36,13 +35,13 @@ class TestRestFulApi:
     @patch('requests.sessions.Session.request')
     async def test_invoke(self, mock_request):
         mock_data = RestfulApi(
-            name="test",
-            description="test",
-            params=[],
-            path="http://127.0.0.1:8000",
-            headers={},
-            method="GET",
-            response=[],
+            card=RestfulApiCard(
+                name="test",
+                description="test",
+                path="http://127.0.0.1:8000",
+                headers={},
+                method="GET",
+            ),
         )
         mock_request.return_value = dict()
         try:
@@ -51,18 +50,18 @@ class TestRestFulApi:
             del os.environ["RESTFUL_SSL_CERT"]
         except Exception as e:
             pass
-        self.assertEqual(mock_data.headers, {})
+        self.assertEqual(mock_data._headers, {})
 
     @patch("requests.sessions.Session.request")
     async def test_stream(self, mock_request):
         mock_data = RestfulApi(
-            name="test",
-            description="test",
-            params=[],
-            path="http://127.0.0.1:8000",
-            headers={},
-            method="GET",
-            response=[],
+            card=RestfulApiCard(
+                name="test",
+                description="test",
+                path="http://127.0.0.1:8000",
+                headers={},
+                method="GET",
+            ),
         )
         mock_request.return_value = dict()
         os.environ["RESTFUL_SSL_CERT"] = "temp.crt"
@@ -73,13 +72,20 @@ class TestRestFulApi:
 
     def test_get_tool_info(self):
         mock_data = RestfulApi(
-            name="test",
-            description="test",
-            params=[Param("test", "test", param_type="string", default_value="123")],
-            path="http://127.0.0.1:8000",
-            headers={},
-            method="GET",
-            response=[Param("results", "test", param_type="string", default_value="456")],
+            card=RestfulApiCard(
+                name="test",
+                description="test",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "test": {"description": "test", "type": "string", "default": "123"},
+                    },
+                    "required": ["test"],
+                },
+                path="http://127.0.0.1:8000",
+                headers={},
+                method="GET",
+            ),
         )
         res = mock_data.get_tool_info()
         too_info = ToolInfo(
@@ -87,7 +93,7 @@ class TestRestFulApi:
             description="test",
             parameters={
                 "type": "object",
-                "properties": {"test": {"description": "test", "type": "string"}},
+                "properties": {"test": {"description": "test", "type": "string", "default": "123"}},
                 "required": ["test"],
             },
         )

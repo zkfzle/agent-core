@@ -19,7 +19,7 @@ from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, Param
 
 from openjiuwen.core.foundation.llm import UsageMetadata
-from openjiuwen.core.foundation.tool import ToolCall
+from openjiuwen.core.foundation.tool import ToolCall,ToolCard
 from openjiuwen.core.foundation.llm import ModelConfig
 
 
@@ -32,21 +32,29 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 # ——————————————————————————————————————————工具信息————————————————————————————————————#
 TOOLS = [
     LocalFunction(
-        name="ac_open",
-        description="空调控制工具，根据用户指令打开空调",
-        params=[]
+        card=ToolCard(
+            name="ac_open",
+            description="空调控制工具，根据用户指令打开空调",
+        ),
     ),
     LocalFunction(
-        name="ac_close",
-        description="空调控制工具，根据用户指令打开空调",
-        params=[]
+        card=ToolCard(
+            name="ac_close",
+            description="空调控制工具，根据用户指令关闭空调",
+        )
     ),
     LocalFunction(
-        name="ac_control",
-        description="空调温度调节工具，按用户指令设置温度",
-        params=[
-            Param(name="temperature", description="需要设置的温度", param_type="int"),
-        ]
+        card=ToolCard(
+            name="ac_control",
+            description="空调温度调节工具，按用户指令设置温度",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "temperature": {"description": "需要设置的温度", "type": "integer"},
+                },
+                "required": ["temperature"],
+            },
+        )
     ),
 ]
 

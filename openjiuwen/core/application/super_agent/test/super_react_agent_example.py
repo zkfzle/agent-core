@@ -31,8 +31,7 @@ from openjiuwen.core.application.agents_for_studio import (
 )
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import LocalFunction
-from openjiuwen.core.foundation.tool import Param
+from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 
 
 # Environment configuration
@@ -62,35 +61,53 @@ def create_math_tools():
     """Create basic math tools"""
     # Addition tool
     add_tool = LocalFunction(
-        name="add",
-        description="Add two numbers together",
-        params=[
-            Param(name="a", description="First number", param_type="integer", required=True),
-            Param(name="b", description="Second number", param_type="integer", required=True),
-        ],
-        func=lambda a, b: a + b
+        card=ToolCard(
+            name="add",
+            description="Add two numbers together",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "First number", "type": "integer"},
+                    "b": {"description": "Second number", "type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+        ),
+        func=lambda a, b: a + b,
     )
 
     # Multiplication tool
     multiply_tool = LocalFunction(
-        name="multiply",
-        description="Multiply two numbers together",
-        params=[
-            Param(name="a", description="First number", param_type="integer", required=True),
-            Param(name="b", description="Second number", param_type="integer", required=True),
-        ],
-        func=lambda a, b: a * b
+        card=ToolCard(
+            name="multiply",
+            description="Multiply two numbers together",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "First number", "type": "integer"},
+                    "b": {"description": "Second number", "type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+        ),
+        func=lambda a, b: a * b,
     )
 
     # Subtraction tool
     subtract_tool = LocalFunction(
-        name="subtract",
-        description="Subtract two numbers",
-        params=[
-            Param(name="a", description="First number", param_type="integer", required=True),
-            Param(name="b", description="Second number to subtract", param_type="integer", required=True),
-        ],
-        func=lambda a, b: a - b
+        card=ToolCard(
+            name="subtract",
+            description="Subtract two numbers",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "First number", "type": "integer"},
+                    "b": {"description": "Second number to subtract", "type": "integer"},
+                },
+                "required": ["a", "b"],
+            },
+        ),
+        func=lambda a, b: a - b,
     )
 
     return [add_tool, multiply_tool, subtract_tool]
@@ -104,10 +121,11 @@ def create_date_tool():
         return current_datetime.strftime("%Y-%m-%d")
 
     date_tool = LocalFunction(
-        name="get_current_date",
-        description="Get the current date in YYYY-MM-DD format",
-        params=[],
-        func=get_current_date
+        card=ToolCard(
+            name="get_current_date",
+            description="Get the current date in YYYY-MM-DD format",
+        ),
+        func=get_current_date,
     )
 
     return date_tool

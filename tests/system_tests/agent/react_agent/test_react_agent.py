@@ -14,8 +14,7 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentCo
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.runner import Runner, resource_mgr
 
@@ -58,16 +57,21 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
     def _create_tool():
         """创建 RestfulApi 工具"""
         weather_plugin = RestfulApi(
-            name="WeatherReporter",
-            description="天气查询插件",
-            params=[
-                Param(name="location", description="天气查询的地点，必须为英文", type="string", required=True),
-                Param(name="date", description="天气查询的时间，格式为YYYY-MM-DD", type="string", required=True),
-            ],
-            path="http://127.0.0.1:8000/weather",
-            headers={},
-            method="GET",
-            response=[],
+            card=RestfulApiCard(
+                name="WeatherReporter",
+                description="天气查询插件",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {"description": "天气查询的地点，必须为英文", "type": "string"},
+                        "date": {"description": "天气查询的时间，格式为YYYY-MM-DD", "type": "string"},
+                    },
+                    "required": ["location", "date"],
+                },
+                path="http://127.0.0.1:8000/weather",
+                headers={},
+                method="GET",
+            ),
         )
         return weather_plugin
 
@@ -75,24 +79,36 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
     def _create_function_tool():
         """创建 LocalFunction 工具"""
         add_plugin = LocalFunction(
-            name="add",
-            description="加法",
-            params=[
-                Param(name="a", description="加数", type="number", required=True),
-                Param(name="b", description="被加数", type="number", required=True),
-            ],
-            func=lambda a, b: a + b
+            card=ToolCard(
+                name="add",
+                description="加法",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "a": {"description": "加数", "type": "number"},
+                        "b": {"description": "被加数", "type": "number"},
+                    },
+                    "required": ["a", "b"],
+                },
+            ),
+            func=lambda a, b: a + b,
         )
         return add_plugin
 
     @staticmethod
     @tool(
-        name="add",
-        description="加法",
-        params=[
-            Param(name="a", description="加数", type="number", required=True),
-            Param(name="b", description="被加数", type="number", required=True),
-        ],
+        card=ToolCard(
+            name="add",
+            description="加法",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "加数", "type": "number"},
+                    "b": {"description": "被加数", "type": "number"},
+                },
+                "required": ["a", "b"],
+            },
+        )
     )
     def add_function(a, b):
         """加法函数，使用tool注解装饰"""

@@ -9,10 +9,10 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
-from openjiuwen.core.foundation.tool.schema import ToolInfo
+from openjiuwen.core.foundation.tool.schema import ToolCard
 
 
-class McpToolInfo(ToolInfo):
+class McpToolCard(ToolCard):
     input_schema: dict = Field(default_factory=dict)
     server_name: str = Field(default="")
 
@@ -20,9 +20,7 @@ class McpToolInfo(ToolInfo):
 class MCPTool(Tool):
     """MCP Tool class that wraps MCP server tools for LLM modules"""
 
-    def __init__(self,
-                 mcp_client: Any,  # McpClient or its subclasses
-                 tool_info: McpToolInfo):
+    def __init__(self, mcp_client: Any, tool_info: McpToolCard):  # McpClient or its subclasses
         """
         Initialize MCP Tool
 
@@ -31,9 +29,8 @@ class MCPTool(Tool):
             tool_name: Name of the MCP tool
             server_name: Name of the MCP server (for logging and identification)
         """
-        super().__init__()
+        super().__init__(tool_info)
         self.mcp_client = mcp_client
-        self._tool_info = tool_info
 
     async def stream(self, inputs: Input, **kwargs) -> AsyncIterator[Output]:
         raise JiuWenBaseException(
@@ -46,15 +43,10 @@ class MCPTool(Tool):
             # Prepare arguments for MCP tool call
             arguments = inputs if isinstance(inputs, dict) else {}
 
-            result = await self.mcp_client.call_tool(
-                tool_name=self._tool_info.name,
-                arguments=arguments
-            )
+            result = await self.mcp_client.call_tool(tool_name=self.name, arguments=arguments)
             return {"result": result}
 
         except Exception as e:
-            return {"error": f"Tool invocation failed: {str(e)}"}
-
-    def get_tool_info(self) -> ToolInfo:
-        """Get tool information"""
-        return self._tool_info
+            raise JiuWenBaseException(
+                error_code=StatusCode.PLUGIN_UNEXPECTED_ERROR.code, message=f"Tool invocation failed: {str(e)}"
+            )

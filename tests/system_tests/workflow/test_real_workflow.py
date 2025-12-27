@@ -39,8 +39,7 @@ from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import CustomSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
@@ -56,16 +55,21 @@ _FINAL_RESULT: str = "上海今天晴 30°C"
 
 # Mock RESTful Api 元信息
 _MOCK_TOOL = RestfulApi(
-    name="test",
-    description="test",
-    params=[
-        Param(name="location", description="地点", type="string"),
-        Param(name="date", description="日期", type="int"),
-    ],
-    path="http://127.0.0.1:8000",
-    headers={},
-    method="GET",
-    response=[],
+    card=RestfulApiCard(
+        name="test",
+        description="test",
+        parameters={
+            "type": "object",
+            "properties": {
+                "location": {"description": "地点", "type": "string"},
+                "date": {"description": "日期", "type": "integer"},
+            },
+            "required": ["location", "date"],
+        },
+        path="http://127.0.0.1:8000",
+        headers={},
+        method="GET",
+    ),
 )
 
 # --------------------------- Prompt 模板 --------------------------- #

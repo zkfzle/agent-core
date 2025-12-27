@@ -18,8 +18,7 @@ from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session import BaseSession
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.visualization.drawable import Drawable
@@ -840,16 +839,21 @@ def test_visualize_simple_workflow_intent():
 
     tool_config = ToolComponentConfig()
     weather_tool = RestfulApi(
-        name="WeatherReporter",
-        description="天气查询插件",
-        params=[
-            Param(name="location", description="地点", type="string", required=True),
-            Param(name="date", description="日期", type="string", required=True),
-        ],
-        path="http://127.0.0.1:9000/weather",
-        headers={},
-        method="GET",
-        response=[],
+        card=RestfulApiCard(
+            name="WeatherReporter",
+            description="天气查询插件",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "location": {"description": "地点", "type": "string"},
+                    "date": {"description": "日期", "type": "string"},
+                },
+                "required": ["location", "date"],
+            },
+            path="http://127.0.0.1:9000/weather",
+            headers={},
+            method="GET",
+        ),
     )
     plugin = ToolComponent(tool_config).bind_tool(weather_tool)
     flow.add_workflow_comp(

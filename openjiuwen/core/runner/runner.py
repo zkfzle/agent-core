@@ -28,7 +28,7 @@ from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session import TaskSession
 from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.foundation.tool import McpToolInfo
+from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.workflow import Workflow
 
@@ -214,8 +214,9 @@ class Runner:
         async for chunk in tool_instance.astream(inputs, session=session):
             yield chunk
 
-    async def list_tools(self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None) -> Union[
-        Optional[List[McpToolInfo]], List[Optional[List[McpToolInfo]]]]:
+    async def list_tools(
+        self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None
+    ) -> Union[Optional[List[McpToolCard]], List[Optional[List[McpToolCard]]]]:
         if not tool_server_name:
             return None
         tool_mgr = self._resource_manager.tool()

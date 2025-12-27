@@ -15,9 +15,7 @@ from openjiuwen.core.application.agents_for_studio import (
     ContextManager
 )
 from openjiuwen.core.application.agents_for_studio import O3Handler
-from openjiuwen.core.application.agents_for_studio import (
-    SuperAgentConfig
-)
+from openjiuwen.core.application.agents_for_studio import SuperAgentConfig
 from openjiuwen.core.application.agents_for_studio import (
     ToolCallHandler
 )
@@ -31,9 +29,8 @@ from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm import AIMessage
 from openjiuwen.core.foundation.tool import Tool
-from openjiuwen.core.foundation.tool import LocalFunction
+from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 from openjiuwen.core.protocols.mcp import ToolServerConfig
-from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.workflow import Workflow
 
 
@@ -179,27 +176,16 @@ class SuperReActAgent(BaseAgent):
         local_tools = []
         for info in tool_infos:
             schema = getattr(info, "schema", {}) or {}
-            properties = schema.get("properties", {}) or {}
-            required = set(schema.get("required", []) or [])
-
-            params_def = []
-            for pname, pinfo in properties.items():
-                params_def.append(
-                    Param(
-                        name=pname,
-                        description=pinfo.get("description", ""),
-                        param_type=pinfo.get("type", "string"),
-                        required=pname in required,
-                    )
-                )
 
             async_func = _make_mcp_call_coroutine(server_name, info.name)
 
             mcp_local_tool = LocalFunction(
-                name=info.name,
-                description=info.description,
-                params=params_def,
-                func=async_func,   
+                card=ToolCard(
+                    name=info.name,
+                    description=getattr(info, "description", "") or f"MCP tool {info.name} from {server_name}",
+                    parameters=schema,
+                ),
+                func=async_func,
             )
 
             local_tools.append(mcp_local_tool)
@@ -386,10 +372,9 @@ class SuperReActAgent(BaseAgent):
                 return {"output": "No query provided", "result_type": "error"}
 
             file_path  = inputs.get("file_path", None)
-            #1 11.27: Process inputs of GAIA  
+            # 1 11.27: Process inputs of GAIA
             user_input = process_input(task_description=user_input, task_file_name=file_path)
-            
-            
+
             # Extract O3 hints if enabled (main single_agent only)
             o3_notes = ""
             if self._agent_config.enable_o3_hints and self._agent_config.agent_type == "main":
@@ -401,12 +386,11 @@ class SuperReActAgent(BaseAgent):
                     except Exception as e:
                         logger.warning(f"O3 hints extraction failed: {e}")
                         o3_notes = ""
-            
-            #2 11.27: add input prompt 
+
+            # 2 11.27: add input prompt
             user_input = get_task_instruction_prompt(task_description=user_input, o3_notes=o3_notes, use_skill=True)
             logger.info(f"complete_user_inputs: {user_input}")
-            
-            
+
             # ReAct loop
             iteration = 0
             max_iteration = self._agent_config.constrain.max_iteration

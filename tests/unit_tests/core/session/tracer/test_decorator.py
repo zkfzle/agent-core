@@ -13,7 +13,7 @@ from openjiuwen.core.session.tracer import decorate_tool_with_trace, decorate_wo
     decorate_model_with_trace
 from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm import BaseMessage
-from openjiuwen.core.foundation.tool import ToolInfo
+from openjiuwen.core.foundation.tool import ToolInfo, ToolCard
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
 from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
@@ -46,8 +46,9 @@ def get_llm_config():
 
 
 class MockTool(Tool):
-    def __init__(self):
-        super().__init__()
+
+    def __init__(self, card: ToolCard):
+        super().__init__(card)
         self.name = "mock tool"
 
     async def invoke(self, inputs: Input, **kwargs) -> Output:
@@ -127,7 +128,7 @@ class MockTracer:
 
 class TestDecator:
     async def test_decorate_tool(self):
-        tool = MockTool()
+        tool = MockTool(card=ToolCard(name="test_tool", description="test tool"))
         results = []
 
         async def mock_trigger(handler_class_name: str, event_name: str, **kwargs):

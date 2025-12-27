@@ -4,7 +4,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional
 
-from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.protocols.mcp.base import NO_TIMEOUT
 
 
@@ -21,7 +20,7 @@ class McpClient(ABC):
         pass
 
     @abstractmethod
-    async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
+    async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[Any]:
         pass
 
     @abstractmethod
@@ -29,6 +28,5 @@ class McpClient(ABC):
         pass
 
     @abstractmethod
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[McpToolInfo]:
+    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
         pass
-

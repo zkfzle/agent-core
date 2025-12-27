@@ -16,7 +16,6 @@ from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.tool import constant
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
-from openjiuwen.core.foundation.tool import Param
 
 
 DEFAULT_EXCEPTION_ERROR_CODE = -1
@@ -52,67 +51,13 @@ class ToolExecutable(ComponentExecutable):
             ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_INPUTS_ERROR,
                                            ExceptionUtils.format_validation_error(e))
 
-    @staticmethod
-    def _set_defaults_for_required_params(inputs, params):
-        result = inputs
-        for param in params:
-            if param.required and param.name and inputs.get(param.name) is None:
-                if param.default_value is not None:
-                    result[param.name] = param.default_value
-                else:
-                    ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                   f"Required parameter {param.name} is missing.")
-        return result
-
-    @staticmethod
-    def _validate_inputs_type(inputs, params):
-        for param in params:
-            if param.name in inputs:
-                value = inputs[param.name]
-                if value is None or not isinstance(param.type, str):
-                    ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                   f"Parameter {param.name} or type is None.")
-
-                if "integer" == param.type.lower():
-                    try:
-                        value = int(value)
-                    except ValueError:
-                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                       f"Parameter {param.name} is not an integer.")
-                elif "number" == param.type.lower():
-                    try:
-                        value = float(value)
-                    except ValueError:
-                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                       f"Parameter {param.name} is not a float.")
-                elif "boolean" == param.type.lower():
-                    if value in [True, False, "true", "false", "True", "False"]:
-                        value = bool(value)
-                    else:
-                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                       f"Parameter {param.name} is not a boolean.")
-                elif "string" == param.type.lower():
-                    value = str(value)
-                elif "object" == param.type.lower():
-                    if not isinstance(value, dict):
-                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                       f"Parameter {param.name} is not an object.")
-                elif "array" == param.type.lower():
-                    if not isinstance(value, list):
-                        ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                       f"Parameter {param.name} is not an array.")
-                else:
-                    ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_CHECK_PARAM_ERROR,
-                                                   f"Parameter {param.name}, {param.type} is not a valid type.")
-                inputs[param.name] = value
 
     async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         if self._tool is None:
             ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
         tool_inputs = self._validate_inputs(inputs)
-        formatted_inputs = self._prepare_inputs(tool_inputs, self._get_tool_param())
         try:
-            response = await self._tool.invoke(formatted_inputs)
+            response = await self._tool.invoke(tool_inputs)
             response = self._post_process_tool_result(response)
         except Exception as e:
             response = {constant.ERR_MESSAGE: "Failed to execute tool", constant.RESTFUL_DATA: "",
@@ -126,15 +71,6 @@ class ToolExecutable(ComponentExecutable):
 
     def _create_output(self, response: dict):
         return ToolComponentOutput(**response).model_dump()
-
-    def _get_tool_param(self) -> List[Param]:
-        return self._tool.params if hasattr(self._tool, "params") else []
-
-    def _prepare_inputs(self, tool_inputs, params: List[Param]) -> dict:
-        result = tool_inputs
-        result = self._set_defaults_for_required_params(result, params)
-        self._validate_inputs_type(result, params)
-        return result
 
     def _post_process_tool_result(self, tool_result):
         result = dict()

@@ -18,8 +18,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 
@@ -95,16 +94,21 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def _create_tool():
         weather_plugin = RestfulApi(
-            name="WeatherReporter",
-            description="天气查询插件",
-            params=[
-                Param(name="location", description="天气查询的地点，必须为英文", type="string", required=True),
-                Param(name="date", description="天气查询的时间，格式为YYYY-MM-DD", type="string", required=True),
-            ],
-            path="http://127.0.0.1:8000/weather",
-            headers={},
-            method="GET",
-            response=[],
+            card=RestfulApiCard(
+                name="WeatherReporter",
+                description="天气查询插件",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {"description": "天气查询的地点，必须为英文", "type": "string"},
+                        "date": {"description": "天气查询的时间，格式为YYYY-MM-DD", "type": "string"},
+                    },
+                    "required": ["location", "date"],
+                },
+                path="http://127.0.0.1:8000/weather",
+                headers={},
+                method="GET",
+            ),
         )
         return weather_plugin
 
@@ -332,7 +336,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         result = await Runner.run_agent(llm_agent, {"conversation_id": str(uuid.uuid4()), "query": "昨天天气查询"})
         print(f"LLMAgent 第一次输出结果：{result}")
-        
+
         # 适配两种情况：1) LLM调用工作流返回交互请求  2) LLM直接回答
         if isinstance(result, list):
             # 情况1：返回交互请求列表（调用了工作流）
@@ -499,7 +503,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         # 使用固定的 conversation_id 保持会话状态
         conversation_id = str(uuid.uuid4())
-        
+
         print("\n【步骤1】发送天气查询请求，触发并行中断")
         interaction_output_schema = []
         async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": conversation_id}):
@@ -522,26 +526,26 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         else:
             interactive_input.update("questioner", {"location": "上海"})
             second_interrupt_expected = "interactive"
-        
+
         interaction_output_schema = []
         async for chunk in llm_agent.stream({"conversation_id": conversation_id, "query": interactive_input}):
             print(f"LLMAgent 第二次输出结果 >>> {chunk}")
             if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                 interaction_output_schema.append(chunk)
                 print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
-        
+
         # 恢复第一个中断后，应该触发第二个中断
         if len(interaction_output_schema) > 0:
             self.assertEqual(len(interaction_output_schema), 1, "应该返回另一个中断")
             self.assertEqual(interaction_output_schema[0].payload.id, second_interrupt_expected, f"应该返回{second_interrupt_expected}中断")
-            
+
             print(f"\n【步骤3】使用InteractiveInput恢复第二个中断 ({second_interrupt_expected})")
             interactive_input = InteractiveInput()
             if second_interrupt_expected == "interactive":
                 interactive_input.update("interactive", {"confirm_result": "确认操作"})
             else:
                 interactive_input.update("questioner", {"location": "上海"})
-            
+
             interaction_output_schema = []
             async for chunk in llm_agent.stream({"conversation_id": conversation_id, "query": interactive_input}):
                 print(f"LLMAgent 第三次输出结果 >>> {chunk}")
@@ -549,7 +553,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                     interaction_output_schema.append(chunk)
                     print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
             self.assertEqual(len(interaction_output_schema), 0, "应该全部完成")
-        
+
         print(f"✅ 调用校验通过：恢复中断工作流完成，返回结果正确")
 
     @unittest.skip("require network")
@@ -599,7 +603,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
 
         # 使用固定的 conversation_id 保持会话状态
         conversation_id = str(uuid.uuid4())
-        
+
         print("\n【步骤1】发送天气查询请求，触发并行中断")
         interaction_output_schema = []
         async for chunk in Runner.run_agent_streaming(llm_agent, {"query": "昨天天气查询", "conversation_id": conversation_id}):
@@ -617,7 +621,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         interactive_input = InteractiveInput()
         interactive_input.update("questioner", {"location": "上海"})
         interactive_input.update("interactive", {"confirm_result": "确认操作"})
-        
+
         # 由于一次性提供了所有输入，恢复过程中可能还会遇到其他中断，需要多次恢复
         max_retries = 3
         for i in range(max_retries):
@@ -627,12 +631,12 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
                     interaction_output_schema.append(chunk)
                     print(f"✓ 中断组件ID: {chunk.payload.id}, 提示: {chunk.payload.value}")
-            
+
             if len(interaction_output_schema) == 0:
                 print(f"✅ 所有中断已恢复完成")
                 break
             else:
                 print(f"⚠ 还有 {len(interaction_output_schema)} 个中断待恢复，继续...")
-        
+
         self.assertEqual(len(interaction_output_schema), 0, "应该全部完成")
         print(f"✅ 调用校验通过：恢复中断工作流完成，返回结果正确")

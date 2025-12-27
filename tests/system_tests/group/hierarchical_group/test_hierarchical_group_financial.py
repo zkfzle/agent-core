@@ -282,8 +282,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         """
         from openjiuwen.core.application.agents_for_studio.llm_agent import LLMAgent
         from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
-        from openjiuwen.core.foundation.tool.function.function import LocalFunction
-        from openjiuwen.core.foundation.tool.param import Param
+        from openjiuwen.core.foundation.tool.function.function import LocalFunction, ToolCard
 
         model_config = self._create_model_config()
         prompt_template = [
@@ -303,13 +302,19 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         # 可选：添加工具
         if with_tools:
             multiply_tool = LocalFunction(
-                name="multiply",
-                description="将两个数字相乘",
-                params=[
-                    Param(name="a", description="第一个数", type="number", required=True),
-                    Param(name="b", description="第二个数", type="number", required=True),
-                ],
-                func=lambda a, b: a * b
+                card=ToolCard(
+                    name="multiply",
+                    description="将两个数字相乘",
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "a": {"description": "第一个数", "type": "number"},
+                            "b": {"description": "第二个数", "type": "number"},
+                        },
+                        "required": ["a", "b"],
+                    },
+                ),
+                func=lambda a, b: a * b,
             )
             agent.add_tools([multiply_tool])
 
@@ -327,8 +332,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         """
         from openjiuwen.core.single_agent import ReActAgent
         from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
-        from openjiuwen.core.foundation.tool.function.function import LocalFunction
-        from openjiuwen.core.foundation.tool.param import Param
+        from openjiuwen.core.foundation.tool.function.function import LocalFunction, ToolCard
 
         model_config = self._create_model_config()
         prompt_template = [
@@ -347,13 +351,19 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 
         # 添加求和工具
         sum_tool = LocalFunction(
-            name="sum",
-            description="两数求和",
-            params=[
-                Param(name="a", description="第一个数", type="number", required=True),
-                Param(name="b", description="第二个数", type="number", required=True),
-            ],
-            func=lambda a, b: a + b
+            card=ToolCard(
+                name="sum",
+                description="两数求和",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "a": {"description": "第一个数", "type": "number"},
+                        "b": {"description": "第二个数", "type": "number"},
+                    },
+                    "required": ["a", "b"],
+                },
+            ),
+            func=lambda a, b: a + b,
         )
         agent.add_tools([sum_tool])
 

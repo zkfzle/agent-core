@@ -9,7 +9,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.tool import McpToolInfo
+from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.protocols.mcp.base import NO_TIMEOUT
 from openjiuwen.core.protocols.mcp.client.mcp_client import McpClient
 
@@ -81,7 +81,7 @@ class StdioClient(McpClient):
             self._read = None
             self._write = None
 
-    async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[McpToolInfo]:
+    async def list_tools(self, *, timeout: float = NO_TIMEOUT) -> List[Any]:
         """List available tools via Stdio"""
         if not self._session:
             raise RuntimeError("Not connected to Stdio server")
@@ -89,10 +89,10 @@ class StdioClient(McpClient):
         try:
             tools_response = await self._session.list_tools()
             tools_list = [
-                McpToolInfo(
+                McpToolCard(
                     name=tool.name,
                     description=getattr(tool, "description", ""),
-                    input_schema=getattr(tool, "inputSchema", {})
+                    input_schema=getattr(tool, "inputSchema", {}),
                 )
                 for tool in tools_response.tools
             ]
@@ -120,7 +120,7 @@ class StdioClient(McpClient):
             logger.error(f"Tool call failed via Stdio: {e}")
             raise
 
-    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[McpToolInfo]:
+    async def get_tool_info(self, tool_name: str, *, timeout: float = NO_TIMEOUT) -> Optional[Any]:
         """Get specific tool info via Stdio"""
         tools = await self.list_tools(timeout=timeout)
         for tool in tools:

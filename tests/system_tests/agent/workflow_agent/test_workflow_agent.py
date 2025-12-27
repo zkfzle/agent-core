@@ -22,8 +22,7 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import RestfulApi
+from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.session import InteractiveInput
@@ -45,16 +44,21 @@ os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 # Mock RESTful Api 元信息
 _MOCK_TOOL = RestfulApi(
-    name="test",
-    description="test",
-    params=[
-        Param(name="location", description="地点", type="string"),
-        Param(name="date", description="日期", type="int"),
-    ],
-    path="http://127.0.0.1:8000",
-    headers={},
-    method="GET",
-    response=[],
+    card=RestfulApiCard(
+        name="test",
+        description="test",
+        parameters={
+            "type": "object",
+            "properties": {
+                "location": {"description": "地点", "type": "string"},
+                "date": {"description": "日期", "type": "integer"},
+            },
+            "required": ["location", "date"],
+        },
+        path="http://127.0.0.1:8000",
+        headers={},
+        method="GET",
+    ),
 )
 
 _FINAL_RESULT: str = "上海今天晴 30°C"
@@ -201,16 +205,21 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """创建插件组件，真正调用外部 RESTful API。"""
         tool_config = ToolComponentConfig()
         weather_tool = RestfulApi(
-            name="WeatherReporter",
-            description="天气查询插件",
-            params=[
-                Param(name="location", description="地点", type="string", required=True),
-                Param(name="date", description="日期", type="string", required=True),
-            ],
-            path="http://127.0.0.1:9000/weather",
-            headers={},
-            method="GET",
-            response=[],
+            card=RestfulApiCard(
+                name="WeatherReporter",
+                description="天气查询插件",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {"description": "地点", "type": "string"},
+                        "date": {"description": "日期", "type": "string"},
+                    },
+                    "required": ["location", "date"],
+                },
+                path="http://127.0.0.1:8000/weather",
+                headers={},
+                method="GET",
+            ),
         )
         return ToolComponent(tool_config).bind_tool(weather_tool)
 
@@ -1062,7 +1071,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         注意：WorkflowController._get_first_interrupt() 在流式输出时只返回第一个中断
         """
         print("=== 测试 WorkflowAgent 运行包含两个并行中断节点的工作流 ===")
-        
+
         # 构建包含两个并行中断节点的工作流
         _, workflow = self.build_multiple_interrupt_workflow()
         resource_mgr.workflow().add_workflow(
@@ -1073,7 +1082,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 使用固定的 conversation_id 保持会话状态
         conversation_id = str(uuid.uuid4())
-        
+
         # ========== 步骤1: 首次调用，触发并行中断 ==========
         print("\n【步骤1】发送查询请求，触发并行中断")
         interaction_outputs = []
@@ -1105,7 +1114,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # ========== 步骤2: 恢复第一个中断节点 ==========
         print(f"\n【步骤2】使用InteractiveInput恢复第一个中断（{first_interrupt_id}）")
         interactive_input = InteractiveInput()
-        
+
         # 根据第一个中断的ID动态选择恢复方式
         if first_interrupt_id == "interactive":
             interactive_input.update("interactive", "确认操作")
@@ -1113,7 +1122,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         else:  # questioner
             interactive_input.update("questioner", {"location": "上海", "date": "今天"})
             expected_second_interrupt = "interactive"
-        
+
         interaction_outputs = []
         try:
             async def collect_second_stream():
@@ -1141,13 +1150,13 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # ========== 步骤3: 恢复剩余的中断节点 ==========
         print(f"\n【步骤3】使用InteractiveInput恢复剩余中断（{expected_second_interrupt}）")
         interactive_input = InteractiveInput()
-        
+
         # 根据第二个中断的ID提供相应的输入
         if expected_second_interrupt == "interactive":
             interactive_input.update("interactive", "确认操作")
         else:  # questioner
             interactive_input.update("questioner", {"location": "上海", "date": "今天"})
-        
+
         interaction_outputs = []
         workflow_final_chunk = None
         try:
@@ -1174,7 +1183,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(interaction_outputs), 0, "应该全部完成，没有中断")
         self.assertIsNotNone(workflow_final_chunk, "第三次调用应该包含 workflow_final 结果")
         self.assertIsInstance(workflow_final_chunk.payload, dict, "workflow_final payload 应该是字典")
-        
+
         # 检查是否是错误响应
         if workflow_final_chunk.payload.get('error'):
             error_msg = workflow_final_chunk.payload.get('message', 'Unknown error')
@@ -1207,7 +1216,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         注意：WorkflowController._get_first_interrupt() 在流式输出时只返回第一个中断
         """
         print("=== 测试 WorkflowAgent 同时恢复所有并行中断节点 ===")
-        
+
         # 构建包含两个并行中断节点的工作流
         _, workflow = self.build_multiple_interrupt_workflow()
         resource_mgr.workflow().add_workflow(
@@ -1248,7 +1257,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         interactive_input = InteractiveInput()
         interactive_input.update("interactive", "确认操作")
         interactive_input.update("questioner", {"location": "北京"})
-        
+
         workflow_final_chunk = None
         try:
             async def collect_second_stream():
@@ -1272,7 +1281,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 校验第二次调用结果：应该直接完成，无交互请求
         self.assertIsNotNone(workflow_final_chunk, "第二次调用应该包含 workflow_final 结果")
         self.assertIsInstance(workflow_final_chunk.payload, dict, "workflow_final payload 应该是字典")
-        
+
         # 检查是否是错误响应
         if workflow_final_chunk.payload.get('error'):
             error_msg = workflow_final_chunk.payload.get('message', 'Unknown error')

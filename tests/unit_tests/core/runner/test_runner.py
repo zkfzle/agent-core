@@ -11,8 +11,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session.agent import AgentSession
 from openjiuwen.core.session import Config
 from openjiuwen.core.session import TaskSession
-from openjiuwen.core.foundation.tool import Param
-from openjiuwen.core.foundation.tool import tool
+from openjiuwen.core.foundation.tool import tool, ToolCard
 from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowExecutionState
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner import Runner
@@ -71,12 +70,18 @@ class TestRunner:
 
     @staticmethod
     @tool(
-        name="add",
-        description="加法",
-        params=[
-            Param(name="a", description="加数", type="number", required=True),
-            Param(name="b", description="被加数", type="number", required=True),
-        ],
+        card=ToolCard(
+            name="add",
+            description="加法",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "加数", "type": "number"},
+                    "b": {"description": "被加数", "type": "number"},
+                },
+                "required": ["a", "b"],
+            },
+        )
     )
     def add_function(a, b):
         """加法函数，使用tool注解装饰"""
@@ -84,12 +89,18 @@ class TestRunner:
 
     @staticmethod
     @tool(
-        name="multiply",
-        description="乘法",
-        params=[
-            Param(name="a", description="乘数", type="number", required=True),
-            Param(name="b", description="被乘数", type="number", required=True),
-        ],
+        card=ToolCard(
+            name="multiply",
+            description="乘法",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "a": {"description": "乘数", "type": "number"},
+                    "b": {"description": "被乘数", "type": "number"},
+                },
+                "required": ["a", "b"],
+            },
+        )
     )
     def multiply_function(a, b):
         """乘法函数，使用tool注解装饰"""
@@ -122,4 +133,3 @@ class TestRunner:
             await Runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, session=session)
         assert exc_info.value.error_code == StatusCode.TOOL_NOT_BOUND_TO_AGENT.code
         assert exc_info.value.message == StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg
-

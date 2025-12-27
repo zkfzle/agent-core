@@ -19,7 +19,8 @@ from openjiuwen.core.retrieval.indexing.processor.parser.base import Parser
 class TestRegisterParser:
     """Parser registration decorator tests"""
 
-    def test_register_parser_decorator(self):
+    @staticmethod
+    def test_register_parser_decorator():
         """Test parser registration decorator"""
         # Save original registry
         original_registry = _PARSER_REGISTRY.copy()
@@ -47,7 +48,8 @@ class TestRegisterParser:
             _PARSER_REGISTRY.clear()
             _PARSER_REGISTRY.update(original_registry)
 
-    def test_register_parser_multiple_extensions(self):
+    @staticmethod
+    def test_register_parser_multiple_extensions():
         """Test registering multiple extensions"""
         original_registry = _PARSER_REGISTRY.copy()
         
@@ -73,7 +75,8 @@ class TestRegisterParser:
 class TestAutoFileParser:
     """Auto file parser tests"""
 
-    def test_init(self):
+    @staticmethod
+    def test_init():
         """Test initialization"""
         parser = AutoFileParser()
         assert parser is not None
@@ -147,7 +150,8 @@ class TestAutoFileParser:
         finally:
             os.unlink(temp_path)
 
-    def test_supports_existing_file(self):
+    @staticmethod
+    def test_supports_existing_file():
         """Test support check (file exists)"""
         parser = AutoFileParser()
         
@@ -160,13 +164,15 @@ class TestAutoFileParser:
         finally:
             os.unlink(temp_path)
 
-    def test_supports_nonexistent_file(self):
+    @staticmethod
+    def test_supports_nonexistent_file():
         """Test support check (file does not exist)"""
         parser = AutoFileParser()
         result = parser.supports("nonexistent.txt")
         assert result is False
 
-    def test_supports_unsupported_format(self):
+    @staticmethod
+    def test_supports_unsupported_format():
         """Test support check (unsupported format)"""
         parser = AutoFileParser()
         
@@ -179,7 +185,8 @@ class TestAutoFileParser:
         finally:
             os.unlink(temp_path)
 
-    def test_register_new_parser(self):
+    @staticmethod
+    def test_register_new_parser():
         """Test dynamically registering new parser"""
         original_registry = _PARSER_REGISTRY.copy()
         
@@ -212,7 +219,8 @@ class TestAutoFileParser:
             _PARSER_REGISTRY.clear()
             _PARSER_REGISTRY.update(original_registry)
 
-    def test_get_supported_formats(self):
+    @staticmethod
+    def test_get_supported_formats():
         """Test getting supported file formats"""
         formats = AutoFileParser.get_supported_formats()
         assert isinstance(formats, list)

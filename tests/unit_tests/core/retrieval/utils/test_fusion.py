@@ -11,7 +11,8 @@ from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, S
 class TestRRFFusion:
     """RRF 融合测试"""
 
-    def test_rrf_fusion_single_list(self):
+    @staticmethod
+    def test_rrf_fusion_single_list():
         """测试单个结果列表融合"""
         results = [
             RetrievalResult(text="Result 1", score=0.9),
@@ -24,7 +25,8 @@ class TestRRFFusion:
         assert fused[0].text == "Result 1"
         assert fused[0].score > fused[1].score
 
-    def test_rrf_fusion_multiple_lists(self):
+    @staticmethod
+    def test_rrf_fusion_multiple_lists():
         """测试多个结果列表融合"""
         results1 = [
             RetrievalResult(text="Result 1", score=0.9),
@@ -44,12 +46,14 @@ class TestRRFFusion:
         # Result 2 应该排名更高（出现在两个列表中）
         assert fused[0].text == "Result 2" or fused[1].text == "Result 2"
 
-    def test_rrf_fusion_empty_list(self):
+    @staticmethod
+    def test_rrf_fusion_empty_list():
         """测试空列表融合"""
         fused = rrf_fusion([])
         assert len(fused) == 0
 
-    def test_rrf_fusion_with_empty_results(self):
+    @staticmethod
+    def test_rrf_fusion_with_empty_results():
         """测试包含空结果的融合"""
         results1 = [
             RetrievalResult(text="Result 1", score=0.9),
@@ -59,7 +63,8 @@ class TestRRFFusion:
         assert len(fused) == 1
         assert fused[0].text == "Result 1"
 
-    def test_rrf_fusion_custom_k(self):
+    @staticmethod
+    def test_rrf_fusion_custom_k():
         """测试自定义 k 参数"""
         results1 = [
             RetrievalResult(text="Result 1", score=0.9),
@@ -74,7 +79,8 @@ class TestRRFFusion:
         # k 值不同，RRF 分数应该不同
         assert len(fused_k30) == len(fused_k60) == 3
 
-    def test_rrf_fusion_with_search_result(self):
+    @staticmethod
+    def test_rrf_fusion_with_search_result():
         """测试使用 SearchResult 的融合"""
         results = [
             SearchResult(id="1", text="Result 1", score=0.9),

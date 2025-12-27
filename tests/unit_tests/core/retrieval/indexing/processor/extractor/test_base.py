@@ -55,7 +55,8 @@ class TestExtractor:
         triples = await extractor.process(chunks)
         assert len(triples) == 1
 
-    def test_cannot_instantiate_abstract_class(self):
+    @staticmethod
+    def test_cannot_instantiate_abstract_class():
         """Test cannot directly instantiate abstract class"""
         with pytest.raises(TypeError):
             Extractor()

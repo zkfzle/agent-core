@@ -70,7 +70,8 @@ class TestParser:
         result = await parser.process("test.txt", doc_id="doc_1")
         assert len(result) == 1
 
-    def test_supports(self):
+    @staticmethod
+    def test_supports():
         """Test support check"""
         parser = ConcreteParser()
         assert parser.supports("file.test") is True

@@ -14,7 +14,8 @@ from openjiuwen.core.retrieval.indexing.processor.parser.txt_md_parser import Tx
 class TestTxtMdParser:
     """TXT/MD file parser tests"""
 
-    def test_init(self):
+    @staticmethod
+    def test_init():
         """Test initialization"""
         parser = TxtMdParser()
         assert parser is not None

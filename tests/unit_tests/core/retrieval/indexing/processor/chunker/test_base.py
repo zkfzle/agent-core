@@ -24,14 +24,16 @@ class ConcreteChunker(Chunker):
 class TestChunker:
     """Text chunker abstract base class tests"""
 
-    def test_init_with_defaults(self):
+    @staticmethod
+    def test_init_with_defaults():
         """Test initialization with default values"""
         chunker = ConcreteChunker()
         assert chunker.chunk_size == 512
         assert chunker.chunk_overlap == 50
         assert chunker.length_function == len
 
-    def test_init_with_custom_values(self):
+    @staticmethod
+    def test_init_with_custom_values():
         """Test initialization with custom values"""
         def word_count_length(x):
             return len(x.split())
@@ -45,12 +47,14 @@ class TestChunker:
         assert chunker.chunk_overlap == 100
         assert chunker.length_function == word_count_length
 
-    def test_init_invalid_overlap(self):
+    @staticmethod
+    def test_init_invalid_overlap():
         """Test invalid overlap size"""
         with pytest.raises(ValueError, match="chunk_overlap must be less than chunk_size"):
             ConcreteChunker(chunk_size=100, chunk_overlap=100)
 
-    def test_chunk_text(self):
+    @staticmethod
+    def test_chunk_text():
         """Test chunking text"""
         chunker = ConcreteChunker()
         text = "This is a test text for chunking"
@@ -58,7 +62,8 @@ class TestChunker:
         assert len(chunks) > 0
         assert all(isinstance(chunk, str) for chunk in chunks)
 
-    def test_chunk_documents(self):
+    @staticmethod
+    def test_chunk_documents():
         """Test chunking document list"""
         chunker = ConcreteChunker()
         documents = [
@@ -71,7 +76,8 @@ class TestChunker:
         assert all("chunk_index" in chunk.metadata for chunk in chunks)
         assert all("total_chunks" in chunk.metadata for chunk in chunks)
 
-    def test_chunk_documents_with_metadata(self):
+    @staticmethod
+    def test_chunk_documents_with_metadata():
         """Test chunking documents with metadata"""
         chunker = ConcreteChunker()
         documents = [

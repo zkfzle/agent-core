@@ -38,12 +38,14 @@ class TestChromaIndexer:
         assert indexer.chroma_path == temp_chroma_path
         assert indexer.client is not None
 
-    def test_init_empty_path(self):
+    @staticmethod
+    def test_init_empty_path():
         """Test initialization with empty path"""
         with pytest.raises(ValueError, match="chroma_path is required"):
             ChromaIndexer(chroma_path="")
 
-    def test_init_whitespace_path(self):
+    @staticmethod
+    def test_init_whitespace_path():
         """Test initialization with whitespace path"""
         with pytest.raises(ValueError, match="chroma_path is required"):
             ChromaIndexer(chroma_path="   ")

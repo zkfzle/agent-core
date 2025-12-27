@@ -16,7 +16,8 @@ from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig
 class TestConfigManager:
     """配置管理器测试"""
 
-    def test_init_with_path(self):
+    @staticmethod
+    def test_init_with_path():
         """测试使用路径初始化"""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             config_data = {
@@ -37,7 +38,8 @@ class TestConfigManager:
         finally:
             os.unlink(temp_path)
 
-    def test_load_from_file_json(self):
+    @staticmethod
+    def test_load_from_file_json():
         """测试从 JSON 文件加载配置"""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             config_data = {
@@ -56,7 +58,8 @@ class TestConfigManager:
         finally:
             os.unlink(temp_path)
 
-    def test_load_from_file_yaml(self):
+    @staticmethod
+    def test_load_from_file_yaml():
         """测试从 YAML 文件加载配置"""
         try:
             import yaml
@@ -80,13 +83,15 @@ class TestConfigManager:
         finally:
             os.unlink(temp_path)
 
-    def test_load_from_file_not_found(self):
+    @staticmethod
+    def test_load_from_file_not_found():
         """测试加载不存在的文件"""
         manager = ConfigManager()
         with pytest.raises(FileNotFoundError):
             manager.load_from_file("nonexistent.json")
 
-    def test_load_from_file_unsupported_format(self):
+    @staticmethod
+    def test_load_from_file_unsupported_format():
         """测试加载不支持的文件格式"""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             f.write("test")
@@ -99,7 +104,8 @@ class TestConfigManager:
         finally:
             os.unlink(temp_path)
 
-    def test_save_to_file_no_config(self):
+    @staticmethod
+    def test_save_to_file_no_config():
         """测试保存时没有配置"""
         manager = ConfigManager()
         with pytest.raises(ValueError, match="没有可保存的配置"):
@@ -110,7 +116,8 @@ class TestConfigManager:
             finally:
                 os.unlink(temp_path)
 
-    def test_get_config(self):
+    @staticmethod
+    def test_get_config():
         """测试获取配置"""
         manager = ConfigManager()
         config = KnowledgeBaseConfig(kb_id="test_kb")
@@ -120,13 +127,15 @@ class TestConfigManager:
         assert retrieved_config is not None
         assert retrieved_config.kb_id == "test_kb"
 
-    def test_get_config_not_found(self):
+    @staticmethod
+    def test_get_config_not_found():
         """测试获取不存在的配置"""
         manager = ConfigManager()
         config = manager.get_config(KnowledgeBaseConfig)
         assert config is None
 
-    def test_get_knowledge_base_config_not_found(self):
+    @staticmethod
+    def test_get_knowledge_base_config_not_found():
         """测试获取不存在的知识库配置"""
         manager = ConfigManager()
         with pytest.raises(ValueError, match="知识库配置未加载"):

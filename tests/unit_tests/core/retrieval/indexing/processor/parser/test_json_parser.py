@@ -15,7 +15,8 @@ from openjiuwen.core.retrieval.indexing.processor.parser.json_parser import JSON
 class TestJSONParser:
     """JSON file parser tests"""
 
-    def test_init(self):
+    @staticmethod
+    def test_init():
         """Test initialization"""
         parser = JSONParser()
         assert parser is not None

@@ -17,7 +17,8 @@ from openjiuwen.core.retrieval.common.config import (
 class TestKnowledgeBaseConfig:
     """Knowledge base configuration tests"""
 
-    def test_create_with_defaults(self):
+    @staticmethod
+    def test_create_with_defaults():
         """Test creating configuration with default values"""
         config = KnowledgeBaseConfig(kb_id="test_kb")
         assert config.kb_id == "test_kb"
@@ -26,7 +27,8 @@ class TestKnowledgeBaseConfig:
         assert config.chunk_size == 512
         assert config.chunk_overlap == 50
 
-    def test_create_with_custom_values(self):
+    @staticmethod
+    def test_create_with_custom_values():
         """Test creating configuration with custom values"""
         config = KnowledgeBaseConfig(
             kb_id="test_kb",
@@ -41,12 +43,14 @@ class TestKnowledgeBaseConfig:
         assert config.chunk_size == 1024
         assert config.chunk_overlap == 100
 
-    def test_invalid_index_type(self):
+    @staticmethod
+    def test_invalid_index_type():
         """Test invalid index type"""
         with pytest.raises(ValidationError):
             KnowledgeBaseConfig(kb_id="test_kb", index_type="invalid")
 
-    def test_missing_kb_id(self):
+    @staticmethod
+    def test_missing_kb_id():
         """Test missing required kb_id"""
         with pytest.raises(ValidationError):
             KnowledgeBaseConfig()
@@ -55,7 +59,8 @@ class TestKnowledgeBaseConfig:
 class TestRetrievalConfig:
     """Retrieval configuration tests"""
 
-    def test_create_with_defaults(self):
+    @staticmethod
+    def test_create_with_defaults():
         """Test creating configuration with default values"""
         config = RetrievalConfig()
         assert config.top_k == 5
@@ -65,7 +70,8 @@ class TestRetrievalConfig:
         assert config.graph_expansion is False
         assert config.filters is None
 
-    def test_create_with_custom_values(self):
+    @staticmethod
+    def test_create_with_custom_values():
         """Test creating configuration with custom values"""
         config = RetrievalConfig(
             top_k=10,
@@ -86,24 +92,28 @@ class TestRetrievalConfig:
 class TestIndexConfig:
     """Index configuration tests"""
 
-    def test_create_with_defaults(self):
+    @staticmethod
+    def test_create_with_defaults():
         """Test creating configuration with default values"""
         config = IndexConfig(index_name="test_index")
         assert config.index_name == "test_index"
         assert config.index_type == "hybrid"
 
-    def test_create_with_custom_values(self):
+    @staticmethod
+    def test_create_with_custom_values():
         """Test creating configuration with custom values"""
         config = IndexConfig(index_name="test_index", index_type="vector")
         assert config.index_name == "test_index"
         assert config.index_type == "vector"
 
-    def test_invalid_index_type(self):
+    @staticmethod
+    def test_invalid_index_type():
         """Test invalid index type"""
         with pytest.raises(ValidationError):
             IndexConfig(index_name="test_index", index_type="invalid")
 
-    def test_missing_index_name(self):
+    @staticmethod
+    def test_missing_index_name():
         """Test missing required index_name"""
         with pytest.raises(ValidationError):
             IndexConfig()
@@ -112,13 +122,15 @@ class TestIndexConfig:
 class TestVectorStoreConfig:
     """Vector store configuration tests"""
 
-    def test_create_with_defaults(self):
+    @staticmethod
+    def test_create_with_defaults():
         """Test creating configuration with default values"""
         config = VectorStoreConfig(collection_name="test_collection")
         assert config.collection_name == "test_collection"
         assert config.distance_metric == "cosine"
 
-    def test_create_with_custom_values(self):
+    @staticmethod
+    def test_create_with_custom_values():
         """Test creating configuration with custom values"""
         config = VectorStoreConfig(
             collection_name="test_collection",
@@ -127,7 +139,8 @@ class TestVectorStoreConfig:
         assert config.collection_name == "test_collection"
         assert config.distance_metric == "euclidean"
 
-    def test_invalid_distance_metric(self):
+    @staticmethod
+    def test_invalid_distance_metric():
         """Test invalid distance metric"""
         with pytest.raises(ValidationError):
             VectorStoreConfig(
@@ -135,7 +148,8 @@ class TestVectorStoreConfig:
                 distance_metric="invalid",
             )
 
-    def test_missing_collection_name(self):
+    @staticmethod
+    def test_missing_collection_name():
         """Test missing required collection_name"""
         with pytest.raises(ValidationError):
             VectorStoreConfig()
@@ -144,14 +158,16 @@ class TestVectorStoreConfig:
 class TestEmbeddingConfig:
     """Embedding model configuration tests"""
 
-    def test_create_with_required_fields(self):
+    @staticmethod
+    def test_create_with_required_fields():
         """Test creating configuration with required fields"""
         config = EmbeddingConfig(model_name="test_model")
         assert config.model_name == "test_model"
         assert config.api_key is None
         assert config.base_url is None
 
-    def test_create_with_all_fields(self):
+    @staticmethod
+    def test_create_with_all_fields():
         """Test creating configuration with all fields"""
         config = EmbeddingConfig(
             model_name="test_model",
@@ -162,7 +178,8 @@ class TestEmbeddingConfig:
         assert config.api_key == "test_key"
         assert config.base_url == "https://api.example.com"
 
-    def test_missing_model_name(self):
+    @staticmethod
+    def test_missing_model_name():
         """Test missing required model_name"""
         with pytest.raises(ValidationError):
             EmbeddingConfig()

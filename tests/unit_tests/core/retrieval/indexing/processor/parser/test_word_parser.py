@@ -14,7 +14,8 @@ from openjiuwen.core.retrieval.indexing.processor.parser.word_parser import Word
 class TestWordParser:
     """Word file parser tests"""
 
-    def test_init(self):
+    @staticmethod
+    def test_init():
         """Test initialization"""
         parser = WordParser()
         assert parser is not None

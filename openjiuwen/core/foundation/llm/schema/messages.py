@@ -2,37 +2,43 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Union, Dict, List, Optional, Any
+from typing import Union, List, Optional, Any
 from pydantic import BaseModel, model_validator
 
-from openjiuwen.core.foundation.tool import ToolCall
-
-
-class BaseMessage(BaseModel):
-    role: str
-    content: Union[str, List[Union[str, Dict]]] = ""
-    name: Optional[str] = None
+from openjiuwen.core.foundation.llm.schema.tool_call import ToolCall
 
 
 class UsageMetadata(BaseModel):
     code: int = 0
-    errmsg: str = ""
+    err_msg: str = ""
     prompt: str = ""
     task_id: str = ""
     model_name: str = ""
-    finish_reason: str = ""
     total_latency: float = 0.
-    model_stats: dict = {}
     first_token_time: str = ""
     request_start_time: str = ""
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+    cache_tokens: int = 0
 
 
-class AIMessage(BaseMessage):
+class BaseMessage(BaseModel):
+    role: str
+    content: Union[str, List[Union[str, dict]]] = ""
+    name: Optional[str] = None
+
+
+class AssistantMessage(BaseMessage):
     role: str = "assistant"
     tool_calls: Optional[List[ToolCall]] = None
     usage_metadata: Optional[UsageMetadata] = None
-    raw_content: Optional[str] = None
-    reason_content: Optional[str] = None
+    # null标识模型未生成完成的消息数据，
+    # 其他值标识模型生成完成的消息数据（stop标识模型生成完成但没工具调用，tool_calls标识模型生成完成有工具调用）
+    finish_reason: str = "null"
+    # parser解析后的内容
+    parser_content: Optional[Any] = None
+    reasoning_content: Optional[str] = None
 
     @model_validator(mode='before')
     @classmethod
@@ -83,18 +89,19 @@ class AIMessage(BaseMessage):
                     }
                 })
             result["tool_calls"] = tool_calls
-        if self.usage_metadata:
+        if self.usage_metadata is not None:
             result["usage_metadata"] = self.usage_metadata.model_dump(**kwargs)
-        if self.raw_content:
-            result["raw_content"] = self.raw_content
-        if self.reason_content:
-            result["reason_content"] = self.reason_content
+        if self.finish_reason is not None:
+            result["finish_reason"] = self.finish_reason
+        if self.parser_content is not None:
+            result["parser_content"] = self.parser_content
+        if self.reasoning_content is not None:
+            result["reasoning_content"] = self.reasoning_content
         return result
 
 
-class HumanMessage(BaseMessage):
+class UserMessage(BaseMessage):
     role: str = "user"
-
 
 class SystemMessage(BaseMessage):
     role: str = "system"

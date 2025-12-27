@@ -3,7 +3,7 @@ import pytest
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm.messages import HumanMessage, AIMessage, ToolMessage
 from openjiuwen.core.foundation.tool.schema import ToolCall
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.prompt.assemble.assembler import PromptAssembler
 from openjiuwen.core.foundation.prompt.assemble.variables.variable import Variable
 from openjiuwen.core.foundation.prompt.assemble.variables.textable import TextableVariable

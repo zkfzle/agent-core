@@ -12,7 +12,7 @@ from openjiuwen.agent_builder.tune.utils import TuneUtils
 from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.prompt.assemble.assembler import PromptAssembler
 from openjiuwen.agent_builder.tune.base import EvaluatedCase, TuneConstant
 from openjiuwen.agent_builder.tune.optimizer.base import BaseOptimizer, TextualParameter

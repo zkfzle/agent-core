@@ -26,7 +26,7 @@ from openjiuwen.core.session import Runtime
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 
 

@@ -11,7 +11,7 @@ from tqdm import tqdm
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.agent_builder.tune.base import Case, EvaluatedCase, TuneConstant
 from openjiuwen.agent_builder.tune.utils import TuneUtils

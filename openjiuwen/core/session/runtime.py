@@ -12,7 +12,7 @@ from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.session.stream.manager import StreamWriterManager
 from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
 

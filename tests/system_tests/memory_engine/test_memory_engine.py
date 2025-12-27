@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from openjiuwen.core.workflow.components.common.configs.model_config import ModelConfig, BaseModelInfo
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore

@@ -20,7 +20,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
 _ROLE = "role"

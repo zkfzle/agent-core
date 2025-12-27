@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage, BaseMessage
 
 PROMPT_BUILD_GENERAL_META_SYSTEM_TEMPLATE = PromptTemplate(content=[SystemMessage(content="""

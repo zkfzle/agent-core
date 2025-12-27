@@ -20,7 +20,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowRuntime
 from openjiuwen.core.session.stream import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.prompt.template import PromptTemplate
+from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow import WorkflowConfig
 

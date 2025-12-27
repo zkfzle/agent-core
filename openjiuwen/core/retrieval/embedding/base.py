@@ -1,19 +1,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-嵌入模型抽象基类
+Embedding Model Abstract Base Class
 
-提供嵌入模型的统一接口。
+Provides a unified interface for embedding models.
 """
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional
 
 
 class Embedding(ABC):
-    """嵌入模型抽象基类"""
+    """Embedding model abstract base class"""
     
     @abstractmethod
     async def embed_query(self, text: str, **kwargs: Any) -> List[float]:
-        """嵌入查询文本"""
+        """Embed query text"""
         pass
     
     @abstractmethod
@@ -23,11 +23,11 @@ class Embedding(ABC):
         batch_size: Optional[int] = None,
         **kwargs: Any,
     ) -> List[List[float]]:
-        """嵌入文档文本"""
+        """Embed document texts"""
         pass
     
     @property
     @abstractmethod
     def dimension(self) -> int:
-        """返回嵌入维度"""
+        """Return embedding dimension"""
         pass

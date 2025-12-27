@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-GraphRAG 知识库实现
+GraphRAG Knowledge Base Implementation
 
-支持图索引和检索的知识库实现。
+Knowledge base implementation supporting graph indexing and retrieval.
 """
 import json
 from typing import Any, List, Optional, Dict
@@ -26,7 +26,7 @@ from openjiuwen.core.retrieval.simple_knowledge_base import retrieve_multi_kb, r
 
 
 class GraphKnowledgeBase(KnowledgeBase):
-    """图增强知识库实现"""
+    """Graph-enhanced knowledge base implementation"""
 
     def __init__(
         self,
@@ -44,19 +44,19 @@ class GraphKnowledgeBase(KnowledgeBase):
         **kwargs: Any,
     ):
         """
-        初始化 GraphRAG 知识库
+        Initialize GraphRAG knowledge base
         
         Args:
-            config: 知识库配置
-            vector_store: 向量存储实例
-            embed_model: 嵌入模型实例
-            parser: 文档解析器实例
-            chunker: 文本分块器实例
-            extractor: 三元组提取器实例（必需）
-            index_manager: 索引管理器实例
-            chunk_retriever: 块检索器实例（可选）
-            triple_retriever: 三元组检索器实例（可选）
-            llm_client: LLM 客户端实例（用于三元组提取）
+            config: Knowledge base configuration
+            vector_store: Vector store instance
+            embed_model: Embedding model instance
+            parser: Document parser instance
+            chunker: Text chunker instance
+            extractor: Triple extractor instance (required)
+            index_manager: Index manager instance
+            chunk_retriever: Chunk retriever instance (optional)
+            triple_retriever: Triple retriever instance (optional)
+            llm_client: LLM client instance (for triple extraction)
         """
         super().__init__(
             config=config,
@@ -79,7 +79,7 @@ class GraphKnowledgeBase(KnowledgeBase):
         file_paths: List[str],
         **kwargs: Any,
     ) -> List[Document]:
-        """从文件路径解析为Document对象列表"""
+        """Parse files from file paths into a list of Document objects"""
         if not self.parser:
             raise ValueError("parser is required for parse_files")
 
@@ -106,17 +106,17 @@ class GraphKnowledgeBase(KnowledgeBase):
         documents: List[Document],
         **kwargs: Any,
     ) -> List[str]:
-        """添加文档到知识库（包括块索引和三元组索引）"""
+        """Add documents to the knowledge base (including chunk index and triple index)"""
         if not self.chunker:
             raise ValueError("chunker is required for add_documents")
         if not self.index_manager:
             raise ValueError("index_manager is required for add_documents")
 
-        # 分块文档
+        # Chunk documents
         chunks = self.chunker.chunk_documents(documents)
         logger.info(f"Chunked {len(documents)} documents into {len(chunks)} chunks")
 
-        # 构建块索引
+        # Build chunk index
         from openjiuwen.core.retrieval.common.config import IndexConfig
 
         chunk_index_config = IndexConfig(
@@ -133,7 +133,7 @@ class GraphKnowledgeBase(KnowledgeBase):
         if not success:
             raise RuntimeError("Failed to build chunk index")
 
-        # 如果启用图索引，提取三元组并构建三元组索引
+        # If graph indexing is enabled, extract triples and build triple index
         if self.config.use_graph and self.extractor:
             logger.info("Extracting triples for graph index...")
             triples = await self.extractor.extract(chunks)
@@ -141,16 +141,16 @@ class GraphKnowledgeBase(KnowledgeBase):
             if triples:
                 logger.info(f"Extracted {len(triples)} triples")
 
-                # 构建三元组索引
+                # Build triple index
                 triple_index_config = IndexConfig(
                     index_name=f"kb_{self.config.kb_id}_triples",
                     index_type=self.config.index_type,
                 )
 
-                # 将三元组转换为 TextChunk 格式以便索引
+                # Convert triples to TextChunk format for indexing
                 triple_chunks = []
                 for i, triple in enumerate(triples):
-                    # 将三元组转换为文本格式
+                    # Convert triple to text format
                     triple_text = f"{triple.subject} {triple.predicate} {triple.object}"
                     chunk = TextChunk(
                         id_=f"triple_{i}",
@@ -176,7 +176,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                 else:
                     logger.info(f"Built triple index with {len(triple_chunks)} triples")
 
-        # 返回文档 ID 列表
+        # Return document ID list
         doc_ids = [doc.id_ for doc in documents]
         logger.info(f"Successfully added {len(doc_ids)} documents to knowledge base")
         return doc_ids
@@ -187,10 +187,10 @@ class GraphKnowledgeBase(KnowledgeBase):
         config: Optional[RetrievalConfig] = None,
         **kwargs: Any,
     ) -> List[RetrievalResult]:
-        """检索相关文档（支持图检索）"""
+        """Retrieve relevant documents (supports graph retrieval)"""
         retrieval_config = config or RetrievalConfig()
 
-        # 如果使用图检索，创建或使用图检索器
+        # If using graph retrieval, create or use graph retriever
         if retrieval_config.use_graph or self.config.use_graph:
             if not self.graph_retriever:
                 if not self.vector_store:
@@ -200,16 +200,16 @@ class GraphKnowledgeBase(KnowledgeBase):
                 chunk_collection = f"kb_{self.config.kb_id}_chunks"
                 triple_collection = f"kb_{self.config.kb_id}_triples"
 
-                # 创建 GraphRetriever，传入必要的参数以便动态创建检索器
+                # Create GraphRetriever, pass necessary parameters for dynamic retriever creation
                 self.graph_retriever = GraphRetriever(
-                    chunk_retriever=self.chunk_retriever,  # 如果提供了固定检索器，优先使用
-                    triple_retriever=self.triple_retriever,  # 如果提供了固定检索器，优先使用
-                    vector_store=self.vector_store,  # 用于动态创建检索器
-                    embed_model=self.embed_model,  # 用于动态创建检索器
-                    chunk_collection=chunk_collection,  # 用于动态创建检索器
-                    triple_collection=triple_collection,  # 用于动态创建检索器
+                    chunk_retriever=self.chunk_retriever,  # If fixed retriever is provided, use it first
+                    triple_retriever=self.triple_retriever,  # If fixed retriever is provided, use it first
+                    vector_store=self.vector_store,  # For dynamic retriever creation
+                    embed_model=self.embed_model,  # For dynamic retriever creation
+                    chunk_collection=chunk_collection,  # For dynamic retriever creation
+                    triple_collection=triple_collection,  # For dynamic retriever creation
                 )
-                # 上层注入 index_type，供 GraphRetriever 做模式校验
+                # Inject index_type from upper layer for GraphRetriever mode validation
                 self.graph_retriever.index_type = self.config.index_type
                 if retrieval_config.agentic:
                     self.graph_retriever = AgenticRetriever(
@@ -219,7 +219,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                         agent_topk=retrieval_config.top_k,
                         )
 
-            # 使用图检索器
+            # Use graph retriever
             mode = "hybrid"
             if self.config.index_type == "vector":
                 mode = "vector"
@@ -237,7 +237,7 @@ class GraphKnowledgeBase(KnowledgeBase):
 
             return results
         else:
-            # 使用普通检索（回退到基础知识库的检索方法）
+            # Use normal retrieval (fallback to simple knowledge base retrieval method)
             from openjiuwen.core.retrieval.simple_knowledge_base import SimpleKnowledgeBase
 
             base_kb = SimpleKnowledgeBase(
@@ -256,7 +256,7 @@ class GraphKnowledgeBase(KnowledgeBase):
         doc_ids: List[str],
         **kwargs: Any,
     ) -> bool:
-        """删除文档（包括块索引和三元组索引）"""
+        """Delete documents (including chunk index and triple index)"""
         if not self.index_manager:
             raise ValueError("index_manager is required for delete_documents")
 
@@ -265,7 +265,7 @@ class GraphKnowledgeBase(KnowledgeBase):
 
         success = True
 
-        # 删除块索引
+        # Delete chunk index
         for doc_id in doc_ids:
             result = await self.index_manager.delete_index(
                 doc_id=doc_id,
@@ -274,7 +274,7 @@ class GraphKnowledgeBase(KnowledgeBase):
             if not result:
                 success = False
 
-        # 删除三元组索引（如果存在）
+        # Delete triple index (if exists)
         if self.config.use_graph:
             for doc_id in doc_ids:
                 result = await self.index_manager.delete_index(
@@ -282,7 +282,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                     index_name=triple_index_name,
                 )
                 if not result:
-                    # 三元组删除失败不影响整体结果
+                    # Triple deletion failure does not affect overall result
                     logger.warning(f"Failed to delete triples for doc_id={doc_id}")
 
         return success
@@ -292,16 +292,16 @@ class GraphKnowledgeBase(KnowledgeBase):
         documents: List[Document],
         **kwargs: Any,
     ) -> List[str]:
-        """更新文档（包括块索引和三元组索引）"""
-        # 先删除旧文档
+        """Update documents (including chunk index and triple index)"""
+        # First delete old documents
         doc_ids = [doc.id_ for doc in documents]
         await self.delete_documents(doc_ids)
 
-        # 重新添加文档
+        # Re-add documents
         return await self.add_documents(documents, **kwargs)
 
     async def get_statistics(self) -> Dict[str, Any]:
-        """获取知识库统计信息"""
+        """Get knowledge base statistics"""
         chunk_index_name = f"kb_{self.config.kb_id}_chunks"
         triple_index_name = f"kb_{self.config.kb_id}_triples"
 
@@ -331,7 +331,7 @@ class GraphKnowledgeBase(KnowledgeBase):
         }
 
     async def close(self) -> None:
-        """关闭知识库"""
+        """Close the knowledge base"""
         await super().close()
         if self.graph_retriever:
             await self.graph_retriever.close()
@@ -341,7 +341,7 @@ class GraphKnowledgeBase(KnowledgeBase):
             await self.triple_retriever.close()
 
 
-# ========= 多知识库检索辅助 =========
+# ========= Multi-Knowledge Base Retrieval Helpers =========
 
 async def retrieve_multi_graph_kb(
     kbs: List[KnowledgeBase],
@@ -349,7 +349,7 @@ async def retrieve_multi_graph_kb(
     config: Optional[RetrievalConfig] = None,
     top_k: Optional[int] = None,
 ) -> List[str]:
-    """在多个知识库上执行检索（结果为文本列表）。"""
+    """Perform retrieval on multiple knowledge bases (returns text list)."""
     return await retrieve_multi_kb(kbs, query, config=config, top_k=top_k)
 
 
@@ -359,5 +359,5 @@ async def retrieve_multi_graph_kb_with_source(
     config: Optional[RetrievalConfig] = None,
     top_k: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
-    """在多个知识库上执行检索（包含来源信息）。"""
+    """Perform retrieval on multiple knowledge bases (includes source information)."""
     return await retrieve_multi_kb_with_source(kbs, query, config=config, top_k=top_k)

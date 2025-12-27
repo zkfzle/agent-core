@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-混合检索器实现
+Hybrid Retriever Implementation
 
-结合向量检索和稀疏检索的混合检索器。
+Hybrid retriever combining vector retrieval and sparse retrieval.
 """
 from typing import Any, List, Optional, Dict
 from typing import Literal
@@ -15,7 +15,7 @@ from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
 
 
 class HybridRetriever(Retriever):
-    """混合检索器实现（向量 + 稀疏）"""
+    """Hybrid retriever implementation (vector + sparse)"""
 
     def __init__(
         self,
@@ -25,12 +25,12 @@ class HybridRetriever(Retriever):
         **kwargs: Any,
     ):
         """
-        初始化混合检索器
+        Initialize hybrid retriever
         
         Args:
-            vector_store: 向量存储实例
-            embed_model: 嵌入模型实例（向量检索必需）
-            alpha: 混合权重（0=纯稀疏检索，1=纯向量检索，0.5=平衡）
+            vector_store: Vector store instance
+            embed_model: Embedding model instance (required for vector retrieval)
+            alpha: Hybrid weight (0=pure sparse retrieval, 1=pure vector retrieval, 0.5=balanced)
         """
         self.vector_store = vector_store
         self.embed_model = embed_model
@@ -45,17 +45,17 @@ class HybridRetriever(Retriever):
         **kwargs: Any,
     ) -> List[RetrievalResult]:
         """
-        检索文档（混合检索）
+        Retrieve documents (hybrid retrieval)
         
         Args:
-            query: 查询字符串
-            top_k: 返回数量
-            score_threshold: 分数阈值
-            mode: 检索模式（此检索器支持 hybrid，也可以回退到 vector 或 sparse）
-            **kwargs: 额外参数（可包含 alpha 参数覆盖默认值）
+            query: Query string
+            top_k: Number of results to return
+            score_threshold: Score threshold
+            mode: Retrieval mode (this retriever supports hybrid, can also fallback to vector or sparse)
+            **kwargs: Additional parameters (can include alpha parameter to override default)
             
         Returns:
-            检索结果列表
+            List of retrieval results
         """
         alpha = kwargs.get("alpha", self.alpha)
 
@@ -63,7 +63,7 @@ class HybridRetriever(Retriever):
             raise ValueError("score_threshold is only supported when mode='vector'")
 
         if mode == "hybrid":
-            # 混合检索
+            # Hybrid retrieval
             query_vector = None
             if self.embed_model:
                 query_vector = await self.embed_model.embed_query(query)
@@ -76,7 +76,7 @@ class HybridRetriever(Retriever):
                 filters=None,
             )
         elif mode == "vector":
-            # 纯向量检索
+            # Pure vector retrieval
             if self.embed_model is None:
                 raise ValueError("embed_model is required for vector search")
 
@@ -93,7 +93,7 @@ class HybridRetriever(Retriever):
                     filters=None,
                 )
         elif mode == "sparse":
-            # 纯稀疏检索
+            # Pure sparse retrieval
             search_results = await self.vector_store.sparse_search(
                 query_text=query,
                 top_k=top_k,
@@ -102,10 +102,10 @@ class HybridRetriever(Retriever):
         else:
             raise ValueError(f"Unsupported mode: {mode}")
 
-        # 转换为 RetrievalResult
+        # Convert to RetrievalResult
         retrieval_results = []
         for result in search_results:
-            # 应用分数阈值过滤
+            # Apply score threshold filtering
             if (mode == "vector" and
                     score_threshold is not None and
                     result.score is not None and
@@ -129,16 +129,16 @@ class HybridRetriever(Retriever):
         top_k: int = 5,
         **kwargs: Any,
     ) -> List[List[RetrievalResult]]:
-        """批量检索"""
+        """Batch retrieval"""
         import asyncio
 
-        # 并发执行多个检索
+        # Execute multiple retrievals concurrently
         tasks = [self.retrieve(query, top_k=top_k, **kwargs) for query in queries]
         results = await asyncio.gather(*tasks)
         return results
 
     async def close(self) -> None:
-        """关闭检索器"""
+        """Close the retriever"""
         import inspect
 
         if self.vector_store:

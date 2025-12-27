@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-向量存储抽象基类
+Vector Store Abstract Base Class
 
-提供向量存储的统一接口。
+Provides a unified interface for vector stores.
 """
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional
@@ -11,7 +11,7 @@ from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
 
 
 class VectorStore(ABC):
-    """向量存储抽象基类"""
+    """Vector store abstract base class"""
     
     @abstractmethod
     async def add(
@@ -20,7 +20,7 @@ class VectorStore(ABC):
         batch_size: int | None = 128,
         **kwargs: Any,
     ) -> None:
-        """添加向量"""
+        """Add vectors"""
         pass
     
     @abstractmethod
@@ -32,16 +32,16 @@ class VectorStore(ABC):
         **kwargs: Any,
     ) -> List[SearchResult]:
         """
-        向量搜索
+        Vector search
         
         Args:
-            query_vector: 查询向量
-            top_k: 返回数量
-            filters: 元数据过滤条件
-            **kwargs: 额外参数
+            query_vector: Query vector
+            top_k: Number of results to return
+            filters: Metadata filter conditions
+            **kwargs: Additional parameters
             
         Returns:
-            搜索结果列表
+            List of search results
         """
         pass
     
@@ -54,16 +54,16 @@ class VectorStore(ABC):
         **kwargs: Any,
     ) -> List[SearchResult]:
         """
-        稀疏搜索（BM25）
+        Sparse search (BM25)
         
         Args:
-            query_text: 查询文本
-            top_k: 返回数量
-            filters: 元数据过滤条件
-            **kwargs: 额外参数
+            query_text: Query text
+            top_k: Number of results to return
+            filters: Metadata filter conditions
+            **kwargs: Additional parameters
             
         Returns:
-            搜索结果列表
+            List of search results
         """
         pass
     
@@ -78,18 +78,18 @@ class VectorStore(ABC):
         **kwargs: Any,
     ) -> List[SearchResult]:
         """
-        混合搜索（稀疏检索 + 向量检索）
+        Hybrid search (sparse retrieval + vector retrieval)
         
         Args:
-            query_text: 查询文本
-            query_vector: 查询向量（可选，如果提供则使用，否则需要先嵌入）
-            top_k: 返回数量
-            alpha: 混合权重（0=纯稀疏检索，1=纯向量检索，0.5=平衡）
-            filters: 元数据过滤条件
-            **kwargs: 额外参数
+            query_text: Query text
+            query_vector: Query vector (optional, if provided will be used, otherwise needs to be embedded first)
+            top_k: Number of results to return
+            alpha: Hybrid weight (0=pure sparse retrieval, 1=pure vector retrieval, 0.5=balanced)
+            filters: Metadata filter conditions
+            **kwargs: Additional parameters
             
         Returns:
-            搜索结果列表
+            List of search results
         """
         pass
     
@@ -100,5 +100,5 @@ class VectorStore(ABC):
         filter_expr: Optional[str] = None,
         **kwargs: Any,
     ) -> bool:
-        """删除向量"""
+        """Delete vectors"""
         pass

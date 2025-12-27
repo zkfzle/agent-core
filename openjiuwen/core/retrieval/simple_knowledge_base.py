@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-基础知识库实现
+Simple Knowledge Base Implementation
 
-提供完整的知识库功能，包括文档解析、分块、索引构建和检索。
+Provides complete knowledge base functionality including document parsing, chunking, index building, and retrieval.
 """
 from typing import Any, List, Optional, Dict
 import uuid
@@ -23,7 +23,7 @@ from openjiuwen.core.retrieval.common.config import IndexConfig
 
 
 class SimpleKnowledgeBase(KnowledgeBase):
-    """基础知识库实现"""
+    """Simple Knowledge Base Implementation"""
 
     def __init__(
         self,
@@ -39,18 +39,18 @@ class SimpleKnowledgeBase(KnowledgeBase):
         **kwargs: Any,
     ):
         """
-        初始化知识库
+        Initialize the knowledge base
         
         Args:
-            config: 知识库配置
-            vector_store: 向量存储实例
-            embed_model: 嵌入模型实例
-            parser: 文档解析器实例
-            chunker: 文本分块器实例
-            extractor: 提取器实例（可选）
-            index_manager: 索引管理器实例
-            retriever: 检索器实例（可选，如果不提供则自动创建）
-            llm_client: LLM 客户端实例（可选，用于图检索等）
+            config: Knowledge base configuration
+            vector_store: Vector store instance
+            embed_model: Embedding model instance
+            parser: Document parser instance
+            chunker: Text chunker instance
+            extractor: Extractor instance (optional)
+            index_manager: Index manager instance
+            retriever: Retriever instance (optional, will be auto-created if not provided)
+            llm_client: LLM client instance (optional, for graph retrieval, etc.)
         """
         super().__init__(
             config=config,
@@ -70,7 +70,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         file_paths: List[str],
         **kwargs: Any,
     ) -> List[Document]:
-        """从文件路径解析为Document对象列表"""
+        """Parse files from file paths into a list of Document objects"""
         if not self.parser:
             raise ValueError("parser is required for parse_files")
 
@@ -97,17 +97,17 @@ class SimpleKnowledgeBase(KnowledgeBase):
         documents: List[Document],
         **kwargs: Any,
     ) -> List[str]:
-        """添加文档到知识库"""
+        """Add documents to the knowledge base"""
         if not self.chunker:
             raise ValueError("chunker is required for add_documents")
         if not self.index_manager:
             raise ValueError("index_manager is required for add_documents")
 
-        # 分块文档
+        # Chunk documents
         chunks = self.chunker.chunk_documents(documents)
         logger.info(f"Chunked {len(documents)} documents into {len(chunks)} chunks")
 
-        # 构建索引
+        # Build index
 
         index_config = IndexConfig(
             index_name=f"kb_{self.config.kb_id}_chunks",
@@ -123,7 +123,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         if not success:
             raise RuntimeError("Failed to build index")
 
-        # 返回文档 ID 列表
+        # Return document ID list
         doc_ids = [doc.id_ for doc in documents]
         logger.info(f"Successfully added {len(doc_ids)} documents to knowledge base")
         return doc_ids
@@ -134,15 +134,15 @@ class SimpleKnowledgeBase(KnowledgeBase):
         config: Optional[RetrievalConfig] = None,
         **kwargs: Any,
     ) -> List[RetrievalResult]:
-        """检索相关文档"""
+        """Retrieve relevant documents"""
         if not self.retriever:
-            # 自动创建检索器
+            # Auto-create retriever
             if not self.vector_store:
                 raise ValueError(
                     "vector_store or retriever is required for retrieve"
                 )
             
-            # 根据 index_type 选择合适的检索器
+            # Select appropriate retriever based on index_type
             if self.config.index_type == "vector":
                 from openjiuwen.core.retrieval.retriever.vector_retriever import VectorRetriever
                 self.retriever = VectorRetriever(
@@ -154,17 +154,17 @@ class SimpleKnowledgeBase(KnowledgeBase):
                 self.retriever = SparseRetriever(
                     vector_store=self.vector_store,
                 )
-            else:  # hybrid 或其他
+            else:  # hybrid or others
                 from openjiuwen.core.retrieval.retriever.hybrid_retriever import HybridRetriever
                 self.retriever = HybridRetriever(
                     vector_store=self.vector_store,
                     embed_model=self.embed_model,
                 )
 
-        # 使用配置或默认值
+        # Use config or default values
         retrieval_config = config or RetrievalConfig()
         
-        # 确定检索模式
+        # Determine retrieval mode
         mode = "hybrid"
         if self.config.index_type == "vector":
             mode = "vector"
@@ -182,7 +182,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         doc_ids: List[str],
         **kwargs: Any,
     ) -> bool:
-        """删除文档"""
+        """Delete documents"""
         if not self.index_manager:
             raise ValueError("index_manager is required for delete_documents")
 
@@ -204,16 +204,16 @@ class SimpleKnowledgeBase(KnowledgeBase):
         documents: List[Document],
         **kwargs: Any,
     ) -> List[str]:
-        """更新文档"""
+        """Update documents"""
         if not self.chunker:
             raise ValueError("chunker is required for update_documents")
         if not self.index_manager:
             raise ValueError("index_manager is required for update_documents")
 
-        # 分块文档
+        # Chunk documents
         chunks = self.chunker.chunk_documents(documents)
 
-        # 更新索引
+        # Update index
         index_config = IndexConfig(
             index_name=f"kb_{self.config.kb_id}_chunks",
             index_type=self.config.index_type,
@@ -235,7 +235,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
         return doc_ids
 
     async def get_statistics(self) -> Dict[str, Any]:
-        """获取知识库统计信息"""
+        """Get knowledge base statistics"""
         index_name = f"kb_{self.config.kb_id}_chunks"
         
         if not self.index_manager:
@@ -265,7 +265,7 @@ async def retrieve_multi_kb(
     top_k: Optional[int] = None,
 ) -> List[str]:
     """
-    在多个知识库上执行检索，按文本去重并按分数降序融合。
+    Perform retrieval on multiple knowledge bases, deduplicate by text and merge by score in descending order.
     """
     if not kbs:
         return []
@@ -300,8 +300,8 @@ async def retrieve_multi_kb_with_source(
     top_k: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     """
-    在多个知识库上执行检索，返回包含来源信息的结果。
-    结果项：text/score/raw_score/raw_score_scaled/kb_ids
+    Perform retrieval on multiple knowledge bases, return results with source information.
+    Result items: text/score/raw_score/raw_score_scaled/kb_ids
     """
     if not kbs:
         return []

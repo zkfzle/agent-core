@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-检索结果数据模型
+Retrieval Result Data Models
 
-包含 SearchResult 和 RetrievalResult 数据模型。
+Contains SearchResult and RetrievalResult data models.
 """
 from typing import Dict, Any, Optional
 
@@ -10,21 +10,21 @@ from pydantic import BaseModel, Field
 
 
 class SearchResult(BaseModel):
-    """搜索结果数据模型"""
-    id: str = Field(..., description="结果 ID")
-    text: str = Field(..., description="文本内容")
-    score: float = Field(..., description="相关性分数")
+    """Search result data model"""
+    id: str = Field(..., description="Result ID")
+    text: str = Field(..., description="Text content")
+    score: float = Field(..., description="Relevance score")
     metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="元数据"
+        default_factory=dict, description="Metadata"
     )
 
 
 class RetrievalResult(BaseModel):
-    """检索结果数据模型"""
-    text: str = Field(..., description="文本内容")
-    score: float = Field(..., description="相关性分数")
+    """Retrieval result data model"""
+    text: str = Field(..., description="Text content")
+    score: float = Field(..., description="Relevance score")
     metadata: Dict[str, Any] = Field(
-        default_factory=dict, description="元数据"
+        default_factory=dict, description="Metadata"
     )
-    doc_id: Optional[str] = Field(None, description="文档 ID")
-    chunk_id: Optional[str] = Field(None, description="块 ID")
+    doc_id: Optional[str] = Field(None, description="Document ID")
+    chunk_id: Optional[str] = Field(None, description="Chunk ID")

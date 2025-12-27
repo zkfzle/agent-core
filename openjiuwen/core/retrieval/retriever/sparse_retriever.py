@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-稀疏检索器实现
+Sparse Retriever Implementation
 
-基于 BM25 的稀疏检索器。
+Sparse retriever based on BM25.
 """
 from typing import Any, List, Optional, Dict
 from typing import Literal
@@ -13,7 +13,7 @@ from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult
 
 
 class SparseRetriever(Retriever):
-    """稀疏检索器实现（BM25）"""
+    """Sparse retriever implementation (BM25)"""
 
     def __init__(
         self,
@@ -21,10 +21,10 @@ class SparseRetriever(Retriever):
         **kwargs: Any,
     ):
         """
-        初始化稀疏检索器
+        Initialize sparse retriever
         
         Args:
-            vector_store: 向量存储实例（需要支持稀疏搜索）
+            vector_store: Vector store instance (needs to support sparse search)
         """
         self.vector_store = vector_store
 
@@ -37,29 +37,29 @@ class SparseRetriever(Retriever):
         **kwargs: Any,
     ) -> List[RetrievalResult]:
         """
-        检索文档（稀疏检索）
+        Retrieve documents (sparse retrieval)
         
         Args:
-            query: 查询字符串
-            top_k: 返回数量
-            score_threshold: 分数阈值
-            mode: 检索模式（此检索器只支持 sparse）
-            **kwargs: 额外参数
+            query: Query string
+            top_k: Number of results to return
+            score_threshold: Score threshold
+            mode: Retrieval mode (this retriever only supports sparse)
+            **kwargs: Additional parameters
             
         Returns:
-            检索结果列表
+            List of retrieval results
         """
         if mode != "sparse":
             raise ValueError(f"SparseRetriever only supports 'sparse' mode, got {mode}")
 
-        # 执行稀疏搜索
+        # Execute sparse search
         search_results = await self.vector_store.sparse_search(
             query_text=query,
             top_k=top_k,
             filters=None,
         )
 
-        # 转换为 RetrievalResult
+        # Convert to RetrievalResult
         retrieval_results = []
         for result in search_results:
             retrieval_result = RetrievalResult(
@@ -79,16 +79,16 @@ class SparseRetriever(Retriever):
         top_k: int = 5,
         **kwargs: Any,
     ) -> List[List[RetrievalResult]]:
-        """批量检索"""
+        """Batch retrieval"""
         import asyncio
 
-        # 并发执行多个检索
+        # Execute multiple retrievals concurrently
         tasks = [self.retrieve(query, top_k=top_k, **kwargs) for query in queries]
         results = await asyncio.gather(*tasks)
         return results
 
     async def close(self) -> None:
-        """关闭检索器"""
+        """Close the retriever"""
         import inspect
 
         if self.vector_store:

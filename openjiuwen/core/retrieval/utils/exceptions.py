@@ -1,36 +1,36 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-异常定义
+Exception Definitions
 
-包含所有 RAG 相关的异常类。
+Contains all RAG-related exception classes.
 """
 
 
 class RAGException(Exception):
-    """RAG 模块基础异常"""
+    """RAG module base exception"""
     pass
 
 
 class KnowledgeBaseError(RAGException):
-    """知识库错误"""
+    """Knowledge base error"""
     pass
 
 
 class KnowledgeBaseIndexError(RAGException):
-    """索引错误"""
+    """Index error"""
     pass
 
 
 class KnowledgeBaseRetrievalError(RAGException):
-    """检索错误"""
+    """Retrieval error"""
     pass
 
 
 class DocumentProcessingError(RAGException):
-    """文档处理错误"""
+    """Document processing error"""
     pass
 
 
 class VectorStoreError(RAGException):
-    """向量存储错误"""
+    """Vector store error"""
     pass

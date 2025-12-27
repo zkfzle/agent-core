@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-文档解析器抽象基类
+Document Parser Abstract Base Class
 
-继承 Processor，提供文档解析接口。
+Inherits from Processor, provides document parsing interface.
 """
 import os
 from abc import abstractmethod
@@ -13,19 +13,19 @@ from openjiuwen.core.retrieval.common.document import Document
 
 
 class Parser(Processor):
-    """文档解析器抽象基类（继承 Processor）"""
+    """Document parser abstract base class (inherits from Processor)"""
     
     async def parse(self, doc: str, doc_id: str = "", **kwargs: Any) -> List[Document]:
         """
-        解析文档
+        Parse document
         
         Args:
-            doc: 文档源（文件路径、URL 等）
-            doc_id: 文档ID
-            **kwargs: 额外参数
+            doc: Document source (file path, URL, etc.)
+            doc_id: Document ID
+            **kwargs: Additional parameters
             
         Returns:
-            文档列表
+            Document list
         """
         content = await self._parse(doc)
         if content:
@@ -40,23 +40,23 @@ class Parser(Processor):
         pass
 
     async def lazy_parse(self, doc: str, doc_id: str = "", **kwargs: Any) -> AsyncIterator[Document]:
-        """默认基于 parse 的懒加载实现。"""
+        """Default lazy loading implementation based on parse."""
         docs = await self.parse(doc, doc_id=doc_id, **kwargs)
         for d in docs:
             yield d
 
     async def process(self, *args: Any, **kwargs: Any) -> Any:
-        """兼容 Processor 抽象方法，默认调用 parse。"""
+        """Compatible with Processor abstract method, defaults to calling parse."""
         return await self.parse(*args, **kwargs)
     
     def supports(self, doc: str) -> bool:
         """
-        检查是否支持该文档源
+        Check if the document source is supported
         
         Args:
-            source: 文档源
+            doc: Document source
             
         Returns:
-            是否支持
+            Whether it is supported
         """
         return False

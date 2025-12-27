@@ -654,6 +654,70 @@ class TestExpressionCondition(TestConditionBase):
             expr_condition.invoke({}, self.mock_runtime)
         assert "nesting depth exceeds maximum allowed depth" in str(excinfo.value)
 
+    def test_string_comparison_with_true_literal(self):
+        """Test string comparison with 'true' string literal"""
+        # Set up mock data - variable a has string value "true"
+        expression = '${a} =="true"'
+        self.mock_state.get_global.side_effect = lambda x: "true" if x == "a" else None
+        
+        # Create ExpressionCondition instance
+        expr_condition = ExpressionCondition(expression)
+        
+        # Test invoke method - should return True for string comparison
+        result = expr_condition.invoke({}, self.mock_runtime)
+        
+        # Verify results - string "true" should equal string "true"
+        assert result is True
+        
+        # Test with different string value - should return False
+        self.mock_state.get_global.side_effect = lambda x: "false" if x == "a" else None
+        result = expr_condition.invoke({}, self.mock_runtime)
+        assert result is False
+
+    def test_string_comparison_with_false_literal(self):
+        """Test string comparison with 'false' string literal"""
+        # Set up mock data - variable a has string value "false"
+        expression = '${a} =="false"'
+        self.mock_state.get_global.side_effect = lambda x: "false" if x == "a" else None
+        
+        # Create ExpressionCondition instance
+        expr_condition = ExpressionCondition(expression)
+        
+        # Test invoke method - should return True for string comparison
+        result = expr_condition.invoke({}, self.mock_runtime)
+        
+        # Verify results - string "false" should equal string "false"
+        assert result is True
+        
+        # Test with different string value - should return False
+        self.mock_state.get_global.side_effect = lambda x: "true" if x == "a" else None
+        result = expr_condition.invoke({}, self.mock_runtime)
+        assert result is False
+
+    def test_string_literal_preservation_with_boolean_identifier(self):
+        """Test that string literals are preserved while boolean identifiers are replaced"""
+        # Test mixed scenario: string literal "true" should be preserved, 
+        # but boolean identifier true should be replaced with True
+        expression = '${a} =="true" && true'
+        self.mock_state.get_global.side_effect = lambda x: "true" if x == "a" else None
+        
+        # Create ExpressionCondition instance
+        expr_condition = ExpressionCondition(expression)
+        
+        # Test invoke method
+        result = expr_condition.invoke({}, self.mock_runtime)
+        
+        # Verify results - both conditions should be True
+        assert result is True
+        
+        # Test with false string value but true boolean
+        expression2 = '${a} =="false" && true'
+        self.mock_state.get_global.side_effect = lambda x: "false" if x == "a" else None
+        expr_condition2 = ExpressionCondition(expression2)
+        result2 = expr_condition2.invoke({}, self.mock_runtime)
+        # First part is True (string comparison), second part is True (boolean), so overall is True
+        assert result2 is True
+
 
 if __name__ == "__main__":
     pytest.main(["-v", __file__])

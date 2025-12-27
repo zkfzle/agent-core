@@ -1,0 +1,86 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
+"""
+融合工具函数测试用例
+"""
+import pytest
+
+from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
+from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, SearchResult
+
+
+class TestRRFFusion:
+    """RRF 融合测试"""
+
+    def test_rrf_fusion_single_list(self):
+        """测试单个结果列表融合"""
+        results = [
+            RetrievalResult(text="Result 1", score=0.9),
+            RetrievalResult(text="Result 2", score=0.8),
+            RetrievalResult(text="Result 3", score=0.7),
+        ]
+        fused = rrf_fusion([results])
+        assert len(fused) == 3
+        # 应该按 RRF 分数排序
+        assert fused[0].text == "Result 1"
+        assert fused[0].score > fused[1].score
+
+    def test_rrf_fusion_multiple_lists(self):
+        """测试多个结果列表融合"""
+        results1 = [
+            RetrievalResult(text="Result 1", score=0.9),
+            RetrievalResult(text="Result 2", score=0.8),
+        ]
+        results2 = [
+            RetrievalResult(text="Result 2", score=0.85),
+            RetrievalResult(text="Result 3", score=0.7),
+        ]
+        fused = rrf_fusion([results1, results2])
+        # 应该去重并按 RRF 分数排序
+        assert len(fused) == 3
+        texts = [r.text for r in fused]
+        assert "Result 1" in texts
+        assert "Result 2" in texts
+        assert "Result 3" in texts
+        # Result 2 应该排名更高（出现在两个列表中）
+        assert fused[0].text == "Result 2" or fused[1].text == "Result 2"
+
+    def test_rrf_fusion_empty_list(self):
+        """测试空列表融合"""
+        fused = rrf_fusion([])
+        assert len(fused) == 0
+
+    def test_rrf_fusion_with_empty_results(self):
+        """测试包含空结果的融合"""
+        results1 = [
+            RetrievalResult(text="Result 1", score=0.9),
+        ]
+        results2 = []
+        fused = rrf_fusion([results1, results2])
+        assert len(fused) == 1
+        assert fused[0].text == "Result 1"
+
+    def test_rrf_fusion_custom_k(self):
+        """测试自定义 k 参数"""
+        results1 = [
+            RetrievalResult(text="Result 1", score=0.9),
+            RetrievalResult(text="Result 2", score=0.8),
+        ]
+        results2 = [
+            RetrievalResult(text="Result 2", score=0.85),
+            RetrievalResult(text="Result 3", score=0.7),
+        ]
+        fused_k30 = rrf_fusion([results1, results2], k=30)
+        fused_k60 = rrf_fusion([results1, results2], k=60)
+        # k 值不同，RRF 分数应该不同
+        assert len(fused_k30) == len(fused_k60) == 3
+
+    def test_rrf_fusion_with_search_result(self):
+        """测试使用 SearchResult 的融合"""
+        results = [
+            SearchResult(id="1", text="Result 1", score=0.9),
+            SearchResult(id="2", text="Result 2", score=0.8),
+        ]
+        fused = rrf_fusion([results])
+        assert len(fused) == 2
+        assert isinstance(fused[0], SearchResult)
+

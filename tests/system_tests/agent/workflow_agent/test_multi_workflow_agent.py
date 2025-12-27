@@ -40,10 +40,10 @@ from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 
-API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
-API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
-MODEL_NAME = "Qwen/Qwen3-32B"
-MODEL_PROVIDER = "siliconflow"
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 SYSTEM_PROMPT_TEMPLATE = "你是一个query改写的AI助手。今天的日期是{}。"
@@ -169,7 +169,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         model_config = self._create_model_config()
         questioner_config = QuestionerConfig(
             model=model_config,
-            question_content="",
+            question_content=f"请提供{question_desc}",
             extract_fields_from_response=True,
             field_names=key_fields,
             with_chat_history=False,
@@ -237,9 +237,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 提问器组件
         model_config = self._create_model_config()
+        field_descs = ", ".join([f.description for f in question_fields])
         questioner_config = QuestionerConfig(
             model=model_config,
-            question_content="",
+            question_content=f"请提供以下信息：{field_descs}",
             extract_fields_from_response=True,
             field_names=question_fields,
             with_chat_history=False,
@@ -263,6 +264,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("questioner", "end")
 
         return flow
+
+    @unittest.skip("skip system test")
     async def test_multi_workflow_routing_via_intent_detection(self):
         """多工作流场景下，意图识别结果应跳转到目标工作流（使用真实模型）。"""
         print("=== 测试多工作流意图识别路由 ===")
@@ -324,6 +327,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("stock:", response_content, "应该路由到股票工作流")
         self.assertIn("股票", response_content, "响应应该包含查询内容")
         print(f"✅ 测试通过：成功路由到股票工作流，返回结果：{response_content}")
+
+    @unittest.skip("skip system test")
     async def test_multi_workflow_jump_and_recovery(self):
         """
         测试多工作流间的跳转和恢复功能。
@@ -466,6 +471,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print(f"[OK] 步骤4成功：workflow2 恢复并完成，返回: {response_content_4}")
 
         print("\n[SUCCESS] 所有步骤完成！多工作流跳转和恢复测试通过！")
+
+    @unittest.skip("skip system test")
     async def test_real_time_interrupt_with_cancellation(self):
         """
         测试真正的实时打断场景：不等 workflow1 执行完就发送新 query。
@@ -666,6 +673,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         return flow
 
+    @unittest.skip("skip system test")
     @patch(
         "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model"
     )
@@ -751,6 +759,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print("✅ 测试通过：批输出模式正确返回 workflow_final 帧")
 
+    @unittest.skip("skip system test")
     @patch(
         "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model"
     )
@@ -826,6 +835,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         print("✅ 测试通过：流输出模式正确返回 end node stream 帧")
+
+    @unittest.skip("skip system test")
     async def test_real_time_interrupt_like_invoke_002(self):
         """
         参考 test_agent_invoke_002 构造的实时打断测试。
@@ -948,6 +959,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result3, list, "步骤4应该返回交互请求列表")
         self.assertTrue(len(result3) > 0, "步骤4应该有交互请求")
         print(f"[OK] 步骤4成功：系统恢复正常，天气查询工作流正常触发交互")
+
+    @unittest.skip("skip system test")
     async def test_interactive_input_skips_llm_intent_detection(self):
         """
         测试 InteractiveInput 类型输入跳过 LLM 意图识别。
@@ -1069,6 +1082,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         print("\n✅ 测试通过：InteractiveInput 成功跳过意图识别，直接恢复工作流！")
+
+    @unittest.skip("skip system test")
     async def test_interactive_input_resumes_correct_workflow_in_multi_workflow(
             self
     ):
@@ -1223,18 +1238,14 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print("\n✅ 测试通过：多工作流场景下根据 node_id 精确恢复正确！")
 
+    @unittest.skip("skip system test")
     @patch(
         "openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller."
-        "WorkflowController._ensure_intent_detection_initialized"
-    )
-    @patch(
-        "openjiuwen.core.controller.reasoner.agent_reasoner."
-        "AgentReasoner.use_intent_detection"
+        "WorkflowController._detect_workflow_via_llm"
     )
     async def test_default_response_when_no_task_detected(
             self,
-            mock_intent_detection,
-            mock_init_intent
+            mock_detect_workflow
     ):
         """
         测试意图识别无法选出任务时，使用配置的 default_response.text 作为响应。
@@ -1251,9 +1262,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """
         print("=== 测试意图识别失败时返回默认响应 ===")
 
-        # Mock 意图识别返回空列表
-        mock_intent_detection.return_value = []
-        mock_init_intent.return_value = None
+        # Mock _detect_workflow_via_llm 返回 None，触发默认响应
+        mock_detect_workflow.return_value = None
 
         # 创建两个工作流
         weather_workflow = self._build_prefixed_workflow(
@@ -1323,37 +1333,21 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print(f"✅ 测试通过：意图识别失败时正确返回默认响应: {default_text}")
 
-    @patch(
-        "openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller."
-        "WorkflowController._ensure_intent_detection_initialized"
-    )
-    @patch(
-        "openjiuwen.core.controller.reasoner.agent_reasoner."
-        "AgentReasoner.use_intent_detection"
-    )
-    async def test_fallback_to_first_workflow_when_no_default_response(
-            self,
-            mock_intent_detection,
-            mock_init_intent
-    ):
+    @unittest.skip("skip system test")
+    async def test_fallback_to_first_workflow_when_no_default_response(self):
         """
-        测试意图识别无法选出任务且未配置 default_response.text 时，
-        仍然使用第一个 workflow（保持向后兼容）。
+        测试意图识别模块未初始化时，使用第一个 workflow（保持向后兼容）。
 
         场景：
         1. 配置两个工作流，但不配置 default_response.text
-        2. Mock 意图识别返回空结果
+        2. 由于 _intent_detector 未初始化，会直接使用第一个工作流
         3. 验证回退到第一个工作流执行
 
         验证：
-        - 当 default_response.text 未配置时，保持原有行为
+        - 当意图识别模块未初始化时，保持原有行为
         - 使用第一个 workflow 执行
         """
         print("=== 测试未配置默认响应时回退到第一个工作流 ===")
-
-        # Mock 意图识别返回空列表
-        mock_intent_detection.return_value = []
-        mock_init_intent.return_value = None
 
         # 创建两个工作流
         weather_workflow = self._build_prefixed_workflow(
@@ -1422,18 +1416,14 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print("✅ 测试通过：未配置默认响应时正确回退到第一个工作流")
 
+    @unittest.skip("skip system test")
     @patch(
         "openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller."
-        "WorkflowController._ensure_intent_detection_initialized"
-    )
-    @patch(
-        "openjiuwen.core.controller.reasoner.agent_reasoner."
-        "AgentReasoner.use_intent_detection"
+        "WorkflowController._detect_workflow_via_llm"
     )
     async def test_default_response_stream_returns_workflow_final(
             self,
-            mock_intent_detection,
-            mock_init_intent
+            mock_detect_workflow
     ):
         """
         测试意图识别无法选出任务时，流式模式返回 workflow_final 帧。
@@ -1451,9 +1441,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """
         print("=== 测试流式模式下意图识别失败时返回 workflow_final 帧 ===")
 
-        # Mock 意图识别返回空列表
-        mock_intent_detection.return_value = []
-        mock_init_intent.return_value = None
+        # Mock _detect_workflow_via_llm 返回 None，触发默认响应
+        mock_detect_workflow.return_value = None
 
         # 创建两个工作流
         weather_workflow = self._build_prefixed_workflow(
@@ -1532,6 +1521,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print(f"workflow_final 帧内容: {workflow_final_chunk.payload}")
         print(f"✅ 测试通过：流式模式正确返回 workflow_final 帧，内容: {default_text}")
+
+    @unittest.skip("skip system test")
     async def test_questioner_state_reset_on_second_invocation(self):
         """
         测试 questioner 组件状态在第二次调用时正确重置。

@@ -8,8 +8,7 @@ from typing import Optional
 
 from openjiuwen.core.controller.controller import BaseController
 from openjiuwen.core.controller.config.reasoner_config import IntentDetectionConfig
-from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
-from openjiuwen.core.controller.reasoner import IntentDetection
+from openjiuwen.core.controller.reasoner import IntentDetector
 from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.common.logging import logger
@@ -36,7 +35,7 @@ class HierarchicalMainController(BaseController):
     
     def __init__(self):
         super().__init__()
-        self.reasoner = None
+        self._intent_detector = None
         self._desc_to_agent_id = {}  # description -> agent_id 映射
     
     def _get_other_agents(self) -> dict:
@@ -51,12 +50,12 @@ class HierarchicalMainController(BaseController):
             result[agent_id] = agent
         return result
     
-    def _ensure_reasoner_initialized(self, runtime):
-        """Initialize or update reasoner for intent detection
+    def _ensure_intent_detection_initialized(self, runtime):
+        """Initialize or update intent detection module
         
         Like WorkflowController._ensure_intent_detection_initialized:
-        - If reasoner exists, update its intent_detection_module.runtime
-        - Otherwise create new reasoner and IntentDetection
+        - If intent_detection exists, update its runtime
+        - Otherwise create new IntentDetection instance
         """
         if not self._group:
             logger.warning("HierarchicalMainController: Not attached to a group")
@@ -68,16 +67,12 @@ class HierarchicalMainController(BaseController):
             return
         
         # If already initialized, just update runtime
-        if self.reasoner is not None:
-            has_intent_module = (
-                hasattr(self.reasoner, 'intent_detection_module')
-                and self.reasoner.intent_detection_module
-            )
-            if has_intent_module:
-                self.reasoner.intent_detection_module.runtime = runtime
-                return
+        if self._intent_detector is not None:
+            self._intent_detector.runtime = runtime
+            logger.debug("HierarchicalMainController: Updated intent detection runtime")
+            return
         
-        # Create new reasoner and IntentDetection
+        # Create new IntentDetection
         # Use description as category for better LLM understanding
         category_descriptions = []
         self._desc_to_agent_id = {}
@@ -113,7 +108,7 @@ class HierarchicalMainController(BaseController):
             f"- {desc}" for desc in category_descriptions
         )
         logger.info(
-            f"HierarchicalMainController: Init reasoner, "
+            f"HierarchicalMainController: Init intent detection, "
             f"categories={category_descriptions}"
         )
         
@@ -125,27 +120,20 @@ class HierarchicalMainController(BaseController):
                 enable_input=True
             )
             
-            self.reasoner = AgentReasoner(
-                config=self._config,
-                context_engine=self._context_engine,
-                runtime=runtime
-            )
-            
-            intent_detection = IntentDetection(
+            self._intent_detector = IntentDetector(
                 intent_config=intent_config,
                 agent_config=self._config,
                 context_engine=self._context_engine,
                 runtime=runtime
             )
             
-            self.reasoner.set_intent_detection(intent_detection)
             logger.info(
-                f"HierarchicalMainController: Reasoner ready, "
+                f"HierarchicalMainController: Intent detection ready, "
                 f"{len(category_descriptions)} agents"
             )
         except Exception as e:
-            logger.error(f"HierarchicalMainController: Reasoner init failed: {e}")
-            self.reasoner = None
+            logger.error(f"HierarchicalMainController: Intent detection init failed: {e}")
+            self._intent_detector = None
     
     async def handle_event(self, event: Event, runtime) -> dict:
         """Process message: intent detection -> interruption check -> dispatch
@@ -156,7 +144,7 @@ class HierarchicalMainController(BaseController):
         3. If intent matches an interrupted single_agent, resume it
         4. If intent points to a different single_agent, route to that single_agent
         """
-        self._ensure_reasoner_initialized(runtime)
+        self._ensure_intent_detection_initialized(runtime)
         
         # Check if message content is InteractiveInput
         is_interactive_input = (
@@ -193,17 +181,17 @@ class HierarchicalMainController(BaseController):
         return result
     
     async def _detect_intent(self, event: Event) -> str:
-        """Detect intent via reasoner
+        """Detect intent via intent detection module
         
         Returns agent_id by mapping from detected description.
         """
         agents = self._get_other_agents()
         
-        if not self.reasoner:
+        if not self._intent_detector:
             if agents:
                 fallback = list(agents.keys())[0]
                 logger.warning(
-                    f"HierarchicalMainController: No reasoner, "
+                    f"HierarchicalMainController: No intent detection, "
                     f"fallback to {fallback}"
                 )
                 return fallback
@@ -215,7 +203,7 @@ class HierarchicalMainController(BaseController):
             )
         
         try:
-            tasks = await self.reasoner.use_intent_detection(event)
+            tasks = await self._intent_detector.process_message(event)
             if tasks and len(tasks) > 0:
                 detected_desc = tasks[0].input.target_name
                 # Map description back to agent_id

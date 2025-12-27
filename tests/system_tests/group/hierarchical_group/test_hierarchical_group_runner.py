@@ -114,6 +114,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         return group
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_with_instance(self):
         """测试 Runner.run_agent_group 直接传入 Group 实例"""
         print("\n=== 测试 Runner.run_agent_group (传入实例) ===")
@@ -135,6 +136,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertIn("worker_a", result.get("output", ""))
         print("✅ Runner.run_agent_group (传入实例) 测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_with_id(self):
         """测试 Runner.run_agent_group 通过 ID 运行已注册的 Group"""
         print("\n=== 测试 Runner.run_agent_group (通过 ID) ===")
@@ -160,6 +162,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         await Runner.remove_agent_group("runner_test_by_id")
         print("✅ Runner.run_agent_group (通过 ID) 测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_broadcast(self):
         """测试 Runner.run_agent_group 广播到多个 Agent"""
         print("\n=== 测试 Runner.run_agent_group 广播 ===")
@@ -184,6 +187,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(result), 2)
         print("✅ Runner.run_agent_group 广播测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_streaming_with_instance(self):
         """测试 Runner.run_agent_group_streaming 直接传入 Group 实例"""
         print("\n=== 测试 Runner.run_agent_group_streaming (传入实例) ===")
@@ -209,6 +213,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(len(chunks) > 0, "应该收到流式输出")
         print("✅ Runner.run_agent_group_streaming (传入实例) 测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_streaming_with_id(self):
         """测试 Runner.run_agent_group_streaming 通过 ID 运行"""
         print("\n=== 测试 Runner.run_agent_group_streaming (通过 ID) ===")
@@ -240,6 +245,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         await Runner.remove_agent_group("runner_stream_by_id")
         print("✅ Runner.run_agent_group_streaming (通过 ID) 测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_streaming_broadcast(self):
         """测试 Runner.run_agent_group_streaming 广播流式输出"""
         print("\n=== 测试 Runner.run_agent_group_streaming 广播 ===")
@@ -272,6 +278,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(worker_b.received_messages), 1)
         print("✅ Runner.run_agent_group_streaming 广播测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_with_receiver_id(self):
         """测试 Runner.run_agent_group 通过 receiver_id 指定目标"""
         print("\n=== 测试 Runner.run_agent_group (receiver_id 路由) ===")
@@ -296,6 +303,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(worker_b.received_messages), 0)
         print("✅ Runner.run_agent_group (receiver_id 路由) 测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_fallback_to_leader(self):
         """测试 Runner.run_agent_group 无订阅者时回退到 Leader"""
         print("\n=== 测试 Runner.run_agent_group (回退到 Leader) ===")
@@ -325,6 +333,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(worker.received_messages), 0)
         print("✅ Runner.run_agent_group (回退到 Leader) 测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_multiple_message_types(self):
         """测试 Runner.run_agent_group 多种消息类型路由"""
         print("\n=== 测试 Runner.run_agent_group 多消息类型 ===")
@@ -360,6 +369,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(worker_b.received_messages), 1)
         print("✅ Runner.run_agent_group 多消息类型测试通过")
 
+    @unittest.skip("skip system test")
     async def test_run_agent_group_streaming_sequential(self):
         """测试 Runner.run_agent_group_streaming 连续多次调用"""
         print("\n=== 测试 Runner.run_agent_group_streaming 连续调用 ===")

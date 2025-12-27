@@ -19,10 +19,7 @@ from openjiuwen.core.controller.intent_detection_controller import (
     IntentDetectionController,
     IntentType
 )
-from openjiuwen.core.controller.reasoner.agent_reasoner import AgentReasoner
-from openjiuwen.core.controller.reasoner import (
-    IntentDetection
-)
+from openjiuwen.core.controller.reasoner import IntentDetector
 from openjiuwen.core.controller.event.event import Event, EventContent
 from openjiuwen.core.controller.task import Task, TaskInput
 from openjiuwen.core.common.constants.constant import INTERACTION
@@ -66,27 +63,21 @@ class WorkflowController(IntentDetectionController):
         # Maintain backward compatible attribute name
         self.agent_config = config
 
-        # Initialize reasoner (only if config and context_engine are available)
-        self.reasoner = None
+        # Initialize intent detection module (only if config and context_engine are available)
+        self._intent_detector = None
         if config is not None and context_engine is not None:
-            self._init_reasoner()
+            self._init_intent_detection()
 
-    def _init_reasoner(self):
-        """Initialize reasoner - can be called after setup_from_agent"""
-        if self._config is not None and self._context_engine is not None:
-            self.reasoner = AgentReasoner(
-                self._config,
-                self._context_engine,
-                None  # runtime is dynamically passed when used
-            )
-            # Update backward compatible reference
-            self.agent_config = self._config
+    def _init_intent_detection(self):
+        """Initialize intent detection module - can be called after setup_from_agent"""
+        # Intent detection will be lazily initialized when needed with runtime
+        pass
 
     def setup_from_agent(self, agent):
-        """Override to also initialize reasoner after setup"""
+        """Override to also initialize intent detection after setup"""
         super().setup_from_agent(agent)
-        # Initialize reasoner after base setup
-        self._init_reasoner()
+        # Update backward compatible reference
+        self.agent_config = self._config
 
     async def intent_detection(
             self,
@@ -566,7 +557,7 @@ class WorkflowController(IntentDetectionController):
     ) -> Optional[WorkflowSchema]:
         """Use LLM to detect workflow
         
-        If reasoner exists and model is configured, call reasoner for intent detection
+        If intent_detection exists and model is configured, call intent detection directly
         Otherwise return the first workflow
         
         Args:
@@ -577,17 +568,17 @@ class WorkflowController(IntentDetectionController):
             Optional[WorkflowSchema]: Detected workflow schema, or None if
                 default_response should be used
         """
-        # If no reasoner, return first workflow
-        if not self.reasoner:
-            logger.warning("No reasoner configured, using first workflow")
-            return self.agent_config.workflows[0]
-
         try:
             # Initialize intent detection module (pass runtime)
             self._ensure_intent_detection_initialized(runtime)
 
-            # Call reasoner to detect intent
-            detected_tasks = await self.reasoner.use_intent_detection(event)
+            # If no intent detection, use first workflow
+            if not self._intent_detector:
+                logger.warning("No intent detection configured, using first workflow")
+                return self.agent_config.workflows[0]
+
+            # Call intent detection directly to detect intent
+            detected_tasks = await self._intent_detector.process_message(event)
 
             if not detected_tasks:
                 # Check if default_response.text is configured
@@ -631,20 +622,15 @@ class WorkflowController(IntentDetectionController):
     def _ensure_intent_detection_initialized(self, runtime: Runtime):
         """Initialize intent detection module
         
-        If reasoner already has intent_detection_module, update runtime
+        If already has intent_detection, update runtime
         Otherwise create new IntentDetection instance
         
         Args:
             runtime: Runtime context
         """
-        if not self.reasoner:
-            return
-
         # If already initialized, update runtime
-        has_intent_module = (hasattr(self.reasoner, 'intent_detection_module') and
-                             self.reasoner.intent_detection_module)
-        if has_intent_module:
-            self.reasoner.intent_detection_module.runtime = runtime
+        if self._intent_detector:
+            self._intent_detector.runtime = runtime
             logger.debug("Updated intent detection runtime")
             return
 
@@ -663,14 +649,13 @@ class WorkflowController(IntentDetectionController):
             enable_input=True,
         )
 
-        intent_detection = IntentDetection(
+        self._intent_detector = IntentDetector(
             intent_config=intent_config,
             agent_config=self.agent_config,
             context_engine=self._context_engine,
             runtime=runtime  # Pass runtime
         )
 
-        self.reasoner.set_intent_detection(intent_detection)
         logger.info("Intent detection module initialized")
 
     def _should_resume_interrupted_task(

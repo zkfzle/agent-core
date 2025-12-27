@@ -38,8 +38,8 @@ from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Runtime
 from openjiuwen.core.workflow import WorkflowComponent
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -430,8 +430,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         return agent
 
     # ===== 核心测试用例 =====
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
-    @unittest.skip("require network")
     async def test_real_workflow_agent_invoke(self):
         """端到端测试：WorkflowAgent.invoke 走完整链路（插件被 mock）。"""
         # 1. 构造真实 workflow
@@ -467,7 +467,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             interactive_input.update(component_id, {"location": "上海"})
         return interactive_input
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_runner_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
@@ -521,7 +521,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_runner_stream_with_dict_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。使用dict类型InteractiveInput"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
@@ -605,7 +605,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_runner_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
@@ -689,7 +689,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_invoke_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
@@ -743,7 +743,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_stream_with_interrupt_recovery(self):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
@@ -827,7 +827,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             print("未检测到交互请求，测试可能未按预期执行")
             self.fail("应该检测到交互请求")
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_concurrent_with_workflow_provider(self):
         """
         使用 WorkflowProvider 工厂函数验证并发安全性。
@@ -944,7 +944,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             "至少应该有一个 conversation 成功触发中断"
         )
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_concurrent_with_async_workflow_provider(self):
         """
         使用 @workflow_provider 装饰器验证并发安全性。
@@ -1049,7 +1049,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             "至少应该有一个 conversation 成功触发中断"
         )
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_with_multiple_interrupt_nodes_stream(self):
         """
         测试WorkflowAgent运行包含两个并行中断节点的工作流，并逐个恢复。
@@ -1195,7 +1195,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         print("\n🎉 测试完成！成功验证了并行中断节点的分步恢复功能")
 
-    @unittest.skip("require network")
+    @unittest.skip("skip system test")
     async def test_workflow_agent_with_multiple_interrupt_nodes_resume_all_at_once(self):
         """
         测试WorkflowAgent运行包含两个并行中断节点的工作流，并同时恢复所有中断。
@@ -1217,13 +1217,16 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
         agent = self._create_agent(workflow)
 
+        # 使用相同的 conversation_id 来恢复中断的工作流
+        conversation_id = str(uuid.uuid4())
+
         # ========== 步骤1: 首次调用，触发并行中断 ==========
         print("\n【步骤1】发送查询请求，触发并行中断")
         interaction_outputs = []
         try:
             async def collect_first_stream():
                 chunks = []
-                async for chunk in agent.stream({"query": "查询天气", "conversation_id": str(uuid.uuid4())}):
+                async for chunk in agent.stream({"query": "查询天气", "conversation_id": conversation_id}):
                     print(f"第一次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":
@@ -1252,7 +1255,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             async def collect_second_stream():
                 chunks = []
                 final_chunk = None
-                async for chunk in agent.stream({"query": interactive_input, "conversation_id": str(uuid.uuid4())}):
+                # 使用相同的 conversation_id 来恢复中断的工作流
+                async for chunk in agent.stream({"query": interactive_input, "conversation_id": conversation_id}):
                     print(f"第二次输出结果 >>> {chunk}")
                     chunks.append(chunk)
                     if isinstance(chunk, OutputSchema) and chunk.type == "__interaction__":

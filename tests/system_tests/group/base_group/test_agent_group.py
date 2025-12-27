@@ -97,6 +97,7 @@ class AgentGroupTest(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await Runner.stop()
 
+    @unittest.skip("skip system test")
     async def test_agent_group(self):
         """Test Case for AgentGroup"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")

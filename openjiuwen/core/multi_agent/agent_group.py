@@ -15,8 +15,6 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session import Config
-from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
-
 
 class AgentGroupRuntime(AgentRuntime):
     """AgentGroup Runtime
@@ -30,7 +28,7 @@ class AgentGroupRuntime(AgentRuntime):
     3. TaskRuntime from pre_run() has stream_iterator()
     """
     
-    def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
+    def __init__(self, config: Config = None, resource_mgr = None):
         """Initialize AgentGroupRuntime
         
         Args:

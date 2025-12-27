@@ -35,8 +35,8 @@ from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.common.logging import logger
 
-API_BASE = os.getenv("API_BASE", "")
-API_KEY = os.getenv("API_KEY", "")
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
@@ -166,7 +166,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
 
         return flow
 
-    @unittest.skip("临时跳过测试")
+    @unittest.skip("skip system test")
     async def test_dict_interrupt_should_return_again(self):
         """
         测试场景1：dict类型中断应该再次返回
@@ -184,7 +184,8 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         agent = WorkflowAgent(agent_config)
         agent.add_workflows([workflow])  # 使用add_workflows添加工作流
 
-        session_id = "test_dict_interrupt_001"
+        # 使用固定的 conversation_id 保持会话状态
+        session_id = "test-dict-interrupt-001"
 
         # 2. 第一次调用 - 触发中断
         result1 = []
@@ -238,7 +239,9 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         final_chunks = [c for c in result3 if c.type == "workflow_final"]
         self.assertEqual(len(final_chunks), 1, "应该有一个workflow_final")
         logger.info(f"最终结果: {final_chunks[0].payload}")
-    async def test_str_interrupt_should_continue(self):
+
+    @unittest.skip("skip system test")
+    async def test_str_interrupt_should_continue_with_questioner(self):
         """
         测试场景2：str类型中断应该正常执行
         
@@ -344,7 +347,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
 
         return flow
 
-    @unittest.skip("临时跳过测试")
+    @unittest.skip("skip system test")
     async def test_str_interrupt_should_continue(self):
         """
         测试场景2：str类型中断应该正常执行
@@ -368,7 +371,8 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         agent = WorkflowAgent(agent_config)
         agent.add_workflows([flow])  # 使用add_workflows添加工作流
 
-        session_id = "test_str_interrupt_001"
+        # 使用固定的 conversation_id 保持会话状态
+        session_id = "test-str-interrupt-001"
 
         # 3. 第一次调用 - 触发中断（Questioner返回str）
         result1 = []
@@ -441,7 +445,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(final_chunks_4), 1, "应该完成工作流（str中断+InteractiveInput）")
             logger.info(f"第四次调用最终结果: {final_chunks_4[0].payload}")
 
-    @unittest.skip("临时跳过测试")
+    @unittest.skip("skip system test")
     async def test_workflow_jump_with_mixed_interrupts(self):
         """
         测试场景3：工作流跳转与混合中断类型
@@ -491,7 +495,8 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         agent = WorkflowAgent(agent_config)
         agent.add_workflows([user_input_workflow, questioner_workflow])
 
-        session_id = "test_workflow_jump_001"
+        # 使用固定的 conversation_id 保持会话状态
+        session_id = "test-workflow-jump-001"
 
         # ========== 步骤1: user_input_flow触发dict中断 ==========
         

@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-知识库抽象基类
+Knowledge Base Abstract Base Class
 
-提供知识库的统一接口，作为顶层入口。
+Provides a unified interface for knowledge bases as the top-level entry point.
 """
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Dict
@@ -20,7 +20,7 @@ from openjiuwen.core.common.logging import logger
 
 
 class KnowledgeBase(ABC):
-    """知识库抽象基类"""
+    """Knowledge Base Abstract Base Class"""
     
     def __init__(
         self,
@@ -50,14 +50,14 @@ class KnowledgeBase(ABC):
         **kwargs: Any,
     ) -> List[Document]:
         """
-        从文件路径解析为Document对象列表
+        Parse files from file paths into a list of Document objects
         
         Args:
-            file_paths: 文件路径列表
-            **kwargs: 额外参数
+            file_paths: List of file paths
+            **kwargs: Additional parameters
             
         Returns:
-            Document对象列表
+            List of Document objects
         """
         pass
     
@@ -67,7 +67,7 @@ class KnowledgeBase(ABC):
         documents: List[Document],
         **kwargs: Any,
     ) -> List[str]:
-        """添加文档到知识库"""
+        """Add documents to the knowledge base"""
         pass
     
     @abstractmethod
@@ -77,7 +77,7 @@ class KnowledgeBase(ABC):
         config: Optional[RetrievalConfig] = None,
         **kwargs: Any,
     ) -> List[RetrievalResult]:
-        """检索相关文档"""
+        """Retrieve relevant documents"""
         pass
     
     @abstractmethod
@@ -86,7 +86,7 @@ class KnowledgeBase(ABC):
         doc_ids: List[str],
         **kwargs: Any,
     ) -> bool:
-        """删除文档"""
+        """Delete documents"""
         pass
     
     @abstractmethod
@@ -95,16 +95,16 @@ class KnowledgeBase(ABC):
         documents: List[Document],
         **kwargs: Any,
     ) -> List[str]:
-        """更新文档"""
+        """Update documents"""
         pass
     
     @abstractmethod
     async def get_statistics(self) -> Dict[str, Any]:
-        """获取知识库统计信息"""
+        """Get knowledge base statistics"""
         pass
     
     async def close(self) -> None:
-        """关闭知识库，释放资源"""
+        """Close the knowledge base and release resources"""
         import inspect
 
         async def _maybe_await(obj):

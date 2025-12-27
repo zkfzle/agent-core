@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-提取器抽象基类
+Extractor Abstract Base Class
 
-继承 Processor，用于提取三元组等。
+Inherits from Processor, used for extracting triples, etc.
 """
 from abc import abstractmethod
 from typing import List, Any
@@ -13,7 +13,7 @@ from openjiuwen.core.retrieval.common.triple import Triple
 
 
 class Extractor(Processor):
-    """提取器抽象基类（继承 Processor，用于提取三元组等）"""
+    """Extractor abstract base class (inherits from Processor, used for extracting triples, etc.)"""
     
     @abstractmethod
     async def extract(
@@ -22,26 +22,26 @@ class Extractor(Processor):
         **kwargs: Any,
     ) -> List[Triple]:
         """
-        提取信息（如三元组）
+        Extract information (e.g., triples)
         
         Args:
-            chunks: 文本块列表
-            **kwargs: 额外参数
+            chunks: Text chunk list
+            **kwargs: Additional parameters
             
         Returns:
-            提取结果列表（如三元组列表）
+            Extraction result list (e.g., triple list)
         """
         pass
     
     async def process(self, chunks: List[TextChunk], **kwargs: Any) -> List[Triple]:
         """
-        处理文本块（实现 Processor 的 process 方法）
+        Process text chunks (implements Processor's process method)
         
         Args:
-            chunks: 文本块列表
-            **kwargs: 额外参数
+            chunks: Text chunk list
+            **kwargs: Additional parameters
             
         Returns:
-            提取结果列表
+            Extraction result list
         """
         return await self.extract(chunks, **kwargs)

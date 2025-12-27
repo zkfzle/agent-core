@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-ChromaDB 向量存储实现
+ChromaDB Vector Store Implementation
 
-支持向量搜索、稀疏搜索（文本匹配）和混合搜索。
+Supports vector search, sparse search (text matching), and hybrid search.
 """
 from math import log
 import uuid
@@ -19,7 +19,7 @@ from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
 
 
 class ChromaVectorStore(VectorStore):
-    """ChromaDB 向量存储实现"""
+    """ChromaDB vector store implementation"""
 
     def __init__(
         self,
@@ -33,21 +33,21 @@ class ChromaVectorStore(VectorStore):
         **kwargs: Any,
     ):
         """
-        初始化 ChromaDB 向量存储（持久化模式）
+        Initialize ChromaDB vector store (persistent mode)
         
         Args:
-            config: 向量存储配置
-            chroma_path: ChromaDB 持久化路径（必需）
-            text_field: 文本字段名
-            vector_field: 向量字段名
-            sparse_vector_field: 稀疏向量字段名（ChromaDB 中作为元数据存储）
-            metadata_field: 元数据字段名
-            doc_id_field: 文档ID字段名
+            config: Vector store configuration
+            chroma_path: ChromaDB persistent path (required)
+            text_field: Text field name
+            vector_field: Vector field name
+            sparse_vector_field: Sparse vector field name (stored as metadata in ChromaDB)
+            metadata_field: Metadata field name
+            doc_id_field: Document ID field name
         
         Raises:
-            ValueError: 如果 chroma_path 未提供或为空
+            ValueError: If chroma_path is not provided or empty
         """
-        # 校验 chroma_path
+        # Validate chroma_path
         if not chroma_path or not chroma_path.strip():
             raise ValueError("chroma_path is required and cannot be empty")
         
@@ -60,10 +60,10 @@ class ChromaVectorStore(VectorStore):
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
         
-        # 初始化 ChromaDB 持久化客户端
+        # Initialize ChromaDB persistent client
         self._client = chromadb.PersistentClient(path=chroma_path)
         
-        # 获取或创建集合
+        # Get or create collection
         self._collection = self._client.get_or_create_collection(
             name=self.collection_name,
             metadata={
@@ -73,12 +73,12 @@ class ChromaVectorStore(VectorStore):
 
     @property
     def client(self):
-        """获取 ChromaDB 客户端"""
+        """Get ChromaDB client"""
         return self._client
 
     @property
     def collection(self):
-        """获取 ChromaDB 集合"""
+        """Get ChromaDB collection"""
         return self._collection
 
     async def add(
@@ -87,7 +87,7 @@ class ChromaVectorStore(VectorStore):
         batch_size: int | None = 128,
         **kwargs: Any,
     ) -> None:
-        """添加向量数据"""
+        """Add vector data"""
         if batch_size is None or batch_size <= 0:
             batch_size = 128
 
@@ -125,34 +125,34 @@ class ChromaVectorStore(VectorStore):
         )
 
     async def _add_batch(self, nodes: List[dict]) -> None:
-        """批量添加数据到 ChromaDB"""
+        """Batch add data to ChromaDB"""
         ids = []
         embeddings = []
         documents = []
         metadatas = []
         
         for node in nodes:
-            # 提取向量
+            # Extract vector
             embedding = node.get(self.vector_field, [])
             if not embedding:
-                # 如果没有向量，生成一个警告但继续处理（某些情况下可能允许）
+                # If no vector, generate a warning but continue processing (may be allowed in some cases)
                 logger.warning(f"Node has no embedding, skipping: {node.get('id', 'unknown')}")
                 continue
             
-            # 提取 ID
+            # Extract ID
             node_id = str(node.get("id", node.get("pk", "")))
             if not node_id:
                 node_id = str(uuid.uuid4())
             ids.append(node_id)
             embeddings.append(embedding)
             
-            # 提取文本
+            # Extract text
             text = node.get(self.text_field, "")
             documents.append(text)
             
-            # 构建元数据
+            # Build metadata
             metadata = {}
-            # 复制原始元数据
+            # Copy original metadata
             if self.metadata_field in node:
                 raw_metadata = node[self.metadata_field]
                 if isinstance(raw_metadata, dict):
@@ -164,30 +164,30 @@ class ChromaVectorStore(VectorStore):
                         logger.warning(f"Failed to load metadata: {raw_metadata}")
                         pass
             
-            # 添加其他字段到元数据
+            # Add other fields to metadata
             if self.doc_id_field in node:
                 metadata[self.doc_id_field] = str(node[self.doc_id_field])
             if "chunk_id" in node:
                 metadata["chunk_id"] = str(node["chunk_id"])
             if self.sparse_vector_field in node:
-                # 稀疏向量作为元数据存储（ChromaDB 不直接支持稀疏向量）
+                # Store sparse vector as metadata (ChromaDB doesn't directly support sparse vectors)
                 sparse_vec = node[self.sparse_vector_field]
                 if isinstance(sparse_vec, (list, dict)):
                     metadata[self.sparse_vector_field] = json.dumps(sparse_vec)
             
             metadatas.append(metadata)
         
-        # 如果没有有效数据，直接返回
+        # If no valid data, return directly
         if not ids:
             return
         
-        # 重新获取集合，确保使用最新的集合引用
+        # Re-fetch collection to ensure using the latest collection reference
         collection = await asyncio.to_thread(
             self._client.get_collection,
             name=self.collection_name,
         )
         
-        # 添加到 ChromaDB
+        # Add to ChromaDB
         await asyncio.to_thread(
             collection.add,
             ids=ids,
@@ -203,14 +203,14 @@ class ChromaVectorStore(VectorStore):
         filters: Optional[dict] = None,
         **kwargs: Any,
     ) -> List[SearchResult]:
-        """向量搜索"""
-        # 重新获取集合，确保使用最新的集合引用
+        """Vector search"""
+        # Re-fetch collection to ensure using the latest collection reference
         collection = await asyncio.to_thread(
             self._client.get_collection,
             name=self.collection_name,
         )
         
-        # 构建 where 过滤条件
+        # Build where filter conditions
         where = None
         if filters:
             where = {}
@@ -220,7 +220,7 @@ class ChromaVectorStore(VectorStore):
                 else:
                     where[key] = value
         
-        # 执行搜索
+        # Execute search
         results = await asyncio.to_thread(
             collection.query,
             query_embeddings=[query_vector],
@@ -237,15 +237,15 @@ class ChromaVectorStore(VectorStore):
         filters: Optional[dict] = None,
         **kwargs: Any,
     ) -> List[SearchResult]:
-        """稀疏搜索（文本匹配）"""
-        # 重新获取集合，确保使用最新的集合引用
+        """Sparse search (text matching)"""
+        # Re-fetch collection to ensure using the latest collection reference
         collection = await asyncio.to_thread(
             self._client.get_collection,
             name=self.collection_name,
         )
         
-        # ChromaDB 不直接支持 BM25，使用文本查询作为替代
-        # 构建 where 过滤条件
+        # ChromaDB doesn't directly support BM25, use text query as alternative
+        # Build where filter conditions
         where = None
         if filters:
             where = {}
@@ -256,7 +256,7 @@ class ChromaVectorStore(VectorStore):
                     where[key] = value
         
         try:
-            # 使用文本查询（ChromaDB 的文本搜索基于 TF-IDF）
+            # Use text query (ChromaDB's text search is based on TF-IDF)
             results = await asyncio.to_thread(
                 collection.query,
                 query_texts=[query_text],
@@ -280,8 +280,8 @@ class ChromaVectorStore(VectorStore):
         filters: Optional[dict] = None,
         **kwargs: Any,
     ) -> List[SearchResult]:
-        """混合搜索（文本检索 + 向量检索）"""
-        # 构建 where 过滤条件
+        """Hybrid search (text retrieval + vector retrieval)"""
+        # Build where filter conditions
         where = None
         if filters:
             where = {}
@@ -344,15 +344,15 @@ class ChromaVectorStore(VectorStore):
                     )
                 retrieval_results_list.append(retrieval_results)
             
-            # 使用 RRF 融合
+            # Use RRF fusion
             fused_retrieval_results = rrf_fusion(retrieval_results_list, k=60)
             
-            # 将 RetrievalResult 转换回 SearchResult
+            # Convert RetrievalResult back to SearchResult
             fused_results = []
             for rr in fused_retrieval_results[:top_k]:
-                # 从元数据或映射中恢复 ID
+                # Recover ID from metadata or mapping
                 result_id = rr.metadata.get("id") or id_mapping.get(rr.text, str(hash(rr.text)))
-                # 从元数据中移除临时添加的 id 字段
+                # Remove temporarily added id field from metadata
                 metadata = rr.metadata.copy()
                 metadata.pop("id", None)
                 search_result = SearchResult(
@@ -376,24 +376,24 @@ class ChromaVectorStore(VectorStore):
         filter_expr: Optional[str] = None,
         **kwargs: Any,
     ) -> bool:
-        """删除向量"""
+        """Delete vectors"""
         try:
-            # 重新获取集合，确保使用最新的集合引用
+            # Re-fetch collection to ensure using the latest collection reference
             collection = await asyncio.to_thread(
                 self._client.get_collection,
                 name=self.collection_name,
             )
             
             if ids:
-                # 通过 ID 删除
+                # Delete by ID
                 await asyncio.to_thread(
                     collection.delete,
                     ids=ids,
                 )
                 return True
             elif filter_expr:
-                # ChromaDB 不支持复杂的 filter_expr，需要先查询再删除
-                # 这里简化处理，只支持简单的 where 条件
+                # ChromaDB doesn't support complex filter_expr, need to query first then delete
+                # Simplified handling here, only supports simple where conditions
                 logger.warning(
                     "ChromaDB does not support complex filter expressions for deletion. "
                     "Please use ids parameter instead."
@@ -411,7 +411,7 @@ class ChromaVectorStore(VectorStore):
         results: dict,
         mode: str,
     ) -> List[SearchResult]:
-        """将 ChromaDB 搜索结果转换为 SearchResult 列表"""
+        """Convert ChromaDB search results to SearchResult list"""
         search_results = []
         
         if not results or "ids" not in results or not results["ids"]:
@@ -489,12 +489,12 @@ class ChromaVectorStore(VectorStore):
         return search_results
 
     def close(self) -> None:
-        """关闭向量存储"""
-        # ChromaDB 客户端通常不需要显式关闭
-        # 但如果是持久化客户端，可以重置
+        """Close vector store"""
+        # ChromaDB client usually doesn't need explicit closing
+        # But if it's a persistent client, can reset
         if hasattr(self, "_client") and self._client is not None:
             try:
-                # ChromaDB 客户端没有 close 方法，但可以重置
+                # ChromaDB client doesn't have close method, but can reset
                 pass
             except Exception as e:
                 logger.warning(f"Failed to close ChromaDB client: {e}")

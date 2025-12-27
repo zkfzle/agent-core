@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-索引管理器抽象基类
+Index Manager Abstract Base Class
 
-提供索引管理的统一接口。
+Provides a unified interface for index management.
 """
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Dict
@@ -13,7 +13,7 @@ from openjiuwen.core.retrieval.embedding.base import Embedding
 
 
 class Indexer(ABC):
-    """索引管理器抽象基类"""
+    """Index manager abstract base class"""
     
     @abstractmethod
     async def build_index(
@@ -23,7 +23,7 @@ class Indexer(ABC):
         embed_model: Optional[Embedding] = None,
         **kwargs: Any,
     ) -> bool:
-        """构建索引"""
+        """Build index"""
         pass
     
     @abstractmethod
@@ -35,7 +35,7 @@ class Indexer(ABC):
         embed_model: Optional[Embedding] = None,
         **kwargs: Any,
     ) -> bool:
-        """更新索引"""
+        """Update index"""
         pass
     
     @abstractmethod
@@ -45,7 +45,7 @@ class Indexer(ABC):
         index_name: str,
         **kwargs: Any,
     ) -> bool:
-        """删除索引"""
+        """Delete index"""
         pass
     
     @abstractmethod
@@ -53,7 +53,7 @@ class Indexer(ABC):
         self,
         index_name: str,
     ) -> bool:
-        """检查索引是否存在"""
+        """Check if index exists"""
         pass
     
     @abstractmethod
@@ -61,5 +61,5 @@ class Indexer(ABC):
         self,
         index_name: str,
     ) -> Dict[str, Any]:
-        """获取索引信息"""
+        """Get index information"""
         pass

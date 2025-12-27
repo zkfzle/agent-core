@@ -1,26 +1,26 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-处理器抽象基类
+Processor Abstract Base Class
 
-所有处理器（Parser、Chunker、Extractor）的基类。
+Base class for all processors (Parser, Chunker, Extractor).
 """
 from abc import ABC, abstractmethod
 from typing import Any
 
 
 class Processor(ABC):
-    """处理器抽象基类，所有处理器（Parser、Chunker、Extractor）的基类"""
+    """Processor abstract base class, base class for all processors (Parser, Chunker, Extractor)"""
     
     @abstractmethod
     async def process(self, *args: Any, **kwargs: Any) -> Any:
         """
-        处理数据（抽象方法，子类必须实现）
+        Process data (abstract method, must be implemented by subclasses)
         
         Args:
-            *args: 位置参数
-            **kwargs: 关键字参数
+            *args: Positional arguments
+            **kwargs: Keyword arguments
             
         Returns:
-            处理结果
+            Processing result
         """
         pass

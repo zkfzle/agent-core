@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-向量检索器实现
+Vector Retriever Implementation
 
-基于向量存储的检索器实现。
+Retriever implementation based on vector store.
 """
 from typing import Any, List, Optional, Dict
 from typing import Literal
@@ -14,7 +14,7 @@ from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult
 
 
 class VectorRetriever(Retriever):
-    """向量检索器实现"""
+    """Vector retriever implementation"""
 
     def __init__(
         self,
@@ -23,11 +23,11 @@ class VectorRetriever(Retriever):
         **kwargs: Any,
     ):
         """
-        初始化向量检索器
+        Initialize vector retriever
         
         Args:
-            vector_store: 向量存储实例
-            embed_model: 嵌入模型实例（向量检索必需）
+            vector_store: Vector store instance
+            embed_model: Embedding model instance (required for vector retrieval)
         """
         self.vector_store = vector_store
         self.embed_model = embed_model
@@ -41,17 +41,17 @@ class VectorRetriever(Retriever):
         **kwargs: Any,
     ) -> List[RetrievalResult]:
         """
-        检索文档（向量检索）
+        Retrieve documents (vector retrieval)
         
         Args:
-            query: 查询字符串
-            top_k: 返回数量
-            score_threshold: 分数阈值
-            mode: 检索模式（只支持 vector=向量检索）
-            **kwargs: 额外参数
+            query: Query string
+            top_k: Number of results to return
+            score_threshold: Score threshold
+            mode: Retrieval mode (only supports vector=vector retrieval)
+            **kwargs: Additional parameters
             
         Returns:
-            检索结果列表
+            List of retrieval results
         """
         if mode != "vector":
             raise ValueError(f"VectorRetriever only supports 'vector' mode, got {mode}")
@@ -59,7 +59,7 @@ class VectorRetriever(Retriever):
         if score_threshold is not None and mode != "vector":
             raise ValueError("score_threshold is only supported when mode='vector'")
 
-        # 向量检索
+        # Vector retrieval
         if self.embed_model is None:
             raise ValueError("embed_model is required for vector search")
         
@@ -68,7 +68,7 @@ class VectorRetriever(Retriever):
             query_vector=query_vector,
             top_k=top_k,
         )
-        # 若向量检索无结果，回退 BM25
+        # If vector retrieval returns no results, fallback to BM25
         if not search_results:
             search_results = await self.vector_store.sparse_search(
                 query_text=query,
@@ -76,7 +76,7 @@ class VectorRetriever(Retriever):
                 filters=None,
             )
 
-        # 转换为 RetrievalResult
+        # Convert to RetrievalResult
         retrieval_results = []
         for result in search_results:
             if score_threshold is not None and result.score is not None and result.score < score_threshold:
@@ -99,10 +99,10 @@ class VectorRetriever(Retriever):
         top_k: int = 5,
         **kwargs: Any,
     ) -> List[List[RetrievalResult]]:
-        """批量检索"""
+        """Batch retrieval"""
         import asyncio
         
-        # 并发执行多个检索
+        # Execute multiple retrievals concurrently
         tasks = [
             self.retrieve(query, top_k=top_k, **kwargs) for query in queries
         ]
@@ -110,7 +110,7 @@ class VectorRetriever(Retriever):
         return results
 
     async def close(self) -> None:
-        """关闭检索器"""
+        """Close the retriever"""
         import inspect
 
         if self.vector_store:

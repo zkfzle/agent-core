@@ -1,8 +1,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved.
 """
-文本分块器抽象基类
+Text Chunker Abstract Base Class
 
-继承 Processor，提供文本分块接口。
+Inherits from Processor, provides text chunking interface.
 """
 import uuid
 from abc import abstractmethod
@@ -13,7 +13,7 @@ from openjiuwen.core.retrieval.common.document import Document, TextChunk
 
 
 class Chunker(Processor):
-    """文本分块器抽象基类（继承 Processor）"""
+    """Text chunker abstract base class (inherits from Processor)"""
     
     def __init__(
         self,
@@ -23,42 +23,41 @@ class Chunker(Processor):
         **kwargs: Any,
     ):
         """
-        初始化文本分块器
+        Initialize text chunker
         
         Args:
-            chunk_size: 分块大小
-            chunk_overlap: 分块重叠大小
-            length_function: 长度计算函数（默认使用字符数）
+            chunk_size: Chunk size
+            chunk_overlap: Chunk overlap size
+            length_function: Length calculation function (default uses character count)
         """
         if chunk_overlap >= chunk_size:
-            raise ValueError("chunk_overlap 必须小于 chunk_size")
+            raise ValueError("chunk_overlap must be less than chunk_size")
         
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.length_function = length_function or len
 
-    @abstractmethod
     def chunk_text(self, text: str) -> List[str]:
         """
-        分块文本
+        Chunk text
         
         Args:
-            text: 待分块的文本
+            text: Text to be chunked
             
         Returns:
-            分块后的文本列表
+            List of chunked texts
         """
-        pass
+        return None
     
     def chunk_documents(self, documents: List[Document]) -> List[TextChunk]:
         """
-        分块文档列表
+        Chunk document list
         
         Args:
-            documents: 文档列表
+            documents: Document list
             
         Returns:
-            文档块列表
+            Document chunk list
         """
         chunks = []
         for doc in documents:
@@ -79,13 +78,13 @@ class Chunker(Processor):
 
     async def process(self, documents: List[Document], **kwargs: Any) -> List[TextChunk]:
         """
-        处理文档（实现 Processor 的 process 方法）
+        Process documents (implements Processor's process method)
         
         Args:
-            documents: 文档列表
-            **kwargs: 额外参数
+            documents: Document list
+            **kwargs: Additional parameters
             
         Returns:
-            文档块列表
+            Document chunk list
         """
         return self.chunk_documents(documents)

@@ -25,7 +25,7 @@ class StreamTransform:
 
 
 class ActorManager:
-    def __init__(self, workflow_spec: WorkflowSpec, graph: StreamGraph, sub_graph: bool, runtime):
+    def __init__(self, workflow_spec: WorkflowSpec, graph: StreamGraph, sub_graph: bool, session):
         self._stream_edges = workflow_spec.stream_edges
         self._streams: Dict[str, StreamActor] = {}
         self._streams_transform = StreamTransform()
@@ -42,7 +42,7 @@ class ActorManager:
 
             self._streams[consumer_id] = StreamActor(consumer_id, graph.get_node(consumer_id),
                                                      consumer_stream_ability, list(sources),
-                                                     stream_generator_timeout=runtime.config().get_env(
+                                                     stream_generator_timeout=session.config().get_env(
                                                          STREAM_INPUT_GEN_TIMEOUT_KEY))
 
         self._sub_graph = sub_graph

@@ -28,7 +28,7 @@ from openjiuwen.core.application.groups.hierarchical_group.agents.main_controlle
 )
 from openjiuwen.core.controller import Event
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.session import Session
 from openjiuwen.core.session.stream.base import OutputSchema
 
 
@@ -43,7 +43,7 @@ class SimpleEchoAgent(BaseAgent):
         self.received_messages = []
         self._stream_index = 0
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """同步调用 - 回显消息"""
         content = inputs.get("content") or inputs.get("query", "")
         self.received_messages.append(content)
@@ -54,18 +54,18 @@ class SimpleEchoAgent(BaseAgent):
             "result_type": "answer"
         }
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """流式调用 - 回显消息"""
-        result = await self.invoke(inputs, runtime)
+        result = await self.invoke(inputs, session)
 
-        if runtime:
+        if session:
             self._stream_index += 1
             output = OutputSchema(
                 type="echo_response",
                 index=self._stream_index,
                 payload=result
             )
-            await runtime.write_stream(output)
+            await session.write_stream(output)
 
         yield result
 

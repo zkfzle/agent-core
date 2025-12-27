@@ -17,7 +17,7 @@ from openjiuwen.core.session.constants import COMP_STREAM_CALL_TIMEOUT_KEY, STRE
     LOOP_NUMBER_MAX_LIMIT_KEY, LOOP_NUMBER_MAX_LIMIT_ENV_KEY, LOOP_NUMBER_MAX_LIMIT_DEFAULT, \
     FORCE_DEL_WORKFLOW_STATE_ENV_KEY, FORCE_DEL_WORKFLOW_STATE_KEY
 
-workflow_runtime_vars: contextvars.ContextVar[dict] = contextvars.ContextVar("workflow_runtime_vars", default={})
+workflow_session_vars: contextvars.ContextVar[dict] = contextvars.ContextVar("workflow_session_vars", default={})
 
 class MetadataLike(TypedDict):
     name: str
@@ -80,7 +80,7 @@ def _load_env_configs() -> dict:
 
     for env_key, config_key in _ENV_CONFIG_KEYS:
         _try_set_env(env_configs, config_key, env_key, os.environ.get(env_key))
-        _try_set_env(env_configs, config_key, env_key, workflow_runtime_vars.get().get(env_key))
+        _try_set_env(env_configs, config_key, env_key, workflow_session_vars.get().get(env_key))
 
     return env_configs
 
@@ -143,8 +143,8 @@ class Config(ABC):
 
     def get_workflow_config(self, workflow_id):
         if workflow_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_CONFIG_GET_FAILED.code,
-                                      message=StatusCode.RUNTIME_WORKFLOW_CONFIG_GET_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_WORKFLOW_CONFIG_GET_FAILED.code,
+                                      message=StatusCode.SESSION_WORKFLOW_CONFIG_GET_FAILED.errmsg.format(
                                           reason="workflow_id is invalid, cannot be None"))
         return self._workflow_configs.get(workflow_id)
 
@@ -156,11 +156,11 @@ class Config(ABC):
 
     def add_workflow_config(self, workflow_id, workflow_config):
         if workflow_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_CONFIG_ADD_FAILED.code,
-                                      message=StatusCode.RUNTIME_WORKFLOW_CONFIG_ADD_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_WORKFLOW_CONFIG_ADD_FAILED.code,
+                                      message=StatusCode.SESSION_WORKFLOW_CONFIG_ADD_FAILED.errmsg.format(
                                           reason="workflow_id is invalid, cannot be None"))
         if workflow_config is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_WORKFLOW_CONFIG_ADD_FAILED.code,
-                                      message=StatusCode.RUNTIME_WORKFLOW_CONFIG_ADD_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_WORKFLOW_CONFIG_ADD_FAILED.code,
+                                      message=StatusCode.SESSION_WORKFLOW_CONFIG_ADD_FAILED.errmsg.format(
                                           reason="workflow config is invalid, cannot be None"))
         self._workflow_configs[workflow_id] = workflow_config

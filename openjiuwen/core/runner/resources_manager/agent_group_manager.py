@@ -36,7 +36,7 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
         super().__init__()
 
     def add_agent_group(self, agent_group_id: str, agent_group: Union[AgentGroup, AgentGroupProvider]) -> None:
-        self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_ADD_FAILED, "multi_agent")
+        self._validate_id(agent_group_id, StatusCode.SESSION_AGENT_GROUP_ADD_FAILED, "multi_agent")
         
         # Define validation function for non-callable single_agent groups
         # Support both AgentGroup (legacy) and BaseGroup (new architecture)
@@ -48,15 +48,15 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
                 )
             return group
         
-        self._add_resource(agent_group_id, agent_group, StatusCode.RUNTIME_AGENT_GROUP_ADD_FAILED, validate_agent_group)
+        self._add_resource(agent_group_id, agent_group, StatusCode.SESSION_AGENT_GROUP_ADD_FAILED, validate_agent_group)
 
     def remove_agent_group(self, agent_group_id: str) -> Optional[AgentGroup]:
-        self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_REMOVE_FAILED, "multi_agent")
+        self._validate_id(agent_group_id, StatusCode.SESSION_AGENT_GROUP_REMOVE_FAILED, "multi_agent")
         
-        return self._remove_resource(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_REMOVE_FAILED)
+        return self._remove_resource(agent_group_id, StatusCode.SESSION_AGENT_GROUP_REMOVE_FAILED)
 
     def get_agent_group(self, agent_group_id: str) -> Optional[AgentGroup]:
-        self._validate_id(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_GET_FAILED, "multi_agent")
+        self._validate_id(agent_group_id, StatusCode.SESSION_AGENT_GROUP_GET_FAILED, "multi_agent")
         
         # Define function to create single_agent group from provider
         # Support both AgentGroup (legacy) and BaseGroup (new architecture)
@@ -69,4 +69,4 @@ class AgentGroupMgr(AbstractManager[AgentGroup]):
                 )
             return group
         
-        return self._get_resource(agent_group_id, StatusCode.RUNTIME_AGENT_GROUP_GET_FAILED, create_group_from_provider)
+        return self._get_resource(agent_group_id, StatusCode.SESSION_AGENT_GROUP_GET_FAILED, create_group_from_provider)

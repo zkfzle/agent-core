@@ -19,7 +19,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from openjiuwen.core.session.wrapper import TaskRuntime
+from openjiuwen.core.session.wrapper import TaskSession
 from openjiuwen.core.workflow import BranchComponent
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End
@@ -35,7 +35,7 @@ from openjiuwen.core.workflow import (
 )
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import CustomSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
@@ -220,7 +220,7 @@ class RealWorkflowTest(unittest.TestCase):
             self,
             mock_plugin_get_tool,
             mock_plugin_invoke,
-    ) -> tuple[BaseRuntime, Workflow]:
+    ) -> tuple[BaseSession, Workflow]:
         """
         根据 mock 工具函数构建完整工作流拓扑。
 
@@ -234,7 +234,7 @@ class RealWorkflowTest(unittest.TestCase):
         flow = Workflow(
             workflow_config=WorkflowConfig()
         )
-        context = TaskRuntime(trace_id="test")
+        context = TaskSession(trace_id="test")
 
         # 3. 实例化各组件
         start = MockStartNode("start")
@@ -288,7 +288,7 @@ class RealWorkflowTest(unittest.TestCase):
         flow.add_connection("questioner", "plugin")
         flow.add_connection("plugin", "end")
 
-        return context.create_workflow_runtime(), flow
+        return context.create_workflow_session(), flow
 
     # ------------------------------------------------------------------ #
     #                            测试用例本身                             #
@@ -324,7 +324,7 @@ class RealWorkflowTest(unittest.TestCase):
         """
         测试LLM组件通过StreamWriter流出数据
         """
-        context = TaskRuntime(trace_id="test")
+        context = TaskSession(trace_id="test")
         flow = Workflow(workflow_config=WorkflowConfig())
 
         start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
@@ -349,5 +349,5 @@ class RealWorkflowTest(unittest.TestCase):
 
         inputs = {"query": "写一个笑话。注意：不要超过20个字！"}
         writer_chunks = []
-        self.loop.run_until_complete(self._async_stream_workflow_for_stream_writer(flow, inputs, context.create_workflow_runtime(), writer_chunks))
+        self.loop.run_until_complete(self._async_stream_workflow_for_stream_writer(flow, inputs, context.create_workflow_session(), writer_chunks))
         print(writer_chunks)

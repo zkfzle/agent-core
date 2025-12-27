@@ -15,7 +15,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import ComponentConfig, WorkflowComponent, ComponentExecutable
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
@@ -367,7 +367,7 @@ class LLMExecutable(ComponentExecutable):
         self._config: LLMCompConfig = component_config
         self._llm: Union[BaseModelClient, None] = None
         self._initialized: bool = False
-        self._runtime = None
+        self._session = None
         self._context = None
 
     @property
@@ -434,14 +434,14 @@ class LLMExecutable(ComponentExecutable):
                 StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
                 "output config must contain exactly one parameter for text or markdown response type")
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        self._set_runtime(runtime)
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+        self._set_session(session)
         self._set_context(context)
         model_inputs = self._prepare_model_inputs(inputs)
         if UserConfig.is_sensitive():
-            logger.info("[%s] model inputs", self._runtime.executable_id())
+            logger.info("[%s] model inputs", self._session.executable_id())
         else:
-            logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
+            logger.info("[%s] model inputs %s", self._session.executable_id(), model_inputs)
         response = ""
         try:
             llm_response = await self._llm.ainvoke(
@@ -455,13 +455,13 @@ class LLMExecutable(ComponentExecutable):
                 ExceptionUtils.raise_exception(StatusCode.LLM_COMPONENT_INVOKE_LLM_ERROR, str(e), e)
 
         if UserConfig.is_sensitive():
-            logger.info("[%s] model outputs", self._runtime.executable_id())
+            logger.info("[%s] model outputs", self._session.executable_id())
         else:
-            logger.info("[%s] model outputs %s", self._runtime.executable_id(), response)
+            logger.info("[%s] model outputs %s", self._session.executable_id(), response)
         return self._create_output(response)
 
-    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
-        self._set_runtime(runtime)
+    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+        self._set_session(session)
         self._set_context(context)
         response_format_type = self._config.response_format.get(_TYPE, "")
         try:
@@ -541,8 +541,8 @@ class LLMExecutable(ComponentExecutable):
             else:
                 raise e
 
-    def _set_runtime(self, runtime: Runtime):
-        self._runtime = runtime
+    def _set_session(self, session: Session):
+        self._session = session
 
     def _set_context(self, context):
         self._context = context
@@ -554,9 +554,9 @@ class LLMExecutable(ComponentExecutable):
     async def _invoke_for_json_format(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
         if UserConfig.is_sensitive():
-            logger.info("[%s] model inputs", self._runtime.executable_id())
+            logger.info("[%s] model inputs", self._session.executable_id())
         else:
-            logger.info("[%s] model inputs %s", self._runtime.executable_id(), model_inputs)
+            logger.info("[%s] model inputs %s", self._session.executable_id(), model_inputs)
         llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name,
                                              messages=model_inputs) # Add await if invoke is async
         llm_output_content = llm_output.content

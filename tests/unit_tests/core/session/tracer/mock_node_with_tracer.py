@@ -3,7 +3,7 @@ import random
 
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from tests.unit_tests.core.workflow.mock_nodes import MockNodeBase
 
 
@@ -13,20 +13,20 @@ class StreamNodeWithTracer(MockNodeBase):
         self._node_id = node_id
         self._datas: list[dict] = datas
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         try:
-            await runtime.trace({"on_invoke_data": "mock with" + str(inputs)})
+            await session.trace({"on_invoke_data": "mock with" + str(inputs)})
 
             # 运行时操作
 
         except Exception as e:
-            await runtime.trace_error(e)
+            await session.trace_error(e)
             raise e
 
         await asyncio.sleep(random.randint(0, 2))
         for data in self._datas:
             await asyncio.sleep(0.5)
-            await runtime.write_custom_stream(data)
+            await session.write_custom_stream(data)
         print("StreamNode: output = " + str(inputs))
         return inputs
 

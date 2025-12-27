@@ -13,8 +13,8 @@ from openjiuwen.core.workflow import IntentDetectionCompConfig, \
     IntentDetectionComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
-from openjiuwen.core.session import NodeRuntime, WorkflowRuntime
-from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.session import NodeSession, WorkflowSession
+from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
@@ -35,7 +35,7 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
 @pytest.fixture
 def fake_ctx():
-    return WrappedNodeRuntime(NodeRuntime(WorkflowRuntime(), "test-id"))
+    return WrappedNodeSession(NodeSession(WorkflowSession(), "test-id"))
 
 
 @pytest.fixture
@@ -146,6 +146,6 @@ class TestIntentDetectionComponent:
         config = ContextEngineConfig()
         ce_engine = ContextEngine("123", config)
         workflow_context = ce_engine.get_workflow_context(workflow_id="intent_detection_workflow", session_id=session_id)
-        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
-        async for chunk in flow.stream({"query": "我的意图是查询景点"}, workflow_runtime, workflow_context):
+        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        async for chunk in flow.stream({"query": "我的意图是查询景点"}, workflow_session, workflow_context):
             print(chunk)

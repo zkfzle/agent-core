@@ -18,7 +18,7 @@ from openjiuwen.core.workflow.components.base import ComponentConfig, ComponentE
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage, SystemMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
@@ -289,16 +289,16 @@ class QuestionerDirectReplyHandler:
         self._prompt = prompt
         return self
 
-    async def handle(self, inputs: Input, runtime: Runtime, context):
+    async def handle(self, inputs: Input, session: Session, context):
         if self._state.status == ExecutionStatus.START:
-            return self._handle_start_state(inputs, runtime, context)
+            return self._handle_start_state(inputs, session, context)
         if self._state.status == ExecutionStatus.USER_INTERACT:
-            return await self._handle_user_interact_state(inputs, runtime, context)
+            return await self._handle_user_interact_state(inputs, session, context)
         if self._state.status == ExecutionStatus.END:
-            return self._handle_end_state(inputs, runtime, context)
+            return self._handle_end_state(inputs, session, context)
         return dict()
 
-    def _handle_start_state(self, inputs, runtime, context):
+    def _handle_start_state(self, inputs, session, context):
         questioner_input = QuestionerUtils.validate_inputs(inputs)
         output = OutputCache()
         self._query = questioner_input.query or ""
@@ -320,8 +320,8 @@ class QuestionerDirectReplyHandler:
             ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY)
         return QuestionerUtils.format_questioner_output(output)
 
-    async def _handle_user_interact_state(self, inputs, runtime: Runtime, context):
-        await self._get_latest_human_feedback(runtime)
+    async def _handle_user_interact_state(self, inputs, session: Session, context):
+        await self._get_latest_human_feedback(session)
         output = OutputCache(question=self._state.question, user_response=self._query)
 
         chat_history = self._get_latest_chat_history(context)
@@ -342,7 +342,7 @@ class QuestionerDirectReplyHandler:
             ExceptionUtils.raise_exception(StatusCode.QUESTIONER_COMPONENT_EMPTY_QUESTION_IN_DIRECT_REPLY)
         return QuestionerUtils.format_questioner_output(output)
 
-    def _handle_end_state(self, inputs, runtime, context):
+    def _handle_end_state(self, inputs, session, context):
         output = QuestionerOutput(**self._state.extracted_key_fields)
         output.user_response = self._state.user_response
         output.question = self._state.question
@@ -492,9 +492,9 @@ class QuestionerDirectReplyHandler:
 
         self._update_state_of_key_fields(extracted_key_fields)
 
-    async def _get_latest_human_feedback(self, runtime):
+    async def _get_latest_human_feedback(self, session):
         for _ in range(self._state.response_num + 1):
-            self._query = await runtime.interact(self._state.question)  # keep the last question, in case of no feedback
+            self._query = await session.interact(self._state.question)  # keep the last question, in case of no feedback
         self._increment_state_of_response_num()
 
     def _update_questioner_states_question(self, question):
@@ -512,17 +512,17 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = None
 
     @staticmethod
-    def _load_state_from_runtime(runtime: Runtime) -> QuestionerState:
-        questioner_state = runtime.get_state()
+    def _load_state_from_session(session: Session) -> QuestionerState:
+        questioner_state = session.get_state()
         state_dict = questioner_state.get(QUESTIONER_STATE_KEY) if isinstance(questioner_state, dict) else None
         if state_dict:
             return QuestionerState.deserialize(state_dict)
         return QuestionerState()
 
     @staticmethod
-    def _store_state_to_runtime(state: QuestionerState, runtime: Runtime):
+    def _store_state_to_session(state: QuestionerState, session: Session):
         state_dict = state.serialize()
-        runtime.update_state({QUESTIONER_STATE_KEY: state_dict})
+        session.update_state({QUESTIONER_STATE_KEY: state_dict})
 
     @staticmethod
     def _validate_max_response_num_config(max_response_num: int):
@@ -551,10 +551,10 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = state
         return self
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        state_from_runtime = self._load_state_from_runtime(runtime)
-        if state_from_runtime.is_undergoing_interaction():
-            current_state = state_from_runtime  # recover state from runtime
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+        state_from_session = self._load_state_from_session(session)
+        if state_from_session.is_undergoing_interaction():
+            current_state = state_from_session  # recover state from session
         else:
             current_state = QuestionerState()  # create new state
 
@@ -563,15 +563,15 @@ class QuestionerExecutable(ComponentExecutable):
         invoke_result = dict()
         if self._config.response_type == ResponseType.ReplyDirectly.value:
             invoke_result = await self._handle_questioner_direct_reply_safe(
-                inputs, runtime, context, current_state
+                inputs, session, context, current_state
             )
             # handler might update state
             current_state = invoke_result.pop('_state', current_state)
 
-        self._store_state_to_runtime(current_state, runtime)
+        self._store_state_to_session(current_state, session)
 
         if current_state.is_undergoing_interaction():
-            await runtime.interact(invoke_result.get("question", ""))
+            await session.interact(invoke_result.get("question", ""))
 
         return invoke_result
 
@@ -587,20 +587,20 @@ class QuestionerExecutable(ComponentExecutable):
     def _init_prompt(self) -> PromptTemplate:
         return PromptTemplate(content=self._default_config.prompt_template)
 
-    async def _handle_questioner_direct_reply(self, inputs: Input, runtime: Runtime, context):
+    async def _handle_questioner_direct_reply(self, inputs: Input, session: Session, context):
         handler = (QuestionerDirectReplyHandler()
                    .config(self._config).model(self._llm).state(self._state).prompt(self._prompt))
-        result = await handler.handle(inputs, runtime, context)
+        result = await handler.handle(inputs, session, context)
         self._state = handler.get_state()
         return result
 
     async def _handle_questioner_direct_reply_safe(
-            self, inputs: Input, runtime: Runtime, context, current_state: QuestionerState
+            self, inputs: Input, session: Session, context, current_state: QuestionerState
     ):
         """并发安全版本：使用传入的 state 而不是实例变量"""
         handler = (QuestionerDirectReplyHandler()
                    .config(self._config).model(self._llm).state(current_state).prompt(self._prompt))
-        result = await handler.handle(inputs, runtime, context)
+        result = await handler.handle(inputs, session, context)
         # return updated state, let caller manage
         result['_state'] = handler.get_state()
         return result

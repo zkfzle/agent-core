@@ -15,8 +15,8 @@ from openjiuwen.core.workflow import QuestionerComponent, FieldInfo, QuestionerC
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.workflow import generate_workflow_key
-from openjiuwen.core.session import BaseRuntime
-from openjiuwen.core.session import TaskRuntime
+from openjiuwen.core.session import BaseSession
+from openjiuwen.core.session import TaskSession
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolInfo
@@ -133,7 +133,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         return End({"responseTemplate": "{{output}}"})
 
 
-    def _build_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
+    def _build_interrupt_workflow(self) -> tuple[BaseSession, Workflow]:
         """
         构建包含交互式组件的工作流，用于测试中断恢复功能。
 
@@ -153,7 +153,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         flow = Workflow(
             workflow_config=workflow_config
         )
-        context = TaskRuntime(trace_id="test")
+        context = TaskSession(trace_id="test")
 
         # 2. 实例化各组件
         start = self._create_start_component()
@@ -184,7 +184,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # intent 组件通过分支路由自动连接到 questioner 或 end
         flow.add_connection("questioner", "end")
 
-        return context.create_workflow_runtime(), flow
+        return context.create_workflow_session(), flow
 
 
     @staticmethod

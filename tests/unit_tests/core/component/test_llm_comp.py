@@ -36,8 +36,8 @@ from unittest.mock import patch, AsyncMock
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
-from openjiuwen.core.session import WorkflowRuntime, NodeRuntime
-from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.session import WorkflowSession, NodeSession
+from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
 
 USER_FIELDS = "userFields"
@@ -50,7 +50,7 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
 @pytest.fixture
 def fake_node_ctx():
-    return WrappedNodeRuntime(NodeRuntime(WorkflowRuntime(), "test"))
+    return WrappedNodeSession(NodeSession(WorkflowSession(), "test"))
 
 
 @pytest.fixture
@@ -187,7 +187,7 @@ class TestLLMExecutableInvoke:
             fake_model_config,
     ):
         """LLM 节点在完整工作流中的异步测试"""
-        runtime = WorkflowRuntime()
+        session = WorkflowSession()
 
         # 1. 打桩 LLM
         fake_llm = FakeModel(api_key="111", api_base="ssss")
@@ -221,7 +221,7 @@ class TestLLMExecutableInvoke:
         flow.add_connection("llm", "end")
 
         # 3. 直接异步调用
-        result = await flow.invoke(inputs={"a": 2, "userFields": dict(query="pytest")}, runtime=runtime)
+        result = await flow.invoke(inputs={"a": 2, "userFields": dict(query="pytest")}, session=session)
         assert result is not None
 
     @pytest.mark.asyncio  # 新增
@@ -271,8 +271,8 @@ class TestLLMExecutableInvoke:
         flow.add_connection("s", "llm")
         flow.add_connection("llm", "e")
 
-        context = WorkflowRuntime()
-        result = await flow.invoke(inputs={"query": "yzq test query"}, runtime=context)
+        context = WorkflowSession()
+        result = await flow.invoke(inputs={"query": "yzq test query"}, session=context)
         print(f"This is invoke result:{result}")
 
 class TestLLMExecutableInvokeNew:
@@ -389,8 +389,8 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine("123", config)
         workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
-        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
-        result = await flow.invoke(inputs={"query": "please write a 3-line poem"}, runtime=workflow_runtime, context=workflow_context)
+        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        result = await flow.invoke(inputs={"query": "please write a 3-line poem"}, session=workflow_session, context=workflow_context)
         print(f"invoke result >>> {result}")
 
     @unittest.skip("skip system test")
@@ -447,10 +447,10 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine("123", config)
         workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
-        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
+        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         result = await flow.invoke(
             inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"},
-            runtime=workflow_runtime, context=workflow_context)
+            session=workflow_session, context=workflow_context)
         print(f"invoke result >>> {result}")
 
     @unittest.skip("skip system test")
@@ -499,8 +499,8 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine("123", config)
         workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
-        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
-        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, runtime=workflow_runtime, context=workflow_context):
+        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, session=workflow_session, context=workflow_context):
             print(f"stream chunk >>> {chunk}")
 
     @unittest.skip("skip system test")
@@ -558,8 +558,8 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine("123", config)
         workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
-        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
-        async for chunk in flow.stream(inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"}, runtime=workflow_runtime,
+        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        async for chunk in flow.stream(inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"}, session=workflow_session,
                                        context=workflow_context):
             print(f"stream chunk >>> {chunk}")
 

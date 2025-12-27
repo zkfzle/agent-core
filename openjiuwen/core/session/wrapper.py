@@ -7,11 +7,11 @@ from typing import Union, Any, Optional, List, Tuple, AsyncIterator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.session.agent import AgentRuntime
+from openjiuwen.core.session.agent import AgentSession
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.interaction import WorkflowInteraction, SimpleAgentInteraction
-from openjiuwen.core.session.runtime import Runtime, BaseRuntime
-from openjiuwen.core.session.workflow import NodeRuntime, WorkflowRuntime
+from openjiuwen.core.session.session import Session, BaseSession
+from openjiuwen.core.session.workflow import NodeSession, WorkflowSession
 from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.session.tracer.tracer import Tracer
@@ -22,7 +22,7 @@ from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
 
 
-class StaticWrappedRuntime(Runtime, ABC):
+class StaticWrappedSession(Session, ABC):
 
     def executable_id(self) -> str:
         pass
@@ -64,8 +64,8 @@ class StaticWrappedRuntime(Runtime, ABC):
         pass
 
 
-class WrappedRuntime(Runtime, ABC):
-    def __init__(self, inner: BaseRuntime):
+class WrappedSession(Session, ABC):
+    def __init__(self, inner: BaseSession):
         self._inner = inner
 
     def add_prompt(self, template_id: str, template: PromptTemplate):
@@ -140,11 +140,11 @@ class WrappedRuntime(Runtime, ABC):
     def get_env(self, key) -> Optional[Any]:
         return self._inner.config().get_env(key)
 
-    def base(self) -> BaseRuntime:
+    def base(self) -> BaseSession:
         return self._inner
 
 
-class StateRuntime(WrappedRuntime, ABC):
+class StateSession(WrappedSession, ABC):
 
     def executable_id(self) -> str:
         return self._inner.executable_id()
@@ -187,7 +187,7 @@ class StateRuntime(WrappedRuntime, ABC):
             await writer.write(data)
 
 
-class RouterRuntime(StateRuntime):
+class RouterSession(StateSession):
     async def interact(self, value):
         pass
 
@@ -278,14 +278,14 @@ class RouterRuntime(StateRuntime):
     def get_env(self, key) -> Optional[Any]:
         pass
 
-    def base(self) -> BaseRuntime:
+    def base(self) -> BaseSession:
         pass
 
 
-class WrappedNodeRuntime(StateRuntime):
+class WrappedNodeSession(StateSession):
 
-    def __init__(self, runtime: NodeRuntime, stream_mode: bool = False):
-        super().__init__(runtime)
+    def __init__(self, session: NodeSession, stream_mode: bool = False):
+        super().__init__(session)
         self._interaction = None
         self._stream_mode = stream_mode
 
@@ -336,10 +336,10 @@ class WrappedNodeRuntime(StateRuntime):
         return self._inner.config().get_env(key)
 
 
-class TaskRuntime(StateRuntime):
-    def __init__(self, trace_id: str = None, inner: BaseRuntime = None):
+class TaskSession(StateSession):
+    def __init__(self, trace_id: str = None, inner: BaseSession = None):
         if inner is None:
-            super().__init__(AgentRuntime(trace_id, Config()))
+            super().__init__(AgentSession(trace_id, Config()))
         else:
             super().__init__(inner)
         self._interaction = None
@@ -359,27 +359,27 @@ class TaskRuntime(StateRuntime):
         return self._inner.resource_manager().prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseModelClient:
-        return self._inner.resource_manager().model().get_model(model_id, runtime=self._inner)
+        return self._inner.resource_manager().model().get_model(model_id, session=self._inner)
 
     async def get_workflow(self, workflow_id: str) -> "Workflow":
-        return await self._inner.resource_manager().workflow().get_workflow(workflow_id, runtime=self._inner)
+        return await self._inner.resource_manager().workflow().get_workflow(workflow_id, session=self._inner)
 
     def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
-        return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id, runtime=self._inner)
+        return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id, session=self._inner)
 
     def get_tool(self, tool_id: str) -> Tool:
-        return self._inner.resource_manager().tool().get_tool(tool_id, runtime=self._inner)
+        return self._inner.resource_manager().tool().get_tool(tool_id, session=self._inner)
 
     def stream_iterator(self) -> AsyncIterator[Any]:
         return self._inner.stream_writer_manager().stream_output()
 
     async def post_run(self):
-        if isinstance(self._inner, AgentRuntime):
+        if isinstance(self._inner, AgentSession):
             await self._inner.stream_writer_manager().stream_emitter().close()
             await self._inner.checkpointer().post_agent_execute(self._inner)
 
     def tracer(self) -> Tracer:
         return self._inner.tracer()
 
-    def create_workflow_runtime(self) -> WorkflowRuntime:
-        return self._inner.create_workflow_runtime()
+    def create_workflow_session(self) -> WorkflowSession:
+        return self._inner.create_workflow_session()

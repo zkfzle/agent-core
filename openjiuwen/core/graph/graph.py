@@ -17,7 +17,7 @@ from openjiuwen.core.graph.vertex import Vertex
 from openjiuwen.core.session import Checkpointer
 from openjiuwen.core.session import get_default_inmemory_checkpointer
 from openjiuwen.core.session import InteractiveInput
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.graph.pregel import Pregel, PregelBuilder, PregelConfig, MAX_RECURSIVE_LIMIT, START, END
 from openjiuwen.core.graph.store import GraphStore
 
@@ -35,7 +35,7 @@ class PregelGraph(Graph):
         self.nodes: dict[str, Vertex] = {}
         self.branches: defaultdict[str, dict[str, Branch]] = defaultdict(dict)
         self.checkpointer = None
-        self._runtime = None
+        self._session = None
 
     def start_node(self, node_id: str) -> Self:
         if node_id is None:
@@ -107,20 +107,20 @@ class PregelGraph(Graph):
         self.branches[source_node_id][name] = Branch(router)
         return self
 
-    def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
+    def compile(self, session: BaseSession) -> ExecutableGraph:
         for node_id, node in self.nodes.items():
-            node.init(runtime)
+            node.init(session)
         def after_step(loop):
-            if self._runtime:
-                self._runtime.state().commit()
+            if self._session:
+                self._session.state().commit()
             logger.debug(f"ns: {loop.config['ns']}, step: {loop.step}, active_nodes: {list(loop.active_nodes)}")
         if self.pregel is None:
             self.checkpointer = get_default_inmemory_checkpointer()
             store = GraphStore(self.checkpointer.graph_store())
             self.pregel = self._compile(graph_store=store, step_callback=after_step)
-            self._runtime = runtime
+            self._session = session
         else:
-            self._runtime = runtime
+            self._session = session
         return CompiledGraph(self.pregel, self.checkpointer)
 
     def _compile(self, graph_store=None, step_callback=None) -> Pregel:
@@ -160,19 +160,19 @@ class CompiledGraph(ExecutableGraph):
         self._pregel = pregel
         self._checkpointer = checkpointer
 
-    async def _invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
+    async def _invoke(self, inputs: Input, session: BaseSession, config: Any = None) -> Output:
         is_main = False
-        session_id = runtime.session_id()
-        workflow_id = runtime.workflow_id()
+        session_id = session.session_id()
+        workflow_id = session.workflow_id()
 
         if config is None:
             is_main = True
             config = PregelConfig(session_id=session_id, ns=workflow_id, recursion_limit=MAX_RECURSIVE_LIMIT)
 
         if is_main:
-            await self._checkpointer.pre_workflow_execute(runtime, inputs)
+            await self._checkpointer.pre_workflow_execute(session, inputs)
         if not isinstance(inputs, InteractiveInput):
-            runtime.state().commit_user_inputs(inputs)
+            session.state().commit_user_inputs(inputs)
 
         result = None
         exception = None
@@ -183,11 +183,11 @@ class CompiledGraph(ExecutableGraph):
             exception = e
 
         if is_main:
-            await self._checkpointer.post_workflow_execute(runtime, result, exception)
+            await self._checkpointer.post_workflow_execute(session, result, exception)
         elif exception is not None:
             raise exception
 
-    async def stream(self, inputs: Input, runtime: BaseRuntime) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: BaseSession) -> AsyncIterator[Output]:
         pass
 
     async def interrupt(self, message: dict):

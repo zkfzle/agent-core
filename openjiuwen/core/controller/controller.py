@@ -15,7 +15,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 
 
 class BaseController(ABC):
@@ -34,14 +34,14 @@ class BaseController(ABC):
             self,
             config: AgentConfig = None,
             context_engine: ContextEngine = None,
-            runtime: Runtime = None
+            session: Session = None
     ):
         """Initialize BaseController
         
         Args:
             config: Agent configuration (optional, can be injected later)
             context_engine: Context engine (optional, can be injected later)
-            runtime: Agent-level Runtime (optional, can be injected later)
+            session: Agent-level Session (optional, can be injected later)
             
         Note:
             If parameters are not provided during initialization,
@@ -50,7 +50,7 @@ class BaseController(ABC):
         # Hold core dependencies (can be None initially)
         self._config = config
         self._context_engine = context_engine
-        self._runtime = runtime
+        self._session = session
         
         # Group reference (auto-injected by BaseGroup.add_agent)
         self._group = None
@@ -67,7 +67,7 @@ class BaseController(ABC):
         """Setup controller from single_agent - inject required attributes
         
         This method is called by ControllerAgent to inject config, context_engine
-        and runtime into the controller.
+        and session into the controller.
         
         Args:
             agent: ControllerAgent instance
@@ -94,12 +94,12 @@ class BaseController(ABC):
             )
         self._context_engine = agent._context_engine
 
-        # Get runtime
-        if not hasattr(agent, '_runtime'):
+        # Get session
+        if not hasattr(agent, '_session'):
             raise AttributeError(
-                f"Agent {agent.__class__.__name__} must have _runtime"
+                f"Agent {agent.__class__.__name__} must have _session"
             )
-        self._runtime = agent._runtime
+        self._session = agent._session
 
     async def _get_or_create_subscription(self, conversation_id: str):
         """Get or create subscription for conversation_id (lazy subscription)
@@ -123,7 +123,7 @@ class BaseController(ABC):
                 )
             return self._subscriptions[conversation_id]
 
-    async def invoke(self, inputs: Dict, runtime: Runtime) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session) -> Dict:
         """Synchronous invocation entry
 
         Process:
@@ -181,7 +181,7 @@ class BaseController(ABC):
 
         # 5. Create queue message and publish
         queue_message = InvokeQueueMessage()
-        queue_message.payload = {"message": event, "runtime": runtime}
+        queue_message.payload = {"message": event, "session": session}
         queue_message.response = asyncio.Future()
 
         # 6. Publish to conversation-specific topic
@@ -196,15 +196,15 @@ class BaseController(ABC):
         """Message processing wrapper - Automatically called by message queue
 
         Args:
-            request: Dictionary containing event and runtime
+            request: Dictionary containing event and session
             
         Returns:
             dict: Processing result
         """
         event = request.get("message")
-        runtime = request.get("runtime")
+        session = request.get("session")
         try:
-            result = await self.handle_event(event, runtime)
+            result = await self.handle_event(event, session)
             result_type = type(result)
             has_result = result is not None
             logger.info(
@@ -222,12 +222,12 @@ class BaseController(ABC):
 
     # ===== Abstract methods (developers must implement) =====
     @abstractmethod
-    async def handle_event(self, event: Event, runtime: Runtime) -> Optional[Dict]:
+    async def handle_event(self, event: Event, session: Session) -> Optional[Dict]:
         """Core method for message processing (must be implemented)
 
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
         Returns:
             Optional[Dict]: Processing result
 
@@ -311,7 +311,7 @@ class BaseController(ABC):
         self,
         agent_id: str,
         event: Event,
-        runtime
+        session
     ) -> Any:
         """Send event to specified single_agent (point-to-point)
         
@@ -321,7 +321,7 @@ class BaseController(ABC):
         Args:
             agent_id: Target single_agent ID
             event: Event object
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             Agent's return result
@@ -331,7 +331,7 @@ class BaseController(ABC):
         """
         if self._group and hasattr(self._group, 'group_controller'):
             return await self._group.group_controller.send_to_agent(
-                event, agent_id, runtime
+                event, agent_id, session
             )
         raise RuntimeError(
             f"{self.__class__.__name__}: Cannot send_to_agent('{agent_id}'). "
@@ -341,7 +341,7 @@ class BaseController(ABC):
     async def publish(
         self,
         event: Event,
-        runtime
+        session
     ) -> List[Any]:
         """Publish event to subscribers (broadcast)
         
@@ -350,7 +350,7 @@ class BaseController(ABC):
         
         Args:
             event: Event object (must have custom_event_type set)
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             List of results from all subscribers
@@ -359,7 +359,7 @@ class BaseController(ABC):
             RuntimeError: If single_agent is not part of a group
         """
         if self._group and hasattr(self._group, 'group_controller'):
-            return await self._group.group_controller.publish(event, runtime)
+            return await self._group.group_controller.publish(event, session)
         raise RuntimeError(
             f"{self.__class__.__name__}: Cannot publish(). "
             "Agent is not part of a group with a controller."

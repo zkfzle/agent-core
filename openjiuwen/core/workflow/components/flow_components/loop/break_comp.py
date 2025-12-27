@@ -5,7 +5,7 @@ from abc import abstractmethod, ABC
 
 from openjiuwen.core.workflow.components.base import WorkflowComponent
 from openjiuwen.core.graph.executable import Input, Output, Executable
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 
@@ -28,7 +28,7 @@ class BreakComponent(WorkflowComponent, Executable):
     def set_controller(self, loop_controller: LoopController):
         self._loop_controller = loop_controller
 
-    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
         if self._loop_controller is None:
             raise JiuWenBaseException(StatusCode.BREAK_COMPONENT_INIT_ERROR.code,
                                       StatusCode.BREAK_COMPONENT_INIT_ERROR.errmsg)

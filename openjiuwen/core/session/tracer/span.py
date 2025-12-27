@@ -76,29 +76,29 @@ class TraceWorkflowSpan(Span):
 
 
 class SpanManager:
-    """Managing spans during tracer handler runtime"""
+    """Managing spans during tracer handler session"""
 
     def __init__(self, trace_id: str, parent_node_id: str = ""):
         self._trace_id = trace_id
         self._parent_node_id = parent_node_id
         self._order = []
-        self._runtime_spans = {}
+        self._session_spans = {}
 
     def get_span(self, invoke_id: str):
         if invoke_id not in self._order:
             return None
-        return self._runtime_spans.get(invoke_id, None)
+        return self._session_spans.get(invoke_id, None)
 
     def pop_span(self, invoke_id: str):
         if invoke_id not in self._order:
             return
         self._order.remove(invoke_id)
-        self._runtime_spans.pop(invoke_id)
+        self._session_spans.pop(invoke_id)
 
-    def refresh_span_record(self, invoke_id: str, runtime_span: Dict[str, Span]):
+    def refresh_span_record(self, invoke_id: str, session_span: Dict[str, Span]):
         if invoke_id not in self._order:
             self._order.append(invoke_id)
-        self._runtime_spans[invoke_id] = runtime_span[invoke_id]
+        self._session_spans[invoke_id] = session_span[invoke_id]
 
     def _refresh_parent_child_span(self, span, parent_span=None):
         if parent_span:
@@ -133,6 +133,6 @@ class SpanManager:
         if not self._order:
             return None
         last_span_id = self._order[-1]
-        if last_span_id not in self._runtime_spans:
+        if last_span_id not in self._session_spans:
             return None
-        return self._runtime_spans[last_span_id]
+        return self._session_spans[last_span_id]

@@ -4,16 +4,16 @@
 from abc import ABC, abstractmethod
 
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.session import BaseSession
 
 
 class Storage(ABC):
     @abstractmethod
-    def save(self, runtime: BaseRuntime):
+    def save(self, session: BaseSession):
         pass
 
     @abstractmethod
-    def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):
+    def recover(self, session: BaseSession, inputs: InteractiveInput = None):
         pass
 
     @abstractmethod
@@ -21,5 +21,5 @@ class Storage(ABC):
         pass
 
     @abstractmethod
-    def exists(self, runtime: BaseRuntime) -> bool:
+    def exists(self, session: BaseSession) -> bool:
         pass

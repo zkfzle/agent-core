@@ -12,18 +12,18 @@ from openjiuwen.core.common.constants.enums import TaskType
 class Planner:
     """Planner - Plans and decomposes complex tasks"""
 
-    def __init__(self, config, context_engine, runtime):
+    def __init__(self, config, context_engine, session):
         """
         Initialize Planner
         
         Args:
             config: Planner config
             context_engine: Context engine
-            runtime: Runtime environment
+            session: Session environment
         """
         self.config = config
         self.context_engine = context_engine
-        self.runtime = runtime
+        self.session = session
 
     @staticmethod
     def _create_default_task(event: Event) -> Task:

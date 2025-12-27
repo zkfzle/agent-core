@@ -8,27 +8,27 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, AsyncIterator
 
-from openjiuwen.core.single_agent import AgentRuntime, BaseAgent
+from openjiuwen.core.single_agent import AgentSession, BaseAgent
 from openjiuwen.core.multi_agent.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session import Config
 
-class AgentGroupRuntime(AgentRuntime):
-    """AgentGroup Runtime
+class AgentGroupSession(AgentSession):
+    """AgentGroup Session
     
-    Inherits from openjiuwen.core.single_agent.single_agent.AgentRuntime
-    Reuses all capabilities including TaskRuntime from pre_run()
+    Inherits from openjiuwen.core.single_agent.single_agent.AgentSession
+    Reuses all capabilities including TaskSession from pre_run()
     
     Why direct inheritance:
-    1. AgentRuntime(config, resource_mgr) has simple constructor
+    1. AgentSession(config, resource_mgr) has simple constructor
     2. Already includes write_stream() method
-    3. TaskRuntime from pre_run() has stream_iterator()
+    3. TaskSession from pre_run() has stream_iterator()
     """
     
     def __init__(self, config: Config = None, resource_mgr = None):
-        """Initialize AgentGroupRuntime
+        """Initialize AgentGroupSession
         
         Args:
             config: Config object (optional, auto-created)
@@ -38,14 +38,14 @@ class AgentGroupRuntime(AgentRuntime):
         if config is None:
             from openjiuwen.core.single_agent import AgentConfig
             config = Config()
-            # Create virtual AgentConfig for Group Runtime
-            agent_config = AgentConfig(id="agent_group_runtime")
+            # Create virtual AgentConfig for Group Session
+            agent_config = AgentConfig(id="agent_group_session")
             config.set_agent_config(agent_config)
         
         # Call parent constructor
         super().__init__(config, resource_mgr)
     
-    # write_stream() already implemented in parent AgentRuntime
+    # write_stream() already implemented in parent AgentSession
     # No need to redefine
 
 
@@ -115,7 +115,7 @@ class BaseGroup(ABC):
         return len(self.agents)
     
     @abstractmethod
-    async def invoke(self, message, runtime: AgentGroupRuntime = None) -> Any:
+    async def invoke(self, message, session: AgentGroupSession = None) -> Any:
         """
         Execute a synchronous operation on the single_agent group.
 
@@ -125,7 +125,7 @@ class BaseGroup(ABC):
         
         Args:
             message: Message object (for compatibility, also supports Dict for backward compatibility)
-            runtime: Runtime for single_agent group instance
+            session: Session for single_agent group instance
             
         Returns:
             The collective output from the single_agent group
@@ -135,7 +135,7 @@ class BaseGroup(ABC):
         )
     
     @abstractmethod
-    async def stream(self, message, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
+    async def stream(self, message, session: AgentGroupSession = None) -> AsyncIterator[Any]:
         """
         Execute a streaming operation on the single_agent group.
 
@@ -145,7 +145,7 @@ class BaseGroup(ABC):
 
         Args:
             message: Message object (for compatibility, also supports Dict for backward compatibility)
-            runtime: Runtime for single_agent group instance
+            session: Session for single_agent group instance
 
         Returns:
             The collective output from the single_agent group
@@ -163,7 +163,7 @@ class ControllerGroup(BaseGroup):
     2. Holds GroupController, fully delegates message routing logic
     3. Automatically configures GroupController (via setup_from_group)
     4. invoke/stream fully delegated to group_controller
-    5. Runtime lifecycle: pre_run -> controller.invoke -> post_run
+    5. Session lifecycle: pre_run -> controller.invoke -> post_run
     """
 
     def __init__(self, config: AgentGroupConfig, group_controller=None):
@@ -181,8 +181,8 @@ class ControllerGroup(BaseGroup):
         super().__init__(config)
         self.group_controller = group_controller
 
-        # Initialize runtime (like BaseAgent)
-        self._runtime = AgentGroupRuntime()
+        # Initialize session (like BaseAgent)
+        self._session = AgentGroupSession()
 
         # Auto-configure group_controller
         if self.group_controller is not None:
@@ -203,14 +203,14 @@ class ControllerGroup(BaseGroup):
             )
         return message
 
-    async def invoke(self, message, runtime: AgentGroupRuntime = None) -> Any:
+    async def invoke(self, message, session: AgentGroupSession = None) -> Any:
         """Synchronous invocation - Fully delegated to group_controller
         
         Lifecycle: pre_run -> controller.invoke -> post_run
         
         Args:
             message: Message object (carries message_type for routing)
-            runtime: Runtime instance (optional, auto-created if None)
+            session: Session instance (optional, auto-created if None)
         
         Returns:
             Processing result
@@ -223,37 +223,37 @@ class ControllerGroup(BaseGroup):
         message = self._convert_message(message)
         session_id = message.context.conversation_id if message.context else "default"
 
-        # If runtime not provided, use self._runtime.pre_run to create task runtime
-        if runtime is None:
-            task_runtime = await self._runtime.pre_run(session_id=session_id)
+        # If session not provided, use self._session.pre_run to create task session
+        if session is None:
+            task_session = await self._session.pre_run(session_id=session_id)
             need_cleanup = True
         else:
-            task_runtime = runtime
+            task_session = session
             need_cleanup = False
 
         try:
             # Fully delegate to group_controller
-            result = await self.group_controller.invoke(message, task_runtime)
+            result = await self.group_controller.invoke(message, task_session)
             return result if result is not None else {"output": "processed"}
         finally:
             if need_cleanup:
-                await task_runtime.post_run()
+                await task_session.post_run()
 
-    async def stream(self, message, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
+    async def stream(self, message, session: AgentGroupSession = None) -> AsyncIterator[Any]:
         """Streaming invocation - real streaming output
         
         Design: 
         1. Background task executes group_controller.invoke
-        2. group_controller.send_to_agent calls single_agent.stream and forwards chunks to runtime
-        3. This method reads from runtime.stream_iterator() in real-time and yields
+        2. group_controller.send_to_agent calls single_agent.stream and forwards chunks to session
+        3. This method reads from session.stream_iterator() in real-time and yields
         
         Streaming data source:
-        - Sub-single_agent streaming output forwarded via shared runtime
+        - Sub-single_agent streaming output forwarded via shared session
         - Includes __interaction__, workflow_final and all types
         
         Args:
             message: Message object (carries message_type for routing)
-            runtime: Runtime instance (optional, auto-created if None)
+            session: Session instance (optional, auto-created if None)
         
         Yields:
             Streaming output from sub-agents
@@ -266,27 +266,27 @@ class ControllerGroup(BaseGroup):
         message = self._convert_message(message)
         session_id = message.context.conversation_id if message.context else "default"
 
-        # If runtime not provided, use self._runtime.pre_run to create task runtime
-        if runtime is None:
-            task_runtime = await self._runtime.pre_run(session_id=session_id)
+        # If session not provided, use self._session.pre_run to create task session
+        if session is None:
+            task_session = await self._session.pre_run(session_id=session_id)
             need_cleanup = True
         else:
-            task_runtime = runtime
+            task_session = session
             need_cleanup = False
 
         # Background task executes group_controller.invoke
-        # send_to_agent calls single_agent.stream and writes chunks to task_runtime
+        # send_to_agent calls single_agent.stream and writes chunks to task_session
         async def run_controller():
             try:
-                await self.group_controller.invoke(message, task_runtime)
+                await self.group_controller.invoke(message, task_session)
             finally:
                 if need_cleanup:
-                    await task_runtime.post_run()
+                    await task_session.post_run()
 
         task = asyncio.create_task(run_controller())
 
         # Real streaming read: get chunks from stream_iterator in real-time
-        async for chunk in task_runtime.stream_iterator():
+        async for chunk in task_session.stream_iterator():
             yield chunk
 
         # Wait for background task to complete

@@ -7,33 +7,33 @@ from typing import Any, Optional
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session import CommitState
 
 
-def _validate_runtime_and_state(runtime: Optional[BaseRuntime]) -> None:
-    if runtime is None:
-        raise JiuWenBaseException(StatusCode.RUNTIME_STATE_RUNTIME_NONE.code, 
-                                 StatusCode.RUNTIME_STATE_RUNTIME_NONE.errmsg)
+def _validate_session_and_state(session: Optional[BaseSession]) -> None:
+    if session is None:
+        raise JiuWenBaseException(StatusCode.SESSION_STATE_SESSION_NONE.code, 
+                                 StatusCode.SESSION_STATE_SESSION_NONE.errmsg)
     
-    if not isinstance(runtime, BaseRuntime):
-        raise JiuWenBaseException(StatusCode.RUNTIME_STATE_INVALID_RUNTIME_TYPE.code, 
-                                 StatusCode.RUNTIME_STATE_INVALID_RUNTIME_TYPE.errmsg.format(
-                                     runtime_type=type(runtime).__name__))
+    if not isinstance(session, BaseSession):
+        raise JiuWenBaseException(StatusCode.SESSION_STATE_INVALID_SESSION_TYPE.code, 
+                                 StatusCode.SESSION_STATE_INVALID_SESSION_TYPE.errmsg.format(
+                                     session_type=type(session).__name__))
     
-    state = runtime.state()
+    state = session.state()
     if not isinstance(state, CommitState):
-        raise JiuWenBaseException(StatusCode.RUNTIME_STATE_INVALID_STATE_TYPE.code, 
-                                 StatusCode.RUNTIME_STATE_INVALID_STATE_TYPE.errmsg.format(
+        raise JiuWenBaseException(StatusCode.SESSION_STATE_INVALID_STATE_TYPE.code, 
+                                 StatusCode.SESSION_STATE_INVALID_STATE_TYPE.errmsg.format(
                                      state_type=type(state).__name__))
 
 
 class AtomicNode(ABC):
     def atomic_invoke(self, **kwargs) -> Any:
-        runtime = kwargs.get("runtime", None)
-        _validate_runtime_and_state(runtime)
+        session = kwargs.get("session", None)
+        _validate_session_and_state(session)
         result = self._atomic_invoke(**kwargs)
-        runtime.state().commit_cmp()
+        session.state().commit_cmp()
         return result
 
     @abstractmethod
@@ -43,10 +43,10 @@ class AtomicNode(ABC):
 
 class AsyncAtomicNode(ABC):
     async def atomic_invoke(self, **kwargs) -> Any:
-        runtime = kwargs.get("runtime", None)
-        _validate_runtime_and_state(runtime)
+        session = kwargs.get("session", None)
+        _validate_session_and_state(session)
         result = await self._atomic_invoke(**kwargs)
-        runtime.state().commit_cmp()
+        session.state().commit_cmp()
         return result
 
     @abstractmethod

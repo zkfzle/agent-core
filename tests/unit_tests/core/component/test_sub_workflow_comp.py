@@ -9,8 +9,8 @@ from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import Context
-from openjiuwen.core.session import Runtime
-from openjiuwen.core.session import WorkflowRuntime
+from openjiuwen.core.session import Session
+from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig
@@ -19,17 +19,17 @@ pytestmark = pytest.mark.asyncio
 
 
 class CustomStream(ComponentExecutable, WorkflowComponent):
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         return {'custom_output': inputs}
 
-    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
         if inputs is None:
             yield 1
         else:
             for index in inputs.get("value"):
                 yield {"value": "stream_{}".format(index)}
 
-    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
         values = inputs.get("value")
         async for item in values:
             yield {"value": "tranform_{}".format(item)}
@@ -44,7 +44,7 @@ class TestSubWorkflowComp:
         main_workflow.add_connection("start", 'fick_comp')
         main_workflow.add_connection('fick_comp', "end")
         with pytest.raises(JiuWenBaseException):
-            await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
+            await main_workflow.invoke(inputs={}, session=WorkflowSession())
 
     def create_nesting_workflow(self, sub_workflow_depth=0, workflow_config=None):
         workflow = Workflow(workflow_config)
@@ -64,7 +64,7 @@ class TestSubWorkflowComp:
         with pytest.raises(JiuWenBaseException) as err:
             workflow_config = WorkflowConfig(workflow_max_nesting_depth=1)
             main_workflow = self.create_nesting_workflow(3, workflow_config)
-            await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
+            await main_workflow.invoke(inputs={}, session=WorkflowSession())
         assert err.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="sub2",
              ability="invoke",
              error=StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
@@ -73,12 +73,12 @@ class TestSubWorkflowComp:
         workflow_config = WorkflowConfig(workflow_max_nesting_depth=3)
         main_workflow = self.create_nesting_workflow(3, workflow_config)
 
-        await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
+        await main_workflow.invoke(inputs={}, session=WorkflowSession())
 
         workflow_config = WorkflowConfig(workflow_max_nesting_depth=0)
         main_workflow = self.create_nesting_workflow(0, workflow_config)
 
-        await main_workflow.invoke(inputs={}, runtime=WorkflowRuntime())
+        await main_workflow.invoke(inputs={}, session=WorkflowSession())
 
     async def test_workflow(self):
         sub_workflow = Workflow()
@@ -105,7 +105,7 @@ class TestSubWorkflowComp:
             OutputSchema(type='end node stream', index=1, payload={'output': {'result': 'tranform_stream_2'}}),
             OutputSchema(type='end node stream', index=2, payload={'output': {'result': 'tranform_stream_3'}})]
 
-        async for chunk in main_workflow.stream(inputs={}, runtime=WorkflowRuntime(),
+        async for chunk in main_workflow.stream(inputs={}, session=WorkflowSession(),
                                                 stream_modes=[BaseStreamMode.OUTPUT]):
             chunks.append(chunk)
 

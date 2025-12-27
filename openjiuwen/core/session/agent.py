@@ -11,16 +11,16 @@ from openjiuwen.core.session.interaction.base import Checkpointer
 from openjiuwen.core.session.base import get_default_inmemory_checkpointer
 from openjiuwen.core.session.callback_manager import CallbackManager
 
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.session import BaseSession
 from openjiuwen.core.session.state import State, InMemoryCommitState
-from openjiuwen.core.session.workflow import WorkflowRuntime
+from openjiuwen.core.session.workflow import WorkflowSession
 from openjiuwen.core.session.workflow_state import InMemoryState
 from openjiuwen.core.session.stream.emitter import StreamEmitter
 from openjiuwen.core.session.stream.manager import StreamWriterManager
 from openjiuwen.core.session.tracer.tracer import Tracer
 
 
-class StaticAgentRuntime(BaseRuntime):
+class StaticAgentSession(BaseSession):
     def __init__(self, config: Config = None, resource_mgr: "ResourceManager" = None):
         self._config = config if config is not None else Config()
         from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
@@ -54,13 +54,13 @@ class StaticAgentRuntime(BaseRuntime):
     def context(self) -> Context:
         pass
 
-    async def create_agent_runtime(self, session_id: str, inputs=None) -> BaseRuntime:
-        runtime = AgentRuntime(session_id, self._config, self._resource_manager, self._checkpointer)
-        await self._checkpointer.pre_agent_execute(runtime, inputs)
-        return runtime
+    async def create_agent_session(self, session_id: str, inputs=None) -> BaseSession:
+        session = AgentSession(session_id, self._config, self._resource_manager, self._checkpointer)
+        await self._checkpointer.pre_agent_execute(session, inputs)
+        return session
 
 
-class AgentRuntime(BaseRuntime):
+class AgentSession(BaseSession):
     def __init__(
             self,
             session_id: str,
@@ -112,9 +112,9 @@ class AgentRuntime(BaseRuntime):
     def checkpointer(self) -> Checkpointer:
         return self._checkpointer
 
-    def create_workflow_runtime(self) -> WorkflowRuntime:
+    def create_workflow_session(self) -> WorkflowSession:
         state = self._state.global_state
-        return WorkflowRuntime(
+        return WorkflowSession(
             parent=self,
             state=InMemoryState(InMemoryCommitState(state)),
             context=self._context,

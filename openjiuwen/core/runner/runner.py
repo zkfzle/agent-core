@@ -18,14 +18,14 @@ from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgen
 from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAdapter
 from openjiuwen.core.runner.runner_config import RunnerConfig, DEFAULT_RUNNER_CONFIG, set_runner_config, \
     get_runner_config
-from openjiuwen.core.session import StaticAgentRuntime
+from openjiuwen.core.session import StaticAgentSession
 from openjiuwen.core.session import get_default_inmemory_checkpointer
 from openjiuwen.core.runner.resources_manager.agent_group_manager import AgentGroupProvider, AgentGroupMgr
 from openjiuwen.core.runner.resources_manager.agent_manager import AgentProvider, AgentMgr
 from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
-from openjiuwen.core.session import Runtime
-from openjiuwen.core.session import WorkflowRuntime
-from openjiuwen.core.session import TaskRuntime
+from openjiuwen.core.session import Session
+from openjiuwen.core.session import WorkflowSession
+from openjiuwen.core.session import TaskSession
 from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import McpToolInfo
@@ -144,38 +144,38 @@ class Runner:
         return self._agent_mgr.remove_agent(agent_id)
 
     async def run_workflow(self, workflow: Union[str, Workflow], inputs: Any,
-                           *, runtime: Union[Runtime, WorkflowRuntime] = None, context: Context = None):
-        workflow_instance, workflow_runtime = await self._prepare_workflow(workflow, runtime)
-        return await workflow_instance.invoke(inputs, runtime=workflow_runtime, context=context)
+                           *, session: Union[Session, WorkflowSession] = None, context: Context = None):
+        workflow_instance, workflow_session = await self._prepare_workflow(workflow, session)
+        return await workflow_instance.invoke(inputs, session=workflow_session, context=context)
 
     async def run_workflow_streaming(self, workflow: Union[str, Workflow], inputs: Any,
-                                     *, runtime: Union[Runtime, WorkflowRuntime] = None,
+                                     *, session: Union[Session, WorkflowSession] = None,
                                      stream_modes: list[BaseStreamMode] = None, context: Context = None):
-        workflow_instance, workflow_runtime = await self._prepare_workflow(workflow, runtime)
-        async for chunk in workflow_instance.stream(inputs, runtime=workflow_runtime,
+        workflow_instance, workflow_session = await self._prepare_workflow(workflow, session)
+        async for chunk in workflow_instance.stream(inputs, session=workflow_session,
                                                     stream_modes=stream_modes, context=context):
             yield chunk
 
     async def run_agent(self, agent: Union[str, BaseAgent], inputs: Any):
-        agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
+        agent_instance, agent_session = await self._prepare_agent(agent, inputs)
         if isinstance(agent_instance, RemoteAgent):
             res = await agent_instance.invoke(inputs)
         elif isinstance(agent_instance, BaseAgent):
-            # ControllerAgent handles its own runtime lifecycle
-            res = await agent_instance.invoke(inputs, runtime=None)
+            # ControllerAgent handles its own session lifecycle
+            res = await agent_instance.invoke(inputs, session=None)
         else:
-            res = await agent_instance.invoke(inputs, agent_runtime)
-            await agent_runtime.post_run()
+            res = await agent_instance.invoke(inputs, agent_session)
+            await agent_session.post_run()
         return res
 
     async def run_agent_streaming(self, agent: Union[str, BaseAgent], inputs: Any):
-        agent_instance, agent_runtime = await self._prepare_agent(agent, inputs)
+        agent_instance, agent_session = await self._prepare_agent(agent, inputs)
         if isinstance(agent_instance, RemoteAgent):
             async for chunk in agent_instance.stream(inputs):
                 yield chunk
         elif isinstance(agent_instance, BaseAgent):
-            # ControllerAgent handles its own runtime lifecycle
-            async for chunk in agent_instance.stream(inputs, runtime=None):
+            # ControllerAgent handles its own session lifecycle
+            async for chunk in agent_instance.stream(inputs, session=None):
                 yield chunk
 
     async def run_agent_group(self, agent_group: Union[str, AgentGroup], inputs: Any):
@@ -187,8 +187,8 @@ class Runner:
         async for chunk in agent_group_instance.stream(inputs):
             yield chunk
 
-    async def run_tool(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
-        tool_instance = self._prepare_tool(tool, runtime)
+    async def run_tool(self, tool: Union[str, Tool], inputs, *, session: Session = None):
+        tool_instance = self._prepare_tool(tool, session)
         if tool_instance is None:
             logger.error(f"{self.__class__.__name__} tool not found.")
             if UserConfig.is_sensitive():
@@ -198,10 +198,10 @@ class Runner:
                 tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', 'unknown')
                 raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
                                           f"{self.__class__.__name__} tool not found: {tool_name}.")
-        return await tool_instance.invoke(inputs, runtime=runtime)
+        return await tool_instance.invoke(inputs, session=session)
 
-    async def run_tool_streaming(self, tool: Union[str, Tool], inputs, *, runtime: Runtime = None):
-        tool_instance = self._prepare_tool(tool, runtime)
+    async def run_tool_streaming(self, tool: Union[str, Tool], inputs, *, session: Session = None):
+        tool_instance = self._prepare_tool(tool, session)
         if tool_instance is None:
             logger.error(f"{self.__class__.__name__} tool not found.")
             if UserConfig.is_sensitive():
@@ -211,7 +211,7 @@ class Runner:
                 tool_name = tool if isinstance(tool, str) else getattr(tool, 'name', 'unknown')
                 raise JiuWenBaseException(StatusCode.TOOL_NOT_FOUND.code,
                                           f"{self.__class__.__name__} tool not found: {tool_name}.")
-        async for chunk in tool_instance.astream(inputs, runtime=runtime):
+        async for chunk in tool_instance.astream(inputs, session=session):
             yield chunk
 
     async def list_tools(self, tool_server_name: Union[str, List[str]], *, name_delimiter: str = None) -> Union[
@@ -227,10 +227,10 @@ class Runner:
     async def release(self, session_id: str):
         await get_default_inmemory_checkpointer().release(session_id)
 
-    def _check_is_agent_tool(self, runtime, tool) -> bool:
-        if not self._is_called_by_agent(runtime):
+    def _check_is_agent_tool(self, session, tool) -> bool:
+        if not self._is_called_by_agent(session):
             return True
-        agent_config: AgentConfig = runtime.get_agent_config()
+        agent_config: AgentConfig = session.get_agent_config()
 
         if isinstance(tool, str):
             tool_name = tool
@@ -242,10 +242,10 @@ class Runner:
                 return True
         return False
 
-    def _check_is_agent_workflow(self, runtime, workflow_key) -> bool:
-        if not self._is_called_by_agent(runtime):
+    def _check_is_agent_workflow(self, session, workflow_key) -> bool:
+        if not self._is_called_by_agent(session):
             return True
-        agent_config: AgentConfig = runtime.get_agent_config()
+        agent_config: AgentConfig = session.get_agent_config()
 
         for workflow_schema in agent_config.workflows:
             if generate_workflow_key(workflow_schema.id, workflow_schema.version) == workflow_key:
@@ -253,68 +253,68 @@ class Runner:
         return False
 
     @classmethod
-    def _is_called_by_agent(cls, runtime: Runtime) -> bool:
-        return runtime and isinstance(runtime, TaskRuntime)
+    def _is_called_by_agent(cls, session: Session) -> bool:
+        return session and isinstance(session, TaskSession)
 
     @classmethod
-    def _create_workflow_runtime(cls, runtime):
-        # Convert workflow runtime
-        if not runtime:
-            workflow_runtime = WorkflowRuntime()
-        elif isinstance(runtime, TaskRuntime):
-            workflow_runtime = runtime.create_workflow_runtime()
+    def _create_workflow_session(cls, session):
+        # Convert workflow session
+        if not session:
+            workflow_session = WorkflowSession()
+        elif isinstance(session, TaskSession):
+            workflow_session = session.create_workflow_session()
         else:
-            workflow_runtime = runtime
-        return workflow_runtime
+            workflow_session = session
+        return workflow_session
 
     async def _prepare_agent(self, agent: Union[str, BaseAgent], inputs: Any):
         session_id = inputs.get(self._AGENT_CONVERSATION_ID, self._DEFAULT_AGENT_SESSION_ID)
         if isinstance(agent, str):
-            agent_with_runtime = self._agent_mgr.get_agent(agent)
-            if agent_with_runtime is None:
+            agent_with_session = self._agent_mgr.get_agent(agent)
+            if agent_with_session is None:
                 raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
                                           StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
-            if isinstance(agent_with_runtime, RemoteAgent):
-                # Remote single_agent does not add runtime, keep sessionId in input
+            if isinstance(agent_with_session, RemoteAgent):
+                # Remote single_agent does not add session, keep sessionId in input
                 if self._AGENT_CONVERSATION_ID not in inputs:
                     inputs[self._AGENT_CONVERSATION_ID] = session_id
-                return agent_with_runtime, None
-            task_runtime = TaskRuntime(inner=await agent_with_runtime.runtime.create_agent_runtime(session_id, inputs))
-            return agent_with_runtime.agent, task_runtime
-        agent_runtime = StaticAgentRuntime(agent.config(), resource_mgr=self._resource_manager)
-        task_runtime = TaskRuntime(inner=await agent_runtime.create_agent_runtime(session_id, inputs))
-        return agent, task_runtime
+                return agent_with_session, None
+            task_session = TaskSession(inner=await agent_with_session.session.create_agent_session(session_id, inputs))
+            return agent_with_session.agent, task_session
+        agent_session = StaticAgentSession(agent.config(), resource_mgr=self._resource_manager)
+        task_session = TaskSession(inner=await agent_session.create_agent_session(session_id, inputs))
+        return agent, task_session
 
     async def _prepare_workflow(self, workflow: Union[str, Workflow],
-                          runtime: Union[Runtime, WorkflowRuntime]) -> tuple[Workflow, WorkflowRuntime]:
+                          session: Union[Session, WorkflowSession]) -> tuple[Workflow, WorkflowSession]:
         if isinstance(workflow, str):
             workflow_key = workflow
         else:
             workflow_key = generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)
 
-        if not self._check_is_agent_workflow(runtime, workflow_key):
+        if not self._check_is_agent_workflow(session, workflow_key):
             raise JiuWenBaseException(StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code,
                                       StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.errmsg)
 
-        workflow_runtime = self._create_workflow_runtime(runtime)
+        workflow_session = self._create_workflow_session(session)
         if isinstance(workflow, str):
-            workflow_instance = await self._resource_manager.workflow().get_workflow(workflow_key, workflow_runtime)
+            workflow_instance = await self._resource_manager.workflow().get_workflow(workflow_key, workflow_session)
         else:
             workflow_instance = workflow
-        return workflow_instance, workflow_runtime
+        return workflow_instance, workflow_session
 
     def _prepare_agent_group(self, agent_group: Union[str, AgentGroup]):
         if isinstance(agent_group, str):
             return self._agent_group_mgr.get_agent_group(agent_group)
         return agent_group
 
-    def _prepare_tool(self, tool: Union[str, Tool], runtime: Runtime = None):
-        if not self._check_is_agent_tool(runtime, tool):
+    def _prepare_tool(self, tool: Union[str, Tool], session: Session = None):
+        if not self._check_is_agent_tool(session, tool):
             raise JiuWenBaseException(StatusCode.TOOL_NOT_BOUND_TO_AGENT.code,
                                       StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg)
         if not isinstance(tool, str):
             return tool
-        return self._resource_manager.tool().get_tool(tool, runtime)
+        return self._resource_manager.tool().get_tool(tool, session)
 
 
 resource_mgr = ResourceMgr()

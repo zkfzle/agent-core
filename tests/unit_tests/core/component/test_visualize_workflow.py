@@ -17,7 +17,7 @@ from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.workflow import Workflow
@@ -188,11 +188,11 @@ def test_visualize_workflow_with_condition():
                                        "d": [1, 2, 3]})
 
     # Literal is for visualization
-    def router(runtime: BaseRuntime) -> Literal["a", "b"]:
-        val = runtime.state().get_global("start.a")
+    def router(session: BaseSession) -> Literal["a", "b"]:
+        val = session.state().get_global("start.a")
         if val is not None:
             return "a"
-        val = runtime.state().get_global("start.b")
+        val = session.state().get_global("start.b")
         if val is not None:
             return "b"
         return "a"

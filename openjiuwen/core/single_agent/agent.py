@@ -11,13 +11,13 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, List, Tupl
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema, PluginSchema
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine import ContextEngine, ContextEngineConfig
-from openjiuwen.core.session import StaticAgentRuntime
+from openjiuwen.core.session import StaticAgentSession
 from openjiuwen.core.session import Config
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.session import (
-    StaticWrappedRuntime,
-    TaskRuntime,
-    WrappedRuntime
+    StaticWrappedSession,
+    TaskSession,
+    WrappedSession
 )
 from openjiuwen.core.session.stream import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool import Tool
@@ -28,32 +28,32 @@ if TYPE_CHECKING:
     pass
 
 
-class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
+class AgentSession(WrappedSession, StaticWrappedSession):
     """
     deprecated
     """
 
     def __init__(self, config: Config = None, resource_mgr: "ResourceMgr" = None):
-        inner = StaticAgentRuntime(config, resource_mgr=resource_mgr)
+        inner = StaticAgentSession(config, resource_mgr=resource_mgr)
         super().__init__(inner)
-        self._runtime = inner
+        self._session = inner
 
     async def write_stream(self, data: Union[dict, OutputSchema]):
         return await self.write_custom_stream(data)
 
-    async def pre_run(self, **kwargs) -> Runtime:
+    async def pre_run(self, **kwargs) -> Session:
         session_id = kwargs.get("session_id")
         if session_id is None:
             session_id = kwargs.get("trace_id")
         inputs = kwargs.get("inputs")
-        inner = await self._runtime.create_agent_runtime(session_id, inputs)
-        return TaskRuntime(inner=inner)
+        inner = await self._session.create_agent_session(session_id, inputs)
+        return TaskSession(inner=inner)
 
     def resource_mgr(self):
         return self._inner.resource_manager()
 
     async def release(self, session_id: str):
-        await self._runtime.checkpointer().release(session_id)
+        await self._session.checkpointer().release(session_id)
 
 
 class WorkflowFactory:
@@ -111,9 +111,9 @@ class WorkflowFactory:
         else:
             self._tool_info = None
 
-    def _register_tool_info(self, runtime: AgentRuntime):
-        if self._tool_info and runtime:
-            runtime.resource_mgr().workflow()._workflow_tool_infos[
+    def _register_tool_info(self, session: AgentSession):
+        if self._tool_info and session:
+            session.resource_mgr().workflow()._workflow_tool_infos[
                 generate_workflow_key(self.id, self.version)] = deepcopy(self._tool_info)
 
     def _convert_to_tool_info(self, workflow_input_schema) -> ToolInfo:
@@ -190,8 +190,8 @@ class BaseAgent(ABC):
         self.agent_config = agent_config
         self._config = self._config_wrapper  # Unified interface
 
-        # 2. Create Runtime
-        self._runtime = AgentRuntime(config=self._config)
+        # 2. Create Session
+        self._session = AgentSession(config=self._config)
 
         # 3. Create ContextEngine
         self._context_engine = self._create_context_engine()
@@ -242,7 +242,7 @@ class BaseAgent(ABC):
         )
 
     @abstractmethod
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """Synchronous invocation entry point - Abstract method
         
         Subclasses must implement this method
@@ -252,7 +252,7 @@ class BaseAgent(ABC):
         )
 
     @abstractmethod
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """Streaming invocation entry point - Abstract method
         
         Subclasses must implement this method
@@ -271,8 +271,8 @@ class BaseAgent(ABC):
                 [{"role": "system", "content": "..."}]
         
         Note:
-        - This method only updates configuration, does not affect already created runtime
-        - Subclasses should override this method if they need to sync runtime
+        - This method only updates configuration, does not affect already created session
+        - Subclasses should override this method if they need to sync session
         """
         # Check if configuration has prompt_template field
         if hasattr(self.agent_config, 'prompt_template'):
@@ -286,7 +286,7 @@ class BaseAgent(ABC):
             )
 
     def add_tools(self, tools: List[Tool]) -> None:
-        """Add tools (update config, runtime, and self._tools simultaneously)
+        """Add tools (update config, session, and self._tools simultaneously)
         
         Args:
             tools: List of tool instances
@@ -312,14 +312,14 @@ class BaseAgent(ABC):
             if tool.name not in existing_tool_names:
                 self._tools.append(tool)
 
-            # 4. Sync to runtime (auto register)
-            self._runtime.add_tools([(tool.name, tool)])
+            # 4. Sync to session (auto register)
+            self._session.add_tools([(tool.name, tool)])
 
     def add_workflows(
             self,
             workflows: List[Union[Workflow, Callable[[], Workflow]]]
     ) -> None:
-        """Add workflows (update config and runtime simultaneously).
+        """Add workflows (update config and session simultaneously).
         
         Supports three registration methods:
         1. Workflow instance - registered directly (note: does not support concurrent calls)
@@ -368,7 +368,7 @@ class BaseAgent(ABC):
                 provider = item
                 workflow_id = provider.id
                 workflow_version = provider.version
-                item._register_tool_info(self._runtime)
+                item._register_tool_info(self._session)
                 is_provider = True
             elif callable(item) and hasattr(item, 'id') and hasattr(item, 'version'):
                 # Callable with id/version attributes (preferred way for async providers)
@@ -420,11 +420,11 @@ class BaseAgent(ABC):
                 )
                 self.agent_config.workflows.append(workflow_schema)
 
-            # 2. Sync to runtime (provider or instance)
+            # 2. Sync to session (provider or instance)
             to_register = provider if is_provider else workflow
-            self._runtime.add_workflows([(workflow_key, to_register)])
+            self._session.add_workflows([(workflow_key, to_register)])
 
-            # 3. Also add to global resource_mgr (for cross-runtime access)
+            # 3. Also add to global resource_mgr (for cross-session access)
             try:
                 from openjiuwen.core.runner import resource_mgr
                 logger.info(f"Adding workflow {'provider' if is_provider else 'instance'} "
@@ -438,11 +438,11 @@ class BaseAgent(ABC):
             self,
             workflows: List[Tuple[str, str]]
     ) -> None:
-        """Remove workflows from single_agent (update config and runtime simultaneously).
+        """Remove workflows from single_agent (update config and session simultaneously).
         
         Removes workflows from three locations:
         1. agent_config.workflows (WorkflowSchema list)
-        2. runtime workflow manager
+        2. session workflow manager
         3. global resource_mgr (if available)
         
         Args:
@@ -469,9 +469,9 @@ class BaseAgent(ABC):
             removed_from_config = original_count - len(self.agent_config.workflows)
             logger.info(f"Removed {removed_from_config} workflow schema(s) from config")
 
-            # 2. Remove from runtime
-            self._runtime.remove_workflow(workflow_key)
-            logger.info(f"Removed workflow {workflow_key} from runtime")
+            # 2. Remove from session
+            self._session.remove_workflow(workflow_key)
+            logger.info(f"Removed workflow {workflow_key} from session")
 
             # 3. Remove from global resource_mgr
             try:
@@ -497,7 +497,7 @@ class BaseAgent(ABC):
         
         Note:
         - This method only updates plugins field in configuration
-        - Subclasses should override this method if they need to sync runtime
+        - Subclasses should override this method if they need to sync session
         """
         if hasattr(self.agent_config, 'plugins'):
             # Check duplication
@@ -553,7 +553,7 @@ class BaseAgent(ABC):
         )
 
     async def clear_session(self, session_id: str = "default_session"):
-        await self._runtime.release(session_id)
+        await self._session.release(session_id)
 
 
 class ControllerAgent(BaseAgent):
@@ -569,7 +569,7 @@ class ControllerAgent(BaseAgent):
             
         Note:
             If controller is provided, it will be automatically configured with
-            config, context_engine and runtime from this single_agent via setup_from_agent()
+            config, context_engine and session from this single_agent via setup_from_agent()
             
         Usage:
             # Simplest way - controller auto-configured:
@@ -588,7 +588,7 @@ class ControllerAgent(BaseAgent):
             self._setup_controller()
 
     def _setup_controller(self):
-        """Setup controller with single_agent's config, context_engine and runtime"""
+        """Setup controller with single_agent's config, context_engine and session"""
         if hasattr(self.controller, 'setup_from_agent'):
             self.controller.setup_from_agent(self)
 
@@ -606,12 +606,12 @@ class ControllerAgent(BaseAgent):
         if value is not None and hasattr(self, '_context_engine'):
             self._setup_controller()
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """Synchronous invocation - Fully delegate to controller
         
         Args:
             inputs: Input data
-            runtime: Runtime instance (if None, auto create)
+            session: Session instance (if None, auto create)
         
         Returns:
             Execution result
@@ -622,38 +622,38 @@ class ControllerAgent(BaseAgent):
                 "subclass should create controller before invocation"
             )
 
-        # If runtime not provided, create one
+        # If session not provided, create one
         session_id = inputs.get("conversation_id", "default_session")
-        if runtime is None:
-            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        if session is None:
+            agent_session = await self._session.pre_run(session_id=session_id)
         else:
-            agent_runtime = runtime
+            agent_session = session
 
         try:
             # Fully delegate to controller
-            result = await self.controller.invoke(inputs, agent_runtime)
-            if runtime is None:
-                await agent_runtime.post_run()
+            result = await self.controller.invoke(inputs, agent_session)
+            if session is None:
+                await agent_session.post_run()
 
             return result
         except Exception as e:
-            await agent_runtime.post_run()
+            await agent_session.post_run()
             raise
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """Streaming invocation - Fully delegate to controller
         
         Args:
             inputs: Input data
-            runtime: Runtime instance (if None, auto create)
+            session: Session instance (if None, auto create)
         
         Yields:
             Streaming output
         
         Note:
-            When external runtime is provided, data is written to it but not read
+            When external session is provided, data is written to it but not read
             from stream_iterator (to avoid nested read deadlock). External caller
-            reads stream data from runtime.
+            reads stream data from session.
         """
         if not self.controller:
             raise RuntimeError(
@@ -661,63 +661,63 @@ class ControllerAgent(BaseAgent):
                 "subclass should create controller before invocation"
             )
 
-        # If runtime not provided, create one
+        # If session not provided, create one
         session_id = inputs.get("conversation_id", "default_session")
-        if runtime is None:
-            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        if session is None:
+            agent_session = await self._session.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Owns stream lifecycle
         else:
-            agent_runtime = runtime
+            agent_session = session
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
 
-            # Sync single_agent's tools to external runtime
-            # When external runtime is provided, single_agent's tools need to be registered
+            # Sync single_agent's tools to external session
+            # When external session is provided, single_agent's tools need to be registered
             if self._tools:
                 tools_to_add = [(tool.name, tool) for tool in self._tools]
-                agent_runtime.add_tools(tools_to_add)
-            # Sync agent's workflows to external runtime
-            # When external runtime is provided, agent's workflows need to be registered
+                agent_session.add_tools(tools_to_add)
+            # Sync agent's workflows to external session
+            # When external session is provided, agent's workflows need to be registered
             try:
-                agent_workflow_mgr = self._runtime.resource_mgr().workflow()
+                agent_workflow_mgr = self._session.resource_mgr().workflow()
                 # Sync workflow instances and providers
                 for workflow_id, workflow in agent_workflow_mgr.get_all_workflows().items():
-                    agent_runtime.add_workflow(workflow_id, workflow)
-                    logger.debug(f"Synced workflow {workflow_id} to external runtime")
+                    agent_session.add_workflow(workflow_id, workflow)
+                    logger.debug(f"Synced workflow {workflow_id} to external session")
             except Exception as e:
-                logger.warning(f"Failed to sync workflows to external runtime: {e}")
+                logger.warning(f"Failed to sync workflows to external session: {e}")
         # Store final result for send_to_agent
         final_result_holder = {"result": None}
 
         # Fully delegate to controller
         async def stream_process():
             try:
-                res = await self.controller.invoke(inputs, agent_runtime)
+                res = await self.controller.invoke(inputs, agent_session)
                 final_result_holder["result"] = res
                 # Interrupt: list contains __interaction__ OutputSchema
-                # Only WorkflowController writes to runtime here
+                # Only WorkflowController writes to session here
                 # Other controllers (e.g. HierarchicalMainController) forward
-                # lower single_agent results, which already wrote to shared runtime
+                # lower single_agent results, which already wrote to shared session
                 from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller import (
                     WorkflowController
                 )
                 if isinstance(res, list) and isinstance(self.controller, WorkflowController):
                     for item in res:
                         if isinstance(item, CustomSchema):
-                            await agent_runtime.write_custom_stream(item)
+                            await agent_session.write_custom_stream(item)
                         else:
-                            await agent_runtime.write_stream(item)
+                            await agent_session.write_stream(item)
             finally:
                 if need_cleanup:
-                    await agent_runtime.post_run()
+                    await agent_session.post_run()
 
         task = asyncio.create_task(stream_process())
 
         if own_stream:
             # Read from stream_iterator only when owning stream
-            # External caller reads if external runtime provided
-            async for result in agent_runtime.stream_iterator():
+            # External caller reads if external session provided
+            async for result in agent_session.stream_iterator():
                 yield result
 
         await task
@@ -735,6 +735,6 @@ class ControllerAgent(BaseAgent):
                 yield res
 
     async def clear_session(self, session_id: str = "default_session"):
-        await self._runtime.release(session_id)
+        await self._session.release(session_id)
         self.context_engine.clear_context(session_id)
         await self.controller.cleanup_conversation(session_id)

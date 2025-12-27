@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from openjiuwen.core.multi_agent.agent_group import (
-    AgentGroupRuntime,
+    AgentGroupSession,
     BaseGroup,
     ControllerGroup
 )

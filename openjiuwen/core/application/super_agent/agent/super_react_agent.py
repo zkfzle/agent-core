@@ -28,7 +28,7 @@ from openjiuwen.core.application.agents_for_studio import (
 from openjiuwen.core.single_agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner import Runner, resource_mgr
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
@@ -240,7 +240,7 @@ class SuperReActAgent(BaseAgent):
     async def call_model(
         self,
         user_input: str,
-        runtime: Runtime,
+        session: Session,
         is_first_call: bool = False,
         step_id: int = 0
     ) -> AIMessage:
@@ -249,7 +249,7 @@ class SuperReActAgent(BaseAgent):
 
         Args:
             user_input: User input or tool result
-            runtime: Runtime instance
+            session: Session instance
             is_first_call: Whether this is the first call (adds user message)
             step_id: Step ID for logging
 
@@ -271,21 +271,21 @@ class SuperReActAgent(BaseAgent):
         # Add chat history
         messages.extend(chat_history)
 
-        # Get tool definitions from runtime
-        # tools = runtime.get_tool_info()
+        # Get tool definitions from session
+        # tools = session.get_tool_info()
         
-        # === 从 runtime 拿到所有工具 ===
-        all_tools = runtime.get_tool_info()
+        # === 从 session 拿到所有工具 ===
+        all_tools = session.get_tool_info()
         tools = all_tools
 
         # === 计算当前 single_agent 允许使用的工具名集合 ===
         allowed_tool_names: set[str] = set()
 
         try:
-            agent_cfg = runtime.get_agent_config()
+            agent_cfg = session.get_agent_config()
         except Exception as e:
             agent_cfg = None
-            logger.warning(f"Failed to get single_agent config from runtime: {e}")
+            logger.warning(f"Failed to get single_agent config from session: {e}")
 
         if agent_cfg is not None:
             cfg_tools = getattr(agent_cfg, "tools", None)
@@ -348,37 +348,37 @@ class SuperReActAgent(BaseAgent):
     async def _execute_tool_call(
         self,
         tool_call,
-        runtime: Runtime
+        session: Session
     ) -> Any:
         """
         Execute a single tool call
 
         Args:
             tool_call: Tool call object from LLM
-            runtime: Runtime instance
+            session: Session instance
 
         Returns:
             Tool execution result
         """
-        return await self._tool_call_handler.execute_tool_call(tool_call, runtime)
+        return await self._tool_call_handler.execute_tool_call(tool_call, session)
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """
         Synchronous invoke - complete ReAct loop
 
         Args:
             inputs: Input dict {"query": usr_question, "file_path": usr_file}
-            runtime: Optional runtime (creates one if not provided)
+            session: Optional session (creates one if not provided)
 
         Returns:
             Result dict with 'output' and 'result_type'
         """
-        # Prepare runtime
-        runtime_created = False
+        # Prepare session
+        session_created = False
 
-        if runtime is None:
-            runtime = await self._runtime.pre_run(session_id="default", inputs=inputs)
-            runtime_created = True
+        if session is None:
+            session = await self._session.pre_run(session_id="default", inputs=inputs)
+            session_created = True
 
         try:
             user_input = inputs.get("query", "")
@@ -425,7 +425,7 @@ class SuperReActAgent(BaseAgent):
                     # Call model
                     llm_output = await self.call_model(
                         user_input,
-                        runtime,
+                        session,
                         is_first_call=is_first_call,
                         step_id=iteration
                     )
@@ -449,7 +449,7 @@ class SuperReActAgent(BaseAgent):
                         logger.info(f"Executing tool: {tool_name}")
 
                         try:
-                            result = await self._execute_tool_call(tool_call, runtime)
+                            result = await self._execute_tool_call(tool_call, session)
                             logger.info(f"Tool {tool_name} completed")
 
                             # Add tool result to context immediately after execution
@@ -568,10 +568,10 @@ class SuperReActAgent(BaseAgent):
             return result
 
         finally:
-            if runtime_created:
-                await runtime.post_run()
+            if session_created:
+                await session.post_run()
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """Streaming invoke - delegates to invoke for now"""
-        result = await self.invoke(inputs, runtime)
+        result = await self.invoke(inputs, session)
         yield result

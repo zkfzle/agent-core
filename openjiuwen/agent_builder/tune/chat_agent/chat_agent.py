@@ -11,7 +11,7 @@ from openjiuwen.agent_builder.tune.chat_agent.chat_config import ChatAgentConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.foundation.tool import Tool
 
@@ -60,7 +60,7 @@ class ChatAgent(BaseAgent):
             model_config.model_provider
         )
 
-        model = self._runtime.get_model(model_id=model_id)
+        model = self._session.get_model(model_id=model_id)
 
         if model is None:
             model = ModelFactory().get_model(
@@ -68,9 +68,9 @@ class ChatAgent(BaseAgent):
                 api_base=model_config.model_info.api_base,
                 api_key=model_config.model_info.api_key
             )
-            self._runtime.add_model(model_id=model_id, model=model)
+            self._session.add_model(model_id=model_id, model=model)
 
-        return self._runtime.get_model(model_id=model_id)
+        return self._session.get_model(model_id=model_id)
 
     def _create_context_engine(self) -> ContextEngine:
         """ChatAgent uses default configured ContextEngine"""
@@ -80,48 +80,48 @@ class ChatAgent(BaseAgent):
             config=context_config,
         )
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        # 1. init ContextEngine and Runtime
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
+        # 1. init ContextEngine and Session
         session_id = inputs.pop("conversation_id", "default_session")
 
-        if runtime is None:
-            # Compatible with old usage without runtime
-            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        if session is None:
+            # Compatible with old usage without session
+            agent_session = await self._session.pre_run(session_id=session_id)
         else:
-            agent_runtime = runtime
+            agent_session = session
 
         # 2. invoke LLMCall
         agent_context = self.context_engine.get_agent_context(session_id)
         result = await self._llm_call.invoke(
             inputs=inputs,
-            runtime=agent_runtime,
+            session=agent_session,
             history=agent_context.get_messages(),
-            tools=self._runtime.get_tool_info()
+            tools=self._session.get_tool_info()
         )
-        if runtime is None:
-            await agent_runtime.post_run()
+        if session is None:
+            await agent_session.post_run()
         return dict(output=result.content, tool_calls=result.tool_calls)
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        # 1. init ContextEngine and Runtime
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
+        # 1. init ContextEngine and Session
         session_id = inputs.pop("conversation_id", "default_session")
 
-        if runtime is None:
-            # Compatible with old usage without runtime
-            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        if session is None:
+            # Compatible with old usage without session
+            agent_session = await self._session.pre_run(session_id=session_id)
         else:
-            agent_runtime = runtime
+            agent_session = session
 
         # 2. stream invoke LLMCall
         agent_context = self.context_engine.get_agent_context(session_id)
         stream_iterator = self._llm_call.stream(
             inputs=inputs,
-            runtime=agent_runtime,
+            session=agent_session,
             history=agent_context.get_messages(),
-            tools=self._runtime.get_tool_info()
+            tools=self._session.get_tool_info()
         )
-        if runtime is None:
-            await agent_runtime.post_run()
+        if session is None:
+            await agent_session.post_run()
         async for result in stream_iterator:
             yield dict(output=result.content, tool_calls=result.tool_calls)
 

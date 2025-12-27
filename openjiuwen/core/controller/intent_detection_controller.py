@@ -15,7 +15,7 @@ from openjiuwen.core.controller.event.event import Event
 from openjiuwen.core.controller.task.task import Task, TaskStatus
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session import InteractiveInput
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 
 
@@ -143,19 +143,19 @@ class IntentDetectionController(BaseController):
     5. Real-time interruption: Cancel running tasks when new request arrives
     """
 
-    def __init__(self, config=None, context_engine=None, runtime=None):
+    def __init__(self, config=None, context_engine=None, session=None):
         """Initialize Intent Detection Controller
         
         Args:
             config: Agent configuration (optional, can be injected later)
             context_engine: Context engine (optional, can be injected later)
-            runtime: Agent-level Runtime (optional, can be injected later)
+            session: Agent-level Session (optional, can be injected later)
             
         Note:
             If parameters are not provided, they will be injected by
             ControllerAgent via setup_from_agent()
         """
-        super().__init__(config, context_engine, runtime)
+        super().__init__(config, context_engine, session)
         
         # Initialize task queue for managing running tasks
         self.task_queue = TaskQueue()
@@ -165,7 +165,7 @@ class IntentDetectionController(BaseController):
         self._processing_handlers: Dict[str, asyncio.Task] = {}
         self._handler_lock = asyncio.Lock()
 
-    async def invoke(self, inputs: Dict, runtime: Runtime) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session) -> Dict:
         """Override invoke to support real-time interruption
         
         Key mechanism for real-time interruption:
@@ -175,7 +175,7 @@ class IntentDetectionController(BaseController):
         
         Args:
             inputs: Input dictionary containing query and conversation_id
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Processing result
@@ -204,9 +204,9 @@ class IntentDetectionController(BaseController):
             await self.task_queue.cancel_running_task(conversation_id)
         
         # Call parent's invoke (sends message to queue)
-        return await super().invoke(inputs, runtime)
+        return await super().invoke(inputs, session)
 
-    async def handle_event(self, event: Event, runtime: Runtime) -> Dict:
+    async def handle_event(self, event: Event, session: Session) -> Dict:
         """Standard message processing flow: Intent detection -> Route processing
         
         Supports real-time interruption:
@@ -216,7 +216,7 @@ class IntentDetectionController(BaseController):
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Processing result
@@ -233,23 +233,23 @@ class IntentDetectionController(BaseController):
         
         try:
             # 1. Intent detection
-            intent = await self.intent_detection(event, runtime)
+            intent = await self.intent_detection(event, session)
 
             MessageUtils.add_user_message(
-                event.get_display_content(), self._context_engine, runtime
+                event.get_display_content(), self._context_engine, session
             )
 
             # 2. Route processing based on intent type
             if intent.intent_type == IntentType.ExecNewTask:
-                result = await self._handle_new_task(event, intent, runtime)
+                result = await self._handle_new_task(event, intent, session)
             elif intent.intent_type == IntentType.ResumeTask:
-                result = await self._handle_resume(event, intent, runtime)
+                result = await self._handle_resume(event, intent, session)
             elif intent.intent_type == IntentType.CancelTask:
-                result = await self._handle_cancel(event, intent, runtime)
+                result = await self._handle_cancel(event, intent, session)
             elif intent.intent_type == IntentType.DefaultResponse:
-                result = await self._handle_default_response(event, intent, runtime)
+                result = await self._handle_default_response(event, intent, session)
             else:
-                result = await self._handle_unknown_intent(event, intent, runtime)
+                result = await self._handle_unknown_intent(event, intent, session)
 
             return result
             
@@ -275,7 +275,7 @@ class IntentDetectionController(BaseController):
             self,
             event: Event,
             intent: Intent,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Handle new task: Update state -> Execute
         
@@ -286,7 +286,7 @@ class IntentDetectionController(BaseController):
         Args:
             event: Event object
             intent: Intent object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             dict: Execution result
@@ -299,14 +299,14 @@ class IntentDetectionController(BaseController):
 
         # Execute task directly
         logger.info(f"Handling new task: task_id={task.task_id}")
-        result = await self.exec_task(event.content, task, runtime)
+        result = await self.exec_task(event.content, task, session)
         return result
 
     async def _handle_resume(
             self,
             event: Event,
             intent: Intent,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Handle task resumption: Update input -> Execute
         
@@ -315,7 +315,7 @@ class IntentDetectionController(BaseController):
         Args:
             event: Event object
             intent: Intent object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             dict: Execution result
@@ -334,7 +334,7 @@ class IntentDetectionController(BaseController):
 
         # Get target workflow's interrupted component_id
         workflow_id = task.input.target_id
-        state = runtime.get_state("workflow_controller")
+        state = session.get_state("workflow_controller")
         target_component_id = "questioner"  # Default value
 
         if state:
@@ -414,21 +414,21 @@ class IntentDetectionController(BaseController):
         task.input.arguments = interactive_input
 
         # Execute task (resume)
-        result = await self.exec_task(event.content, task, runtime)
+        result = await self.exec_task(event.content, task, session)
         return result
 
     async def _handle_cancel(
             self,
             event: Event,
             intent: Intent,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Handle task cancellation
         
         Args:
             event: Event object
             intent: Intent object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             dict: Cancellation result
@@ -447,14 +447,14 @@ class IntentDetectionController(BaseController):
             self,
             event: Event,
             intent: Intent,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Handle default response when no task could be detected
         
         Args:
             event: Event object
             intent: Intent object (with default_response_text in metadata)
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             dict: Default response result
@@ -474,7 +474,7 @@ class IntentDetectionController(BaseController):
             index=0,
             payload=final_payload
         )
-        await runtime.write_stream(workflow_final)
+        await session.write_stream(workflow_final)
 
         return {
             "status": "default_response",
@@ -486,14 +486,14 @@ class IntentDetectionController(BaseController):
             self,
             event: Event,
             intent: Intent,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Handle unknown intent
         
         Args:
             event: Event object
             intent: Intent object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             dict: Error result
@@ -510,7 +510,7 @@ class IntentDetectionController(BaseController):
     async def intent_detection(
             self,
             event: Event,
-            runtime: Runtime
+            session: Session
     ) -> Intent:
         """Intent detection (subclasses must implement)
         
@@ -521,7 +521,7 @@ class IntentDetectionController(BaseController):
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Intent object
@@ -535,19 +535,19 @@ class IntentDetectionController(BaseController):
             self,
             message_content: Any,
             task: Task,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Execute task (subclasses must implement)
         
         Subclasses need to implement:
         - Decide execution method based on task.status (new/resume)
-        - Call runtime to execute workflow/tool
+        - Call session to execute workflow/tool
         - Handle execution results and exceptions
         
         Args:
             message_content: Message content
             task: Task object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Execution result
@@ -560,7 +560,7 @@ class IntentDetectionController(BaseController):
     async def interrupt_task(
             self,
             task: Task,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Interrupt task (subclasses must implement)
         
@@ -570,7 +570,7 @@ class IntentDetectionController(BaseController):
         
         Args:
             task: Task object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Interruption information

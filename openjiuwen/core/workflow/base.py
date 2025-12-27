@@ -26,10 +26,10 @@ from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import WORKFLOW_EXECUTE_TIMEOUT, \
     WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT
 from openjiuwen.core.session import InteractiveInput
-from openjiuwen.core.session import BaseRuntime, ProxyRuntime
+from openjiuwen.core.session import BaseSession, ProxySession
 from openjiuwen.core.session import Transformer
-from openjiuwen.core.session import WorkflowRuntime, SubWorkflowRuntime, NodeRuntime
-from openjiuwen.core.session import RouterRuntime
+from openjiuwen.core.session import WorkflowSession, SubWorkflowSession, NodeSession
+from openjiuwen.core.session import RouterSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode, OutputSchema, CustomSchema, TraceSchema
 from openjiuwen.core.session.stream import StreamEmitter
 from openjiuwen.core.session.stream import StreamWriterManager
@@ -92,7 +92,7 @@ class BaseWorkFlow:
             self._workflow_config.metadata = WorkflowMetadata()
         self._workflow_spec = self._workflow_config.spec
         self._stream_actor = StreamGraph()
-        self._runtime = ProxyRuntime()
+        self._session = ProxySession()
         self._drawable = None
         if os.environ.get(WORKFLOW_DRAWABLE, "false").lower() == "true":
             from openjiuwen.core.graph.visualization.drawable import Drawable
@@ -227,13 +227,13 @@ class BaseWorkFlow:
 
     def add_conditional_connection(self, src_comp_id: str, router: Router) -> Self:
         if isinstance(router, BranchRouter):
-            router.set_runtime(self._runtime)
+            router.set_session(self._session)
             self._graph.add_conditional_edges(source_node_id=src_comp_id, router=router)
         else:
             def new_router(state):
                 sig = inspect.signature(router)
-                if 'runtime' in sig.parameters:
-                    return router(runtime=RouterRuntime(self._runtime))
+                if 'session' in sig.parameters:
+                    return router(session=RouterSession(self._session))
                 else:
                     return router()
 
@@ -243,26 +243,26 @@ class BaseWorkFlow:
             self._drawable.add_edge(source=src_comp_id, conditional=True, data=router)
         return self
 
-    def compile(self, runtime: BaseRuntime) -> ExecutableGraph:
-        if isinstance(runtime, WorkflowRuntime):
-            runtime.set_workflow_id(self._workflow_config.metadata.id)
-        runtime.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
+    def compile(self, session: BaseSession) -> ExecutableGraph:
+        if isinstance(session, WorkflowSession):
+            session.set_workflow_id(self._workflow_config.metadata.id)
+        session.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
 
-        if isinstance(runtime, SubWorkflowRuntime):
-            main_workflow_config = runtime.config().get_workflow_config(
-                runtime.main_workflow_id())
+        if isinstance(session, SubWorkflowSession):
+            main_workflow_config = session.config().get_workflow_config(
+                session.main_workflow_id())
             if main_workflow_config is None:
                 raise JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
                                           StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
                                               detail=f"main workflow config is not exit,"
-                                                     f" main workflow_id={runtime.main_workflow_id()}"))
-            if runtime.workflow_nesting_depth() > main_workflow_config.workflow_max_nesting_depth:
+                                                     f" main workflow_id={session.main_workflow_id()}"))
+            if session.workflow_nesting_depth() > main_workflow_config.workflow_max_nesting_depth:
                 raise JiuWenBaseException(StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.code,
                                           StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
                                               detail=f"workflow nesting hierarchy is too big, must <= "
                                                      f"{main_workflow_config.workflow_max_nesting_depth}"))
-        self._runtime.set_runtime(runtime)
-        return self._graph.compile(runtime)
+        self._session.set_session(session)
+        return self._graph.compile(session)
 
     @property
     def drawable(self):
@@ -484,18 +484,18 @@ class Workflow(BaseWorkFlow):
         self._end_comp = component
         return self
 
-    async def sub_invoke(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> Output:
+    async def sub_invoke(self, inputs: Input, session: BaseSession, config: Any = None) -> Output:
         logger.info(f"begin to sub_invoke, inputs: {inputs}")
-        actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
+        actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session)
 
         try:
-            compiled_graph = self.compile(sub_workflow_runtime)
-            await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+            compiled_graph = self.compile(sub_workflow_session)
+            await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, session)
             if self._is_streaming:
                 messages = []
                 while True:
                     frame = await actor_manager.sub_workflow_stream().receive(
-                        runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
+                        session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
                     if frame is None:
                         logger.warning("no frame received")
                         continue
@@ -507,26 +507,26 @@ class Workflow(BaseWorkFlow):
                     logger.debug(f"sub workflow messages: {messages}")
                     return dict(stream=messages)
 
-            node_runtime = NodeRuntime(runtime, self._end_comp_id)
+            node_session = NodeSession(session, self._end_comp_id)
             output_key = self._end_comp_id
 
-            results = node_runtime.state().get_outputs(output_key)
+            results = node_session.state().get_outputs(output_key)
             logger.info(f"end to sub_invoke, result: {results}")
             return results
         finally:
-            await sub_workflow_runtime.close()
+            await sub_workflow_session.close()
             await self._graph.reset()
 
-    async def sub_stream(self, inputs: Input, runtime: BaseRuntime, config: Any = None) -> AsyncIterator[Output]:
+    async def sub_stream(self, inputs: Input, session: BaseSession, config: Any = None) -> AsyncIterator[Output]:
         logger.info(f"begin to sub_stream, input: {inputs}")
-        actor_manager, sub_workflow_runtime = self._prepare_sub_workflow_runtime(runtime)
+        actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session)
 
         try:
-            compiled_graph = self.compile(sub_workflow_runtime)
-            await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, runtime)
+            compiled_graph = self.compile(sub_workflow_session)
+            await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, session)
             if self._is_streaming:
                 frame_count = 0
-                stream_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+                stream_timeout = session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
                 sub_end_ability = self._workflow_config.spec.comp_configs.get(self._end_comp_id).abilities
             required_abilities = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
             stream_ability_count = sum(ability in sub_end_ability for ability in required_abilities)
@@ -545,14 +545,14 @@ class Workflow(BaseWorkFlow):
                 logger.debug(f"yielding frame {frame_count}: {frame}")
                 yield frame
         finally:
-            await sub_workflow_runtime.close()
+            await sub_workflow_session.close()
             await self._graph.reset()
 
-    async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None) -> WorkflowOutput:
+    async def invoke(self, inputs: Input, session: BaseSession, context: Context = None) -> WorkflowOutput:
         async def _invoke_task():
             logger.info(f"begin to invoke, input: {inputs}")
             chunks = []
-            async for chunk in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
+            async for chunk in self.stream(inputs, session, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
                 chunks.append(chunk)
 
             is_interaction = False
@@ -567,50 +567,50 @@ class Workflow(BaseWorkFlow):
                 if self._is_streaming:
                     result = chunks
                 else:
-                    result = runtime.state().get_outputs(self._end_comp_id)
+                    result = session.state().get_outputs(self._end_comp_id)
                 output = WorkflowOutput(result=result, state=WorkflowExecutionState.COMPLETED)
             logger.info("end to invoke, results=%s", output)
             return output
 
-        invoke_timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+        invoke_timeout = session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
         return await self._execute_with_timeout(_invoke_task, invoke_timeout, StatusCode.WORKFLOW_INVOKE_TIMEOUT)
 
     async def stream(
             self,
             inputs: Input,
-            runtime: BaseRuntime,
+            session: BaseSession,
             context: Context = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
-        self._validate_and_init_runtime(runtime, stream_modes, context)
+        self._validate_and_init_session(session, stream_modes, context)
         # workflow start tracer info
-        await TracerWorkflowUtils.trace_workflow_start(runtime, inputs)
-        timeout = runtime.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
-        frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
+        await TracerWorkflowUtils.trace_workflow_start(session, inputs)
+        timeout = session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+        frame_timeout = session.config().get_env(WORKFLOW_STREAM_FRAME_TIMEOUT)
         if timeout is not None and 0 < timeout <= frame_timeout:
             frame_timeout = timeout
-        runtime.config().set_envs({WORKFLOW_STREAM_FRAME_TIMEOUT: frame_timeout})
-        first_frame_timeout = runtime.config().get_env(WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT)
+        session.config().set_envs({WORKFLOW_STREAM_FRAME_TIMEOUT: frame_timeout})
+        first_frame_timeout = session.config().get_env(WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT)
         if timeout is not None and 0 < timeout <= first_frame_timeout:
             first_frame_timeout = timeout
-        runtime.config().set_envs({WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT: first_frame_timeout})
+        session.config().set_envs({WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT: first_frame_timeout})
 
         async def stream_process():
-            compiled_graph = self.compile(runtime)
+            compiled_graph = self.compile(session)
             try:
-                await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, runtime)
+                await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, session)
             finally:
                 # workflow end tracer info
-                outputs = runtime.state().get_outputs(self._end_comp_id)
-                await TracerWorkflowUtils.trace_workflow_done(runtime, outputs)
-                await runtime.stream_writer_manager().stream_emitter().close()
+                outputs = session.state().get_outputs(self._end_comp_id)
+                await TracerWorkflowUtils.trace_workflow_done(session, outputs)
+                await session.stream_writer_manager().stream_emitter().close()
 
         task = asyncio.create_task(
             self._execute_with_timeout(stream_process, timeout, StatusCode.WORKFLOW_STREAM_TIMEOUT))
 
         interaction_chuck_list = []
         chunks = []
-        async for chunk in runtime.stream_writer_manager().stream_output(first_frame_timeout=first_frame_timeout,
+        async for chunk in session.stream_writer_manager().stream_output(first_frame_timeout=first_frame_timeout,
                                                                          timeout=frame_timeout,
                                                                          need_close=True):
             yield chunk
@@ -619,7 +619,7 @@ class Workflow(BaseWorkFlow):
             chunks.append(chunk)
         try:
             await task
-            results = runtime.state().get_outputs(self._end_comp_id)
+            results = session.state().get_outputs(self._end_comp_id)
             if results:
                 self._add_messages_to_context(inputs, results, context)
                 yield OutputSchema(type="workflow_final", index=0, payload=results)
@@ -633,7 +633,7 @@ class Workflow(BaseWorkFlow):
             raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
                                       StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
         finally:
-            await runtime.close()
+            await session.close()
             await self._graph.reset()
 
     async def _execute_with_timeout(self, func, timeout, status_code):
@@ -663,38 +663,38 @@ class Workflow(BaseWorkFlow):
                 except Exception:
                     pass
 
-    def _validate_and_init_runtime(self, runtime: BaseRuntime, stream_modes: list[StreamMode], context: Context):
-        if isinstance(runtime, WorkflowRuntime):
-            runtime.set_workflow_id(self._workflow_config.metadata.id)
+    def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode], context: Context):
+        if isinstance(session, WorkflowSession):
+            session.set_workflow_id(self._workflow_config.metadata.id)
             if context:
-                runtime.set_context(context)
+                session.set_context(context)
         self._auto_complete_abilities()
-        mq_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=False, runtime=runtime)
-        runtime.set_actor_manager(mq_manager)
-        runtime.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
-        if runtime.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
+        mq_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=False, session=session)
+        session.set_actor_manager(mq_manager)
+        session.set_stream_writer_manager(StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes))
+        if session.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
             tracer = Tracer()
-            tracer.init(runtime.stream_writer_manager(), runtime.callback_manager())
-            runtime.set_tracer(tracer)
+            tracer.init(session.stream_writer_manager(), session.callback_manager())
+            session.set_tracer(tracer)
 
-    def _prepare_sub_workflow_runtime(self, runtime: BaseRuntime) -> Tuple[ActorManager, BaseRuntime]:
+    def _prepare_sub_workflow_session(self, session: BaseSession) -> Tuple[ActorManager, BaseSession]:
         """
         Prepare common components for sub workflow execution.
         
         Args:
-            runtime: The base runtime
+            session: The base session
             
         Returns:
-            tuple: (actor_manager, sub_workflow_runtime)
+            tuple: (actor_manager, sub_workflow_session)
         """
         self._auto_complete_abilities()
-        actor_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=True, runtime=runtime)
-        sub_workflow_runtime = SubWorkflowRuntime(
-            runtime,
+        actor_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=True, session=session)
+        sub_workflow_session = SubWorkflowSession(
+            session,
             workflow_id=self._workflow_config.metadata.id,
             actor_manager=actor_manager
         )
-        return actor_manager, sub_workflow_runtime
+        return actor_manager, sub_workflow_session
 
     def _convert_to_component(self, executable: Executable) -> WorkflowComponent:
         pass

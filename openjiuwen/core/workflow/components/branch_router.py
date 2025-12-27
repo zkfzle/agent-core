@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.condition.condition import Condition, FuncCondition
 from openjiuwen.core.workflow.components.condition.expression import ExpressionCondition
-from openjiuwen.core.session import Runtime, BaseRuntime
+from openjiuwen.core.session import Session, BaseSession
 from openjiuwen.core.session.tracer import TracerWorkflowUtils
 from openjiuwen.core.graph.visualization.drawable_edge import DrawableBranchRouter
 
@@ -32,18 +32,18 @@ class Branch:
                                       StatusCode.BRANCH_COMPONENT_BRANCH_CONDITION_TYPE_ERROR.errmsg)
         self.target = target
 
-    def evaluate(self, runtime: BaseRuntime) -> bool:
-        return self._condition(runtime)
+    def evaluate(self, session: BaseSession) -> bool:
+        return self._condition(session)
 
-    def trace_info(self, runtime: BaseRuntime) -> str:
-        return self._condition.trace_info(runtime)
+    def trace_info(self, session: BaseSession) -> str:
+        return self._condition.trace_info(session)
 
 
 class BranchRouter:
     def __init__(self, report_trace: bool = False):
         super().__init__()
         self._branches: list[Branch] = []
-        self._runtime: BaseRuntime = None
+        self._session: BaseSession = None
         self.report_trace = report_trace
         self._drawable_branch_router = None
         if os.environ.get(WORKFLOW_DRAWABLE, "false").lower() == "true":
@@ -68,33 +68,33 @@ class BranchRouter:
     def get_drawable_branch_router(self):
         return self._drawable_branch_router
 
-    def set_runtime(self, runtime: Union[Runtime, BaseRuntime]):
-        if isinstance(runtime, Runtime):
-            self._runtime = runtime.base()
+    def set_session(self, session: Union[Session, BaseSession]):
+        if isinstance(session, Session):
+            self._session = session.base()
             return
-        if isinstance(runtime, BaseRuntime):
-            self._runtime = runtime
+        if isinstance(session, BaseSession):
+            self._session = session
             return
         raise JiuWenBaseException(
             StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.code,
-            StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(error_msg="runtime type is wrong"),
+            StatusCode.BRANCH_COMPONENT_ADD_BRANCH_ERROR.errmsg.format(error_msg="session type is wrong"),
         )
 
     async def __call__(self, *args, **kwargs) -> list[str]:
-        runtime = self._runtime
+        session = self._session
         if self.report_trace:
             branches = []
             for branch in self._branches:
                 branches.append({
                     "branch_id": branch.branch_id,
-                    "condition": branch.trace_info(runtime)
+                    "condition": branch.trace_info(session)
                 })
-            await TracerWorkflowUtils.trace_component_inputs(runtime, {"branches": branches})
+            await TracerWorkflowUtils.trace_component_inputs(session, {"branches": branches})
         for branch in self._branches:
-            if branch.evaluate(runtime):
+            if branch.evaluate(session):
                 if self.report_trace:
-                    await TracerWorkflowUtils.trace_component_outputs(runtime, {"branch_id": branch.branch_id})
-                    await TracerWorkflowUtils.trace_component_done(runtime)
+                    await TracerWorkflowUtils.trace_component_outputs(session, {"branch_id": branch.branch_id})
+                    await TracerWorkflowUtils.trace_component_done(session)
                 return branch.target
         raise JiuWenBaseException(StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.code,
                                   StatusCode.BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR.errmsg)

@@ -43,7 +43,7 @@ class HierarchicalGroup(ControllerGroup):
         hierarchical_group.add_agent("worker_002", worker_agent_2)
         
         # 5. Process messages
-        result = await hierarchical_group.invoke(message, runtime)
+        result = await hierarchical_group.invoke(message, session)
     """
     
     def __init__(self, config: HierarchicalGroupConfig):

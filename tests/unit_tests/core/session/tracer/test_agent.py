@@ -2,14 +2,14 @@ import asyncio
 
 import pytest
 
-from openjiuwen.core.single_agent import AgentConfig, AgentRuntime
+from openjiuwen.core.single_agent import AgentConfig, AgentSession
 from openjiuwen.core.session import Config
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.session.stream import CustomSchema
 from openjiuwen.core.workflow import Workflow
-from tests.unit_tests.core.runtime.tracer.mock_node_with_tracer import StreamNodeWithTracer
-from tests.unit_tests.core.runtime.tracer.test_workflow_tracer import record_tracer_info
+from tests.unit_tests.core.session.tracer.mock_node_with_tracer import StreamNodeWithTracer
+from tests.unit_tests.core.session.tracer.test_workflow_tracer import record_tracer_info
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 
@@ -64,14 +64,14 @@ class TestAgent:
     def tearDown(self):
         record_tracer_info(self.tracer_chunks, "test_agent_workflow_seq_exec_stream_workflow_with_tracer.json")
 
-    async def run_workflow_seq_exec_stream_workflow_with_tracer(self, context: Runtime):
+    async def run_workflow_seq_exec_stream_workflow_with_tracer(self, context: Session):
         """
         start -> a -> b -> end
         """
 
         # workflow与agent共用一个tracer
-        workflow_runtime= context.create_workflow_runtime()
-        assert (workflow_runtime.tracer() is self.tracer)
+        workflow_session= context.create_workflow_session()
+        assert (workflow_session.tracer() is self.tracer)
 
         flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"),
@@ -115,7 +115,7 @@ class TestAgent:
         }
         index_dict = {key: 0 for key in expected_datas_model.keys()}
 
-        async for chunk in flow.stream({"a": 1, "b": "haha"}, workflow_runtime):
+        async for chunk in flow.stream({"a": 1, "b": "haha"}, workflow_session):
             if isinstance(chunk, CustomSchema):
                 node_id = chunk.node_id
                 index = index_dict[node_id]
@@ -127,9 +127,9 @@ class TestAgent:
         # context手动初始化tracer，agent和workflow共用一个tracer
         config = Config()
         config.set_agent_config(AgentConfig(id="test_agent_checkpoint"))
-        agent_runtime = AgentRuntime(config)
+        agent_session = AgentSession(config)
 
-        context = await agent_runtime.pre_run(session_id="test")
+        context = await agent_session.pre_run(session_id="test")
         self.tracer = context.tracer()
 
         agent_span = self.tracer.tracer_agent_span_manager.create_agent_span()

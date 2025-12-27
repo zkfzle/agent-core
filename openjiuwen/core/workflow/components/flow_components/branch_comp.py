@@ -11,7 +11,7 @@ from openjiuwen.core.workflow.components.condition.condition import Condition
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 
 
 class BranchComponent(WorkflowComponent, ComponentExecutable):
@@ -31,8 +31,8 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:
         return self._router
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        self._router.set_runtime(runtime)
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+        self._router.set_session(session)
         return {}
 
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False):

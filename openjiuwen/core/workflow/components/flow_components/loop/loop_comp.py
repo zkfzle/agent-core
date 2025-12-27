@@ -12,10 +12,10 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.workflow.components.flow_components.loop.break_comp import BreakComponent, LoopController
-from openjiuwen.core.workflow.components.condition.array import ArrayConditionInRuntime
+from openjiuwen.core.workflow.components.condition.array import ArrayConditionInSession
 from openjiuwen.core.workflow.components.condition.condition import Condition, AlwaysTrue, FuncCondition
 from openjiuwen.core.workflow.components.condition.expression import ExpressionCondition
-from openjiuwen.core.workflow.components.condition.number import NumberConditionInRuntime
+from openjiuwen.core.workflow.components.condition.number import NumberConditionInSession
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, \
     FIRST_LOOP
@@ -25,8 +25,8 @@ from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY
 from openjiuwen.core.graph.executable import Output, Input, Executable
 from openjiuwen.core.session import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
-from openjiuwen.core.session import BaseRuntime, Runtime
-from openjiuwen.core.session import NodeRuntime, SubWorkflowRuntime
+from openjiuwen.core.session import BaseSession, Session
+from openjiuwen.core.session import NodeSession, SubWorkflowSession
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow.base import BaseWorkFlow
 from openjiuwen.core.common.constants.enums import ComponentAbility
@@ -35,7 +35,7 @@ from openjiuwen.core.graph.pregel import GraphInterrupt, START, END
 
 
 class EmptyExecutable(Executable):
-    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
         pass
 
     def skip_trace(self) -> bool:
@@ -46,13 +46,13 @@ class PostLoopBody(Executable):
     def __init__(self):
         self._finish_index = -1
 
-    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        finish_index = runtime.state().get(FINISH_INDEX)
+    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+        finish_index = session.state().get(FINISH_INDEX)
         if finish_index is not None:
             self._finish_index = finish_index
         self._finish_index += 1
-        runtime.state().update({FINISH_INDEX: self._finish_index})
-        runtime.state().commit()
+        session.state().update({FINISH_INDEX: self._finish_index})
+        session.state().commit()
         return None
 
     def skip_trace(self) -> bool:
@@ -130,7 +130,7 @@ class LoopGroup(BaseWorkFlow, Executable):
             self._end_nodes.append(end_comp_id)
         return self
 
-    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
         if not self._start_nodes:
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_MISSING_START_NODES_ERROR.code,
                                       StatusCode.LOOP_COMPONENT_MISSING_START_NODES_ERROR.errmsg)
@@ -138,10 +138,10 @@ class LoopGroup(BaseWorkFlow, Executable):
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_MISSING_END_NODES_ERROR.code,
                                       StatusCode.LOOP_COMPONENT_MISSING_END_NODES_ERROR.errmsg)
         self._auto_complete_abilities()
-        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, runtime=runtime)
-        loop_runtime = SubWorkflowRuntime(runtime.parent(), self._workflow_config.metadata.id, actor_manager)
-        self.compiled_graph = self.compile(loop_runtime)
-        await self.compiled_graph.invoke(inputs, loop_runtime)
+        actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, session=session)
+        loop_session = SubWorkflowSession(session.parent(), self._workflow_config.metadata.id, actor_manager)
+        self.compiled_graph = self.compile(loop_session)
+        await self.compiled_graph.invoke(inputs, loop_session)
         return None
 
     def skip_trace(self) -> bool:
@@ -213,17 +213,17 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
 
         self._in_loop = [BODY_NODE_ID]
         self._out_loop = [END]
-        self._node_runtime = None
+        self._node_session = None
 
     def register_callback(self, callback: LoopCallback):
         self._callbacks.append(callback)
 
     def __call__(self, *args, **kwargs) -> list[str]:
-        return self.atomic_invoke(runtime=self._node_runtime)
+        return self.atomic_invoke(session=self._node_session)
 
     def _atomic_invoke(self, **kwargs) -> Any:
         try:
-            outputs = self._condition_invoke(runtime=self._node_runtime)
+            outputs = self._condition_invoke(session=self._node_session)
             return outputs
         except Exception as e:
             if isinstance(e, JiuWenBaseException):
@@ -231,12 +231,12 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_EXECUTION_ERROR.code,
                                       StatusCode.LOOP_COMPONENT_EXECUTION_ERROR.errmsg.format(error_msg=str(e))) from e
 
-    def _condition_invoke(self, runtime: BaseRuntime) -> Output:
-        index = runtime.state().get(INDEX)
+    def _condition_invoke(self, session: BaseSession) -> Output:
+        index = session.state().get(INDEX)
         if index is None:
-            runtime.state().update({BROKEN: False, INDEX: 0})
-            runtime.state().set_outputs({INDEX: 0})
-            runtime.state().commit()
+            session.state().update({BROKEN: False, INDEX: 0})
+            session.state().set_outputs({INDEX: 0})
+            session.state().commit()
             index = 0
 
         finish_index = self._post_body.get_finish_index()
@@ -245,57 +245,57 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
             finish_index = index - 1
 
         if finish_index == index:
-            runtime.state().update({INDEX: index + 1})
-            runtime.state().set_outputs({INDEX: index + 1})
-            runtime.state().commit()
+            session.state().update({INDEX: index + 1})
+            session.state().set_outputs({INDEX: index + 1})
+            session.state().commit()
 
 
-        continue_loop = False if self.is_broken() else self._condition(runtime=runtime)
+        continue_loop = False if self.is_broken() else self._condition(session=session)
         for callback in self._callbacks:
             if finish_index < 0:
-                callback(FIRST_LOOP, runtime)
+                callback(FIRST_LOOP, session)
             elif finish_index == index:
-                callback(END_ROUND, runtime, index + 1)
+                callback(END_ROUND, session, index + 1)
             if continue_loop:
-                callback(START_ROUND, runtime)
+                callback(START_ROUND, session)
             else:
-                callback(OUT_LOOP, runtime)
+                callback(OUT_LOOP, session)
 
         if not continue_loop:
-            runtime.state().update({INDEX: 0, BROKEN: False})
+            session.state().update({INDEX: 0, BROKEN: False})
             self._post_body.set_finish_index(-1)
-            runtime.parent().state().update({POST_BODY_NODE_ID: None})
-            runtime.state().set_outputs({INDEX: 0})
+            session.parent().state().update({POST_BODY_NODE_ID: None})
+            session.state().set_outputs({INDEX: 0})
 
         return self._in_loop if continue_loop else self._out_loop
 
     def is_broken(self) -> bool:
-        _is_broken = self._node_runtime.state().get(BROKEN)
+        _is_broken = self._node_session.state().get(BROKEN)
         if isinstance(_is_broken, bool):
             return _is_broken
         return False
 
     def break_loop(self):
-        self._node_runtime.state().update({BROKEN: True})
+        self._node_session.state().update({BROKEN: True})
 
-    async def on_invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        loop_runtime = runtime
-        self._node_id = loop_runtime.node_id()
-        self._node_runtime = NodeRuntime(loop_runtime, self._node_id)
+    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+        loop_session = session
+        self._node_id = loop_session.node_id()
+        self._node_session = NodeSession(loop_session, self._node_id)
 
-        loop_runtime.state().set_outputs({LOOP_ID: self._node_id})
-        state = loop_runtime.state()._io_state.get_state()
+        loop_session.state().set_outputs({LOOP_ID: self._node_id})
+        state = loop_session.state()._io_state.get_state()
         if self._node_id in state:
             del state[self._node_id]
-        loop_runtime.state().set_outputs(state)
-        loop_runtime.state().commit()
+        loop_session.state().set_outputs(state)
+        loop_session.state().commit()
 
-        if loop_runtime.tracer() is not None:
-            loop_runtime.tracer().register_workflow_span_manager(loop_runtime.executable_id())
-        compiled = self._graph.compile(loop_runtime)
-        await compiled.invoke(inputs, loop_runtime)
-        result = self._node_runtime.state().get_outputs(self._node_id)
-        loop_runtime.state()._io_state.update_by_id(self._node_id, {self._node_id: None})
+        if loop_session.tracer() is not None:
+            loop_session.tracer().register_workflow_span_manager(loop_session.executable_id())
+        compiled = self._graph.compile(loop_session)
+        await compiled.invoke(inputs, loop_session)
+        result = self._node_session.state().get_outputs(self._node_id)
+        loop_session.state()._io_state.update_by_id(self._node_id, {self._node_id: None})
         return result
 
     def graph_invoker(self) -> bool:
@@ -330,7 +330,7 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_EMPTY_GROUP_ERROR.code,
                                       "empty loop group has no components to execute")
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         try:
             if not isinstance(inputs, dict):
                 raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_INPUT_TYPE_ERROR.code,
@@ -343,9 +343,9 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
             loop_input = LoopInput.model_validate(inputs.get(INPUTS_KEY))
             condition: Condition
             if loop_input.loop_type == LoopType.Array.value:
-                condition = ArrayConditionInRuntime(loop_input.loop_array)
+                condition = ArrayConditionInSession(loop_input.loop_array)
             elif loop_input.loop_type == LoopType.Number.value:
-                max_loop_limit = runtime.get_env(LOOP_NUMBER_MAX_LIMIT_KEY) or LOOP_NUMBER_MAX_LIMIT_DEFAULT
+                max_loop_limit = session.get_env(LOOP_NUMBER_MAX_LIMIT_KEY) or LOOP_NUMBER_MAX_LIMIT_DEFAULT
                 try:
                     max_loop_limit = int(max_loop_limit)
                 except (TypeError, ValueError):
@@ -361,7 +361,7 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
                         f"loop_number exceeds maximum limit {max_loop_limit}"
                     )
 
-                condition = NumberConditionInRuntime(loop_input.loop_number)
+                condition = NumberConditionInSession(loop_input.loop_number)
             elif loop_input.loop_type == LoopType.AlwaysTrue.value:
                 condition = AlwaysTrue()
             elif loop_input.loop_type == LoopType.Expression.value:
@@ -385,7 +385,7 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
             loop_component = AdvancedLoopComponent(self._loop_group, condition, self._loop_group.break_components,
                                                    callbacks)
             return await loop_component.on_invoke({INPUTS_KEY: {}, CONFIG_KEY: inputs.get(CONFIG_KEY)},
-                                                  runtime.base())
+                                                  session.base())
         except GraphInterrupt:
             raise
         except JiuWenBaseException:

@@ -8,9 +8,9 @@ from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.session.agent import AgentRuntime
+from openjiuwen.core.session.agent import AgentSession
 from openjiuwen.core.session import Config
-from openjiuwen.core.session import TaskRuntime
+from openjiuwen.core.session import TaskSession
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowExecutionState
@@ -20,7 +20,7 @@ from tests.unit_tests.core.workflow.mock_nodes import MockEndNode, Node1, MockSt
 
 
 @pytest.fixture(scope="class")
-def runtime():
+def session():
     workflow_id = "test_workflow"
     name = "test_workflow"
     version = "1"
@@ -42,7 +42,7 @@ def runtime():
     config = Config()
     config.set_agent_config(agent_config=workflow_config)
     session_id = "session_id"
-    return TaskRuntime(None, AgentRuntime(session_id, config=config))
+    return TaskSession(None, AgentSession(session_id, config=config))
 
 @pytest.mark.asyncio
 class TestRunner:
@@ -95,31 +95,31 @@ class TestRunner:
         """乘法函数，使用tool注解装饰"""
         return a * b
 
-    async def test_run_workflow(self, runtime):
+    async def test_run_workflow(self, session):
         workflow_id = "test_workflow"
         name = "test_workflow"
         version = "1"
         workflow = self._build_workflow(name, workflow_id, version)
-        result = await Runner.run_workflow(workflow, inputs = {"query": "query workflow"}, runtime=runtime)
+        result = await Runner.run_workflow(workflow, inputs = {"query": "query workflow"}, session=session)
         assert result == WorkflowOutput(result={"result": "query workflow"}, state=WorkflowExecutionState.COMPLETED)
 
-    async def test_run_tool(self, runtime):
-        result = await Runner.run_tool(tool=self.add_function, inputs={"a": 1, "b": 2}, runtime=runtime)
+    async def test_run_tool(self, session):
+        result = await Runner.run_tool(tool=self.add_function, inputs={"a": 1, "b": 2}, session=session)
         assert result == 3
 
-    async def test_run_workflow_not_bound(self, runtime):
+    async def test_run_workflow_not_bound(self, session):
         workflow_id = "test_workflow_not_bound"
         name = "test_workflow"
         version = "1"
         workflow = self._build_workflow(name, workflow_id, version)
         with pytest.raises(JiuWenBaseException) as exc_info:
-            await Runner.run_workflow(workflow, inputs={"query": "query workflow"}, runtime=runtime)
+            await Runner.run_workflow(workflow, inputs={"query": "query workflow"}, session=session)
         assert exc_info.value.error_code == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code
         assert exc_info.value.message == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.errmsg
 
-    async def test_run_tool_not_bound(self, runtime):
+    async def test_run_tool_not_bound(self, session):
         with pytest.raises(JiuWenBaseException) as exc_info:
-            await Runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, runtime=runtime)
+            await Runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, session=session)
         assert exc_info.value.error_code == StatusCode.TOOL_NOT_BOUND_TO_AGENT.code
         assert exc_info.value.message == StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg
 

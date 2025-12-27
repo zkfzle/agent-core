@@ -10,7 +10,7 @@ import json
 from typing import Dict, Any, List, Optional
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 
@@ -123,14 +123,14 @@ class ToolCallHandler:
     async def execute_tool_call(
         self,
         tool_call,
-        runtime: Runtime
+        session: Session
     ) -> Any:
         """
         Execute a single tool call
 
         Args:
             tool_call: Tool call object from LLM
-            runtime: Runtime instance
+            session: Session instance
 
         Returns:
             Tool execution result
@@ -150,7 +150,7 @@ class ToolCallHandler:
         if tool_name.startswith("single_agent-"):
             return await self._execute_sub_agent(tool_name, tool_args)
         else:
-            return await self._execute_regular_tool(tool_name, tool_args, runtime)
+            return await self._execute_regular_tool(tool_name, tool_args, session)
 
     async def _execute_sub_agent(self, tool_name: str, tool_args: dict) -> Any:
         """
@@ -173,7 +173,7 @@ class ToolCallHandler:
         # Execute sub-single_agent
         result = await sub_agent.invoke(
             {"query": subtask},
-            runtime=None  # Sub-single_agent creates its own runtime
+            session=None  # Sub-single_agent creates its own session
         )
 
         # Return the output from sub-single_agent
@@ -183,7 +183,7 @@ class ToolCallHandler:
         self,
         tool_name: str,
         tool_args: dict,
-        runtime: Runtime
+        session: Session
     ) -> Any:
         """
         Execute a regular tool call
@@ -191,13 +191,13 @@ class ToolCallHandler:
         Args:
             tool_name: Tool name
             tool_args: Tool arguments
-            runtime: Runtime instance
+            session: Session instance
 
         Returns:
             Tool execution result
         """
-        # Get tool from runtime
-        tool = runtime.get_tool(tool_name)
+        # Get tool from session
+        tool = session.get_tool(tool_name)
         if not tool:
             raise ValueError(f"Tool not found: {tool_name}")
 

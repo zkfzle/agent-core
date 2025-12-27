@@ -19,7 +19,7 @@ from openjiuwen.core.workflow.components.condition.condition import Condition
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage, SystemMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
@@ -140,7 +140,7 @@ class IntentDetectionOutput(BaseModel):
 class IntentDetectionExecutable(ComponentExecutable):
     def __init__(self, component_config: IntentDetectionCompConfig):
         super().__init__()
-        self._runtime: Union[Runtime, None] = None
+        self._session: Union[Session, None] = None
         self._llm: Union[BaseModelClient, None] = None
         self._initialized: bool = False
         self._config = component_config
@@ -166,19 +166,19 @@ class IntentDetectionExecutable(ComponentExecutable):
         else:
             return input_str
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         """Invoke IntentDetection node"""
         # Extract context data
-        self._set_runtime(runtime)
-        self._router.set_runtime(runtime)
+        self._set_session(session)
+        self._router.set_session(session)
         self._initialize_if_needed()
         chat_history = self._get_chat_history_from_context(None)
         current_inputs = self._prepare_detection_inputs(inputs, chat_history)
         llm_output = self._invoke_llm_and_get_result(current_inputs)
         if UserConfig.is_sensitive():
-            logger.info(f"[%s] intent detection", self._runtime.executable_id())
+            logger.info(f"[%s] intent detection", self._session.executable_id())
         else:
-            logger.info(f"[%s] intent detection output_inputs: %s", self._runtime.executable_id(), llm_output)
+            logger.info(f"[%s] intent detection output_inputs: %s", self._session.executable_id(), llm_output)
         intent_res = self._parse_detection_result(llm_output)
         return intent_res
 
@@ -193,8 +193,8 @@ class IntentDetectionExecutable(ComponentExecutable):
         return "\n".join(f"{cid}: {cname}" for cid, cname in
                          zip(self._default_config.category_list, self._config.category_name_list))
 
-    def _set_runtime(self, runtime: Runtime):
-        self._runtime = runtime
+    def _set_session(self, session: Session):
+        self._session = session
 
     def _create_llm_instance(self):
         if isinstance(self._config.model.model_info, BaseModelInfo):
@@ -272,9 +272,9 @@ class IntentDetectionExecutable(ComponentExecutable):
         """invoke llm and get result"""
         llm_inputs = self._default_config.intent_detection_template.format(current_inputs).to_messages()
         if UserConfig.is_sensitive():
-            logger.info(f"[%s] intent detection", self._runtime.executable_id())
+            logger.info(f"[%s] intent detection", self._session.executable_id())
         else:
-            logger.info(f"[%s] intent detection llm_inputs: %s", self._runtime.executable_id(), llm_inputs)
+            logger.info(f"[%s] intent detection llm_inputs: %s", self._session.executable_id(), llm_inputs)
         llm_output_content = ""
 
         if UserConfig.is_sensitive():

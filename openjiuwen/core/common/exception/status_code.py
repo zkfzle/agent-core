@@ -138,14 +138,14 @@ class StatusCode(Enum):
 
     # Multi-Agent Orchestration 130000 - 139999
     # Multi-Agent Orchestration - Multi-Agent Communication  130000 - 130999
-    # Multi-Agent Orchestration - Single Runtime 131000 - 131999
+    # Multi-Agent Orchestration - Single Session 131000 - 131999
     # Multi-Agent Orchestration - AgentGroup 132000 - 132999
     AGENT_GROUP_ADD_FAILED = (132000, "failed to add single_agent, reason: {reason}")
     AGENT_GROUP_CREATE_FAILED = (132001, "failed to create single_agent group, reason: {reason}")
     AGENT_GROUP_EXECUTION_ERROR = (132002, "failed to execute single_agent group, reason: {reason}")
 
     # Multi-Agent Orchestration - Multi-Agent Debug 133000 - 133999
-    # Multi-Agent Orchestration - Distribution Runtime 134000 - 134999
+    # Multi-Agent Orchestration - Distribution Session 134000 - 134999
     # Multi-Agent Orchestration - Multi-Agent Runner 131000-131030
 
     # Runner 134000 - 134999
@@ -241,46 +241,46 @@ class StatusCode(Enum):
     URL_INVALID_ERROR = (188004, "Url invalid error, as {error_msg}")
     INVALID_SSL_CERT_ERROR = (188005, "Invalid ssl cert error, as {error_msg}")
 
-    # Runtime 190000 - 199999
-    # Runtime - Resource Management 190000 - 190999
-    RUNTIME_WORKFLOW_GET_FAILED = (190001, "failed to get workflow, reason: {reason}")
-    RUNTIME_WORKFLOW_ADD_FAILED = (190002, "failed to add workflow, reason: {reason}")
-    RUNTIME_WORKFLOW_CONFIG_ADD_FAILED = (190011, "failed to add workflow config, reason: {reason}")
-    RUNTIME_WORKFLOW_CONFIG_GET_FAILED = (190012, "failed to get workflow config, reason: {reason}")
-    RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED = (190013, "failed to get toolInfo of workflow, reason: {reason}")
+    # Session 190000 - 199999
+    # Session - Resource Management 190000 - 190999
+    SESSION_WORKFLOW_GET_FAILED = (190001, "failed to get workflow, reason: {reason}")
+    SESSION_WORKFLOW_ADD_FAILED = (190002, "failed to add workflow, reason: {reason}")
+    SESSION_WORKFLOW_CONFIG_ADD_FAILED = (190011, "failed to add workflow config, reason: {reason}")
+    SESSION_WORKFLOW_CONFIG_GET_FAILED = (190012, "failed to get workflow config, reason: {reason}")
+    SESSION_WORKFLOW_TOOL_INFO_GET_FAILED = (190013, "failed to get toolInfo of workflow, reason: {reason}")
 
-    # Runtime - Resource Management - Agent Group 190040 - 190049
-    RUNTIME_AGENT_GROUP_ADD_FAILED = (190040, "failed to add single_agent group, reason: {reason}")
-    RUNTIME_AGENT_GROUP_GET_FAILED = (190041, "failed to get single_agent group, reason: {reason}")
-    RUNTIME_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove single_agent group, reason: {reason}")
+    # Session - Resource Management - Agent Group 190040 - 190049
+    SESSION_AGENT_GROUP_ADD_FAILED = (190040, "failed to add single_agent group, reason: {reason}")
+    SESSION_AGENT_GROUP_GET_FAILED = (190041, "failed to get single_agent group, reason: {reason}")
+    SESSION_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove single_agent group, reason: {reason}")
     
-    # Runtime - Resource Management - Workflow Additional
-    RUNTIME_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
+    # Session - Resource Management - Workflow Additional
+    SESSION_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
     
-    # Runtime - Resource Management - Agent 190050 - 190059
-    RUNTIME_AGENT_ADD_FAILED = (190050, "failed to add single_agent, reason: {reason}")
-    RUNTIME_AGENT_GET_FAILED = (190051, "failed to get single_agent, reason: {reason}")
-    RUNTIME_AGENT_REMOVE_FAILED = (190052, "failed to remove single_agent, reason: {reason}")
+    # Session - Resource Management - Agent 190050 - 190059
+    SESSION_AGENT_ADD_FAILED = (190050, "failed to add single_agent, reason: {reason}")
+    SESSION_AGENT_GET_FAILED = (190051, "failed to get single_agent, reason: {reason}")
+    SESSION_AGENT_REMOVE_FAILED = (190052, "failed to remove single_agent, reason: {reason}")
 
-    RUNTIME_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
-    RUNTIME_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")
-    RUNTIME_TOOL_TOOL_INFO_GET_FAILED = (190103, "failed to get toolInfo of tool, reason: {reason}")
+    SESSION_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
+    SESSION_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")
+    SESSION_TOOL_TOOL_INFO_GET_FAILED = (190103, "failed to get toolInfo of tool, reason: {reason}")
 
-    RUNTIME_PROMPT_GET_FAILED = (190201, "failed to get prompt template, reason: {reason}")
-    RUNTIME_PROMPT_ADD_FAILED = (190202, "failed to add prompt template, reason: {reason}")
+    SESSION_PROMPT_GET_FAILED = (190201, "failed to get prompt template, reason: {reason}")
+    SESSION_PROMPT_ADD_FAILED = (190202, "failed to add prompt template, reason: {reason}")
 
-    RUNTIME_MODEL_GET_FAILED = (190301, "failed to get model, reason: {reason}")
-    RUNTIME_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
+    SESSION_MODEL_GET_FAILED = (190301, "failed to get model, reason: {reason}")
+    SESSION_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
 
-    # Runtime - Tracer 191000 - 191999
-    RUNTIME_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
-    RUNTIME_TRACE_AGENT_UNDEFINED_FAILED = (191002, "Failed to handle undefined exception")
+    # Session - Tracer 191000 - 191999
+    SESSION_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
+    SESSION_TRACE_AGENT_UNDEFINED_FAILED = (191002, "Failed to handle undefined exception")
 
-    # Runtime - State 192000 - 192999
-    RUNTIME_STATE_RUNTIME_NONE = (192000, "Runtime is None, expected BaseRuntime instance")
-    RUNTIME_STATE_INVALID_RUNTIME_TYPE = (192001, "Invalid runtime type: {runtime_type}, expected BaseRuntime")
-    RUNTIME_STATE_INVALID_STATE_TYPE = (192002, "Invalid state type: {state_type}, expected CommitState")
-    # Runtime - StreamWriter 193000 - 193999
+    # Session - State 192000 - 192999
+    SESSION_STATE_SESSION_NONE = (192000, "Session is None, expected BaseSession instance")
+    SESSION_STATE_INVALID_SESSION_TYPE = (192001, "Invalid session type: {session_type}, expected BaseSession")
+    SESSION_STATE_INVALID_STATE_TYPE = (192002, "Invalid state type: {state_type}, expected CommitState")
+    # Session - StreamWriter 193000 - 193999
     STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001,
                                          "failed to write stream, stream schema validate failed, details: {detail}")
     STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
@@ -288,21 +288,21 @@ class StatusCode(Enum):
     STREAM_FIRST_FRAME_TIMEOUT_FAILED = (193004, "stream first frame is timeout ({timeout}s), no stream output")
     STREAM_NO_INPUT_FAILED = (193005, "component has {abilities} ability, no stream input")
 
-    # Runtime - Config 194000 - 194999
-    # Runtime - callback 195000 - 195999
-    # Runtime - Stream Actor 196000 - 196099
+    # Session - Config 194000 - 194999
+    # Session - callback 195000 - 195999
+    # Session - Stream Actor 196000 - 196099
     WORKFLOW_MESSAGE_QUEUE_MANAGER_ERROR = (196000, "Message queue manager error: {error_msg}")
 
-    # Runtime - Component Executable 196100 - 196199
-    RUNTIME_COMPONENT_INVALID_RUNTIME_TYPE = (196100, "runtime should be NodeRuntime instance")
-    RUNTIME_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' "
+    # Session - Component Executable 196100 - 196199
+    SESSION_COMPONENT_INVALID_SESSION_TYPE = (196100, "session should be NodeSession instance")
+    SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' "
                                                  "method is not implemented. Please implement the '{method}' method "
                                                  "in your component class '{class_name}'.")
-    RUNTIME_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
+    SESSION_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
 
-    # Runtime - Checkpointer 197000 - 197099
-    RUNTIME_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR = (197000, "workflow store is None")
-    RUNTIME_CHECKPOINTER_NONE_AGENT_STORE_ERROR = (197001, "agent store is None")
+    # Session - Checkpointer 197000 - 197099
+    SESSION_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR = (197000, "workflow store is None")
+    SESSION_CHECKPOINTER_NONE_AGENT_STORE_ERROR = (197001, "agent store is None")
 
 
     @property

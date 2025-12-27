@@ -28,7 +28,7 @@ class HierarchicalMainController(BaseController):
         leader = ControllerAgent(config, HierarchicalMainController())
         hierarchical_group.add_agent("leader", leader)
         hierarchical_group.add_agent("agent_a", agent_a)
-        result = await hierarchical_group.invoke(event, runtime)
+        result = await hierarchical_group.invoke(event, session)
     """
     
     def __init__(self):
@@ -48,11 +48,11 @@ class HierarchicalMainController(BaseController):
             result[agent_id] = agent
         return result
     
-    def _ensure_intent_detection_initialized(self, runtime):
+    def _ensure_intent_detection_initialized(self, session):
         """Initialize or update intent detection module
         
         Like WorkflowController._ensure_intent_detection_initialized:
-        - If intent_detection exists, update its runtime
+        - If intent_detection exists, update its session
         - Otherwise create new IntentDetection instance
         """
         if not self._group:
@@ -64,10 +64,10 @@ class HierarchicalMainController(BaseController):
             logger.warning("HierarchicalMainController: No other agents found")
             return
         
-        # If already initialized, just update runtime
+        # If already initialized, just update session
         if self._intent_detector is not None:
-            self._intent_detector.runtime = runtime
-            logger.debug("HierarchicalMainController: Updated intent detection runtime")
+            self._intent_detector.session = session
+            logger.debug("HierarchicalMainController: Updated intent detection session")
             return
         
         # Create new IntentDetection
@@ -122,9 +122,9 @@ class HierarchicalMainController(BaseController):
                 intent_config=intent_config,
                 agent_config=self._config,
                 context_engine=self._context_engine,
-                runtime=runtime
+                session=session
             )
-            
+
             logger.info(
                 f"HierarchicalMainController: Intent detection ready, "
                 f"{len(category_descriptions)} agents"
@@ -133,7 +133,7 @@ class HierarchicalMainController(BaseController):
             logger.error(f"HierarchicalMainController: Intent detection init failed: {e}")
             self._intent_detector = None
     
-    async def handle_event(self, event: Event, runtime) -> dict:
+    async def handle_event(self, event: Event, session) -> dict:
         """Process message: intent detection -> interruption check -> dispatch
         
         Logic:
@@ -142,7 +142,7 @@ class HierarchicalMainController(BaseController):
         3. If intent matches an interrupted single_agent, resume it
         4. If intent points to a different single_agent, route to that single_agent
         """
-        self._ensure_intent_detection_initialized(runtime)
+        self._ensure_intent_detection_initialized(session)
         
         # Check if message content is InteractiveInput
         is_interactive_input = (
@@ -152,13 +152,13 @@ class HierarchicalMainController(BaseController):
         
         if is_interactive_input:
             # Skip intent detection for InteractiveInput, directly resume last interrupted single_agent
-            target_id = self._get_last_interrupted_agent(runtime)
+            target_id = self._get_last_interrupted_agent(session)
             if target_id:
                 logger.info(
                     f"HierarchicalMainController: InteractiveInput detected, "
                     f"resume last interrupted single_agent -> {target_id}"
                 )
-                return await self._dispatch(target_id, event, runtime)
+                return await self._dispatch(target_id, event, session)
             else:
                 logger.warning(
                     "HierarchicalMainController: InteractiveInput detected but no "
@@ -169,13 +169,13 @@ class HierarchicalMainController(BaseController):
         target_id = await self._detect_intent(event)
         logger.info(f"HierarchicalMainController: Intent -> {target_id}")
         
-        return await self._dispatch(target_id, event, runtime)
+        return await self._dispatch(target_id, event, session)
     
-    async def _dispatch(self, agent_id: str, event: Event, runtime) -> dict:
+    async def _dispatch(self, agent_id: str, event: Event, session) -> dict:
         """Dispatch task to target single_agent"""
         logger.info(f"HierarchicalMainController: Dispatch to {agent_id}")
-        result = await self.send_to_agent(agent_id, event, runtime)
-        self._update_interruption_state(agent_id, result, runtime)
+        result = await self.send_to_agent(agent_id, event, session)
+        self._update_interruption_state(agent_id, result, session)
         return result
     
     async def _detect_intent(self, event: Event) -> str:
@@ -237,9 +237,9 @@ class HierarchicalMainController(BaseController):
     def _get_state_key(self) -> str:
         return "hierarchical_main_controller"
     
-    def _get_last_interrupted_agent(self, runtime) -> Optional[str]:
+    def _get_last_interrupted_agent(self, session) -> Optional[str]:
         """Get most recently interrupted single_agent"""
-        state = runtime.get_state(self._get_state_key()) or {}
+        state = session.get_state(self._get_state_key()) or {}
         interrupted = state.get("interrupted_agents", {})
         
         if not interrupted:
@@ -252,7 +252,7 @@ class HierarchicalMainController(BaseController):
         )
         return sorted_items[0][0]
     
-    def _update_interruption_state(self, agent_id: str, result, runtime):
+    def _update_interruption_state(self, agent_id: str, result, session):
         """Update interruption state based on result
         
         Result formats:
@@ -260,7 +260,7 @@ class HierarchicalMainController(BaseController):
         2. Completed: dict with {'result_type': 'answer', 'output': WorkflowOutput}
         """
         state_key = self._get_state_key()
-        state = runtime.get_state(state_key) or {}
+        state = session.get_state(state_key) or {}
         
         if "interrupted_agents" not in state:
             state["interrupted_agents"] = {}
@@ -277,7 +277,7 @@ class HierarchicalMainController(BaseController):
                 state["interrupted_agents"][agent_id] = {
                     "interrupt_time": time.time()
                 }
-                runtime.update_state({state_key: state})
+                session.update_state({state_key: state})
                 logger.info(
                     f"HierarchicalMainController: Recorded interruption: {agent_id}"
                 )
@@ -297,7 +297,7 @@ class HierarchicalMainController(BaseController):
             if is_completed:
                 if agent_id in state["interrupted_agents"]:
                     del state["interrupted_agents"][agent_id]
-                    runtime.update_state({state_key: state})
+                    session.update_state({state_key: state})
                     logger.info(
                         f"HierarchicalMainController: Cleared interruption: "
                         f"{agent_id}"

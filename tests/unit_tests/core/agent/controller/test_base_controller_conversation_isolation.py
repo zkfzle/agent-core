@@ -12,14 +12,14 @@ from openjiuwen.core.single_agent import AgentConfig
 from openjiuwen.core.controller.controller import BaseController
 from openjiuwen.core.controller import Event
 from openjiuwen.core.context_engine import ContextEngine
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 
 
 class SimpleController(BaseController):
     """Simple test implementation of BaseController"""
 
     async def handle_event(
-        self, message: Event, runtime: Runtime
+        self, message: Event, session: Session
     ) -> Optional[Dict]:
         """Simple echo implementation"""
         return {
@@ -36,14 +36,14 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
         """Setup test fixtures"""
         self.config = AgentConfig()
         self.context_engine = MagicMock(spec=ContextEngine)
-        self.runtime = MagicMock(spec=Runtime)
+        self.session = MagicMock(spec=Session)
 
     async def test_single_conversation(self):
         """Test single conversation works correctly"""
         controller = SimpleController(
             self.config,
             self.context_engine,
-            self.runtime
+            self.session
         )
 
         inputs = {
@@ -51,7 +51,7 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
             "query": "Hello"
         }
 
-        result = await controller.invoke(inputs, self.runtime)
+        result = await controller.invoke(inputs, self.session)
 
         # Verify result
         self.assertEqual(result["conversation_id"], "conv_001")
@@ -69,18 +69,18 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
         controller = SimpleController(
             self.config,
             self.context_engine,
-            self.runtime
+            self.session
         )
 
         # Create two conversations concurrently
         tasks = [
             controller.invoke(
                 {"conversation_id": "conv_001", "query": "Event 1"},
-                self.runtime
+                self.session
             ),
             controller.invoke(
                 {"conversation_id": "conv_002", "query": "Event 2"},
-                self.runtime
+                self.session
             ),
         ]
 
@@ -107,17 +107,17 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
         controller = SimpleController(
             self.config,
             self.context_engine,
-            self.runtime
+            self.session
         )
 
         # Create multiple conversations
         await controller.invoke(
             {"conversation_id": "conv_001", "query": "Test 1"},
-            self.runtime
+            self.session
         )
         await controller.invoke(
             {"conversation_id": "conv_002", "query": "Test 2"},
-            self.runtime
+            self.session
         )
 
         # Verify subscriptions created
@@ -134,14 +134,14 @@ class TestBaseControllerConversationIsolation(unittest.IsolatedAsyncioTestCase):
         controller = SimpleController(
             self.config,
             self.context_engine,
-            self.runtime
+            self.session
         )
 
         # Multiple concurrent calls with same conversation_id
         tasks = [
             controller.invoke(
                 {"conversation_id": "conv_001", "query": f"Event {i}"},
-                self.runtime
+                self.session
             )
             for i in range(5)
         ]

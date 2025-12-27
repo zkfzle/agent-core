@@ -8,8 +8,8 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session import Runtime, NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
-from openjiuwen.core.session import NodeRuntime
+from openjiuwen.core.session import Session, NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
+from openjiuwen.core.session import NodeSession
 
 
 class SetVariableComponent(WorkflowComponent, ComponentExecutable):
@@ -22,8 +22,8 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
                                           error_msg=f'variable_mapping is None or empty'))
         self._variable_mapping = variable_mapping
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        root_runtime = runtime.base().parent()
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+        root_session = session.base().parent()
         for left, right in self._variable_mapping.items():
             left_ref_str = extract_origin_key(left)
             keys = left_ref_str.split(NESTED_PATH_SPLIT)
@@ -34,17 +34,17 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
                                               error_msg=f'key[{left}] not supported format'))
 
             node_id = keys[0]
-            node_runtime = NodeRuntime(root_runtime, node_id)
-            node_runtime.state().set_outputs(SetVariableComponent.generate_output(
-                keys[1:], SetVariableComponent.generate_value(runtime, right)
+            node_session = NodeSession(root_session, node_id)
+            node_session.state().set_outputs(SetVariableComponent.generate_output(
+                keys[1:], SetVariableComponent.generate_value(session, right)
             ))
         return None
 
     @staticmethod
-    def generate_value(runtime: Runtime, value: Any):
+    def generate_value(session: Session, value: Any):
         if isinstance(value, str) and is_ref_path(value):
             ref_str = extract_origin_key(value)
-            return runtime.get_global_state(ref_str)
+            return session.get_global_state(ref_str)
         return value
 
     @staticmethod

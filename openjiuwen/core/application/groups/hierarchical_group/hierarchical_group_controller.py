@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 if TYPE_CHECKING:
-    from openjiuwen.core.multi_agent import AgentGroupRuntime
+    from openjiuwen.core.multi_agent import AgentGroupSession
 
 
 class HierarchicalGroupController(BaseGroupController):
@@ -51,7 +51,7 @@ class HierarchicalGroupController(BaseGroupController):
     async def handle_event(
         self,
         event: Event,
-        runtime: 'AgentGroupRuntime'
+        session: 'AgentGroupSession'
     ) -> Any:
         """Handle message - Route based on simple rules
         
@@ -62,7 +62,7 @@ class HierarchicalGroupController(BaseGroupController):
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             Processing result (single result for 1 subscriber, list for multiple)
@@ -73,7 +73,7 @@ class HierarchicalGroupController(BaseGroupController):
                 f"HierarchicalGroupController: Routing to explicit "
                 f"receiver_id={event.receiver_id}"
             )
-            return await self.send_to_agent(event, event.receiver_id, runtime)
+            return await self.send_to_agent(event, event.receiver_id, session)
 
         # Rule 2: Message type with subscribers
         if event.custom_event_type:
@@ -84,7 +84,7 @@ class HierarchicalGroupController(BaseGroupController):
                     f"{len(subscribers)} subscribers "
                     f"for message_type={event.custom_event_type}"
                 )
-                results = await self.publish(event, runtime)
+                results = await self.publish(event, session)
                 
                 # Return single result for single subscriber
                 # Return list for multiple subscribers (explicit broadcast)
@@ -105,5 +105,5 @@ class HierarchicalGroupController(BaseGroupController):
             f"HierarchicalGroupController: Routing to leader (default), "
             f"leader_agent_id={self.leader_agent_id}"
         )
-        return await self.send_to_agent(event, self.leader_agent_id, runtime)
+        return await self.send_to_agent(event, self.leader_agent_id, session)
 

@@ -10,29 +10,29 @@ from typing import Any
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.graph.store import Store
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.session import BaseSession
 
 
 class BaseInteraction(ABC, metaclass=ABCMeta):
-    def __init__(self, runtime: BaseRuntime, default_input=None):
+    def __init__(self, session: BaseSession, default_input=None):
         if default_input is not None:
             self._interactive_inputs = [default_input]
         else:
             self._interactive_inputs = None
         self._latest_interactive_inputs = None
         self._idx = 0
-        self._runtime = runtime
+        self._session = session
         self._init_interactive_inputs()
 
     def _init_interactive_inputs(self):
-        interactive_inputs = self._runtime.state().get(INTERACTIVE_INPUT)
+        interactive_inputs = self._session.state().get(INTERACTIVE_INPUT)
         if isinstance(interactive_inputs, list):
             if self._interactive_inputs:
                 self._interactive_inputs = interactive_inputs + self._interactive_inputs
             else:
                 self._interactive_inputs = interactive_inputs
         if self._interactive_inputs:
-            self._runtime.state().update({INTERACTIVE_INPUT: self._interactive_inputs})
+            self._session.state().update({INTERACTIVE_INPUT: self._interactive_inputs})
             self._latest_interactive_inputs = self._interactive_inputs[-1]
 
     def _get_next_interactive_input(self) -> Any | None:
@@ -52,27 +52,27 @@ class BaseInteraction(ABC, metaclass=ABCMeta):
 
 class Checkpointer(ABC):
     @staticmethod
-    def get_thread_id(runtime: BaseRuntime) -> str:
-        return ":".join([runtime.session_id(), runtime.workflow_id()])
+    def get_thread_id(session: BaseSession) -> str:
+        return ":".join([session.session_id(), session.workflow_id()])
 
     @abstractmethod
-    async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
+    async def pre_workflow_execute(self, session: BaseSession, inputs: InteractiveInput):
         ...
 
     @abstractmethod
-    async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
+    async def post_workflow_execute(self, session: BaseSession, result, exception):
         ...
 
     @abstractmethod
-    async def pre_agent_execute(self, runtime: BaseRuntime, inputs):
+    async def pre_agent_execute(self, session: BaseSession, inputs):
         ...
 
     @abstractmethod
-    async def interrupt_agent_execute(self, runtime: BaseRuntime):
+    async def interrupt_agent_execute(self, session: BaseSession):
         ...
 
     @abstractmethod
-    async def post_agent_execute(self, runtime: BaseRuntime):
+    async def post_agent_execute(self, session: BaseSession):
         ...
 
     @abstractmethod

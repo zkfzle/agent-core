@@ -12,7 +12,7 @@ import pytest
 from typing import List
 
 from openjiuwen.core.single_agent import WorkflowAgentConfig, workflow_provider
-from openjiuwen.core.session import TaskRuntime
+from openjiuwen.core.session import TaskSession
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
@@ -20,7 +20,7 @@ from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
@@ -34,7 +34,7 @@ from openjiuwen.core.application.agents_for_studio.workflow_agent import Workflo
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.workflow import WorkflowComponent
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -103,9 +103,9 @@ class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.comp_id = comp_id
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         # 请求用户确认
-        confirm = await runtime.interact("是否确认操作")
+        confirm = await session.interact("是否确认操作")
         return {"confirm_result": confirm}
 
 
@@ -222,7 +222,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
     def _create_end_component():
         return End({"responseTemplate": "{{output}}"})
 
-    def _build_workflow(self) -> tuple[BaseRuntime, Workflow]:
+    def _build_workflow(self) -> tuple[BaseSession, Workflow]:
         """
         根据 mock 工具函数构建完整工作流拓扑。
 
@@ -242,7 +242,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow = Workflow(
             workflow_config=workflow_config
         )
-        context = TaskRuntime(trace_id="test")
+        context = TaskSession(trace_id="test")
 
         # 2. 实例化各组件
         start = self._create_start_component()
@@ -286,9 +286,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("llm", "plugin")
         flow.add_connection("plugin", "end")
 
-        return context.create_workflow_runtime(), flow
+        return context.create_workflow_session(), flow
 
-    def build_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
+    def build_interrupt_workflow(self) -> tuple[BaseSession, Workflow]:
         """
         构建包含交互式组件的工作流，用于测试中断恢复功能。
 
@@ -308,7 +308,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow = Workflow(
             workflow_config=workflow_config
         )
-        context = TaskRuntime(trace_id="test")
+        context = TaskSession(trace_id="test")
 
         # 2. 实例化各组件
         start = self._create_start_component()
@@ -332,9 +332,9 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("start", "questioner")
         flow.add_connection("questioner", "end")
 
-        return context.create_workflow_runtime(), flow
+        return context.create_workflow_session(), flow
 
-    def build_multiple_interrupt_workflow(self) -> tuple[BaseRuntime, Workflow]:
+    def build_multiple_interrupt_workflow(self) -> tuple[BaseSession, Workflow]:
         """
         构建包含两个并行中断节点的工作流，用于测试分步恢复功能。
         
@@ -368,7 +368,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         flow = Workflow(workflow_config=workflow_config)
-        context = TaskRuntime(trace_id="test")
+        context = TaskSession(trace_id="test")
 
         # 2. 实例化各组件
         start = self._create_start_component()
@@ -407,7 +407,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("start", "interactive")
         flow.add_connection(["questioner", "interactive"], "end")
 
-        return context.create_workflow_runtime(), flow
+        return context.create_workflow_session(), flow
 
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。

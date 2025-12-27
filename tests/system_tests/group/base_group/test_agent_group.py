@@ -12,8 +12,8 @@ from datetime import datetime
 from typing import Dict, AsyncIterator, Any
 
 from openjiuwen.core.single_agent import AgentConfig, BaseAgent
-from openjiuwen.core.multi_agent import AgentGroupConfig, AgentGroupRuntime, BaseGroup
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.multi_agent import AgentGroupConfig, AgentGroupSession, BaseGroup
+from openjiuwen.core.session import Session
 from openjiuwen.core.runner import Runner
 
 
@@ -29,10 +29,10 @@ def build_current_date():
 
 
 class PlanningAgent(BaseAgent):
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         pass
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         await asyncio.sleep(0.5)
         return {
             "query": inputs["query"],
@@ -44,10 +44,10 @@ class PlanningAgent(BaseAgent):
 
 
 class ExecuteAgent(BaseAgent):
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         pass
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         await asyncio.sleep(0.5)
         return {
             "query": inputs["query"],
@@ -59,10 +59,10 @@ class ExecuteAgent(BaseAgent):
         }
 
 class SummaryAgent(BaseAgent):
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         pass
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         await asyncio.sleep(0.5)
         return {
             "query": inputs["query"],
@@ -76,13 +76,13 @@ class SummaryAgent(BaseAgent):
 
 
 class CustomAgentGroup(BaseGroup):
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         result_plan = await Runner.run_agent(self.agents["planner"], inputs)
         result_execute = await Runner.run_agent(self.agents["executor"], result_plan)
         result_summary = await Runner.run_agent(self.agents["reporter"], result_execute)
         return result_summary
 
-    async def stream(self, inputs: Dict, runtime: AgentGroupRuntime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: AgentGroupSession = None) -> AsyncIterator[Any]:
         pass
 
 

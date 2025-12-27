@@ -9,15 +9,15 @@ from openjiuwen.core.session.utils import create_wrapper_class
 from openjiuwen.core.session.tracer.data import InvokeType
 
 
-def _should_decorate(obj, runtime):
+def _should_decorate(obj, session):
     return (obj and
-            runtime and
-            runtime.tracer() and
-            hasattr(runtime, "span"))
+            session and
+            session.tracer() and
+            hasattr(session, "span"))
 
 
-def decorate_model_with_trace(model, agent_runtime):
-    if not _should_decorate(model, agent_runtime):
+def decorate_model_with_trace(model, agent_session):
+    if not _should_decorate(model, agent_session):
         return model
     wrapped_model = create_wrapper_class(model, "WrappedModel")
     try:
@@ -26,33 +26,33 @@ def decorate_model_with_trace(model, agent_runtime):
         model_name = type(model).__name__
     instance_info = {"class_name": model_name, "type": "llm"}
     wrapped_model.invoke = MethodType(
-        trace(wrapped_model.invoke, agent_runtime, InvokeType.LLM, instance_info,
+        trace(wrapped_model.invoke, agent_session, InvokeType.LLM, instance_info,
               index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.ainvoke = MethodType(
-        async_trace(wrapped_model.ainvoke, agent_runtime, InvokeType.LLM, instance_info,
+        async_trace(wrapped_model.ainvoke, agent_session, InvokeType.LLM, instance_info,
                     index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.stream = MethodType(
-        trace_stream(wrapped_model.stream, agent_runtime, InvokeType.LLM, instance_info,
+        trace_stream(wrapped_model.stream, agent_session, InvokeType.LLM, instance_info,
                      index=2, inputs_field_name="messages"), wrapped_model)
     wrapped_model.astream = MethodType(
-        async_trace_stream(wrapped_model.astream, agent_runtime, InvokeType.LLM, instance_info, index=2,
+        async_trace_stream(wrapped_model.astream, agent_session, InvokeType.LLM, instance_info, index=2,
                            inputs_field_name="messages"), wrapped_model)
     return wrapped_model
 
 
-def decorate_tool_with_trace(tool, agent_runtime):
-    if not _should_decorate(tool, agent_runtime):
+def decorate_tool_with_trace(tool, agent_session):
+    if not _should_decorate(tool, agent_session):
         return tool
     wrapped_tool = create_wrapper_class(tool, "WrappedTool")
     instance_info = {"class_name": tool.name if hasattr(tool, "name") else type(tool).__name__, "type": "tool"}
     wrapped_tool.invoke = MethodType(
-        async_trace(wrapped_tool.invoke, agent_runtime, InvokeType.PLUGIN, instance_info), wrapped_tool
+        async_trace(wrapped_tool.invoke, agent_session, InvokeType.PLUGIN, instance_info), wrapped_tool
     )
     return wrapped_tool
 
 
-def decorate_workflow_with_trace(workflow, agent_runtime):
-    if not _should_decorate(workflow, agent_runtime):
+def decorate_workflow_with_trace(workflow, agent_session):
+    if not _should_decorate(workflow, agent_session):
         return workflow
     wrapped_workflow = create_wrapper_class(workflow, "WrappedWorkflow")
     metadata = wrapped_workflow.config().metadata if wrapped_workflow and wrapped_workflow.config() else {}
@@ -62,21 +62,21 @@ def decorate_workflow_with_trace(workflow, agent_runtime):
         workflow_name = type(workflow).__name__
     instance_info = {"class_name": workflow_name, "type": "workflow", "metadata": dict(metadata)}
     wrapped_workflow.invoke = MethodType(
-        async_trace(wrapped_workflow.invoke, agent_runtime, InvokeType.WORKFLOW, instance_info),
+        async_trace(wrapped_workflow.invoke, agent_session, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)
     wrapped_workflow.stream = MethodType(
-        async_trace_stream(wrapped_workflow.stream, agent_runtime, InvokeType.WORKFLOW, instance_info),
+        async_trace_stream(wrapped_workflow.stream, agent_session, InvokeType.WORKFLOW, instance_info),
         wrapped_workflow)
     return wrapped_workflow
 
 
-def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name: str = "inputs"):
+def trace(func, session, invoke_type: InvokeType, instance_info, index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     def decorator(*args, **kwargs):
-        tracer = runtime.tracer()
+        tracer = session.tracer()
         span = None
         try:
-            agent_span = runtime.span()
+            agent_span = session.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                 inputs={"inputs": args[index] if args and len(args) > index
@@ -95,14 +95,14 @@ def trace(func, runtime, invoke_type: InvokeType, instance_info, index: int = 1,
     return decorator
 
 
-def async_trace(func, runtime, invoke_type: InvokeType, instance_info,
+def async_trace(func, session, invoke_type: InvokeType, instance_info,
                 index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     async def decorator(*args, **kwargs):
-        tracer = runtime.tracer()
+        tracer = session.tracer()
         span = None
         try:
-            agent_span = runtime.span()
+            agent_span = session.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                  inputs={"inputs": args[index] if args and len(args) > index
@@ -121,14 +121,14 @@ def async_trace(func, runtime, invoke_type: InvokeType, instance_info,
     return decorator
 
 
-def trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
+def trace_stream(func, session, invoke_type: InvokeType, instance_info,
                  index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     def decorator(*args, **kwargs):
-        tracer = runtime.tracer()
+        tracer = session.tracer()
         span = None
         try:
-            agent_span = runtime.span()
+            agent_span = session.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             tracer.sync_trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                 inputs={"inputs": args[index] if args and len(args) > index
@@ -152,14 +152,14 @@ def trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
     return decorator
 
 
-def async_trace_stream(func, runtime, invoke_type: InvokeType, instance_info,
+def async_trace_stream(func, session, invoke_type: InvokeType, instance_info,
                        index: int = 1, inputs_field_name: str = "inputs"):
     @wraps(func)
     async def decorator(*args, **kwargs):
-        tracer = runtime.tracer()
+        tracer = session.tracer()
         span = None
         try:
-            agent_span = runtime.span()
+            agent_span = session.span()
             span = tracer.tracer_agent_span_manager.create_agent_span(agent_span)
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_start", span=span,
                                  inputs={"inputs": args[index] if args and len(args) > index

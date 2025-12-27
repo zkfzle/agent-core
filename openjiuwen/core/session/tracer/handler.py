@@ -117,7 +117,7 @@ class TraceAgentHandler(TraceBaseHandler):
         if isinstance(error, JiuWenBaseException):
             error_info = {"error_code": error.error_code, "message": error.message}
         else:
-            error_info = {"error_code": StatusCode.RUNTIME_TRACE_AGENT_UNDEFINED_FAILED.code,
+            error_info = {"error_code": StatusCode.SESSION_TRACE_AGENT_UNDEFINED_FAILED.code,
                           "message": str(error)}
         elapsed_time = self._get_elapsed_time(span.start_time, end_time) if span.start_time else None
         update_data = {

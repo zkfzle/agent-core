@@ -18,7 +18,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
@@ -40,7 +40,7 @@ class TaskInterruptionState:
     when a task is interrupted, making the API cleaner and more maintainable.
     """
     task: Task
-    runtime: Runtime
+    session: Session
     ai_message: AIMessage
     remaining_tasks: list[Task]
     interaction_data: Optional[list] = None
@@ -72,14 +72,14 @@ class LLMController(BaseController):
             self,
             config: ReActAgentConfig,
             context_engine,
-            runtime,
+            session,
             enable_memory=False
     ):
-        super().__init__(config, context_engine, runtime)
+        super().__init__(config, context_engine, session)
         self.config = config
         self.enable_memory = enable_memory
 
-    async def handle_event(self, event: Event, runtime: Runtime) -> Optional[Dict]:
+    async def handle_event(self, event: Event, session: Session) -> Optional[Dict]:
         """Handle Message - only handles user input
 
         Notes:
@@ -88,7 +88,7 @@ class LLMController(BaseController):
 
         Args:
             event: Event object (only USER_INPUT type)
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             Final result
@@ -99,7 +99,7 @@ class LLMController(BaseController):
                                            f"{event.event_type} is unexpected event type, should be USER_INPUT")
 
         try:
-            return await self._handle_user_input(event, runtime)
+            return await self._handle_user_input(event, session)
         except Exception as e:
             logger.error(f"Error in handling message: {e}")
             if isinstance(e, JiuWenBaseException):
@@ -107,7 +107,7 @@ class LLMController(BaseController):
             else:
                 ExceptionUtils.raise_exception(StatusCode.CONTROLLER_RUNTIME_ERROR, str(e), e)
 
-    async def _handle_user_input(self, event: Event, runtime: Runtime) -> Optional[Dict]:
+    async def _handle_user_input(self, event: Event, session: Session) -> Optional[Dict]:
         """Handle user input - ReAct core: LLM reasoning to generate plan
 
         Process:
@@ -119,13 +119,13 @@ class LLMController(BaseController):
         """
 
         # Add user message to conversation history
-        MessageUtils.add_user_message(event.get_display_content(), self._context_engine, runtime)
+        MessageUtils.add_user_message(event.get_display_content(), self._context_engine, session)
 
         # 0. Fast path: Check if message has InteractiveInput with node_id - directly resume workflow
         interactive_input = getattr(event.content, 'interactive_input', None)
         if interactive_input is not None and interactive_input.user_inputs:
             resume_result = self._find_interrupted_task_by_node_id(
-                interactive_input, runtime
+                interactive_input, session
             )
             if resume_result:
                 # Unpack new return values
@@ -138,7 +138,7 @@ class LLMController(BaseController):
                 )
 
                 # Directly use saved ai_message (no need to manually construct)
-                MessageUtils.add_ai_message(ai_message, self._context_engine, runtime)
+                MessageUtils.add_ai_message(ai_message, self._context_engine, session)
 
                 # Update first task (interrupted one) with user input
                 interrupted_task = remaining_tasks[0]
@@ -150,7 +150,7 @@ class LLMController(BaseController):
 
                 return await self._execute_react_loop(
                     remaining_tasks,
-                    runtime,
+                    session,
                     initial_iteration=initial_iteration,
                     ai_message=ai_message
                 )
@@ -158,11 +158,11 @@ class LLMController(BaseController):
                            "falling through to normal LLM detection")
 
         # 1. Normal path: Call LLM model to generate plans
-        tasks, llm_output = await self._generate_plan_from_llm(event, runtime)
+        tasks, llm_output = await self._generate_plan_from_llm(event, session)
 
         if not tasks:
             logger.info("ReAct Iteration: 1 end, No task is generated")
-            final_result = await self._send_final_stream(llm_output.content, runtime)
+            final_result = await self._send_final_stream(llm_output.content, session)
             return self._unwrap_result(final_result)
 
         # Check if planned task is workflow task
@@ -170,7 +170,7 @@ class LLMController(BaseController):
         workflow_task = self._resolve_workflow_from_tasks(tasks)
         if workflow_task:
             # Check if needs to resume interrupted task
-            resume_result = self._find_interrupted_task(workflow_task, runtime)
+            resume_result = self._find_interrupted_task(workflow_task, session)
             if resume_result[0]:
                 # Unpack new return values
                 saved_ai_message, remaining_tasks, saved_iteration, component_ids = resume_result
@@ -218,7 +218,7 @@ class LLMController(BaseController):
 
                 return await self._execute_react_loop(
                     remaining_tasks,
-                    runtime,
+                    session,
                     initial_iteration=initial_iteration,
                     ai_message=saved_ai_message
                 )
@@ -228,7 +228,7 @@ class LLMController(BaseController):
         # Execute new tasks
         return await self._execute_react_loop(
             tasks,
-            runtime,
+            session,
             initial_iteration=initial_iteration,
             ai_message=llm_output
         )
@@ -238,7 +238,7 @@ class LLMController(BaseController):
             task: Task,
             output: Any,
             workflow_id: Optional[str],
-            runtime: Runtime
+            session: Session
     ):
         """Post-processing after task completion: add tool_msg, clear state
 
@@ -246,24 +246,24 @@ class LLMController(BaseController):
             task: Completed task
             output: Task output (stream data)
             workflow_id: Workflow ID (if applicable)
-            runtime: Runtime context
+            session: Session context
         """
         # Add tool_msg for completed task
         if output and len(output) > 0:
             if output[0].type in ("plugin_final", "workflow_final"):
                 temp_event = Event.create_task_completed(
-                    conversation_id=runtime.session_id(),
+                    conversation_id=session.session_id(),
                     task_id=task.task_id,
                     task_result=task.result,
                     workflow_id=workflow_id,
                     stream_data=output
                 )
-                MessageHandlerUtils.add_tool_result(temp_event, self._context_engine, runtime)
+                MessageHandlerUtils.add_tool_result(temp_event, self._context_engine, session)
                 logger.info(f"Added tool_message for completed task: {task.task_id}")
 
         # Clear workflow interrupted state (if any)
         if workflow_id:
-            self._clear_interrupted_state(task, runtime)
+            self._clear_interrupted_state(task, session)
             logger.info(f"Cleared interrupted state for workflow: {workflow_id}")
 
     async def _generate_next_plan(
@@ -271,7 +271,7 @@ class LLMController(BaseController):
             task: Task,
             workflow_id: Optional[str],
             output: Any,
-            runtime: Runtime
+            session: Session
     ) -> tuple[list[Task], Any]:
         """Generate next plan after task completion
 
@@ -279,34 +279,34 @@ class LLMController(BaseController):
             task: Completed task
             workflow_id: Workflow ID (if applicable)
             output: Task output (stream data)
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             tuple: (tasks, llm_output)
         """
         # Create temporary Event for LLM reasoning (maintain compatibility)
         temp_event = Event.create_task_completed(
-            conversation_id=runtime.session_id(),
+            conversation_id=session.session_id(),
             task_id=task.task_id,
             task_result=task.result,
             workflow_id=workflow_id,
             stream_data=output
         )
 
-        return await self._generate_plan_from_llm(temp_event, runtime)
+        return await self._generate_plan_from_llm(temp_event, session)
 
     async def _handle_task_completed(
             self,
             task: Task,
             execution_result: TaskResult,
-            runtime: Runtime
+            session: Session
     ) -> tuple[Optional[Dict], list[Task], Optional[AIMessage]]:
         """Handle task completion - generate next plan, check if done
 
         Args:
             task: Completed task
             execution_result: Task execution result
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             tuple: (final_result_if_done, new_tasks, new_ai_message)
@@ -320,13 +320,13 @@ class LLMController(BaseController):
             task=task,
             workflow_id=workflow_id,
             output=execution_result.output,
-            runtime=runtime
+            session=session
         )
 
         # Check if done
         if not tasks:
             logger.info("No new tasks generated, ReAct loop completed")
-            final_result = await self._send_final_stream(llm_output.content, runtime)
+            final_result = await self._send_final_stream(llm_output.content, session)
             return self._unwrap_result(final_result), [], None
 
         # Continue loop with new tasks and new ai_message
@@ -354,7 +354,7 @@ class LLMController(BaseController):
             tool_call_id=interruption_state.task.task_id
         )
         agent_context = self._context_engine.get_agent_context(
-            interruption_state.runtime.session_id()
+            interruption_state.session.session_id()
         )
         agent_context.add_message(mock_tool_msg)
 
@@ -366,7 +366,7 @@ class LLMController(BaseController):
         )
 
         # Write interrupted task stream data (only first interrupt)
-        await self._write_message_stream_data(first_interrupt, interruption_state.runtime)
+        await self._write_message_stream_data(first_interrupt, interruption_state.session)
 
         # Return interruption result (only first interrupt)
         return self._unwrap_result(first_interrupt)
@@ -374,7 +374,7 @@ class LLMController(BaseController):
     async def _handle_task_error(
             self,
             error_msg: str,
-            runtime: Runtime,
+            session: Session,
             task: Task
     ) -> Optional[Dict]:
         """Handle task error
@@ -390,17 +390,17 @@ class LLMController(BaseController):
             content=error_content,
             tool_call_id=task.task_id
         )
-        agent_context = self._context_engine.get_agent_context(runtime.session_id())
+        agent_context = self._context_engine.get_agent_context(session.session_id())
         agent_context.add_message(mock_tool_msg)
         logger.info(f"Added tool_message for failed task: {task.task_id}")
 
         # Send error stream data for user notification
-        await self._send_error_stream(error_msg, runtime)
+        await self._send_error_stream(error_msg, session)
 
         # Return None to allow continuing to next task
         return None
 
-    async def _execute_react_loop(self, tasks: list[Task], runtime: Runtime,
+    async def _execute_react_loop(self, tasks: list[Task], session: Session,
                                   initial_iteration: int = 1,
                                   ai_message: Optional[AIMessage] = None) -> Optional[Dict]:
         """Execute ReAct loop with explicit iteration - NO RECURSION
@@ -414,7 +414,7 @@ class LLMController(BaseController):
 
         Args:
             tasks: Initial task list
-            runtime: Runtime context
+            session: Session context
             initial_iteration: Initial iteration
             ai_message: Complete AI message with all tool_calls
 
@@ -430,7 +430,7 @@ class LLMController(BaseController):
                 logger.info(f"Executing task {task.task_id}, type: {task.task_type}, index: {idx + 1}/{len(tasks)}")
 
                 # Execute task
-                execution_result = await self._execute_task(task, runtime)
+                execution_result = await self._execute_task(task, session)
 
                 # Handle interruption - stop immediately, wait for user input
                 if execution_result.status == TaskStatus.INTERRUPTED:
@@ -442,7 +442,7 @@ class LLMController(BaseController):
                     # Create interruption state
                     interruption_state = TaskInterruptionState(
                         task=task,
-                        runtime=runtime,
+                        session=session,
                         ai_message=ai_message,
                         remaining_tasks=remaining_tasks,
                         interaction_data=execution_result.output,
@@ -459,7 +459,7 @@ class LLMController(BaseController):
                     logger.error(f"Task failed: {execution_result.error}")
                     await self._handle_task_error(
                         error_msg=execution_result.error,
-                        runtime=runtime,
+                        session=session,
                         task=task
                     )
                     # Continue to next task
@@ -470,7 +470,7 @@ class LLMController(BaseController):
                         task=task,
                         output=execution_result.output,
                         workflow_id=execution_result.metadata.get("workflow_id"),
-                        runtime=runtime
+                        session=session
                     )
                     # Continue to next task
 
@@ -480,7 +480,7 @@ class LLMController(BaseController):
             final_result, new_tasks, new_ai_message = await self._handle_task_completed(
                 task=last_task,
                 execution_result=execution_result,
-                runtime=runtime
+                session=session
             )
 
             if final_result is not None:
@@ -498,14 +498,14 @@ class LLMController(BaseController):
         )
         return {"output": "Maximum iteration reached", "result_type": "answer"}
 
-    async def _execute_task(self, task: Task, runtime: Runtime) -> TaskResult:
+    async def _execute_task(self, task: Task, session: Session) -> TaskResult:
         """Execute single task - return execution task result
         """
         try:
             if task.task_type == TaskType.WORKFLOW:
-                return await self._execute_workflow_task(task, runtime)
+                return await self._execute_workflow_task(task, session)
             elif task.task_type == TaskType.PLUGIN:
-                return await self._execute_plugin_task(task, runtime)
+                return await self._execute_plugin_task(task, session)
             else:
                 logger.warning(f"Unknown task type: {task.task_type}")
                 raise JiuWenBaseException(
@@ -519,7 +519,7 @@ class LLMController(BaseController):
                 error=str(e)
             )
 
-    async def _execute_workflow_task(self, task: Task, runtime: Runtime) -> TaskResult:
+    async def _execute_workflow_task(self, task: Task, session: Session) -> TaskResult:
         """Execute workflow task - return result dictionary
 
         - If task status is INTERRUPTED, it's a resume task
@@ -528,10 +528,10 @@ class LLMController(BaseController):
         """
         try:
             workflow_id = task.input.target_id
-            workflow = await self._find_workflow_by_id(workflow_id, runtime)
+            workflow = await self._find_workflow_by_id(workflow_id, session)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
-            workflow_runtime = runtime.create_workflow_runtime()
+            workflow_session = session.create_workflow_session()
 
             # Record task execution information
             is_resume = task.status == TaskStatus.INTERRUPTED
@@ -549,9 +549,9 @@ class LLMController(BaseController):
             result = await Runner.run_workflow(
                 workflow,
                 inputs=task.input.arguments,
-                runtime=workflow_runtime,
+                session=workflow_session,
                 context=self._context_engine.get_workflow_context(
-                    session_id=runtime.session_id(), workflow_id=workflow_id
+                    session_id=session.session_id(), workflow_id=workflow_id
                 )
             )
 
@@ -586,7 +586,7 @@ class LLMController(BaseController):
                     output=result,
                     metadata={"state": result.state.value if hasattr(result, 'state') else "completed"}
                 )
-                await self._write_workflow_stream_output(result, runtime)
+                await self._write_workflow_stream_output(result, session)
                 logger.info(f"Workflow {task.input.target_name} completed successfully")
 
                 return TaskResult(
@@ -607,9 +607,9 @@ class LLMController(BaseController):
                 message=StatusCode.WORKFLOW_EXECUTION_ERROR.errmsg.format(msg=str(e))
             )
 
-    async def _execute_plugin_task(self, task: Task, runtime: Runtime) -> TaskResult:
+    async def _execute_plugin_task(self, task: Task, session: Session) -> TaskResult:
         """Execute plugin task - return result dictionary"""
-        tool = runtime.get_tool(task.input.target_name)
+        tool = session.get_tool(task.input.target_name)
         if not tool:
             logger.error("Tool not found")
             raise JiuWenBaseException(
@@ -647,14 +647,14 @@ class LLMController(BaseController):
                 message=StatusCode.TOOL_EXECUTION_ERROR.errmsg.format(msg=str(e))
             )
 
-    async def _generate_plan_from_llm(self, event: Event, runtime: Runtime):
+    async def _generate_plan_from_llm(self, event: Event, session: Session):
         """Call LLM to generate plan - ReAct core method"""
         inputs = event.get_display_content()
         user_id = event.source.user_id
-        tools = runtime.get_tool_info()
+        tools = session.get_tool_info()
         logger.info(f"Loaded {len(tools)} Tool(s) for generating plans")
         system_prompt_keywords = await self._get_system_prompt_keywords(inputs, user_id)
-        chat_history = MessageUtils.get_chat_history(self._context_engine, runtime, self.config)
+        chat_history = MessageUtils.get_chat_history(self._context_engine, session, self.config)
         llm_inputs = MessageHandlerUtils.format_llm_inputs(inputs, chat_history, self.config, system_prompt_keywords)
 
         if UserConfig.is_sensitive():
@@ -663,17 +663,17 @@ class LLMController(BaseController):
             logger.info(f"React llm inputs: {llm_inputs}")
 
         try:
-            model = self._get_model(runtime)
+            model = self._get_model(session)
             llm_output = await self._call_llm_get_output(
                 model,
                 self.config.model.model_info.model_name,
                 llm_inputs,
                 tools,
-                runtime
+                session
             )
             tasks = MessageHandlerUtils.parse_llm_output(llm_output, self.config)
             # Add LLM output to CE conversation history
-            MessageUtils.add_ai_message(llm_output, self._context_engine, runtime)
+            MessageUtils.add_ai_message(llm_output, self._context_engine, session)
 
             if UserConfig.is_sensitive():
                 logger.info(f"React llm output")
@@ -694,7 +694,7 @@ class LLMController(BaseController):
             model_name: str,
             llm_inputs: Any,
             tools: List[Any],
-            runtime: Runtime
+            session: Session
     ) -> AIMessage:
         """ Stream LLM invocation and output chunks in real-time
 
@@ -703,7 +703,7 @@ class LLMController(BaseController):
             model_name: Model name
             llm_inputs: LLM input messages
             tools: Available tools
-            runtime: Runtime context for streaming output
+            session: Session context for streaming output
 
         Returns:
             AIMessage: Accumulated complete message from all chunks
@@ -732,7 +732,7 @@ class LLMController(BaseController):
                             "result_type": "answer"
                         }
                     )
-                    await runtime.write_stream(stream_output)
+                    await session.write_stream(stream_output)
                     stream_index += 1
 
                 # Stream output for response content
@@ -745,7 +745,7 @@ class LLMController(BaseController):
                             "result_type": "answer"
                         }
                     )
-                    await runtime.write_stream(stream_output)
+                    await session.write_stream(stream_output)
                     stream_index += 1
 
             # Check for empty response
@@ -768,7 +768,7 @@ class LLMController(BaseController):
             logger.error(f"Failed to stream LLM output: {e}")
             raise
 
-    def _get_model(self, runtime: Runtime):
+    def _get_model(self, session: Session):
         """Get model instance"""
         model_id = generate_key(
             self.config.model.model_info.api_key,
@@ -776,7 +776,7 @@ class LLMController(BaseController):
             self.config.model.model_provider
         )
 
-        model = runtime.get_model(model_id=model_id)
+        model = session.get_model(model_id=model_id)
 
         if model is None:
             model = ModelFactory().get_model(
@@ -788,9 +788,9 @@ class LLMController(BaseController):
                 top_p=self.config.model.model_info.top_p,
                 **self.config.model.model_info.model_extra
             )
-            runtime.add_model(model_id=model_id, model=model)
+            session.add_model(model_id=model_id, model=model)
 
-        return runtime.get_model(model_id=model_id)
+        return session.get_model(model_id=model_id)
 
     def _get_workflow_id_from_schema(self, workflow_name: str) -> Optional[str]:
         """Get workflow_id from workflow schema by name
@@ -842,18 +842,18 @@ class LLMController(BaseController):
                 return task
         return None
 
-    def _find_interrupted_task(self, workflow_task: Task, runtime: Runtime):
+    def _find_interrupted_task(self, workflow_task: Task, session: Session):
         """Find interrupted task
 
-        Find interrupted task from runtime.state:
+        Find interrupted task from session.state:
         state["llm_controller"]["interrupted_tasks"][workflow_id]
 
-        Find interrupted task for specified workflow from runtime.state
+        Find interrupted task for specified workflow from session.state
 
         Returns:
             tuple: (ai_message, remaining_tasks, saved_iteration, component_ids) or (None, None, None, None)
         """
-        state = runtime.get_state("llm_controller")
+        state = session.get_state("llm_controller")
         if not state:
             logger.info("No llm_controller state found, don't have interrupted tasks")
             return None, None, None, None
@@ -930,18 +930,18 @@ class LLMController(BaseController):
 
         return interrupted_task
 
-    async def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
-        """Find workflow object from runtime
+    async def _find_workflow_by_id(self, workflow_id: str, session: Session):
+        """Find workflow object from session
 
         Args:
             workflow_id: workflow ID (format: {id}_{version})
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             Workflow object, None if not found
         """
         try:
-            workflow = await runtime.get_workflow(workflow_id)
+            workflow = await session.get_workflow(workflow_id)
             return workflow
         except Exception as e:
             logger.error(f"Failed to find workflow {workflow_id}: {e}")
@@ -963,17 +963,17 @@ class LLMController(BaseController):
         """Check if workflow is interrupted"""
         return hasattr(result, 'state') and result.state == WorkflowExecutionState.INPUT_REQUIRED
 
-    def _clear_interrupted_state(self, task: Task, runtime: Runtime):
+    def _clear_interrupted_state(self, task: Task, session: Session):
         """Clean up interruption state
 
-        Remove interrupted task for specified workflow from runtime.state
+        Remove interrupted task for specified workflow from session.state
         """
         workflow_id = task.input.target_id
         if not workflow_id:
             logger.warning("Cannot clear interrupted state: task has no target_id")
             return
 
-        state = runtime.get_state("llm_controller") or {}
+        state = session.get_state("llm_controller") or {}
         interrupted_tasks = state.get("interrupted_tasks", {})
 
         # Normalize workflow_id for state key
@@ -981,8 +981,8 @@ class LLMController(BaseController):
 
         if state_key in interrupted_tasks:
             del interrupted_tasks[state_key]
-            runtime.update_state({"llm_controller": None})  # clear state first
-            runtime.update_state({"llm_controller": state})
+            session.update_state({"llm_controller": None})  # clear state first
+            session.update_state({"llm_controller": state})
             logger.info(
                 f"Cleared interrupted state for workflow: {task.input.target_id}, "
                 f"state_key: {state_key}"
@@ -992,10 +992,10 @@ class LLMController(BaseController):
             self,
             interruption_state: TaskInterruptionState
     ) -> Dict:
-        """Save interruption state to runtime.state
+        """Save interruption state to session.state
 
         Args:
-            interruption_state: Complete interruption state containing task, runtime,
+            interruption_state: Complete interruption state containing task, session,
                               ai_message, remaining_tasks, interaction_data, and current_iteration
 
         Returns:
@@ -1011,8 +1011,8 @@ class LLMController(BaseController):
         # Step 1: Update task status
         interruption_state.task.status = TaskStatus.INTERRUPTED
 
-        # Step 2: Save interruption state to runtime.state
-        state = interruption_state.runtime.get_state("llm_controller") or {}
+        # Step 2: Save interruption state to session.state
+        state = interruption_state.session.get_state("llm_controller") or {}
         if "interrupted_tasks" not in state:
             state["interrupted_tasks"] = {}
 
@@ -1032,8 +1032,8 @@ class LLMController(BaseController):
         }
 
         # Clear old state first, then update with new state, which ensures proper cleanup of nested dict keys
-        interruption_state.runtime.update_state({"llm_controller": None})
-        interruption_state.runtime.update_state({"llm_controller": state})
+        interruption_state.session.update_state({"llm_controller": None})
+        interruption_state.session.update_state({"llm_controller": state})
 
         logger.info(
             f"Task interrupted: workflow={workflow_id}, "
@@ -1088,15 +1088,15 @@ class LLMController(BaseController):
 
         return component_ids
 
-    async def _write_message_stream_data(self, stream_data: List, runtime: Runtime):
+    async def _write_message_stream_data(self, stream_data: List, session: Session):
         """Write stream data carried by message List[OutputSchema]"""
         try:
             for output_schema in stream_data:
-                await runtime.write_stream(output_schema)
+                await session.write_stream(output_schema)
         except Exception as e:
             logger.warning(f"Failed to write message stream data: {e}")
 
-    async def _send_final_stream(self, content: str, runtime: Runtime):
+    async def _send_final_stream(self, content: str, session: Session):
         """Send final stream data"""
         try:
             payload = {"output": content, "result_type": "answer"}
@@ -1105,13 +1105,13 @@ class LLMController(BaseController):
                 index=0,
                 payload=payload
             )
-            await runtime.write_stream(final_stream)
+            await session.write_stream(final_stream)
             return final_stream
         except Exception as e:
             logger.error(f"Failed to send final stream data: {e}")
             ExceptionUtils.raise_exception(StatusCode.CONTROLLER_SEND_STREAM_FAILED, str(e), e)
 
-    async def _send_error_stream(self, error_msg: str, runtime: Runtime):
+    async def _send_error_stream(self, error_msg: str, session: Session):
         """Send error result stream and return OutputSchema"""
         try:
             error_stream = OutputSchema(
@@ -1123,7 +1123,7 @@ class LLMController(BaseController):
                     "status": "failed"
                 }
             )
-            await runtime.write_stream(error_stream)
+            await session.write_stream(error_stream)
             return error_stream
         except Exception as e:
             logger.error(f"Failed to send error stream: {e}")
@@ -1242,10 +1242,10 @@ class LLMController(BaseController):
         )
 
     @staticmethod
-    async def _write_workflow_stream_output(result, runtime):
+    async def _write_workflow_stream_output(result, session):
         if isinstance(result, WorkflowOutput) and isinstance(result.result, list):
             for item in result.result:
-                await runtime.write_stream(item)
+                await session.write_stream(item)
 
     def set_llm_controller_prompt_template(self, prompt_template: List[Dict[str, str]]):
         """Set prompt template for LLMController"""
@@ -1331,7 +1331,7 @@ class LLMController(BaseController):
     def _find_interrupted_task_by_node_id(
             self,
             interactive_input,
-            runtime: Runtime
+            session: Session
     ) -> Optional[tuple]:
         """Find interrupted workflow by node_id from InteractiveInput
 
@@ -1343,12 +1343,12 @@ class LLMController(BaseController):
 
         Args:
             interactive_input: InteractiveInput with user_inputs
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             tuple(ai_message, remaining_tasks, saved_iteration) if found, None otherwise
         """
-        state = runtime.get_state("llm_controller")
+        state = session.get_state("llm_controller")
         if not state:
             return None
 

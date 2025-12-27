@@ -9,7 +9,7 @@ from typing import Any, Optional
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import MAX_COLLECTION_SIZE, MAX_EXPRESSION_LENGTH, MAX_AST_DEPTH
 
@@ -41,29 +41,29 @@ class ExpressionCondition(Condition):
                 )
             )
 
-    def trace_info(self, runtime: BaseRuntime = None):
+    def trace_info(self, session: BaseSession = None):
         return {
             "bool_expression": self._expression,
-            "inputs": self._get_inputs(runtime)
+            "inputs": self._get_inputs(session)
         }
 
-    def _get_inputs(self, runtime: BaseRuntime) -> dict:
-        if len(self._expression) == 0 or runtime is None:
+    def _get_inputs(self, session: BaseSession) -> dict:
+        if len(self._expression) == 0 or session is None:
             return {}
         inputs = {}
         for match in self._matches:
-            inputs[match] = runtime.state().get_global(match[2:-1])
+            inputs[match] = session.state().get_global(match[2:-1])
         return inputs
 
-    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
+    def invoke(self, inputs: Input, session: BaseSession) -> Output:
         if len(self._expression) == 0:
             return True
-        return self._evaluate_expression(self._expression, self._get_inputs(runtime))
+        return self._evaluate_expression(self._expression, self._get_inputs(session))
 
-    def __call__(self, runtime: BaseRuntime) -> bool:
+    def __call__(self, session: BaseSession) -> bool:
         if len(self._expression) == 0:
             return True
-        return self._evaluate_expression(self._expression, self._get_inputs(runtime))
+        return self._evaluate_expression(self._expression, self._get_inputs(session))
 
     def _evaluate_expression(self, expression, inputs) -> bool:
         processed_expression = convert_condition(expression, inputs)

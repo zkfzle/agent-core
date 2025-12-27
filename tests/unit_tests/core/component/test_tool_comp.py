@@ -6,8 +6,8 @@ from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponentConfig, ToolComponent
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
-from openjiuwen.core.session import WorkflowRuntime, NodeRuntime
-from openjiuwen.core.session import WrappedNodeRuntime, TaskRuntime
+from openjiuwen.core.session import WorkflowSession, NodeSession
+from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi
 from openjiuwen.core.foundation.tool import tool
@@ -19,7 +19,7 @@ from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 @pytest.fixture
 def fake_ctx():
-    return WrappedNodeRuntime(NodeRuntime(WorkflowRuntime(), "test"))
+    return WrappedNodeSession(NodeSession(WorkflowSession(), "test"))
 
 
 @pytest.fixture()
@@ -94,7 +94,7 @@ async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, f
     flow.add_connection("s", "tool")
     flow.add_connection("tool", "e")
 
-    await flow.invoke({}, WorkflowRuntime(session_id="test"))
+    await flow.invoke({}, WorkflowSession(session_id="test"))
 
 
 @tool(
@@ -141,6 +141,6 @@ class TestToolComponent:
         config = ContextEngineConfig()
         ce_engine = ContextEngine("123", config)
         workflow_context = ce_engine.get_workflow_context(workflow_id="tool_workflow", session_id=session_id)
-        workflow_runtime = TaskRuntime(trace_id=session_id).create_workflow_runtime()
-        invoke_result = await flow.invoke({"query": "你好"}, workflow_runtime, workflow_context)
+        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        invoke_result = await flow.invoke({"query": "你好"}, workflow_session, workflow_context)
         assert invoke_result.result["responseContent"] == "{'res': '你好', 'info': 789}"

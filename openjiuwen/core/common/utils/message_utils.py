@@ -7,7 +7,7 @@ from typing import List, Any
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.context_engine import ContextEngine
-from openjiuwen.core.session.runtime import Runtime
+from openjiuwen.core.session.session import Session
 from openjiuwen.core.foundation.llm.messages import (
     BaseMessage, AIMessage, HumanMessage, ToolMessage
 )
@@ -21,19 +21,19 @@ class MessageUtils:
     def should_add_user_message(
         query: str,
         context_engine: ContextEngine,
-        runtime: Runtime
+        session: Session
     ) -> bool:
         """Check if user message should be added
         
         Args:
             query: User input
             context_engine: Context engine
-            runtime: Runtime instance
+            session: Session instance
         
         Returns:
             bool: Whether to add user message
         """
-        agent_context = context_engine.get_agent_context(runtime.session_id())
+        agent_context = context_engine.get_agent_context(session.session_id())
         last_message = agent_context.get_latest_message()
 
         if not last_message:
@@ -53,17 +53,17 @@ class MessageUtils:
     def add_user_message(
         query: Any,
         context_engine: ContextEngine,
-        runtime: Runtime
+        session: Session
     ):
         """Add user message to chat history
         
         Args:
             query: User input
             context_engine: Context engine
-            runtime: Runtime instance
+            session: Session instance
         """
-        if MessageUtils.should_add_user_message(query, context_engine, runtime):
-            agent_context = context_engine.get_agent_context(runtime.session_id())
+        if MessageUtils.should_add_user_message(query, context_engine, session):
+            agent_context = context_engine.get_agent_context(session.session_id())
             user_message = HumanMessage(content=query)
             agent_context.add_message(user_message)
             if UserConfig.is_sensitive():
@@ -75,34 +75,34 @@ class MessageUtils:
     def add_ai_message(
         ai_message: AIMessage,
         context_engine: ContextEngine,
-        runtime: Runtime
+        session: Session
     ):
         """Add AI message to chat history
         
         Args:
             ai_message: AI message object
             context_engine: Context engine
-            runtime: Runtime instance
+            session: Session instance
         """
         if ai_message:
-            agent_context = context_engine.get_agent_context(runtime.session_id())
+            agent_context = context_engine.get_agent_context(session.session_id())
             agent_context.add_message(ai_message)
 
     @staticmethod
     def add_tool_message(
         tool_message: ToolMessage,
         context_engine: ContextEngine,
-        runtime: Runtime
+        session: Session
     ):
         """Add tool message to chat history
         
         Args:
             tool_message: Tool message object
             context_engine: Context engine
-            runtime: Runtime instance
+            session: Session instance
         """
         if tool_message:
-            agent_context = context_engine.get_agent_context(runtime.session_id())
+            agent_context = context_engine.get_agent_context(session.session_id())
             agent_context.add_message(tool_message)
 
     @staticmethod
@@ -110,7 +110,7 @@ class MessageUtils:
         message: BaseMessage,
         workflow_id: str,
         context_engine: ContextEngine,
-        runtime: Runtime
+        session: Session
     ):
         """Add message to workflow chat history
         
@@ -118,31 +118,31 @@ class MessageUtils:
             message: Message object
             workflow_id: Workflow ID
             context_engine: Context engine
-            runtime: Runtime instance
+            session: Session instance
         """
         workflow_context = context_engine.get_workflow_context(
             workflow_id=workflow_id,
-            session_id=runtime.session_id()
+            session_id=session.session_id()
         )
         workflow_context.add_message(message)
 
     @staticmethod
     def get_chat_history(
         context_engine: ContextEngine,
-        runtime: Runtime,
+        session: Session,
         config: AgentConfig
     ) -> List[BaseMessage]:
         """Get chat history
         
         Args:
             context_engine: Context engine
-            runtime: Runtime instance
+            session: Session instance
             config: Agent config
         
         Returns:
             List[BaseMessage]: Chat history message list
         """
-        agent_context = context_engine.get_agent_context(runtime.session_id())
+        agent_context = context_engine.get_agent_context(session.session_id())
         chat_history = agent_context.get_messages()
         max_rounds = config.constrain.reserved_max_chat_rounds
         return chat_history[-2 * max_rounds:]

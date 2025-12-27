@@ -8,15 +8,15 @@ from typing import Any
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.callback_manager import CallbackManager
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.session import BaseSession
 from openjiuwen.core.session.state import State
 from openjiuwen.core.session.workflow_state import InMemoryState
 from openjiuwen.core.session.stream.manager import StreamWriterManager
 from openjiuwen.core.session.tracer.tracer import Tracer
 
 
-class WorkflowRuntime(BaseRuntime):
-    def __init__(self, workflow_id: str = '', parent: BaseRuntime = None, session_id: str = None, state: State = None,
+class WorkflowSession(BaseSession):
+    def __init__(self, workflow_id: str = '', parent: BaseSession = None, session_id: str = None, state: State = None,
                  context: Context = None):
         self._session_id = session_id
         self._parent = parent
@@ -104,28 +104,28 @@ class WorkflowRuntime(BaseRuntime):
             await self._actor_manager.shutdown()
 
 
-def create_parent_id(runtime: BaseRuntime):
-    return runtime.executable_id() if isinstance(runtime, NodeRuntime) else ''
+def create_parent_id(session: BaseSession):
+    return session.executable_id() if isinstance(session, NodeSession) else ''
 
 
 def create_executable_id(node_id: str, parent_id: str):
     return parent_id + "." + node_id if len(parent_id) != 0 else node_id
 
 
-class NodeRuntime(BaseRuntime):
-    def __init__(self, runtime: BaseRuntime, node_id: str, node_type: str = None):
+class NodeSession(BaseSession):
+    def __init__(self, session: BaseSession, node_id: str, node_type: str = None):
         self._node_id = node_id
         self._node_type = node_type
-        parent_id = create_parent_id(runtime)
+        parent_id = create_parent_id(session)
         executable_id = create_executable_id(node_id, parent_id)
-        state = runtime.state().create_node_state(executable_id, parent_id)
+        state = session.state().create_node_state(executable_id, parent_id)
         self._state = state
         self._parent_id = parent_id
         self._executable_id = executable_id
-        self._runtime = runtime
-        self._workflow_id = runtime.workflow_id()
-        self._workflow_nesting_depth = runtime.workflow_nesting_depth()
-        self._main_workflow_id = runtime.main_workflow_id()
+        self._session = session
+        self._workflow_id = session.workflow_id()
+        self._workflow_nesting_depth = session.workflow_nesting_depth()
+        self._main_workflow_id = session.main_workflow_id()
 
     def node_id(self):
         return self._node_id
@@ -149,34 +149,34 @@ class NodeRuntime(BaseRuntime):
         return self._workflow_nesting_depth
 
     def actor_manager(self) -> "ActorManager":
-        return self._runtime.actor_manager()
+        return self._session.actor_manager()
 
     def parent(self):
-        return self._runtime
+        return self._session
 
     def tracer(self) -> Tracer:
-        return self._runtime.tracer()
+        return self._session.tracer()
 
     def state(self) -> State:
         return self._state
 
     def config(self) -> Config:
-        return self._runtime.config()
+        return self._session.config()
 
     def stream_writer_manager(self) -> StreamWriterManager:
-        return self._runtime.stream_writer_manager()
+        return self._session.stream_writer_manager()
 
     def callback_manager(self) -> CallbackManager:
-        return self._runtime.callback_manager()
+        return self._session.callback_manager()
 
     def session_id(self) -> str:
-        return self._runtime.session_id()
+        return self._session.session_id()
 
     def resource_manager(self):
-        return self._runtime.resource_manager()
+        return self._session.resource_manager()
 
     def context(self) -> Context:
-        return self._runtime.context()
+        return self._session.context()
 
     def checkpointer(self):
         pass
@@ -189,12 +189,12 @@ class NodeRuntime(BaseRuntime):
             return None
 
 
-class SubWorkflowRuntime(NodeRuntime):
-    def __init__(self, runtime: NodeRuntime, workflow_id: str, actor_manager: "ActorManager" = None):
-        super().__init__(runtime=runtime.parent(), node_id=runtime.node_id(), node_type=runtime.node_type())
+class SubWorkflowSession(NodeSession):
+    def __init__(self, session: NodeSession, workflow_id: str, actor_manager: "ActorManager" = None):
+        super().__init__(session=session.parent(), node_id=session.node_id(), node_type=session.node_type())
         self._workflow_id = workflow_id
-        self._workflow_nesting_depth = runtime.workflow_nesting_depth() + 1
-        self._main_workflow_id = runtime.main_workflow_id()
+        self._workflow_nesting_depth = session.workflow_nesting_depth() + 1
+        self._main_workflow_id = session.main_workflow_id()
         self._actor_manager = actor_manager
 
     def workflow_id(self):

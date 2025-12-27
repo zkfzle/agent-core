@@ -16,12 +16,12 @@ class PromptMgr:
 
     def add_prompt(self, template_id: str, template: PromptTemplate) -> None:
         if template_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_PROMPT_ADD_FAILED.code,
-                                      StatusCode.RUNTIME_PROMPT_ADD_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_PROMPT_ADD_FAILED.code,
+                                      StatusCode.SESSION_PROMPT_ADD_FAILED.errmsg.format(
                                           reason='template_id is invalid, can not be None'))
         if template is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_PROMPT_ADD_FAILED.code,
-                                      StatusCode.RUNTIME_PROMPT_ADD_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_PROMPT_ADD_FAILED.code,
+                                      StatusCode.SESSION_PROMPT_ADD_FAILED.errmsg.format(
                                           reason='template is invalid, can not be None'))
         self._repo[template_id] = template
 
@@ -36,7 +36,7 @@ class PromptMgr:
 
     def get_prompt(self, template_id: str) -> Optional[PromptTemplate]:
         if template_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_PROMPT_GET_FAILED.code,
-                                      StatusCode.RUNTIME_PROMPT_GET_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_PROMPT_GET_FAILED.code,
+                                      StatusCode.SESSION_PROMPT_GET_FAILED.errmsg.format(
                                           reason='template_id is invalid, can not be None'))
         return self._repo.get(template_id)

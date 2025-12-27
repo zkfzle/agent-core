@@ -5,8 +5,8 @@
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.interaction.storage import Storage
-from openjiuwen.core.session.runtime import BaseRuntime
-from openjiuwen.core.session.workflow import NodeRuntime
+from openjiuwen.core.session.session import BaseSession
+from openjiuwen.core.session.workflow import NodeSession
 from openjiuwen.core.graph.store import create_serializer, Serializer
 
 
@@ -23,49 +23,49 @@ class WorkflowStorage(Storage):
             tuple[str, bytes]
         ] = {}
 
-    def save(self, runtime: BaseRuntime):
-        workflow_id = runtime.workflow_id()
-        state = runtime.state().get_state()
+    def save(self, session: BaseSession):
+        workflow_id = session.workflow_id()
+        state = session.state().get_state()
         state_blob = self.serde.dumps_typed(state)
         if state_blob:
             self.state_blobs[workflow_id] = state_blob
 
-        updates = runtime.state().get_updates()
+        updates = session.state().get_updates()
         updates_blob = self.serde.dumps_typed(updates)
         if updates_blob:
             self.state_updates_blobs[workflow_id] = updates_blob
 
-    def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):
-        workflow_id = runtime.workflow_id()
+    def recover(self, session: BaseSession, inputs: InteractiveInput = None):
+        workflow_id = session.workflow_id()
         state_blob = self.state_blobs.get(workflow_id)
         if state_blob and state_blob[0] != "empty":
             state = self.serde.loads_typed(state_blob)
-            runtime.state().set_state(state)
+            session.state().set_state(state)
 
         if inputs.raw_inputs is not None:
-            runtime.state().update_and_commit_workflow_state({INTERACTIVE_INPUT: inputs.raw_inputs})
+            session.state().update_and_commit_workflow_state({INTERACTIVE_INPUT: inputs.raw_inputs})
         else:
             for node_id, value in inputs.user_inputs.items():
-                node_runtime = NodeRuntime(runtime, node_id)
-                interactive_input = node_runtime.state().get(INTERACTIVE_INPUT)
+                node_session = NodeSession(session, node_id)
+                interactive_input = node_session.state().get(INTERACTIVE_INPUT)
                 if isinstance(interactive_input, list):
                     interactive_input.append(value)
-                    node_runtime.state().update({INTERACTIVE_INPUT: interactive_input})
+                    node_session.state().update({INTERACTIVE_INPUT: interactive_input})
                 else:
-                    node_runtime.state().update({INTERACTIVE_INPUT: [value]})
-            runtime.state().commit()
+                    node_session.state().update({INTERACTIVE_INPUT: [value]})
+            session.state().commit()
 
         state_updates_blob = self.state_updates_blobs.get(workflow_id)
         if state_updates_blob:
             state_updates = self.serde.loads_typed(state_updates_blob)
-            runtime.state().set_updates(state_updates)
+            session.state().set_updates(state_updates)
 
     def clear(self, workflow_id: str):
         self.state_blobs.pop(workflow_id, None)
         self.state_updates_blobs.pop(workflow_id, None)
 
-    def exists(self, runtime: BaseRuntime) -> bool:
-        state_blob = self.state_blobs.get(runtime.workflow_id())
+    def exists(self, session: BaseSession) -> bool:
+        state_blob = self.state_blobs.get(session.workflow_id())
         if state_blob and state_blob[0] != "empty":
             return True
         return False

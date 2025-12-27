@@ -19,7 +19,7 @@ from openjiuwen.core.foundation.tool import ToolInfo
 ResourceManager = TypeVar("ResourceManager", contravariant=True)
 
 
-class BaseRuntime(ABC):
+class BaseSession(ABC):
     @abstractmethod
     def config(self) -> Config:
         ...
@@ -63,7 +63,7 @@ class BaseRuntime(ABC):
         pass
 
 
-class Runtime(ABC):
+class Session(ABC):
     @abstractmethod
     def executable_id(self) -> str:
         pass
@@ -200,7 +200,7 @@ class Runtime(ABC):
         pass
 
     @abstractmethod
-    def base(self) -> BaseRuntime:
+    def base(self) -> BaseSession:
         pass
 
     async def post_run(self):
@@ -213,11 +213,11 @@ class Runtime(ABC):
         pass
 
 
-class ProxyRuntime(BaseRuntime):
-    def __init__(self, stub: BaseRuntime = None):
+class ProxySession(BaseSession):
+    def __init__(self, stub: BaseSession = None):
         self._stub = stub
 
-    def set_runtime(self, stub: BaseRuntime):
+    def set_session(self, stub: BaseSession):
         self._stub = stub
 
     def config(self) -> Config:

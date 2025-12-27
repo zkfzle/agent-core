@@ -4,7 +4,7 @@
 
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.interaction.storage import Storage
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.session import BaseSession
 from openjiuwen.core.graph.store import create_serializer, Serializer
 
 
@@ -17,23 +17,23 @@ class AgentStorage(Storage):
 
         self.serde: Serializer = create_serializer("pickle")
 
-    def save(self, runtime: BaseRuntime):
-        agent_id = runtime.agent_id()
-        state = runtime.state().get_state()
+    def save(self, session: BaseSession):
+        agent_id = session.agent_id()
+        state = session.state().get_state()
         state_blob = self.serde.dumps_typed(state)
         if state_blob:
             self.state_blobs[agent_id] = state_blob
 
-    def recover(self, runtime: BaseRuntime, inputs: InteractiveInput = None):
-        agent_id = runtime.agent_id()
+    def recover(self, session: BaseSession, inputs: InteractiveInput = None):
+        agent_id = session.agent_id()
         state_blob = self.state_blobs.get(agent_id)
         if state_blob is None:
             return
         state = self.serde.loads_typed(state_blob)
-        runtime.state().set_state(state)
+        session.state().set_state(state)
 
     def clear(self, agent_id: str):
         self.state_blobs.pop(agent_id, None)
 
-    def exists(self, runtime: BaseRuntime) -> bool:
-        return self.state_blobs.get(runtime.agent_id()) is not None
+    def exists(self, session: BaseSession) -> bool:
+        return self.state_blobs.get(session.agent_id()) is not None

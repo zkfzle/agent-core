@@ -19,8 +19,8 @@ class WorkflowMgr(AbstractManager["Workflow"]):
         self._workflow_tool_infos: dict[str, ToolInfo] = {}
 
     def add_workflow(self, workflow_id: str, workflow: Union["Workflow", WorkflowProvider]) -> None:
-        self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, "workflow")
-        self._validate_resource(workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED,
+        self._validate_id(workflow_id, StatusCode.SESSION_WORKFLOW_ADD_FAILED, "workflow")
+        self._validate_resource(workflow, StatusCode.SESSION_WORKFLOW_ADD_FAILED,
                                 "workflow is invalid, can not be None")
 
         # Define validation function for non-callable workflows
@@ -31,7 +31,7 @@ class WorkflowMgr(AbstractManager["Workflow"]):
                 self._workflow_tool_infos[workflow_id] = workflow_obj.get_tool_info()
             return workflow_obj
 
-        self._add_resource(workflow_id, workflow, StatusCode.RUNTIME_WORKFLOW_ADD_FAILED, validate_workflow)
+        self._add_resource(workflow_id, workflow, StatusCode.SESSION_WORKFLOW_ADD_FAILED, validate_workflow)
 
     def add_workflows(self, workflows: List[Tuple[str, Union["Workflow", WorkflowProvider]]]):
         if not workflows:
@@ -39,23 +39,23 @@ class WorkflowMgr(AbstractManager["Workflow"]):
         for key, workflow in workflows:
             self.add_workflow(key, workflow)
 
-    def get_workflow_sync(self, workflow_id: str, runtime=None) -> "Workflow":
+    def get_workflow_sync(self, workflow_id: str, session=None) -> "Workflow":
         try:
             loop = asyncio.get_running_loop()
-            return asyncio.run_coroutine_threadsafe(self.get_workflow(workflow_id, runtime), loop=loop).result()
+            return asyncio.run_coroutine_threadsafe(self.get_workflow(workflow_id, session), loop=loop).result()
         except RuntimeError:
             loop = asyncio.new_event_loop()
             try:
                 asyncio.set_event_loop(loop)
                 return loop.run_until_complete(
-                    self.get_workflow(workflow_id, runtime)
+                    self.get_workflow(workflow_id, session)
                 )
             finally:
                 loop.close()
 
-    async def get_workflow(self, workflow_id: str, runtime=None):
+    async def get_workflow(self, workflow_id: str, session=None):
         # Validate ID using base class method
-        self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "workflow")
+        self._validate_id(workflow_id, StatusCode.SESSION_WORKFLOW_GET_FAILED, "workflow")
         try:
             resource = self._resources.get(workflow_id)
             if resource:
@@ -72,19 +72,19 @@ class WorkflowMgr(AbstractManager["Workflow"]):
             if not hasattr(workflow, "get_tool_info"):
                 raise TypeError(f"Workflow must have get_tool_info method")
             self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
-            return decorate_workflow_with_trace(workflow, runtime)
+            return decorate_workflow_with_trace(workflow, session)
         except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_GET_FAILED, "get")
+            self._handle_exception(e, StatusCode.SESSION_WORKFLOW_GET_FAILED, "get")
 
     def remove_workflow(self, workflow_id: str) -> Optional["Workflow"]:
-        self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED, "workflow")
+        self._validate_id(workflow_id, StatusCode.SESSION_WORKFLOW_REMOVE_FAILED, "workflow")
 
         try:
-            workflow = self._remove_resource(workflow_id, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED)
+            workflow = self._remove_resource(workflow_id, StatusCode.SESSION_WORKFLOW_REMOVE_FAILED)
             self._workflow_tool_infos.pop(workflow_id, None)
             return workflow
         except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_REMOVE_FAILED, "remove")
+            self._handle_exception(e, StatusCode.SESSION_WORKFLOW_REMOVE_FAILED, "remove")
             return None
 
     def get_tool_infos(self, workflow_ids: List[str] = None):
@@ -94,13 +94,13 @@ class WorkflowMgr(AbstractManager["Workflow"]):
 
             infos = []
             for workflow_id in workflow_ids:
-                self._validate_id(workflow_id, StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED, "workflow")
+                self._validate_id(workflow_id, StatusCode.SESSION_WORKFLOW_TOOL_INFO_GET_FAILED, "workflow")
                 infos.append(self._workflow_tool_infos.get(workflow_id))
             return infos
         except JiuWenBaseException:
             raise
         except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_WORKFLOW_TOOL_INFO_GET_FAILED, "get_tool_info")
+            self._handle_exception(e, StatusCode.SESSION_WORKFLOW_TOOL_INFO_GET_FAILED, "get_tool_info")
             return []
     
     def get_all_workflows(self) -> dict[str, Union["Workflow", WorkflowProvider]]:

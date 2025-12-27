@@ -17,7 +17,7 @@ from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY, get_value_by_nested_path
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 
 RESPONSE_TEMPLATE = "responseTemplate"
@@ -46,11 +46,11 @@ class End(ComponentExecutable, WorkflowComponent):
     def set_mix(self):
         self._mix = True
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         if self.template is not None:
             if inputs is None:
                 inputs = {}
-            return await self._render(inputs, runtime.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))
+            return await self._render(inputs, session.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))
         else:
             if inputs is not None:
                 output = {k: v for k, v in inputs.items() if v is not None} if isinstance(inputs, dict) else inputs
@@ -59,7 +59,7 @@ class End(ComponentExecutable, WorkflowComponent):
             logger.debug(f"end component invoke method output: {output}")
             return {"output": output}
 
-    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
         if inputs is None:
             logger.debug("end component stream method received None inputs, using empty dict")
@@ -68,7 +68,7 @@ class End(ComponentExecutable, WorkflowComponent):
             if self.template is not None:
                 logger.debug(f"end component has template, inputs: {inputs}")
                 generator = self.template.render_stream(inputs,
-                                                        runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
+                                                        session.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
                 frame_count = 0
                 async for frame in generator:
                     logger.debug(f"rendering stream frame: {frame}")
@@ -89,11 +89,11 @@ class End(ComponentExecutable, WorkflowComponent):
             else:
                 logger.error("stream output error: {}".format(e), exc_info=True)
 
-    async def transform(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
         logger.debug(f"end component transform method inputs: {inputs}")
         if self.template is not None:
             generator = self.template.render_stream(inputs,
-                                                    runtime.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
+                                                    session.get_env(END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY))
             async for frame in generator:
                 logger.debug(f"rendering transform frame: {frame}")
                 yield OutputSchema(type=END_NODE_STREAM, index=frame.get("index"),
@@ -106,10 +106,10 @@ class End(ComponentExecutable, WorkflowComponent):
                 else:
                     yield dict(output={format_path(path): value})
 
-    async def collect(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
         logger.debug(f"end component collect method inputs: {inputs}")
         if self.template is not None:
-            return await self._render(inputs, runtime.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))
+            return await self._render(inputs, session.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))
         else:
             chunks = []
             for (path, value) in extract_leaf_nodes(inputs):

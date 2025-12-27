@@ -22,7 +22,7 @@ from openjiuwen.core.single_agent.config import AgentConfig, ConstrainConfig
 from openjiuwen.core.single_agent.schema.schema import PluginSchema
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
 from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
@@ -57,7 +57,7 @@ class ReActAgent(BaseAgent):
             workflows: Workflow list
             tools: Tool list
         """
-        # Call parent init (BaseAgent creates runtime, context_engine, etc.)
+        # Call parent init (BaseAgent creates session, context_engine, etc.)
         super().__init__(agent_config)
 
         # LLM instance (lazy creation)
@@ -78,12 +78,12 @@ class ReActAgent(BaseAgent):
             )
         return self._llm
 
-    async def call_model(self, user_input: str, runtime: Runtime, is_first_call: bool = False):
+    async def call_model(self, user_input: str, session: Session, is_first_call: bool = False):
         """Call LLM for reasoning
         
         Args:
             user_input: User input or tool result
-            runtime: Runtime instance
+            session: Session instance
             is_first_call: Whether first call (first call needs to add user message)
         
         Returns:
@@ -91,11 +91,11 @@ class ReActAgent(BaseAgent):
         """
         # 1. If first call, add user message
         if is_first_call:
-            MessageUtils.add_user_message(user_input, self.context_engine, runtime)
+            MessageUtils.add_user_message(user_input, self.context_engine, session)
 
         # 2. Get chat history
         chat_history = MessageUtils.get_chat_history(
-            self.context_engine, runtime, self.agent_config
+            self.context_engine, session, self.agent_config
         )
 
         # 3. Format prompt
@@ -119,7 +119,7 @@ class ReActAgent(BaseAgent):
             messages.append(msg_dict)
 
         # 4. Get available tool info
-        tools = runtime.get_tool_info()
+        tools = session.get_tool_info()
 
         # 5. Call LLM
         llm = self._get_llm()
@@ -134,16 +134,16 @@ class ReActAgent(BaseAgent):
             content=llm_output.content,
             tool_calls=llm_output.tool_calls
         )
-        MessageUtils.add_ai_message(ai_message, self.context_engine, runtime)
+        MessageUtils.add_ai_message(ai_message, self.context_engine, session)
 
         return llm_output
 
-    async def _execute_tool_call(self, tool_call, runtime: Runtime) -> Any:
+    async def _execute_tool_call(self, tool_call, session: Session) -> Any:
         """Execute single tool call
         
         Args:
             tool_call: Tool call object returned by LLM
-            runtime: Runtime instance
+            session: Session instance
         
         Returns:
             Tool execution result
@@ -156,7 +156,7 @@ class ReActAgent(BaseAgent):
             tool_args = {}
 
         # Get and execute tool
-        tool = runtime.get_tool(tool_name)
+        tool = session.get_tool(tool_name)
         if not tool:
             raise ValueError(f"Tool not found: {tool_name}")
 
@@ -167,27 +167,27 @@ class ReActAgent(BaseAgent):
             content=str(result),
             tool_call_id=tool_call.id
         )
-        MessageUtils.add_tool_message(tool_message, self.context_engine, runtime)
+        MessageUtils.add_tool_message(tool_message, self.context_engine, session)
 
         return result
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """Sync call - Complete ReAct loop
         
         Args:
             inputs: Input data, must contain 'query' field
-            runtime: Optional Runtime (if not provided, use BaseAgent's _runtime)
+            session: Optional Session (if not provided, use BaseAgent's _session)
         
         Returns:
             Execution result
         """
-        # 1. Prepare Runtime
+        # 1. Prepare Session
         session_id = inputs.get("conversation_id", "default_session")
-        runtime_created = False
-        if runtime is None:
-            # Use BaseAgent's _runtime, need to create task runtime
-            runtime = await self._runtime.pre_run(session_id=session_id, inputs=inputs)
-            runtime_created = True
+        session_created = False
+        if session is None:
+            # Use BaseAgent's _session, need to create task session
+            session = await self._session.pre_run(session_id=session_id, inputs=inputs)
+            session_created = True
 
         try:
             user_input = inputs.get("query", "")
@@ -206,7 +206,7 @@ class ReActAgent(BaseAgent):
                 # 2.1 Call model for reasoning
                 llm_output = await self.call_model(
                     user_input,
-                    runtime,
+                    session,
                     is_first_call=is_first_call
                 )
                 is_first_call = False  # Set to False after first call
@@ -223,7 +223,7 @@ class ReActAgent(BaseAgent):
                 for tool_call in llm_output.tool_calls:
                     tool_name = tool_call.name
                     logger.info(f"Executing tool: {tool_name}")
-                    result = await self._execute_tool_call(tool_call, runtime)
+                    result = await self._execute_tool_call(tool_call, session)
                     logger.info(f"Tool {tool_name} completed with result: {result}")
 
             # 3. Exceeded max iteration count
@@ -233,46 +233,46 @@ class ReActAgent(BaseAgent):
                 "result_type": "error"
             }
         finally:
-            # 4. Cleanup runtime (if we created it)
-            if runtime_created:
-                await runtime.post_run()
+            # 4. Cleanup session (if we created it)
+            if session_created:
+                await session.post_run()
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """Stream call - minimal version
         
         Note:
-            When external runtime is provided, data is written to it but not read
+            When external session is provided, data is written to it but not read
             from stream_iterator (to avoid nested read deadlock). External caller
-            reads stream data from runtime.
+            reads stream data from session.
         """
-        # Prepare runtime
+        # Prepare session
         session_id = inputs.get("conversation_id", "default_session")
-        if runtime is None:
-            # Use BaseAgent's _runtime, need to create task runtime
-            agent_runtime = await self._runtime.pre_run(
+        if session is None:
+            # Use BaseAgent's _session, need to create task session
+            agent_session = await self._session.pre_run(
                 session_id=session_id, inputs=inputs
             )
             need_cleanup = True
             own_stream = True  # Owns stream lifecycle
         else:
-            agent_runtime = runtime
+            agent_session = session
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
 
-            # Sync single_agent's tools to external runtime
-            # When external runtime is provided, single_agent's tools need to be registered
+            # Sync single_agent's tools to external session
+            # When external session is provided, single_agent's tools need to be registered
             if hasattr(self, '_tools') and self._tools:
                 tools_to_add = [(tool.name, tool) for tool in self._tools]
-                agent_runtime.add_tools(tools_to_add)
+                agent_session.add_tools(tools_to_add)
 
         # Store final result for send_to_agent
         final_result_holder = {"result": None}
 
         async def stream_process():
             try:
-                final_result = await self.invoke(inputs, agent_runtime)
+                final_result = await self.invoke(inputs, agent_session)
                 final_result_holder["result"] = final_result
-                await agent_runtime.write_stream(OutputSchema(
+                await agent_session.write_stream(OutputSchema(
                     type="answer",
                     index=0,
                     payload={"output": final_result, "result_type": "answer"}
@@ -280,16 +280,16 @@ class ReActAgent(BaseAgent):
             except Exception as e:
                 logger.error(f"ReActAgent stream error: {e}")
             finally:
-                # Cleanup runtime (if we created it)
+                # Cleanup session (if we created it)
                 if need_cleanup:
-                    await agent_runtime.post_run()
+                    await agent_session.post_run()
 
         task = asyncio.create_task(stream_process())
 
         if own_stream:
             # Read from stream_iterator only when owning stream
-            # External caller reads if external runtime provided
-            async for result in agent_runtime.stream_iterator():
+            # External caller reads if external session provided
+            async for result in agent_session.stream_iterator():
                 yield result
 
         await task

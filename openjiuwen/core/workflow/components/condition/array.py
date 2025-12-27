@@ -4,7 +4,7 @@
 from typing import Union, Any
 
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.common.constants.constant import INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -18,8 +18,8 @@ class ArrayCondition(Condition):
         super().__init__(arrays)
         self._arrays = arrays
 
-    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(INDEX)
+    def invoke(self, inputs: Input, session: BaseSession) -> Output:
+        current_idx = session.state().get(INDEX)
         min_length = DEFAULT_MAX_LOOP_NUMBER
         updates: dict[str, Any] = {}
         for key, array_info in self._arrays.items():
@@ -28,20 +28,20 @@ class ArrayCondition(Condition):
             if current_idx >= min_length:
                 return False
             updates[key] = arr[current_idx]
-        runtime.state().update(updates)
+        session.state().update(updates)
         io_updates = updates.copy()
         return True, io_updates
 
 
-class ArrayConditionInRuntime(Condition):
+class ArrayConditionInSession(Condition):
 
     def __init__(self, arrays: dict[str, Union[list[Any], tuple[Any]]]):
         super().__init__()
         self._arrays = arrays
         self._min_length = self._check_arrays(arrays)
 
-    def invoke(self, inputs: Input, runtime: BaseRuntime) -> Output:
-        current_idx = runtime.state().get(INDEX)
+    def invoke(self, inputs: Input, session: BaseSession) -> Output:
+        current_idx = session.state().get(INDEX)
         if current_idx >= self._min_length:
             return False
 
@@ -60,7 +60,7 @@ class ArrayConditionInRuntime(Condition):
                     StatusCode.ARRAY_CONDITION_ERROR.code,
                     f"Array loop error in '{key}': <error_details>"
                 ) from e
-        runtime.state().update(updates)
+        session.state().update(updates)
         io_updates = updates.copy()
         return True, io_updates
 

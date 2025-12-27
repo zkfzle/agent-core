@@ -6,7 +6,7 @@ from typing import Dict, Any, AsyncIterator
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import ControllerAgent, WorkflowAgentConfig
 from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller import WorkflowController
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 
 
 class WorkflowAgent(ControllerAgent):
@@ -29,29 +29,29 @@ class WorkflowAgent(ControllerAgent):
         # Pass to parent - parent will auto-configure it
         super().__init__(agent_config, controller=controller)
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """Synchronous invocation - Delegate to controller
         
         Args:
             inputs: Input data, including query and conversation_id
-            runtime: Runtime context (optional)
+            session: Session context (optional)
             
         Returns:
             Execution result
         """
         # Fully delegate to ControllerAgent implementation
-        return await super().invoke(inputs, runtime)
+        return await super().invoke(inputs, session)
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """Streaming invocation - Delegate to controller
         
         Args:
             inputs: Input data, including query and conversation_id
-            runtime: Runtime context (optional)
+            session: Session context (optional)
             
         Yields:
             Streaming output
         """
         # Fully delegate to ControllerAgent implementation
-        async for result in super().stream(inputs, runtime):
+        async for result in super().stream(inputs, session):
             yield result

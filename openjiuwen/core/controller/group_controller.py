@@ -13,7 +13,7 @@ from openjiuwen.core.runner.message_queue_base import InvokeQueueMessage
 from openjiuwen.core.runner.message_queue_inmemory import MessageQueueInMemory
 
 if TYPE_CHECKING:
-    from openjiuwen.core.multi_agent import BaseGroup, AgentGroupRuntime
+    from openjiuwen.core.multi_agent import BaseGroup, AgentGroupSession
 
 
 class BaseGroupController(ABC):
@@ -71,7 +71,7 @@ class BaseGroupController(ABC):
             f"group_id={group.group_id}"
         )
 
-    async def invoke(self, event: Event, runtime: 'AgentGroupRuntime') -> Any:
+    async def invoke(self, event: Event, session: 'AgentGroupSession') -> Any:
         """Synchronous invocation entry
         
         Process:
@@ -81,7 +81,7 @@ class BaseGroupController(ABC):
         
         Args:
             event: Event object (carries message_type for routing)
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             Processing result
@@ -122,7 +122,7 @@ class BaseGroupController(ABC):
         # Create queue message and publish
         topic = f"group_messages_{self.agent_group.group_id}"
         queue_message = InvokeQueueMessage()
-        queue_message.payload = {"event": event, "runtime": runtime}
+        queue_message.payload = {"event": event, "session": session}
         queue_message.response = asyncio.Future()
 
         # Publish message
@@ -136,9 +136,9 @@ class BaseGroupController(ABC):
     async def _handle_message_wrapper(self, request: Dict) -> Any:
         """Message processing wrapper - Automatically called by message queue"""
         event = request["event"]
-        runtime = request["runtime"]
+        session = request["session"]
         try:
-            result = await self.handle_event(event, runtime)
+            result = await self.handle_event(event, session)
             logger.info(
                 f"BaseGroupController: handle_event returned: "
                 f"{type(result)}"
@@ -157,13 +157,13 @@ class BaseGroupController(ABC):
     async def handle_event(
         self,
         event: Event,
-        runtime: 'AgentGroupRuntime'
+        session: 'AgentGroupSession'
     ) -> Any:
         """Core method for message processing (must be implemented)
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             Processing result
@@ -231,19 +231,19 @@ class BaseGroupController(ABC):
         self,
         event: Event,
         agent_id: str,
-        runtime: 'AgentGroupRuntime'
+        session: 'AgentGroupSession'
     ) -> Any:
         """Send message to specified Agent (point-to-point, streaming)
         
-        Call single_agent.stream() with shared runtime. Agent writes stream data
-        to runtime (doesn't read from stream_iterator to avoid nested deadlock).
+        Call single_agent.stream() with shared session. Agent writes stream data
+        to session (doesn't read from stream_iterator to avoid nested deadlock).
         
-        External ControllerGroup.stream() reads via runtime.stream_iterator().
+        External ControllerGroup.stream() reads via session.stream_iterator().
         
         Args:
             event: Event object
             agent_id: Target Agent ID
-            runtime: Runtime context (shared stream)
+            session: Session context (shared stream)
         
         Returns:
             Final result (last chunk or default)
@@ -277,11 +277,11 @@ class BaseGroupController(ABC):
         )
         
         try:
-            # Call single_agent.stream with shared runtime
-            # Agent writes to runtime, doesn't read from stream_iterator
+            # Call single_agent.stream with shared session
+            # Agent writes to session, doesn't read from stream_iterator
             # Collect chunks to handle interrupt case
             chunks = []
-            async for chunk in agent.stream(inputs, runtime):
+            async for chunk in agent.stream(inputs, session):
                 chunks.append(chunk)
             
             # Check if interrupt case (contains __interaction__ type)
@@ -311,7 +311,7 @@ class BaseGroupController(ABC):
     async def publish(
         self,
         event: Event,
-        runtime: 'AgentGroupRuntime'
+        session: 'AgentGroupSession'
     ) -> List[Any]:
         """Publish message to all subscribers (broadcast)
         
@@ -319,7 +319,7 @@ class BaseGroupController(ABC):
         
         Args:
             event: Event object (carries message_type)
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             List of results from all subscribers
@@ -349,7 +349,7 @@ class BaseGroupController(ABC):
 
         # Concurrently call all subscribers
         tasks = [
-            self.send_to_agent(event, agent_id, runtime)
+            self.send_to_agent(event, agent_id, session)
             for agent_id in subscribers
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -381,7 +381,7 @@ class DefaultGroupController(BaseGroupController):
     async def handle_event(
         self,
         event: Event,
-        runtime: 'AgentGroupRuntime'
+        session: 'AgentGroupSession'
     ) -> Any:
         """Handle message - Dispatch to corresponding Agent based on message type
         
@@ -391,7 +391,7 @@ class DefaultGroupController(BaseGroupController):
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
         
         Returns:
             Processing result
@@ -402,14 +402,14 @@ class DefaultGroupController(BaseGroupController):
                 f"DefaultGroupController: Routing message to "
                 f"receiver_id={event.receiver_id}"
             )
-            return await self.send_to_agent(event, event.receiver_id, runtime)
+            return await self.send_to_agent(event, event.receiver_id, session)
         else:
             # Broadcast based on subscription relationships
             logger.info(
                 f"DefaultGroupController: Broadcasting message with "
                 f"message_type={event.custom_event_type}"
             )
-            results = await self.publish(event, runtime)
+            results = await self.publish(event, session)
             # Return single result for single subscriber
             # Return list for multiple subscribers (explicit broadcast)
             return results[0] if len(results) == 1 else results

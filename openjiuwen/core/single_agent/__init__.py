@@ -6,7 +6,7 @@
 from openjiuwen.core.single_agent.agent import (
     BaseAgent,
     ControllerAgent,
-    AgentRuntime,
+    AgentSession,
     WorkflowFactory,
     workflow_provider,
 )
@@ -40,7 +40,7 @@ _BASE_AGENT_CLASSES = [
 ]
 
 _AGENT_RUNTIME = [
-    "AgentRuntime",
+    "AgentSession",
 ]
 
 _AGENT_FACTORIES = [

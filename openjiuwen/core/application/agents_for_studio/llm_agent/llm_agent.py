@@ -13,7 +13,7 @@ from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller impo
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm.messages import HumanMessage, AIMessage
 from openjiuwen.core.foundation.tool import Tool
@@ -120,22 +120,22 @@ class LLMAgent(ControllerAgent):
         self.controller = LLMController(
             config=agent_config,
             context_engine=self.context_engine,
-            runtime=self._runtime,
+            session=self._session,
             enable_memory=self._enable_memory
         )
 
-    async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
+    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
         """Synchronous call - fully delegate to controller
 
         Args:
             inputs: Input data, contains query and conversation_id
-            runtime: Runtime instance (optional)
+            session: Session instance (optional)
 
         Returns:
             Execution result
         """
         # Fully delegate to ControllerAgent implementation
-        result = await super().invoke(inputs, runtime)
+        result = await super().invoke(inputs, session)
 
         if self._enable_memory:
             # Async write AI result message memory
@@ -144,12 +144,12 @@ class LLMAgent(ControllerAgent):
             agent_memory_task.add_done_callback(_memory_log_task_exception)
         return result
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         """Streaming invocation - Fully delegate to controller
 
         Args:
             inputs: Input data
-            runtime: Runtime instance (if None, auto create)
+            session: Session instance (if None, auto create)
 
         Yields:
             Streaming output
@@ -160,32 +160,32 @@ class LLMAgent(ControllerAgent):
                 "subclass should create controller before invocation"
             )
 
-        # If runtime not provided, create one
+        # If session not provided, create one
         session_id = inputs.get("conversation_id", "default_session")
-        if runtime is None:
-            agent_runtime = await self._runtime.pre_run(session_id=session_id)
+        if session is None:
+            agent_session = await self._session.pre_run(session_id=session_id)
             need_cleanup = True
             own_stream = True  # Own stream lifecycle
         else:
-            agent_runtime = runtime
+            agent_session = session
             need_cleanup = False
             own_stream = False  # External owns stream lifecycle
 
-            # Sync agent's tools to external runtime
-            # When external runtime is provided, agent's tools need to be registered
+            # Sync agent's tools to external session
+            # When external session is provided, agent's tools need to be registered
             if self._tools:
                 tools_to_add = [(tool.name, tool) for tool in self._tools]
-                agent_runtime.add_tools(tools_to_add)
-            # Sync agent's workflows to external runtime
-            # When external runtime is provided, agent's workflows need to be registered
+                agent_session.add_tools(tools_to_add)
+            # Sync agent's workflows to external session
+            # When external session is provided, agent's workflows need to be registered
             try:
-                agent_workflow_mgr = self._runtime.resource_mgr().workflow()
+                agent_workflow_mgr = self._session.resource_mgr().workflow()
                 # Sync workflow instances and providers
                 for workflow_id, workflow in agent_workflow_mgr.get_all_workflows().items():
-                    agent_runtime.add_workflow(workflow_id, workflow)
-                    logger.debug(f"Synced workflow {workflow_id} to external runtime")
+                    agent_session.add_workflow(workflow_id, workflow)
+                    logger.debug(f"Synced workflow {workflow_id} to external session")
             except Exception as e:
-                logger.warning(f"Failed to sync workflows to external runtime: {e}")
+                logger.warning(f"Failed to sync workflows to external session: {e}")
 
         # Store final result for send_to_agent
         final_result_holder = {"result": None}
@@ -193,19 +193,19 @@ class LLMAgent(ControllerAgent):
         # Fully delegate to controller
         async def stream_process():
             try:
-                result = await self.controller.invoke(inputs, agent_runtime)
+                result = await self.controller.invoke(inputs, agent_session)
                 final_result_holder["result"] = result
             finally:
                 if need_cleanup:
-                    await agent_runtime.post_run()
+                    await agent_session.post_run()
 
         task = asyncio.create_task(stream_process())
         result_for_memory_list = []
 
         if own_stream:
             # Only read from stream_iterator when owning stream
-            # If external runtime passed, external caller handles reading
-            async for result in agent_runtime.stream_iterator():
+            # If external session passed, external caller handles reading
+            async for result in agent_session.stream_iterator():
                 result_for_memory_list.append(_extract_answer_output(result))
                 yield result
 

@@ -9,7 +9,7 @@ from openjiuwen.core.workflow.components.base import WorkflowComponent, Componen
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.workflow.base import Workflow
 from openjiuwen.core.graph.visualization.drawable_graph import DrawableGraph
 
@@ -26,12 +26,12 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
                                           error_msg="sub_workflow is None"))
         self._sub_workflow = sub_workflow
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
-        return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), runtime.base(), inputs.get(CONFIG_KEY))
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+        return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), session.base(), inputs.get(CONFIG_KEY))
 
-    async def stream(self, inputs: Input, runtime: Runtime, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
         async for value in self._sub_workflow.sub_stream(inputs.get(INPUTS_KEY),
-                                                         runtime.base(), inputs.get(CONFIG_KEY)):
+                                                         session.base(), inputs.get(CONFIG_KEY)):
             yield value
 
     def graph_invoker(self) -> bool:

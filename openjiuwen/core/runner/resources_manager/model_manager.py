@@ -22,12 +22,12 @@ class ModelMgr:
 
     def add_model(self, model_id: str, model: BaseModelClient) -> None:
         if model_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_MODEL_ADD_FAILED.code,
-                                      StatusCode.RUNTIME_MODEL_ADD_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_MODEL_ADD_FAILED.code,
+                                      StatusCode.SESSION_MODEL_ADD_FAILED.errmsg.format(
                                           reason="model_id is invalid, can not be None"))
         if model is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_MODEL_ADD_FAILED.code,
-                                      StatusCode.RUNTIME_MODEL_ADD_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_MODEL_ADD_FAILED.code,
+                                      StatusCode.SESSION_MODEL_ADD_FAILED.errmsg.format(
                                           reason="model is invalid, can not be None"))
         self._models[model_id] = model
 
@@ -40,10 +40,10 @@ class ModelMgr:
             return None
         return self._models.pop(model_id, None)
 
-    def get_model(self, model_id: str, runtime=None) -> Optional[BaseModelClient]:
+    def get_model(self, model_id: str, session=None) -> Optional[BaseModelClient]:
         if model_id is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_MODEL_GET_FAILED.code,
-                                      StatusCode.RUNTIME_MODEL_GET_FAILED.errmsg.format(
+            raise JiuWenBaseException(StatusCode.SESSION_MODEL_GET_FAILED.code,
+                                      StatusCode.SESSION_MODEL_GET_FAILED.errmsg.format(
                                           reason="model_id is invalid, can not be None"))
         model = self._models.get(model_id)
-        return decorate_model_with_trace(model, runtime)
+        return decorate_model_with_trace(model, session)

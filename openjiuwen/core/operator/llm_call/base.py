@@ -4,7 +4,7 @@
 
 from typing import Dict, Any, Optional, List, Callable, AsyncIterator
 
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.llm.base import BaseModelClient
 from openjiuwen.core.foundation.llm.messages import BaseMessage, SystemMessage
@@ -34,19 +34,19 @@ class LLMCall:
 
     async def invoke(self,
                      inputs: Dict[str, Any],
-                     runtime: Runtime,
+                     session: Session,
                      history: Optional[List[BaseMessage]] = None,
                      tools: Optional[List[ToolInfo]] = None,
                      ) -> BaseMessage:
         messages = self._format_llm_input(inputs, history)
         response = await self._llm.ainvoke(self._model_name, messages, tools=tools)
         if self._optimizer_callback is not None:
-            await self._optimizer_callback(self._llm_call_id, inputs, response, runtime)
+            await self._optimizer_callback(self._llm_call_id, inputs, response, session)
         return response
 
     async def stream(self,
                      inputs: Dict[str, Any],
-                     runtime: Runtime,
+                     session: Session,
                      history: Optional[List[BaseMessage]] = None,
                      tools: Optional[List[ToolInfo]] = None,
                      ) -> AsyncIterator:
@@ -57,7 +57,7 @@ class LLMCall:
             yield chunk
         response = "".join(message_chunks)
         if self._optimizer_callback is not None:
-            await self._optimizer_callback(self._llm_call_id, inputs, response, runtime)
+            await self._optimizer_callback(self._llm_call_id, inputs, response, session)
 
     def set_optimizer_callback(self, callback: Optional[Callable]) -> None:
         self._optimizer_callback = callback

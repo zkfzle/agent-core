@@ -11,7 +11,7 @@ from openjiuwen.core.graph.store import Store
 from openjiuwen.core.session.constants import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.session.interaction.base import Checkpointer
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
-from openjiuwen.core.session.runtime import BaseRuntime
+from openjiuwen.core.session.session import BaseSession
 
 
 class InMemoryCheckpointer(Checkpointer):
@@ -22,85 +22,85 @@ class InMemoryCheckpointer(Checkpointer):
         self._graph_store = InMemoryStore()
         self._session_to_workflow_ids = {}
 
-    async def pre_workflow_execute(self, runtime: BaseRuntime, inputs: InteractiveInput):
-        logger.info(f"workflow: {runtime.workflow_id()} create or restore checkpoint from "
-                    f"session: {runtime.session_id()}")
+    async def pre_workflow_execute(self, session: BaseSession, inputs: InteractiveInput):
+        logger.info(f"workflow: {session.workflow_id()} create or restore checkpoint from "
+                    f"session: {session.session_id()}")
         from openjiuwen.core.session.interaction.workflow_storage import WorkflowStorage
-        workflow_store = self._workflow_stores.setdefault(runtime.session_id(), WorkflowStorage())
-        self._session_to_workflow_ids.setdefault(runtime.session_id(), set())
+        workflow_store = self._workflow_stores.setdefault(session.session_id(), WorkflowStorage())
+        self._session_to_workflow_ids.setdefault(session.session_id(), set())
         if isinstance(inputs, InteractiveInput):
-            workflow_store.recover(runtime, inputs)
+            workflow_store.recover(session, inputs)
         else:
-            if not workflow_store.exists(runtime):
+            if not workflow_store.exists(session):
                 return
-            if runtime.config().get_env(FORCE_DEL_WORKFLOW_STATE_KEY, False):
-                await self._graph_store.delete(runtime.session_id(), runtime.workflow_id())
-                workflow_store.clear(runtime.workflow_id())
+            if session.config().get_env(FORCE_DEL_WORKFLOW_STATE_KEY, False):
+                await self._graph_store.delete(session.session_id(), session.workflow_id())
+                workflow_store.clear(session.workflow_id())
             else:
                 raise JiuWenBaseException(StatusCode.WORKFLOW_STATE_EXISTS_ERROR.code,
                                           StatusCode.WORKFLOW_STATE_EXISTS_ERROR.errmsg)
 
-    async def post_workflow_execute(self, runtime: BaseRuntime, result, exception):
-        workflow_store = self._workflow_stores.get(runtime.session_id())
-        workflow_ids = self._session_to_workflow_ids.get(runtime.session_id())
+    async def post_workflow_execute(self, session: BaseSession, result, exception):
+        workflow_store = self._workflow_stores.get(session.session_id())
+        workflow_ids = self._session_to_workflow_ids.get(session.session_id())
         if exception is not None:
             logger.info(f"exception in workflow, save checkpoint for "
-                        f"workflow: {runtime.workflow_id()} in session: {runtime.session_id()}")
+                        f"workflow: {session.workflow_id()} in session: {session.session_id()}")
             if workflow_store is None:
-                raise JiuWenBaseException(StatusCode.RUNTIME_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.code,
-                                          StatusCode.RUNTIME_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.errmsg)
-            workflow_store.save(runtime)
-            workflow_ids.add(runtime.workflow_id())
+                raise JiuWenBaseException(StatusCode.SESSION_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.code,
+                                          StatusCode.SESSION_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.errmsg)
+            workflow_store.save(session)
+            workflow_ids.add(session.workflow_id())
             raise exception
         from openjiuwen.core.graph.pregel import TASK_STATUS_INTERRUPT
         if result.get(TASK_STATUS_INTERRUPT) is None:
-            logger.info(f"clear checkpoint for workflow: {runtime.workflow_id()} in session: {runtime.session_id()}")
-            await self._graph_store.delete(runtime.session_id(), runtime.workflow_id())
+            logger.info(f"clear checkpoint for workflow: {session.workflow_id()} in session: {session.session_id()}")
+            await self._graph_store.delete(session.session_id(), session.workflow_id())
             if workflow_store is not None:
-                workflow_store.clear(runtime.workflow_id())
-                workflow_ids.discard(runtime.workflow_id())
+                workflow_store.clear(session.workflow_id())
+                workflow_ids.discard(session.workflow_id())
             else:
-                logger.warning(f"workflow_store of workflow: {runtime.workflow_id()} dose not exist in "
-                            f"session: {runtime.session_id()}")
+                logger.warning(f"workflow_store of workflow: {session.workflow_id()} dose not exist in "
+                            f"session: {session.session_id()}")
 
-            if runtime.config().get_agent_config() is None:
-                logger.info(f"clear session: {runtime.session_id()}")
-                self._workflow_stores.pop(runtime.session_id(), None)
-                self._session_to_workflow_ids.pop(runtime.session_id(), None)
+            if session.config().get_agent_config() is None:
+                logger.info(f"clear session: {session.session_id()}")
+                self._workflow_stores.pop(session.session_id(), None)
+                self._session_to_workflow_ids.pop(session.session_id(), None)
         else:
             logger.info(f"interaction required, save checkpoint for "
-                        f"workflow: {runtime.workflow_id()} in session: {runtime.session_id()}")
+                        f"workflow: {session.workflow_id()} in session: {session.session_id()}")
             if workflow_store is None:
-                raise JiuWenBaseException(StatusCode.RUNTIME_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.code,
-                                          StatusCode.RUNTIME_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.errmsg)
-            workflow_store.save(runtime)
-            workflow_ids.add(runtime.workflow_id())
+                raise JiuWenBaseException(StatusCode.SESSION_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.code,
+                                          StatusCode.SESSION_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR.errmsg)
+            workflow_store.save(session)
+            workflow_ids.add(session.workflow_id())
 
-    async def pre_agent_execute(self, runtime: BaseRuntime, inputs):
-        logger.info(f"agent: {runtime.agent_id()} create or restore checkpoint from session: {runtime.session_id()}")
+    async def pre_agent_execute(self, session: BaseSession, inputs):
+        logger.info(f"agent: {session.agent_id()} create or restore checkpoint from session: {session.session_id()}")
         from openjiuwen.core.session.interaction.agent_storage import AgentStorage
-        agent_store = self._agent_stores.setdefault(runtime.session_id(), AgentStorage())
-        agent_store.recover(runtime)
+        agent_store = self._agent_stores.setdefault(session.session_id(), AgentStorage())
+        agent_store.recover(session)
         if inputs is not None:
-            runtime.state().set_state({INTERACTIVE_INPUT: [inputs]})
+            session.state().set_state({INTERACTIVE_INPUT: [inputs]})
 
-    async def interrupt_agent_execute(self, runtime: BaseRuntime):
+    async def interrupt_agent_execute(self, session: BaseSession):
         logger.info(f"interaction required, save checkpoint for "
-                    f"agent: {runtime.agent_id()} in session: {runtime.session_id()}")
-        agent_store = self._agent_stores.get(runtime.session_id())
+                    f"agent: {session.agent_id()} in session: {session.session_id()}")
+        agent_store = self._agent_stores.get(session.session_id())
         if agent_store is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_CHECKPOINTER_NONE_AGENT_STORE_ERROR.code,
-                                      StatusCode.RUNTIME_CHECKPOINTER_NONE_AGENT_STORE_ERROR.errmsg)
-        agent_store.save(runtime)
+            raise JiuWenBaseException(StatusCode.SESSION_CHECKPOINTER_NONE_AGENT_STORE_ERROR.code,
+                                      StatusCode.SESSION_CHECKPOINTER_NONE_AGENT_STORE_ERROR.errmsg)
+        agent_store.save(session)
 
-    async def post_agent_execute(self, runtime: BaseRuntime):
+    async def post_agent_execute(self, session: BaseSession):
         logger.info(f"agent finished, save checkpoint for "
-                    f"agent: {runtime.agent_id()} in session: {runtime.session_id()}")
-        agent_store = self._agent_stores.get(runtime.session_id())
+                    f"agent: {session.agent_id()} in session: {session.session_id()}")
+        agent_store = self._agent_stores.get(session.session_id())
         if agent_store is None:
-            raise JiuWenBaseException(StatusCode.RUNTIME_CHECKPOINTER_NONE_AGENT_STORE_ERROR.code,
-                                      StatusCode.RUNTIME_CHECKPOINTER_NONE_AGENT_STORE_ERROR.errmsg)
-        agent_store.save(runtime)
+            raise JiuWenBaseException(StatusCode.SESSION_CHECKPOINTER_NONE_AGENT_STORE_ERROR.code,
+                                      StatusCode.SESSION_CHECKPOINTER_NONE_AGENT_STORE_ERROR.errmsg)
+        agent_store.save(session)
 
     async def release(self, session_id: str, agent_id: str = None):
         if agent_id is not None:

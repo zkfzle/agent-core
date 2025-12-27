@@ -12,7 +12,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import ComponentConfig, WorkflowComponent, ComponentExecutable
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Executable, Input, Output
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.tool import constant
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
@@ -106,7 +106,7 @@ class ToolExecutable(ComponentExecutable):
                                                    f"Parameter {param.name}, {param.type} is not a valid type.")
                 inputs[param.name] = value
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         if self._tool is None:
             ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
         tool_inputs = self._validate_inputs(inputs)

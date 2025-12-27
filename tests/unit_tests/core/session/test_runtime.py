@@ -1,21 +1,21 @@
-from openjiuwen.core.session.agent import AgentRuntime
-from openjiuwen.core.session.workflow import WorkflowRuntime, NodeRuntime
+from openjiuwen.core.session.agent import AgentSession
+from openjiuwen.core.session.workflow import WorkflowSession, NodeSession
 from openjiuwen.core.session.state import ReadableStateLike
 from openjiuwen.core.session import get_by_schema
 from openjiuwen.core.session.utils import update_dict, root_to_index
-from openjiuwen.core.session.wrapper import TaskRuntime
+from openjiuwen.core.session.wrapper import TaskSession
 
 
-class TestRuntime:
+class TestSession:
     def test_basic(self):
         # Workflow context/
-        context = WorkflowRuntime()
+        context = WorkflowSession()
         context.state().commit_user_inputs({'a': 1, 'b': 2})
         assert context.state().get_global('a') == 1
         assert context.state().get_global('b') == 2
 
         # node1节点
-        node1_context = NodeRuntime(context, "node1")
+        node1_context = NodeSession(context, "node1")
         assert node1_context.node_id() == "node1"
         assert node1_context.executable_id() == "node1"
         assert node1_context.parent_id() == ""
@@ -38,16 +38,16 @@ class TestRuntime:
         assert node1_context.state().get_global('c') == 3
         assert node1_context.state().get('url') == '0.0.0.1'
 
-        node2_context = NodeRuntime(context, "node2")
+        node2_context = NodeSession(context, "node2")
         assert node2_context.state().get_global('c') == 3
         assert node2_context.state().get('url') == None
 
         # 嵌套workflow
-        sub_workflow_context = NodeRuntime(context, "sub_workflow1")
+        sub_workflow_context = NodeSession(context, "sub_workflow1")
         sub_workflow_context.state().commit_user_inputs({'a': 11, 'b': 12})
         sub_workflow_context.state().commit()
 
-        sub_node1_context = NodeRuntime(sub_workflow_context, "node1")
+        sub_node1_context = NodeSession(sub_workflow_context, "node1")
         assert sub_node1_context.node_id() == "node1"
         assert sub_node1_context.parent_id() == "sub_workflow1"
         assert sub_node1_context.executable_id() == "sub_workflow1.node1"
@@ -251,21 +251,21 @@ class TestRuntime:
         assert source[1][3] is None  # Filled with None
         assert source[1][4] is None  # Filled with None
 
-    def test_task_runtime(self):
-        runtime = AgentRuntime("abc")
-        task_runtime = TaskRuntime(inner=runtime)
+    def test_task_session(self):
+        session = AgentSession("abc")
+        task_session = TaskSession(inner=session)
         data = {"data": {"a": 1}}
-        task_runtime.update_state({"result": data})
-        assert task_runtime.get_state("result") == {"data": {"a": 1}}
+        task_session.update_state({"result": data})
+        assert task_session.get_state("result") == {"data": {"a": 1}}
 
-        assert task_runtime.get_state("result") == {"data": {"a": 1}}
+        assert task_session.get_state("result") == {"data": {"a": 1}}
 
         data2 = {"data": {"b": 1}}
-        task_runtime.update_state({"result": data2})
-        assert task_runtime.get_state("result") == {"data": {"a": 1, "b": 1}}
+        task_session.update_state({"result": data2})
+        assert task_session.get_state("result") == {"data": {"a": 1, "b": 1}}
 
-        task_runtime.update_state({"result": None})
-        assert task_runtime.get_state("result") is None
+        task_session.update_state({"result": None})
+        assert task_session.get_state("result") is None
 
-        task_runtime.update_state({"result": data2})
-        assert task_runtime.get_state("result") == {"data": {"b": 1}}
+        task_session.update_state({"result": data2})
+        assert task_session.get_state("result") == {"data": {"b": 1}}

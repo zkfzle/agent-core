@@ -170,14 +170,14 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
             print("ReActAgent 输出结果：", i)
 
     @unittest.skip("require network")
-    async def test_react_agent_invoke_without_runtime(self):
-        """测试不传runtime的调用（使用新的动态配置方法）"""
+    async def test_react_agent_invoke_without_session(self):
+        """测试不传session的调用（使用新的动态配置方法）"""
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
 
         # 1. 创建最小化配置的 single_agent
         react_agent_config = ReActAgentConfig(
-            id="react_agent_no_runtime",
+            id="react_agent_no_session",
             version="0.0.1",
             description="AI助手",
             model=self._create_model()

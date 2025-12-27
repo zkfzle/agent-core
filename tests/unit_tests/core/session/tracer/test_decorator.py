@@ -7,7 +7,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
 from openjiuwen.core.workflow import LLMCompConfig
 from openjiuwen.core.context_engine import Context
-from openjiuwen.core.session import BaseRuntime
+from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode
 from openjiuwen.core.session.tracer import decorate_tool_with_trace, decorate_workflow_with_trace, \
     decorate_model_with_trace
@@ -60,13 +60,13 @@ class MockTool(Tool):
 
 
 class MockWorkflow:
-    async def invoke(self, inputs: Input, runtime: BaseRuntime, context: Context = None):
+    async def invoke(self, inputs: Input, session: BaseSession, context: Context = None):
         logger.info(inputs)
-        async for item in self.stream(inputs, runtime, context=context, stream_modes=[BaseStreamMode.CUSTOM]):
+        async for item in self.stream(inputs, session, context=context, stream_modes=[BaseStreamMode.CUSTOM]):
             continue
         return inputs
 
-    async def stream(self, inputs: Input, runtime: BaseRuntime, context: Context = None,
+    async def stream(self, inputs: Input, session: BaseSession, context: Context = None,
                      stream_modes: list[StreamMode] = None):
         logger.info(inputs)
         logger.info(f"begin to ainvoke , inputs={inputs}")
@@ -146,11 +146,11 @@ class TestDecator:
         mock_trigger.tracer_agent_span_manager = mock_agent_span_manager
 
         mock_agent_span = MagicMock()
-        mock_runtime = MagicMock()
-        mock_runtime.tracer.return_value = mock_tracer
-        mock_runtime.span.return_value = mock_agent_span
+        mock_session = MagicMock()
+        mock_session.tracer.return_value = mock_tracer
+        mock_session.span.return_value = mock_agent_span
 
-        wrapped_tool = decorate_tool_with_trace(tool, mock_runtime)
+        wrapped_tool = decorate_tool_with_trace(tool, mock_session)
         await wrapped_tool.invoke({"a": "a"}, context=3)
         for item in results:
             print(item)
@@ -178,11 +178,11 @@ class TestDecator:
         mock_trigger.tracer_agent_span_manager = mock_agent_span_manager
 
         mock_agent_span = MagicMock()
-        mock_runtime = MagicMock()
-        mock_runtime.tracer.return_value = mock_tracer
-        mock_runtime.span.return_value = mock_agent_span
+        mock_session = MagicMock()
+        mock_session.tracer.return_value = mock_tracer
+        mock_session.span.return_value = mock_agent_span
 
-        wrapped_workflow = decorate_workflow_with_trace(workflow, mock_runtime)
+        wrapped_workflow = decorate_workflow_with_trace(workflow, mock_session)
 
         await wrapped_workflow.invoke({"a": "a"}, MagicMock(), context=None)
 
@@ -217,11 +217,11 @@ class TestDecator:
         mock_trigger.tracer_agent_span_manager = mock_agent_span_manager
 
         mock_agent_span = MagicMock()
-        mock_runtime = MagicMock()
-        mock_runtime.tracer.return_value = mock_tracer
-        mock_runtime.span.return_value = mock_agent_span
+        mock_session = MagicMock()
+        mock_session.tracer.return_value = mock_tracer
+        mock_session.span.return_value = mock_agent_span
 
-        mocked_model = decorate_model_with_trace(model, mock_runtime)
+        mocked_model = decorate_model_with_trace(model, mock_session)
 
         mocked_model.invoke("a", [BaseMessage(role="aa")])
 

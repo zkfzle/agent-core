@@ -18,7 +18,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.context_engine import ContextEngine
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.messages import BaseMessage
 
@@ -32,7 +32,7 @@ class IntentDetector:
             intent_config: IntentDetectionConfig,
             agent_config: AgentConfig,
             context_engine: ContextEngine,
-            runtime: Runtime
+            session: Session
     ):
         """
         Initialize IntentDetector
@@ -41,12 +41,12 @@ class IntentDetector:
             intent_config: IntentDetection config
             agent_config: Agent config
             context_engine: Context engine
-            runtime: Runtime environment
+            session: Session environment
         """
         self.intent_config = intent_config
         self.agent_config = agent_config
         self.context_engine = context_engine
-        self.runtime = runtime
+        self.session = session
 
     async def process_message(self, event: Event) -> List[Task]:
         """
@@ -60,7 +60,7 @@ class IntentDetector:
         """
         # 1. Detect intent
         llm_inputs = self._prepare_detection_input(event)
-        session_id = self.runtime.session_id()
+        session_id = self.session.session_id()
         if UserConfig.is_sensitive():
             logger.info(f"[%s] <LLM Input>", session_id)
         else:
@@ -94,7 +94,7 @@ class IntentDetector:
         Note: If agent_config has no workflows, use intent_id as target_name
         """
         tasks = []
-        session_id = self.runtime.session_id()
+        session_id = self.session.session_id()
         task_unique_id = f"{session_id}_intent_{intent_id}_{secrets.token_hex(4)}"
         
         if intent_id == IntentDetectionConstants.DEFAULT_CLASS:
@@ -155,7 +155,7 @@ class IntentDetector:
         Note: If agent_config has no workflows, return category name directly
         """
         detected_intent_id = ""
-        session_id = self.runtime.session_id()
+        session_id = self.session.session_id()
         try:
             cleaned = re.sub(
                 r'^\s*```json\s*|\s*```\s*$',
@@ -220,7 +220,7 @@ class IntentDetector:
     ) -> str:
         try:
             model = ReasonerUtils.get_model(
-                self.agent_config.model, self.runtime
+                self.agent_config.model, self.session
             )
             llm_output = await model.ainvoke(
                 self.agent_config.model.model_info.model_name, llm_inputs
@@ -268,7 +268,7 @@ class IntentDetector:
         if self.intent_config.enable_history:
             chat_history = ReasonerUtils.get_chat_history(
                 self.context_engine,
-                self.runtime,
+                self.session,
                 self.intent_config.chat_history_max_turn
             )
             chat_history_str = ""

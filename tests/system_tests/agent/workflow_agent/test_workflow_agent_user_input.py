@@ -24,7 +24,7 @@ from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session import InteractiveInput
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import Workflow
@@ -70,7 +70,7 @@ class UserInputComponent(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.input_conf_list: List[UserInputElem] = conf.inputs
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Any) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Any) -> Output:
         # 准备要请求的字段列表（dict格式）
         request_dict = {
             elem.input_name: {
@@ -81,8 +81,8 @@ class UserInputComponent(ComponentExecutable, WorkflowComponent):
             for elem in self.input_conf_list
         }
 
-        # 使用 runtime.interact 请求用户输入（传入dict）
-        result = await runtime.interact(request_dict)
+        # 使用 session.interact 请求用户输入（传入dict）
+        result = await session.interact(request_dict)
 
         # 验证必填字段
         for input_elem in self.input_conf_list:

@@ -25,7 +25,7 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import InteractionOutput
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import CustomSchema, OutputSchema
 from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.workflow import WorkflowOutput, WorkflowExecutionState
@@ -37,27 +37,27 @@ class WorkflowController(IntentDetectionController):
     Core responsibilities:
     1. Intent detection: Select workflow + Check interruption state
     2. Task execution: Execute workflow (new/resume)
-    3. Interruption handling: Save interruption state to runtime.state
+    3. Interruption handling: Save interruption state to session.state
     """
 
     def __init__(
             self,
             config: AgentConfig = None,
             context_engine=None,
-            runtime=None
+            session=None
     ):
         """Initialize WorkflowController
         
         Args:
             config: Agent configuration (optional, can be injected later)
             context_engine: Context engine (optional, can be injected later)
-            runtime: Agent-level Runtime (optional, can be injected later)
+            session: Agent-level Session (optional, can be injected later)
             
         Note:
             If parameters are not provided, they will be injected by
             ControllerAgent via setup_from_agent()
         """
-        super().__init__(config, context_engine, runtime)
+        super().__init__(config, context_engine, session)
 
         # Maintain backward compatible attribute name
         self.agent_config = config
@@ -69,7 +69,7 @@ class WorkflowController(IntentDetectionController):
 
     def _init_intent_detection(self):
         """Initialize intent detection module - can be called after setup_from_agent"""
-        # Intent detection will be lazily initialized when needed with runtime
+        # Intent detection will be lazily initialized when needed with session
         pass
 
     def setup_from_agent(self, agent):
@@ -81,7 +81,7 @@ class WorkflowController(IntentDetectionController):
     async def intent_detection(
             self,
             event: Event,
-            runtime: Runtime
+            session: Session
     ) -> Intent:
         """Intent detection: Select workflow + Check interruption state
         
@@ -94,7 +94,7 @@ class WorkflowController(IntentDetectionController):
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Intent: Intent object
@@ -109,7 +109,7 @@ class WorkflowController(IntentDetectionController):
         interactive_input = getattr(event.content, 'interactive_input', None)
         if interactive_input is not None and interactive_input.user_inputs:
             resume_result = self._find_interrupted_task_by_node_id(
-                interactive_input, runtime
+                interactive_input, session
             )
             if resume_result:
                 workflow, task = resume_result
@@ -132,7 +132,7 @@ class WorkflowController(IntentDetectionController):
         else:
             # Multiple workflows: LLM recognition
             detected_workflow = await self._detect_workflow_via_llm(
-                event, runtime
+                event, session
             )
             # Check if default_response should be used
             if detected_workflow is None:
@@ -150,14 +150,14 @@ class WorkflowController(IntentDetectionController):
 
         # 2. Check if detected workflow has an interrupted task
         interrupted_task = self._find_interrupted_task(
-            detected_workflow, runtime
+            detected_workflow, session
         )
 
         if interrupted_task:
             # Found interrupted task for this workflow
             # Check if we should resume or return the interruption again
             should_resume = self._should_resume_interrupted_task(
-                interrupted_task, event, runtime
+                interrupted_task, event, session
             )
 
             if should_resume:
@@ -203,7 +203,7 @@ class WorkflowController(IntentDetectionController):
             self,
             message_content: EventContent,
             task: Task,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Execute workflow task
         
@@ -214,13 +214,13 @@ class WorkflowController(IntentDetectionController):
         Args:
             message_content: Message content
             task: Task object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             dict: Execution result
         """
         workflow_id = task.input.target_id
-        conversation_id = runtime.session_id()
+        conversation_id = session.session_id()
 
         try:
             # 1. Check if there's a running task for this conversation
@@ -248,18 +248,18 @@ class WorkflowController(IntentDetectionController):
                                 arguments={}
                             )
                         )
-                        self._clear_interrupted_state(temp_task, runtime)
+                        self._clear_interrupted_state(temp_task, session)
 
             # 2. Prepare execution (existing code)
             task.status = TaskStatus.RUNNING
 
             # Get workflow object (from controller's single_agent)
-            workflow = await self._find_workflow_from_agent(workflow_id, runtime)
+            workflow = await self._find_workflow_from_agent(workflow_id, session)
             if not workflow:
                 raise ValueError(f"Workflow not found: {workflow_id}")
 
-            # Create workflow runtime
-            workflow_runtime = runtime.create_workflow_runtime()
+            # Create workflow session
+            workflow_session = session.create_workflow_session()
 
             # Prepare input parameters
             inputs = task.input.arguments
@@ -277,12 +277,12 @@ class WorkflowController(IntentDetectionController):
             #    - tracer_workflow (execution trace)
             #    - __interaction__ (interrupt request)
             #    - workflow_final (completion result)
-            # Stream data written to runtime, single_agent layer's stream_iterator can read
+            # Stream data written to session, single_agent layer's stream_iterator can read
             async def run_workflow_streaming():
                 workflow_stream = Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
-                    runtime=workflow_runtime,
+                    session=workflow_session,
                     context=self._context_engine.get_workflow_context(
                         session_id=conversation_id, workflow_id=workflow_id
                     )
@@ -301,14 +301,14 @@ class WorkflowController(IntentDetectionController):
                         elif chunk.type == "workflow_final":
                             # Direct pass-through of workflow_final frame from workflow
                             final_result = chunk.payload
-                            await runtime.write_stream(chunk)
+                            await session.write_stream(chunk)
                         else:
                             # Pass through other stream data (tracer etc.)
-                            await runtime.write_stream(chunk)
+                            await session.write_stream(chunk)
                     elif isinstance(chunk, CustomSchema):
-                        await runtime.write_custom_stream(chunk)
+                        await session.write_custom_stream(chunk)
                     else:
-                        await runtime.write_stream(chunk)
+                        await session.write_stream(chunk)
                     chunks.append(chunk)
 
                 # add messages to context
@@ -324,7 +324,7 @@ class WorkflowController(IntentDetectionController):
                                 # Keep interaction interrupt output content
                                 content_parts.append(str(chunk.payload.value) if chunk.payload.value else "")
                     workflow_content = "".join(content_parts)
-                    MessageUtils.add_ai_message(AIMessage(content=workflow_content), self._context_engine, runtime)
+                    MessageUtils.add_ai_message(AIMessage(content=workflow_content), self._context_engine, session)
 
                 # Construct WorkflowOutput
                 if has_interaction:
@@ -381,7 +381,7 @@ class WorkflowController(IntentDetectionController):
                 )
                 
                 # 状态保存：保存所有中断
-                await self.interrupt_task(task, runtime, interaction_data)
+                await self.interrupt_task(task, session, interaction_data)
 
                 # 流式返回：只返回第一个中断
                 first_interrupt = self._get_first_interrupt(interaction_data)
@@ -396,7 +396,7 @@ class WorkflowController(IntentDetectionController):
                 task.status = TaskStatus.SUCCESS
 
                 # Clean up interruption state (if any)
-                self._clear_interrupted_state(task, runtime)
+                self._clear_interrupted_state(task, session)
 
                 # workflow_final already passed through directly in run_workflow_streaming
                 # If workflow doesn't return workflow_final frame, don't write
@@ -427,7 +427,7 @@ class WorkflowController(IntentDetectionController):
             self,
             event: Event,
             intent: Intent,
-            runtime: Runtime
+            session: Session
     ) -> Dict:
         """Override parent's _handle_resume to support return_interruption logic
 
@@ -437,7 +437,7 @@ class WorkflowController(IntentDetectionController):
         Args:
             event: Event object
             intent: Intent object
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             dict: Execution result or interruption data
@@ -449,18 +449,18 @@ class WorkflowController(IntentDetectionController):
             # Get saved interruption data from state
             task = intent.task
             workflow_id = task.input.target_id
-            state = runtime.get_state("workflow_controller")
+            state = session.get_state("workflow_controller")
 
             if not state:
                 logger.warning("No workflow_controller state found, falling back to normal resume")
-                return await super()._handle_resume(event, intent, runtime)
+                return await super()._handle_resume(event, intent, session)
 
             state_key = workflow_id.replace('.', '_')
             interrupted_info = state.get("interrupted_tasks", {}).get(state_key)
 
             if not interrupted_info:
                 logger.warning("No interrupted task info found, falling back to normal resume")
-                return await super()._handle_resume(event, intent, runtime)
+                return await super()._handle_resume(event, intent, session)
 
             # Reconstruct the interruption OutputSchema
             component_id = interrupted_info.get("component_id", "questioner")
@@ -468,7 +468,7 @@ class WorkflowController(IntentDetectionController):
 
             if last_interaction_value is None:
                 logger.warning("No last_interaction_value found, falling back to normal resume")
-                return await super()._handle_resume(event, intent, runtime)
+                return await super()._handle_resume(event, intent, session)
 
             # Create InteractionOutput
             interaction_output = InteractionOutput(
@@ -486,21 +486,21 @@ class WorkflowController(IntentDetectionController):
             ]
 
         # Normal resume flow
-        return await super()._handle_resume(event, intent, runtime)
+        return await super()._handle_resume(event, intent, session)
 
     async def interrupt_task(
             self,
             task: Task,
-            runtime: Runtime,
+            session: Session,
             interaction_data: Optional[list] = None
     ) -> Dict:
         """Interrupt workflow task
         
-        Save interruption state to runtime.state
+        Save interruption state to session.state
         
         Args:
             task: Task object
-            runtime: Runtime context
+            session: Session context
             interaction_data: Interaction data during interruption (OutputSchema list)
             
         Returns:
@@ -511,8 +511,8 @@ class WorkflowController(IntentDetectionController):
         # 1. Update task status
         task.status = TaskStatus.INTERRUPTED
 
-        # 2. Save interruption state to runtime.state
-        state = runtime.get_state("workflow_controller") or {}
+        # 2. Save interruption state to session.state
+        state = session.get_state("workflow_controller") or {}
         if "interrupted_tasks" not in state:
             state["interrupted_tasks"] = {}
 
@@ -533,8 +533,8 @@ class WorkflowController(IntentDetectionController):
 
         # Clear old state first, then update with new state
         # This ensures proper cleanup of nested dict keys
-        runtime.update_state({"workflow_controller": None})
-        runtime.update_state({"workflow_controller": state})
+        session.update_state({"workflow_controller": None})
+        session.update_state({"workflow_controller": state})
 
         logger.info(
             f"Task interrupted: workflow={workflow_id}, "
@@ -552,7 +552,7 @@ class WorkflowController(IntentDetectionController):
     async def _detect_workflow_via_llm(
             self,
             event: Event,
-            runtime: Runtime
+            session: Session
     ) -> Optional[WorkflowSchema]:
         """Use LLM to detect workflow
         
@@ -561,15 +561,15 @@ class WorkflowController(IntentDetectionController):
         
         Args:
             event: Event object
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Optional[WorkflowSchema]: Detected workflow schema, or None if
                 default_response should be used
         """
         try:
-            # Initialize intent detection module (pass runtime)
-            self._ensure_intent_detection_initialized(runtime)
+            # Initialize intent detection module (pass session)
+            self._ensure_intent_detection_initialized(session)
 
             # If no intent detection, use first workflow
             if not self._intent_detector:
@@ -618,19 +618,19 @@ class WorkflowController(IntentDetectionController):
             logger.error(f"Intent detection failed: {e}, using first workflow")
             return self.agent_config.workflows[0]
 
-    def _ensure_intent_detection_initialized(self, runtime: Runtime):
+    def _ensure_intent_detection_initialized(self, session: Session):
         """Initialize intent detection module
         
-        If already has intent_detection, update runtime
+        If already has intent_detection, update session
         Otherwise create new IntentDetection instance
         
         Args:
-            runtime: Runtime context
+            session: Session context
         """
-        # If already initialized, update runtime
+        # If already initialized, update session
         if self._intent_detector:
-            self._intent_detector.runtime = runtime
-            logger.debug("Updated intent detection runtime")
+            self._intent_detector.session = session
+            logger.debug("Updated intent detection session")
             return
 
         # Prefer description for classification (richer semantics); fallback to name if not configured
@@ -652,7 +652,7 @@ class WorkflowController(IntentDetectionController):
             intent_config=intent_config,
             agent_config=self.agent_config,
             context_engine=self._context_engine,
-            runtime=runtime  # Pass runtime
+            session=session  # Pass session
         )
 
         logger.info("Intent detection module initialized")
@@ -661,7 +661,7 @@ class WorkflowController(IntentDetectionController):
             self,
             task: Task,
             event: Event,
-            runtime: Runtime
+            session: Session
     ) -> bool:
         """Check if interrupted task should resume or return interruption again
 
@@ -673,7 +673,7 @@ class WorkflowController(IntentDetectionController):
         Args:
             task: Interrupted task
             message: Current message
-            runtime: Runtime context
+            session: Session context
 
         Returns:
             bool: True if should resume, False if should return interruption again
@@ -685,7 +685,7 @@ class WorkflowController(IntentDetectionController):
             return True
 
         # 2. Get last_interaction_value from state
-        state = runtime.get_state("workflow_controller")
+        state = session.get_state("workflow_controller")
         if not state:
             logger.info("No workflow_controller state, will resume task")
             return True
@@ -728,7 +728,7 @@ class WorkflowController(IntentDetectionController):
     def _find_interrupted_task_by_node_id(
             self,
             interactive_input,
-            runtime: Runtime
+            session: Session
     ) -> Optional[tuple]:
         """Find interrupted workflow by node_id from InteractiveInput
         
@@ -737,12 +737,12 @@ class WorkflowController(IntentDetectionController):
         
         Args:
             interactive_input: InteractiveInput with user_inputs
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             tuple(WorkflowSchema, Task) if found, None otherwise
         """
-        state = runtime.get_state("workflow_controller")
+        state = session.get_state("workflow_controller")
         if not state:
             return None
 
@@ -804,17 +804,17 @@ class WorkflowController(IntentDetectionController):
     def _find_interrupted_task(
             self,
             workflow: WorkflowSchema,
-            runtime: Runtime
+            session: Session
     ) -> Optional[Task]:
         """Find interrupted task for specified workflow
         
-        Find interrupted task from runtime.state:
+        Find interrupted task from session.state:
         state["workflow_controller"]["interrupted_tasks"][workflow_id]
         
         Note: Since update_dict uses '.' as nested path separator,
         '.' is replaced with '_' when saving, so we need to replace when finding too
         """
-        state = runtime.get_state("workflow_controller")
+        state = session.get_state("workflow_controller")
         logger.info(f"_find_interrupted_task: workflow={workflow.name}, state={state}")
         if not state:
             logger.info("_find_interrupted_task: No workflow_controller state found")
@@ -904,12 +904,12 @@ class WorkflowController(IntentDetectionController):
 
         return filtered
 
-    def _get_interrupted_component_id(self, task: Task, runtime: Runtime) -> str:
+    def _get_interrupted_component_id(self, task: Task, session: Session) -> str:
         """Get component ID at interruption
         
-        Find component_id of interrupted task from runtime.state
+        Find component_id of interrupted task from session.state
         """
-        state = runtime.get_state("workflow_controller")
+        state = session.get_state("workflow_controller")
         if not state:
             return "questioner"  # Default value
 
@@ -923,12 +923,12 @@ class WorkflowController(IntentDetectionController):
 
         return "questioner"
 
-    def _clear_interrupted_state(self, task: Task, runtime: Runtime):
+    def _clear_interrupted_state(self, task: Task, session: Session):
         """Clean up interruption state
         
-        Remove interrupted task for specified workflow from runtime.state
+        Remove interrupted task for specified workflow from session.state
         """
-        state = runtime.get_state("workflow_controller") or {}
+        state = session.get_state("workflow_controller") or {}
         interrupted_tasks = state.get("interrupted_tasks", {})
 
         workflow_id = task.input.target_id
@@ -937,8 +937,8 @@ class WorkflowController(IntentDetectionController):
 
         if state_key in interrupted_tasks:
             del interrupted_tasks[state_key]
-            runtime.update_state({"workflow_controller": None})  # clear state first
-            runtime.update_state({"workflow_controller": state})
+            session.update_state({"workflow_controller": None})  # clear state first
+            session.update_state({"workflow_controller": state})
             logger.info(f"Cleared interrupted state for workflow: {workflow_id}, state_key: {state_key}")
 
     def _extract_component_id_from_interaction_data(
@@ -1104,12 +1104,12 @@ class WorkflowController(IntentDetectionController):
         
         return count
 
-    async def _find_workflow_from_agent(self, workflow_id: str, runtime: Runtime):
-        """Find workflow object from runtime
+    async def _find_workflow_from_agent(self, workflow_id: str, session: Session):
+        """Find workflow object from session
         
         Args:
             workflow_id: workflow ID (format: {id}_{version})
-            runtime: Task Runtime context
+            session: Task Session context
             
         Returns:
             Workflow object, None if not found
@@ -1121,37 +1121,37 @@ class WorkflowController(IntentDetectionController):
             all_workflows = resource_mgr.workflow()._resources
             logger.info(f"Available workflows in resource_mgr: {list(all_workflows.keys())}")
 
-            workflow = await resource_mgr.workflow().get_workflow(workflow_id, runtime.base())
+            workflow = await resource_mgr.workflow().get_workflow(workflow_id, session.base())
             logger.info(f"Found workflow from resource_mgr: {workflow is not None}")
             if workflow:
                 return workflow
         except Exception as e:
             logger.warning(f"Failed to find workflow from resource_mgr {workflow_id}: {e}")
 
-        # Then try to get from controller's _runtime
+        # Then try to get from controller's _session
         try:
-            logger.info(f"Trying to find workflow from controller._runtime: {workflow_id}")
-            workflow = await self._runtime.get_workflow(workflow_id)
-            logger.info(f"Found workflow from controller._runtime: {workflow is not None}")
+            logger.info(f"Trying to find workflow from controller._session: {workflow_id}")
+            workflow = await self._session.get_workflow(workflow_id)
+            logger.info(f"Found workflow from controller._session: {workflow is not None}")
             return workflow
         except Exception as e:
-            logger.error(f"Failed to find workflow from controller._runtime {workflow_id}: {e}")
+            logger.error(f"Failed to find workflow from controller._session {workflow_id}: {e}")
 
         logger.error(f"Workflow not found: {workflow_id}")
         return None
 
-    async def _find_workflow_by_id(self, workflow_id: str, runtime: Runtime):
-        """Find workflow object from runtime
+    async def _find_workflow_by_id(self, workflow_id: str, session: Session):
+        """Find workflow object from session
         
         Args:
             workflow_id: workflow ID (format: {id}_{version})
-            runtime: Runtime context
+            session: Session context
             
         Returns:
             Workflow object, None if not found
         """
         try:
-            workflow = await runtime.get_workflow(workflow_id)
+            workflow = await session.get_workflow(workflow_id)
             return workflow
         except Exception as e:
             logger.error(f"Failed to find workflow {workflow_id}: {e}")

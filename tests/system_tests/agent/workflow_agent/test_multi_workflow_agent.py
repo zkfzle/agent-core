@@ -13,7 +13,7 @@ from openjiuwen.core.workflow import WorkflowComponent
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
-from openjiuwen.core.session import Runtime
+from openjiuwen.core.session import Session
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -65,7 +65,7 @@ class DelayedComponent(ComponentExecutable, WorkflowComponent):
         self.name = name or comp_id
         self.comp_id = comp_id
 
-    async def invoke(self, inputs: Input, runtime: Runtime, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
         print(f"[{self.name}-{self.comp_id}] 开始执行: {datetime.now().strftime('%H:%M:%S')}")
         await asyncio.sleep(self.sleep)
         print(f"[{self.name}-{self.comp_id}] 执行完成: {datetime.now().strftime('%H:%M:%S')}")
@@ -1533,7 +1533,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         3. 第二次调用同一个工作流
         4. questioner 应该重新提问（验证状态已清空，不会残留第一次的数据）
         
-        这个测试用例验证了 _store_state_to_runtime 的修复：
+        这个测试用例验证了 _store_state_to_session 的修复：
         必须先 update_state({key: None}) 再 update_state({key: new_value})
         以确保嵌套字典中的旧键被正确删除。
         """

@@ -35,8 +35,8 @@ class ToolMgr(AbstractManager[Tool]):
         self._mcp_clients: dict[str, McpClient] = {}
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
-        self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool")
-        self._validate_resource(tool, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool is invalid, can not be None")
+        self._validate_id(tool_id, StatusCode.SESSION_TOOL_GET_FAILED, "tool")
+        self._validate_resource(tool, StatusCode.SESSION_TOOL_GET_FAILED, "tool is invalid, can not be None")
 
         # Define validation function for non-callable tools
         def validate_tool(tool_obj):
@@ -47,7 +47,7 @@ class ToolMgr(AbstractManager[Tool]):
                 logger.warning(f"Tool {tool_id} does not have a get_tool_info method, add tool failed")
             return tool_obj
 
-        self._add_resource(tool_id, tool, StatusCode.RUNTIME_TOOL_GET_FAILED, validate_tool)
+        self._add_resource(tool_id, tool, StatusCode.SESSION_TOOL_GET_FAILED, validate_tool)
 
     def add_tools(self, tools: List[Tuple[str, Union[Tool, ToolProvider]]]):
         if not tools:
@@ -63,7 +63,7 @@ class ToolMgr(AbstractManager[Tool]):
                 yield new_tool_key
 
     def _find_tool_by_name(self, name: str) -> Optional[Tool]:
-        self._validate_id(name, StatusCode.RUNTIME_TOOL_GET_FAILED, "name")
+        self._validate_id(name, StatusCode.SESSION_TOOL_GET_FAILED, "name")
 
         # Define function to create tool from provider
         def create_tool_from_provider(provider):
@@ -79,22 +79,22 @@ class ToolMgr(AbstractManager[Tool]):
             return tool
 
         for tool_id in self._get_all_tool_ids(name):
-            resource = self._get_resource(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, create_tool_from_provider)
+            resource = self._get_resource(tool_id, StatusCode.SESSION_TOOL_GET_FAILED, create_tool_from_provider)
             if resource:
                 return resource
         return None
 
-    def get_tool(self, tool_id: str, runtime=None) -> Optional[Tool]:
+    def get_tool(self, tool_id: str, session=None) -> Optional[Tool]:
         # Validate ID using base class method
-        self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED, "tool")
+        self._validate_id(tool_id, StatusCode.SESSION_TOOL_GET_FAILED, "tool")
 
         try:
             tool = self._find_tool_by_name(tool_id)
-            return decorate_tool_with_trace(tool, runtime)
+            return decorate_tool_with_trace(tool, session)
         except JiuWenBaseException:
             raise
         except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "get")
+            self._handle_exception(e, StatusCode.SESSION_TOOL_GET_FAILED, "get")
             return None
 
     def remove_tool(self, tool_id: str) -> Optional[Tool]:
@@ -102,11 +102,11 @@ class ToolMgr(AbstractManager[Tool]):
             return None
 
         try:
-            tool = self._remove_resource(tool_id, StatusCode.RUNTIME_TOOL_GET_FAILED)
+            tool = self._remove_resource(tool_id, StatusCode.SESSION_TOOL_GET_FAILED)
             self._tool_infos.pop(tool_id, None)
             return tool
         except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_TOOL_GET_FAILED, "remove")
+            self._handle_exception(e, StatusCode.SESSION_TOOL_GET_FAILED, "remove")
             return None
 
     def get_tool_infos(self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None) \
@@ -125,8 +125,8 @@ class ToolMgr(AbstractManager[Tool]):
                     return None
             if tool_ids is not None and not isinstance(tool_ids, list):
                 raise JiuWenBaseException(
-                    StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.code,
-                    StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
+                    StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED.code,
+                    StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
                         reason=f"tool_ids must be a list, got {type(tool_ids).__name__}"
                     )
                 )
@@ -136,13 +136,13 @@ class ToolMgr(AbstractManager[Tool]):
 
             infos = []
             for tool_id in tool_ids:
-                self._validate_id(tool_id, StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED, "tool")
+                self._validate_id(tool_id, StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED, "tool")
                 infos.append(self._normalize_mcp_tool_info(self._tool_infos.get(tool_id), delimiter))
             return infos
         except JiuWenBaseException:
             raise
         except Exception as e:
-            self._handle_exception(e, StatusCode.RUNTIME_TOOL_TOOL_INFO_GET_FAILED, "get_tool_info")
+            self._handle_exception(e, StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED, "get_tool_info")
             return None
 
     async def add_tool_servers(self, server_config: Union[ToolServerConfig, List[ToolServerConfig]]) -> List[bool]:

@@ -143,10 +143,11 @@ class MemoryAnalyzer:
             max_message_token: int,
             memory_config: MemoryConfig
     ) -> Tuple[str, str]:
-        if len(memory_config.mem_variables) == 0:
-            SUMMARY_TEMPLATE_PROMPT.format(step_num=2)
-        else:
-            SUMMARY_TEMPLATE_PROMPT.format(step_num=3)
-        SUMMARY_TEMPLATE_PROMPT.format(max_message_token=max_message_token)
+        step_num = 2 if len(memory_config.mem_variables) == 0 else 3
+
+        summary_prompt = SUMMARY_TEMPLATE_PROMPT.format(
+            step_num=step_num,
+            max_message_token=max_message_token
+        )
         summary_output_format = ',\n\"summary\": ""'
-        return SUMMARY_TEMPLATE_PROMPT, summary_output_format
+        return summary_prompt, summary_output_format

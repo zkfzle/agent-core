@@ -18,6 +18,7 @@ MEMORY_ANALYZER_PROMPT = """
  - 社交关系与沟通方式（如朋友、同事、社交习惯等）
  - 不属于以上类别但对用户有价值的其他信息
 VARIABLES_DESCRIPTION_TEMPLATE
+SUMMARY_TEMPLATE
 ## 输出格式
 1. 最终的输出必须是**纯净的，可直接解析的JSON对象**，不要有任何额外的解释性文字。
 2. 保留Markdown格式```json``` 代码块标记。
@@ -26,6 +27,7 @@ VARIABLES_DESCRIPTION_TEMPLATE
 {
   "categories":[]
   VARIABLES_OUTPUT_TEMPLATE
+  SUMMARY_OUTPUT_TEMPLATE
 }
 ```
 """
@@ -35,4 +37,15 @@ VARIABLES_DESCRIPTION_TEMPLATE_PROMPT = """
 分析对话内容，根据预定义的变量名称和变量描述，完成变量值提取，填充到输出模板`variables`字段。
 变量定义如下：
 VARIABLES_DEFINE_TEMPLATE
+"""
+
+SUMMARY_TEMPLATE_PROMPT = """
+### 步骤{step_num}: 摘要提取
+分析消息内容, 对消息内容进行摘要提炼, 填充到输出模板`summary`字段
+摘要提取注意事项如下:
+基于当前消息进行摘要提炼，注意要完整保留原有关键信息。
+- 不要参考任何历史消息，只需对当前消息的内容进行摘要提取。
+- 记录信息需要使用具体数值(例如“用户手机号为xxx”), 而非模糊描述(如"用户提供了联系方式")。
+- 语言简洁明确, 无需任何额外说明或解释, 不需要对摘要内容进行翻译。
+- 消息摘要不超过{max_message_token}个词
 """

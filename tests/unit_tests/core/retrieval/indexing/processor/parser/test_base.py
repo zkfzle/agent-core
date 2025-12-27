@@ -2,8 +2,9 @@
 """
 Document parser abstract base class test cases
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.parser.base import Parser
 from openjiuwen.core.retrieval.common.document import Document

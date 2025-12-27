@@ -2,9 +2,10 @@
 """
 API embedding model implementation test cases
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, Mock
 import asyncio
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 from openjiuwen.core.retrieval.common.config import EmbeddingConfig

@@ -2,8 +2,9 @@
 """
 Ollama embedding model implementation test cases
 """
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 import requests
 
 from openjiuwen.core.retrieval.embedding.ollama_embedding import OllamaEmbedding

@@ -2,8 +2,9 @@
 """
 Embedding model abstract base class test cases
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.embedding.base import Embedding
 

@@ -2,8 +2,9 @@
 """
 Knowledge base abstract base class test cases
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig

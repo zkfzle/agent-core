@@ -2,8 +2,9 @@
 """
 混合检索器测试用例
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.retriever.hybrid_retriever import HybridRetriever
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, SearchResult

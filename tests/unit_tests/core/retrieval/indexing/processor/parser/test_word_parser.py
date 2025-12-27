@@ -2,10 +2,11 @@
 """
 Word file parser test cases
 """
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
-import tempfile
 import os
+import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.parser.word_parser import WordParser
 

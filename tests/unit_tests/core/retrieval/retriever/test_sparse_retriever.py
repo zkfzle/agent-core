@@ -2,8 +2,9 @@
 """
 稀疏检索器测试用例
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.retriever.sparse_retriever import SparseRetriever
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, SearchResult

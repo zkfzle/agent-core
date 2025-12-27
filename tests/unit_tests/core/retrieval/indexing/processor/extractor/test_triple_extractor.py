@@ -2,9 +2,10 @@
 """
 Triple extractor test cases
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.extractor.triple_extractor import TripleExtractor
 from openjiuwen.core.retrieval.common.document import TextChunk

@@ -3,10 +3,11 @@
 配置管理器测试用例
 """
 import json
-import tempfile
 import os
-import pytest
+import tempfile
 from pathlib import Path
+
+import pytest
 
 from openjiuwen.core.retrieval.utils.config_manager import ConfigManager
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig

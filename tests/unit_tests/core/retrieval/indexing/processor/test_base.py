@@ -2,8 +2,9 @@
 """
 Processor abstract base class test cases
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.base import Processor
 

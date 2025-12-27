@@ -2,8 +2,9 @@
 """
 GraphRAG knowledge base implementation test cases
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.graph_knowledge_base import GraphKnowledgeBase
 from openjiuwen.core.retrieval.common.config import (

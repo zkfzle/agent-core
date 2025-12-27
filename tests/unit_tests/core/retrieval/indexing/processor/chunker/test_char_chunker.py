@@ -2,8 +2,9 @@
 """
 Fixed-size chunker test cases
 """
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from openjiuwen.core.retrieval.indexing.processor.chunker.char_chunker import CharChunker
 from openjiuwen.core.retrieval.common.document import Document, TextChunk

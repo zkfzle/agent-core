@@ -2,10 +2,11 @@
 """
 TXT/MD file parser test cases
 """
-import pytest
-from unittest.mock import patch, AsyncMock, MagicMock
-import tempfile
 import os
+import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.parser.txt_md_parser import TxtMdParser
 

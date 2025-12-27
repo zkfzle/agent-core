@@ -2,8 +2,9 @@
 """
 Text chunker abstract base class test cases
 """
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.chunker.base import Chunker
 from openjiuwen.core.retrieval.common.document import Document

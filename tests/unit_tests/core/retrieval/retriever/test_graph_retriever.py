@@ -2,8 +2,9 @@
 """
 图检索器测试用例
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.retriever.graph_retriever import GraphRetriever
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult

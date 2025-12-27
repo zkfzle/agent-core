@@ -2,8 +2,9 @@
 """
 Extractor abstract base class test cases
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.extractor.base import Extractor
 from openjiuwen.core.retrieval.common.document import TextChunk

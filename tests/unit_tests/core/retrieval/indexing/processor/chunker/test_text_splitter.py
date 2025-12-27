@@ -2,8 +2,9 @@
 """
 Text splitter test cases
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.chunker.text_splitter import (
     TextSplitter,

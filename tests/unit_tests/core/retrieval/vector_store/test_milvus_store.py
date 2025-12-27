@@ -2,8 +2,9 @@
 """
 Milvus 向量存储测试用例
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.vector_store.milvus_store import MilvusVectorStore
 from openjiuwen.core.retrieval.common.config import VectorStoreConfig

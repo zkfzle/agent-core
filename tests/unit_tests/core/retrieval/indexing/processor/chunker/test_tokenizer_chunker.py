@@ -2,8 +2,9 @@
 """
 Tokenizer chunker test cases
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.chunker.tokenizer_chunker import TokenizerChunker
 from openjiuwen.core.retrieval.common.document import Document, TextChunk

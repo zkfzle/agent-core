@@ -2,8 +2,9 @@
 """
 Index manager abstract base class test cases
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
 from openjiuwen.core.retrieval.common.config import IndexConfig

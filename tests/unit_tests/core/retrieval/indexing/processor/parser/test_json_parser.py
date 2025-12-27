@@ -2,11 +2,12 @@
 """
 JSON file parser test cases
 """
-import pytest
-from unittest.mock import patch, AsyncMock
-import tempfile
-import os
 import json
+import os
+import tempfile
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.parser.json_parser import JSONParser
 

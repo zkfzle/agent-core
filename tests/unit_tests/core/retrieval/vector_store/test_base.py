@@ -2,8 +2,9 @@
 """
 向量存储抽象基类测试用例
 """
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.common.retrieval_result import SearchResult

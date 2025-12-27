@@ -2,11 +2,12 @@
 """
 ChromaDB 向量存储测试用例
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import tempfile
-import shutil
 import json
+import shutil
+import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.vector_store.chroma_store import ChromaVectorStore
 from openjiuwen.core.retrieval.common.config import VectorStoreConfig

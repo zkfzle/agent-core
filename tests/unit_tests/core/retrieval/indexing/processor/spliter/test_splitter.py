@@ -2,8 +2,9 @@
 """
 Sentence splitter test cases
 """
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.spliter.splitter import SentenceSplitter
 

@@ -2,8 +2,9 @@
 """
 Agentic 检索器测试用例
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.retriever.agentic_retriever import AgenticRetriever
 from openjiuwen.core.retrieval.retriever.graph_retriever import GraphRetriever

@@ -2,8 +2,9 @@
 """
 Simple knowledge base implementation test cases
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.simple_knowledge_base import (
     SimpleKnowledgeBase,

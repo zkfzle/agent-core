@@ -2,8 +2,9 @@
 """
 Text splitter abstract base class test cases
 """
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.processor.spliter.base import Splitter
 from openjiuwen.core.retrieval.common.document import Document, TextChunk

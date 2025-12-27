@@ -2,8 +2,9 @@
 """
 Milvus index manager test cases
 """
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.indexer.milvus_indexer import MilvusIndexer
 from openjiuwen.core.retrieval.common.config import IndexConfig

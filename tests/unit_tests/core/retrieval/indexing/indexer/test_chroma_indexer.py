@@ -2,10 +2,11 @@
 """
 ChromaDB index manager test cases
 """
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import tempfile
 import shutil
+import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from openjiuwen.core.retrieval.indexing.indexer.chroma_indexer import ChromaIndexer
 from openjiuwen.core.retrieval.common.config import IndexConfig

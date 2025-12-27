@@ -20,10 +20,11 @@ from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 
 
-API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
-API_KEY = os.getenv("API_KEY", "sk-fake")
-MODEL_NAME = os.getenv("MODEL_NAME", "")
-MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+os.environ["LLM_SSL_VERIFY"] = "False"
+API_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+API_KEY = "sk-f9410e0700c94022a16b78341e860c45"
+MODEL_NAME = "qwen2.5-72b-instruct"
+MODEL_PROVIDER = "openai"
 
 
 # ——————————————————————————————————————————工具信息————————————————————————————————————#
@@ -271,7 +272,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         print(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
 
-    @unittest.skip("skip system test")
+    #@unittest.skip("skip system test")
     def test_tool_calls_prompt_optimization(self):
         agent = self.create_agent(TOOL_CALLS_TEMPLATE, TOOLS)
         trainer = self.create_trainer()
@@ -281,7 +282,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         print(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
-        optimized_agent = trainer.train(agent, case_loader, num_iterations=2)
+        optimized_agent = trainer.train(agent, case_loader, num_iterations=3)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
         print(f"[优化后提示词推理效果]: score={score}")

@@ -2,10 +2,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Tuple
-from openjiuwen.core.memory.generation.memory_info import ExtractedData
 from openjiuwen.core.memory.generation.variable_extractor import ComprehensionExtractor
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit
-from openjiuwen.core.memory.generation.categorizer import Categorizer
+from openjiuwen.core.memory.generation.memory_analyzer import MemoryAnalyzer, VariableResult
 from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.config.config import MemoryConfig
@@ -15,23 +14,6 @@ from openjiuwen.core.utils.llm.messages import BaseMessage
 category_to_class = {
     "user_profile": MemoryType.USER_PROFILE
 }
-
-
-async def _generate_extract(
-        config: MemoryConfig,
-        history_messages: list[BaseMessage],
-        messages: list[BaseMessage],
-        base_chat_model: Tuple[str, BaseModelClient]
-) -> list[ExtractedData]:
-    history_summary = ""
-    for msg in history_messages:
-        history_summary += f"{msg.role}: {msg.content}\n"
-    return await ComprehensionExtractor.extract(
-        messages,
-        BaseMessage(content=history_summary, role=""),
-        base_chat_model,
-        config
-    )
 
 
 class Generator:
@@ -46,28 +28,26 @@ class Generator:
         message_mem_id = kwargs.get("message_mem_id")
         if not all([messages, config, user_id, group_id, model]):
             logger.error("messages, config, user_id, group_id, model are required parameters")
-        categorizer = Categorizer()
-        all_memory_results = []
-        variable_units = await self.gen_extracted_data(
+
+        memory_analyze_res = await MemoryAnalyzer.analyze(
             messages=messages,
+            history_messages=history_messages,
+            base_chat_model=model,
+            memory_config=config,
+        )
+        all_memory_results = []
+        variable_units = self._process_extracted_data(
             user_id=user_id,
             group_id=group_id,
-            history_messages=history_messages,
-            config=config,
-            base_chat_model=model
+            variable_results=memory_analyze_res.variables,
         )
         all_memory_results += variable_units
         if not config.enable_long_term_mem:
             logger.info("Not enable long term memory")
             return all_memory_results
-        categories = await categorizer.get_categories(
-            messages,
-            history_messages,
-            model,
-        )
         try:
             merged_units = await self._categories_to_memory_unit(
-                categories=categories,
+                categories=memory_analyze_res.categories,
                 history_messages=history_messages,
                 messages=messages,
                 user_id=user_id,
@@ -87,30 +67,20 @@ class Generator:
         all_memory_results += merged_units
         return all_memory_results
 
-    async def gen_extracted_data(
+    def _process_extracted_data(
             self,
             user_id: str,
             group_id: str,
-            messages: list[BaseMessage],
-            history_messages: list[BaseMessage],
-            config: MemoryConfig,
-            base_chat_model: Tuple[str, BaseModelClient]
+            variable_results: list[VariableResult],
     ) -> list[VariableUnit]:
-        """Generate extracted variable memory units based on input"""
-        extracted_data = await _generate_extract(
-            config,
-            history_messages,
-            messages,
-            base_chat_model
-        )
         variable_units = []
-        for tmp_data in extracted_data:
+        for tmp_data in variable_results:
             variable_units.append(VariableUnit(
                 user_id=user_id,
                 group_id=group_id,
                 mem_type=MemoryType.VARIABLE,
-                variable_name=tmp_data.key,
-                variable_mem=tmp_data.value
+                variable_name=tmp_data.variable_key,
+                variable_mem=tmp_data.variable_value
             ))
         return variable_units
 

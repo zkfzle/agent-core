@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Generator
+from typing import Generator, List
 from pydantic import BaseModel, Field
 
 from openjiuwen.core.agent.agent import Agent
-from openjiuwen.agent_builder.tune.base import TuneConstant
+from openjiuwen.agent_builder.tune.base import TuneConstant, EvaluatedCase
 
 
 class Progress(BaseModel):
@@ -33,11 +33,11 @@ class Callbacks:
     def on_train_begin(self, agent: Agent, progress: Progress) -> None:
         pass
 
-    def on_train_end(self, agent: Agent, progress: Progress) -> None:
+    def on_train_end(self, agent: Agent, progress: Progress, eval_info: List[EvaluatedCase]) -> None:
         pass
 
     def on_train_epoch_begin(self, agent: Agent, progress: Progress) -> None:
         pass
 
-    def on_train_epoch_end(self, agent: Agent, progress: Progress) -> None:
+    def on_train_epoch_end(self, agent: Agent, progress: Progress, eval_info: List[EvaluatedCase]) -> None:
         pass

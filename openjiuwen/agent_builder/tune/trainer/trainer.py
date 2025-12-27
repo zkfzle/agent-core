@@ -58,7 +58,7 @@ class Trainer:
         if not val_cases:
             val_cases = train_cases
         self._callbacks.on_train_begin(agent, progress)
-        progress.val_baseline_score, _ = self.evaluate(agent, val_cases)
+        progress.val_baseline_score, cur_batch_eval_info = self.evaluate(agent, val_cases)
         progress.best_score = progress.val_baseline_score
         if progress.best_score >= self._early_stop_score:
             logger.info(f"val set score {progress.best_score} already exceed target score {self._early_stop_score}, "
@@ -81,7 +81,7 @@ class Trainer:
                 with self._optimizer as optimizer:
                     optimizer.backward(cur_evaluated_cases)
                     optimizer.update()
-                score, cur_batch_parameters, _ = parameter_searcher.search_best(
+                score, cur_batch_parameters, cur_batch_eval_info = parameter_searcher.search_best(
                     agent=agent,
                     base_score=progress.best_score,
                     base_parameters=cur_parameters,
@@ -96,10 +96,10 @@ class Trainer:
                 self._update_agent(agent, best_batch_parameters)
             else:
                 self._update_agent(agent, cur_parameters)
-            self._callbacks.on_train_epoch_end(agent, progress)
+            self._callbacks.on_train_epoch_end(agent, progress, cur_batch_eval_info)
             if progress.best_score >= self._early_stop_score:
                 break
-        self._callbacks.on_train_end(agent, progress)
+        self._callbacks.on_train_end(agent, progress, cur_batch_eval_info)
         return agent
 
     def evaluate(self,

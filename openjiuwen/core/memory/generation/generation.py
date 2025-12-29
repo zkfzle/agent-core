@@ -2,17 +2,20 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Tuple
-from openjiuwen.core.memory.generation.variable_extractor import ComprehensionExtractor
-from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit
+
+from openjiuwen.core.memory.generation.long_term_memory_extractor import LongTermMemoryExtractor
+from openjiuwen.core.memory.generation.semantic_memory_extractor import SemanticMemoryExtractor
+from openjiuwen.core.memory.mem_unit.memory_unit import (MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit,
+                                                         SemanticMemoryUnit)
 from openjiuwen.core.memory.generation.memory_analyzer import MemoryAnalyzer, VariableResult
 from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 category_to_class = {
-    "user_profile": MemoryType.USER_PROFILE
+    "user_profile": MemoryType.USER_PROFILE,
+    "semantic_memory": MemoryType.SEMANTIC_MEMORY
 }
 
 
@@ -45,6 +48,7 @@ class Generator:
         if not config.enable_long_term_mem:
             logger.info("Not enable long term memory")
             return all_memory_results
+        memory_analyze_res.categories.append("semantic_memory")
         try:
             merged_units = await self._categories_to_memory_unit(
                 categories=memory_analyze_res.categories,
@@ -128,20 +132,39 @@ class Generator:
                                          user_define: dict[str, str] = None
                                          ) -> list[BaseMemoryUnit]:
         memory_units = []
-        for category in categories:
-            if category not in category_to_class.keys():
-                logger.warning(f"Unsupported memory category: {category}, skipped.")
+        memory_dicts = await LongTermMemoryExtractor.extract_long_term_memory(
+            categories=categories,
+            history_messages=history_messages,
+            messages=messages,
+            # user_id=user_id,
+            # group_id=group_id,
+            base_chat_model=base_chat_model,
+            message_mem_id=message_mem_id
+        )
+        user_profile_dicts = memory_dicts.get("user_profile", {})
+        for profile_type, profile_list in user_profile_dicts.items():
+            if not isinstance(profile_list, list):
+                logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
                 continue
-            mem_class = category_to_class[category]
-            if mem_class == MemoryType.USER_PROFILE:
-                user_profile_units = await self.gen_user_profile(
+            for profile in profile_list:
+                memory_units.append(UserProfileUnit(
                     user_id=user_id,
                     group_id=group_id,
-                    history_messages=history_messages,
-                    messages=messages,
-                    base_chat_model=base_chat_model,
+                    profile_type=profile_type,
+                    profile_mem=profile,
+                    mem_type=MemoryType.USER_PROFILE,
                     message_mem_id=message_mem_id,
-                    user_define=user_define
-                )
-                memory_units += user_profile_units
+                ))
+        semantic_memory_list = memory_dicts.get("semantic_memory", [])
+        if isinstance(semantic_memory_list, list) and len(semantic_memory_list) > 0:
+            for memory in semantic_memory_list:
+                if not isinstance(memory, str):
+                    logger.warning(f"semantic memory format error: {memory} is not a list")
+                    continue
+                memory_units.append(SemanticMemoryUnit(
+                    user_id=user_id,
+                    group_id=group_id,
+                    mem_type=MemoryType.SEMANTIC_MEMORY,
+                    semantic_mem=memory
+                ))
         return memory_units

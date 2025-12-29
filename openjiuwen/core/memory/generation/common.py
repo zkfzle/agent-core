@@ -5,6 +5,21 @@ from typing import List
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 
+def get_str_messages(messages: List[BaseMessage],
+                      history_messages: List[BaseMessage] | str):
+    history = ""
+    if isinstance(history_messages, str):
+        history = history_messages
+    elif isinstance(history_messages, List):
+        if history_messages and len(history_messages) > 0:
+            for msg in history_messages:
+                history += f"{msg.role}: {msg.content}\n"
+    conversation = ""
+    for msg in messages:
+        conversation += f"{msg.role}: {msg.content}\n"
+    return conversation, history
+
+
 def build_model_input(messages: List[BaseMessage],
                       history_messages: List[BaseMessage] | str,
                       prompt: str) -> List[dict]:

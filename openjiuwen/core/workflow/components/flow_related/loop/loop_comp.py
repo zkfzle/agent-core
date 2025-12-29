@@ -20,7 +20,7 @@ from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.interme
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, \
     FIRST_LOOP
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY
 from openjiuwen.core.graph.executable import Output, Input, Executable
@@ -330,7 +330,7 @@ class LoopComponent(WorkflowComponent, ComponentExecutable):
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_EMPTY_GROUP_ERROR.code,
                                       "empty loop group has no components to execute")
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         try:
             if not isinstance(inputs, dict):
                 raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_INPUT_TYPE_ERROR.code,

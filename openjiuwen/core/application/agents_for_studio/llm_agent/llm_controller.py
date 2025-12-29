@@ -119,7 +119,7 @@ class LLMController(BaseController):
         """
 
         # Add user message to conversation history
-        MessageUtils.add_user_message(event.get_display_content(), self._context_engine, session)
+        await MessageUtils.add_user_message(event.get_display_content(), self._context_engine, session)
 
         # 0. Fast path: Check if message has InteractiveInput with node_id - directly resume workflow
         interactive_input = getattr(event.content, 'interactive_input', None)
@@ -138,7 +138,7 @@ class LLMController(BaseController):
                 )
 
                 # Directly use saved ai_message (no need to manually construct)
-                MessageUtils.add_ai_message(ai_message, self._context_engine, session)
+                await MessageUtils.add_ai_message(ai_message, self._context_engine, session)
 
                 # Update first task (interrupted one) with user input
                 interrupted_task = remaining_tasks[0]
@@ -258,7 +258,7 @@ class LLMController(BaseController):
                     workflow_id=workflow_id,
                     stream_data=output
                 )
-                MessageHandlerUtils.add_tool_result(temp_event, self._context_engine, session)
+                await MessageHandlerUtils.add_tool_result(temp_event, self._context_engine, session)
                 logger.info(f"Added tool_message for completed task: {task.task_id}")
 
         # Clear workflow interrupted state (if any)
@@ -353,10 +353,10 @@ class LLMController(BaseController):
             content="[INTERRUPTED - Waiting for user input]",
             tool_call_id=interruption_state.task.task_id
         )
-        agent_context = self._context_engine.get_agent_context(
-            interruption_state.session.session_id()
+        agent_context = self._context_engine.get_context(
+            session_id=interruption_state.session.session_id()
         )
-        agent_context.add_message(mock_tool_msg)
+        await agent_context.add_messages(mock_tool_msg)
 
         # 流式返回：只返回第一个中断
         first_interrupt = self._get_first_interrupt(output)
@@ -390,8 +390,8 @@ class LLMController(BaseController):
             content=error_content,
             tool_call_id=task.task_id
         )
-        agent_context = self._context_engine.get_agent_context(session.session_id())
-        agent_context.add_message(mock_tool_msg)
+        agent_context = self._context_engine.get_context(session_id=session.session_id())
+        await agent_context.add_messages(mock_tool_msg)
         logger.info(f"Added tool_message for failed task: {task.task_id}")
 
         # Send error stream data for user notification
@@ -550,8 +550,8 @@ class LLMController(BaseController):
                 workflow,
                 inputs=task.input.arguments,
                 session=workflow_session,
-                context=self._context_engine.get_workflow_context(
-                    session_id=session.session_id(), workflow_id=workflow_id
+                context=await self._context_engine.create_context(
+                    context_id=workflow_id, session=session
                 )
             )
 
@@ -673,7 +673,7 @@ class LLMController(BaseController):
             )
             tasks = MessageHandlerUtils.parse_llm_output(llm_output, self.config)
             # Add LLM output to CE conversation history
-            MessageUtils.add_ai_message(llm_output, self._context_engine, session)
+            await MessageUtils.add_ai_message(llm_output, self._context_engine, session)
 
             if UserConfig.is_sensitive():
                 logger.info(f"React llm output")

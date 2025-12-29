@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session.agent_state import StateCollection
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.base import Checkpointer
@@ -54,7 +54,7 @@ class StaticAgentSession(BaseSession):
     def session_id(self) -> str:
         pass
 
-    def context(self) -> Context:
+    def context(self) -> ModelContext:
         pass
 
     async def create_agent_session(self, session_id: str, inputs=None) -> BaseSession:
@@ -70,7 +70,7 @@ class AgentSession(BaseSession):
             config: Config = None,
             resource_manager: "ResourceMgr" = None,
             checkpointer: Checkpointer | None = None,
-            context: Context = None):
+            context: ModelContext = None):
         self._session_id = session_id
         self._config = config
         if resource_manager:
@@ -109,7 +109,7 @@ class AgentSession(BaseSession):
     def session_id(self) -> str:
         return self._session_id
 
-    def context(self) -> Context:
+    def context(self) -> ModelContext:
         return self._context
 
     def resource_manager(self) -> "ResourceMgr":

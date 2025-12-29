@@ -11,7 +11,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
 from openjiuwen.core.runner.drunner.dmessage_queue.message_queue_factory import MessageQueueFactory
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
@@ -91,13 +91,13 @@ class Runner:
         return result
 
     async def run_workflow(self, workflow: Union[str, Workflow], inputs: Any,
-                           *, session: Union[Session, WorkflowSession] = None, context: Context = None):
+                           *, session: Union[Session, WorkflowSession] = None, context: ModelContext = None):
         workflow_instance, workflow_session = await self._prepare_workflow(workflow, session)
         return await workflow_instance.invoke(inputs, session=workflow_session, context=context)
 
     async def run_workflow_streaming(self, workflow: Union[str, Workflow], inputs: Any,
                                      *, session: Union[Session, WorkflowSession] = None,
-                                     stream_modes: list[BaseStreamMode] = None, context: Context = None):
+                                     stream_modes: list[BaseStreamMode] = None, context: ModelContext = None):
         workflow_instance, workflow_session = await self._prepare_workflow(workflow, session)
         async for chunk in workflow_instance.stream(inputs, session=workflow_session,
                                                     stream_modes=stream_modes, context=context):

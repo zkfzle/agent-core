@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import ComponentConfig, WorkflowComponent, ComponentExecutable
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.tool import constant
@@ -52,7 +52,7 @@ class ToolExecutable(ComponentExecutable):
                                            ExceptionUtils.format_validation_error(e))
 
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         if self._tool is None:
             ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
         tool_inputs = self._validate_inputs(inputs)

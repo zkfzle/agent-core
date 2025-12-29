@@ -387,8 +387,8 @@ class TestLLMExecutableInvokeNew:
 
         session_id = "test_llm"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="llm_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         result = await flow.invoke(inputs={"query": "please write a 3-line poem"}, session=workflow_session, context=workflow_context)
         print(f"invoke result >>> {result}")
@@ -445,8 +445,8 @@ class TestLLMExecutableInvokeNew:
 
         session_id = "test_llm"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="llm_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         result = await flow.invoke(
             inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"},
@@ -497,8 +497,8 @@ class TestLLMExecutableInvokeNew:
 
         session_id = "test_llm"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="llm_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, session=workflow_session, context=workflow_context):
             print(f"stream chunk >>> {chunk}")
@@ -556,8 +556,8 @@ class TestLLMExecutableInvokeNew:
 
         session_id = "test_llm"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="llm_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="llm_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         async for chunk in flow.stream(inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"}, session=workflow_session,
                                        context=workflow_context):

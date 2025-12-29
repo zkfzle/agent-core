@@ -17,7 +17,7 @@ from openjiuwen.core.workflow import LoopGroup
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.constants.enums import ComponentAbility
@@ -59,7 +59,7 @@ def record_tracer_info(tracer_chunks, file_path):
 
 
 class Producer(ComponentExecutable, WorkflowComponent):
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.debug(f"producer inputs: {inputs}")
         for v in inputs.get("array"):
             logger.debug(f"send stream frame {v}")
@@ -67,7 +67,7 @@ class Producer(ComponentExecutable, WorkflowComponent):
 
 
 class AnyTypeReturnNode(ComponentExecutable, WorkflowComponent):
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs.get("data")
 
 

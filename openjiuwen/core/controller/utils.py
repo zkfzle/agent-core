@@ -177,11 +177,12 @@ class MessageHandlerUtils:
 
     @staticmethod
     def should_add_user_message(query: str, context_engine: ContextEngine, session: Session) -> bool:
-        agent_context = context_engine.get_agent_context(session.session_id())
-        last_message = agent_context.get_latest_message()
+        agent_context = context_engine.get_context(session_id=session.session_id())
+        last_message = agent_context.get_messages(size=1)
 
         if not last_message:
             return True
+        last_message = last_message[0]
 
         if last_message.role == 'tool':
             logger.info("Skipping user message - post-tool-call request")
@@ -194,26 +195,26 @@ class MessageHandlerUtils:
         return True
 
     @staticmethod
-    def add_user_message(query: Any, context_engine: ContextEngine, session: Session):
+    async def add_user_message(query: Any, context_engine: ContextEngine, session: Session):
         if MessageHandlerUtils.should_add_user_message(query, context_engine, session):
-            agent_context = context_engine.get_agent_context(session.session_id())
+            agent_context = context_engine.get_context(session_id=session.session_id())
             user_message = HumanMessage(content=query)
-            agent_context.add_message(user_message)
+            await agent_context.add_messages(user_message)
             if UserConfig.is_sensitive():
                 logger.info(f"Added user message")
             else:
                 logger.info(f"Added user message: {query}")
 
     @staticmethod
-    def add_ai_message(ai_message: AIMessage, context_engine: ContextEngine, session: Session):
+    async def add_ai_message(ai_message: AIMessage, context_engine: ContextEngine, session: Session):
         if ai_message:
-            agent_context = context_engine.get_agent_context(session.session_id())
-            agent_context.add_message(ai_message)
+            agent_context = context_engine.get_context(session_id=session.session_id())
+            await agent_context.add_messages(ai_message)
 
     @staticmethod
-    def add_tool_result(event: Event, context_engine: ContextEngine, session: Session):
+    async def add_tool_result(event: Event, context_engine: ContextEngine, session: Session):
         if event:
-            agent_context = context_engine.get_agent_context(session.session_id())
+            agent_context = context_engine.get_context(session_id=session.session_id())
             tool_result = event.content.task_result.output
             if isinstance(tool_result, OutputSchema):
                 payload = tool_result.payload
@@ -224,11 +225,11 @@ class MessageHandlerUtils:
             content = JsonUtils.safe_json_dumps(tool_result, str(tool_result), ensure_ascii=False)
             tool_message = ToolMessage(content=content,
                                        tool_call_id=event.context.task_id)
-            agent_context.add_message(tool_message)
+            await agent_context.add_messages(tool_message)
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, session: Session, config: AgentConfig) -> List[BaseMessage]:
-        agent_context = context_engine.get_agent_context(session.session_id())
+        agent_context = context_engine.get_context(session_id=session.session_id())
         chat_history = agent_context.get_messages()
         max_rounds = config.constrain.reserved_max_chat_rounds
         return chat_history[-2 * max_rounds:]
@@ -255,14 +256,14 @@ class MessageHandlerUtils:
         return filtered
 
     @staticmethod
-    def add_workflow_message_to_chat_history(message: BaseMessage, workflow_id: str,
+    async def add_workflow_message_to_chat_history(message: BaseMessage, workflow_id: str,
                                              context_engine: ContextEngine, session: Session):
         """Add message to workflow chat history"""
-        workflow_context = context_engine.get_workflow_context(
-            workflow_id=workflow_id,
+        workflow_context = context_engine.get_context(
+            context_id=workflow_id,
             session_id=session.session_id()
         )
-        workflow_context.add_message(message)
+        workflow_context.add_messages(message)
 
 
 class ReasonerUtils:
@@ -270,7 +271,7 @@ class ReasonerUtils:
     def get_chat_history(context_engine: ContextEngine, session: Session,
                          chat_history_max_turn: int) -> List[BaseMessage]:
         """Get history by max conversation rounds"""
-        agent_context = context_engine.get_agent_context(session.session_id())
+        agent_context = context_engine.get_context(session_id=session.session_id())
         chat_history = agent_context.get_messages()
         return chat_history[-2 * chat_history_max_turn:]
 

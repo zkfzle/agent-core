@@ -151,8 +151,8 @@ class TestToolComponent:
 
         session_id = "test_tool"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="tool_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="tool_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         invoke_result = await flow.invoke({"query": "你好"}, workflow_session, workflow_context)
         assert invoke_result.result["responseContent"] == "{'res': '你好', 'info': 789}"

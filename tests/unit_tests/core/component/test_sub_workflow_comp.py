@@ -8,7 +8,7 @@ from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable, Inp
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema
@@ -19,17 +19,17 @@ pytestmark = pytest.mark.asyncio
 
 
 class CustomStream(ComponentExecutable, WorkflowComponent):
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return {'custom_output': inputs}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         if inputs is None:
             yield 1
         else:
             for index in inputs.get("value"):
                 yield {"value": "stream_{}".format(index)}
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         values = inputs.get("value")
         async for item in values:
             yield {"value": "tranform_{}".format(item)}

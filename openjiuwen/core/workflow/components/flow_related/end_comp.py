@@ -13,7 +13,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.dict_utils import extract_leaf_nodes, format_path
 from openjiuwen.core.workflow.components.base import ComponentExecutable, WorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
     END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY, get_value_by_nested_path
@@ -46,7 +46,7 @@ class End(ComponentExecutable, WorkflowComponent):
     def set_mix(self):
         self._mix = True
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         if self.template is not None:
             if inputs is None:
                 inputs = {}
@@ -59,7 +59,7 @@ class End(ComponentExecutable, WorkflowComponent):
             logger.debug(f"end component invoke method output: {output}")
             return {"output": output}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.debug(f"end component stream method inputs: {inputs}")
         if inputs is None:
             logger.debug("end component stream method received None inputs, using empty dict")
@@ -89,7 +89,7 @@ class End(ComponentExecutable, WorkflowComponent):
             else:
                 logger.error("stream output error: {}".format(e), exc_info=True)
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.debug(f"end component transform method inputs: {inputs}")
         if self.template is not None:
             generator = self.template.render_stream(inputs,
@@ -106,7 +106,7 @@ class End(ComponentExecutable, WorkflowComponent):
                 else:
                     yield dict(output={format_path(path): value})
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         logger.debug(f"end component collect method inputs: {inputs}")
         if self.template is not None:
             return await self._render(inputs, session.get_env(END_COMP_TEMPLATE_BATCH_READER_TIMEOUT_KEY))

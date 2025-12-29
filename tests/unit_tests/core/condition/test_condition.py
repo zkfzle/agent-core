@@ -8,7 +8,7 @@ from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import Condition, FuncCondition, AlwaysTrue
 from openjiuwen.core.workflow import ExpressionCondition
 from openjiuwen.core.workflow import NumberCondition
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session import CommitState
@@ -19,7 +19,7 @@ class TestConditionBase:
     def setup_method(self):
         # Create Mock Session object for testing
         self.mock_session = MagicMock(spec=BaseSession)
-        self.mock_context = MagicMock(spec=Context)
+        self.mock_context = MagicMock(spec=ModelContext)
         
         # Create a more realistic state mock to simulate CommitState behavior
         self.mock_state = Mock(spec=CommitState)

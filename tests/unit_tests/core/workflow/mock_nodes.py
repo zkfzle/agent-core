@@ -5,7 +5,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Session, is_ref_path, extract_origin_key
@@ -23,7 +23,7 @@ class MockStartNode(Start):
     def __init__(self, node_id: str):
         super().__init__({})
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs
 
 
@@ -32,7 +32,7 @@ class MockEndNode(End):
         super().__init__({"responseTemplate": "hello:{{end_input}}"})
         self.node_id = node_id
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs
 
 
@@ -40,7 +40,7 @@ class Node1(MockNodeBase):
     def __init__(self, node_id: str):
         super().__init__(node_id)
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs
 
 
@@ -49,7 +49,7 @@ class CountNode(MockNodeBase):
         super().__init__(node_id)
         self.times = 0
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         self.times += 1
         result = {"count": self.times}
         logger.info(self.node_id + ": results = " + str(result))
@@ -61,7 +61,7 @@ class SlowNode(MockNodeBase):
         super().__init__(node_id)
         self._wait = wait
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         await asyncio.sleep(self._wait)
         return inputs
 
@@ -72,7 +72,7 @@ class StreamNode(MockNodeBase):
         self._node_id = node_id
         self._datas: list[dict] = datas
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         for data in self._datas:
             await asyncio.sleep(0.1)
             logger.info(f"StreamNode[{self._node_id}], stream frame: {data}")
@@ -87,7 +87,7 @@ class StreamNodeWithSubWorkflow(MockNodeBase):
         self._node_id = node_id
         self._sub_workflow = sub_workflow
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         async for chunk in self._sub_workflow.stream({"a": 1, "b": "haha"}, session):
             logger.info(f"StreamNodeWithSubWorkflow[{self._node_id}], stream frame: {chunk}")
             await session.write_custom_stream(chunk)
@@ -100,7 +100,7 @@ class MockStartNode4Cp(Start):
         super().__init__({})
         self.runtime = 0
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         self.runtime += 1
         value = session.get_global_state("a")
         if value is not None:
@@ -115,7 +115,7 @@ class Node4Cp(MockNodeBase):
         super().__init__(node_id)
         self.runtime = 0
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         self.runtime += 1
         value = session.get_global_state("a")
         if value < 20:
@@ -130,7 +130,7 @@ class AddTenNode4Cp(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.node_id = node_id
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         if self.raise_exception:
             self.raise_exception = False
             raise Exception("inner error: " + str(inputs["source"]))
@@ -142,7 +142,7 @@ class InteractiveNode4Cp(MockNodeBase):
     def __init__(self, node_id: str):
         super().__init__(node_id)
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         result1 = await session.interact("Please enter any key")
         print(result1)
         result = await session.interact("Please enter any key")
@@ -153,7 +153,7 @@ class InteractiveNode4StreamCp(MockNodeBase):
     def __init__(self, node_id):
         super().__init__(node_id)
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         result = await session.interact("Please enter any key")
         await session.write_stream(OutputSchema(type="output", index=0, payload=(self.node_id, result)))
         return result
@@ -163,7 +163,7 @@ class InteractiveNode4Collect(MockNodeBase):
     def __init__(self, node_id: str):
         super().__init__(node_id)
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         result = await session.interact("Please enter any key")
         print(result)
         return result
@@ -174,7 +174,7 @@ class StreamCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.debug(f"===StreamCompNode[{self._node_id}], input: {inputs}")
         if inputs is None:
             yield 1
@@ -188,7 +188,7 @@ class CollectCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         logger.info(f"===CollectCompNode[{self._node_id}], input stream started")
         result = 0
         input_generator = inputs.get("value")
@@ -214,7 +214,7 @@ class TransformCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[
         Output]:
         logger.debug(f"===TransformCompNode[{self._node_id}], input stream started")
         input_generator = inputs.get("value")
@@ -237,7 +237,7 @@ class MultiCollectCompNode(MockNodeBase):
         super().__init__(node_id)
         self._node_id = node_id
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         logger.info(f"===CollectCompNode[{self._node_id}], input: {inputs}")
         a_collect = 0
         b_collect = 0
@@ -267,10 +267,10 @@ class CommonNode(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.node_id = node_id
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         yield await self.invoke(inputs, session, context)
 
 
@@ -288,7 +288,7 @@ class AddTenNode(ComponentExecutable, WorkflowComponent):
             return session.get_global_state(ref_str)
         return value
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         if self.check_map:
             for key, value in self.check_map.items():
                 assert inputs.get(key) == self.generate_value(session, value)
@@ -299,14 +299,14 @@ class MockStreamNode(ComponentExecutable, WorkflowComponent):
     def __init__(self):
         super().__init__()
 
-    async def invoke(self, inputs, session: Session, context: Context = None):
+    async def invoke(self, inputs, session: Session, context: ModelContext = None):
         return inputs
 
     async def stream(
             self,
             inputs,
             session: Session,
-            context: Context = None
+            context: ModelContext = None
     ):
         yield inputs
 
@@ -344,13 +344,13 @@ class ComputeExecutor2(ComponentExecutable):
                 results.append({data_key: data})
         return results
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         exec_id = session.executable_id()
         a = int(inputs.get("a"))
         b = int(inputs.get("b"))
         return {"result": a + b}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         exec_id = session.executable_id()
         logger.info(f"{exec_id} start")
 
@@ -374,7 +374,7 @@ class ComputeExecutor2(ComponentExecutable):
             yield {'result': int(inputs_a) + int(inputs.get("b"))}
         logger.info(f"{exec_id} stream done")
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         exec_id = session.executable_id()
         step = 1
         tasks = []
@@ -390,7 +390,7 @@ class ComputeExecutor2(ComponentExecutable):
         result = sum(results)
         return {'result_collect': result}
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         exec_id = session.executable_id()
         step = 1
         tasks = []
@@ -436,12 +436,12 @@ class DualAbilityWithErrorExecutor(ComponentExecutable):
         self._error_in_stream = error_in_stream
         self._error_in_transform = error_in_transform
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         a = int(inputs.get("a", 0))
         b = int(inputs.get("b", 0))
         return {"result": a + b}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         if self._error_in_stream:
             raise RuntimeError("Simulated error in STREAM ability")
         a = inputs.get("a", 0)
@@ -451,7 +451,7 @@ class DualAbilityWithErrorExecutor(ComponentExecutable):
         yield {'b': b}
         yield {'result': int(a) + int(b)}
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         if self._error_in_transform:
             raise RuntimeError("Simulated error in TRANSFORM ability")
         for data_source_key, obj in inputs.items():

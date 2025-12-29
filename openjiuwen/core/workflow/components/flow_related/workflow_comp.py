@@ -6,7 +6,7 @@ from typing import AsyncIterator
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
@@ -26,10 +26,10 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
                                           error_msg="sub_workflow is None"))
         self._sub_workflow = sub_workflow
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), session.base(), inputs.get(CONFIG_KEY))
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         async for value in self._sub_workflow.sub_stream(inputs.get(INPUTS_KEY),
                                                          session.base(), inputs.get(CONFIG_KEY)):
             yield value

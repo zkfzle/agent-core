@@ -91,7 +91,7 @@ class ReActAgent(BaseAgent):
         """
         # 1. If first call, add user message
         if is_first_call:
-            MessageUtils.add_user_message(user_input, self.context_engine, session)
+            await MessageUtils.add_user_message(user_input, self.context_engine, session)
 
         # 2. Get chat history
         chat_history = MessageUtils.get_chat_history(
@@ -134,7 +134,7 @@ class ReActAgent(BaseAgent):
             content=llm_output.content,
             tool_calls=llm_output.tool_calls
         )
-        MessageUtils.add_ai_message(ai_message, self.context_engine, session)
+        await MessageUtils.add_ai_message(ai_message, self.context_engine, session)
 
         return llm_output
 
@@ -167,7 +167,7 @@ class ReActAgent(BaseAgent):
             content=str(result),
             tool_call_id=tool_call.id
         )
-        MessageUtils.add_tool_message(tool_message, self.context_engine, session)
+        await MessageUtils.add_tool_message(tool_message, self.context_engine, session)
 
         return result
 
@@ -188,6 +188,7 @@ class ReActAgent(BaseAgent):
             # Use BaseAgent's _session, need to create task session
             session = await self._session.pre_run(session_id=session_id, inputs=inputs)
             session_created = True
+        await self.context_engine.create_context(session=session)
 
         try:
             user_input = inputs.get("query", "")
@@ -264,6 +265,7 @@ class ReActAgent(BaseAgent):
             if hasattr(self, '_tools') and self._tools:
                 tools_to_add = [(tool.name, tool) for tool in self._tools]
                 agent_session.add_tools(tools_to_add)
+        await self.context_engine.create_context(session=agent_session)
 
         # Store final result for send_to_agent
         final_result_holder = {"result": None}

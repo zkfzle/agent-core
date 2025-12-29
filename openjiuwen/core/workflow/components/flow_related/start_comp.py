@@ -7,7 +7,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.workflow.components.base import ComponentExecutable, WorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 
@@ -40,7 +40,7 @@ class Start(ComponentExecutable, WorkflowComponent):
                                           message=StatusCode.WORKFLOW_START_CREATE_VALUE.errmsg.format(
                                               reason="conf 'inputs' list item not contain `id`"))
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         logger.debug(f"start component inputs: {inputs}")
         self._validate_inputs(inputs)
         return self._fill_default_values(inputs)

@@ -6,7 +6,7 @@ from openjiuwen.core.common.constants.constant import END_NODE_STREAM
 from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent, Input, Output
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class MockStreamCmp(WorkflowComponent, ComponentExecutable):
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         yield inputs
 
 
@@ -231,7 +231,7 @@ async def test_end_batch_stream_workflow():
 
 
 class MockStreamNode(WorkflowComponent, ComponentExecutable):
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         yield inputs
 
 

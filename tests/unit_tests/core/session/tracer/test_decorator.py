@@ -6,7 +6,7 @@ import pytest
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import LLMCompConfig
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode
 from openjiuwen.core.session.tracer import decorate_tool_with_trace, decorate_workflow_with_trace, \
@@ -61,13 +61,13 @@ class MockTool(Tool):
 
 
 class MockWorkflow:
-    async def invoke(self, inputs: Input, session: BaseSession, context: Context = None):
+    async def invoke(self, inputs: Input, session: BaseSession, context: ModelContext = None):
         logger.info(inputs)
         async for item in self.stream(inputs, session, context=context, stream_modes=[BaseStreamMode.CUSTOM]):
             continue
         return inputs
 
-    async def stream(self, inputs: Input, session: BaseSession, context: Context = None,
+    async def stream(self, inputs: Input, session: BaseSession, context: ModelContext = None,
                      stream_modes: list[StreamMode] = None):
         logger.info(inputs)
         logger.info(f"begin to ainvoke , inputs={inputs}")

@@ -16,7 +16,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.workflow.components.base import ComponentConfig, ComponentExecutable, WorkflowComponent
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
@@ -551,7 +551,7 @@ class QuestionerExecutable(ComponentExecutable):
         self._state = state
         return self
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         state_from_session = self._load_state_from_session(session)
         if state_from_session.is_undergoing_interaction():
             current_state = state_from_session  # recover state from session

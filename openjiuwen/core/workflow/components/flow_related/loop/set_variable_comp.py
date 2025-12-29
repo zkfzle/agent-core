@@ -6,7 +6,7 @@ from typing import Any
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session, NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
 from openjiuwen.core.session import NodeSession
@@ -22,7 +22,7 @@ class SetVariableComponent(WorkflowComponent, ComponentExecutable):
                                           error_msg=f'variable_mapping is None or empty'))
         self._variable_mapping = variable_mapping
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         root_session = session.base().parent()
         for left, right in self._variable_mapping.items():
             left_ref_str = extract_origin_key(left)

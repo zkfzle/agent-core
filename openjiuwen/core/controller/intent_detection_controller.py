@@ -235,7 +235,7 @@ class IntentDetectionController(BaseController):
             # 1. Intent detection
             intent = await self.intent_detection(event, session)
 
-            MessageUtils.add_user_message(
+            await MessageUtils.add_user_message(
                 event.get_display_content(), self._context_engine, session
             )
 

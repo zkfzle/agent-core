@@ -9,7 +9,7 @@ from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode
@@ -46,12 +46,12 @@ class CustomStream(ComponentExecutable, WorkflowComponent):
     def __init__(self):
         super().__init__()
 
-    # async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    # async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
     #     await session.write_stream(OutputSchema(type='第一条流式消息', index = 0, payload="output_stream"))
     #     await session.write_stream(OutputSchema(type='第二条流式消息', index = 1, payload="output_stream"))
     #     return {'custom_output': inputs}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         print(f"11111 line 32 custom stream")
         if inputs is None:
             yield 1
@@ -66,7 +66,7 @@ class CustomStream(ComponentExecutable, WorkflowComponent):
                     print(f"11111 line 39 custom stream index: {index}")
                     yield {"value": "stream_{}".format(index)}
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         print(f"33333 line 42 custom collect")
         total_result = ""
         values = inputs.get("value")
@@ -80,7 +80,7 @@ class CustomStream(ComponentExecutable, WorkflowComponent):
             total_result = str(values)
         return {"value": total_result}
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         print("22222 line 49 custom transform")
         values = inputs.get("value")
         # Handle both iterable and single value inputs

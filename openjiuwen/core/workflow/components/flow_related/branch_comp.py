@@ -8,7 +8,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.base import ComponentExecutable, WorkflowComponent
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
@@ -31,7 +31,7 @@ class BranchComponent(WorkflowComponent, ComponentExecutable):
     def router(self) -> Callable[..., Union[Hashable, list[Hashable]]]:
         return self._router
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         self._router.set_session(session)
         return {}
 

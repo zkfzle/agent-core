@@ -10,7 +10,7 @@ import os
 import uuid
 
 from openjiuwen.core.workflow import WorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Session
@@ -65,7 +65,7 @@ class DelayedComponent(ComponentExecutable, WorkflowComponent):
         self.name = name or comp_id
         self.comp_id = comp_id
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         print(f"[{self.name}-{self.comp_id}] 开始执行: {datetime.now().strftime('%H:%M:%S')}")
         await asyncio.sleep(self.sleep)
         print(f"[{self.name}-{self.comp_id}] 执行完成: {datetime.now().strftime('%H:%M:%S')}")

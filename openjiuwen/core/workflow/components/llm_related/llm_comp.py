@@ -13,7 +13,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import ComponentConfig, WorkflowComponent, ComponentExecutable
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
@@ -434,7 +434,7 @@ class LLMExecutable(ComponentExecutable):
                 StatusCode.LLM_COMPONENT_RESPONSE_FORMAT_CONFIG_ERROR,
                 "output config must contain exactly one parameter for text or markdown response type")
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         self._set_session(session)
         self._set_context(context)
         model_inputs = self._prepare_model_inputs(inputs)
@@ -460,7 +460,7 @@ class LLMExecutable(ComponentExecutable):
             logger.info("[%s] model outputs %s", self._session.executable_id(), response)
         return self._create_output(response)
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         self._set_session(session)
         self._set_context(context)
         response_format_type = self._config.response_format.get(_TYPE, "")

@@ -13,7 +13,7 @@ from openjiuwen.core.workflow import End, EndConfig
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.base import SimpleComponent
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
@@ -35,14 +35,14 @@ class MockStreamNode(ComponentExecutable, WorkflowComponent):
     def __init__(self):
         super().__init__()
 
-    async def invoke(self, inputs, session: BaseSession, context: Context = None) -> WorkflowOutput:
+    async def invoke(self, inputs, session: BaseSession, context: ModelContext = None) -> WorkflowOutput:
         return inputs
 
     async def stream(
             self,
             inputs,
             session: BaseSession,
-            context: Context = None,
+            context: ModelContext = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
         await asyncio.sleep(0.3)
@@ -76,10 +76,10 @@ async def test_no_stream_called():
 
 
 class Producer(ComponentExecutable, WorkflowComponent):
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return {"output": inputs.get("array")}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.info(f"producer inputs: {inputs}")
         for v in inputs.get("array"):
             logger.info(f"send stream frame {v}")
@@ -406,7 +406,7 @@ async def test_stream_component_in_sub_workflow_with_substream_template():
 
 
 class Interaction(WorkflowComponent, ComponentExecutable):
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         result = await session.interact("please enter any input")
         return {"output": result}
 
@@ -460,7 +460,7 @@ async def test_interaction_with_exception():
     run_times = 0
 
     class ExceptionComp(WorkflowComponent, ComponentExecutable):
-        async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+        async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
             if run_times == 0:
                 raise Exception("first time")
             else:
@@ -517,12 +517,12 @@ class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
         super().__init__()
         self._raise_error: bool = True
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         array = inputs.get("array")
         for item in array:
             yield {"array": item}
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         iter = inputs.get("array")
         i = 0
         async for item in iter:
@@ -533,7 +533,7 @@ class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
                     self._raise_error = False
                     raise JiuWenBaseException(-1, "mock error")
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         iter = inputs.get("array")
         results = []
         async for item in iter:
@@ -800,7 +800,7 @@ class StreamNode(SimpleComponent):
     def __init__(self, delay: float = 0.0):
         self.delay = delay
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         await asyncio.sleep(self.delay)
         for i in range(0, 10):
             await asyncio.sleep(0.01)

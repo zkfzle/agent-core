@@ -19,7 +19,7 @@ from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
@@ -1124,15 +1124,15 @@ class LogComp(SimpleComponent):
         self.name = name
         self.times = 0
 
-    async def invoke(self, inputs: Input, session: Session, context: Context):
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext):
         logger.info(f"Invoked {self.name}")
         return {"out": "b_value"}
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         for i in range(0, inputs.get('num')):
             yield {"out": i}
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         if self.times < 2:
             self.times += 1
             raise Exception("collect first time")
@@ -1141,7 +1141,7 @@ class LogComp(SimpleComponent):
             result.append(value)
         return {"out": result}
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         async for value in inputs.get("stream"):
             # await asyncio.sleep(0.5)
             yield {"out": value}
@@ -1210,12 +1210,12 @@ def create_workflow2() -> Workflow:
 async def test_illegal_nested_workflow():
 
     class InteractionNode(SimpleComponent):
-        async def invoke(self, inputs: Input, session: Session, context: Context):
+        async def invoke(self, inputs: Input, session: Session, context: ModelContext):
             res = await session.interact("value")
             return res
 
     class NestedFlow(SimpleComponent):
-        async def invoke(self, inputs: Input, session: Session, context: Context):
+        async def invoke(self, inputs: Input, session: Session, context: ModelContext):
             nested_flow = Workflow()
             nested_flow.set_start_comp("start", Start(), inputs_schema={"out": "${inputs}"})
             nested_flow.set_end_comp("end", End(), inputs_schema={"result": "${start.out}"})

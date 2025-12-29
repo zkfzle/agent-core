@@ -144,8 +144,8 @@ class TestIntentDetectionComponent:
 
         session_id = "test_intent_detection"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="intent_detection_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="intent_detection_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         async for chunk in flow.stream({"query": "我的意图是查询景点"}, workflow_session, workflow_context):
             print(chunk)

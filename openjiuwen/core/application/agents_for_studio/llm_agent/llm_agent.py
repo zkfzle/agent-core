@@ -190,6 +190,7 @@ class LLMAgent(ControllerAgent):
 
         # Store final result for send_to_agent
         final_result_holder = {"result": None}
+        await self.context_engine.create_context(session=agent_session)
 
         # Fully delegate to controller
         async def stream_process():

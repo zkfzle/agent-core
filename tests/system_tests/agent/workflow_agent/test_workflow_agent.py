@@ -32,7 +32,7 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Session
@@ -109,7 +109,7 @@ class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.comp_id = comp_id
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         # 请求用户确认
         confirm = await session.interact("是否确认操作")
         return {"confirm_result": confirm}

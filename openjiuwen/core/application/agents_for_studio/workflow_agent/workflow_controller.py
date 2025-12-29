@@ -283,8 +283,8 @@ class WorkflowController(IntentDetectionController):
                     workflow,
                     inputs=inputs,
                     session=workflow_session,
-                    context=self._context_engine.get_workflow_context(
-                        session_id=conversation_id, workflow_id=workflow_id
+                    context=await self._context_engine.create_context(
+                        context_id=workflow_id, session=session
                     )
                 )
                 chunks = []

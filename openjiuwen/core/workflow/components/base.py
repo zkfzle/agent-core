@@ -11,7 +11,7 @@ from typing import AsyncIterator, TypeVar
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.session import Session, BaseSession
 from openjiuwen.core.session import NodeSession
@@ -111,19 +111,19 @@ class ComponentExecutable(Executable):
         async for value in self.transform(inputs, WrappedNodeSession(session, True), session.context()):
             yield value
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.code,
                                   StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.errmsg.format(ability='Invoke'))
 
-    async def stream(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.code,
                                   StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.errmsg.format(ability='Stream'))
 
-    async def collect(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def collect(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.code,
                                   StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.errmsg.format(ability='Collect'))
 
-    async def transform(self, inputs: Input, session: Session, context: Context) -> AsyncIterator[Output]:
+    async def transform(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.code,
                                   StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.errmsg.format(ability='Transform'))
 

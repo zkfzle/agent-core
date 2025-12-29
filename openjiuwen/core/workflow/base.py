@@ -21,7 +21,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.workflow.components.base import WorkflowComponent
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.flow_related.end_comp import End
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Graph, Router, INPUTS_KEY, CONFIG_KEY, ExecutableGraph
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import WORKFLOW_EXECUTE_TIMEOUT, \
@@ -551,7 +551,7 @@ class Workflow(BaseWorkFlow):
             await sub_workflow_session.close()
             await self._graph.reset()
 
-    async def invoke(self, inputs: Input, session: BaseSession, context: Context = None) -> WorkflowOutput:
+    async def invoke(self, inputs: Input, session: BaseSession, context: ModelContext = None) -> WorkflowOutput:
         async def _invoke_task():
             logger.info(f"begin to invoke, input: {inputs}")
             chunks = []
@@ -582,7 +582,7 @@ class Workflow(BaseWorkFlow):
             self,
             inputs: Input,
             session: BaseSession,
-            context: Context = None,
+            context: ModelContext = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
         self._validate_and_init_session(session, stream_modes, context)
@@ -666,7 +666,7 @@ class Workflow(BaseWorkFlow):
                 except Exception:
                     pass
 
-    def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode], context: Context):
+    def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode], context: ModelContext):
         if isinstance(session, WorkflowSession):
             session.set_workflow_id(self._workflow_config.metadata.id)
             if context:
@@ -747,7 +747,7 @@ class Workflow(BaseWorkFlow):
             if assistant_reply:
                 assistant_messages.append({"role": "assistant", "content": assistant_reply})
 
-        context.batch_add_messages(user_messages + assistant_messages)
+        context.add_messages(user_messages + assistant_messages)
 
 
 def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:

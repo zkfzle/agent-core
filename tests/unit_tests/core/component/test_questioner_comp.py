@@ -335,8 +335,8 @@ class TestQuestionerStream:
 
         session_id = "test_questioner"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="questioner_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="questioner_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         interaction_output_schema = []
         async for chunk in flow.stream({"query": "你好"}, workflow_session, workflow_context):
@@ -401,8 +401,8 @@ class TestQuestionerStream:
 
         session_id = "test_questioner"
         config = ContextEngineConfig()
-        ce_engine = ContextEngine("123", config)
-        workflow_context = ce_engine.get_workflow_context(workflow_id="questioner_workflow", session_id=session_id)
+        ce_engine = ContextEngine(config)
+        workflow_context = await ce_engine.create_context(context_id="questioner_workflow")
         workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
         interaction_output_schema = list()
         async for chunk in flow.stream({"query": "时间为2025-10-01"}, workflow_session, workflow_context):

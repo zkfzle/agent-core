@@ -11,7 +11,7 @@ from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
@@ -42,7 +42,7 @@ class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
         super().__init__()
         self.comp_id = comp_id
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         # 请求用户确认
         confirm = await session.interact("是否确认操作")
         return {"confirm_result": confirm}

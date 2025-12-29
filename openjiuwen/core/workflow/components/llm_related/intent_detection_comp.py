@@ -16,7 +16,7 @@ from openjiuwen.core.workflow.components.base import WorkflowComponent, Componen
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow.components.condition.condition import Condition
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session import Session
@@ -166,7 +166,7 @@ class IntentDetectionExecutable(ComponentExecutable):
         else:
             return input_str
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         """Invoke IntentDetection node"""
         # Extract context data
         self._set_session(session)

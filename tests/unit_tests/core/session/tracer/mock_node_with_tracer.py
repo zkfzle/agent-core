@@ -1,7 +1,7 @@
 import asyncio
 import random
 
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 from tests.unit_tests.core.workflow.mock_nodes import MockNodeBase
@@ -13,7 +13,7 @@ class StreamNodeWithTracer(MockNodeBase):
         self._node_id = node_id
         self._datas: list[dict] = datas
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         try:
             await session.trace({"on_invoke_data": "mock with" + str(inputs)})
 

@@ -242,12 +242,10 @@ class BaseAgent(ABC):
             max_rounds = 10  # Default value
 
         context_config = ContextEngineConfig(
-            conversation_history_length=max_rounds * 2
+            max_context_message_num=max_rounds * 2
         )
         return ContextEngine(
-            agent_id=self.agent_config.id,
             config=context_config,
-            model=None
         )
 
     @abstractmethod
@@ -637,7 +635,7 @@ class ControllerAgent(BaseAgent):
             agent_session = await self._session.pre_run(session_id=session_id)
         else:
             agent_session = session
-
+        await self.context_engine.create_context(session=agent_session)
         try:
             # Fully delegate to controller
             result = await self.controller.invoke(inputs, agent_session)
@@ -699,6 +697,7 @@ class ControllerAgent(BaseAgent):
                 logger.warning(f"Failed to sync workflows to external session: {e}")
         # Store final result for send_to_agent
         final_result_holder = {"result": None}
+        await self.context_engine.create_context(session=agent_session)
 
         # Fully delegate to controller
         async def stream_process():
@@ -746,5 +745,5 @@ class ControllerAgent(BaseAgent):
 
     async def clear_session(self, session_id: str = "default_session"):
         await self._session.release(session_id)
-        self.context_engine.clear_context(session_id)
+        self.context_engine.clear_context(session_id=session_id)
         await self.controller.cleanup_conversation(session_id)

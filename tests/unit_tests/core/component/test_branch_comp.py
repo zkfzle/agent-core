@@ -8,7 +8,7 @@ from openjiuwen.core.workflow import BranchComponent
 from openjiuwen.core.workflow import BranchRouter
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.context_engine import Context
+from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.workflow import Workflow
@@ -23,7 +23,7 @@ class MockSubWorkflowComponent(WorkflowComponent, ComponentExecutable):
     def __init__(self):
         super().__init__()
 
-    async def invoke(self, inputs: Input, session: Session, context: Context) -> Output:
+    async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         results = []
         for i in range (0,8):
             workflow = self.sub_workflow()

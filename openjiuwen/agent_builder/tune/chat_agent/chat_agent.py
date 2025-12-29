@@ -76,7 +76,6 @@ class ChatAgent(BaseAgent):
         """ChatAgent uses default configured ContextEngine"""
         context_config = ContextEngineConfig()
         return ContextEngine(
-            agent_id=self.agent_config.id,
             config=context_config,
         )
 
@@ -91,7 +90,7 @@ class ChatAgent(BaseAgent):
             agent_session = session
 
         # 2. invoke LLMCall
-        agent_context = self.context_engine.get_agent_context(session_id)
+        agent_context = await self.context_engine.create_context(session=session)
         result = await self._llm_call.invoke(
             inputs=inputs,
             session=agent_session,
@@ -113,7 +112,7 @@ class ChatAgent(BaseAgent):
             agent_session = session
 
         # 2. stream invoke LLMCall
-        agent_context = self.context_engine.get_agent_context(session_id)
+        agent_context = await self.context_engine.create_context(session=session)
         stream_iterator = self._llm_call.stream(
             inputs=inputs,
             session=agent_session,

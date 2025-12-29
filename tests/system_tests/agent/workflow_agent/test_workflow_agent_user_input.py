@@ -32,7 +32,7 @@ from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.common.logging import logger
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")

@@ -35,7 +35,7 @@ from openjiuwen.core.application.agents_for_studio import (
     get_browsing_agent_system_prompt
 )
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 

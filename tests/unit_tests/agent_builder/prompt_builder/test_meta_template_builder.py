@@ -11,10 +11,10 @@ from openjiuwen.agent_builder.prompt_builder import MetaTemplateBuilder
 from openjiuwen.agent_builder.prompt_builder.builder.meta_template_builder import META_TEMPLATE_NAME_PREFIX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm import AIMessage
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
 

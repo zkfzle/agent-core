@@ -9,7 +9,7 @@ from openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.in
     IntentionDetector
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.messages import SystemMessage
+from openjiuwen.core.foundation.llm import SystemMessage
 
 
 class TestIntentionDetector(unittest.TestCase):

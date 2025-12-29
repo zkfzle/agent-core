@@ -38,7 +38,7 @@ from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Session
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 

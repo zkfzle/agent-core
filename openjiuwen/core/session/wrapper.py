@@ -16,7 +16,7 @@ from openjiuwen.core.session.stream.base import OutputSchema
 from openjiuwen.core.session.stream.writer import StreamWriter
 from openjiuwen.core.session.tracer.tracer import Tracer
 from openjiuwen.core.session.tracer.workflow_tracer import TracerWorkflowUtils
-from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelClient
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo

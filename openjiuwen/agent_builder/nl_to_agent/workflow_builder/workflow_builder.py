@@ -15,7 +15,7 @@ from openjiuwen.agent_builder.nl_to_agent.workflow_builder.intention_detector.in
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator import SopGenerator
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.messages import AIMessage, HumanMessage
+from openjiuwen.core.foundation.llm import AIMessage, HumanMessage
 
 WORKFLOW_REQUEST_CONTENT = "请提供您想要的工作流程描述，以便我为您生成相应的流程图，如果不清楚可以回复不清楚，我将为您规划流程。"
 SOP_RESPONSE_CONTENT = "SOP内容如下：\n"

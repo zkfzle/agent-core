@@ -7,9 +7,9 @@ from abc import abstractmethod
 from typing import List, Any, Union, Dict, Optional, AsyncIterator, Iterator
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
-from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage
+from openjiuwen.core.foundation.llm.schema.messages import BaseMessage, AIMessage
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk, AIMessageChunk
+from openjiuwen.core.foundation.llm.schema.messages_chunk import BaseMessageChunk, AIMessageChunk
 
 
 class BaseModelClient:

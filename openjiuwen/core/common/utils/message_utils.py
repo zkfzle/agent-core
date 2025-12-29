@@ -8,7 +8,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session.session import Session
-from openjiuwen.core.foundation.llm.messages import (
+from openjiuwen.core.foundation.llm import (
     BaseMessage, AIMessage, HumanMessage, ToolMessage
 )
 from openjiuwen.core.single_agent import AgentConfig

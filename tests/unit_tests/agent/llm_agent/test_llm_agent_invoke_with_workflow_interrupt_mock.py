@@ -47,8 +47,8 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
-from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
+from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow import Workflow

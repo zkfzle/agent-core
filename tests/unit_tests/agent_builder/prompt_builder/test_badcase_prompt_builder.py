@@ -7,10 +7,10 @@ from typing import List, Any, Dict, Iterator, AsyncIterator
 
 from openjiuwen.agent_builder.prompt_builder import BadCasePromptBuilder
 from openjiuwen.agent_builder.tune import EvaluatedCase, Case
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm import AIMessage
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE
 
 

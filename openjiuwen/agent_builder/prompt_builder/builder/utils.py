@@ -4,7 +4,7 @@
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.prompt import PromptTemplate
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage, BaseMessage
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage, BaseMessage
 
 PROMPT_BUILD_GENERAL_META_SYSTEM_TEMPLATE = PromptTemplate(content=[SystemMessage(content="""
 以下是markdown的元模板：

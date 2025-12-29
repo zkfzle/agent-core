@@ -8,7 +8,7 @@ from unittest.mock import patch, AsyncMock
 from mcp import StdioServerParameters
 
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import QuestionerComponent, FieldInfo, QuestionerConfig
@@ -18,7 +18,7 @@ from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session import TaskSession
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolInfo
 from openjiuwen.core.protocols.mcp import ToolServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow import Workflow

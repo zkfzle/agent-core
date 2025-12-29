@@ -5,7 +5,7 @@
 import json
 from typing import List, Dict, Any
 
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
 OUTPUT_CHANGE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""

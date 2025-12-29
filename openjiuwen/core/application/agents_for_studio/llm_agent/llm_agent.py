@@ -11,11 +11,11 @@ from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import ControllerAgent, PluginSchema, ReActAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller import LLMController
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm.messages import HumanMessage, AIMessage
+from openjiuwen.core.foundation.llm import HumanMessage, AIMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.workflow import Workflow
 

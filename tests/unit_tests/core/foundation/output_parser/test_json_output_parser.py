@@ -1,8 +1,8 @@
 import pytest
 
-from openjiuwen.core.foundation.llm.output_parser.json_output_parser import JsonOutputParser
-from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.foundation.llm.messages_chunk import AIMessageChunk
+from openjiuwen.core.foundation.llm import JsonOutputParser
+from openjiuwen.core.foundation.llm import AIMessage
+from openjiuwen.core.foundation.llm import AIMessageChunk
 
 pytestmark = pytest.mark.asyncio
 

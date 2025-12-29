@@ -14,15 +14,15 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentConfig, ComponentExecutable
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow.components.condition.condition import Condition
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session import Session
-from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage, SystemMessage
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseMessage, HumanMessage, SystemMessage
+from openjiuwen.core.foundation.llm import ModelFactory
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.common.security.user_config import UserConfig
 

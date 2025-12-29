@@ -7,7 +7,7 @@ from typing import Dict, List
 from openjiuwen.agent_builder.nl_to_agent.utils.utils import load_yaml_file
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.dl_generator.prompt import generate_system_prompt, \
     refine_user_prompt
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
 
 EMPTY_RESOURCE_CONTENT = "无可用工具/资源/外部接口。"
 

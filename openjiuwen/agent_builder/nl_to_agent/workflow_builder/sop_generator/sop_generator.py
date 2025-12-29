@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.prompt import transform_system_prompt, \
     generate_system_prompt
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
 
 SOP_GENERATE_PROMPT = "请根据以下对话历史设计工作流程：\n"
 EMPTY_RESOURCE_CONTENT = "无可用工具/资源/外部接口。"

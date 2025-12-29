@@ -12,15 +12,15 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_a
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.controller import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import AIMessage, UsageMetadata
+from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 

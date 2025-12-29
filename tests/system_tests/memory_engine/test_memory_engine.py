@@ -5,14 +5,14 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
 from openjiuwen.core.memory.embed_models.api import APIEmbedModel
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.common.logging import logger
 
 

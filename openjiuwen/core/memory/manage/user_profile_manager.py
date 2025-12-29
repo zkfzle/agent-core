@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelClient
 from openjiuwen.core.memory.common.base import generate_idx_name, parse_memory_hit_infos
 from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager

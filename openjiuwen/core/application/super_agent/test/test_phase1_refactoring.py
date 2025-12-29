@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from openjiuwen.core.application.agents_for_studio import ContextManager
 from openjiuwen.core.application.agents_for_studio import SuperReActAgent
 from openjiuwen.core.application.agents_for_studio import SuperAgentFactory
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import BaseModelInfo
 
 
 def test_context_manager_basic_operations():

@@ -21,13 +21,13 @@ from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.hash_util import generate_key
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm import ModelFactory
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.foundation.llm.messages import AIMessage, ToolMessage
+from openjiuwen.core.foundation.llm import AIMessage, ToolMessage
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.foundation.tool import ToolCall
 

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Tuple
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.memory.common.distributed_lock import DistributedLock
 from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.generation.generation import Generator
@@ -23,9 +23,9 @@ from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
-from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.llm.messages import BaseMessage, HumanMessage
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseMessage, HumanMessage
+from openjiuwen.core.foundation.llm import ModelFactory
 
 
 class BaseMemoryEngine(ABC):

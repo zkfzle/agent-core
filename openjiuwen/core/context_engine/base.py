@@ -7,7 +7,7 @@ from typing import Union, Dict, Optional, List
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm import BaseMessage
 
 
 class ContextOwner(BaseModel):

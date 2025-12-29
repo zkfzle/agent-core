@@ -10,8 +10,8 @@ from openjiuwen.agent_builder.prompt_builder.base import BasePromptBuilder
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
 INSERT_STR: str = "[用户要插入的位置]"

@@ -2,11 +2,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Union, List, Dict
+from typing import Union, List
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.foundation.prompt.assemble.variables.textable import TextableVariable
 from openjiuwen.core.foundation.prompt.assemble.variables.variable import Variable
 

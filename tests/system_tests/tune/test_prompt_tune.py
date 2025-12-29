@@ -15,12 +15,12 @@ from openjiuwen.agent_builder.tune import (
     CaseLoader
 )
 from openjiuwen.core.single_agent import LLMCallConfig
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, Param
 
-from openjiuwen.core.foundation.llm.messages import UsageMetadata
+from openjiuwen.core.foundation.llm import UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")

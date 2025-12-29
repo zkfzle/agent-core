@@ -7,7 +7,7 @@ import types
 from unittest.mock import Mock, AsyncMock, patch
 
 from openjiuwen.core.workflow import BranchRouter
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionCompConfig, \
     IntentDetectionComponent
@@ -15,7 +15,7 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.session import NodeSession, WorkflowSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionExecutable

@@ -27,7 +27,7 @@ from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import CustomSchema, OutputSchema
-from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm import AIMessage
 from openjiuwen.core.workflow import WorkflowOutput, WorkflowExecutionState
 
 

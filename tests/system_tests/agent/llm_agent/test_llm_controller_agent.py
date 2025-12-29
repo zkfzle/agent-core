@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
@@ -20,7 +20,7 @@ from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
 from openjiuwen.core.runner import Runner
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi

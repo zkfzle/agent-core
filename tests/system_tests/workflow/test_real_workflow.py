@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 from openjiuwen.core.session.wrapper import TaskSession
 from openjiuwen.core.workflow import BranchComponent
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import (
     IntentDetectionComponent,
@@ -37,7 +37,7 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import CustomSchema
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Param
 from openjiuwen.core.foundation.tool import RestfulApi

@@ -4,13 +4,12 @@
 
 import json
 import re
-import asyncio
 from typing import Any, Iterator, Optional, Union, Dict
 
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.output_parser.base import BaseOutputParser
-from openjiuwen.core.foundation.llm.messages import AIMessage
-from openjiuwen.core.foundation.llm.messages_chunk import AIMessageChunk
+from openjiuwen.core.foundation.llm.schema.messages import AIMessage
+from openjiuwen.core.foundation.llm.schema.messages_chunk import AIMessageChunk
 from openjiuwen.core.common.logging import logger
 
 

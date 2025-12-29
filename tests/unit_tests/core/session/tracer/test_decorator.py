@@ -4,15 +4,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import LLMCompConfig
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode
 from openjiuwen.core.session.tracer import decorate_tool_with_trace, decorate_workflow_with_trace, \
     decorate_model_with_trace
-from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output

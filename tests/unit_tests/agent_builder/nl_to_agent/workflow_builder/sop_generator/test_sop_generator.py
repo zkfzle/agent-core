@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock
 
 import openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator as sg
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.sop_generator.sop_generator import SopGenerator
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
 
 LLM_CHAT_SOP_RESULT = "<任务中文名称>mock_name</任务中文名称>\n<任务英文名称>mock_name_en</任务英文名称>\n" \
                       "<任务介绍>mock_description</任务介绍>\n<流程>mock_sop</流程>"

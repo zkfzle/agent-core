@@ -8,7 +8,7 @@ import openjiuwen.agent_builder.nl_to_agent.workflow_builder.workflow_builder as
 from openjiuwen.agent_builder.nl_to_agent.workflow_builder.workflow_builder import WorkflowBuilder, State
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.messages import AIMessage, HumanMessage
+from openjiuwen.core.foundation.llm import AIMessage, HumanMessage
 
 TRANSFORMED_SOP = {
     "name": "mock_name", "name_en": "mock_name_en", "description": "mock_description", "sop": "transformed_sop"

@@ -37,11 +37,10 @@ import asyncio
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.single_agent.config import WorkflowAgentConfig
 from openjiuwen.core.single_agent.schema.schema import WorkflowSchema

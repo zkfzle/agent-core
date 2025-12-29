@@ -20,7 +20,7 @@ from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.foundation.llm.messages import BaseMessage
+from openjiuwen.core.foundation.llm import BaseMessage
 
 
 class IntentDetector:

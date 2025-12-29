@@ -29,7 +29,7 @@ from openjiuwen.core.single_agent import BaseAgent
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import Session
-from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm import AIMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.protocols.mcp import ToolServerConfig

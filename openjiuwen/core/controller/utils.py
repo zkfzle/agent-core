@@ -21,8 +21,8 @@ from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.session.interaction.interactive_input import InteractiveInput
 from openjiuwen.core.session.session import Session
 from openjiuwen.core.session.stream.base import OutputSchema
-from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, HumanMessage, ToolMessage
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm import BaseMessage, AIMessage, HumanMessage, ToolMessage
+from openjiuwen.core.foundation.llm import ModelFactory
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import ToolCall
 from openjiuwen.core.workflow import WorkflowOutput

@@ -5,10 +5,10 @@
 from unittest.mock import patch
 from typing import List, Any, Dict, Iterator, AsyncIterator
 
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import AIMessage
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm import AIMessage
 
 from openjiuwen.agent_builder.prompt_builder import FeedbackPromptBuilder
 import openjiuwen.agent_builder.prompt_builder.builder.utils as TEMPLATE

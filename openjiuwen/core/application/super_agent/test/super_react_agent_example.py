@@ -29,8 +29,8 @@ from openjiuwen.core.application.super_agent import (
 from openjiuwen.core.application.agents_for_studio import (
     SuperAgentFactory
 )
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import Param
 

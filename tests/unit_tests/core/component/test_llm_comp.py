@@ -10,13 +10,13 @@ from unittest.mock import Mock
 from openjiuwen.core.common.constants.enums import ControllerType, ComponentAbility
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
-from openjiuwen.core.foundation.llm.messages import AIMessage, BaseMessage
+from openjiuwen.core.foundation.llm import AIMessage, BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.foundation.llm.messages_chunk import BaseMessageChunk
+from openjiuwen.core.foundation.llm import BaseMessageChunk
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMExecutable
@@ -38,7 +38,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
 from openjiuwen.core.session import WorkflowSession, NodeSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
-from openjiuwen.core.foundation.llm.base import BaseModelInfo, BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
 
 USER_FIELDS = "userFields"
 

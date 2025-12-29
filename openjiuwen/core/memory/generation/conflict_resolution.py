@@ -4,8 +4,8 @@
 import json
 from enum import Enum
 from typing import List, Tuple
-from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.llm.output_parser.json_output_parser import JsonOutputParser
+from openjiuwen.core.foundation.llm import BaseModelClient
+from openjiuwen.core.foundation.llm import JsonOutputParser
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.prompt.conflict_resolution import CONFLICT_RESOLUTION_PROMPT
 

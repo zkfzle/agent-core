@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Any, List
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
 DEFAULT_SYSTEM_PROMPT = """你是一个意图分类助手，擅长判断用户的输入属于哪个分类。

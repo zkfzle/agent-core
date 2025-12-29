@@ -11,7 +11,7 @@ from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import TaskSession
 from openjiuwen.core.common.constants.constant import INTERACTION
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.workflow import Start
@@ -19,7 +19,7 @@ from openjiuwen.core.graph.executable import Input
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import TraceSchema, OutputSchema
-from openjiuwen.core.foundation.llm.base import BaseModelInfo
+from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.workflow import WorkflowConfig

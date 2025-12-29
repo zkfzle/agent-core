@@ -17,9 +17,9 @@ from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.foundation.llm.base import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm.messages import SystemMessage, HumanMessage
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
+from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
+from openjiuwen.core.foundation.llm import ModelFactory
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"

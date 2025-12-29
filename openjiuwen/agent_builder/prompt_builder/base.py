@@ -4,10 +4,10 @@
 from abc import ABC, abstractmethod
 from typing import Generator, Optional
 
-from openjiuwen.core.foundation.llm.base import BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelClient
 from openjiuwen.core.foundation.prompt import PromptTemplate
-from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactory
-from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig
+from openjiuwen.core.foundation.llm import ModelFactory
+from openjiuwen.core.foundation.llm import ModelConfig
 
 
 class BasePromptBuilder(ABC):

@@ -604,3 +604,31 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert empty_tools == None
 
             return True
+        
+    @unittest.skip("skip system test - requires network")
+    async def test_connect_and_list_tools_with_query_ak(self):
+        """End-to-end test: SSE client connection and tool listing with ak query parameter (set via env vars)."""
+        
+        server_path = os.getenv("MCP_SERVER_PATH", "https://mcp.example.com/sse")
+        query_key = os.getenv("MCP_AUTH_QUERY_PARAM_KEY", "ak")
+        query_value = os.getenv("MCP_AUTH_QUERY_PARAM_VALUE", "your-ak")
+
+        config = ToolServerConfig(
+            server_name="example-mcp-server",
+            server_path=server_path,
+            client_type="sse",
+            auth_query_params={query_key: query_value}
+        )
+
+        client = SseClient(config.server_path, config.server_name,
+                           auth_query_params=config.auth_query_params)
+
+        try:
+            connected = await asyncio.wait_for(client.connect(timeout=60), timeout=60)
+            self.assertTrue(connected, "Should connect to the MCP SSE server with ak query parameter")
+
+            tools = await asyncio.wait_for(client.list_tools(timeout=60), timeout=60)
+            self.assertIsInstance(tools, list)
+            self.assertGreater(len(tools), 0, "Expected the server to return at least one tool")
+        finally:
+            await asyncio.wait_for(client.disconnect(timeout=15), timeout=15)

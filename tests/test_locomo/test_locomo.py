@@ -97,6 +97,7 @@ class TESTLOCOMO():
             session_id = str(idx) + "-" + str(key).replace("_", "-")
             data_time_key = key + "_date_time"
             timestamp = conversation_data[data_time_key]
+            timestamp = datetime.strptime(timestamp, "%I:%M %p on %d %B, %Y")
             chats = conversation_data[key]
             for chat in tqdm(chats, desc=f"Processing {session_id}"):
                 message = f"{chat['speaker']}: {chat['text']}. Time: {timestamp}."

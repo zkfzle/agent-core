@@ -12,6 +12,7 @@ from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.generation.generation import Generator
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.message_manager import MessageManager
+from openjiuwen.core.memory.manage.semantic_memory_manager import SemanticMemoryManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.manage.write_manager import WriteManager
@@ -332,8 +333,15 @@ class MemoryEngine(BaseMemoryEngine):
             crypto_key=self._sys_mem_config.crypto_key
         )
         self.variable_manager = VariableManager(kv_store, self._sys_mem_config.crypto_key)
+        self.semantic_memory_manager = SemanticMemoryManager(
+            semantic_recall_instance=semantic_store,
+            user_mem_store=user_mem_store,
+            data_id_generator=data_id_generator,
+            crypto_key=self._sys_mem_config.crypto_key
+        )
         managers = {
             MemoryType.USER_PROFILE.value: self.user_profile_manager,
+            MemoryType.SEMANTIC_MEMORY.value: self.semantic_memory_manager,
             MemoryType.VARIABLE.value: self.variable_manager
         }
         self.write_manager = WriteManager(managers, user_mem_store)

@@ -66,7 +66,7 @@ class MemoryAnalyzer:
                 if attempt < retries - 1:
                     continue
                 logger.error(f"categories model output format error: {e.msg}")
-        return []
+        return MemoryAnalyzerResult()
 
     @staticmethod
     def _build_model_input(

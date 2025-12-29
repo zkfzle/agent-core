@@ -18,6 +18,7 @@ class MemoryType(Enum):
     USER_PROFILE = "user_profile"
     VARIABLE = "variable"
     IMPLICIT_USER_PROFILE = "implicit_user_profile"
+    SEMANTIC_MEMORY = "semantic_memory"
     UNKNOWN = "unknown"
 
 
@@ -46,3 +47,10 @@ class VariableUnit(BaseMemoryUnit):
     variable_name: str
     variable_mem: str
     mem_id: str = ""
+
+
+@dataclass
+class SemanticMemoryUnit(BaseMemoryUnit):
+    mem_id: str = ""
+    semantic_mem: str = ""
+    message_mem_id: str = ""

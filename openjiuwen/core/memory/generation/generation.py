@@ -2,19 +2,66 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Tuple
-from openjiuwen.core.memory.generation.variable_extractor import ComprehensionExtractor
-from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit
+from openjiuwen.core.memory.generation.long_term_memory_extractor import LongTermMemoryExtractor
+from openjiuwen.core.memory.mem_unit.memory_unit import (MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit,
+                                                         SemanticMemoryUnit)
 from openjiuwen.core.memory.generation.memory_analyzer import MemoryAnalyzer, VariableResult
-from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 
 category_to_class = {
-    "user_profile": MemoryType.USER_PROFILE
+    "user_profile": MemoryType.USER_PROFILE,
+    "semantic_memory": MemoryType.SEMANTIC_MEMORY
 }
 
+
+def get_user_profile_unit(
+        user_id: str,
+        group_id: str,
+        message_mem_id: str,
+        memory_dict: dict
+) -> list[UserProfileUnit]:
+    """Generate user profile memory unit based on input"""
+    user_profile_data = []
+    user_profile_dict = memory_dict.get("user_profile", {})
+    for profile_type, profile_list in user_profile_dict.items():
+        if not isinstance(profile_list, list):
+            logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
+            continue
+        for profile in profile_list:
+            user_profile_data.append(UserProfileUnit(
+                user_id=user_id,
+                group_id=group_id,
+                profile_type=profile_type,
+                profile_mem=profile,
+                mem_type=MemoryType.USER_PROFILE,
+                message_mem_id=message_mem_id,
+            ))
+    return user_profile_data
+
+def get_semantic_memory_unit(
+        user_id: str,
+        group_id: str,
+        message_mem_id: str,
+        memory_dict: dict
+) -> list[SemanticMemoryUnit]:
+    """"""
+    semantic_memory_units = []
+    semantic_memory_list = memory_dict.get("semantic_memory", [])
+    if isinstance(semantic_memory_list, list) and len(semantic_memory_list) > 0:
+        for memory in semantic_memory_list:
+            if not isinstance(memory, str):
+                logger.warning(f"semantic memory format error: {memory} is not a list")
+                continue
+            semantic_memory_units.append(SemanticMemoryUnit(
+                user_id=user_id,
+                group_id=group_id,
+                mem_type=MemoryType.SEMANTIC_MEMORY,
+                semantic_mem=memory,
+                message_mem_id=message_mem_id,
+            ))
+    return semantic_memory_units
 
 class Generator:
     async def gen_all_memory(self, **kwargs) -> list[BaseMemoryUnit]:
@@ -84,39 +131,6 @@ class Generator:
             ))
         return variable_units
 
-    async def gen_user_profile(
-            self,
-            user_id: str,
-            group_id: str,
-            messages: list[BaseMessage],
-            history_messages: list[BaseMessage],
-            base_chat_model: Tuple[str, BaseModelClient],
-            message_mem_id: str,
-            user_define: dict[str, str] = None
-    ) -> list[UserProfileUnit]:
-        """Generate user profile memory unit based on input"""
-        user_profile_memory = await UserProfileExtractor.get_user_profile(
-            messages=messages,
-            history_messages=history_messages,
-            base_chat_model=base_chat_model,
-            user_define=user_define
-        )
-        user_profile_data = []
-        for profile_type, profile_list in user_profile_memory.items():
-            if not isinstance(profile_list, list):
-                logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
-                continue
-            for profile in profile_list:
-                user_profile_data.append(UserProfileUnit(
-                    user_id=user_id,
-                    group_id=group_id,
-                    profile_type=profile_type,
-                    profile_mem=profile,
-                    mem_type=MemoryType.USER_PROFILE,
-                    message_mem_id=message_mem_id,
-                ))
-        return user_profile_data
-
     async def _categories_to_memory_unit(self,
                                          categories: list[str],
                                          history_messages: list[BaseMessage],
@@ -128,20 +142,22 @@ class Generator:
                                          user_define: dict[str, str] = None
                                          ) -> list[BaseMemoryUnit]:
         memory_units = []
-        for category in categories:
-            if category not in category_to_class.keys():
-                logger.warning(f"Unsupported memory category: {category}, skipped.")
-                continue
-            mem_class = category_to_class[category]
-            if mem_class == MemoryType.USER_PROFILE:
-                user_profile_units = await self.gen_user_profile(
-                    user_id=user_id,
-                    group_id=group_id,
-                    history_messages=history_messages,
-                    messages=messages,
-                    base_chat_model=base_chat_model,
-                    message_mem_id=message_mem_id,
-                    user_define=user_define
-                )
-                memory_units += user_profile_units
+        memory_dict = await LongTermMemoryExtractor.extract_long_term_memory(
+            categories=categories,
+            history_messages=history_messages,
+            messages=messages,
+            base_chat_model=base_chat_model,
+        )
+        memory_units.extend(get_user_profile_unit(
+            user_id=user_id,
+            group_id=group_id,
+            message_mem_id=message_mem_id,
+            memory_dict=memory_dict
+        ))
+        memory_units.extend(get_semantic_memory_unit(
+            user_id=user_id,
+            group_id=group_id,
+            message_mem_id=message_mem_id,
+            memory_dict=memory_dict
+        ))
         return memory_units

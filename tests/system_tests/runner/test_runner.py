@@ -604,3 +604,31 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert empty_tools == None
 
             return True
+        
+    @unittest.skip("skip system test - requires network")
+    async def test_connect_and_list_tools_with_query_ak(self):
+        """端到端测试：带 ak 查询参数的 SSE 客户端连接和工具列表获取（已使用可用的 ak 值测试通过）"""
+        print("=== 测试带 ak 查询参数的 SSE 客户端连接和工具列表获取 ===")
+
+        # 在环境变量中获取实际的 ak 值
+        ak_value = os.getenv("BAIDU_MCP_AK", "your-ak") 
+
+        config = ToolServerConfig(
+            server_name="baidu-map-mcp-server",
+            server_path="https://mcp.map.baidu.com/sse",
+            client_type="sse",
+            auth_query_params={"ak": ak_value}
+        )
+
+        client = SseClient(config.server_path, config.server_name,
+                           auth_query_params=config.auth_query_params)
+
+        try:
+            connected = await asyncio.wait_for(client.connect(timeout=60), timeout=60)
+            self.assertTrue(connected, "Should connect to Baidu Map MCP SSE server with ak query parameter")
+
+            tools = await asyncio.wait_for(client.list_tools(timeout=60), timeout=60)
+            self.assertIsInstance(tools, list)
+            self.assertGreater(len(tools), 0, "Expected the server to return at least one tool")
+        finally:
+            await asyncio.wait_for(client.disconnect(timeout=15), timeout=15)

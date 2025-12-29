@@ -11,17 +11,16 @@ HierarchicalGroup 金融场景测试 - 使用 HierarchicalMainController + Workf
 """
 import asyncio
 import os
-import uuid
 import unittest
 from unittest.mock import patch
 
 from openjiuwen.core.single_agent import AgentConfig, ControllerAgent, WorkflowAgentConfig
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.application.groups.hierarchical_group import (
+from examples.groups.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
-from openjiuwen.core.application.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
+from examples.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.controller import Event
 from openjiuwen.core.common.constants import constant as const
 from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable

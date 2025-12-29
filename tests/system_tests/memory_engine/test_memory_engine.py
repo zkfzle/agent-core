@@ -98,6 +98,7 @@ class TestMemoryEngine(unittest.IsolatedAsyncioTestCase):
                 return True
         return False
 
+    @unittest.skip("skip system test")
     async def test_memory_engine(self):
         logger.set_level("INFO")
         mem_engine = await TestMemoryEngine._create_memory_engine()

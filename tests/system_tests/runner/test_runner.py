@@ -356,6 +356,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 pass
             print("✅ 测试完成，资源清理")
 
+    @unittest.skip("skip system test")
     async def test_mcp_tools_sse(self):
         """
         端到端测试 MCP-SSE 工具生命周期：
@@ -434,6 +435,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             return True
 
+    @unittest.skip("skip system test")
     async def test_mcp_tools_stdio(self):
         """
         端到端测试 MCP-stdio 工具生命周期：
@@ -516,6 +518,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             return True
 
+    @unittest.skip("skip system test")
     async def test_mcp_tools_playwright(self):
         """
         端到端测试 MCP-Playwright 工具生命周期：

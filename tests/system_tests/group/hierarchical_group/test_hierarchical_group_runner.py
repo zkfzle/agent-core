@@ -21,11 +21,11 @@ import unittest
 from typing import Any, Dict, AsyncIterator
 
 from openjiuwen.core.single_agent import AgentConfig, BaseAgent, ControllerAgent
-from openjiuwen.core.application.groups.hierarchical_group import (
+from examples.groups.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
 )
-from openjiuwen.core.application.groups.hierarchical_group.agents.main_controller import (
+from examples.groups.hierarchical_group.agents.main_controller import (
     HierarchicalMainController
 )
 from openjiuwen.core.controller import Event

@@ -9,7 +9,7 @@ from openjiuwen.core.application.agents_for_studio import (
     SuperAgentFactory,
     AgentConstraints
 )
-from openjiuwen.core.application.super_agent import (
+from examples.super_agent import (
     SuperReActAgent
 )
 from openjiuwen.core.application.agents_for_studio import (
@@ -20,17 +20,6 @@ from openjiuwen.core.application.agents_for_studio import (
 )
 from openjiuwen.core.application.agents_for_studio import (
     ToolCallHandler
-)
-from openjiuwen.core.application.agents_for_studio import (
-    get_summary_prompt,
-    get_o3_hints_prompt,
-    get_o3_answer_type_prompt,
-    get_o3_final_answer_prompt,
-    get_task_instruction_prompt,
-    get_main_agent_system_prompt,
-    get_browsing_agent_system_prompt,
-    generate_mcp_system_prompt,
-    process_input
 )
 
 __all__ = [

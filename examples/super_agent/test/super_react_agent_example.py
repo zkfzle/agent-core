@@ -23,7 +23,7 @@ for path in [REPO_ROOT, EXAMPLES_DIR]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
-from openjiuwen.core.application.super_agent import (
+from examples.super_agent import (
     SuperReActAgent
 )
 from openjiuwen.core.application.agents_for_studio import (

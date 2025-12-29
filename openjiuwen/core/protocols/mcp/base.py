@@ -6,7 +6,7 @@ from typing import Dict, Any
 from pydantic import BaseModel, Field
 
 
-class ToolServerConfig(BaseModel):
+class McpServerConfig(BaseModel):
     server_name: str
     server_path: str
     client_type: str = 'sse'

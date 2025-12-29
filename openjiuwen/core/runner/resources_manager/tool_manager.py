@@ -17,7 +17,7 @@ from openjiuwen.core.protocols.mcp import (
     StdioClient,
     PlaywrightClient
 )
-from openjiuwen.core.protocols.mcp import ToolServerConfig
+from openjiuwen.core.protocols.mcp import McpServerConfig
 from openjiuwen.core.foundation.tool import ToolInfo
 
 ToolProvider = Callable[[], Tool]
@@ -28,7 +28,7 @@ class ToolMgr(AbstractManager[Tool]):
         super().__init__()
         self._tool_infos: dict[str, ToolInfo] = {}
         self._server_tool_infos: dict[str, List[McpToolCard]] = {}
-        self._server_configs: dict[str, ToolServerConfig] = {}
+        self._server_configs: dict[str, McpServerConfig] = {}
         self._mcp_clients: dict[str, McpClient] = {}
 
     def add_tool(self, tool_id: str, tool: Union[Tool, ToolProvider]) -> None:
@@ -143,12 +143,12 @@ class ToolMgr(AbstractManager[Tool]):
             self._handle_exception(e, StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED, "get_tool_info")
             return None
 
-    async def add_tool_servers(self, server_config: Union[ToolServerConfig, List[ToolServerConfig]]) -> List[bool]:
+    async def add_tool_servers(self, server_config: Union[McpServerConfig, List[McpServerConfig]]) -> List[bool]:
         """
         注册 MCP 服务器（同步连接、阻塞至完成）。
         返回：与传入顺序一一对应的注册结果列表，True=成功。
         """
-        configs = [server_config] if isinstance(server_config, ToolServerConfig) else (server_config or [])
+        configs = [server_config] if isinstance(server_config, McpServerConfig) else (server_config or [])
         if not configs:
             return []
 
@@ -166,7 +166,7 @@ class ToolMgr(AbstractManager[Tool]):
                 results.append(False)
         return results
 
-    async def _connect_and_register_server(self, config: ToolServerConfig) -> bool:
+    async def _connect_and_register_server(self, config: McpServerConfig) -> bool:
         client = self._create_client(config)
         connected = await client.connect()
         if not connected:
@@ -191,7 +191,7 @@ class ToolMgr(AbstractManager[Tool]):
             logger.info(f"Registered MCP tool: {tool_id}")
         return True
 
-    def _create_client(self, config: ToolServerConfig) -> McpClient:
+    def _create_client(self, config: McpServerConfig) -> McpClient:
         if config.client_type == "sse":
             return SseClient(config.server_path, config.server_name, \
                              config.auth_headers, config.auth_query_params)

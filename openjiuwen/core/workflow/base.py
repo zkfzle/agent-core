@@ -11,8 +11,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Self, Any, Union, AsyncIterator, List, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from openjiuwen.core.common import BaseCard
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -46,6 +47,8 @@ from openjiuwen.core.graph.graph import PregelGraph
 
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
+class WorkflowCard(BaseCard):
+    workflow_id: Field(...)
 
 class ConnectionType(Enum):
     """Type of workflow connection."""

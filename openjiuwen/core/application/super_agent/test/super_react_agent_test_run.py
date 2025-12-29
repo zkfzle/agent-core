@@ -38,7 +38,7 @@ from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 
-from openjiuwen.core.protocols.mcp import ToolServerConfig
+from openjiuwen.core.protocols.mcp import McpServerConfig
 from openjiuwen.core.runner import Runner, resource_mgr
 from mcp import StdioServerParameters
 
@@ -245,7 +245,7 @@ async def _register_mcp_server_as_local_tools(
     tool_mgr = resource_mgr.tool()
 
     # 1. 注册 MCP server
-    server_cfg = ToolServerConfig(
+    server_cfg = McpServerConfig(
         server_name=server_name,
         params=params,
         client_type=client_type,

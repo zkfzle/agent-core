@@ -20,7 +20,7 @@ from openjiuwen.core.session import TaskSession
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolCard
-from openjiuwen.core.protocols.mcp import ToolServerConfig, SseClient, StdioClient, PlaywrightClient
+from openjiuwen.core.protocols.mcp import McpServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 
@@ -392,7 +392,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 patch("openjiuwen.core.protocols.mcp.SseClient.list_tools", AsyncMock(return_value=mock_tools)), \
                 patch.object(SseClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
             # -------------------- 服务器配置 --------------------
-            mcp_server_config = ToolServerConfig(
+            mcp_server_config = McpServerConfig(
                 server_name="browser-use-server",
                 server_path="http://127.0.0.1:8930/sse",
                 client_type="sse",
@@ -472,7 +472,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 patch.object(StdioClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
             # -------------------- 服务器配置 --------------------
             # 参数内容可以是任意占位符，真实值不会被用到
-            mcp_server_config = ToolServerConfig(
+            mcp_server_config = McpServerConfig(
                 server_name="doubter-mcp-server",
                 server_path="",
                 params=dict(StdioServerParameters(command="python", args=["dummy.py"])),
@@ -554,7 +554,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 patch.object(PlaywrightClient, "call_tool", AsyncMock(return_value=mock_tool_result)) as mock_call_tool:
             # -------------------- 服务器配置 --------------------
             # 可以是 URL 或 StdioServerParameters，PlaywrightClient 内部自动识别
-            mcp_server_config = ToolServerConfig(
+            mcp_server_config = McpServerConfig(
                 server_name="playwright-mcp-server",
                 server_path="http://127.0.0.1:8931/sse",  # 实际不会发起网络，仅占位
                 client_type="playwright",
@@ -605,7 +605,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         # 在环境变量中获取实际的 ak 值
         ak_value = os.getenv("BAIDU_MCP_AK", "your-ak") 
 
-        config = ToolServerConfig(
+        config = McpServerConfig(
             server_name="baidu-map-mcp-server",
             server_path="https://mcp.map.baidu.com/sse",
             client_type="sse",

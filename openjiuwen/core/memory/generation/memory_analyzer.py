@@ -16,7 +16,6 @@ from openjiuwen.core.memory.prompt.memory_analyzer import (MEMORY_ANALYZER_PROMP
                                                            SUMMARY_TEMPLATE_PROMPT)
 
 
-
 class VariableResult(BaseModel):
     variable_key: str = Field(default="", description="variable key")
     variable_value: str = Field(default="", description="variable value")
@@ -38,19 +37,21 @@ class MemoryAnalyzer:
             history_messages: List[BaseMessage],
             base_chat_model: Tuple[str, BaseModelClient],
             memory_config: MemoryConfig,
-            summary_max_length_threshold: int = 50,
-            summary_max_token: int = 30,
             retries: int = 3
     ) -> MemoryAnalyzerResult | None:
         if len(messages) == 0:
             logger.warning("No messages to analyze")
             return None
+        need_summary, raw_summary = MemoryAnalyzer._check_summary(
+            messages=messages,
+            summary_max_length_threshold=memory_config.summary_config.threshold
+        )
         model_input = MemoryAnalyzer._build_model_input(
             messages=messages,
             history_messages=history_messages,
             memory_config=memory_config,
-            summary_max_length_threshold=summary_max_length_threshold,
-            summary_max_token=summary_max_token
+            need_summary=need_summary,
+            raw_summary_len=len(raw_summary),
         )
 
         model_name, model_client = base_chat_model
@@ -61,11 +62,15 @@ class MemoryAnalyzer:
                 response = await model_client.ainvoke(model_name, model_input)
                 res = await parser.parse(response.content)
                 logger.debug(f"Succeed to analyze, result: {res}")
-                return MemoryAnalyzerResult.model_validate(res)
+                analyze_result = MemoryAnalyzerResult.model_validate(res)
+                if not need_summary:
+                    analyze_result.summary = raw_summary
+                return analyze_result
             except json.JSONDecodeError as e:
                 if attempt < retries - 1:
                     continue
                 logger.error(f"categories model output format error: {e.msg}")
+
         return MemoryAnalyzerResult()
 
     @staticmethod
@@ -73,12 +78,16 @@ class MemoryAnalyzer:
             messages: List[BaseMessage],
             history_messages: List[BaseMessage],
             memory_config: MemoryConfig,
-            summary_max_length_threshold: int,
-            summary_max_token: int
+            need_summary: bool,
+            raw_summary_len: int
     ) -> List:
         variables_description, variables_output_format = MemoryAnalyzer._build_variable_prompt(memory_config)
-        total_message_length = len(messages[0].content)
-        if total_message_length >= summary_max_length_threshold:
+        if need_summary:
+            summary_max_token = max(int(raw_summary_len * memory_config.summary_config.fraction),
+                                    memory_config.summary_config.max_token)
+            logger.debug(f"summary_max_token: {summary_max_token}, raw_summary_len: {raw_summary_len},"
+                         f"fraction: {memory_config.summary_config.fraction},"
+                         f"config max_token: {memory_config.summary_config.max_token}")
             summary_description, summary_output_format = \
                 MemoryAnalyzer._build_summary_prompt(
                     max_message_token=summary_max_token,
@@ -151,3 +160,17 @@ class MemoryAnalyzer:
         )
         summary_output_format = ',\n\"summary\": ""'
         return summary_prompt, summary_output_format
+
+    @staticmethod
+    def _check_summary(
+            summary_max_length_threshold: int,
+            messages: List[BaseMessage],
+    ) -> Tuple[bool, str]:
+        messages_content_length = 0
+        raw_summary = ""
+        for msg in messages:
+            messages_content_length += len(msg.content)
+            raw_summary += f"{msg.role}: {msg.content}\n"
+        if messages_content_length >= summary_max_length_threshold:
+            return True, raw_summary
+        return False, raw_summary

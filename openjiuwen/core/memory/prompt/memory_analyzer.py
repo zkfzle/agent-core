@@ -4,7 +4,7 @@
 
 MEMORY_ANALYZER_PROMPT = """
 # 任务描述
-你是一个记忆分析引擎，你的任务是分析当前消息`current_messages`，结合历史消息`historical_messages`，对用户画像进行多维度分析。
+你是一个记忆分析引擎，你的任务是分析当前消息`current_messages`，结合历史消息`historical_messages`，对输入消息进行多维度分析。
 
 ## 处理步骤
 请严格按照以下步骤顺序执行：

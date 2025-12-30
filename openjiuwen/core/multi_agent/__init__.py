@@ -8,10 +8,11 @@ from openjiuwen.core.multi_agent.agent_group import (
     ControllerGroup
 )
 from openjiuwen.core.multi_agent.config import AgentGroupConfig
-
+from openjiuwen.core.multi_agent.schema.group_card import GroupCard
 
 _AGENT_GROUP_CLASSES = [
     "AgentGroupConfig",
+    "GroupCard",
     "AgentGroupRuntime",
     "BaseGroup",
     "ControllerGroup"

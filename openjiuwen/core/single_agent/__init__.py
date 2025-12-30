@@ -20,6 +20,7 @@ from openjiuwen.core.single_agent.config import (
     DefaultResponse,
     WorkflowAgentConfig
 )
+from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 # Schema classes
 from openjiuwen.core.single_agent.schema.schema import (
@@ -33,6 +34,10 @@ from openjiuwen.core.single_agent.agents.react_agent import (
     ReActAgentConfig,
     create_react_agent_config
 )
+
+_AGENT_CARD_CLASSES = [
+    "AgentCard"
+]
 
 _BASE_AGENT_CLASSES = [
     "BaseAgent",
@@ -72,6 +77,7 @@ _SCHEMA_CLASSES = [
 ]
 
 __all__ = (
+        _AGENT_CARD_CLASSES +
         _BASE_AGENT_CLASSES +
         _AGENT_RUNTIME +
         _AGENT_FACTORIES +

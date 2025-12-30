@@ -63,7 +63,7 @@ the event time based on the conversation time.
 $question
 
 # Memory Info: 
-users' name in conversation: $user1_name and $user2_name 
+users' name in conversation: $user_name1 and $user_name2
 
 conversation content: $memory
 

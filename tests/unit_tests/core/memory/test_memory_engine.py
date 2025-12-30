@@ -70,7 +70,7 @@ def get_memory_engine():
 class TestMemoryEngine:
     # @pytest.mark.skip(reason="need real llm & embedding & milvus")
     @pytest.mark.asyncio
-    async def test_user_profile(self, memory_engine_instance):
+    async def test_user_profile_and_variable(self, memory_engine_instance):
         user_id = "test_basic1"
         group_id = "test_basic1"
         memory_engine_instance.set_group_llm_config(group_id=group_id, llm_config=ModelConfig(
@@ -148,60 +148,41 @@ class TestMemoryEngine:
                 model=MODEL_NAME
             )
         ))
-        # memory_engine_instance.set_group_config(group_id=group_id, config=MemoryConfig(
-        #     mem_variables={"name": "用户的姓名", "age": "用户的年龄", "career": "用户的职业"},
-        #     enable_long_term_mem=True
-        # ))
         # test add memory
         await memory_engine_instance.add_conversation_messages(user_id=user_id, group_id=group_id, messages=[
             HumanMessage(content="mate70是华为的一款旗舰机型，但是最近新出了mate80，你知道哪个更好吗")
         ], timestamp=datetime.now(timezone.utc))
-        # variable_memory = await memory_engine_instance.list_user_variables(user_id=user_id, group_id=group_id)
-        # assert len(variable_memory) == 3
-        # logger.info(f"all variable_memory: \n{variable_memory}")
         long_term_memory = await memory_engine_instance.list_user_mem(user_id=user_id, group_id=group_id, num=999,
                                                                       page=1)
         long_term_memory_size = len(long_term_memory)
-        assert long_term_memory_size > 1
+        assert long_term_memory_size == 2
         logger.info(f"all long_term_memory: \n{long_term_memory}")
-        #
-        # # test update variable_memory
-        # assert (await memory_engine_instance.update_user_variable(user_id=user_id, group_id=group_id, name="name",
-        #                                                           value="王武"))
-        # variable_memory = await memory_engine_instance.list_user_variables(user_id=user_id, group_id=group_id)
-        # assert variable_memory.get("name") == "王武"
-        # logger.info(f"updated variable_memory: \n{variable_memory}")
-        # # test delete variable_memory
-        # assert (await memory_engine_instance.delete_user_variable(user_id=user_id, group_id=group_id, name="name"))
-        # variable_memory = await memory_engine_instance.list_user_variables(user_id=user_id, group_id=group_id)
-        # assert variable_memory.get("name", "none") == "none"
-        # logger.info(f"deleted variable_memory: \n{variable_memory}")
-        # # test update long_term_memory
-        # update_id = long_term_memory[0]["id"]
-        # assert (await memory_engine_instance.update_mem_by_id(user_id=user_id, group_id=group_id, mem_id=update_id,
-        #                                                       memory="用户喜欢打羽毛球"))
-        # long_term_memory = await memory_engine_instance.list_user_mem(user_id=user_id, group_id=group_id, num=999,
-        #                                                               page=1)
-        # assert long_term_memory_size == len(long_term_memory)
-        # for mem in long_term_memory:
-        #     if mem["id"] == update_id:
-        #         assert mem["mem"] == "用户喜欢打羽毛球"
-        # logger.info(f"updated long_term_memory: \n{long_term_memory}")
+        # test update long_term_memory
+        update_id = long_term_memory[0]["id"]
+        assert (await memory_engine_instance.update_mem_by_id(user_id=user_id, group_id=group_id, mem_id=update_id,
+                                                              memory="问界是华为联合赛里斯推出的一个智能驾驶汽车"))
+        long_term_memory = await memory_engine_instance.list_user_mem(user_id=user_id, group_id=group_id, num=999,
+                                                                      page=1)
+        assert long_term_memory_size == len(long_term_memory)
+        for mem in long_term_memory:
+            if mem["id"] == update_id:
+                assert mem["mem"] == "问界是华为联合赛里斯推出的一个智能驾驶汽车"
+        logger.info(f"updated long_term_memory: \n{long_term_memory}")
         # test search long_term_memory
         search_result = await memory_engine_instance.search_user_mem(user_id=user_id, group_id=group_id,
-                                                                     query="华为最新款手机是什么？", num=1)
+                                                                     query="华为的汽车产品有什么？", num=1)
         assert len(search_result) == 1
-        # assert search_result[0]["id"] == update_id
-        # assert search_result[0]["mem"] == "用户喜欢打羽毛球"
+        assert search_result[0]["id"] == update_id
+        assert search_result[0]["mem"] == "问界是华为联合赛里斯推出的一个智能驾驶汽车"
         logger.info(f"search long_term_memory result: \n{search_result}")
-        # # test delete long_term_memory
-        # assert (await memory_engine_instance.delete_mem_by_id(user_id=user_id, group_id=group_id, mem_id=update_id))
-        # long_term_memory = await memory_engine_instance.list_user_mem(user_id=user_id, group_id=group_id, num=999,
-        #                                                               page=1)
-        # assert len(long_term_memory) == long_term_memory_size - 1
-        # for mem in long_term_memory:
-        #     assert mem["id"] != update_id
-        # logger.info(f"deleted long_term_memory: \n{long_term_memory}")
+        # test delete long_term_memory
+        assert (await memory_engine_instance.delete_mem_by_id(user_id=user_id, group_id=group_id, mem_id=update_id))
+        long_term_memory = await memory_engine_instance.list_user_mem(user_id=user_id, group_id=group_id, num=999,
+                                                                      page=1)
+        assert len(long_term_memory) == long_term_memory_size - 1
+        for mem in long_term_memory:
+            assert mem["id"] != update_id
+        logger.info(f"deleted long_term_memory: \n{long_term_memory}")
 
 
     @pytest.mark.asyncio

@@ -87,11 +87,12 @@ class TESTLOCOMO():
         MemoryEngine.set_group_llm_config(MemoryEngine.get_mem_engine_instance(), "default", ModelConfig("siliconflow", BaseModelInfo(api_key=API_KEY, api_base=API_BASE, model=MODEL_NAME)))
         print("✅ Memory engine created")
     
-    async def process_locomo_data(self, data, idx: int):
+    async def process_locomo_data(self, data: dict, idx: int):
         conversation_data = data['conversation']
         user_id = "default"
         app_id = "default"
         for key in conversation_data.keys():
+            messages = []
             if key in ["speaker_a", "speaker_b"] or "date" in key or "timestamp" in key:
                 continue
             session_id = str(idx) + "-" + str(key).replace("_", "-")
@@ -101,13 +102,17 @@ class TESTLOCOMO():
             chats = conversation_data[key]
             for chat in tqdm(chats, desc=f"Processing {session_id}"):
                 message = f"{chat['speaker']}: {chat['text']}. Time: {timestamp}."
-                await self.add_memory(user_id, app_id, chat['speaker'], message, timestamp, session_id)
-
-    async def add_memory(self, user_id: str, app_id: str, name: str, mem: str, timestamp: datetime, session_id: str, retries=3) -> None:
+                message = HumanMessage(content=message, name=chat['speaker'])
+                messages.append(message)
+                if len(messages) == 4:
+                    await self.add_memory(user_id, app_id, messages, timestamp, session_id)
+                    messages = []
+            if messages:
+                await self.add_memory(user_id, app_id, messages, timestamp, session_id)
+    async def add_memory(self, user_id: str, app_id: str, messages: list[BaseMessage], timestamp: datetime, session_id: str, retries=3) -> None:
         for retry in range(retries):
             try:
-                message = HumanMessage(content=mem, name = name)
-                await self.memory_engine.add_conversation_messages(user_id=user_id, group_id=app_id, messages=[message], timestamp=timestamp, session_id=session_id)
+                await self.memory_engine.add_conversation_messages(user_id=user_id, group_id=app_id, messages=messages, timestamp=timestamp, session_id=session_id)
             except Exception as e:
                 if retry < retries - 1:
                     time.sleep(2)
@@ -153,7 +158,7 @@ class TESTLOCOMO():
                         raise e
 
 
-    async def validate_locomo_data(self, response_path_enum: str) -> None:
+    def validate_locomo_data(self, response_path_enum: str) -> None:
         # Verify whether the agent's response is correct through LLM.
         qa_result_dict = defaultdict(int)
         correct_result_dict = defaultdict(int)
@@ -170,7 +175,7 @@ class TESTLOCOMO():
                     if str(response).strip() == "":
                         continue
                     test_prompt = validation_prompt.format(question=question, gold_answer=gold_answer, response=response)
-                    result = await self.llm_service(test_prompt)
+                    result = self.llm_service(test_prompt)
                     logger.info(f"result:{result}")
                     if "CORRECT" in result.content and "WRONG" not in result.content:
                         print("Correct!")
@@ -271,7 +276,7 @@ async def main():
         response_path_enum = response_path + str(idx) + ".json"
         await test.process_locomo_data(data_enum, idx)
         await test.generate_response(data_enum['qa'], speaker_a, speaker_b, response_path_enum)
-        await test.validate_locomo_data(response_path_enum)
+        test.validate_locomo_data(response_path_enum)
     test.overall_compute(result_path)
     
 if __name__ == '__main__':

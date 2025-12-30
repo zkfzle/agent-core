@@ -19,6 +19,21 @@ class JsonOutputParser(BaseOutputParser):
     JsonOutputParser
     """
 
+    @staticmethod
+    def safe_json_to_dict(json_str: str) -> dict:
+        """
+        将大模型输出的JSON字符串转为dict
+        如果JSON不合法（比如双引号没转义），尝试修复
+        """
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            fixed_str = re.sub(r'(?<!\\)"', r'\"', json_str)
+            try:
+                return json.loads(fixed_str)
+            except Exception as e:
+                raise ValueError(f"无法解析 JSON，错误信息： {e}")
+
     async def parse(self, llm_output: Union[str, AIMessage]) -> Any:
         """
         parse

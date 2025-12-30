@@ -47,6 +47,7 @@ __all__ = [
     "Session",
     "BaseSession",
     "WrappedSession",
+    "ProxySession",
 
     # workflow session
     "WorkflowSession",

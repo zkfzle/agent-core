@@ -127,46 +127,34 @@ class OpenApiClient(McpToolClient):
             timout: float,
     ):
         """create an OpenAPITool"""
-        # Use pre-calculated schema from route
-        combined_schema = route.flat_param_schema
+        tool_instruction = format_simple_description(
+            request_body=route.request_body,
+            base_description=(route.description or route.summary or f"Executes {route.method} {route.path}"),
+            parameters=route.parameters,
+        )
 
-        # Extract output schema from OpenAPI responses
         output_schema = extract_output_schema_from_responses(
             route.responses,
             route.response_schemas,
             route.openapi_version,
         )
 
-        # Get a unique tool name
-        tool_name = self._get_unique_name(name)
+        generated_name = self._get_unique_name(name)
 
-        base_description = (
-                route.description
-                or route.summary
-                or f"Executes {route.method} {route.path}"
-        )
-
-        # Use simplified description formatter for tools
-        enhanced_description = format_simple_description(
-            base_description=base_description,
-            parameters=route.parameters,
-            request_body=route.request_body,
-        )
-
-        tool = OpenAPITool(
-            client=self._client,
+        openapi_tool = OpenAPITool(
+            name=self._get_unique_name(name),
             route=route,
+            client=self._client,
             director=self._director,
-            name=tool_name,
-            description=enhanced_description,
-            parameters=combined_schema,
+            description=tool_instruction,
+            parameters=route.flat_param_schema,
             output_schema=output_schema,
             tags=set(route.tags or []) | tags,
             timeout=timout,
         )
 
         # Register the tool by directly assigning to the tools dictionary
-        self._tool_manager.tools[tool_name] = tool
+        self._tool_manager.tools[generated_name] = openapi_tool
 
     async def connect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         files = self._server_path.split(",")

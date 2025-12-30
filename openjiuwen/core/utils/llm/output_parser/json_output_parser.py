@@ -28,7 +28,14 @@ class JsonOutputParser(BaseOutputParser):
         try:
             return json.loads(json_str)
         except json.JSONDecodeError:
-            fixed_str = re.sub(r'(?<!\\)"', r'\"', json_str)
+            pattern = r'("text": ")(.*?)(",\n)'
+            def replace_inner_quotes(match):
+                prefix = match.group(1)
+                inner_content = match.group(2)
+                suffix = match.group(3)
+                fixed_inner = inner_content.replace('/"', "'")
+                return f"{prefix}{fixed_inner}{suffix}"
+            fixed_str = re.sub(pattern, replace_inner_quotes, json_str)
             try:
                 return json.loads(fixed_str)
             except Exception as e:
@@ -59,7 +66,7 @@ class JsonOutputParser(BaseOutputParser):
             json_str = text.strip()
 
         try:
-            parsed_data = json.loads(json_str)
+            parsed_data = JsonOutputParser.safe_json_to_dict(json_str)
             return parsed_data
         except json.JSONDecodeError as e:
             if UserConfig.is_sensitive():
@@ -97,7 +104,7 @@ class JsonOutputParser(BaseOutputParser):
             if match:
                 json_str = match.group(1).strip()
                 try:
-                    parsed_data = json.loads(json_str)
+                    parsed_data = JsonOutputParser.safe_json_to_dict(json_str)
                     yield parsed_data
                     buffer = buffer[match.end():].strip()
                 except json.JSONDecodeError as e:
@@ -118,7 +125,7 @@ class JsonOutputParser(BaseOutputParser):
                     buffer = ""
             elif buffer.strip().startswith("{") and buffer.strip().endswith("}"):
                 try:
-                    parsed_data = json.loads(buffer.strip())
+                    parsed_data = JsonOutputParser.safe_json_to_dict(buffer.strip())
                     yield parsed_data
                     buffer = ""
                 except json.JSONDecodeError as e:
@@ -145,7 +152,7 @@ class JsonOutputParser(BaseOutputParser):
                 json_str = buffer.strip()
 
             try:
-                parsed_data = json.loads(json_str)
+                parsed_data = JsonOutputParser.safe_json_to_dict(json_str)
                 yield parsed_data
             except json.JSONDecodeError as e:
                 if UserConfig.is_sensitive():

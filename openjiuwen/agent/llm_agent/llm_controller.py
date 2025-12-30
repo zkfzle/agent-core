@@ -1,5 +1,5 @@
 # coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025-2025. All rights reserved
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved
 """LLMController - ReAct style controller based on BaseController"""
 
 from dataclasses import dataclass

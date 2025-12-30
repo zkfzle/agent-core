@@ -19,6 +19,7 @@ class MemoryType(Enum):
     VARIABLE = "variable"
     IMPLICIT_USER_PROFILE = "implicit_user_profile"
     SEMANTIC_MEMORY = "semantic_memory"
+    SUMMARY = "summary"
     UNKNOWN = "unknown"
 
 
@@ -54,3 +55,10 @@ class SemanticMemoryUnit(BaseMemoryUnit):
     mem_id: str = ""
     semantic_mem: str = ""
     message_mem_id: str = ""
+
+
+@dataclass
+class SummaryUnit(BaseMemoryUnit):
+    summary: str
+    mem_id: str = ""
+    message_mem_id: Optional[str] = None  # Corresponding Message ID

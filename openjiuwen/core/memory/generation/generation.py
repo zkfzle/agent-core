@@ -2,9 +2,12 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Tuple
+
 from openjiuwen.core.memory.generation.long_term_memory_extractor import LongTermMemoryExtractor
-from openjiuwen.core.memory.mem_unit.memory_unit import (MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit,
-                                                         SemanticMemoryUnit)
+
+from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
+from openjiuwen.core.memory.mem_unit.memory_unit import (MemoryType, BaseMemoryUnit,
+                                                         VariableUnit, UserProfileUnit, SummaryUnit, SemanticMemoryUnit)
 from openjiuwen.core.memory.generation.memory_analyzer import MemoryAnalyzer, VariableResult
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -40,6 +43,7 @@ def get_user_profile_unit(
             ))
     return user_profile_data
 
+
 def get_semantic_memory_unit(
         user_id: str,
         group_id: str,
@@ -63,7 +67,12 @@ def get_semantic_memory_unit(
             ))
     return semantic_memory_units
 
+
 class Generator:
+    def __init__(self,
+                 data_id_generator: DataIdManager):
+        self.data_id_generator = data_id_generator
+
     async def gen_all_memory(self, **kwargs) -> list[BaseMemoryUnit]:
         """Generate all memory units based on input"""
         messages = kwargs.get("messages")
@@ -83,12 +92,18 @@ class Generator:
             memory_config=config,
         )
         all_memory_results = []
-        variable_units = self._process_extracted_data(
+        variable_units = Generator._process_extracted_data(
             user_id=user_id,
             group_id=group_id,
             variable_results=memory_analyze_res.variables,
         )
         all_memory_results += variable_units
+
+        summary_unit = await self._process_summary_data(user_id=user_id,
+                                                        group_id=group_id,
+                                                        message_mem_id=message_mem_id,
+                                                        summary=memory_analyze_res.summary)
+        all_memory_results.append(summary_unit)
         if not config.enable_long_term_mem:
             logger.info("Not enable long term memory")
             return all_memory_results
@@ -114,8 +129,8 @@ class Generator:
         all_memory_results += merged_units
         return all_memory_results
 
+    @staticmethod
     def _process_extracted_data(
-            self,
             user_id: str,
             group_id: str,
             variable_results: list[VariableResult],
@@ -161,3 +176,20 @@ class Generator:
             memory_dict=memory_dict
         ))
         return memory_units
+
+    async def _process_summary_data(
+            self,
+            user_id: str,
+            group_id: str,
+            message_mem_id: str,
+            summary: str,
+    ) -> SummaryUnit:
+        mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
+        return SummaryUnit(
+            user_id=user_id,
+            group_id=group_id,
+            mem_type=MemoryType.SUMMARY,
+            mem_id=mem_id,
+            summary=summary,
+            message_mem_id=message_mem_id
+        )

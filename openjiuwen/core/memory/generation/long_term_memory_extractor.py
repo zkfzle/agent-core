@@ -2,8 +2,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
-from typing import List, Dict, Tuple, Any
+from typing import Dict, Tuple, Any
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
+from openjiuwen.core.memory.prompt.episodic_memory_extractor import EPISODIC_MEMORY_PROMPT, EPISODIC_MEMORY_JSON_FORMAT
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
@@ -50,6 +51,20 @@ def handle_semantic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
     sys_prompt = sys_prompt.replace("{SEMANTIC_MEMORY_JSON_FORMAT}", semantic_memory_json_format)
     return sys_prompt
 
+def handle_episodic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
+    episodic_memory_prompt = ""
+    episodic_memory_json_format = ""
+    if index > 0:
+        episodic_memory_prompt = EPISODIC_MEMORY_PROMPT.format(
+            index=index,
+        )
+        episodic_memory_json_format = EPISODIC_MEMORY_JSON_FORMAT.format(
+            comma='' if last_one else ',',
+        )
+    sys_prompt = sys_prompt.replace("{EPISODIC_MEMORY_PROMPT}", episodic_memory_prompt)
+    sys_prompt = sys_prompt.replace("{EPISODIC_MEMORY_JSON_FORMAT}", episodic_memory_json_format)
+    return sys_prompt
+
 def get_message(user_define: Dict[str, str] = None, categories: list[str] | None = None) -> str:
     sys_prompt = LONG_TERM_MEMORY_EXTRACTOR_PROMPT
     index = 1
@@ -63,6 +78,11 @@ def get_message(user_define: Dict[str, str] = None, categories: list[str] | None
         index += 1
     else:
         sys_prompt = handle_semantic_memory(sys_prompt, 0, index == len(categories))
+    if "episodic_memory" in categories:
+        sys_prompt = handle_episodic_memory(sys_prompt, index, index == len(categories))
+        index += 1
+    else:
+        sys_prompt = handle_episodic_memory(sys_prompt, 0, index == len(categories))
     return sys_prompt
 
 

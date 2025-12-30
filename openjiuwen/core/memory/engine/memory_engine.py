@@ -11,6 +11,7 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.memory.config.config import SysMemConfig, MemoryConfig
 from openjiuwen.core.memory.generation.generation import Generator
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
+from openjiuwen.core.memory.manage.episodic_memory_manager import EpisodicMemoryManager
 from openjiuwen.core.memory.manage.message_manager import MessageManager
 from openjiuwen.core.memory.manage.semantic_memory_manager import SemanticMemoryManager
 from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManager
@@ -305,6 +306,10 @@ class BaseMemoryEngine(ABC):
         """
         pass
 
+    @abstractmethod
+    async def list_episodic_memory(self, user_id: str, group_id: str) -> list[dict[str, Any]]:
+        pass
+
 
 class MemoryEngine(BaseMemoryEngine):
     _mem_engine_instance: BaseMemoryEngine | None = None
@@ -341,12 +346,19 @@ class MemoryEngine(BaseMemoryEngine):
             data_id_generator=data_id_generator,
             crypto_key=self._sys_mem_config.crypto_key
         )
+        self.episodic_memory_manager = EpisodicMemoryManager(
+            semantic_store=semantic_store,
+            user_mem_store=user_mem_store,
+            data_id_manager=data_id_generator,
+            crypto_key=self._sys_mem_config.crypto_key
+        )
         self.summary_manager = SummaryManager(semantic_recall_instance=semantic_store,
                                               user_mem_store=user_mem_store,
                                               crypto_key=self._sys_mem_config.crypto_key)
         managers = {
             MemoryType.USER_PROFILE.value: self.user_profile_manager,
             MemoryType.SEMANTIC_MEMORY.value: self.semantic_memory_manager,
+            MemoryType.EPISODIC_MEMORY.value: self.episodic_memory_manager,
             MemoryType.VARIABLE.value: self.variable_manager,
             MemoryType.SUMMARY.value: self.summary_manager
         }
@@ -517,6 +529,11 @@ class MemoryEngine(BaseMemoryEngine):
         if not self.search_manager:
             raise ValueError("Search manager is not initialized.")
         return await self.search_manager.list_user_mem(user_id=user_id, group_id=group_id, nums=num, pages=page)
+
+    async def list_episodic_memory(self, user_id: str, group_id: str) -> list[dict[str, Any]]:
+        if not self.search_manager:
+            raise ValueError("Search manager is not initialized.")
+        return await self.search_manager.list_episodic_memory(user_id=user_id, group_id=group_id)
 
     async def update_user_variable(self, user_id: str, group_id: str, name: str, value: str):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")

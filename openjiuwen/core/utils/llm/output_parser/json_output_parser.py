@@ -33,7 +33,8 @@ class JsonOutputParser(BaseOutputParser):
                 prefix = match.group(1)
                 inner_content = match.group(2)
                 suffix = match.group(3)
-                fixed_inner = inner_content.replace('/"', "'")
+                fixed_inner = inner_content.replace('"', "'")
+                fixed_inner = fixed_inner.replace("/'", "'")
                 return f"{prefix}{fixed_inner}{suffix}"
             fixed_str = re.sub(pattern, replace_inner_quotes, json_str)
             try:

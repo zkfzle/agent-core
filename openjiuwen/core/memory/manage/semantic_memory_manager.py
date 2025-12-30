@@ -27,7 +27,7 @@ class SemanticMemoryManager(BaseMemoryManager):
                  crypto_key: bytes):
         self.mem_store = user_mem_store
         self.semantic_recall = semantic_recall_instance
-        self.date_user_profile_id = data_id_generator
+        self.data_id_generator = data_id_generator
         self.crypto_key = crypto_key
 
     @staticmethod
@@ -54,13 +54,13 @@ class SemanticMemoryManager(BaseMemoryManager):
 
     async def add(self, memory: BaseMemoryUnit, llm: Tuple[str, BaseModelClient] | None = None):
         if not isinstance(memory, SemanticMemoryUnit):
-            raise ValueError('semantic memory add Must pass UserProfileUnit class.')
+            raise ValueError('semantic memory add Must pass SemanticMemoryUnit class.')
         if not memory.user_id:
             raise ValueError('SemanticMemoryManager add operation must pass user_id')
         if not memory.group_id:
             raise ValueError('SemanticMemoryManager add operation must pass group_id')
         if not memory.semantic_mem:
-            raise ValueError('SemanticMemoryManager add operation must pass profile_mem')
+            raise ValueError('SemanticMemoryManager add operation must pass semantic_mem')
         conflict_info = await self._get_conflict_info(memory=memory, llm=llm)
         for conflict in conflict_info:
             conf_id = conflict['id']
@@ -79,12 +79,12 @@ class SemanticMemoryManager(BaseMemoryManager):
                                                            memory_id=mem_id,
                                                            mem=conf_mem)
             elif conf_event == ConflictType.NONE.value:
-                logger.debug(f"none conflict info: {conflict}, new_profile: {memory.semantic_mem}")
+                logger.debug(f"none conflict info: {conflict}, new_semantic_memory: {memory.semantic_mem}")
             elif conf_event == ConflictType.UPDATE.value:
-                logger.debug(f"update conflict info: {conflict}, update_profile: {memory.semantic_mem}")
+                logger.debug(f"update conflict info: {conflict}, update_semantic_memory: {memory.semantic_mem}")
                 await self.update(memory.user_id, memory.group_id, conf_id, memory.semantic_mem)
             elif conf_event == ConflictType.DELETE.value:
-                logger.debug(f"delete conflict info: {conflict}, new_profile: {memory.semantic_mem}")
+                logger.debug(f"delete conflict info: {conflict}, new_semantic_memory: {memory.semantic_mem}")
                 await self.delete(memory.user_id, memory.group_id, conf_id)
             else:
                 logger.debug(f"unknown conflict event: {conflict}")
@@ -126,39 +126,32 @@ class SemanticMemoryManager(BaseMemoryManager):
     async def delete(self, user_id: str, group_id: str, mem_id: str, **kwargs):
         data = await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
         if data is None:
-            logger.error(f"Delete user_profile in store failed, the mem of mem_id({mem_id}) is not exist.")
+            logger.error(f"Delete semantic_memory in store failed, the mem of mem_id({mem_id}) is not exist.")
             return False
         mem_type = kwargs.get("mem_type", MemoryType.SEMANTIC_MEMORY.value)
         await self.mem_store.delete(mem_id=mem_id, user_id=user_id, group_id=group_id)
-        await self._delete_vector_user_profile_memory(memory_id=[mem_id], user_id=user_id,
+        await self._delete_vector_semantic_memory(memory_id=[mem_id], user_id=user_id,
                                                       group_id=group_id, mem_type=mem_type)
         return True
 
     async def delete_by_user_id(self, user_id: str, group_id: str):
         data = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=MemoryType.SEMANTIC_MEMORY.value)
         if data is None:
-            logger.error(f"Delete user_profile in store failed, the mem of user_id({user_id}) is not exist.")
+            logger.error(f"Delete semantic_memory in store failed, the mem of user_id({user_id}) is not exist.")
             return False
         mem_ids = [item['id'] for item in data]
         await self.mem_store.batch_delete(user_id=user_id, group_id=group_id, mem_ids=mem_ids)
-        await self._delete_vector_user_profile_memory(memory_id=mem_ids, user_id=user_id,
+        await self._delete_vector_semantic_memory(memory_id=mem_ids, user_id=user_id,
                                                       group_id=group_id, mem_type=MemoryType.SEMANTIC_MEMORY.value)
         return True
 
-    async def list_user_profile(self, user_id: str, group_id: str, profile_type: Optional[str] = None,
-                                mem_type=MemoryType.USER_PROFILE) -> list[dict[str, Any]]:
-        datas = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=mem_type.value)
-        if not datas:
+    async def list_semantic_memory(self, user_id: str, group_id: str, mem_type=MemoryType.SEMANTIC_MEMORY)\
+            -> list[dict[str, Any]]:
+        new_datas = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=mem_type.value)
+        if not new_datas:
             logger.debug(f"End to get semantic memory, result is None, "
                          f"params user_id:{user_id}, group_id:{group_id}, mem_type:{mem_type}")
             return []
-        new_datas = []
-        if profile_type is not None:
-            for data in datas:
-                if data['profile_type'] == profile_type:
-                    new_datas.append(data)
-        else:
-            new_datas = datas
         for data in new_datas:
             data["mem"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
                                                                      ciphertext=data["mem"])
@@ -179,7 +172,7 @@ class SemanticMemoryManager(BaseMemoryManager):
             group_id: str,
             new_memory: str
     ):
-        historical_profiles = []
+        historical_semantic_memory = []
         search_results = await self.search(
             user_id=user_id,
             group_id=group_id,
@@ -187,7 +180,7 @@ class SemanticMemoryManager(BaseMemoryManager):
             top_k=SemanticMemoryManager.CHECK_CONFLICT_OLD_MEMORY_NUM
         )
         for search_result in search_results:
-            historical_profiles.append((
+            historical_semantic_memory.append((
                 search_result['id'],
                 search_result['mem'],
                 search_result['score']
@@ -195,8 +188,8 @@ class SemanticMemoryManager(BaseMemoryManager):
         input_memory_ids_map: dict[int, str] = {}
         input_memories: list[str] = []
         i = 1
-        for historical in historical_profiles:
-            mem_id, mem_content, _ = historical
+        for memory in historical_semantic_memory:
+            mem_id, mem_content, _ = memory
             input_memories.append(mem_content)
             input_memory_ids_map[i] = mem_id
             i += 1
@@ -223,7 +216,7 @@ class SemanticMemoryManager(BaseMemoryManager):
             semantic_memory: str = "",
             mem_type: str = MemoryType.SEMANTIC_MEMORY.value
     ) -> str:
-        mem_id = str(await self.date_user_profile_id.generate_next_id(user_id=user_id))
+        mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
         time = datetime.now(timezone.utc)
         semantic_memory = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
                                                                  plaintext=semantic_memory)
@@ -248,7 +241,7 @@ class SemanticMemoryManager(BaseMemoryManager):
         else:
             raise ValueError('vector store must not be None')
 
-    async def _delete_vector_user_profile_memory(
+    async def _delete_vector_semantic_memory(
             self, user_id: str, group_id: str,
             memory_id: List[str], mem_type: str = MemoryType.SEMANTIC_MEMORY.value):
         if self.semantic_recall:

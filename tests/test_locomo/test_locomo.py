@@ -11,7 +11,7 @@ from tqdm import tqdm
 import sys
 from dotenv import load_dotenv
 load_dotenv(dotenv_path=r"C:\Users\12975\Desktop\git_huawei\agent-core-zhao\tests\test_locomo\.env")
-sys.path.append(r"C:\Users\12975\Desktop\git_huawei\agent-core-zhao")
+
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.memory.config.config import SysMemConfig
@@ -19,7 +19,7 @@ from openjiuwen.core.memory.embed_models.api import APIEmbedModel
 from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
-from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
+from openjiuwen.core.memory.store.impl.chroma_semantic_store import ChromaSemanticStore
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_library.siliconflow import Siliconflow
@@ -67,14 +67,7 @@ class TESTLOCOMO():
             timeout=int(os.getenv("EMBED_TIMEOUT")),
             max_retries=int(os.getenv("EMBED_MAX_RETRIES")),
         )
-        semantic_store = MilvusSemanticStore(
-            milvus_host=os.getenv("MILVUS_HOST"),
-            milvus_port=os.getenv("MILVUS_PORT"),
-            collection_name=os.getenv("MILVUS_COLLECTION_NAME"),
-            embedding_dims=int(os.getenv("EMBEDDING_MODEL_DIMENTION", 1024)),
-            embed_model=embed_model,
-            token=os.getenv("MILVUS_TOKEN", None)
-        )
+        semantic_store = ChromaSemanticStore(resource_dir, embed_model)
         utc_now = datetime.now(timezone.utc)
         time_str = utc_now.strftime("%Y%m%d%H%M%S")
         uuid_str = uuid.uuid4().hex[:6]

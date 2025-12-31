@@ -1,10 +1,11 @@
 import asyncio
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import time
+import uuid
 from sqlalchemy.ext.asyncio import create_async_engine
 from tqdm import tqdm
 import sys
@@ -74,14 +75,11 @@ class TESTLOCOMO():
             embed_model=embed_model,
             token=os.getenv("MILVUS_TOKEN", None)
         )
-        db_user = os.getenv("DB_USER")
-        db_passport = os.getenv("DB_PASSWORD")
-        db_host = os.getenv("DB_HOST")
-        db_port = os.getenv("DB_PORT")
-        agent_db_name = os.getenv("AGENT_DB_NAME")
-        db_store = DefaultDbStore(create_async_engine(
-            f"mysql+aiomysql://{db_user}:{db_passport}@{db_host}:{db_port}/{agent_db_name}?charset=utf8mb4"
-        ))
+        utc_now = datetime.now(timezone.utc)
+        time_str = utc_now.strftime("%Y%m%d%H%M%S")
+        uuid_str = uuid.uuid4().hex[:6]
+        path = Path(f"{resource_dir}/test_sql_db_{time_str}_{uuid_str}.db").resolve()
+        db_store = DefaultDbStore(create_async_engine(f"sqlite+aiosqlite:///{path}"))
         MemoryEngine.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
         await MemoryEngine.create_mem_engine_instance(SysMemConfig())
         MemoryEngine.set_group_llm_config(MemoryEngine.get_mem_engine_instance(), "default", ModelConfig("siliconflow", BaseModelInfo(api_key=API_KEY, api_base=API_BASE, model=MODEL_NAME)))
@@ -268,7 +266,7 @@ async def main():
     data = test.get_locomo_data(data_path)
     for idx, data_enum in enumerate(tqdm(data, desc="Processing total data")):
         try:
-            test.memory_engine.delete_mem_by_user_id("default", "default") # delete memory
+            await test.memory_engine.delete_mem_by_user_id("default", "default") # delete memory
         except:
             pass
         speaker_a = data_enum['conversation']['speaker_a']

@@ -53,7 +53,8 @@ from openjiuwen.core.foundation.tool import ToolCall
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
+from openjiuwen.core.workflow.base import WorkflowCard
 
 
 def build_current_date():
@@ -335,8 +336,8 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             )
             
             # 绑定 workflow
-            resource_mgr.workflow().add_workflow(
-                generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version), 
+            Runner.resource_mgr.add_workflow(
+                WorkflowCard(id=generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version)),
                 flow
             )
             

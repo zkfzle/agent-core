@@ -7,13 +7,13 @@ from unittest.mock import patch, AsyncMock
 
 from mcp import StdioServerParameters
 
-from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
+from openjiuwen.core.single_agent import AgentCard, WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import QuestionerComponent, FieldInfo, QuestionerConfig
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session import TaskSession
@@ -23,6 +23,7 @@ from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.protocols.mcp import McpServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.base import WorkflowCard
 
 API_BASE = "https://mock.com/v1"
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -41,15 +42,15 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         try:
             _, workflow = self._build_interrupt_workflow()
             self.workflow = workflow
-            resource_mgr.workflow().add_workflow(
-                generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+            Runner.resource_mgr.add_workflow(
+                WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
         except Exception:
             pass
         await Runner.start()
 
     async def asyncTearDown(self):
         try:
-            resource_mgr.workflow().remove_workflow(
+            Runner.resource_mgr.remove_workflow(
                 generate_workflow_key(self.workflow.config().metadata.id, self.workflow.config().metadata.version))
             await Runner.stop()
         except Exception:
@@ -280,7 +281,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         try:
             # 1. 测试添加智能体
             print(f"Step 1: 通过Runner.add_agent添加智能体，ID: {agent_id}")
-            Runner.add_agent(agent_id=agent_id, agent=agent)
+            Runner.resource_mgr.add_agent(AgentCard(id=agent_id), agent=agent)
             print("✅ 智能体添加成功")
 
             # 2. 测试通过ID运行智能体 - 第一次调用，获取交互请求
@@ -331,8 +332,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
                 # 4. 测试移除智能体
                 print("Step 4: 移除智能体")
-                removed_agent = Runner.remove_agent(agent_id)
-                self.assertIsNotNone(removed_agent, "移除的智能体不应为None")
+                Runner.resource_mgr.remove_agent(id=agent_id)
                 print("✅ 智能体移除成功")
 
                 # 5. 测试移除后再次运行应失败
@@ -351,7 +351,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         finally:
             # 清理资源，确保即使测试失败也移除智能体
             try:
-                Runner.remove_agent(agent_id)
+                Runner.resource_mgr.remove_agent(id=agent_id)
             except:
                 pass
             print("✅ 测试完成，资源清理")
@@ -399,12 +399,11 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             )
 
             # -------------------- 添加到管理器 --------------------
-            tool_mgr = resource_mgr.tool()
-            ok_list = await tool_mgr.add_tool_servers([mcp_server_config])
+            ok_list = await Runner.resource_mgr.add_tool_servers([mcp_server_config])
             assert ok_list == [True]
 
             # -------------------- 工具列表校验 --------------------
-            server_tools = tool_mgr.get_tool_infos(tool_server_name="browser-use-server")
+            server_tools = Runner.resource_mgr.get_tool_infos(tool_server_name="browser-use-server")
             assert len(server_tools) == 2
             assert server_tools[0].name == "browser-use-server.browser_navigate"
 
@@ -429,8 +428,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 assert result["result"] == mock_tool_result
 
             # -------------------- 移除服务器 --------------------
-            await tool_mgr.remove_tool_server("browser-use-server")
-            empty_tools = tool_mgr.get_tool_infos(tool_server_name="browser-use-server")
+            await Runner.resource_mgr.remove_mcp_server("browser-use-server")
+            empty_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="browser-use-server")
             assert empty_tools == None
 
             return True
@@ -480,12 +479,13 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             )
 
             # -------------------- 添加到管理器 --------------------
-            tool_mgr = resource_mgr.tool()
-            ok_list = await tool_mgr.add_tool_servers([mcp_server_config])
-            assert ok_list == [True]
+            ok_list = await Runner.resource_mgr.add_tool_servers([mcp_server_config])
+            assert len(ok_list) == 1
+            assert ok_list[0].is_ok() == True
+
 
             # -------------------- 工具列表校验 --------------------
-            server_tools = tool_mgr.get_tool_infos(tool_server_name="doubter-mcp-server")
+            server_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="doubter-mcp-server")
             assert len(server_tools) == 2
             assert server_tools[0].name == "doubter-mcp-server.doubter"
 
@@ -510,8 +510,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 assert result["result"] == mock_tool_result
 
             # -------------------- 移除服务器 --------------------
-            await tool_mgr.remove_tool_server("doubter-mcp-server")
-            empty_tools = tool_mgr.get_tool_infos(tool_server_name="doubter-mcp-server")
+            await Runner.resource_mgr.remove_mcp_server("doubter-mcp-server")
+            empty_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="doubter-mcp-server")
             assert empty_tools == None
 
             return True
@@ -561,17 +561,16 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             )
 
             # -------------------- 添加到管理器 --------------------
-            tool_mgr = resource_mgr.tool()
-            ok_list = await tool_mgr.add_tool_servers([mcp_server_config])
-            assert ok_list == [True]
+            ok_list = await Runner.resource_mgr.add_tool_servers([mcp_server_config])
+            assert ok_list[0].is_ok() == True
 
             # -------------------- 工具列表校验 --------------------
-            server_tools = tool_mgr.get_tool_infos(tool_server_name="playwright-mcp-server")
+            server_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="playwright-mcp-server")
             assert len(server_tools) == 2
             assert server_tools[0].name == "playwright-mcp-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.list_tools("playwright-mcp-server")
+            tools = await Runner.resource_mgr.get_mcp_tool_info("playwright-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
@@ -591,8 +590,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
                 assert result["result"] == mock_tool_result
 
             # -------------------- 移除服务器 --------------------
-            await tool_mgr.remove_tool_server("playwright-mcp-server")
-            empty_tools = tool_mgr.get_tool_infos(tool_server_name="playwright-mcp-server")
+            await Runner.resource_mgr.remove_mcp_server("playwright-mcp-server")
+            empty_tools = Runner.resource_mgr.get_mcp_tool_info(tool_server_name="playwright-mcp-server")
             assert empty_tools == None
 
             return True

@@ -12,6 +12,8 @@ HierarchicalGroup Runner 测试
 
 import os
 
+from openjiuwen.core.multi_agent import GroupCard
+
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
 
@@ -144,7 +146,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         group.group_controller.subscribe("alert", ["worker_b"])
 
-        await Runner.add_agent_group("runner_test_by_id", group)
+        await Runner.resource_mgr.add_agent_group(GroupCard(id="runner_test_by_id"), group)
 
         message = Event.create_user_event(
             content="通过 Group ID 发送的消息",
@@ -158,7 +160,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(result, dict)
         self.assertIn("worker_b", result.get("output", ""))
 
-        await Runner.remove_agent_group("runner_test_by_id")
+        await Runner.resource_mgr.remove_agent_group("runner_test_by_id")
         print("✅ Runner.run_agent_group (通过 ID) 测试通过")
 
     @unittest.skip("skip system test")
@@ -221,7 +223,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
 
         group.group_controller.subscribe("stream_data", ["worker_b"])
 
-        await Runner.add_agent_group("runner_stream_by_id", group)
+        await Runner.resource_mgr.add_agent_group(GroupCard(id="runner_stream_by_id"), group)
 
         message = Event.create_user_event(
             content="通过 ID 发送流式消息",
@@ -241,7 +243,7 @@ class TestHierarchicalGroupRunner(unittest.IsolatedAsyncioTestCase):
         print(f"总共收到 {len(chunks)} 个 chunks")
         self.assertTrue(len(chunks) > 0, "应该收到流式输出")
 
-        await Runner.remove_agent_group("runner_stream_by_id")
+        await Runner.resource_mgr.remove_agent_group("runner_stream_by_id")
         print("✅ Runner.run_agent_group_streaming (通过 ID) 测试通过")
 
     @unittest.skip("skip system test")

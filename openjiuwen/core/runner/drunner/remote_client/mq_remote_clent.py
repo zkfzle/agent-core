@@ -36,7 +36,7 @@ class MqRemoteClient(RemoteClient):
             if self._started:
                 return
         from openjiuwen.core.runner import Runner
-        self.mq = Runner.distribute_message_queue()
+        self.mq = Runner._dist_pubsub()
         self.system_reply_sub = Runner.system_reply_sub
         if self.system_reply_sub is None:
             raise JiuWenBaseException(StatusCode.RUNNER_DISTRIBUTED_MODE_REQUIRED.code,

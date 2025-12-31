@@ -11,6 +11,7 @@ from openjiuwen.core.foundation.tool.constant import Input, Output
 
 class Tool:
     """tool class that defined the data types and content for LLM modules"""
+
     def __init__(self, card: ToolCard):
         """Constructs a new tool instance with the given configuration.
 
@@ -23,6 +24,9 @@ class Tool:
         """
         self.name = card.name
         self.card = card
+
+    def card(self) -> ToolCard:
+        return self.card
 
     @abstractmethod
     async def invoke(self, inputs: Input, **kwargs) -> Output:

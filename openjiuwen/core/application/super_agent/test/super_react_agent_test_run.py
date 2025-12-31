@@ -39,7 +39,7 @@ from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 
 from openjiuwen.core.protocols.mcp import McpServerConfig
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
 from mcp import StdioServerParameters
 
 # Environment configuration
@@ -242,7 +242,6 @@ async def _register_mcp_server_as_local_tools(
                    - stdio: StdioServerParameters(...)
                    - playwright: url 或 StdioServerParameters
     """
-    tool_mgr = resource_mgr.tool()
 
     # 1. 注册 MCP server
     server_cfg = McpServerConfig(
@@ -250,8 +249,8 @@ async def _register_mcp_server_as_local_tools(
         params=params,
         client_type=client_type,
     )
-    ok_list = await tool_mgr.add_tool_servers([server_cfg])
-    if not ok_list or not ok_list[0]:
+    ok_list = await Runner.resource_mgr.add_tool_servers([server_cfg])
+    if not ok_list or not ok_list[0].is_ok():
         raise RuntimeError(f"Failed to add MCP server: {server_name}")
 
     # 2. 用 Runner.list_tools 拿到工具列表（McpToolInfo）
@@ -452,11 +451,10 @@ async def example_mcp_main_and_sub_agents(queries: list | None = None):
         print(f"Browsing sub-single_agent context messages: {len(browsing_history)}")
 
     # 资源清理（MCP server & Runner）
-    tool_mgr = resource_mgr.tool()
     # 如果想显式移除所有 server，可以逐个 remove
     for server_name in {cfg["server_name"] for cfg in MCP_TOOL_GROUPS.values()}:
         try:
-            await tool_mgr.remove_tool_server(server_name)
+            await Runner.resource_mgr.remove_mcp_server(server_name)
         except RuntimeError as e:
             if "cancel scope" in str(e):
                 print(f"Ignoring SSE shutdown error for {server_name}: {e}")

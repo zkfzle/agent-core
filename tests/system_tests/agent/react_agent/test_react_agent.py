@@ -16,7 +16,7 @@ from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -146,8 +146,10 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         weather_tool = self._create_tool()
         react_agent.add_tools([weather_tool])
 
+        weather_tool.card().id = "WeatherReporter"
+
         # 4. 添加工具到 resource_mgr（Runner 需要）
-        resource_mgr.tool().add_tool("WeatherReporter", weather_tool)
+        Runner.resource_mgr.add_tool(weather_tool)
 
         result = await Runner.run_agent(react_agent, {"query": "查询杭州的天气"})
         print(f"ReActAgent 最终输出结果：{result}")
@@ -178,8 +180,10 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         weather_tool = self._create_tool()
         react_agent.add_tools([weather_tool])
 
+        weather_tool.card().id = "WeatherReporter"
+
         # 4. 添加工具到 resource_mgr
-        resource_mgr.tool().add_tool("WeatherReporter", weather_tool)
+        Runner.resource_mgr.add_tool(weather_tool)
 
         res = Runner.run_agent_streaming(react_agent, {"query": "查询杭州的天气"})
         async for i in res:
@@ -237,8 +241,10 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         add_tool = self._create_function_tool()
         react_agent.add_tools([add_tool])
 
+        add_tool.card().id="add"
+
         # 4. 添加工具到 resource_mgr
-        resource_mgr.tool().add_tool("add", add_tool)
+        Runner.resource_mgr.add_tool(add_tool)
 
         result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 最终输出结果：{result}")
@@ -271,7 +277,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         react_agent.add_tools([annotated_tool])
 
         # 4. 添加工具到 resource_mgr
-        resource_mgr.tool().add_tool("add", annotated_tool)
+        annotated_tool.card().id = "add"
+        Runner.resource_mgr.add_tool(annotated_tool)
 
         result = await Runner.run_agent(react_agent, {"query": "计算1+2"})
         print(f"ReActAgent 使用注解工具最终输出结果：{result}")
@@ -301,7 +308,8 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
         react_agent.add_tools([annotated_tool])
 
         # 4. 添加工具到 resource_mgr
-        resource_mgr.tool().add_tool("add", annotated_tool)
+        annotated_tool.card().id = "add"
+        Runner.resource_mgr.add_tool(annotated_tool)
 
         result = Runner.run_agent_streaming(react_agent, {"query": "计算1+2"})
         async for i in result:

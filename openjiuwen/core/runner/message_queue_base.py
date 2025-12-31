@@ -22,6 +22,12 @@ class QueueMessage(BaseModel):
         "arbitrary_types_allowed": True
     }
 
+class LocalMessageQueue:
+    async def start(self):
+        pass
+
+    async def stop(self):
+        pass
 
 class InvokeQueueMessage(QueueMessage):
     response: Optional[asyncio.Future[Output]] = Field(default=None, exclude=True)

@@ -14,7 +14,7 @@ from pydantic import BaseModel
 # Type Aliases
 # ============================================================================
 
-AgentProvider = Callable[[AgentCard], Awaitable[BaseAgent]]
+AgentProvider = Callable[[AgentCard], Awaitable[BaseAgent]] | Callable[[AgentCard], BaseAgent]
 """
 Agent provider type definition.
 
@@ -23,7 +23,7 @@ Used for lazy loading of Agent resources to avoid immediate creation upon regist
 Enables deferred initialization until the agent is actually needed.
 """
 
-AgentGroupProvider = Callable[[GroupCard], Awaitable[BaseGroup]]
+AgentGroupProvider = Callable[[GroupCard], Awaitable[BaseGroup]] | Callable[[GroupCard], BaseGroup]
 """
 Agent group provider type definition.
 
@@ -32,7 +32,7 @@ Used for lazy loading of agent group resources, suitable for complex agent group
 that require on-demand initialization with specific configurations.
 """
 
-WorkflowProvider = Callable[[WorkflowCard], Awaitable[Workflow]]
+WorkflowProvider = Callable[[WorkflowCard], Awaitable[Workflow]] | Callable[[WorkflowCard], Workflow]
 """
 Workflow provider type definition.
 
@@ -41,7 +41,7 @@ Used for lazy loading of workflow resources, supporting on-demand initialization
 of complex workflow configurations and dependencies.
 """
 
-ModelProvider = Callable[[...], Awaitable[BaseModel]]
+ModelProvider = Callable[[...], Awaitable[BaseModel]] | Callable[[...], BaseModel]
 """
 Model provider type definition.
 
@@ -242,7 +242,7 @@ class Error(Generic[E]):
     following the Result pattern for explicit error handling.
     """
 
-    def __init__(self, error: E) -> None:
+    def __init__(self, error: E = None) -> None:
         """
         Initialize an Error result with an error value.
 

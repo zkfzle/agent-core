@@ -15,5 +15,5 @@ class BaseCard(BaseModel):
         description: 功能、适用场景等描述信息
     """
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
-    name: str
-    description: str
+    name: str= Field(default='')
+    description: str = Field(default='')

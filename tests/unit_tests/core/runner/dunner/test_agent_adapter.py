@@ -5,12 +5,12 @@
 import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType
-from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
+from openjiuwen.core.single_agent import AgentCard, WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
-from openjiuwen.core.runner.runner import Runner, resource_mgr
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.base import WorkflowCard
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 
@@ -42,6 +42,7 @@ class TestRunnerIntegration:
 
     async def test_react_agent_invoke_with_adapter(self):
         try:
+            from openjiuwen.core.runner.runner import Runner
             await Runner.start()
             id = "test_workflow"
             name = "test_workflow"
@@ -63,11 +64,11 @@ class TestRunnerIntegration:
             )
             agent = WorkflowAgent(workflow_config)
             agent.bind_workflows([workflow1])
-            resource_mgr.workflow().add_workflow(id + "_" + version, workflow1)
-            Runner.add_agent("workflow-single_agent", agent)
+            Runner.resource_mgr.add_workflow(WorkflowCard(id=id + "_" + version), workflow1)
+            Runner.resource_mgr.add_agent(AgentCard(id="workflow-single_agent"), agent)
             # Simulate client sending request
             client = RemoteAgent(agent_id="workflow-single_agent")
-            Runner.add_agent(agent_id="remote-workflow-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="remote-workflow-single_agent"), agent=client)
             response = await Runner.run_agent("remote-workflow-single_agent", {"query": "London"})
             print(f"response: {response}")
             assert response['result_type'] == 'answer'
@@ -75,8 +76,9 @@ class TestRunnerIntegration:
             assert response['output'].state.name == 'COMPLETED'
 
         finally:
-            Runner.remove_agent("remote-workflow-single_agent")
-            Runner.remove_agent("workflow-single_agent")
+            from openjiuwen.core.runner.runner import Runner
+            Runner.resource_mgr.remove_agent(id="remote-workflow-single_agent")
+            Runner.resource_mgr.remove_agent(id="workflow-single_agent")
 
             await Runner.stop()
 

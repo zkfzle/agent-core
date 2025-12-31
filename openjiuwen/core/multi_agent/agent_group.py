@@ -182,7 +182,9 @@ class ControllerGroup(BaseGroup):
         self.group_controller = group_controller
 
         # Initialize session (like BaseAgent)
-        self._session = AgentGroupSession()
+        # todo: next will be replaced by self._session = AgentGroupSession() when resource_mgr supports tag feature
+        from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
+        self._session = AgentGroupSession(resource_mgr=ResourceMgr())
 
         # Auto-configure group_controller
         if self.group_controller is not None:

@@ -31,7 +31,7 @@ class WorkflowSession(BaseSession):
             if self._session_id is None:
                 self._session_id = uuid.uuid4().hex
             self._config = Config()
-            from openjiuwen.core.runner.resources_manager.resource_manager import ResourceManager, ResourceMgr
+            from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
             self._resource_manager = ResourceMgr()
             self._tracer = None
 
@@ -81,7 +81,7 @@ class WorkflowSession(BaseSession):
     def session_id(self) -> str:
         return self._session_id
 
-    def resource_manager(self) -> "ResourceManager":
+    def resource_manager(self) -> "ResourceMgr":
         return self._resource_manager
 
     def context(self) -> Context:

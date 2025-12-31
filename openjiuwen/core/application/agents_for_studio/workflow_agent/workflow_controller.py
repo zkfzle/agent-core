@@ -23,7 +23,6 @@ from openjiuwen.core.controller import (
 )
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runner import Runner, resource_mgr
 from openjiuwen.core.session import InteractionOutput
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import CustomSchema, OutputSchema
@@ -279,6 +278,7 @@ class WorkflowController(IntentDetectionController):
             #    - workflow_final (completion result)
             # Stream data written to session, single_agent layer's stream_iterator can read
             async def run_workflow_streaming():
+                from openjiuwen.core.runner import Runner
                 workflow_stream = Runner.run_workflow_streaming(
                     workflow,
                     inputs=inputs,
@@ -1116,12 +1116,14 @@ class WorkflowController(IntentDetectionController):
         """
         # First try to find from Runner's global resource_mgr
         try:
+            from openjiuwen.core.runner import Runner
             logger.info(f"Trying to find workflow from resource_mgr: {workflow_id}")
             # List all available workflows
-            all_workflows = resource_mgr.workflow()._resources
+            # todo: will be replace by Runner.resource_mgr.get_tool_infos(type="workflow", tag=agent_id)
+            all_workflows = Runner.resource_mgr._resource_registry.workflow()._resource
             logger.info(f"Available workflows in resource_mgr: {list(all_workflows.keys())}")
 
-            workflow = await resource_mgr.workflow().get_workflow(workflow_id, session.base())
+            workflow = await Runner.resource_mgr.get_workflow(workflow_id, session.base())
             logger.info(f"Found workflow from resource_mgr: {workflow is not None}")
             if workflow:
                 return workflow

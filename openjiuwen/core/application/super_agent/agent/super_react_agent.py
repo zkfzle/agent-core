@@ -158,16 +158,14 @@ class SuperReActAgent(BaseAgent):
         注册一个 MCP server（SSE / stdio ），并把该 server 上所有 tools
         映射成 LocalFunction，返回 List[LocalFunction]，可以直接传给 SuperReActAgent.
         """
-        tool_mgr = resource_mgr.tool()
-
         # 注册 MCP server
         server_cfg = McpServerConfig(
             server_name=server_name,
             params=params,
             client_type=client_type,
         )
-        ok_list = await tool_mgr.add_tool_servers([server_cfg])
-        if not ok_list or not ok_list[0]:
+        ok_list = await Runner.resource_mgr.add_mcp_server([server_cfg])
+        if not ok_list or not ok_list[0].is_ok():
             raise RuntimeError(f"Failed to add MCP server: {server_name}")
 
         # 用 Runner.list_tools 拿到工具列表（McpToolInfo）

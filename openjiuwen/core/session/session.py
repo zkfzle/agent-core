@@ -16,8 +16,6 @@ from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
 
-ResourceManager = TypeVar("ResourceManager", contravariant=True)
-
 
 class BaseSession(ABC):
     @abstractmethod
@@ -45,7 +43,7 @@ class BaseSession(ABC):
         ...
 
     @abstractmethod
-    def resource_manager(self) -> ResourceManager:
+    def resource_manager(self) -> "ResourceMgr":
         ...
 
     @abstractmethod

@@ -15,6 +15,7 @@ from openjiuwen.core.runner.drunner.server_adapter.agent_adapter import AgentAda
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.runner.runner_config import RunnerConfig, DistributedConfig, MessageQueueConfig, \
     DEFAULT_RUNNER_CONFIG
+from openjiuwen.core.single_agent import AgentCard
 
 
 @pytest.mark.asyncio
@@ -63,7 +64,7 @@ class TestRunnerIntegration:
         try:
             # Simulate client sending request
             client = RemoteAgent(agent_id="weather-single_agent")
-            Runner.add_agent(agent_id="remote-weather-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="remote-weather-single_agent"), agent=client)
 
             # 1. Test batch request
             logger.info("=== Testing batch invoke ===")
@@ -83,7 +84,7 @@ class TestRunnerIntegration:
 
             # 3. Test single_agent removal
             logger.info("=== Testing single_agent removal ===")
-            Runner.remove_agent("remote-weather-single_agent")
+            Runner.resource_mgr.remove_agent(id="remote-weather-single_agent")
 
             # 4. Verify exception is thrown after deletion
             with pytest.raises(JiuWenBaseException) as e:
@@ -105,7 +106,7 @@ class TestRunnerIntegration:
 
         try:
             client = RemoteAgent(agent_id="weather-agent2")
-            Runner.add_agent(agent_id="weather-agent2", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="weather-agent2"), agent=client)
 
             # Scenario 1: Manually cancel task
             logger.info("=== Test 1: Manual task cancellation ===")
@@ -152,7 +153,7 @@ class TestRunnerIntegration:
 
         try:
             client = RemoteAgent(agent_id="slow-single_agent")
-            Runner.add_agent(agent_id="slow-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="slow-single_agent"), agent=client)
 
             async def long_running_request():
                 return await Runner.run_agent("slow-single_agent", {"city": "Berlin"})
@@ -191,7 +192,7 @@ class TestRunnerIntegration:
 
         try:
             client = RemoteAgent(agent_id="weather-single_agent")
-            Runner.add_agent(agent_id="weather-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="weather-single_agent"), agent=client)
 
             # Verify client receives exception containing error code and message
             with pytest.raises(JiuWenBaseException) as e:
@@ -210,7 +211,7 @@ class TestRunnerIntegration:
         print("=== Test 5: Runner not started ===")
         try:
             client = RemoteAgent(agent_id="slow-single_agent")
-            Runner.add_agent(agent_id="slow-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="slow-single_agent"), agent=client)
 
             async def long_running_request():
                 return await Runner.run_agent("slow-single_agent", {"city": "Berlin"})
@@ -233,7 +234,7 @@ class TestRunnerIntegration:
 
         try:
             client = RemoteAgent(agent_id="perf-single_agent")
-            Runner.add_agent(agent_id="perf-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="perf-single_agent"), agent=client)
 
             # Test data
             test_data = [{"city": f"City_{i}"} for i in range(10)]
@@ -295,7 +296,7 @@ class TestRunnerIntegration:
 
         try:
             client = RemoteAgent(agent_id="streaming-single_agent")
-            Runner.add_agent(agent_id="streaming-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="streaming-single_agent"), agent=client)
 
             # Test data
             test_data = [{"city": f"StreamCity_{i}"} for i in range(10)]

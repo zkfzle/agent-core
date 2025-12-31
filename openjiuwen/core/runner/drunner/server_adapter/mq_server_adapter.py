@@ -32,12 +32,12 @@ class MqServerAdapter:
             invoke_handler: Callable[[dict], Any],
             stream_handler: Callable[[dict], AsyncIterator[Any]],
     ):
-        from openjiuwen.core.runner.runner import Runner
         self.adapter_id = adapter_id
         self.topic = topic
         self.invoke_handler = invoke_handler
         self.stream_handler = stream_handler
-        self.mq: MessageQueueBase = Runner.distribute_message_queue()
+        from openjiuwen.core.runner.runner import Runner
+        self.mq: MessageQueueBase = Runner._dist_pubsub()
         self.subscription: Optional[SubscriptionBase] = None
         self.active = False
         self._running_tasks: Dict[str, MessageTask] = {}

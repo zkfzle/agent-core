@@ -21,16 +21,19 @@ from openjiuwen.core.session.tracer.tracer import Tracer
 
 
 class StaticAgentSession(BaseSession):
-    def __init__(self, config: Config = None, resource_mgr: "ResourceManager" = None):
+    def __init__(self, config: Config = None, resource_mgr = None):
         self._config = config if config is not None else Config()
-        from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
-        self._resource_manager = ResourceMgr() if resource_mgr is None else resource_mgr
+        if resource_mgr:
+            self._resource_manager = resource_mgr
+        else:
+            from openjiuwen.core.runner import Runner
+            self._resource_manager = Runner.resource_mgr
         self._checkpointer = get_default_inmemory_checkpointer()
 
     def config(self) -> Config:
         return self._config
 
-    def resource_manager(self) -> "ResourceManager":
+    def resource_manager(self) -> "ResourceMgr":
         return self._resource_manager
 
     def checkpointer(self) -> Checkpointer:
@@ -70,8 +73,11 @@ class AgentSession(BaseSession):
             context: Context = None):
         self._session_id = session_id
         self._config = config
-        from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr, ResourceManager
-        self._resource_manager = resource_manager if resource_manager is not None else ResourceMgr()
+        if resource_manager:
+            self._resource_manager = resource_manager
+        else:
+            from openjiuwen.core.runner import Runner
+            self._resource_manager = Runner.resource_mgr
         self._context = context
         self._state = StateCollection()
         self._stream_writer_manager = StreamWriterManager(StreamEmitter())
@@ -106,7 +112,7 @@ class AgentSession(BaseSession):
     def context(self) -> Context:
         return self._context
 
-    def resource_manager(self) -> "ResourceManager":
+    def resource_manager(self) -> "ResourceMgr":
         return self._resource_manager
 
     def checkpointer(self) -> Checkpointer:

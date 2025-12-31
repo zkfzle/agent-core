@@ -8,17 +8,18 @@ import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import (
-    ReActAgent, WorkflowAgentConfig, WorkflowSchema, create_react_agent_config
+    AgentCard, ReActAgent, WorkflowAgentConfig, WorkflowSchema, create_react_agent_config
 )
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.runner.runner_config import RunnerConfig, MessageQueueConfig, DistributedConfig, PulsarConfig
 from openjiuwen.core.session.stream import OutputSchema, TraceSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.base import WorkflowCard
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 API_BASE = os.getenv("API_BASE")
@@ -71,7 +72,7 @@ class TestAdapterTest:
         react_agent: ReActAgent = ReActAgent(react_agent_config)
 
         # Register single_agent with runner
-        Runner.add_agent(agent_id, react_agent)
+        Runner.resource_mgr.add_agent(AgentCard(id=agent_id), react_agent)
         return react_agent
 
     @staticmethod
@@ -164,11 +165,11 @@ class TestAdapterTest:
             )
             agent = WorkflowAgent(workflow_config)
             agent.bind_workflows([workflow1])
-            resource_mgr.workflow().add_workflow(id + "_" + version, workflow1)
-            Runner.add_agent("workflow-single_agent", agent)
+            Runner.resource_mgr.add_workflow(WorkflowCard(id=id + "_" + version), workflow1)
+            Runner.resource_mgr.add_agent(AgentCard(id="workflow-single_agent"), agent)
             # Simulate client sending request
             client = RemoteAgent(agent_id="workflow-single_agent")
-            Runner.add_agent(agent_id="remote-workflow-single_agent", agent=client)
+            Runner.resource_mgr.add_agent(AgentCard(id="remote-workflow-single_agent"), agent=client)
             response = await Runner.run_agent("remote-workflow-single_agent", {"query": "London"})
             print(f"response: {response}")
             assert response['result_type'] == 'answer'
@@ -176,7 +177,7 @@ class TestAdapterTest:
             assert response['output'].state.name == 'COMPLETED'
 
         finally:
-            Runner.remove_agent("remote-workflow-single_agent")
-            Runner.remove_agent("workflow-single_agent")
+            Runner.resource_mgr.remove_agent(id="remote-workflow-single_agent")
+            Runner.resource_mgr.remove_agent(id="workflow-single_agent")
 
             await Runner.stop()

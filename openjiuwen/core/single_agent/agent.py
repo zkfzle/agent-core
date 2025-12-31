@@ -34,7 +34,12 @@ class AgentSession(WrappedSession, StaticWrappedSession):
     """
 
     def __init__(self, config: Config = None, resource_mgr: "ResourceMgr" = None):
-        inner = StaticAgentSession(config, resource_mgr=resource_mgr)
+        if resource_mgr:
+            inner = StaticAgentSession(config, resource_mgr=resource_mgr)
+        else:
+            from openjiuwen.core.runner import Runner
+            inner = StaticAgentSession(config, resource_mgr=Runner.resource_mgr)
+
         super().__init__(inner)
         self._session = inner
 
@@ -104,8 +109,9 @@ class WorkflowFactory:
                                                                     WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
                 self.input_schema)
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
-            from openjiuwen.core.runner import resource_mgr
-            resource_mgr.workflow()._workflow_tool_infos[
+            from openjiuwen.core.runner import Runner
+            #todo: next line will be deleted when resource_mgr supports tag feature
+            Runner.resource_mgr._resource_registry.workflow()._workflow_tool_infos[
                 generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
                 workflow_input_schema)
         else:
@@ -113,7 +119,8 @@ class WorkflowFactory:
 
     def _register_tool_info(self, session: AgentSession):
         if self._tool_info and session:
-            session.resource_mgr().workflow()._workflow_tool_infos[
+            # todo: next line will be deleted when resource_mgr supports tag feature
+            session.resource_mgr()._resource_registry.workflow()._workflow_tool_infos[
                 generate_workflow_key(self.id, self.version)] = deepcopy(self._tool_info)
 
     def _convert_to_tool_info(self, workflow_input_schema) -> ToolInfo:
@@ -191,7 +198,9 @@ class BaseAgent(ABC):
         self._config = self._config_wrapper  # Unified interface
 
         # 2. Create Session
-        self._session = AgentSession(config=self._config)
+        from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
+        # todo: next line will be replaced by AgentSession(config=self._config) when resource_mgr supports tag feature
+        self._session = AgentSession(config=self._config, resource_mgr=ResourceMgr())
 
         # 3. Create ContextEngine
         self._context_engine = self._create_context_engine()
@@ -426,10 +435,10 @@ class BaseAgent(ABC):
 
             # 3. Also add to global resource_mgr (for cross-session access)
             try:
-                from openjiuwen.core.runner import resource_mgr
                 logger.info(f"Adding workflow {'provider' if is_provider else 'instance'} "
                             f"{workflow_key} to global resource_mgr")
-                resource_mgr.workflow().add_workflow(workflow_key, to_register)
+                from openjiuwen.core.runner import Runner
+                Runner.resource_mgr.add_workflow(workflow_key, to_register)
                 logger.info(f"Successfully added workflow {'provider' if is_provider else 'instance'} {workflow_key}")
             except Exception as e:
                 logger.error(f"Failed to add workflow to global resource_mgr: {e}")
@@ -475,8 +484,8 @@ class BaseAgent(ABC):
 
             # 3. Remove from global resource_mgr
             try:
-                from openjiuwen.core.runner import resource_mgr
-                resource_mgr.workflow().remove_workflow(workflow_key)
+                from openjiuwen.core.runner import Runner
+                Runner.resource_mgr.remove_workflow(workflow_key)
                 logger.info(f"Successfully removed workflow {workflow_key} from global resource_mgr")
             except Exception as e:
                 logger.error(f"Failed to remove workflow from global resource_mgr: {e}")
@@ -680,7 +689,8 @@ class ControllerAgent(BaseAgent):
             # Sync agent's workflows to external session
             # When external session is provided, agent's workflows need to be registered
             try:
-                agent_workflow_mgr = self._session.resource_mgr().workflow()
+                # todo: next line will be deleted when resource_mgr supports tag feature
+                agent_workflow_mgr = self._session.resource_mgr()._resource_registry.workflow()
                 # Sync workflow instances and providers
                 for workflow_id, workflow in agent_workflow_mgr.get_all_workflows().items():
                     agent_session.add_workflow(workflow_id, workflow)

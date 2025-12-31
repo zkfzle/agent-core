@@ -68,67 +68,68 @@ class WrappedSession(Session, ABC):
     def __init__(self, inner: BaseSession):
         self._inner = inner
 
+    # todo: alll session's resource_mgr interfaces will be deleted when resource_mgr supports tag features
     def add_prompt(self, template_id: str, template: PromptTemplate):
-        self._inner.resource_manager().prompt().add_prompt(template_id, template)
+        self._inner.resource_manager()._resource_registry.prompt().add_prompt(template_id, template)
 
     def add_prompts(self, templates: List[Tuple[str, PromptTemplate]]):
-        self._inner.resource_manager().prompt().add_prompts(templates)
+        self._inner.resource_manager()._resource_registry.prompt().add_prompts(templates)
 
     def remove_prompt(self, template_id: str):
-        self._inner.resource_manager().prompt().remove_prompt(template_id)
+        self._inner.resource_manager()._resource_registry.prompt().remove_prompt(template_id)
 
     def get_prompt(self, template_id: str) -> PromptTemplate:
-        return self._inner.resource_manager().prompt().get_prompt(template_id)
+        return self._inner.resource_manager()._resource_registry.prompt().get_prompt(template_id)
 
     def add_model(self, model_id: str, model: BaseModelClient):
-        self._inner.resource_manager().model().add_model(model_id, model)
+        self._inner.resource_manager()._resource_registry.model().add_model(model_id, model)
 
     def add_models(self, models: List[Tuple[str, BaseModelClient]]):
-        self._inner.resource_manager().model().add_models(models)
+        self._inner.resource_manager()._resource_registry.model().add_models(models)
 
     def remove_model(self, model_id: str):
-        self._inner.resource_manager().model().remove_model(model_id)
+        self._inner.resource_manager()._resource_registry.model().remove_model(model_id)
 
     def get_model(self, model_id: str) -> BaseModelClient:
-        return self._inner.resource_manager().model().get_model(model_id, self._inner)
+        return self._inner.resource_manager()._resource_registry.model().get_model(model_id, self._inner)
 
     def add_workflow(self, workflow_id: str, workflow: "Workflow"):
-        self._inner.resource_manager().workflow().add_workflow(workflow_id, workflow)
+        self._inner.resource_manager()._resource_registry.workflow().add_workflow(workflow_id, workflow)
 
     def add_workflows(self, workflows: List[Tuple[str, "Workflow"]]):
-        self._inner.resource_manager().workflow().add_workflows(workflows)
+        self._inner.resource_manager()._resource_registry.workflow().add_workflows(workflows)
 
     def remove_workflow(self, workflow_id: str):
-        self._inner.resource_manager().workflow().remove_workflow(workflow_id)
+        self._inner.resource_manager()._resource_registry.workflow().remove_workflow(workflow_id)
 
     async def get_workflow(self, workflow_id: str) -> "Workflow":
-        return await self._inner.resource_manager().workflow().get_workflow(workflow_id, self._inner)
+        return await self._inner.resource_manager()._resource_registry.workflow().get_workflow(workflow_id, self._inner)
 
     def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
-        return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id, self._inner)
+        return self._inner.resource_manager()._resource_registry.workflow().get_workflow_sync(workflow_id, self._inner)
 
     def add_tool(self, tool_id: str, tool: Tool):
-        self._inner.resource_manager().tool().add_tool(tool_id, tool)
+        self._inner.resource_manager()._resource_registry.tool().add_tool(tool_id, tool)
 
     def add_tools(self, tools: List[Tuple[str, Tool]]):
-        self._inner.resource_manager().tool().add_tools(tools)
+        self._inner.resource_manager()._resource_registry.tool().add_tools(tools)
 
     def remove_tool(self, tool_id: str):
-        self._inner.resource_manager().tool().remove_tool(tool_id)
+        self._inner.resource_manager()._resource_registry.tool().remove_tool(tool_id)
 
     def get_tool(self, tool_id: str) -> Tool:
-        return self._inner.resource_manager().tool().get_tool(tool_id, self._inner)
+        return self._inner.resource_manager()._resource_registry.tool().get_tool(tool_id, self._inner)
 
     def get_tool_info(self, tool_id: List[str] = None, workflow_id: List[str] = None) -> List[ToolInfo]:
         infos = []
         if tool_id is None and workflow_id is None:
-            infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
-            infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
+            infos.extend(self._inner.resource_manager()._resource_registry.tool().get_tool_infos(tool_id))
+            infos.extend(self._inner.resource_manager()._resource_registry.workflow().get_tool_infos(workflow_id))
             return infos
         if tool_id is not None:
-            infos.extend(self._inner.resource_manager().tool().get_tool_infos(tool_id))
+            infos.extend(self._inner.resource_manager()._resource_registry.tool().get_tool_infos(tool_id))
         if workflow_id is not None:
-            infos.extend(self._inner.resource_manager().workflow().get_tool_infos(workflow_id))
+            infos.extend(self._inner.resource_manager()._resource_registry.workflow().get_tool_infos(workflow_id))
         return infos
 
     def get_workflow_config(self, workflow_id):
@@ -305,20 +306,21 @@ class WrappedNodeSession(StateSession):
             self._interaction = WorkflowInteraction(self._inner)
         return await self._interaction.wait_user_inputs(value)
 
+    # todo: resource interface will be deleted when resource_mgr supports tag feature
     def get_prompt(self, template_id: str) -> PromptTemplate:
-        return self._inner.resource_manager().prompt().get_prompt(template_id)
+        return self._inner.resource_manager()._resource_registry.prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseModelClient:
-        return self._inner.resource_manager().model().get_model(model_id)
+        return self._inner.resource_manager()._resource_registry.model().get_model(model_id)
 
     async def get_workflow(self, workflow_id: str) -> "Workflow":
-        return await self._inner.resource_manager().workflow().get_workflow(workflow_id)
+        return await self._inner.resource_manager()._resource_registry.workflow().get_workflow(workflow_id)
 
     def get_workflow_sync(self, workflow_id: str) -> "Workflow":
-        return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id)
+        return self._inner.resource_manager()._resource_registry.workflow().get_workflow_sync(workflow_id)
 
     def get_tool(self, tool_id: str) -> Tool:
-        return self._inner.resource_manager().tool().get_tool(tool_id)
+        return self._inner.resource_manager()._resource_registry.tool().get_tool(tool_id)
 
     def get_current_workflow_config(self):
         return self._inner.config().get_workflow_config(self._inner.workflow_id())
@@ -355,20 +357,21 @@ class TaskSession(StateSession):
             self._interaction = SimpleAgentInteraction(self._inner)
         await self._interaction.wait_user_inputs(value)
 
+    # todo: all resource interaface will be deleted when resource_mgr supports tag feature
     def get_prompt(self, template_id: str) -> PromptTemplate:
-        return self._inner.resource_manager().prompt().get_prompt(template_id)
+        return self._inner.resource_manager()._resource_registry.prompt().get_prompt(template_id)
 
     def get_model(self, model_id: str) -> BaseModelClient:
-        return self._inner.resource_manager().model().get_model(model_id, session=self._inner)
+        return self._inner.resource_manager()._resource_registry.model().get_model(model_id, session=self._inner)
 
     async def get_workflow(self, workflow_id: str) -> "Workflow":
-        return await self._inner.resource_manager().workflow().get_workflow(workflow_id, session=self._inner)
+        return await self._inner.resource_manager()._resource_registry.workflow().get_workflow(workflow_id, session=self._inner)
 
     def get_workflow_sync(self, workflow_id: str) -> Optional["Workflow"]:
-        return self._inner.resource_manager().workflow().get_workflow_sync(workflow_id, session=self._inner)
+        return self._inner.resource_manager()._resource_registry.workflow().get_workflow_sync(workflow_id, session=self._inner)
 
     def get_tool(self, tool_id: str) -> Tool:
-        return self._inner.resource_manager().tool().get_tool(tool_id, session=self._inner)
+        return self._inner.resource_manager()._resource_registry.tool().get_tool(tool_id, session=self._inner)
 
     def stream_iterator(self) -> AsyncIterator[Any]:
         return self._inner.stream_writer_manager().stream_output()

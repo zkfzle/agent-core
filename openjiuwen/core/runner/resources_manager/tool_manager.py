@@ -107,8 +107,8 @@ class ToolMgr(AbstractManager[Tool]):
             return None
 
     def get_tool_infos(
-        self, tool_ids: List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None
-    ) -> Optional[List[Union[ToolInfo, McpToolCard]]]:
+        self, tool_ids: str | List[str] = None, *, tool_server_name: str = None, name_delimiter: str = None
+    ) -> Optional[ToolInfo | McpToolCard | List[Union[ToolInfo, McpToolCard]]]:
         try:
             delimiter = self._normalize_delimiter(name_delimiter, default_delimiter=".")
             if tool_server_name:
@@ -121,7 +121,7 @@ class ToolMgr(AbstractManager[Tool]):
                     return result
                 else:
                     return None
-            if tool_ids is not None and not isinstance(tool_ids, list):
+            if tool_ids is not None and not isinstance(tool_ids, str) and not isinstance(tool_ids, list):
                 raise JiuWenBaseException(
                     StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED.code,
                     StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED.errmsg.format(
@@ -131,6 +131,10 @@ class ToolMgr(AbstractManager[Tool]):
             if not tool_ids:
                 return [self._normalize_mcp_tool_info(info, delimiter) for info in self._tool_infos.values() if
                         info is not None]
+
+            if isinstance(tool_ids, str):
+                self._validate_id(tool_ids, StatusCode.SESSION_TOOL_TOOL_INFO_GET_FAILED, "tool")
+                return self._normalize_mcp_tool_info(self._tool_infos.get(tool_ids), delimiter)
 
             infos = []
             for tool_id in tool_ids:
@@ -238,7 +242,7 @@ class ToolMgr(AbstractManager[Tool]):
         copy_tool_info.name = f'{tool_info.server_name}{delimiter}{tool_info.name}'
         return copy_tool_info
 
-    async def stop(self):
+    async def release(self):
         for client in self._mcp_clients.values():
             try:
                 await client.disconnect()

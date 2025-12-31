@@ -87,10 +87,14 @@ class WorkflowMgr(AbstractManager["Workflow"]):
             self._handle_exception(e, StatusCode.SESSION_WORKFLOW_REMOVE_FAILED, "remove")
             return None
 
-    def get_tool_infos(self, workflow_ids: List[str] = None):
+    def get_tool_infos(self, workflow_ids: str | List[str] = None):
         try:
             if not workflow_ids:
                 return [info for info in self._workflow_tool_infos.values() if info is not None]
+
+            if isinstance(workflow_ids, str):
+                self._validate_id(workflow_ids, StatusCode.SESSION_WORKFLOW_TOOL_INFO_GET_FAILED, "workflow")
+                return self._workflow_tool_infos.get(workflow_ids)
 
             infos = []
             for workflow_id in workflow_ids:

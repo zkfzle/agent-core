@@ -2,6 +2,8 @@
 import os
 import uuid
 
+from openjiuwen.core.workflow.base import WorkflowCard
+
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
 
@@ -28,7 +30,7 @@ from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowI
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import generate_workflow_key
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.graph.executable import Output, Input
@@ -480,8 +482,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
         _, workflow = self.build_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置30秒超时）
@@ -534,8 +536,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。使用dict类型InteractiveInput"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self.build_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
@@ -618,8 +620,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self.build_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
@@ -702,8 +704,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """端到端测试：WorkflowAgent.invoke 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
         _, workflow = self.build_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置30秒超时）
@@ -756,8 +758,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         """端到端测试：WorkflowAgent.stream 带中断恢复逻辑。"""
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self.build_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), workflow)
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
@@ -884,8 +886,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 使用新的 add_workflows 方法，传入装饰器包装的 WorkflowFactory
         agent.add_workflows([create_interrupt_workflow_instance])
-        toolinfos = resource_mgr.workflow().get_tool_infos(
-            [generate_workflow_key(workflow_id="test_provider_workflow", workflow_version="1.0")])
+        toolinfos = Runner.resource_mgr.get_tool_infos(
+            id=[generate_workflow_key(workflow_id="test_provider_workflow", workflow_version="1.0")])
         print(toolinfos)
 
         # 验证注册到了 _providers
@@ -1074,8 +1076,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 构建包含两个并行中断节点的工作流
         _, workflow = self.build_multiple_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), 
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)),
             workflow
         )
         agent = self._create_agent(workflow)
@@ -1219,8 +1221,8 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         # 构建包含两个并行中断节点的工作流
         _, workflow = self.build_multiple_interrupt_workflow()
-        resource_mgr.workflow().add_workflow(
-            generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version), 
+        Runner.resource_mgr.add_workflow(
+            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)),
             workflow
         )
         agent = self._create_agent(workflow)

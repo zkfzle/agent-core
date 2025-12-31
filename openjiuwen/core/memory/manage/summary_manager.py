@@ -5,9 +5,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.common.base import generate_idx_name, parse_memory_hit_infos
-from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
-from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.mem_unit.memory_unit import SummaryUnit, BaseMemoryUnit, MemoryType
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
@@ -35,7 +33,7 @@ class SummaryManager(BaseMemoryManager):
         encrypt_new_memory = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key, plaintext=new_memory)
         new_data = {'mem': encrypt_new_memory, 'time': time}
         await self.mem_store.update(mem_id=mem_id, user_id=user_id, group_id=group_id, data=new_data)
-        table_name = generate_idx_name(user_id, group_id, MemoryType.SUMMARY.value)
+        table_name = generate_idx_name(user_id=user_id, group_id=group_id, mem_type=MemoryType.SUMMARY.value)
         await self.semantic_recall.delete_docs([mem_id], table_name)
         # semantic memory embedding must not encrypt
         await self.semantic_recall.add_docs([(mem_id, new_memory)], table_name)
@@ -124,7 +122,7 @@ class SummaryManager(BaseMemoryManager):
             group_id: str,
             memory_id: List[str]):
         if self.semantic_recall:
-            table_name = generate_idx_name(user_id, group_id, MemoryType.SUMMARY.value)
+            table_name = generate_idx_name(user_id=user_id, group_id=group_id, mem_type=MemoryType.SUMMARY.value)
             await self.semantic_recall.delete_docs(memory_id, table_name)
         else:
             raise ValueError('vector store must not be None')
@@ -135,6 +133,6 @@ class SummaryManager(BaseMemoryManager):
             user_id: str,
             group_id: str,
             top_k: int = 5) -> tuple[List[str], dict[str, float]]:
-        table_name = generate_idx_name(user_id, group_id, MemoryType.SUMMARY.value)
+        table_name = generate_idx_name(user_id=user_id, group_id=group_id, mem_type=MemoryType.SUMMARY.value)
         memory_hit_info = await self.semantic_recall.search(query, table_name, top_k)
         return parse_memory_hit_infos(memory_hit_info)

@@ -19,7 +19,7 @@ from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm import BaseMessageChunk
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMExecutable
+from openjiuwen.core.workflow.components.llm_related.llm_comp import LLMExecutable
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()

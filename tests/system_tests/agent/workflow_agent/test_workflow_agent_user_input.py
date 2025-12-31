@@ -253,7 +253,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         logger.info("\n========== 测试：str类型中断应该正常执行 ==========")
 
         # 导入QuestionerComponent
-        from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+        from openjiuwen.core.workflow.components.llm_related.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 
         # 创建模型配置
         model_config = ModelConfig(
@@ -303,7 +303,7 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         构建包含QuestionerComponent的工作流
         这个工作流会产生str格式的中断
         """
-        from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
+        from openjiuwen.core.workflow.components.llm_related.questioner_comp import QuestionerComponent, QuestionerConfig, FieldInfo
 
         # 创建模型配置
         model_config = ModelConfig(

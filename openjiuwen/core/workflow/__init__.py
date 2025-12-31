@@ -23,22 +23,24 @@ from openjiuwen.core.workflow.components.base import (
     ComponentState, ComponentExecutable, Input, Output,
 )
 
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMComponent, LLMCompConfig
-from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolComponent, ToolComponentConfig
-from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import (
+from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.flow_related.start_comp import Start
+from openjiuwen.core.workflow.components.flow_related.end_comp import End, EndConfig
+from openjiuwen.core.workflow.components.flow_related.branch_comp import BranchComponent
+from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import LoopComponent, LoopGroup
+from openjiuwen.core.workflow.components.flow_related.loop.break_comp import BreakComponent
+from openjiuwen.core.workflow.components.flow_related.loop.set_variable_comp import SetVariableComponent
+from openjiuwen.core.workflow.components.llm_related.llm_comp import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow.components.llm_related.questioner_comp import (
+    QuestionerComponent,
+    QuestionerConfig,
+    FieldInfo
+)
+from openjiuwen.core.workflow.components.llm_related.intent_detection_comp import (
     IntentDetectionComponent,
     IntentDetectionCompConfig
 )
-
-from openjiuwen.core.workflow.components.flow_components.start_comp import Start
-from openjiuwen.core.workflow.components.flow_components.end_comp import End, EndConfig
-from openjiuwen.core.workflow.components.flow_components.branch_comp import BranchComponent
-from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import LoopComponent, LoopGroup
-from openjiuwen.core.workflow.components.flow_components.loop.break_comp import BreakComponent
-from openjiuwen.core.workflow.components.flow_components.loop.set_variable_comp import SetVariableComponent
-from openjiuwen.core.workflow.components.interact_components.questioner_comp import QuestionerComponent, \
-    QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow.components.tool_related.tool_comp import ToolComponent, ToolComponentConfig
 from openjiuwen.core.workflow.components.branch_router import BranchRouter, Branch
 from openjiuwen.core.workflow.components.condition.condition import Condition, FuncCondition, AlwaysTrue
 from openjiuwen.core.workflow.components.condition.expression import ExpressionCondition
@@ -73,20 +75,21 @@ _COMPONENTS_CLASSES = [
     "ComponentState",
 ]
 
-_BASIC_COMPONENTS = [
+_LLM_RELATED_COMPONENTS = [
     "LLMComponent",
     "LLMCompConfig",
-    "ToolComponent",
-    "ToolComponentConfig",
-    "SubWorkflowComponent",
     "IntentDetectionComponent",
-    "IntentDetectionCompConfig"
+    "IntentDetectionCompConfig",
+    "QuestionerComponent",
+    "QuestionerConfig",
+    "FieldInfo"
 ]
 
-_FLOW_COMPONENTS = [
+_FLOW_RELATED_COMPONENTS = [
     "Start",
     "End",
     "EndConfig",
+    "SubWorkflowComponent",
     "BranchComponent",
     "LoopComponent",
     "LoopGroup",
@@ -96,11 +99,12 @@ _FLOW_COMPONENTS = [
     "Branch",
 ]
 
-_INTERACT_COMPONENTS = [
-    "QuestionerComponent",
-    "QuestionerConfig",
-    "FieldInfo"
+_TOOL_RELATED_COMPONENTS = [
+    "ToolComponent",
+    "ToolComponentConfig",
 ]
+
+_RESOURCE_RELATED_COMPONENTS = []
 
 _CONDITION_CLASSES = [
     "Condition",
@@ -115,9 +119,10 @@ __all__ = (
         _WORKFLOW_CLASSES +
         _WORKFLOW_INPUTS_AND_OUTPUTS_CLASSES +
         _COMPONENTS_CLASSES +
-        _BASIC_COMPONENTS +
-        _FLOW_COMPONENTS +
-        _INTERACT_COMPONENTS +
+        _LLM_RELATED_COMPONENTS +
+        _FLOW_RELATED_COMPONENTS +
+        _TOOL_RELATED_COMPONENTS +
+        _RESOURCE_RELATED_COMPONENTS +
         _CONDITION_CLASSES +
         _WORKFLOW_METHODS
 )

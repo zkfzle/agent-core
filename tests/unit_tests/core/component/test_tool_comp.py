@@ -12,7 +12,7 @@ from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
-from openjiuwen.core.workflow.components.basic_components.tool_comp import ToolExecutable
+from openjiuwen.core.workflow.components.tool_related.tool_comp import ToolExecutable
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 
@@ -83,7 +83,7 @@ async def test_tool_comp_invoke(mock_async_request, mock_request, mock_tool_inpu
     assert res.get('error_code') == 0
 
 
-@patch('openjiuwen.core.workflow.components.basic_components.tool_comp.ToolExecutable.invoke')
+@patch('openjiuwen.core.workflow.components.tool_related.tool_comp.ToolExecutable.invoke')
 @pytest.mark.asyncio
 async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, fake_ctx):
     mock_invoke.return_value = 'res'

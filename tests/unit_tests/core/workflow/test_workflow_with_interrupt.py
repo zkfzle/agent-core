@@ -11,11 +11,11 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow import BranchComponent
 from openjiuwen.core.workflow import ArrayCondition
-from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
-from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_KEY
 from openjiuwen.core.session import get_default_inmemory_checkpointer
 from openjiuwen.core.session import InteractionOutput
@@ -26,7 +26,7 @@ from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowO
 from openjiuwen.core.workflow import WorkflowConfig
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.workflow import WorkflowMetadata
-from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import AdvancedLoopComponent
+from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import (
     InteractiveNode4StreamCp,
     MockStartNode,

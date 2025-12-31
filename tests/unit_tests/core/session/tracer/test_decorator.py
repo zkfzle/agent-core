@@ -17,7 +17,7 @@ from openjiuwen.core.foundation.tool import ToolInfo, ToolCard
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
 from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
-from openjiuwen.core.workflow.components.basic_components.llm_comp import LLMExecutable
+from openjiuwen.core.workflow.components.llm_related.llm_comp import LLMExecutable
 
 pytestmark = pytest.mark.asyncio
 

@@ -7,7 +7,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable, Input, Output
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession

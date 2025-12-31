@@ -11,18 +11,18 @@ from openjiuwen.core.workflow import BranchRouter
 from openjiuwen.core.workflow import NumberCondition
 from openjiuwen.core.workflow import IntentDetectionCompConfig, IntentDetectionComponent
 from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
-from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
-from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.visualization.drawable import Drawable
-from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import AdvancedLoopComponent
+from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, MockEndNode, MockStartNode, CommonNode, \
     StreamCompNode, CollectCompNode, Node1
 

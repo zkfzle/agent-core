@@ -18,7 +18,7 @@ from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.workflow.components.basic_components.intent_detection_comp import IntentDetectionExecutable
+from openjiuwen.core.workflow.components.llm_related.intent_detection_comp import IntentDetectionExecutable
 
 fake_base = types.ModuleType("base")
 fake_base.logger = Mock()

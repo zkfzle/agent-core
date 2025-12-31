@@ -11,17 +11,17 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable, Input, Output
 from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import End
-from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.workflow.components.flow_components.loop.loop_callback.output import OutputCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.workflow import LoopGroup
 from openjiuwen.core.workflow import SetVariableComponent
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.workflow.components.basic_components.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import Context
 from openjiuwen.core.session import Session
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.constants.enums import ComponentAbility
-from openjiuwen.core.workflow.components.flow_components.loop.loop_comp import AdvancedLoopComponent
+from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
 
 fake_base = types.ModuleType("base")

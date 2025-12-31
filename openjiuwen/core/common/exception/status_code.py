@@ -40,6 +40,13 @@ class StatusCode(Enum):
     LLM_COMPONENT_ASSEMBLE_TEMPLATE_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
     PROMPT_JSON_SCHEMA_ERROR = (101007, "Invalid json schema, root cause = {error_msg}.")
 
+
+    ## LLM Service 102001 - 102999
+    LLM_SERVICE_CONFIG_ERROR = (102001, "LLM service config error, as {error_msg}.")
+    LLM_SERVICE_MODEL_CONFIG_ERROR = (102002, "LLM model config error, as {error_msg}.")
+    LLM_SERVICE_CALL_MODEL_PARAM_ERROR = (102003, "LLM model call error, as {error_msg}.")
+    LLM_SERVICE_MODEL_CLIENT_TYPE_ERROR = (102004, "LLM model client type error, as {error_msg}.")
+
     ## IntentDetectionComponent 101050 - 101069
     INTENT_DETECTION_COMPONENT_USER_INPUT_ERROR = (101050,
                                                    "Intent detection component user input error, as {error_msg}.")

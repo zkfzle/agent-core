@@ -104,6 +104,7 @@ class TESTLOCOMO():
         for retry in range(retries):
             try:
                 await self.memory_engine.add_conversation_messages(user_id=user_id, group_id=app_id, messages=messages, timestamp=timestamp, session_id=session_id)
+                break
             except Exception as e:
                 if retry < retries - 1:
                     time.sleep(2)

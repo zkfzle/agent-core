@@ -48,7 +48,8 @@ from openjiuwen.core.graph.graph import PregelGraph
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
 class WorkflowCard(BaseCard):
-    workflow_id: Field(...)
+    workflow_id: str = Field(...)
+
 
 class ConnectionType(Enum):
     """Type of workflow connection."""

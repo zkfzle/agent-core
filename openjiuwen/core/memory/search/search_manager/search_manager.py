@@ -18,7 +18,7 @@ from openjiuwen.core.memory.prompt.query_decomposer import QEURY_DECOMPOSE_SYSTE
 
 class SearchManager:
     user_mem_manager_list = [MemoryType.USER_PROFILE.value, MemoryType.SEMANTIC_MEMORY.value,
-                             MemoryType.EPISODIC_MEMORY.value]
+                             MemoryType.EPISODIC_MEMORY.value, MemoryType.SUMMARY.value]
     all_mem_manager_list = [item.value for item in MemoryType]
 
     def __init__(self,

@@ -5,7 +5,7 @@ from typing import AsyncIterator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
+from openjiuwen.core.workflow.components.base import ComponentComposable, ComponentExecutable
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Input, Output
@@ -17,7 +17,7 @@ from openjiuwen.core.graph.visualization.drawable_graph import DrawableGraph
 SUB_WORKFLOW_COMPONENT = "sub_workflow"
 
 
-class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
+class SubWorkflowComponent(ComponentComposable, ComponentExecutable):
     def __init__(self, sub_workflow: Workflow):
         super().__init__()
         if sub_workflow is None:

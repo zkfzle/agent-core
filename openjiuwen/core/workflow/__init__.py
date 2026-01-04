@@ -18,7 +18,7 @@ from openjiuwen.core.workflow.workflow_config import (
 )
 
 from openjiuwen.core.workflow.components.base import (
-    WorkflowComponent,
+    ComponentComposable,
     WorkflowComponentMetadata,
     ComponentConfig,
     ComponentState, ComponentExecutable, Input, Output,

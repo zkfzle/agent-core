@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import abstractmethod, ABC
 
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import ComponentComposable
 from openjiuwen.core.graph.executable import Input, Output, Executable
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -20,7 +20,7 @@ class LoopController(ABC):
         raise NotImplementedError()
 
 
-class BreakComponent(WorkflowComponent, Executable):
+class BreakComponent(ComponentComposable, Executable):
     def __init__(self):
         super().__init__()
         self._loop_controller = None

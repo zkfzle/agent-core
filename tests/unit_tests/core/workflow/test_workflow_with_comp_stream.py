@@ -8,10 +8,10 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import WorkflowComponent, Input, Output
+from openjiuwen.core.workflow import ComponentComposable, Input, Output
 from openjiuwen.core.workflow import End, EndConfig
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.workflow.components.base import SimpleComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable
@@ -31,7 +31,7 @@ pytestmark = pytest.mark.asyncio
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 
-class MockStreamNode(ComponentExecutable, WorkflowComponent):
+class MockStreamNode(ComponentExecutable, ComponentComposable):
     def __init__(self):
         super().__init__()
 
@@ -75,7 +75,7 @@ async def test_no_stream_called():
     assert error.value.error_code == StatusCode.WORKFLOW_STREAM_TIMEOUT.code
 
 
-class Producer(ComponentExecutable, WorkflowComponent):
+class Producer(ComponentExecutable, ComponentComposable):
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return {"output": inputs.get("array")}
 
@@ -405,7 +405,7 @@ async def test_stream_component_in_sub_workflow_with_substream_template():
     assert expect_chunks == chunks
 
 
-class Interaction(WorkflowComponent, ComponentExecutable):
+class Interaction(ComponentComposable, ComponentExecutable):
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         result = await session.interact("please enter any input")
         return {"output": result}
@@ -459,7 +459,7 @@ async def test_interaction_with_stream():
 async def test_interaction_with_exception():
     run_times = 0
 
-    class ExceptionComp(WorkflowComponent, ComponentExecutable):
+    class ExceptionComp(ComponentComposable, ComponentExecutable):
         async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
             if run_times == 0:
                 raise Exception("first time")
@@ -512,7 +512,7 @@ async def test_interaction_with_exception():
     assert res.result == expect_result
 
 
-class StreamNodeWithException(WorkflowComponent, ComponentExecutable):
+class StreamNodeWithException(ComponentComposable, ComponentExecutable):
     def __init__(self):
         super().__init__()
         self._raise_error: bool = True
@@ -795,7 +795,7 @@ async def test_dual_ability_node_with_transform_error():
     assert "transform" in exc_info.value.message.lower()  # Ability name should be in the message
 
 
-class StreamNode(SimpleComponent):
+class StreamNode(WorkflowComponent):
 
     def __init__(self, delay: float = 0.0):
         self.delay = delay

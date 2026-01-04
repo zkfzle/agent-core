@@ -2,7 +2,7 @@ import asyncio
 from typing import Any, AsyncIterator
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent
+from openjiuwen.core.workflow import ComponentExecutable, ComponentComposable
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ModelContext
@@ -13,7 +13,7 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import Workflow
 
 
-class MockNodeBase(ComponentExecutable, WorkflowComponent):
+class MockNodeBase(ComponentExecutable, ComponentComposable):
     def __init__(self, node_id: str = ''):
         super().__init__()
         self.node_id = node_id
@@ -123,7 +123,7 @@ class Node4Cp(MockNodeBase):
         return inputs
 
 
-class AddTenNode4Cp(ComponentExecutable, WorkflowComponent):
+class AddTenNode4Cp(ComponentExecutable, ComponentComposable):
     raise_exception = True
 
     def __init__(self, node_id: str):
@@ -261,7 +261,7 @@ class MultiCollectCompNode(MockNodeBase):
         return result
 
 
-class CommonNode(ComponentExecutable, WorkflowComponent):
+class CommonNode(ComponentExecutable, ComponentComposable):
 
     def __init__(self, node_id: str):
         super().__init__()
@@ -274,7 +274,7 @@ class CommonNode(ComponentExecutable, WorkflowComponent):
         yield await self.invoke(inputs, session, context)
 
 
-class AddTenNode(ComponentExecutable, WorkflowComponent):
+class AddTenNode(ComponentExecutable, ComponentComposable):
 
     def __init__(self, node_id: str, check_map: dict = None):
         super().__init__()
@@ -295,7 +295,7 @@ class AddTenNode(ComponentExecutable, WorkflowComponent):
         return {"result": inputs["source"] + 10}
 
 
-class MockStreamNode(ComponentExecutable, WorkflowComponent):
+class MockStreamNode(ComponentExecutable, ComponentComposable):
     def __init__(self):
         super().__init__()
 
@@ -311,7 +311,7 @@ class MockStreamNode(ComponentExecutable, WorkflowComponent):
         yield inputs
 
 
-class ComputeComponent2(WorkflowComponent):
+class ComputeComponent2(ComponentComposable):
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
         graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
 
@@ -409,7 +409,7 @@ class ComputeExecutor2(ComponentExecutable):
         print(f"{exec_id} transform done")
 
 
-class DualAbilityWithErrorComponent(WorkflowComponent):
+class DualAbilityWithErrorComponent(ComponentComposable):
     """
     A component with dual stream abilities (TRANSFORM + STREAM) that can be configured
     to raise exceptions in specific abilities for testing error handling.

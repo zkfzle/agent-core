@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
-from openjiuwen.core.workflow.components.base import ComponentConfig, WorkflowComponent, ComponentExecutable
+from openjiuwen.core.workflow.components.base import ComponentConfig, ComponentComposable, ComponentExecutable
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
@@ -589,7 +589,7 @@ class LLMExecutable(ComponentExecutable):
         self._validate_output_config(config.output_config)
 
 
-class LLMComponent(WorkflowComponent):
+class LLMComponent(ComponentComposable):
     def __init__(self, component_config: Optional[LLMCompConfig] = None):
         super().__init__()
         self._executable = None

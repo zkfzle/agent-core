@@ -8,7 +8,7 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable, Input, Output
+from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, Input, Output
 from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
@@ -58,7 +58,7 @@ def record_tracer_info(tracer_chunks, file_path):
         print(f"调测信息保存失败：{e}")
 
 
-class Producer(ComponentExecutable, WorkflowComponent):
+class Producer(ComponentExecutable, ComponentComposable):
     async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.debug(f"producer inputs: {inputs}")
         for v in inputs.get("array"):
@@ -66,7 +66,7 @@ class Producer(ComponentExecutable, WorkflowComponent):
             yield {"output": v}
 
 
-class AnyTypeReturnNode(ComponentExecutable, WorkflowComponent):
+class AnyTypeReturnNode(ComponentExecutable, ComponentComposable):
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs.get("data")
 

@@ -18,7 +18,7 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow.components.base import ComponentComposable
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.flow_related.end_comp import End
 from openjiuwen.core.context_engine import ModelContext
@@ -140,7 +140,7 @@ class BaseWorkFlow:
     def add_workflow_comp(
             self,
             comp_id: str,
-            workflow_comp: Union[Executable, WorkflowComponent],
+            workflow_comp: Union[Executable, ComponentComposable],
             *,
             wait_for_all: bool = None,
             inputs_schema: dict = None,
@@ -153,7 +153,7 @@ class BaseWorkFlow:
             comp_ability: list[ComponentAbility] = None
     ) -> Self:
         self._validate_comp_id(comp_id)
-        if not isinstance(workflow_comp, WorkflowComponent):
+        if not isinstance(workflow_comp, ComponentComposable):
             workflow_comp = self._convert_to_component(workflow_comp)
         node_spec = NodeSpec(
             io_config=CompIOConfig(inputs_schema=inputs_schema, outputs_schema=outputs_schema,
@@ -427,7 +427,7 @@ class Workflow(BaseWorkFlow):
     def set_start_comp(
             self,
             start_comp_id: str,
-            component: Union[Executable, WorkflowComponent],
+            component: Union[Executable, ComponentComposable],
             inputs_schema: dict = None,
             outputs_schema: dict = None,
             inputs_transformer: Transformer = None,
@@ -443,7 +443,7 @@ class Workflow(BaseWorkFlow):
     def set_end_comp(
             self,
             end_comp_id: str,
-            component: Union[Executable, WorkflowComponent],
+            component: Union[Executable, ComponentComposable],
             inputs_schema: dict = None,
             outputs_schema: dict = None,
             inputs_transformer: Transformer = None,
@@ -699,7 +699,7 @@ class Workflow(BaseWorkFlow):
         )
         return actor_manager, sub_workflow_session
 
-    def _convert_to_component(self, executable: Executable) -> WorkflowComponent:
+    def _convert_to_component(self, executable: Executable) -> ComponentComposable:
         pass
 
     def get_tool_info(self) -> ToolInfo:

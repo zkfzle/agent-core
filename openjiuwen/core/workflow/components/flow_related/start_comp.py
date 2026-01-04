@@ -6,13 +6,13 @@ from typing import TypedDict
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow.components.base import ComponentExecutable, WorkflowComponent
+from openjiuwen.core.workflow.components.base import ComponentExecutable, ComponentComposable
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 
 
-class Start(ComponentExecutable, WorkflowComponent):
+class Start(ComponentExecutable, ComponentComposable):
     def __init__(self, conf: dict = None):
         super().__init__()
         self._check_config(conf)

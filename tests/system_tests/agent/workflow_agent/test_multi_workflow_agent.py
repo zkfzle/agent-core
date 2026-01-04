@@ -9,7 +9,7 @@
 import os
 import uuid
 
-from openjiuwen.core.workflow import WorkflowComponent
+from openjiuwen.core.workflow import ComponentComposable
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
@@ -54,7 +54,7 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class DelayedComponent(ComponentExecutable, WorkflowComponent):
+class DelayedComponent(ComponentExecutable, ComponentComposable):
     """
     带延迟的组件，用于模拟慢速执行场景，测试实时打断功能。
     """

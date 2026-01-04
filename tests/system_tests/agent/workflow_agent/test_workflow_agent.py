@@ -36,7 +36,7 @@ from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Session
-from openjiuwen.core.workflow import WorkflowComponent
+from openjiuwen.core.workflow import ComponentComposable
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -100,7 +100,7 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class InteractiveConfirmComponent(ComponentExecutable, WorkflowComponent):
+class InteractiveConfirmComponent(ComponentExecutable, ComponentComposable):
     """
     交互确认组件 - 用于用户确认操作
     """

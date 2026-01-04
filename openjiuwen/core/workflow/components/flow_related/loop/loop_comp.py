@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID, FINISH_INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentExecutable
+from openjiuwen.core.workflow.components.base import ComponentComposable, ComponentExecutable
 from openjiuwen.core.workflow.components.flow_related.loop.break_comp import BreakComponent, LoopController
 from openjiuwen.core.workflow.components.condition.array import ArrayConditionInSession
 from openjiuwen.core.workflow.components.condition.condition import Condition, AlwaysTrue, FuncCondition
@@ -80,7 +80,7 @@ class LoopGroup(BaseWorkFlow, Executable):
     def add_workflow_comp(
             self,
             comp_id: str,
-            workflow_comp: Union[Executable, WorkflowComponent],
+            workflow_comp: Union[Executable, ComponentComposable],
             *,
             comp_ability: list[ComponentAbility] = None,
             wait_for_all: bool = None,
@@ -175,7 +175,7 @@ BODY_NODE_ID = "body"
 POST_BODY_NODE_ID = "post_body"
 
 
-class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, AtomicNode):
+class AdvancedLoopComponent(ComponentComposable, LoopController, Executable, AtomicNode):
 
     def __init__(self, body: Executable,
                  condition: Union[str, Callable[[], bool], Condition] = None, break_nodes: list[BreakComponent] = None,
@@ -322,7 +322,7 @@ class LoopInput(BaseModel):
     intermediate_var: Dict[str, Union[str, Any]] = Field(default_factory=dict)
 
 
-class LoopComponent(WorkflowComponent, ComponentExecutable):
+class LoopComponent(ComponentComposable, ComponentExecutable):
     def __init__(self, loop_group: LoopGroup, output_schema: dict):
         super().__init__()
         self._loop_group = loop_group

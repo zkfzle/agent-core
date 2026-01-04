@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
-from openjiuwen.core.workflow.components.base import WorkflowComponent, ComponentConfig, ComponentExecutable
+from openjiuwen.core.workflow.components.base import ComponentComposable, ComponentConfig, ComponentExecutable
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow.components.condition.condition import Condition
@@ -346,7 +346,7 @@ class IntentDetectionExecutable(ComponentExecutable):
             self._default_config.category_list.append(f"分类{index}")
 
 
-class IntentDetectionComponent(WorkflowComponent):
+class IntentDetectionComponent(ComponentComposable):
     def __init__(self, component_config: Optional[IntentDetectionCompConfig] = None):
         super().__init__()
         self._executable = None

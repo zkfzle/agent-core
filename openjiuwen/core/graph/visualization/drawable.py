@@ -17,7 +17,7 @@ with contextlib.redirect_stdout(io.StringIO()):
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import WorkflowComponent
+from openjiuwen.core.workflow import ComponentComposable
 from openjiuwen.core.workflow import BranchRouter
 from openjiuwen.core.graph.visualization.drawable_edge import DrawableEdge
 from openjiuwen.core.graph.visualization.drawable_graph import DrawableGraph
@@ -47,7 +47,7 @@ class Drawable:
         self._graph = DrawableGraph(nodes={}, edges=[], start_nodes=[], end_nodes=[], break_nodes=[])
         self._loop_nodes = set()
 
-    def add_node(self, node_id: str, component: WorkflowComponent):
+    def add_node(self, node_id: str, component: ComponentComposable):
         """convert component to DrawableNode & save it to self._graph.nodes"""
         from openjiuwen.core.workflow import LoopComponent
         from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent

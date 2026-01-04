@@ -12,7 +12,7 @@ from openjiuwen.core.workflow import BreakComponent
 from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import NumberCondition
 from openjiuwen.core.workflow import End
-from openjiuwen.core.workflow.components.base import SimpleComponent
+from openjiuwen.core.workflow.components.base import WorkflowComponent
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.workflow import LoopGroup, LoopComponent
@@ -1118,7 +1118,7 @@ async def test_nested_loop():
         assert False
 
 
-class LogComp(SimpleComponent):
+class LogComp(WorkflowComponent):
     def __init__(self, name: str):
         super().__init__()
         self.name = name
@@ -1209,12 +1209,12 @@ def create_workflow2() -> Workflow:
 
 async def test_illegal_nested_workflow():
 
-    class InteractionNode(SimpleComponent):
+    class InteractionNode(WorkflowComponent):
         async def invoke(self, inputs: Input, session: Session, context: ModelContext):
             res = await session.interact("value")
             return res
 
-    class NestedFlow(SimpleComponent):
+    class NestedFlow(WorkflowComponent):
         async def invoke(self, inputs: Input, session: Session, context: ModelContext):
             nested_flow = Workflow()
             nested_flow.set_start_comp("start", Start(), inputs_schema={"out": "${inputs}"})

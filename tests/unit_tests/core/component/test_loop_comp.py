@@ -4,7 +4,7 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import WorkflowComponent, ComponentExecutable, Input, Output
+from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, Input, Output
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
@@ -42,7 +42,7 @@ async def test_loop_number_exceeds_max_limit():
     assert exc_info.value.error_code == StatusCode.COMPONENT_EXECUTE_ERROR.code
     assert "exceeds maximum limit" in exc_info.value.message
 
-class CustomStream(ComponentExecutable, WorkflowComponent):
+class CustomStream(ComponentExecutable, ComponentComposable):
     def __init__(self):
         super().__init__()
 

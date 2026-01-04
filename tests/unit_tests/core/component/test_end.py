@@ -3,7 +3,7 @@ from typing import AsyncIterator
 import pytest
 
 from openjiuwen.core.common.constants.constant import END_NODE_STREAM
-from openjiuwen.core.workflow import ComponentExecutable, WorkflowComponent, Input, Output
+from openjiuwen.core.workflow import ComponentExecutable, ComponentComposable, Input, Output
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ModelContext
@@ -18,7 +18,7 @@ from tests.unit_tests.core.workflow.mock_nodes import (ComputeComponent2,
 pytestmark = pytest.mark.asyncio
 
 
-class MockStreamCmp(WorkflowComponent, ComponentExecutable):
+class MockStreamCmp(ComponentComposable, ComponentExecutable):
     async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         yield inputs
 
@@ -230,7 +230,7 @@ async def test_end_batch_stream_workflow():
     assert expect_results == real_result
 
 
-class MockStreamNode(WorkflowComponent, ComponentExecutable):
+class MockStreamNode(ComponentComposable, ComponentExecutable):
     async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         yield inputs
 

@@ -128,7 +128,7 @@ class ComponentExecutable(Executable):
                                   StatusCode.SESSION_COMPONENT_ABILITY_NOT_SUPPORTED.errmsg.format(ability='Transform'))
 
 
-class WorkflowComponent(ABC):
+class ComponentComposable(ABC):
 
     def add_component(self, graph: Graph, node_id: str, wait_for_all: bool = False) -> None:
         graph.add_node(node_id, self.to_executable(), wait_for_all=wait_for_all)
@@ -141,5 +141,5 @@ class WorkflowComponent(ABC):
         )
 
 
-class SimpleComponent(ComponentExecutable, WorkflowComponent):
+class WorkflowComponent(ComponentExecutable, ComponentComposable):
     ...

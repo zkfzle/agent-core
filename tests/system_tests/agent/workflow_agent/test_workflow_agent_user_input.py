@@ -19,7 +19,7 @@ from typing import Any, List
 
 from openjiuwen.core.single_agent import WorkflowAgentConfig
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.workflow import WorkflowComponent, ComponentConfig, ComponentExecutable
+from openjiuwen.core.workflow import ComponentComposable, ComponentConfig, ComponentExecutable
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.graph.executable import Output, Input
@@ -58,7 +58,7 @@ class UserInputsConfig(ComponentConfig):
     inputs: List[UserInputElem] = field(default_factory=list)
 
 
-class UserInputComponent(ComponentExecutable, WorkflowComponent):
+class UserInputComponent(ComponentExecutable, ComponentComposable):
     """
     用户输入组件 - 返回dict格式的中断
     

@@ -14,7 +14,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.workflow.components.base import ComponentConfig, ComponentExecutable, WorkflowComponent
+from openjiuwen.core.workflow.components.base import ComponentConfig, ComponentExecutable, ComponentComposable
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable, Input, Output
@@ -611,7 +611,7 @@ class QuestionerExecutable(ComponentExecutable):
         self._validate_max_response_num_config(config.max_response)
 
 
-class QuestionerComponent(WorkflowComponent):
+class QuestionerComponent(ComponentComposable):
     def __init__(self, questioner_comp_config: QuestionerConfig = None):
         super().__init__()
         self._questioner_config = questioner_comp_config

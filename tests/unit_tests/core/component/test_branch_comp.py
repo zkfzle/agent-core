@@ -3,7 +3,7 @@ import pytest
 from openjiuwen.core.common.constants.constant import CONFIG_KEY
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import ComponentExecutable, Input, Output, WorkflowComponent
+from openjiuwen.core.workflow import ComponentExecutable, Input, Output, ComponentComposable
 from openjiuwen.core.workflow import BranchComponent
 from openjiuwen.core.workflow import BranchRouter
 from openjiuwen.core.workflow import End
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.asyncio
 
 SUB_WORKFLOW_COMPONENT = "sub_workflow"
 
-class MockSubWorkflowComponent(WorkflowComponent, ComponentExecutable):
+class MockSubWorkflowComponent(ComponentComposable, ComponentExecutable):
     def __init__(self):
         super().__init__()
 

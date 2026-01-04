@@ -13,9 +13,10 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, ConfigDict
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata, FunctionInfo, ToolCall
-from openjiuwen.core.foundation.llm import AIMessageChunk
+from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata, AIMessageChunk
+from openjiuwen.core.foundation.tool import ToolCall
 
+from openjiuwen.core.foundation.llm import BaseModelClient
 
 class ContextLimitError(Exception):
     """Exception raised when context limit is exceeded"""
@@ -56,7 +57,7 @@ class OpenRouterConfig(BaseModel):
     disable_cache_control: bool = False
 
 
-class OpenRouterLLM(BaseChatModel):
+class OpenRouterLLM(BaseModelClient):
     """OpenRouter LLM implementation following openjiuwen patterns"""
 
     def __init__(
@@ -329,10 +330,8 @@ class OpenRouterLLM(BaseChatModel):
                 ToolCall(
                     id=tc.id,
                     type=tc.type,
-                    function=FunctionInfo(
-                        name=tc.function.name,
-                        arguments=tc.function.arguments if tc.function.arguments is not None else "{}"
-                    )
+                    name=tc.function.name,
+                    arguments=tc.function.arguments if tc.function.arguments is not None else "{}"
                 )
                 for tc in message.tool_calls
             ]

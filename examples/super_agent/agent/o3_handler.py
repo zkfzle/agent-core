@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 from openai import AsyncOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent.agent.prompt_templates import (
     get_o3_hints_prompt,
     get_o3_answer_type_prompt,
     get_o3_final_answer_prompt

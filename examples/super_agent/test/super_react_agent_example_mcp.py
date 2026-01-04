@@ -27,10 +27,10 @@ for path in [REPO_ROOT, EXAMPLES_DIR]:
 from examples.super_agent import (
     SuperReActAgent
 )
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent import (
     SuperAgentFactory
 )
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent import (
     get_main_agent_system_prompt,
     get_browsing_agent_system_prompt
 )

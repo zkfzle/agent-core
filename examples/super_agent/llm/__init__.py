@@ -4,7 +4,7 @@
 Super Agent LLM Module
 """
 
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent.llm.openrouter_llm import (
     OpenRouterLLM,
     OpenRouterConfig,
     ContextLimitError

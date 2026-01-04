@@ -8,11 +8,11 @@ Factory functions for creating Super agents
 
 from typing import List, Dict, Optional
 
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent.agent.super_config import (
     SuperAgentConfig,
     SuperAgentFactory
 )
-from examples.super_agent import (
+from examples.super_agent.agent.super_react_agent import (
     SuperReActAgent
 )
 from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema

@@ -16,7 +16,7 @@ from openjiuwen.agent_builder.tune import (
 )
 from openjiuwen.core.single_agent import LLMCallConfig
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import LocalFunction, Param
+from openjiuwen.core.foundation.tool import LocalFunction
 
 from openjiuwen.core.foundation.llm import UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall,ToolCard

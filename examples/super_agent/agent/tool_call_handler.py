@@ -139,11 +139,11 @@ class ToolCallHandler:
             Tool execution result
         """
         # Parse tool call
-        tool_name = tool_call.function.name
+        tool_name = tool_call.name
         try:
-            tool_args = json.loads(tool_call.function.arguments) if isinstance(
-                tool_call.function.arguments, str
-            ) else tool_call.function.arguments
+            tool_args = json.loads(tool_call.arguments) if isinstance(
+                tool_call.arguments, str
+            ) else tool_call.arguments
         except (json.JSONDecodeError, AttributeError):
             tool_args = {}
 
@@ -244,8 +244,8 @@ class ToolCallHandler:
                 "id": tc.id,
                 "type": tc.type,
                 "function": {
-                    "name": tc.function.name,
-                    "arguments": tc.function.arguments
+                    "name": tc.name,
+                    "arguments": tc.arguments
                 }
             })
         return formatted

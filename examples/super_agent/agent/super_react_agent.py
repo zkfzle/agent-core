@@ -7,25 +7,29 @@ Supports both main single_agent and sub-single_agent execution with the same cla
 import inspect
 from typing import Dict, Any, AsyncIterator, List, Optional
 
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent.agent.utils import (
     process_input,
+)
+
+from examples.super_agent.agent.prompt_templates import (
     get_task_instruction_prompt
 )
-from openjiuwen.core.application.agents_for_studio import (
+
+from examples.super_agent.agent.context_manager import (
     ContextManager
 )
-from openjiuwen.core.application.agents_for_studio import O3Handler
-from openjiuwen.core.application.agents_for_studio import SuperAgentConfig
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent.agent.o3_handler import O3Handler
+from examples.super_agent.agent.super_config import SuperAgentConfig
+from examples.super_agent.agent.tool_call_handler import (
     ToolCallHandler
 )
-from openjiuwen.core.application.agents_for_studio import (
+from examples.super_agent.llm.openrouter_llm import (
     OpenRouterLLM,
     ContextLimitError
 )
 from openjiuwen.core.single_agent import BaseAgent
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.runner import Runner, resource_mgr
+from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm import AIMessage
 from openjiuwen.core.foundation.tool import Tool
@@ -286,7 +290,7 @@ class SuperReActAgent(BaseAgent):
         if allowed_tool_names:
             filtered_tools = []
             for t in all_tools:
-                # ToolInfo.function.name 是真正暴露给 LLM 的 function 名
+                # ToolInfo.name 是真正暴露给 LLM 的 function 名
                 tool_name = None
                 fn = getattr(t, "function", None)
                 if fn is not None:
@@ -302,7 +306,7 @@ class SuperReActAgent(BaseAgent):
             tools = filtered_tools
             logger.info(
                 f"[SuperReActAgent] Filtered tools for single_agent {self._agent_config.id}: "
-                f"{[getattr(t.function, 'name', None) for t in tools]}"
+                f"{[getattr(t, 'name', None) for t in tools]}"
             )
         else:
             # 如果没有任何限制配置，就退回到“全量工具”行为，保证兼容性
@@ -317,7 +321,7 @@ class SuperReActAgent(BaseAgent):
         llm_output = await llm.ainvoke(
             model_name=self._agent_config.model.model_info.model_name,
             messages=messages,
-            tools=tools
+            tools=[tool.model_dump() for tool in tools]
         )
 
         # Save AI message to context
@@ -427,7 +431,7 @@ class SuperReActAgent(BaseAgent):
 
                     # Execute all tool calls and collect results (don't add to context yet)
                     for tool_call in llm_output.tool_calls[:max_tool_calls_per_turn]:
-                        tool_name = tool_call.function.name
+                        tool_name = tool_call.name
                         logger.info(f"Executing tool: {tool_name}")
 
                         try:

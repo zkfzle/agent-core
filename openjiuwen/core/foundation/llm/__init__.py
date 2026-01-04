@@ -7,7 +7,7 @@ from openjiuwen.core.foundation.llm.model_utils.model_factory import ModelFactor
 from openjiuwen.core.foundation.llm.output_parser.base import BaseOutputParser
 from openjiuwen.core.foundation.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.foundation.llm.output_parser.markdown_output_parser import MarkdownOutputParser
-from openjiuwen.core.foundation.llm.schema.messages import BaseMessage, AIMessage, ToolMessage, UsageMetadata, \
+from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, ToolMessage, UsageMetadata, \
     SystemMessage, HumanMessage
 from openjiuwen.core.foundation.llm.schema.messages_chunk import BaseMessageChunk, AIMessageChunk
 from openjiuwen.core.foundation.llm.schema.model_config import ModelConfig

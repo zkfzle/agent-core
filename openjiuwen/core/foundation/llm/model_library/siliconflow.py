@@ -6,7 +6,7 @@ from typing import List, Dict, Iterator, AsyncIterator, Optional
 from pydantic import BaseModel
 
 from openjiuwen.core.foundation.llm.base import BaseModelClient
-from openjiuwen.core.foundation.llm.schema.messages import AIMessage
+from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.llm.schema.messages_chunk import AIMessageChunk
 from openjiuwen.core.foundation.llm.model_utils.default_model import RequestChatModel
 

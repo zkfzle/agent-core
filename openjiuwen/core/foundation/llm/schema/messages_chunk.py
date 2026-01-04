@@ -4,7 +4,7 @@
 
 from typing import Any
 
-from openjiuwen.core.foundation.llm.schema.messages import BaseMessage, AIMessage, ToolMessage
+from openjiuwen.core.foundation.llm.messages import BaseMessage, AIMessage, ToolMessage
 
 
 class BaseMessageChunk(BaseMessage):

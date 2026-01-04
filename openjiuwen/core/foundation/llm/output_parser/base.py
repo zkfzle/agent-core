@@ -4,7 +4,7 @@
 
 from typing import Any, Iterator, Union
 
-from openjiuwen.core.foundation.llm.schema.messages import AIMessage
+from openjiuwen.core.foundation.llm.messages import AIMessage
 from openjiuwen.core.foundation.llm.schema.messages_chunk import AIMessageChunk
 
 

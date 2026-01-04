@@ -328,6 +328,8 @@ class StatusCode(Enum):
     SESSION_MODEL_GET_FAILED = (190301, "failed to get model, reason: {reason}")
     SESSION_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
 
+    SESSION_TAG_MANAGE_FAILED = (190401, "failed to manage tag, reason: {reason}")
+
     # Session - Tracer 191000 - 191999
     SESSION_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")
     SESSION_TRACE_AGENT_UNDEFINED_FAILED = (191002, "Failed to handle undefined exception")

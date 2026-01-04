@@ -10,7 +10,7 @@ from openjiuwen.core.application.agents_for_studio.workflow_agent import Workflo
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.workflow.base import WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 

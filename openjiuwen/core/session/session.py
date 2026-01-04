@@ -2,9 +2,8 @@
 # coding: utf-8
 # Copyright c) Huawei Technologies Co. Ltd. 2025-2025.
 from abc import ABC, abstractmethod
-from typing import Any, Union, Optional, List, TypeVar, Tuple
+from typing import Any, Union, Optional, List, Tuple
 
-from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.session.state import State
@@ -45,10 +44,6 @@ class BaseSession(ABC):
     @abstractmethod
     def resource_manager(self) -> "ResourceMgr":
         ...
-
-    @abstractmethod
-    def context(self) -> ModelContext:
-        pass
 
     @abstractmethod
     def checkpointer(self):
@@ -235,9 +230,6 @@ class ProxySession(BaseSession):
 
     def resource_manager(self):
         return self._stub.resource_manager()
-
-    def context(self) -> ModelContext:
-        pass
 
     def session_id(self) -> str:
         return self._stub.session_id()

@@ -5,7 +5,6 @@
 import uuid
 from typing import Any
 
-from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.callback_manager import CallbackManager
 from openjiuwen.core.session.session import BaseSession
@@ -16,11 +15,9 @@ from openjiuwen.core.session.tracer.tracer import Tracer
 
 
 class WorkflowSession(BaseSession):
-    def __init__(self, workflow_id: str = '', parent: BaseSession = None, session_id: str = None, state: State = None,
-                 context: ModelContext = None):
+    def __init__(self, workflow_id: str = '', parent: BaseSession = None, session_id: str = None, state: State = None):
         self._session_id = session_id
         self._parent = parent
-        self._context = context
         if parent is not None:
             if self._session_id is None:
                 self._session_id = parent.session_id()
@@ -49,8 +46,6 @@ class WorkflowSession(BaseSession):
     def set_tracer(self, tracer: Tracer) -> None:
         self._tracer = tracer
 
-    def set_context(self, context: ModelContext) -> None:
-        self._context = context
 
     def set_actor_manager(self, queue_manager: "ActorManager"):
         if self._actor_manager is not None:
@@ -83,9 +78,6 @@ class WorkflowSession(BaseSession):
 
     def resource_manager(self) -> "ResourceMgr":
         return self._resource_manager
-
-    def context(self) -> ModelContext:
-        return self._context
 
     def checkpointer(self):
         return self._parent.checkpointer()
@@ -174,9 +166,6 @@ class NodeSession(BaseSession):
 
     def resource_manager(self):
         return self._session.resource_manager()
-
-    def context(self) -> ModelContext:
-        return self._session.context()
 
     def checkpointer(self):
         pass

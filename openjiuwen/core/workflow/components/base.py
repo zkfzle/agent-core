@@ -42,7 +42,7 @@ Output = TypeVar("Output", contravariant=True)
 
 class ComponentExecutable(Executable):
 
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         if not isinstance(session, NodeSession):
             raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.code,
                                       StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.errmsg)
@@ -56,9 +56,9 @@ class ComponentExecutable(Executable):
                                       StatusCode.SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
                                           ability='INVOKE', method='invoke', class_name=type(self).__name__))
 
-        return await self.invoke(inputs, WrappedNodeSession(session), session.context())
+        return await self.invoke(inputs, WrappedNodeSession(session), kwargs.get("context"))
 
-    async def on_stream(self, inputs: Input, session: BaseSession) -> AsyncIterator[Output]:
+    async def on_stream(self, inputs: Input, session: BaseSession, **kwargs) -> AsyncIterator[Output]:
         if not isinstance(session, NodeSession):
             raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.code,
                                       StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.errmsg)
@@ -73,10 +73,10 @@ class ComponentExecutable(Executable):
                                       StatusCode.SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
                                           ability='STREAM', method='stream', class_name=type(self).__name__))
 
-        async for value in self.stream(inputs, WrappedNodeSession(session), session.context()):
+        async for value in self.stream(inputs, WrappedNodeSession(session), kwargs.get("context")):
             yield value
 
-    async def on_collect(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_collect(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         if not isinstance(session, NodeSession):
             raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.code,
                                       StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.errmsg)
@@ -91,9 +91,9 @@ class ComponentExecutable(Executable):
                                       StatusCode.SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
                                           ability='COLLECT', method='collect', class_name=type(self).__name__))
 
-        return await self.collect(inputs, WrappedNodeSession(session, True), session.context())
+        return await self.collect(inputs, WrappedNodeSession(session, True), kwargs.get("context"))
 
-    async def on_transform(self, inputs: Input, session: BaseSession) -> AsyncIterator[Output]:
+    async def on_transform(self, inputs: Input, session: BaseSession, **kwargs) -> AsyncIterator[Output]:
         if not isinstance(session, NodeSession):
             raise JiuWenBaseException(StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.code,
                                       StatusCode.SESSION_COMPONENT_INVALID_SESSION_TYPE.errmsg)
@@ -108,7 +108,7 @@ class ComponentExecutable(Executable):
                                       StatusCode.SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED.errmsg.format(
                                           ability='TRANSFORM', method='transform', class_name=type(self).__name__))
 
-        async for value in self.transform(inputs, WrappedNodeSession(session, True), session.context()):
+        async for value in self.transform(inputs, WrappedNodeSession(session, True), kwargs.get("context")):
             yield value
 
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:

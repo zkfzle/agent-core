@@ -53,7 +53,7 @@ class Graph(ABC):
     def add_conditional_edges(self, source_node_id: str, router: Any) -> Self:
         pass
 
-    def compile(self, session: BaseSession) -> ExecutableGraph:
+    def compile(self, session: BaseSession, **kwargs) -> ExecutableGraph:
         pass
 
     def get_nodes(self) -> dict:

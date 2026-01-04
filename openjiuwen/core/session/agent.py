@@ -4,7 +4,6 @@
 
 from typing import Any
 
-from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session.agent_state import StateCollection
 from openjiuwen.core.session.config import Config
 from openjiuwen.core.session.interaction.base import Checkpointer
@@ -54,9 +53,6 @@ class StaticAgentSession(BaseSession):
     def session_id(self) -> str:
         pass
 
-    def context(self) -> ModelContext:
-        pass
-
     async def create_agent_session(self, session_id: str, inputs=None) -> BaseSession:
         session = AgentSession(session_id, self._config, self._resource_manager, self._checkpointer)
         await self._checkpointer.pre_agent_execute(session, inputs)
@@ -69,8 +65,7 @@ class AgentSession(BaseSession):
             session_id: str,
             config: Config = None,
             resource_manager: "ResourceMgr" = None,
-            checkpointer: Checkpointer | None = None,
-            context: ModelContext = None):
+            checkpointer: Checkpointer | None = None):
         self._session_id = session_id
         self._config = config
         if resource_manager:
@@ -78,7 +73,6 @@ class AgentSession(BaseSession):
         else:
             from openjiuwen.core.runner import Runner
             self._resource_manager = Runner.resource_mgr
-        self._context = context
         self._state = StateCollection()
         self._stream_writer_manager = StreamWriterManager(StreamEmitter())
         self._callback_manager = CallbackManager()
@@ -109,9 +103,6 @@ class AgentSession(BaseSession):
     def session_id(self) -> str:
         return self._session_id
 
-    def context(self) -> ModelContext:
-        return self._context
-
     def resource_manager(self) -> "ResourceMgr":
         return self._resource_manager
 
@@ -123,7 +114,6 @@ class AgentSession(BaseSession):
         return WorkflowSession(
             parent=self,
             state=InMemoryState(InMemoryCommitState(state)),
-            context=self._context,
             session_id=self._session_id)
 
     def agent_id(self):

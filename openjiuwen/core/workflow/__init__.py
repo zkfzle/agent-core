@@ -8,6 +8,7 @@ from openjiuwen.core.workflow.base import (
     WorkflowOutput,
     WorkflowChunk,
     generate_workflow_key,
+    WorkflowCard
 )
 
 from openjiuwen.core.workflow.workflow_config import (
@@ -52,7 +53,8 @@ _WORKFLOW_CLASSES = [
     "Workflow",
     "WorkflowConfig",
     "WorkflowMetadata",
-    "ComponentExecutable"
+    "ComponentExecutable",
+    "WorkflowCard"
 ]
 
 _WORKFLOW_METHODS = [

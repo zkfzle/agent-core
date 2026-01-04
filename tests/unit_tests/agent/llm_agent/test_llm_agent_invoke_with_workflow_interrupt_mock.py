@@ -54,7 +54,7 @@ from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowI
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner import Runner
-from openjiuwen.core.workflow.base import WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard
 
 
 def build_current_date():

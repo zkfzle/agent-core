@@ -44,11 +44,12 @@ from openjiuwen.core.common.schema.workflow_spec import CompIOConfig, NodeSpec
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
 
-
 WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
+
 
 class WorkflowCard(BaseCard):
     ...
+
 
 class ConnectionType(Enum):
     """Type of workflow connection."""
@@ -67,10 +68,10 @@ class EdgeTopology:
     def all_edge_nodes(self) -> set[str]:
         """Get all nodes referenced in edges."""
         return (
-            set(self.source_map.keys()) |
-            set(self.target_map.keys()) |
-            set(self.source_stream_map.keys()) |
-            set(self.target_stream_map.keys())
+                set(self.source_map.keys()) |
+                set(self.target_map.keys()) |
+                set(self.source_stream_map.keys()) |
+                set(self.target_stream_map.keys())
         )
 
 
@@ -114,7 +115,7 @@ class BaseWorkFlow:
                                           "digits (0–9), underscores (_) or hyphens (-)")
 
     def _validate_connection_comp_ids(self, src_comp_id: str, target_comp_id: str,
-                                       connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
+                                      connection_type: ConnectionType = ConnectionType.CONNECTION) -> None:
         """Validate that component IDs exist in comp_configs before adding connection.
 
         This prevents KeyError in _auto_complete_abilities when edges reference non-existent components.
@@ -246,7 +247,7 @@ class BaseWorkFlow:
             self._drawable.add_edge(source=src_comp_id, conditional=True, data=router)
         return self
 
-    def compile(self, session: BaseSession) -> ExecutableGraph:
+    def compile(self, session: BaseSession, context: ModelContext = None) -> ExecutableGraph:
         if isinstance(session, WorkflowSession):
             session.set_workflow_id(self._workflow_config.metadata.id)
         session.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
@@ -265,7 +266,7 @@ class BaseWorkFlow:
                                               detail=f"workflow nesting hierarchy is too big, must <= "
                                                      f"{main_workflow_config.workflow_max_nesting_depth}"))
         self._session.set_session(session)
-        return self._graph.compile(session)
+        return self._graph.compile(session, context=context)
 
     @property
     def drawable(self):
@@ -410,7 +411,6 @@ class Workflow(BaseWorkFlow):
         self._end_comp_id: str = ""
         self._end_comp = None
         self._is_streaming = False
-        self.inputs_schema = self._convert_to_tool_info(self._workflow_config.workflow_inputs_schema)
 
     def _convert_to_tool_info(self, inputs_schema: WorkflowInputsSchema) -> ToolInfo:
         parameters = {
@@ -487,12 +487,13 @@ class Workflow(BaseWorkFlow):
         self._end_comp = component
         return self
 
-    async def sub_invoke(self, inputs: Input, session: BaseSession, config: Any = None) -> Output:
+    async def sub_invoke(self, inputs: Input, session: BaseSession, config: Any = None,
+                         context: ModelContext = None) -> Output:
         logger.info(f"begin to sub_invoke, inputs: {inputs}")
         actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session)
 
         try:
-            compiled_graph = self.compile(sub_workflow_session)
+            compiled_graph = self.compile(sub_workflow_session, context)
             await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, session)
             if self._is_streaming:
                 messages = []
@@ -520,12 +521,13 @@ class Workflow(BaseWorkFlow):
             await sub_workflow_session.close()
             await self._graph.reset()
 
-    async def sub_stream(self, inputs: Input, session: BaseSession, config: Any = None) -> AsyncIterator[Output]:
+    async def sub_stream(self, inputs: Input, session: BaseSession, config: Any = None, context: ModelContext = None) -> \
+    AsyncIterator[Output]:
         logger.info(f"begin to sub_stream, input: {inputs}")
         actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session)
 
         try:
-            compiled_graph = self.compile(sub_workflow_session)
+            compiled_graph = self.compile(sub_workflow_session, context=context)
             await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: config}, session)
             if self._is_streaming:
                 frame_count = 0
@@ -585,7 +587,7 @@ class Workflow(BaseWorkFlow):
             context: ModelContext = None,
             stream_modes: list[StreamMode] = None
     ) -> AsyncIterator[WorkflowChunk]:
-        self._validate_and_init_session(session, stream_modes, context)
+        self._validate_and_init_session(session, stream_modes)
         # workflow start tracer info
         await TracerWorkflowUtils.trace_workflow_start(session, inputs)
         timeout = session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
@@ -599,7 +601,7 @@ class Workflow(BaseWorkFlow):
         session.config().set_envs({WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT: first_frame_timeout})
 
         async def stream_process():
-            compiled_graph = self.compile(session)
+            compiled_graph = self.compile(session, context)
             try:
                 await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, session)
             finally:
@@ -666,11 +668,9 @@ class Workflow(BaseWorkFlow):
                 except Exception:
                     pass
 
-    def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode], context: ModelContext):
+    def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode]):
         if isinstance(session, WorkflowSession):
             session.set_workflow_id(self._workflow_config.metadata.id)
-            if context:
-                session.set_context(context)
         self._auto_complete_abilities()
         mq_manager = ActorManager(self._workflow_config.spec, self._stream_actor, sub_graph=False, session=session)
         session.set_actor_manager(mq_manager)

@@ -19,7 +19,7 @@ from openjiuwen.core.session.stream import OutputSchema, TraceSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.workflow.base import WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 API_BASE = os.getenv("API_BASE")

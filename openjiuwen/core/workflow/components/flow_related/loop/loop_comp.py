@@ -16,8 +16,10 @@ from openjiuwen.core.workflow.components.condition.array import ArrayConditionIn
 from openjiuwen.core.workflow.components.condition.condition import Condition, AlwaysTrue, FuncCondition
 from openjiuwen.core.workflow.components.condition.expression import ExpressionCondition
 from openjiuwen.core.workflow.components.condition.number import NumberConditionInSession
-from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
-from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.loop_callback import LoopCallback, END_ROUND, START_ROUND, OUT_LOOP, \
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import \
+    IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.loop_callback import LoopCallback, END_ROUND, \
+    START_ROUND, OUT_LOOP, \
     FIRST_LOOP
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.context_engine import ModelContext
@@ -35,7 +37,7 @@ from openjiuwen.core.graph.pregel import GraphInterrupt, START, END
 
 
 class EmptyExecutable(Executable):
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         pass
 
     def skip_trace(self) -> bool:
@@ -46,7 +48,7 @@ class PostLoopBody(Executable):
     def __init__(self):
         self._finish_index = -1
 
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         finish_index = session.state().get(FINISH_INDEX)
         if finish_index is not None:
             self._finish_index = finish_index
@@ -130,7 +132,7 @@ class LoopGroup(BaseWorkFlow, Executable):
             self._end_nodes.append(end_comp_id)
         return self
 
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         if not self._start_nodes:
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_MISSING_START_NODES_ERROR.code,
                                       StatusCode.LOOP_COMPONENT_MISSING_START_NODES_ERROR.errmsg)
@@ -140,7 +142,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         self._auto_complete_abilities()
         actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, session=session)
         loop_session = SubWorkflowSession(session.parent(), self._workflow_config.metadata.id, actor_manager)
-        self.compiled_graph = self.compile(loop_session)
+        self.compiled_graph = self.compile(loop_session, context=kwargs.get("context"))
         await self.compiled_graph.invoke(inputs, loop_session)
         return None
 
@@ -249,7 +251,6 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
             session.state().set_outputs({INDEX: index + 1})
             session.state().commit()
 
-
         continue_loop = False if self.is_broken() else self._condition(session=session)
         for callback in self._callbacks:
             if finish_index < 0:
@@ -278,7 +279,7 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
     def break_loop(self):
         self._node_session.state().update({BROKEN: True})
 
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         loop_session = session
         self._node_id = loop_session.node_id()
         self._node_session = NodeSession(loop_session, self._node_id)
@@ -292,7 +293,7 @@ class AdvancedLoopComponent(WorkflowComponent, LoopController, Executable, Atomi
 
         if loop_session.tracer() is not None:
             loop_session.tracer().register_workflow_span_manager(loop_session.executable_id())
-        compiled = self._graph.compile(loop_session)
+        compiled = self._graph.compile(loop_session, **kwargs)
         await compiled.invoke(inputs, loop_session)
         result = self._node_session.state().get_outputs(self._node_id)
         loop_session.state()._io_state.update_by_id(self._node_id, {self._node_id: None})

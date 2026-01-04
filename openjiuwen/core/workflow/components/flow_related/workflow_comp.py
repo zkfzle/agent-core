@@ -27,7 +27,7 @@ class SubWorkflowComponent(WorkflowComponent, ComponentExecutable):
         self._sub_workflow = sub_workflow
 
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
-        return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), session.base(), inputs.get(CONFIG_KEY))
+        return await self._sub_workflow.sub_invoke(inputs.get(INPUTS_KEY), session.base(), inputs.get(CONFIG_KEY), context)
 
     async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         async for value in self._sub_workflow.sub_stream(inputs.get(INPUTS_KEY),

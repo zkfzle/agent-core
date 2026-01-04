@@ -28,7 +28,7 @@ class BreakComponent(WorkflowComponent, Executable):
     def set_controller(self, loop_controller: LoopController):
         self._loop_controller = loop_controller
 
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         if self._loop_controller is None:
             raise JiuWenBaseException(StatusCode.BREAK_COMPONENT_INIT_ERROR.code,
                                       StatusCode.BREAK_COMPONENT_INIT_ERROR.errmsg)

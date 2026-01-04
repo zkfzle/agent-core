@@ -21,6 +21,7 @@ from openjiuwen.core.session import BaseSession
 from openjiuwen.core.graph.pregel import Pregel, PregelBuilder, PregelConfig, MAX_RECURSIVE_LIMIT, START, END
 from openjiuwen.core.graph.store import GraphStore
 
+
 @dataclass(slots=True)
 class Branch:
     condition: Callable[..., Hashable | Sequence[Hashable]]
@@ -107,13 +108,15 @@ class PregelGraph(Graph):
         self.branches[source_node_id][name] = Branch(router)
         return self
 
-    def compile(self, session: BaseSession) -> ExecutableGraph:
+    def compile(self, session: BaseSession, **kwargs) -> ExecutableGraph:
         for node_id, node in self.nodes.items():
-            node.init(session)
+            node.init(session, **kwargs)
+
         def after_step(loop):
             if self._session:
                 self._session.state().commit()
             logger.debug(f"ns: {loop.config['ns']}, step: {loop.step}, active_nodes: {list(loop.active_nodes)}")
+
         if self.pregel is None:
             self.checkpointer = get_default_inmemory_checkpointer()
             store = GraphStore(self.checkpointer.graph_store())

@@ -30,6 +30,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
     def __init__(self, node_id: str, executable: Executable = None):
         self._node_id = node_id
         self._executable = executable
+        self._context = None
         self._session: NodeSession = None
         self._stream_called_timeout = 10
         # if stream_call is available, call should wait for it
@@ -44,8 +45,9 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         self._has_stream_call: bool = False
         self._source_id: list = []
 
-    def init(self, session: BaseSession) -> bool:
+    def init(self, session: BaseSession, **kwargs) -> bool:
         self._session = NodeSession(session, self._node_id, type(self._executable).__name__)
+        self._context = kwargs.get("context")
         self._stream_called_timeout = session.config().get_env(COMP_STREAM_CALL_TIMEOUT_KEY)
         self._node_config = self._session.node_config()
         self._component_ability = (
@@ -68,20 +70,20 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                 batch_inputs = await self._pre_invoke()
                 if is_subgraph:
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-                results = await self._executable.on_invoke(batch_inputs, session=self._session)
+                results = await self._executable.on_invoke(batch_inputs, session=self._session, context=self._context)
                 await self._post_invoke(results)
 
             async def stream_strategy():
                 batch_inputs = await self._pre_invoke()
                 if is_subgraph:
                     batch_inputs = {INPUTS_KEY: batch_inputs, CONFIG_KEY: config}
-                result_iter = self._executable.on_stream(batch_inputs, session=self._session)
+                result_iter = self._executable.on_stream(batch_inputs, session=self._session, context=self._context)
                 await self._post_stream(result_iter, ComponentAbility.STREAM)
 
             async def collect_strategy():
                 collect_iter = await self._pre_stream(ComponentAbility.COLLECT)
                 set_event()
-                batch_output = await self._executable.on_collect(collect_iter, self._session)
+                batch_output = await self._executable.on_collect(collect_iter, self._session, context=self._context)
                 await self._post_invoke(batch_output)
 
             async def transform_strategy():
@@ -91,7 +93,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     set_event()
                 except Exception as e:
                     logger.error(f"failed to prepare transform for node {self._node_id}, error: {e}")
-                output_iter = self._executable.on_transform(transform_iter, self._session)
+                output_iter = self._executable.on_transform(transform_iter, self._session, context=self._context)
                 await self._post_stream(output_iter, ComponentAbility.TRANSFORM)
 
             ability_strategies = {

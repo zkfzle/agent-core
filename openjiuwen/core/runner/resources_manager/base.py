@@ -7,7 +7,7 @@ from typing import Awaitable, Callable, Generic, TypeAlias, TypeVar
 from openjiuwen.core.multi_agent import BaseGroup, GroupCard
 from openjiuwen.core.single_agent import BaseAgent, AgentCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow.base import WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard
 from pydantic import BaseModel
 
 # ============================================================================

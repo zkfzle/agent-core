@@ -23,7 +23,7 @@ from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.protocols.mcp import McpServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
-from openjiuwen.core.workflow.base import WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard
 
 API_BASE = "https://mock.com/v1"
 API_KEY = os.getenv("API_KEY", "sk-fake")

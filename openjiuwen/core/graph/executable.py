@@ -13,16 +13,16 @@ Output = TypeVar("Output", covariant=True)
 
 
 class Executable(Generic[Input, Output]):
-    async def on_invoke(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         raise JiuWenBaseException(-1, "Invoke is not supported")
 
-    async def on_stream(self, inputs: Input, session: BaseSession) -> AsyncIterator[Output]:
+    async def on_stream(self, inputs: Input, session: BaseSession, **kwargs) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Stream is not supported")
 
-    async def on_collect(self, inputs: Input, session: BaseSession) -> Output:
+    async def on_collect(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
         raise JiuWenBaseException(-1, "Collect is not supported")
 
-    async def on_transform(self, inputs: Input, session: BaseSession) -> AsyncIterator[Output]:
+    async def on_transform(self, inputs: Input, session: BaseSession, **kwargs) -> AsyncIterator[Output]:
         raise JiuWenBaseException(-1, "Transform is not supported")
 
     async def interrupt(self, message: dict):
@@ -42,5 +42,6 @@ class Executable(Generic[Input, Output]):
 
     def component_type(self) -> str:
         return ""
+
 
 GeneralExecutor = Executable[dict[str, Any], dict[str, Any]]

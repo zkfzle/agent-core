@@ -5,33 +5,23 @@
 
 New interfaces (recommended):
     - AgentCard: Agent business card
-    - BaseAgent: Agent base class
-    - ReActAgent, ReActAgentConfig: ReAct Agent
+    - BaseAgent: New Agent base class with Ability/AbilityKit
+    - Ability, AbilityKit: Ability management
 
 Legacy interfaces (deprecated, will be removed in v1.0.0):
-    - AgentConfig, ControllerAgent, AgentSession, etc.
+    - All classes imported from legacy package
+    
+For migration guide, see: docs/AGENT_MIGRATION_GUIDE.md
+
+Created on: 2025-01-04
 """
 
 # ========== New interfaces (recommended) ==========
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
-
-# Base agent classes
 from openjiuwen.core.single_agent.agent import (
     BaseAgent,
-    ControllerAgent,
-    AgentSession,
-    WorkflowFactory,
-    workflow_provider,
-)
-
-# Agent configurations
-from openjiuwen.core.single_agent.config import (
-    AgentConfig,
-    LLMCallConfig,
-    IntentDetectionConfig,
-    ConstrainConfig,
-    DefaultResponse,
-    WorkflowAgentConfig
+    AbilityKit,
+    Ability,
 )
 
 # Schema classes
@@ -40,27 +30,44 @@ from openjiuwen.core.single_agent.schema.schema import (
     PluginSchema
 )
 
-# ReAct agent
-from openjiuwen.core.single_agent.agents.react_agent import (
-    ReActAgent,
-    ReActAgentConfig,
-)
-
 # ========== Legacy interfaces (deprecated, backward compatible) ==========
 from openjiuwen.core.single_agent.legacy import (
-    # Mixin (for subclass use)
+    # Mixin
     LegacyMethodsMixin,
-    # Deprecated factory functions
+    # Factory functions
     create_react_agent_config,
+    workflow_provider,
+    # Legacy agents
+    LegacyReActAgent,
+    LegacyReActAgentConfig,
+    # Legacy base classes
+    LegacyBaseAgent,
+    ControllerAgent,
+    AgentSession,
+    WorkflowFactory,
+    # Legacy configs
+    AgentConfig,
+    LLMCallConfig,
+    IntentDetectionConfig,
+    ConstrainConfig,
+    DefaultResponse,
+    WorkflowAgentConfig,
 )
+
+# For backward compatibility, map old names to legacy versions
+ReActAgent = LegacyReActAgent
+ReActAgentConfig = LegacyReActAgentConfig
 
 __all__ = [
     # New interfaces
     "AgentCard",
-    "BaseAgent",
-    "ReActAgent",
-    "ReActAgentConfig",
+    "BaseAgent",              # New BaseAgent with Ability/AbilityKit
+    "AbilityKit",
+    "Ability",
     # Legacy interfaces (compatible)
+    "ReActAgent",              # Points to LegacyReActAgent
+    "ReActAgentConfig",        # Points to LegacyReActAgentConfig
+    "LegacyBaseAgent",         # Old BaseAgent
     "AgentConfig",
     "ControllerAgent",
     "AgentSession",

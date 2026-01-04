@@ -11,7 +11,7 @@ from openjiuwen.core.session.session import Session
 from openjiuwen.core.foundation.llm import (
     BaseMessage, AIMessage, HumanMessage, ToolMessage
 )
-from openjiuwen.core.single_agent import AgentConfig
+from openjiuwen.core.single_agent.legacy.config import AgentConfig
 
 
 class MessageUtils:

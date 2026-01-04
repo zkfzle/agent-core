@@ -37,8 +37,7 @@ def _deprecation_warning(old: str, new: str, version: str = "1.0.0"):
     """
     warnings.warn(
         f"{old} is deprecated and will be removed in v{version}. "
-        f"Please use {new} instead. "
-        f"See migration guide: docs/AGENT_MIGRATION_GUIDE.md",
+        f"Please use {new} instead. ",
         DeprecationWarning,
         stacklevel=3
     )

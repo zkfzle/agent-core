@@ -5,8 +5,9 @@
 from pydantic import BaseModel, Field, field_validator
 from openjiuwen.core.common.schema.param import Param
 from openjiuwen.core.memory.common.crypto import AES_KEY_LENGTH
-from openjiuwen.core.foundation.llm.schema.config import ModelConfig
-from openjiuwen.core.foundation.llm.schema.config import ModelClientConfig
+from openjiuwen.core.foundation.llm1.schema.config import ModelConfig
+from openjiuwen.core.foundation.llm1.schema.config import ModelClientConfig
+
 
 class MemoryEngineConfig(BaseModel):
     default_model_cfg: ModelConfig = Field(default=None)

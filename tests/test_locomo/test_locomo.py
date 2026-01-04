@@ -2,6 +2,7 @@ import asyncio
 from collections import defaultdict
 from datetime import datetime, timezone
 import json
+import logging
 import os
 from pathlib import Path
 import time
@@ -93,7 +94,7 @@ class TESTLOCOMO():
             chats = conversation_data[key]
             for chat in tqdm(chats, desc=f"Processing {session_id}"):
                 message = f"{chat['text']}"
-                message.replace(speaker_a, '').replace(speaker_b, '')
+                message = message.replace(speaker_a, '').replace(speaker_b, '')
                 if chat['speaker'] == speaker_a:
                     message = HumanMessage(content=message, name=chat['speaker'])
                 elif chat['speaker'] == speaker_b:
@@ -116,15 +117,13 @@ class TESTLOCOMO():
                 else:
                     raise e
 
-    async def llm_answer(self, user_id: str, app_id: str, query: str, user_name1: str = "user",
-                         user_name2: str = "agent", retrieve_num: int = 5) -> str:
+    async def llm_answer(self, user_id: str, app_id: str, query: str, retrieve_num: int = 5) -> str:
         user_memory = await self.memory_engine.search_user_mem(user_id=user_id, group_id=app_id, query=query,
                                            num=retrieve_num)
         memory_msg = ""
         for memory in user_memory:
             memory_msg += f"${memory['timestamp']}: ${memory['mem']}\n"
-        llm_prompt = ANSWER_PROMPT.substitute(question=query, user_name1=user_name1, user_name2=user_name2,
-                                              memory=memory_msg)
+        llm_prompt = ANSWER_PROMPT.substitute(question=query, memory=memory_msg)
         logger.info(f"llm_prompt:{llm_prompt}")
         message = HumanMessage(content=llm_prompt)
         response = self.llm_base.invoke(model_name=MODEL_NAME, messages=[message])
@@ -140,12 +139,13 @@ class TESTLOCOMO():
             if category > 4:
                 continue
             question = qa_enum['question']
-            question.replace(user_name1, 'user').replace(user_name2, 'assistant')
+            question = question.replace(user_name1, 'user').replace(user_name2, 'assistant')
             answer = qa_enum['answer']
-            answer.replace(user_name1, 'user').replace(user_name2, 'assistant')
+            answer = str(answer)
+            answer = answer.replace(user_name1, 'user').replace(user_name2, 'assistant')
             for retry in range(retries):
                 try:
-                    response = await self.llm_answer(user_name1=user_name1, user_name2=user_name2, user_id=user_id,
+                    response = await self.llm_answer(user_id=user_id,
                                         app_id=app_id, query=question, retrieve_num=10)
                     data_dict = {"question": question, "answer": answer, "response": response, "category": category}
                     with open(response_path_qa, 'a', encoding='utf-8') as file:
@@ -173,8 +173,9 @@ class TESTLOCOMO():
                     gold_answer = qa_enum['answer']
                     category = qa_enum['category']
                     response = qa_enum['response']
-                    question.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
-                    gold_answer.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                    question = question.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                    gold_answer = str(gold_answer)
+                    gold_answer = gold_answer.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
                     qa_result_dict[category] += 1
                     if str(response).strip() == "":
                         continue
@@ -268,6 +269,7 @@ class TESTLOCOMO():
 
 
 async def main():
+    logger.set_level(logging.DEBUG)
     test = await TESTLOCOMO.create()
     data = test.get_locomo_data(data_path)
     for idx, data_enum in enumerate(tqdm(data, desc="Processing total data")):

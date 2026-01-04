@@ -19,6 +19,7 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 class SemanticMemoryManager(BaseMemoryManager):
     CHECK_CONFLICT_OLD_MEMORY_NUM = 5
+    SEARCH_SCORE_THRESHOLD = 0.6
 
     def __init__(self,
                  semantic_recall_instance: BaseSemanticStore,
@@ -71,13 +72,13 @@ class SemanticMemoryManager(BaseMemoryManager):
             if conf_id == "-1" and conf_event == ConflictType.ADD.value:
                 logger.debug(f"add conflict info: {conflict}")
                 mem_id = await self._add_semantic_memory(user_id=memory.user_id,
-                                                             group_id=memory.group_id,
+                                                         group_id=memory.group_id,
                                                          semantic_memory=memory.semantic_mem,
-                                                             )
+                                                         )
                 await self._add_vector_semantic_memory(user_id=memory.user_id,
-                                                           group_id=memory.group_id,
-                                                           memory_id=mem_id,
-                                                           mem=conf_mem)
+                                                       group_id=memory.group_id,
+                                                       memory_id=mem_id,
+                                                       mem=conf_mem)
             elif conf_event == ConflictType.NONE.value:
                 logger.debug(f"none conflict info: {conflict}, new_semantic_memory: {memory.semantic_mem}")
             elif conf_event == ConflictType.UPDATE.value:
@@ -112,7 +113,14 @@ class SemanticMemoryManager(BaseMemoryManager):
             item["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
                                                                                  ciphertext=item["context_summary"])
         retrieve_res.sort(key=lambda x: scores.get(x["id"], 0), reverse=True)
-        return retrieve_res
+        if "threshold" in kwargs:
+            threshold = kwargs.get("threshold", SemanticMemoryManager.SEARCH_SCORE_THRESHOLD)
+            logger.debug(f"search query: {query}, threshold: {threshold}")
+            for res in retrieve_res:
+                logger.debug(f"item mem: {res['mem']}, score: {res['score']}")
+            return [item for item in retrieve_res if item["score"] >= threshold]
+        else:
+            return retrieve_res
 
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
         retrieve_res = await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
@@ -131,21 +139,22 @@ class SemanticMemoryManager(BaseMemoryManager):
         mem_type = kwargs.get("mem_type", MemoryType.SEMANTIC_MEMORY.value)
         await self.mem_store.delete(mem_id=mem_id, user_id=user_id, group_id=group_id)
         await self._delete_vector_semantic_memory(memory_id=[mem_id], user_id=user_id,
-                                                      group_id=group_id, mem_type=mem_type)
+                                                  group_id=group_id, mem_type=mem_type)
         return True
 
     async def delete_by_user_id(self, user_id: str, group_id: str):
-        data = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=MemoryType.SEMANTIC_MEMORY.value)
+        data = await self.mem_store.get_all(user_id=user_id, group_id=group_id,
+                                            mem_type=MemoryType.SEMANTIC_MEMORY.value)
         if data is None:
             logger.error(f"Delete semantic_memory in store failed, the mem of user_id({user_id}) is not exist.")
             return False
         mem_ids = [item['id'] for item in data]
         await self.mem_store.batch_delete(user_id=user_id, group_id=group_id, mem_ids=mem_ids)
         await self._delete_vector_semantic_memory(memory_id=mem_ids, user_id=user_id,
-                                                      group_id=group_id, mem_type=MemoryType.SEMANTIC_MEMORY.value)
+                                                  group_id=group_id, mem_type=MemoryType.SEMANTIC_MEMORY.value)
         return True
 
-    async def list_semantic_memory(self, user_id: str, group_id: str, mem_type=MemoryType.SEMANTIC_MEMORY)\
+    async def list_semantic_memory(self, user_id: str, group_id: str, mem_type=MemoryType.SEMANTIC_MEMORY) \
             -> list[dict[str, Any]]:
         new_datas = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=mem_type.value)
         if not new_datas:
@@ -177,7 +186,8 @@ class SemanticMemoryManager(BaseMemoryManager):
             user_id=user_id,
             group_id=group_id,
             query=new_memory,
-            top_k=SemanticMemoryManager.CHECK_CONFLICT_OLD_MEMORY_NUM
+            top_k=SemanticMemoryManager.CHECK_CONFLICT_OLD_MEMORY_NUM,
+            threshold=SemanticMemoryManager.SEARCH_SCORE_THRESHOLD
         )
         for search_result in search_results:
             historical_semantic_memory.append((
@@ -219,7 +229,7 @@ class SemanticMemoryManager(BaseMemoryManager):
         mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
         time = datetime.now(timezone.utc)
         semantic_memory = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
-                                                                 plaintext=semantic_memory)
+                                                                     plaintext=semantic_memory)
         data = {
             'id': mem_id,
             'user_id': user_id or '',

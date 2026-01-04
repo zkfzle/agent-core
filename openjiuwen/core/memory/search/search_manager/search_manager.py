@@ -57,8 +57,8 @@ class SearchManager:
         return [item for item in result if item["score"] >= threshold][:top_k]
 
     async def rewrite_and_search(self, base_chat_model: Tuple[str, BaseModelClient], user_id: str, group_id: str,
-                                query: str, top_k: int = 5, threshold: float = 0.3, search_type: Optional[str] = None,
-                                **kwargs) -> list[dict[str, Any]] | None:
+                                 query: str, top_k: int = 5, threshold: float = 0.3, search_type: Optional[str] = None,
+                                 **kwargs) -> list[dict[str, Any]] | None:
 
         decomposed_queries = await self.decompose_query(base_chat_model=base_chat_model, query=query)
         if not decomposed_queries:
@@ -68,7 +68,7 @@ class SearchManager:
 
         for subquery in decomposed_queries:
             subresults = await self.search(user_id=user_id, group_id=group_id, query=subquery, top_k=top_k,
-                                            threshold=threshold, search_type=search_type, **kwargs)
+                                           threshold=threshold, search_type=search_type, **kwargs)
             retrieval_results.extend(subresults)
 
         dedup_results = {}
@@ -80,7 +80,6 @@ class SearchManager:
         results = list(dedup_results.values())
         results.sort(key=lambda x: x["score"], reverse=True)
         return [item for item in results if item["score"] >= threshold][:top_k]
-
 
     async def decompose_query(self, base_chat_model: Tuple[str, BaseModelClient], query: str) -> list[str] | None:
         model_name, model_client = base_chat_model
@@ -118,8 +117,9 @@ class SearchManager:
             return list_res
         for item in list_res:
             item["mem"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key, ciphertext=item["mem"])
-            item["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
-                                                                                 ciphertext=item["context_summary"])
+            if "context_summary" in item:
+                item["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
+                                                                                     ciphertext=item["context_summary"])
         return list_res
 
     async def list_user_profile(self, user_id: str, group_id: str, profile_type: Optional[str] = None) -> list[dict]:
@@ -148,7 +148,6 @@ class SearchManager:
         if not isinstance(self.managers[MemoryType.VARIABLE.value], VariableManager):
             raise ValueError(f"{MemoryType.VARIABLE.value} manager class is not VariableManager")
         return await self.managers[MemoryType.VARIABLE.value].query_variable(user_id=user_id, group_id=group_id)
-
 
     async def list_episodic_memory(self, user_id: str, group_id: str) -> list[dict]:
         if MemoryType.EPISODIC_MEMORY.value not in self.managers:

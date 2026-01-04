@@ -1,11 +1,13 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
-from typing import List, Optional, AsyncIterator, Union
+from typing import List, Optional, AsyncIterator, Union, Dict, Any
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm1.schema.config import ModelConfig, ModelClientConfig
 from openjiuwen.core.foundation.llm1.schema.message import BaseMessage, AssistantMessage, ToolMessage
@@ -30,9 +32,37 @@ class BaseModelClient(ABC):
         self.model_client_config = model_client_config
         self._validate_config()
 
+    def _get_client_name(self) -> str:
+        """Get client name for error messages (subclasses can override)
+        
+        Returns:
+            Client name string
+        """
+        return self.__class__.__name__
+
     def _validate_config(self):
         """Validate configuration parameters (subclasses can optionally override)"""
-        pass
+        client_name = self._get_client_name()
+        
+        if not self.model_client_config.api_key:
+            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          f"model client config api_key is required for {client_name}."))
+        if not self.model_client_config.api_base:
+            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          f"model client config api_base is required for {client_name}."))
+
+        if self.model_client_config.verify_ssl is not None and not isinstance(self.model_client_config.verify_ssl,
+                                                                              bool):
+            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          "model client config verify_ssl must be a boolean type."))
+
+        if self.model_client_config.verify_ssl is True and self.model_client_config.ssl_cert is None:
+            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          "model client config ssl_cert is required when verify_ssl is True."))
 
     def _convert_messages_to_dict(self, messages: Union[str, List[BaseMessage], List[dict]]) -> List[dict]:
         """Convert messages to specific API format
@@ -130,6 +160,81 @@ class BaseModelClient(ABC):
             result.append(tool_dict)
 
         return result
+
+    def _build_request_params(
+            self,
+            messages: Union[str, List[BaseMessage], List[dict]],
+            tools: Union[List[ToolInfo], List[dict], None],
+            temperature: Optional[float],
+            top_p: Optional[float],
+            model: Optional[str],
+            stop: Union[Optional[str], None],
+            max_tokens: Optional[int],
+            stream: bool,
+            **kwargs
+    ) -> Dict[str, Any]:
+        """Build OpenAI-compatible chat completion request parameters.
+
+        Note:
+            Most OpenAI-compatible providers use the same request payload. Subclasses can call
+            this method and then apply provider-specific adjustments (e.g. additional fields).
+        """
+        if model is None and self.model_config.model_name is None:
+            raise JiuWenBaseException(
+                StatusCode.LLM_SERVICE_MODEL_CONFIG_ERROR.code,
+                StatusCode.LLM_SERVICE_MODEL_CONFIG_ERROR.errmsg.format("The model cannot be None.")
+            )
+
+        # Convert message format
+        messages_dict = self._convert_messages_to_dict(messages)
+
+        # Build basic parameters
+        params: Dict[str, Any] = {
+            "model": model if model else self.model_config.model_name,
+            "messages": messages_dict,
+            "stream": stream,
+        }
+
+        # Add temperature: prioritize parameter, otherwise use model_config, only add when not None
+        final_temperature = temperature if temperature is not None else self.model_config.temperature
+        if final_temperature is not None:
+            params["temperature"] = final_temperature
+
+        # Add top_p: prioritize parameter, otherwise use model_config, only add when not None
+        final_top_p = top_p if top_p is not None else self.model_config.top_p
+        if final_top_p is not None:
+            params["top_p"] = final_top_p
+
+        # Add max_tokens: prioritize parameter, otherwise use model_config, only add when not None
+        final_max_tokens = max_tokens if max_tokens is not None else self.model_config.max_tokens
+        if final_max_tokens is not None:
+            params["max_tokens"] = final_max_tokens
+
+        # Add stop: prioritize parameter, otherwise use model_config, only add when not None
+        final_stop = stop if stop is not None else self.model_config.stop
+        if final_stop is not None:
+            params["stop"] = final_stop
+
+        # Add tools
+        tools_dict = self._convert_tools_to_dict(tools)
+        if tools_dict:
+            params["tools"] = tools_dict
+            params["tool_choice"] = "auto"
+
+        # Add other parameters (filter out internal parameters)
+        # parser and output_parser are for internal use and should not be passed to model API
+        internal_params = {"parser", "output_parser"}
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in internal_params}
+        params.update(filtered_kwargs)
+
+        # Logging
+        client_name = self._get_client_name()
+        if UserConfig.is_sensitive():
+            logger.info(f"Before request {client_name} chat model, request params is ready.")
+        else:
+            logger.info(f"Before request {client_name} chat model, request params is ready. params:  {params}")
+
+        return params
 
     @abstractmethod
     async def ainvoke(

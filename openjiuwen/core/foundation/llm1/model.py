@@ -13,9 +13,11 @@ from openjiuwen.core.foundation.llm1.schema.config import ModelConfig, ModelClie
 from openjiuwen.core.foundation.llm1.output_parsers.output_parser import BaseOutputParser
 from openjiuwen.core.foundation.llm1.model_clients.base_model_client import BaseModelClient
 from openjiuwen.core.foundation.llm1.model_clients.openai_model_client import OpenAIModelClient
+from openjiuwen.core.foundation.llm1.model_clients.siliconflow_model_client import SiliconFlowModelClient
 
 _CLIENT_TYPE_REGISTRY: Dict[str, Type[BaseModelClient]] = {
-    "Openai": OpenAIModelClient,
+    "OpenAI": OpenAIModelClient,
+    "SiliconFlow": SiliconFlowModelClient,
 }
 
 

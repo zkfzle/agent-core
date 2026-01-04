@@ -11,7 +11,6 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.ssl_utils import SslUtils
 from openjiuwen.core.common.security.url_utils import UrlUtils
-from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm1.schema.message import (
     BaseMessage,
     AssistantMessage,
@@ -34,27 +33,29 @@ class OpenAIModelClient(BaseModelClient):
     def __init__(self, model_config: ModelConfig, model_client_config: ModelClientConfig):
         super().__init__(model_config, model_client_config)
 
-    def _validate_config(self):
-        """Validate OpenAI-specific configuration"""
-        if not self.model_client_config.api_key:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config api_key is required for OpenAI client."))
-        if not self.model_client_config.api_base:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config api_base is required for OpenAI client."))
+    def _get_client_name(self) -> str:
+        """Get client name."""
+        return "OpenAI client"
 
-        if self.model_client_config.verify_ssl is not None and not isinstance(self.model_client_config.verify_ssl,
-                                                                              bool):
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config verify_ssl must be a boolean type."))
+    def _create_async_openai_client(self) -> openai.AsyncOpenAI:
+        """
+        Create an OpenAI Async client with configured SSL/proxy/http client settings.
+        """
+        ssl_verify, ssl_cert = self.model_client_config.verify_ssl, self.model_client_config.ssl_cert
+        verify = SslUtils.create_strict_ssl_context(ssl_cert) if ssl_verify else ssl_verify
 
-        if self.model_client_config.verify_ssl is True and self.model_client_config.ssl_cert is None:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config ssl_cert is required when verify_ssl is True."))
+        http_client = httpx.AsyncClient(
+            proxy=UrlUtils.get_global_proxy_url(self.model_client_config.api_base),
+            verify=verify
+        )
+
+        return openai.AsyncOpenAI(
+            api_key=self.model_client_config.api_key,
+            base_url=self.model_client_config.api_base,
+            http_client=http_client,
+            timeout=self.model_client_config.timeout,
+            max_retries=self.model_client_config.max_retries
+        )
 
     async def ainvoke(
             self,
@@ -99,28 +100,7 @@ class OpenAIModelClient(BaseModelClient):
 
         async_client = None
         try:
-            ssl_verify, ssl_cert = self.model_client_config.verify_ssl, self.model_client_config.ssl_cert
-
-            if ssl_verify:
-                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-                http_client = httpx.AsyncClient(
-                    proxy=UrlUtils.get_global_proxy_url(self.model_client_config.api_base),
-                    verify=ssl_context
-                )
-            else:
-                http_client = httpx.AsyncClient(
-                    proxy=UrlUtils.get_global_proxy_url(self.model_client_config.api_base),
-                    verify=ssl_verify
-                )
-
-            # Create OpenAI client
-            async_client = openai.AsyncOpenAI(
-                api_key=self.model_client_config.api_key,
-                base_url=self.model_client_config.api_base,
-                http_client=http_client,
-                timeout=self.model_client_config.timeout,
-                max_retries=self.model_client_config.max_retries
-            )
+            async_client = self._create_async_openai_client()
 
             # Call API
             response = await async_client.chat.completions.create(**params)
@@ -187,29 +167,7 @@ class OpenAIModelClient(BaseModelClient):
 
         async_client = None
         try:
-            # Configure SSL and proxy
-            ssl_verify, ssl_cert = self.model_client_config.verify_ssl, self.model_client_config.ssl_cert
-
-            if ssl_verify:
-                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-                http_client = httpx.AsyncClient(
-                    proxy=UrlUtils.get_global_proxy_url(self.model_client_config.api_base),
-                    verify=ssl_context
-                )
-            else:
-                http_client = httpx.AsyncClient(
-                    proxy=UrlUtils.get_global_proxy_url(self.model_client_config.api_base),
-                    verify=ssl_verify
-                )
-
-            # Create OpenAI client
-            async_client = openai.AsyncOpenAI(
-                api_key=self.model_client_config.api_key,
-                base_url=self.model_client_config.api_base,
-                http_client=http_client,
-                timeout=self.model_client_config.timeout,
-                max_retries=self.model_client_config.max_retries
-            )
+            async_client = self._create_async_openai_client()
 
             # Call API with streaming
             response_stream = await async_client.chat.completions.create(**params)
@@ -284,87 +242,6 @@ class OpenAIModelClient(BaseModelClient):
                 )
                 
                 yield chunk_with_parser
-
-    def _build_request_params(
-            self,
-            messages: Union[str, List[BaseMessage]],
-            tools: Optional[List[ToolInfo]],
-            temperature: Optional[float],
-            top_p: Optional[float],
-            model: str,
-            stop: Union[Optional[str], None],
-            max_tokens: Optional[int],
-            stream: bool,
-            **kwargs
-    ) -> Dict[str, Any]:
-        """Build OpenAI API request parameters
-        
-        Args:
-            messages: Input messages
-            tools: Tool list
-            temperature: Temperature parameter
-            top_p: top_p parameter
-            stop: stop parameter
-            max_tokens: Maximum number of tokens to generate
-            stream: Whether to stream output
-            **kwargs: Additional parameters
-            
-        Returns:
-            Request parameter dictionary
-        """
-        if model is None and self.model_config.model_name is None:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_MODEL_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_MODEL_CONFIG_ERROR.errmsg.format(
-                                          "The model cannot be None."))
-        # Convert message format
-        messages_dict = self._convert_messages_to_dict(messages)
-
-        # Build basic parameters
-        params = {
-            "model": model if model else self.model_config.model_name,
-            "messages": messages_dict,
-            "stream": stream,
-        }
-
-        # Add temperature: prioritize parameter, otherwise use model_config, only add when not None
-        final_temperature = temperature if temperature is not None else self.model_config.temperature
-        if final_temperature is not None:
-            params["temperature"] = final_temperature
-
-        # Add top_p: prioritize parameter, otherwise use model_config, only add when not None
-        final_top_p = top_p if top_p is not None else self.model_config.top_p
-        if final_top_p is not None:
-            params["top_p"] = final_top_p
-
-        # Add max_tokens: prioritize parameter, otherwise use model_config, only add when not None
-        final_max_tokens = max_tokens if max_tokens is not None else self.model_config.max_tokens
-        if final_max_tokens is not None:
-            params["max_tokens"] = final_max_tokens
-
-        # Add stop: prioritize parameter, otherwise use model_config, only add when not None
-        final_stop = stop if stop is not None else self.model_config.stop
-        if final_stop is not None:
-            params["stop"] = final_stop
-
-        # Add tools
-        tools_dict = self._convert_tools_to_dict(tools)
-        if tools_dict:
-            params["tools"] = tools_dict
-            params["tool_choice"] = "auto"
-
-        # Add other parameters (filter out internal parameters)
-        # parser and output_parser are for internal use and should not be passed to OpenAI API
-        internal_params = {'parser', 'output_parser'}
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k not in internal_params}
-        params.update(filtered_kwargs)
-
-        # Logging
-        if UserConfig.is_sensitive():
-            logger.info(f"Before request openai chat model, request params is ready.")
-        else:
-            logger.info(f"Before request openai chat model, request params is ready. params:  {params}")
-
-        return params
 
     async def _parse_response(
             self,

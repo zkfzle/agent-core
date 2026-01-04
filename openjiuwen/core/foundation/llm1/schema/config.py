@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 class ModelClientConfig(BaseModel):
     """ModelClient config"""
     client_id: str = Field(..., description="The ModelClient client ID is a unique identifier used for registration in the Runner")
-    client_type: str = Field(..., description="Service provider identification，Enumeration value：openai")
+    client_type: str = Field(..., description="Service provider identification，Enumeration value：OpenAI、SiliconFlow")
     api_key: str = Field(..., description="API key")
     api_base: str = Field(..., description="API base URL")
     timeout: int = Field(default=60, description="Request timeout in seconds")

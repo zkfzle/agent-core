@@ -1,6 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+"""Single Agent Module
+
+New interfaces (recommended):
+    - AgentCard: Agent business card
+    - BaseAgent: Agent base class
+    - ReActAgent, ReActAgentConfig: ReAct Agent
+
+Legacy interfaces (deprecated, will be removed in v1.0.0):
+    - AgentConfig, ControllerAgent, AgentSession, etc.
+"""
+
+# ========== New interfaces (recommended) ==========
+from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 # Base agent classes
 from openjiuwen.core.single_agent.agent import (
@@ -20,7 +33,6 @@ from openjiuwen.core.single_agent.config import (
     DefaultResponse,
     WorkflowAgentConfig
 )
-from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 # Schema classes
 from openjiuwen.core.single_agent.schema.schema import (
@@ -32,57 +44,36 @@ from openjiuwen.core.single_agent.schema.schema import (
 from openjiuwen.core.single_agent.agents.react_agent import (
     ReActAgent,
     ReActAgentConfig,
-    create_react_agent_config
 )
 
-_AGENT_CARD_CLASSES = [
-    "AgentCard"
-]
+# ========== Legacy interfaces (deprecated, backward compatible) ==========
+from openjiuwen.core.single_agent.legacy import (
+    # Mixin (for subclass use)
+    LegacyMethodsMixin,
+    # Deprecated factory functions
+    create_react_agent_config,
+)
 
-_BASE_AGENT_CLASSES = [
+__all__ = [
+    # New interfaces
+    "AgentCard",
     "BaseAgent",
+    "ReActAgent",
+    "ReActAgentConfig",
+    # Legacy interfaces (compatible)
+    "AgentConfig",
     "ControllerAgent",
-]
-
-_AGENT_RUNTIME = [
     "AgentSession",
-]
-
-_AGENT_FACTORIES = [
     "WorkflowFactory",
     "workflow_provider",
-]
-
-_REACT_AGENT_CLASSES = [
-    "ReActAgent",
-]
-
-_REACT_AGENT_FUNCTIONS = [
-    "create_react_agent_config"
-]
-
-_CONFIG_CLASSES = [
-    "AgentConfig",
-    "ReActAgentConfig",
+    "create_react_agent_config",
     "LLMCallConfig",
     "IntentDetectionConfig",
     "ConstrainConfig",
     "DefaultResponse",
-    "WorkflowAgentConfig"
-]
-
-_SCHEMA_CLASSES = [
+    "WorkflowAgentConfig",
+    "LegacyMethodsMixin",
+    # Schema classes
     "WorkflowSchema",
-    "PluginSchema"
+    "PluginSchema",
 ]
-
-__all__ = (
-        _AGENT_CARD_CLASSES +
-        _BASE_AGENT_CLASSES +
-        _AGENT_RUNTIME +
-        _AGENT_FACTORIES +
-        _REACT_AGENT_CLASSES +
-        _REACT_AGENT_FUNCTIONS +
-        _CONFIG_CLASSES +
-        _SCHEMA_CLASSES
-)

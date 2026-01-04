@@ -15,6 +15,7 @@ from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent.legacy import LegacyMethodsMixin
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -40,8 +41,10 @@ class ReActAgentConfig(AgentConfig):
     memory_config: MemoryConfig = Field(default=MemoryConfig())
 
 
-class ReActAgent(BaseAgent):
+class ReActAgent(LegacyMethodsMixin, BaseAgent):
     """ReAct Agent - Minimal implementation (no interruption, no Controller)
+    
+    Inherits LegacyMethodsMixin to support legacy methods (add_tools, add_workflows, etc.)
     """
 
     def __init__(
@@ -63,7 +66,7 @@ class ReActAgent(BaseAgent):
         # LLM instance (lazy creation)
         self._llm = None
 
-        # 通过 BaseAgent 的接口添加 tools 和 workflows（自动同步）
+        # Add tools and workflows via BaseAgent interface (auto sync)
         if tools:
             self.add_tools(tools)
         if workflows:

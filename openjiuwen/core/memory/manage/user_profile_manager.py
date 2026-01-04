@@ -18,6 +18,7 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 class UserProfileManager(BaseMemoryManager):
     CHECK_CONFLICT_OLD_MEMORY_NUM = 5
+    SEARCH_SCORE_THRESHOLD = 0.6
 
     def __init__(self,
                  semantic_recall_instance: BaseSemanticStore,
@@ -114,7 +115,14 @@ class UserProfileManager(BaseMemoryManager):
             item["context_summary"] = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key,
                                                                                  ciphertext=item["context_summary"])
         retrieve_res.sort(key=lambda x: scores.get(x["id"], 0), reverse=True)
-        return retrieve_res
+        if "threshold" in kwargs:
+            threshold = kwargs.get("threshold", UserProfileManager.SEARCH_SCORE_THRESHOLD)
+            logger.debug(f"search query: {query}, threshold: {threshold}")
+            for res in retrieve_res:
+                logger.debug(f"item mem: {res['mem']}, score: {res['score']}")
+            return [item for item in retrieve_res if item["score"] >= threshold]
+        else:
+            return retrieve_res
 
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
         retrieve_res = await self.mem_store.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
@@ -186,7 +194,8 @@ class UserProfileManager(BaseMemoryManager):
             user_id=user_id,
             group_id=group_id,
             query=new_memory,
-            top_k=UserProfileManager.CHECK_CONFLICT_OLD_MEMORY_NUM
+            top_k=UserProfileManager.CHECK_CONFLICT_OLD_MEMORY_NUM,
+            threshold=UserProfileManager.SEARCH_SCORE_THRESHOLD
         )
         for search_result in search_results:
             historical_profiles.append((

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -47,8 +47,8 @@ class SummaryManager(BaseMemoryManager):
             return False
         await self.mem_store.delete(mem_id=mem_id, user_id=user_id, group_id=group_id)
         await self._delete_vector_summary_memory(memory_id=[mem_id],
-                                                      user_id=user_id,
-                                                      group_id=group_id)
+                                                 user_id=user_id,
+                                                 group_id=group_id)
         return True
 
     async def delete_by_user_id(self, user_id: str, group_id: str):
@@ -61,7 +61,7 @@ class SummaryManager(BaseMemoryManager):
         await self.mem_store.batch_delete(user_id=user_id, group_id=group_id, mem_ids=mem_ids)
         await self._delete_vector_summary_memory(memory_id=mem_ids,
                                                  user_id=user_id,
-                                                group_id=group_id)
+                                                 group_id=group_id)
         return True
 
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
@@ -85,7 +85,6 @@ class SummaryManager(BaseMemoryManager):
         return retrieve_res
 
     async def _add_summary_memory_to_mem_store(self, summary_unit: SummaryUnit):
-        time = datetime.now(timezone.utc)
         mem = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
                                                          plaintext=summary_unit.summary)
         data = {
@@ -95,7 +94,7 @@ class SummaryManager(BaseMemoryManager):
             'mem': mem,
             'source_id': summary_unit.message_mem_id,
             'mem_type': MemoryType.SUMMARY.value,
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'timestamp': summary_unit.timestamp,
             # not used
             'is_implicit': False,
             'profile_type': "",

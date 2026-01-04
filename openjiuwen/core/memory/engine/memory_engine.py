@@ -2,7 +2,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Tuple
 from functools import partial
 
@@ -335,7 +335,6 @@ class MemoryEngine(BaseMemoryEngine):
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=semantic_store,
             user_mem_store=user_mem_store,
-            data_id_generator=data_id_generator,
             crypto_key=self._sys_mem_config.crypto_key
         )
         self.variable_manager = VariableManager(kv_store, self._sys_mem_config.crypto_key)
@@ -343,13 +342,11 @@ class MemoryEngine(BaseMemoryEngine):
         self.semantic_memory_manager = SemanticMemoryManager(
             semantic_recall_instance=semantic_store,
             user_mem_store=user_mem_store,
-            data_id_generator=data_id_generator,
             crypto_key=self._sys_mem_config.crypto_key
         )
         self.episodic_memory_manager = EpisodicMemoryManager(
             semantic_store=semantic_store,
             user_mem_store=user_mem_store,
-            data_id_manager=data_id_generator,
             crypto_key=self._sys_mem_config.crypto_key
         )
         self.summary_manager = SummaryManager(semantic_recall_instance=semantic_store,
@@ -397,6 +394,9 @@ class MemoryEngine(BaseMemoryEngine):
     ) -> str | None:
         msg_id = "-1"
         llm = self._get_group_llm(group_id)
+
+        timestamp = datetime.now(timezone.utc) if not timestamp else timestamp
+        timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
         # user level distributed lock
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
@@ -437,7 +437,8 @@ class MemoryEngine(BaseMemoryEngine):
                 session_id=session_id,
                 config=group_mem_config,
                 base_chat_model=llm,
-                message_mem_id=msg_id
+                message_mem_id=msg_id,
+                timestamp=timestamp_str,
             )
             try:
                 await self.write_manager.add_mem(mem_units=all_memory, llm=llm)

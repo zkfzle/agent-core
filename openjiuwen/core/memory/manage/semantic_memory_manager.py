@@ -3,7 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.base import BaseModelClient
@@ -11,7 +11,6 @@ from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.common.base import generate_idx_name, parse_memory_hit_infos
 from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
-from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, ConflictType, BaseMemoryUnit, \
     SemanticMemoryUnit
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
@@ -19,16 +18,14 @@ from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 class SemanticMemoryManager(BaseMemoryManager):
     CHECK_CONFLICT_OLD_MEMORY_NUM = 5
-    SEARCH_SCORE_THRESHOLD = 0.6
+    SEARCH_SCORE_THRESHOLD = 0.7
 
     def __init__(self,
                  semantic_recall_instance: BaseSemanticStore,
                  user_mem_store: UserMemStore,
-                 data_id_generator: DataIdManager,
                  crypto_key: bytes):
         self.mem_store = user_mem_store
         self.semantic_recall = semantic_recall_instance
-        self.data_id_generator = data_id_generator
         self.crypto_key = crypto_key
 
     @staticmethod
@@ -71,10 +68,7 @@ class SemanticMemoryManager(BaseMemoryManager):
                 continue
             if conf_id == "-1" and conf_event == ConflictType.ADD.value:
                 logger.debug(f"add conflict info: {conflict}")
-                mem_id = await self._add_semantic_memory(user_id=memory.user_id,
-                                                         group_id=memory.group_id,
-                                                         semantic_memory=memory.semantic_mem,
-                                                         )
+                mem_id = await self._add_semantic_memory(memory=memory)
                 await self._add_vector_semantic_memory(user_id=memory.user_id,
                                                        group_id=memory.group_id,
                                                        memory_id=mem_id,
@@ -221,26 +215,22 @@ class SemanticMemoryManager(BaseMemoryManager):
 
     async def _add_semantic_memory(
             self,
-            user_id: Optional[str] = None,
-            group_id: Optional[str] = None,
-            semantic_memory: str = "",
-            mem_type: str = MemoryType.SEMANTIC_MEMORY.value
+            memory: SemanticMemoryUnit,
     ) -> str:
-        mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
-        time = datetime.now(timezone.utc)
         semantic_memory = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
-                                                                     plaintext=semantic_memory)
+                                                                     plaintext=memory.semantic_mem)
         data = {
-            'id': mem_id,
-            'user_id': user_id or '',
-            'group_id': group_id or '',
+            'id': memory.mem_id,
+            'user_id': memory.user_id or '',
+            'group_id': memory.group_id or '',
             'mem': semantic_memory,
-            'mem_type': mem_type,
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'mem_type': MemoryType.SEMANTIC_MEMORY.value,
+            'timestamp': memory.timestamp,
             "context_summary": ""
         }
-        await self.mem_store.write(user_id=user_id, group_id=group_id, mem_id=mem_id, data=data)
-        return mem_id
+        await self.mem_store.write(user_id=memory.user_id, group_id=memory.group_id,
+                                   mem_id=memory.mem_id, data=data)
+        return memory.mem_id
 
     async def _add_vector_semantic_memory(
             self, user_id: str, group_id: str, memory_id: str,

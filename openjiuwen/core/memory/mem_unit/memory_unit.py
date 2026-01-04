@@ -42,6 +42,7 @@ class UserProfileUnit(BaseMemoryUnit):
     is_implicit: bool = False
     reasoning: str = ""
     context_summary: str = ""
+    timestamp: str = ""
 
 
 @dataclass
@@ -56,13 +57,15 @@ class SemanticMemoryUnit(BaseMemoryUnit):
     mem_id: str = ""
     semantic_mem: str = ""
     message_mem_id: str = ""
+    timestamp: str = ""
 
 
 @dataclass
 class EpisodicMemoryUnit(BaseMemoryUnit):
     content: str
-    message_mem_id: Optional[str] = None # Corresponding Message ID
-
+    message_mem_id: Optional[str] = None  # Corresponding Message ID
+    timestamp: str = ""
+    mem_id: str = ""
 
 
 @dataclass
@@ -70,3 +73,4 @@ class SummaryUnit(BaseMemoryUnit):
     summary: str
     mem_id: str = ""
     message_mem_id: Optional[str] = None  # Corresponding Message ID
+    timestamp: str = ""

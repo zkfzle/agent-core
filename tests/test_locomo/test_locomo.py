@@ -78,7 +78,7 @@ class TESTLOCOMO():
         MemoryEngine.set_group_llm_config(MemoryEngine.get_mem_engine_instance(), "default", ModelConfig("siliconflow", BaseModelInfo(api_key=API_KEY, api_base=API_BASE, model=MODEL_NAME)))
         print("✅ Memory engine created")
     
-    async def process_locomo_data(self, data: dict, idx: int):
+    async def process_locomo_data(self, speaker_a: str, speaker_b: str, data: dict, idx: int):
         conversation_data = data['conversation']
         user_id = "default"
         app_id = "default"
@@ -92,8 +92,12 @@ class TESTLOCOMO():
             timestamp = datetime.strptime(timestamp, "%I:%M %p on %d %B, %Y")
             chats = conversation_data[key]
             for chat in tqdm(chats, desc=f"Processing {session_id}"):
-                message = f"{chat['speaker']}: {chat['text']}. Time: {timestamp}."
-                message = HumanMessage(content=message, name=chat['speaker'])
+                message = f"{chat['text']}"
+                message.replace(speaker_a, '').replace(speaker_b, '')
+                if chat['speaker'] == speaker_a:
+                    message = HumanMessage(content=message, name=chat['speaker'])
+                elif chat['speaker'] == speaker_b:
+                    message = AIMessage(content=message, name=chat['speaker'])
                 messages.append(message)
                 if len(messages) == 4:
                     await self.add_memory(user_id, app_id, messages, timestamp, session_id)
@@ -116,8 +120,12 @@ class TESTLOCOMO():
                          user_name2: str = "agent", retrieve_num: int = 5) -> str:
         user_memory = await self.memory_engine.search_user_mem(user_id=user_id, group_id=app_id, query=query,
                                            num=retrieve_num)
+        memory_msg = ""
+        for memory in user_memory:
+            memory_msg += f"${memory['timestamp']}: ${memory['mem']}\n"
         llm_prompt = ANSWER_PROMPT.substitute(question=query, user_name1=user_name1, user_name2=user_name2,
-                                              memory=user_memory)
+                                              memory=memory_msg)
+        logger.info(f"llm_prompt:{llm_prompt}")
         message = HumanMessage(content=llm_prompt)
         response = self.llm_base.invoke(model_name=MODEL_NAME, messages=[message])
         return response.content
@@ -132,7 +140,9 @@ class TESTLOCOMO():
             if category > 4:
                 continue
             question = qa_enum['question']
+            question.replace(user_name1, 'user').replace(user_name2, 'assistant')
             answer = qa_enum['answer']
+            answer.replace(user_name1, 'user').replace(user_name2, 'assistant')
             for retry in range(retries):
                 try:
                     response = await self.llm_answer(user_name1=user_name1, user_name2=user_name2, user_id=user_id,
@@ -150,7 +160,7 @@ class TESTLOCOMO():
                         raise e
 
 
-    def validate_locomo_data(self, response_path_enum: str) -> None:
+    def validate_locomo_data(self, speaker_a: str, speaker_b: str, response_path_enum: str) -> None:
         # Verify whether the agent's response is correct through LLM.
         qa_result_dict = defaultdict(int)
         correct_result_dict = defaultdict(int)
@@ -163,6 +173,8 @@ class TESTLOCOMO():
                     gold_answer = qa_enum['answer']
                     category = qa_enum['category']
                     response = qa_enum['response']
+                    question.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                    gold_answer.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
                     qa_result_dict[category] += 1
                     if str(response).strip() == "":
                         continue
@@ -203,10 +215,10 @@ class TESTLOCOMO():
     def overall_compute(result_path_enum: str) -> None:
         # Compute overall results
         key_mapping = {
-            "1": "Single-hop",
-            "2": "Multi-hop",
-            "3": "Temporal reasoning",
-            "4": "Open domain"
+            "4": "Single-hop",
+            "1": "Multi-hop",
+            "2": "Temporal reasoning",
+            "3": "Open domain"
         }
         total_qa = defaultdict(int)
         total_correct = defaultdict(int)
@@ -266,9 +278,9 @@ async def main():
         speaker_a = data_enum['conversation']['speaker_a']
         speaker_b = data_enum['conversation']['speaker_b']
         response_path_enum = response_path + str(idx) + ".json"
-        await test.process_locomo_data(data_enum, idx)
+        await test.process_locomo_data(speaker_a, speaker_b, data_enum, idx)
         await test.generate_response(data_enum['qa'], speaker_a, speaker_b, response_path_enum)
-        test.validate_locomo_data(response_path_enum)
+        test.validate_locomo_data(speaker_a, speaker_b, response_path_enum)
     test.overall_compute(result_path)
     
 if __name__ == '__main__':

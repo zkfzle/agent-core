@@ -14,6 +14,7 @@ from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_PR
 from openjiuwen.core.memory.prompt.semantic_memory_extractor import SEMANTIC_MEMORY_PROMPT, SEMANTIC_MEMORY_JSON_FORMAT
 from openjiuwen.core.memory.prompt.long_term_memory_extractor import LONG_TERM_MEMORY_EXTRACTOR_PROMPT
 
+
 def handle_user_profile_prompt(sys_prompt: str, index: int, last_one: bool, user_define: Dict[str, str] = None) -> str:
     user_profile_prompt = ""
     user_profile_json_format = ""
@@ -37,6 +38,7 @@ def handle_user_profile_prompt(sys_prompt: str, index: int, last_one: bool, user
     sys_prompt = sys_prompt.replace("{USER_PROFILE_JSON_FORMAT}", user_profile_json_format)
     return sys_prompt
 
+
 def handle_semantic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
     semantic_memory_prompt = ""
     semantic_memory_json_format = ""
@@ -51,6 +53,7 @@ def handle_semantic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
     sys_prompt = sys_prompt.replace("{SEMANTIC_MEMORY_JSON_FORMAT}", semantic_memory_json_format)
     return sys_prompt
 
+
 def handle_episodic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
     episodic_memory_prompt = ""
     episodic_memory_json_format = ""
@@ -64,6 +67,7 @@ def handle_episodic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
     sys_prompt = sys_prompt.replace("{EPISODIC_MEMORY_PROMPT}", episodic_memory_prompt)
     sys_prompt = sys_prompt.replace("{EPISODIC_MEMORY_JSON_FORMAT}", episodic_memory_json_format)
     return sys_prompt
+
 
 def get_message(user_define: Dict[str, str] = None, categories: list[str] | None = None) -> str:
     sys_prompt = LONG_TERM_MEMORY_EXTRACTOR_PROMPT

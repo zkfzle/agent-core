@@ -11,23 +11,20 @@ from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.common.base import generate_idx_name, parse_memory_hit_infos
 from openjiuwen.core.memory.generation.conflict_resolution import ConflictResolution
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
-from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.mem_unit.memory_unit import UserProfileUnit, MemoryType, ConflictType, BaseMemoryUnit
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 
 
 class UserProfileManager(BaseMemoryManager):
     CHECK_CONFLICT_OLD_MEMORY_NUM = 5
-    SEARCH_SCORE_THRESHOLD = 0.6
+    SEARCH_SCORE_THRESHOLD = 0.7
 
     def __init__(self,
                  semantic_recall_instance: BaseSemanticStore,
                  user_mem_store: UserMemStore,
-                 data_id_generator: DataIdManager,
                  crypto_key: bytes):
         self.mem_store = user_mem_store
         self.semantic_recall = semantic_recall_instance
-        self.date_user_profile_id = data_id_generator
         self.crypto_key = crypto_key
 
     @staticmethod
@@ -72,11 +69,8 @@ class UserProfileManager(BaseMemoryManager):
                 continue
             if conf_id == "-1" and conf_event == ConflictType.ADD.value:
                 logger.debug(f"add conflict info: {conflict}")
-                mem_id = await self._add_user_profile_memory(user_id=memory.user_id,
-                                                             group_id=memory.group_id,
-                                                             profile_type=memory.profile_type,
-                                                             profile_mem=conf_mem,
-                                                             source_id=memory.message_mem_id)
+                mem_id = await self._add_user_profile_memory(memory=memory,
+                                                             profile_mem=conf_mem)
                 await self._add_vector_user_profile_memory(user_id=memory.user_id,
                                                            group_id=memory.group_id,
                                                            memory_id=mem_id,
@@ -229,37 +223,29 @@ class UserProfileManager(BaseMemoryManager):
 
     async def _add_user_profile_memory(
             self,
-            is_implicit: bool = False,
-            mem_type: str = MemoryType.USER_PROFILE.value,
-            user_id: Optional[str] = None,
-            group_id: Optional[str] = None,
-            profile_type: Optional[str] = None,
+            memory: UserProfileUnit,
             profile_mem: Optional[str] = None,
-            source_id: Optional[str] = None,
-            reasoning: Optional[str] = None,
-            context_summary: Optional[str] = ""
     ) -> str:
-        mem_id = str(await self.date_user_profile_id.generate_next_id(user_id=user_id))
-        time = datetime.now(timezone.utc)
         profile_mem = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
                                                                  plaintext=profile_mem)
         context_summary = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
-                                                                     plaintext=context_summary)
+                                                                     plaintext=memory.context_summary)
         data = {
-            'id': mem_id,
-            'user_id': user_id or '',
-            'group_id': group_id or '',
-            'is_implicit': is_implicit,
-            'profile_type': profile_type,
+            'id': memory.mem_id,
+            'user_id': memory.user_id or '',
+            'group_id': memory.group_id or '',
+            'is_implicit': memory.is_implicit,
+            'profile_type': memory.profile_type,
             'mem': profile_mem,
-            'source_id': source_id,
-            'reasoning': reasoning,
+            'source_id': memory.message_mem_id,
+            'reasoning': memory.reasoning,
             'context_summary': context_summary,
-            'mem_type': mem_type,
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+            'mem_type': MemoryType.USER_PROFILE.value,
+            'timestamp': memory.timestamp,
         }
-        await self.mem_store.write(user_id=user_id, group_id=group_id, mem_id=mem_id, data=data)
-        return mem_id
+        await self.mem_store.write(user_id=memory.user_id, group_id=memory.group_id,
+                                   mem_id=memory.mem_id, data=data)
+        return memory.mem_id
 
     async def _add_vector_user_profile_memory(
             self, user_id: str, group_id: str, memory_id: str,

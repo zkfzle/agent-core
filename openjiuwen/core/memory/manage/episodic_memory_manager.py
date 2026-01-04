@@ -3,12 +3,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from datetime import datetime, timezone
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Tuple
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.common.base import generate_idx_name, parse_memory_hit_infos
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
-from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.mem_unit.memory_unit import EpisodicMemoryUnit, MemoryType, BaseMemoryUnit
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
@@ -19,11 +18,9 @@ class EpisodicMemoryManager(BaseMemoryManager):
     def __init__(self,
                  semantic_store: BaseSemanticStore,
                  user_mem_store: UserMemStore,
-                 data_id_manager: DataIdManager,
                  crypto_key: bytes):
         self.mem_store = user_mem_store
         self.semantic_store = semantic_store
-        self.data_id_manager = data_id_manager
         self.crypto_key = crypto_key
 
     async def add(self, memory: BaseMemoryUnit, llm: Tuple[str, BaseModelClient] | None = None):
@@ -33,10 +30,7 @@ class EpisodicMemoryManager(BaseMemoryManager):
             raise ValueError('episodic_memory_manager add operation must pass user_id')
         if not memory.group_id:
             raise ValueError('episodic_memory_manager add operation must pass group_id')
-        mem_id = await self._add_episodic_memory_memory(user_id=memory.user_id,
-                                                        group_id=memory.group_id,
-                                                        content=memory.content,
-                                                        source_id=memory.message_mem_id)
+        mem_id = await self._add_episodic_memory_memory(memory=memory)
         await self._add_vector_episodic_memory_memory(user_id=memory.user_id,
                                                       group_id=memory.group_id,
                                                       mem_id=mem_id,
@@ -110,28 +104,24 @@ class EpisodicMemoryManager(BaseMemoryManager):
 
     async def _add_episodic_memory_memory(
             self,
-            user_id: Optional[str] = None,
-            group_id: Optional[str] = None,
-            content: Optional[str] = None,
-            source_id: Optional[str] = None
+            memory: EpisodicMemoryUnit
     ) -> str:
-        mem_id = await self.data_id_manager.generate_next_id(user_id=user_id)
-        time = datetime.now(timezone.utc)
-        content = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key, plaintext=content)
+        content = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key, plaintext=memory.content)
         data = {
-            'id': mem_id,
-            'user_id': user_id or '',
-            'group_id': group_id or '',
+            'id': memory.mem_id,
+            'user_id': memory.user_id or '',
+            'group_id': memory.group_id or '',
             'mem': content,
-            'source_id': source_id,
+            'source_id': memory.user_id,
             'mem_type': MemoryType.EPISODIC_MEMORY.value,
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
+            'timestamp': memory.timestamp,
         }
-        await self.mem_store.write(user_id=user_id, group_id=group_id, mem_id=mem_id, data=data)
-        return mem_id
+        await self.mem_store.write(user_id=memory.user_id, group_id=memory.group_id,
+                                   mem_id=memory.mem_id, data=data)
+        return memory.mem_id
 
     async def _add_vector_episodic_memory_memory(
-        self, user_id: str, group_id: str, mem_id: str, mem: str, mem_type: str = MemoryType.EPISODIC_MEMORY.value):
+            self, user_id: str, group_id: str, mem_id: str, mem: str, mem_type: str = MemoryType.EPISODIC_MEMORY.value):
         if self.semantic_store:
             table_name = generate_idx_name(user_id, group_id, mem_type)
             await self.semantic_store.add_docs([(mem_id, mem)], table_name)
@@ -139,7 +129,7 @@ class EpisodicMemoryManager(BaseMemoryManager):
             raise ValueError('semantic store must not be None')
 
     async def _delete_vector_episodic_memory_memory(
-        self, user_id: str, group_id: str, mem_ids: List[str], mem_type: str = MemoryType.EPISODIC_MEMORY.value):
+            self, user_id: str, group_id: str, mem_ids: List[str], mem_type: str = MemoryType.EPISODIC_MEMORY.value):
         if self.semantic_store:
             table_name = generate_idx_name(user_id, group_id, mem_type)
             await self.semantic_store.delete_docs(mem_ids, table_name)

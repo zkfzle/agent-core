@@ -19,77 +19,6 @@ category_to_class = {
 }
 
 
-def get_user_profile_unit(
-        user_id: str,
-        group_id: str,
-        message_mem_id: str,
-        memory_dict: dict
-) -> list[UserProfileUnit]:
-    """Generate user profile memory unit based on input"""
-    user_profile_data = []
-    user_profile_dict = memory_dict.get("user_profile", {})
-    for profile_type, profile_list in user_profile_dict.items():
-        if not isinstance(profile_list, list):
-            logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
-            continue
-        for profile in profile_list:
-            user_profile_data.append(UserProfileUnit(
-                user_id=user_id,
-                group_id=group_id,
-                profile_type=profile_type,
-                profile_mem=profile,
-                mem_type=MemoryType.USER_PROFILE,
-                message_mem_id=message_mem_id,
-            ))
-    return user_profile_data
-
-
-def get_semantic_memory_unit(
-        user_id: str,
-        group_id: str,
-        message_mem_id: str,
-        memory_dict: dict
-) -> list[SemanticMemoryUnit]:
-    """"""
-    semantic_memory_units = []
-    semantic_memory_list = memory_dict.get("semantic_memory", [])
-    if isinstance(semantic_memory_list, list) and len(semantic_memory_list) > 0:
-        for memory in semantic_memory_list:
-            if not isinstance(memory, str):
-                logger.warning(f"semantic memory format error: {memory} is not a list")
-                continue
-            semantic_memory_units.append(SemanticMemoryUnit(
-                user_id=user_id,
-                group_id=group_id,
-                mem_type=MemoryType.SEMANTIC_MEMORY,
-                semantic_mem=memory,
-                message_mem_id=message_mem_id,
-            ))
-    return semantic_memory_units
-
-def get_episodic_memory_unit(
-        user_id: str,
-        group_id: str,
-        message_mem_id: str,
-        memory_dict: dict
-) -> list[EpisodicMemoryUnit]:
-        """Generate episodic memory unit based on input"""
-        episodic_memory_units = []
-        episodic_memory_list = memory_dict.get("episodic_memory", [])
-        if isinstance(episodic_memory_list, list) and len(episodic_memory_list) > 0:
-            for episodic_memory in episodic_memory_list:
-                if not isinstance(episodic_memory, str):
-                    logger.warning(f"episodic memory format error: {episodic_memory} is not a list")
-                    continue
-                episodic_memory_units.append(EpisodicMemoryUnit(
-                    mem_type=MemoryType.EPISODIC_MEMORY,
-                    user_id=user_id,
-                    group_id=group_id,
-                    content=episodic_memory,
-                    message_mem_id=message_mem_id,
-                ))
-        return episodic_memory_units
-
 class Generator:
     def __init__(self,
                  data_id_generator: DataIdManager):
@@ -104,8 +33,7 @@ class Generator:
         group_id = kwargs.get("group_id")
         history_messages = kwargs.get("history_messages")
         message_mem_id = kwargs.get("message_mem_id")
-        if not all([messages, config, user_id, group_id, model]):
-            logger.error("messages, config, user_id, group_id, model are required parameters")
+        timestamp = kwargs.get("timestamp")
 
         memory_analyze_res = await MemoryAnalyzer.analyze(
             messages=messages,
@@ -124,7 +52,8 @@ class Generator:
         summary_unit = await self._process_summary_data(user_id=user_id,
                                                         group_id=group_id,
                                                         message_mem_id=message_mem_id,
-                                                        summary=memory_analyze_res.summary)
+                                                        summary=memory_analyze_res.summary,
+                                                        timestamp=timestamp)
         all_memory_results.append(summary_unit)
         if not config.enable_long_term_mem:
             logger.info("Not enable long term memory")
@@ -137,7 +66,8 @@ class Generator:
                 user_id=user_id,
                 group_id=group_id,
                 base_chat_model=model,
-                message_mem_id=message_mem_id
+                message_mem_id=message_mem_id,
+                timestamp=timestamp,
             )
         except AttributeError as e:
             logger.debug(f"Get conflict info has attribute exception: {str(e)}")
@@ -176,7 +106,7 @@ class Generator:
                                          group_id: str,
                                          base_chat_model: Tuple[str, BaseModelClient],
                                          message_mem_id: str,
-                                         user_define: dict[str, str] = None
+                                         timestamp: str
                                          ) -> list[BaseMemoryUnit]:
         memory_units = []
         memory_dict = await LongTermMemoryExtractor.extract_long_term_memory(
@@ -185,23 +115,26 @@ class Generator:
             messages=messages,
             base_chat_model=base_chat_model,
         )
-        memory_units.extend(get_user_profile_unit(
+        memory_units.extend(await self._get_user_profile_unit(
             user_id=user_id,
             group_id=group_id,
             message_mem_id=message_mem_id,
-            memory_dict=memory_dict
+            memory_dict=memory_dict,
+            timestamp=timestamp,
         ))
-        memory_units.extend(get_semantic_memory_unit(
+        memory_units.extend(await self._get_semantic_memory_unit(
             user_id=user_id,
             group_id=group_id,
             message_mem_id=message_mem_id,
-            memory_dict=memory_dict
+            memory_dict=memory_dict,
+            timestamp=timestamp,
         ))
-        memory_units.extend(get_episodic_memory_unit(
+        memory_units.extend(await self._get_episodic_memory_unit(
             user_id=user_id,
             group_id=group_id,
             message_mem_id=message_mem_id,
-            memory_dict=memory_dict
+            memory_dict=memory_dict,
+            timestamp=timestamp,
         ))
         return memory_units
 
@@ -211,6 +144,7 @@ class Generator:
             group_id: str,
             message_mem_id: str,
             summary: str,
+            timestamp: str,
     ) -> SummaryUnit:
         mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
         return SummaryUnit(
@@ -219,5 +153,92 @@ class Generator:
             mem_type=MemoryType.SUMMARY,
             mem_id=mem_id,
             summary=summary,
-            message_mem_id=message_mem_id
+            message_mem_id=message_mem_id,
+            timestamp=timestamp,
         )
+
+    async def _get_user_profile_unit(
+            self,
+            user_id: str,
+            group_id: str,
+            message_mem_id: str,
+            memory_dict: dict,
+            timestamp: str
+    ) -> list[UserProfileUnit]:
+        """Generate user profile memory unit based on input"""
+        user_profile_data = []
+        user_profile_dict = memory_dict.get("user_profile", {})
+        for profile_type, profile_list in user_profile_dict.items():
+            if not isinstance(profile_list, list):
+                logger.warning(f"User profile extractor output format error: {profile_list} is not a list")
+                continue
+            for profile in profile_list:
+                mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
+                user_profile_data.append(UserProfileUnit(
+                    user_id=user_id,
+                    group_id=group_id,
+                    profile_type=profile_type,
+                    profile_mem=profile,
+                    mem_type=MemoryType.USER_PROFILE,
+                    message_mem_id=message_mem_id,
+                    timestamp=timestamp,
+                    mem_id=mem_id,
+                ))
+        return user_profile_data
+
+    async def _get_semantic_memory_unit(
+            self,
+            user_id: str,
+            group_id: str,
+            message_mem_id: str,
+            memory_dict: dict,
+            timestamp: str
+    ) -> list[SemanticMemoryUnit]:
+        """"""
+        semantic_memory_units = []
+        semantic_memory_list = memory_dict.get("semantic_memory", [])
+        if isinstance(semantic_memory_list, list) and len(semantic_memory_list) > 0:
+            for memory in semantic_memory_list:
+                if not isinstance(memory, str):
+                    logger.warning(f"semantic memory format error: {memory} is not a list")
+                    continue
+                mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
+                semantic_memory_units.append(SemanticMemoryUnit(
+                    user_id=user_id,
+                    group_id=group_id,
+                    mem_type=MemoryType.SEMANTIC_MEMORY,
+                    semantic_mem=memory,
+                    message_mem_id=message_mem_id,
+                    timestamp=timestamp,
+                    mem_id=mem_id,
+                ))
+        return semantic_memory_units
+
+    async def _get_episodic_memory_unit(
+            self,
+            user_id: str,
+            group_id: str,
+            message_mem_id: str,
+            memory_dict: dict,
+            timestamp: str
+    ) -> list[EpisodicMemoryUnit]:
+        """Generate episodic memory unit based on input"""
+        episodic_memory_units = []
+        episodic_memory_list = memory_dict.get("episodic_memory", [])
+        if isinstance(episodic_memory_list, list) and len(episodic_memory_list) > 0:
+            for episodic_memory in episodic_memory_list:
+                if not isinstance(episodic_memory, str):
+                    logger.warning(f"episodic memory format error: {episodic_memory} is not a list")
+                    continue
+
+                mem_id = str(await self.data_id_generator.generate_next_id(user_id=user_id))
+                episodic_memory_units.append(EpisodicMemoryUnit(
+                    mem_type=MemoryType.EPISODIC_MEMORY,
+                    user_id=user_id,
+                    group_id=group_id,
+                    content=episodic_memory,
+                    message_mem_id=message_mem_id,
+                    timestamp=timestamp,
+                    mem_id=mem_id,
+                ))
+        return episodic_memory_units

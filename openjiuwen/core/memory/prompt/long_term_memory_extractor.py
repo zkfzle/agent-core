@@ -12,9 +12,10 @@ LONG_TERM_MEMORY_EXTRACTOR_PROMPT = """
 
 # 输出
 1.   不要使用示例的内容作为输出。
-2.   最终的输出必须是**纯净的，可直接解析的JSON对象**，不要有任何额外的解释性文字。
-3.   保留Markdown格式```json``` 代码块标记。
-4.   根据你的分析，填充以下JSON结构。
+2.   输入输出的语言类别应保持一致。如果输入的`current_messages`和`historical_messages`是英文，则输出的记忆内容也应该是英文；
+3.   最终的输出必须是**纯净的，可直接解析的JSON对象**，不要有任何额外的解释性文字。
+4.   保留Markdown格式```json``` 代码块标记。
+5.   根据你的分析，填充以下JSON结构。
 {{USER_PROFILE_JSON_FORMAT}{SEMANTIC_MEMORY_JSON_FORMAT}{EPISODIC_MEMORY_JSON_FORMAT}
 }
 

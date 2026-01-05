@@ -119,18 +119,18 @@ class LongTermMemoryExtractor:
             history_messages,
             sys_prompt
         )
-        logger.debug(f"Start to get user profile, input: {model_input}")
+        logger.info(f"Start to get long term memory, input: {model_input}")
         model_name, model_client = base_chat_model
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
                 response = await model_client.ainvoke(model_name, model_input)
                 result = await parser.parse(response.content)
-                logger.debug(f"Succeed to get user profile, result: {result}")
+                logger.info(f"Succeed to get long term memory, result: {result}")
                 if isinstance(result, dict):
                     return result
             except json.JSONDecodeError as e:
                 if attempt < retries - 1:
                     continue
-                logger.error(f"user profile extractor model output format error: {e.msg}")
+                logger.error(f"long term memory extractor model output format error: {e.msg}")
         return {}

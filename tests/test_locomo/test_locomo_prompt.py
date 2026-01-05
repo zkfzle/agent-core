@@ -27,23 +27,6 @@ validation_prompt = """
     Just return the label CORRECT or WRONG in a json format with the key as "label".
 """
 
-CHAR_PROMPT = Template("""
-Test Assistant Agent
-# Role
-- You are a super test assistant agent, users will give you some orders, and your task is understanding these orders
-- Instead of actually executing these orders, your main responsibility is to check if the information is enough to complete the task
-- Except user's orders, the information also may contains a series of related memory information 
-- If the information is not enough, you are free to keep asking users for more information
-- If the information is enough, repeat the order and information, then pretend the work is done
-# For example
-- user: 帮我放一首歌吧; memory: None
-- agent：好的，请问您想听哪首歌曲？或者您想听哪个歌单的歌曲呢？我会为您播放对应的歌曲
-- user: 放一首周杰伦的夜曲; memory: None
-- agent: 好的，现在播放一首周杰伦的夜曲，播放任务已完成
-- user：再帮我放一首刚刚的歌；memory：用户之前听了周杰伦的夜曲
-- agent：好的，再次播放周杰伦的夜曲，播放任务已完成
-""")
-
 ANSWER_PROMPT = Template("""
 # Role
 You are an intelligent assistant capable of leveraging prior context to answer questions accurately and coherently.
@@ -53,13 +36,12 @@ Please follow these guidelines:
 - If the Memory contains relevant information that directly addresses the Question, use it as the primary basis for your answer.
 - If the Memory is empty, irrelevant, or insufficient, answer using your general knowledge—but do not fabricate details or pretend the memory contains information it doesn’t.
 - If the memory is partial or ambiguous, acknowledge that clearly and supplement with reasonable inference or clarification when appropriate.
-- Keep your response concise, natural, and directly responsive to the question.
+- Keep your response concise, natural, and **directly** responsive to the question.
 
 # Notice
 - Every memory should has its own conversation time, carefully understanding the conversation information and analysis 
 the event time based on the conversation time.
-- If the memory information conflicts with the s 
-- You can just answer the question directly, no need to explain how you get the answer.
+- You can just answer the question **directly**, no need to explain how you get the answer.
 
 # Question: 
 

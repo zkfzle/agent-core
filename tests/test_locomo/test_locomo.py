@@ -1,18 +1,23 @@
 import asyncio
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import json
 import logging
 import os
 from pathlib import Path
-import time
 import uuid
+from filelock import FileLock
 from sqlalchemy.ext.asyncio import create_async_engine
 from tqdm import tqdm
 import sys
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=r"C:\Users\12975\Desktop\git_huawei\agent-core-zhao\tests\test_locomo\.env")
 
+# 加载环境变量
+load_dotenv(dotenv_path=r"./tests/test_locomo/.env")
+
+# 导入核心模块
+from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.memory.config.config import SysMemConfig
@@ -21,184 +26,226 @@ from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from openjiuwen.core.memory.store.impl.chroma_semantic_store import ChromaSemanticStore
-from openjiuwen.core.utils.llm.base import BaseModelInfo
+from openjiuwen.core.utils.llm.base import BaseModelClient, BaseModelInfo
 from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, HumanMessage
-from openjiuwen.core.utils.llm.model_library.siliconflow import Siliconflow
-from test_locomo_prompt import validation_prompt, ANSWER_PROMPT, CHAR_PROMPT
+from test_locomo_prompt import validation_prompt, ANSWER_PROMPT
 
+# 配置项
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
+VALIDATE_API_BASE = os.getenv("VALIDATE_API_BASE", "mock://api.openai.com/v1")
+VALIDATE_API_KEY = os.getenv("VALIDATE_API_KEY", "sk-fake")
+VALIDATE_MODEL_NAME = os.getenv("VALIDATE_MODEL_NAME", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
-data_path = "D://data/locomo10.json"
-response_path = "./test_response"
-result_path = "../test_result.json"
+data_path = os.getenv("INPUT_DATA_FILE", "")
+response_path = os.getenv("RESPONSE_PATH", "./test_response")
+result_path = os.getenv("RESULT_PATH", "./test_result.json")
 
-class TESTLOCOMO():
-    def __init__(self):
-        self.memory_engine: MemoryEngine = None
-        self.llm_base: Siliconflow = None
+# 全局计数器
+processed_conversations = 0
+progress_bar = None
 
-    @classmethod
-    async def create(cls):
-        instance = cls()
-        await instance._create_memory_engine()
-        instance.memory_engine = MemoryEngine.get_mem_engine_instance()  # 假设这是同步方法
-        instance.llm_base = Siliconflow(API_KEY, API_BASE)
-        return instance
+class ConversationProcessor:
+    """单个Conversation的处理器（完全独立的MemoryEngine实例）"""
+    def __init__(self, conv_id: int):
+        self.conv_id = conv_id
+        self.memory_engine: MemoryEngine = None  # 私有化实例
+        self.llm_base: BaseModelClient = None
+        self.resource_dir = None
+        self.init_done = False
+        self.init_lock = asyncio.Lock()
+        self.global_chroma_lock = FileLock(f".chroma_init_lock_{conv_id}.lock")
 
-    @staticmethod
-    def get_locomo_data(data_path: str):
-        with open(data_path, 'r', encoding="utf-8") as f:
-            data = json.load(f)
-            return data
+    async def init_resources(self):
+        """初始化当前conversation的独立资源（核心：不使用全局单例）"""
+        async with self.init_lock:
+            if self.init_done:
+                return
+            with self.global_chroma_lock:
+                # 1. 创建独立的资源目录
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                self.resource_dir = os.path.join(project_root, f'resources_conv_{self.conv_id}')
+                os.makedirs(self.resource_dir, exist_ok=True)
+                logger.info(f"📁 Conversation {self.conv_id} 资源目录: {self.resource_dir}")
 
-    async def _create_memory_engine(self):
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        resource_dir = os.path.join(project_root, 'resources')
-        if not os.path.exists(resource_dir):
-            os.makedirs(resource_dir)
-        message_path = os.path.join(resource_dir, 'message_db')
-        path = Path(message_path)
-        kv_db_path = os.path.join(resource_dir, 'dbmstore')
-        embed_model = APIEmbedModel(
-            base_url=os.getenv("EMBED_API_BASE"),
-            model_name=os.getenv("EMBED_MODEL_NAME"),
-            api_key=os.getenv("EMBED_API_KEY"),
-            timeout=int(os.getenv("EMBED_TIMEOUT")),
-            max_retries=int(os.getenv("EMBED_MAX_RETRIES")),
-        )
-        semantic_store = ChromaSemanticStore(resource_dir, embed_model)
-        utc_now = datetime.now(timezone.utc)
-        time_str = utc_now.strftime("%Y%m%d%H%M%S")
-        uuid_str = uuid.uuid4().hex[:6]
-        path = Path(f"{resource_dir}/test_sql_db_{time_str}_{uuid_str}.db").resolve()
-        db_store = DefaultDbStore(create_async_engine(f"sqlite+aiosqlite:///{path}"))
-        MemoryEngine.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
-        await MemoryEngine.create_mem_engine_instance(SysMemConfig())
-        MemoryEngine.set_group_llm_config(MemoryEngine.get_mem_engine_instance(), "default", ModelConfig("siliconflow", BaseModelInfo(api_key=API_KEY, api_base=API_BASE, model=MODEL_NAME)))
-        print("✅ Memory engine created")
-    
-    async def process_locomo_data(self, speaker_a: str, speaker_b: str, data: dict, idx: int):
+                # 2. 初始化Embed模型
+                embed_model = APIEmbedModel(
+                    base_url=os.getenv("EMBED_API_BASE"),
+                    model_name=os.getenv("EMBED_MODEL_NAME"),
+                    api_key=os.getenv("EMBED_API_KEY"),
+                    timeout=int(os.getenv("EMBED_TIMEOUT")),
+                    max_retries=int(os.getenv("EMBED_MAX_RETRIES")),
+                )
+
+                # 3. 创建独立的存储实例（不注册到全局）
+                # Chroma语义存储
+                semantic_store = ChromaSemanticStore(self.resource_dir, embed_model)
+                # KV存储
+                kv_db_path = os.path.join(self.resource_dir, f'dbmstore_{self.conv_id}')
+                kv_store = DbmKVStore(kv_db_path)
+                # SQL存储
+                utc_now = datetime.now(timezone.utc)
+                time_str = utc_now.strftime("%Y%m%d%H%M%S")
+                uuid_str = uuid.uuid4().hex[:6]
+                db_path = Path(f"{self.resource_dir}/test_sql_db_{time_str}_{uuid_str}_{self.conv_id}.db").resolve()
+                db_store = DefaultDbStore(create_async_engine(f"sqlite+aiosqlite:///{db_path}"))
+                await create_tables(db_store)
+                # 4. 手动创建MemoryEngine实例（关键：不使用全局单例）
+                # 重置全局状态（防止残留）
+                if hasattr(MemoryEngine, '_instance'):
+                    delattr(MemoryEngine, '_instance')
+                
+                # 创建新实例并手动赋值存储
+                self.memory_engine = MemoryEngine(SysMemConfig(), kv_store, semantic_store, db_store)
+                # 手动设置存储（绕过全局register_store）
+                self.memory_engine._kv_store_instance = kv_store
+                self.memory_engine._db_store_instance = db_store
+                self.memory_engine._semantic_store_instance = semantic_store
+
+                # 6. 设置LLM配置（绑定到当前实例）
+                self.memory_engine.set_group_llm_config(
+                    "default", 
+                    ModelConfig(
+                        "siliconflow", 
+                        BaseModelInfo(
+                            api_key=API_KEY, 
+                            api_base=API_BASE, 
+                            model=MODEL_NAME,
+                            temperature=0.1
+                        )
+                    )
+                )
+
+                # 7. 初始化LLM客户端
+                self.llm_base = ModelFactory().get_model("siliconflow", API_KEY, API_BASE, temperature=0.1)
+                
+                self.init_done = True
+                logger.info(f"✅ Conversation {self.conv_id} 资源初始化完成（独立MemoryEngine）")
+
+    async def add_memory(self, user_id: str, app_id: str, messages: list[BaseMessage], timestamp: datetime, session_id: str, retries=3) -> None:
+        """异步添加内存（使用私有MemoryEngine）"""
+        for retry in range(retries):
+            try:
+                # 直接使用当前实例的memory_engine，而非全局
+                await self.memory_engine.add_conversation_messages(
+                    user_id=user_id, 
+                    group_id=app_id, 
+                    messages=messages, 
+                    timestamp=timestamp, 
+                    session_id=session_id
+                )
+                logger.debug(f"📝 Conversation {self.conv_id} 成功添加 {len(messages)} 条内存")
+                break
+            except Exception as e:
+                if retry < retries - 1:
+                    await asyncio.sleep(30)
+                    logger.warning(f"⚠️ Conversation {self.conv_id} 添加内存失败，重试 {retry+1}/3: {str(e)}")
+                    continue
+                else:
+                    logger.error(f"❌ Conversation {self.conv_id} 添加内存失败: {str(e)}")
+                    raise e
+
+    async def process_locomo_data(self, speaker_a: str, speaker_b: str, data: dict):
+        """异步处理对话数据（写入私有目录）"""
         conversation_data = data['conversation']
         user_id = "default"
         app_id = "default"
+
         for key in conversation_data.keys():
             messages = []
             if key in ["speaker_a", "speaker_b"] or "date" in key or "timestamp" in key:
                 continue
-            session_id = str(idx) + "-" + str(key).replace("_", "-")
+            
+            session_id = f"{self.conv_id}-{str(key).replace('_', '-')}"
             data_time_key = key + "_date_time"
             timestamp = conversation_data[data_time_key]
             timestamp = datetime.strptime(timestamp, "%I:%M %p on %d %B, %Y")
             chats = conversation_data[key]
-            for chat in tqdm(chats, desc=f"Processing {session_id}"):
+
+            for chat in chats:
                 message = f"{chat['text']}"
+                if chat.get('blip_caption'):
+                    message += f"(The conversation is accompanied by an image, and the description of the image is '{chat['blip_caption']}')"
                 message = message.replace(speaker_a, '').replace(speaker_b, '')
+                
                 if chat['speaker'] == speaker_a:
                     message = HumanMessage(content=message, name=chat['speaker'])
                 elif chat['speaker'] == speaker_b:
                     message = AIMessage(content=message, name=chat['speaker'])
+                
                 messages.append(message)
+                
                 if len(messages) == 4:
                     await self.add_memory(user_id, app_id, messages, timestamp, session_id)
                     messages = []
+                    timestamp += timedelta(seconds=1)
+            
             if messages:
                 await self.add_memory(user_id, app_id, messages, timestamp, session_id)
-    async def add_memory(self, user_id: str, app_id: str, messages: list[BaseMessage], timestamp: datetime, session_id: str, retries=3) -> None:
-        for retry in range(retries):
-            try:
-                await self.memory_engine.add_conversation_messages(user_id=user_id, group_id=app_id, messages=messages, timestamp=timestamp, session_id=session_id)
-                break
-            except Exception as e:
-                if retry < retries - 1:
-                    time.sleep(2)
-                    continue
-                else:
-                    raise e
 
-    async def llm_answer(self, user_id: str, app_id: str, query: str, retrieve_num: int = 5) -> str:
-        user_memory = await self.memory_engine.search_user_mem(user_id=user_id, group_id=app_id, query=query,
-                                           num=retrieve_num)
+    async def llm_answer(self, user_id: str, app_id: str, query: str, retrieve_num: int = 20) -> str:
+        """异步调用LLM生成回答（读取私有目录数据）"""
+        # 使用私有memory_engine检索
+        user_memory = await self.memory_engine.search_user_mem(
+            user_id=user_id, 
+            group_id=app_id, 
+            query=query,
+            num=retrieve_num
+        )
+
         memory_msg = ""
         for memory in user_memory:
             memory_msg += f"${memory['timestamp']}: ${memory['mem']}\n"
         llm_prompt = ANSWER_PROMPT.substitute(question=query, memory=memory_msg)
-        logger.info(f"llm_prompt:{llm_prompt}")
+        logger.debug(f"📝 Conversation {self.conv_id} LLM Prompt: {llm_prompt[:100]}...")
+
         message = HumanMessage(content=llm_prompt)
-        response = self.llm_base.invoke(model_name=MODEL_NAME, messages=[message])
+        response = await self.llm_base.ainvoke(model_name=MODEL_NAME, messages=[message])
         return response.content
 
-    async def generate_response(self, qa_data: list, user_name1: str, user_name2: str, response_path_qa: str, retries=3) -> None:
-        # Generate answer with memory
+    async def generate_response(self, qa_data: list, user_name1: str, user_name2: str):
+        """异步生成QA响应"""
+        response_path_qa = f"{response_path}{self.conv_id}.json"
+        # 清空文件（避免追加旧数据）
+        open(response_path_qa, 'w', encoding='utf-8').close()
+        
         user_id = "default"
         app_id = "default"
-        agent_id = "default"
-        for idx, qa_enum in enumerate(tqdm(qa_data, desc="Processing QA")):
+
+        for idx, qa_enum in enumerate(qa_data):
             category = qa_enum['category']
             if category > 4:
                 continue
-            question = qa_enum['question']
-            question = question.replace(user_name1, 'user').replace(user_name2, 'assistant')
-            answer = qa_enum['answer']
-            answer = str(answer)
-            answer = answer.replace(user_name1, 'user').replace(user_name2, 'assistant')
-            for retry in range(retries):
+            
+            question = qa_enum['question'].replace(user_name1, 'user').replace(user_name2, 'assistant')
+            answer = str(qa_enum['answer']).replace(user_name1, 'user').replace(user_name2, 'assistant')
+
+            for retry in range(3):
                 try:
-                    response = await self.llm_answer(user_id=user_id,
-                                        app_id=app_id, query=question, retrieve_num=10)
-                    data_dict = {"question": question, "answer": answer, "response": response, "category": category}
-                    with open(response_path_qa, 'a', encoding='utf-8') as file:
-                        json.dump(data_dict, file, ensure_ascii=False)
-                        file.write('\n')
+                    response = await self.llm_answer(user_id, app_id, question)
                     break
                 except Exception as e:
-                    if retry < retries - 1:
-                        time.sleep(2)
+                    if retry < 2:
+                        await asyncio.sleep(30)
+                        logger.warning(f"⚠️ Conversation {self.conv_id} QA生成失败，重试 {retry+1}/3: {str(e)}")
                         continue
                     else:
+                        logger.error(f"❌ Conversation {self.conv_id} QA生成失败: {str(e)}")
                         raise e
 
+            data_dict = {
+                "question": question, 
+                "answer": answer, 
+                "response": response, 
+                "category": category
+            }
+            with open(response_path_qa, 'a', encoding='utf-8') as file:
+                json.dump(data_dict, file, ensure_ascii=False)
+                file.write('\n')
 
-    def validate_locomo_data(self, speaker_a: str, speaker_b: str, response_path_enum: str) -> None:
-        # Verify whether the agent's response is correct through LLM.
-        qa_result_dict = defaultdict(int)
-        correct_result_dict = defaultdict(int)
-        with open(response_path_enum, 'r', encoding='utf-8') as f:
-            # Validation
-            for qa_enum in tqdm(f, desc="Processing validation"):
-                if qa_enum.strip():
-                    qa_enum = json.loads(qa_enum)
-                    question = qa_enum['question']
-                    gold_answer = qa_enum['answer']
-                    category = qa_enum['category']
-                    response = qa_enum['response']
-                    question = question.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
-                    gold_answer = str(gold_answer)
-                    gold_answer = gold_answer.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
-                    qa_result_dict[category] += 1
-                    if str(response).strip() == "":
-                        continue
-                    test_prompt = validation_prompt.format(question=question, gold_answer=gold_answer, response=response)
-                    result = self.llm_service(test_prompt)
-                    logger.info(f"result:{result}")
-                    if "CORRECT" in result.content and "WRONG" not in result.content:
-                        print("Correct!")
-                        correct_result_dict[category] += 1
-        logger.info(f"qa_result_dict:{qa_result_dict}, correct_result_dict:{correct_result_dict}")
-        accuracy_per_class = {}
-        for cls in [1, 2, 3, 4]:
-            total = qa_result_dict[cls]
-            correct = correct_result_dict[cls]
-            accuracy = correct / total if total != 0 else 0.0  # 避免除零
-            accuracy_per_class[cls] = round(accuracy, 4)
-        with open(result_path, 'a', encoding='utf-8') as file:
-            total_result = {"accuracy_per_class": accuracy_per_class, "qa_result_dict": qa_result_dict, "correct_result_dict": correct_result_dict}
-            json.dump(total_result, file, ensure_ascii=False)
-            file.write('\n')
-
-
-    def llm_service(self, user_message: str) -> AIMessage:
+    async def llm_service(self, user_message: str) -> AIMessage:
+        """异步调用LLM进行验证"""
         messages = [
             BaseMessage(**{
                 "role": "system",
@@ -209,12 +256,133 @@ class TESTLOCOMO():
                 "content": user_message
             })
         ]
-        response = self.llm_base.invoke(MODEL_NAME, messages)
+        for retry in range(3):
+            try:
+                response = await self.llm_base.ainvoke(VALIDATE_MODEL_NAME, messages)
+                break
+            except Exception as e:
+                if retry < 2:
+                    await asyncio.sleep(30)
+                    logger.warning(f"⚠️ Conversation {self.conv_id} 判断失败，重试 {retry+1}/3: {str(e)}")
+                    continue
+                else:
+                    logger.error(f"❌ Conversation {self.conv_id} 判断失败: {str(e)}")
+                    raise e
         return response
+
+    async def validate_locomo_data(self, speaker_a: str, speaker_b: str):
+        """异步验证回答正确性"""
+        response_path_enum = f"{response_path}{self.conv_id}.json"
+        qa_result_dict = defaultdict(int)
+        correct_result_dict = defaultdict(int)
+
+        with open(response_path_enum, 'r', encoding='utf-8') as f:
+            for qa_enum_str in f:
+                if not qa_enum_str.strip():
+                    continue
+                
+                qa_enum = json.loads(qa_enum_str)
+                question = qa_enum['question'].replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                gold_answer = str(qa_enum['answer']).replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                category = qa_enum['category']
+                response = qa_enum['response']
+
+                qa_result_dict[category] += 1
+                if str(response).strip() == "":
+                    continue
+
+                test_prompt = validation_prompt.format(
+                    question=question, 
+                    gold_answer=gold_answer, 
+                    response=response
+                )
+
+                result = await self.llm_service(test_prompt)
+                logger.info(f"🔍 Conversation {self.conv_id} 验证结果: {result.content[:50]}...")
+
+                if "CORRECT" in result.content and "WRONG" not in result.content:
+                    correct_result_dict[category] += 1
+
+        accuracy_per_class = {}
+        for cls in [1, 2, 3, 4]:
+            total = qa_result_dict[cls]
+            correct = correct_result_dict[cls]
+            accuracy = correct / total if total != 0 else 0.0
+            accuracy_per_class[cls] = round(accuracy, 4)
+
+        with open(result_path, 'a', encoding='utf-8') as file:
+            total_result = {
+                "conversation_id": self.conv_id,
+                "accuracy_per_class": accuracy_per_class, 
+                "qa_result_dict": qa_result_dict, 
+                "correct_result_dict": correct_result_dict
+            }
+            json.dump(total_result, file, ensure_ascii=False)
+            file.write('\n')
+
+    async def process_full(self, data_enum: dict):
+        """处理单个conversation的完整流程"""
+        global processed_conversations, progress_bar
+        
+        try:
+            # 1. 初始化独立资源（关键：创建私有MemoryEngine）
+            await self.init_resources()
+
+            # 2. 获取speaker信息
+            speaker_a = data_enum['conversation']['speaker_a']
+            speaker_b = data_enum['conversation']['speaker_b']
+
+            # 3. 处理对话数据（写入私有目录）
+            logger.info(f"🚀 开始处理 Conversation {self.conv_id}")
+            await self.process_locomo_data(speaker_a, speaker_b, data_enum)
+
+            # 4. 生成QA响应（读取私有目录数据）
+            self.memory_engine.set_group_llm_config(
+                    "default", 
+                    ModelConfig(
+                        "siliconflow", 
+                        BaseModelInfo(
+                            api_key=VALIDATE_API_KEY, 
+                            api_base=VALIDATE_API_BASE, 
+                            model=VALIDATE_MODEL_NAME,
+                            temperature=0.1
+                        )
+                    )
+                )
+            self.llm_base = ModelFactory().get_model("siliconflow", VALIDATE_API_KEY, VALIDATE_API_BASE, temperature=0.1)
+            await self.generate_response(data_enum['qa'], speaker_a, speaker_b)
+
+            # 5. 验证结果
+            
+            await self.validate_locomo_data(speaker_a, speaker_b)
+
+            # 验证：检查当前目录是否有数据写入
+            if os.path.exists(self.resource_dir):
+                file_count = len(os.listdir(self.resource_dir))
+                logger.info(f"📊 Conversation {self.conv_id} 目录文件数: {file_count}")
+
+            logger.info(f"✅ 完成处理 Conversation {self.conv_id}")
+
+        except Exception as e:
+            logger.error(f"❌ Conversation {self.conv_id} 处理失败: {str(e)}", exc_info=True)
+            raise
+        finally:
+            # 更新进度
+            processed_conversations += 1
+            if progress_bar:
+                progress_bar.update(1)
+
+class TESTLOCOMO:
+    @staticmethod
+    def get_locomo_data(data_path: str):
+        """加载数据"""
+        with open(data_path, 'r', encoding="utf-8") as f:
+            data = json.load(f)
+            return data
 
     @staticmethod
     def overall_compute(result_path_enum: str) -> None:
-        # Compute overall results
+        """计算总体结果"""
         key_mapping = {
             "4": "Single-hop",
             "1": "Multi-hop",
@@ -227,25 +395,21 @@ class TESTLOCOMO():
         with open(result_path_enum, "r", encoding="utf-8") as f:
             for line in f:
                 data = json.loads(line.strip())
+                if "qa_result_dict" not in data:
+                    continue
 
-                mapped_acc = {
-                    key_mapping[k]: v
-                    for k, v in data["accuracy_per_class"].items()
-                }
-                print(mapped_acc)
-                logger.info("单行准确率：", mapped_acc)
                 for k, v in data["qa_result_dict"].items():
-                    total_qa[key_mapping[k]] += v
+                    total_qa[key_mapping.get(str(k), str(k))] += v
                 for k, v in data["correct_result_dict"].items():
-                    total_correct[key_mapping[k]] += v
+                    total_correct[key_mapping.get(str(k), str(k))] += v
 
         total_accuracy = {}
         total_correct_all = 0
         total_samples = 0
 
         for key in key_mapping.values():
-            correct = total_correct[key]
-            total = total_qa[key]
+            correct = total_correct.get(key, 0)
+            total = total_qa.get(key, 0)
             total_accuracy[key] = round(correct / total if total != 0 else 0, 4)
             total_correct_all += correct
             total_samples += total
@@ -255,11 +419,11 @@ class TESTLOCOMO():
             4
         )
 
-        logger.info("总样本量统计：", dict(total_qa))
-        logger.info("总正确量统计：", dict(total_correct))
-        logger.info("总准确率：", total_accuracy)
+        logger.info("📊 总样本量统计：%s", dict(total_qa))
+        logger.info("📊 总正确量统计：%s", dict(total_correct))
+        logger.info("📊 总准确率：%s", total_accuracy)
 
-        with open(result_path_enum,"a", encoding="utf-8") as f:
+        with open(result_path_enum, "a", encoding="utf-8") as f:
             json.dump({
                 "total_samples": dict(total_qa),
                 "total_correct": dict(total_correct),
@@ -267,24 +431,45 @@ class TESTLOCOMO():
             }, f, ensure_ascii=False, indent=4)
             f.write('\n')
 
-
 async def main():
-    logger.set_level(logging.DEBUG)
-    test = await TESTLOCOMO.create()
+    global progress_bar
+    logger.set_level(logging.INFO)
+
+    # 清空结果文件（避免追加旧数据）
+    open(result_path, 'w', encoding='utf-8').close()
+
+    # 1. 加载数据
+    test = TESTLOCOMO()
     data = test.get_locomo_data(data_path)
-    for idx, data_enum in enumerate(tqdm(data, desc="Processing total data")):
-        try:
-            await test.memory_engine.delete_mem_by_user_id("default", "default") # delete memory
-        except:
-            pass
-        speaker_a = data_enum['conversation']['speaker_a']
-        speaker_b = data_enum['conversation']['speaker_b']
-        response_path_enum = response_path + str(idx) + ".json"
-        await test.process_locomo_data(speaker_a, speaker_b, data_enum, idx)
-        await test.generate_response(data_enum['qa'], speaker_a, speaker_b, response_path_enum)
-        test.validate_locomo_data(speaker_a, speaker_b, response_path_enum)
+    total_convs = len(data)
+    logger.info(f"📥 加载到 {total_convs} 个conversation")
+
+    # 2. 初始化进度条
+    progress_bar = tqdm(total=total_convs, desc="处理所有Conversation")
+
+    # 3. 逐个创建处理器并执行（确保实例不被覆盖）
+    #    注：这里改为逐个创建+立即执行，而非批量创建后gather，进一步避免单例冲突
+    tasks = []
+    for conv_id, data_enum in enumerate(data):
+        processor = ConversationProcessor(conv_id)
+        # 添加到任务列表
+        task = processor.process_full(data_enum)
+        tasks.append(task)
+
+    # 4. 执行所有任务（协程交替执行）
+    await asyncio.gather(*tasks, return_exceptions=False)
+
+    # 5. 计算总体结果
     test.overall_compute(result_path)
-    
+
+    # 6. 完成
+    progress_bar.close()
+    logger.info("🎉 所有Conversation处理完成！")
+    logger.info("🔍 验证：每个conversation的数据已写入各自的resources_conv_*目录")
+
 if __name__ == '__main__':
-    asyncio.run(main())
+    # Windows事件循环修复
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     
+    asyncio.run(main())

@@ -12,7 +12,7 @@ from openjiuwen.core.single_agent import ControllerAgent, PluginSchema, ReActAge
 from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller import LLMController
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.memory.long_term_memory import LongTermMemory
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import HumanMessage, AIMessage
@@ -240,7 +240,7 @@ class LLMAgent(ControllerAgent):
         group_id = f"{self.agent_config.id}"
         logger.info(f"When init Memory Engine, group_id: {group_id}")
         if memory_config is not None:
-            self._memory_engine = MemoryEngine.get_mem_engine_instance()
+            self._memory_engine = LongTermMemory.get_mem_engine_instance()
             if self._memory_engine:
                 self._memory_engine.set_group_config(group_id, memory_config)
 

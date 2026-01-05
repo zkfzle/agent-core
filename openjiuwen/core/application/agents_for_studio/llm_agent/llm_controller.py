@@ -28,7 +28,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import WorkflowExecutionState, WorkflowOutput
 from openjiuwen.core.foundation.llm import AIMessage, ToolMessage
-from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.memory.long_term_memory import LongTermMemory
 from openjiuwen.core.foundation.tool import ToolCall
 
 
@@ -1268,7 +1268,7 @@ class LLMController(BaseController):
         else:
             query = ""
         logger.info(f"group_id: {group_id} | user_id: {user_id} | inputs: {inputs}")
-        memory_engine = MemoryEngine.get_mem_engine_instance()
+        memory_engine = LongTermMemory.get_mem_engine_instance()
         if not memory_engine:
             return result
         if user_id and group_id:

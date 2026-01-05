@@ -13,7 +13,7 @@ from pydantic import ValidationError, Field
 
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.common.utils.message_utils import MessageUtils
-from openjiuwen.core.memory.config.config import MemoryConfig
+from openjiuwen.core.memory.config.config import MemoryScopeConfig
 from openjiuwen.core.single_agent.legacy.agent import BaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -37,7 +37,7 @@ class ReActAgentConfig(AgentConfig):
     prompt_template: List[Dict] = Field(default_factory=list)
     constrain: ConstrainConfig = Field(default=ConstrainConfig())
     plugins: List[PluginSchema] = Field(default_factory=list)
-    memory_config: MemoryConfig = Field(default=MemoryConfig())
+    memory_config: MemoryScopeConfig = Field(default=MemoryScopeConfig())
 
 
 class ReActAgent(BaseAgent):

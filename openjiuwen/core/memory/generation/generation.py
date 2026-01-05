@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 from typing import Tuple
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.config.config import MemoryConfig
+from openjiuwen.core.memory.config.config import MemoryScopeConfig
 from openjiuwen.core.memory.generation.categorizer import Categorizer
 from openjiuwen.core.memory.generation.memory_info import ExtractedData
 from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
@@ -28,7 +28,7 @@ class ExtractMemoryParams:
 
 
 async def _generate_extract(
-        config: MemoryConfig,
+        config: MemoryScopeConfig,
         history_messages: list[BaseMessage],
         messages: list[BaseMessage],
         base_chat_model: Tuple[str, BaseModelClient]
@@ -102,7 +102,7 @@ class Generator:
     async def gen_extracted_data(
             self,
             extract_memory_paras: ExtractMemoryParams,
-            config: MemoryConfig,
+            config: MemoryScopeConfig,
     ) -> list[VariableUnit]:
         """Generate extracted variable memory units based on input"""
         extracted_data = await _generate_extract(

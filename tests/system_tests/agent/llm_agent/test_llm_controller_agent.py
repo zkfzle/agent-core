@@ -13,9 +13,9 @@ from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.memory.config.config import SysMemConfig
+from openjiuwen.core.memory.config.config import MemoryEngineConfig
 from openjiuwen.core.memory.embed_models import APIEmbedModel
-from openjiuwen.core.memory.engine.memory_engine import MemoryEngine
+from openjiuwen.core.memory.long_term_memory import LongTermMemory
 from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
 from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
@@ -338,8 +338,8 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         db_store = DefaultDbStore(create_async_engine(
             f"mysql+aiomysql://{db_user}:{db_passport}@{db_host}:{db_port}/{agent_db_name}?charset=utf8mb4"
         ))
-        MemoryEngine.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
-        await MemoryEngine.create_mem_engine_instance(SysMemConfig())
+        LongTermMemory.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
+        await LongTermMemory.create_mem_engine_instance(MemoryEngineConfig())
         print("✅ Memory engine created")
 
     @unittest.skip("require network")
@@ -529,7 +529,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         group_id = "react_agent_123"
         model_config = self._create_model_config()
         prompt_template = self._create_prompt_template()
-        memory_engine = MemoryEngine.get_mem_engine_instance()
+        memory_engine = LongTermMemory.get_mem_engine_instance()
         memory_engine.set_group_llm_config(group_id=group_id, llm_config=model_config)
         llm_agent_config = create_llm_agent_config(
             agent_id="react_agent_123",
@@ -571,7 +571,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         group_id = "react_agent_123"
         model_config = self._create_model_config()
         prompt_template = self._create_prompt_template()
-        memory_engine = MemoryEngine.get_mem_engine_instance()
+        memory_engine = LongTermMemory.get_mem_engine_instance()
         memory_engine.set_group_llm_config(group_id=group_id, llm_config=model_config)
         llm_agent_config = create_llm_agent_config(
             agent_id="react_agent_123",

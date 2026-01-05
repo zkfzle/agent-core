@@ -14,6 +14,11 @@ WORKFLOW_DRAWABLE = "WORKFLOW_DRAWABLE"
 
 
 class WorkflowCard(BaseCard):
+    """
+    Metadata card for a workflow.
+
+    Contains descriptive information and input schema for a workflow.
+    """
     version: str = ''
     inputs_schema: Optional[dict[str, Any] | BaseModel] = None
 
@@ -29,17 +34,40 @@ class WorkflowCard(BaseCard):
         )
 
 
-class WorkflowExecutionState(Enum):
-    COMPLETED = "COMPLETED"
-    INPUT_REQUIRED = "INPUT_REQUIRED"
+class WorkflowChunkType(str, Enum):
+    """
+    Types of data chunks produced during workflow execution.
+
+    Used to categorize different kinds of output streams.
+    """
+    INTERACTION = "interaction"  # Stream from user/agent interactions
+    END_NODE = "end_node_stream"  # Stream from final output node
+    ERROR = "error"  # Stream containing error information
+
+
+class WorkflowExecutionState(str, Enum):
+    """
+    Possible states of workflow execution.
+
+    Indicates the current status or completion state of a workflow run.
+    """
+    COMPLETED = "COMPLETED"  # Workflow completed successfully
+    INPUT_REQUIRED = "INPUT_REQUIRED"  # Workflow is waiting for user input
+    ERROR = "ERROR"  # Workflow encountered an error
+
+
+# Type alias for workflow output chunks
+WorkflowChunk = Union[OutputSchema, CustomSchema, TraceSchema]
 
 
 class WorkflowOutput(BaseModel):
-    result: Any
-    state: WorkflowExecutionState
+    """
+    Final output container for workflow execution.
 
-
-WorkflowChunk = Union[OutputSchema, CustomSchema, TraceSchema]
+    Contains both the result data and the execution state.
+    """
+    result: Any  # Output data, either as list of chunks or dictionary
+    state: WorkflowExecutionState  # Final state of the workflow execution
 
 
 def generate_workflow_key(workflow_id: str, workflow_version: str) -> str:

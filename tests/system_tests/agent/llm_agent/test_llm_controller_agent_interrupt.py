@@ -2,11 +2,10 @@ import os
 import uuid
 import unittest
 from datetime import datetime
-from typing import List
 
 from openjiuwen.core.single_agent import WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, WorkflowCard
+from openjiuwen.core.workflow import WorkflowComponent, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
@@ -33,7 +32,7 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class InteractiveConfirmComponent(ComponentExecutable, ComponentComposable):
+class InteractiveConfirmComponent(WorkflowComponent):
     """
     交互确认组件 - 用于用户确认操作
     """

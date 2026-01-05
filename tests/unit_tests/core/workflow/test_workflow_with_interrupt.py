@@ -23,7 +23,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, TraceSchema, OutputSchema
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow import ComponentAbility
 from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import (
     InteractiveNode4StreamCp,

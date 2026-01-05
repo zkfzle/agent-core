@@ -7,7 +7,7 @@ from asyncio import CancelledError
 from typing import Any, Optional, AsyncIterator, Literal
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow.components.base import ComponentAbility
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -62,7 +62,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         try:
             def set_event():
                 if event is not None:
-                    logger.debug(f"node {self._node_id} with ability {ability.ability_name} set event")
+                    logger.debug(f"node {self._node_id} with ability {ability.name} set event")
                     event.set()
 
             # Simplified strategy pattern using lambda functions wrapping async execution
@@ -108,7 +108,7 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             if strategy:
                 await strategy()
             else:
-                logger.error(f"error ComponentAbility: {ability.ability_name}")
+                logger.error(f"error ComponentAbility: {ability.name}")
             return True
         except GraphInterrupt:
             raise
@@ -118,12 +118,12 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
             else:
                 raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
                                           StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
-                                                                                           ability=ability.ability_name,
+                                                                                           ability=ability.name,
                                                                                            error=e.message))
         except Exception as e:
             raise JiuWenBaseException(StatusCode.COMPONENT_EXECUTE_ERROR.code,
                                       StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id=self._node_id,
-                                                                                       ability=ability.ability_name,
+                                                                                       ability=ability.name,
                                                                                        error=e))
         finally:
             if event and not event.is_set():

@@ -7,11 +7,11 @@ from typing import Any, Union, List, Dict, AsyncIterator
 import pytest
 from unittest.mock import Mock
 
-from openjiuwen.core.common.constants.enums import ControllerType, ComponentAbility
+from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.workflow import End, WorkflowCard
+from openjiuwen.core.workflow import ComponentAbility, End, WorkflowCard
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.foundation.llm import AIMessage, BaseMessage

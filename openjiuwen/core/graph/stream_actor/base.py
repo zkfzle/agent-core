@@ -13,7 +13,7 @@ from typing import Callable
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.utils.dict_utils import extract_leaf_nodes, format_path, rebuild_dict
 from openjiuwen.core.session import EndFrame, get_value_by_nested_path, extract_origin_key
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow.components.base import ComponentAbility
 
 
 class StreamConsumer(ABC):
@@ -94,7 +94,7 @@ class StreamActor:
     async def generator(self, ability: ComponentAbility, schema: dict,
                         stream_callback: Callable[[dict], Awaitable[None]] = None) -> dict:
         processor = self._processors[ability]
-        logger.debug(f"processor [{processor.node_id}] generate message for ability: [{ability.ability_name}]")
+        logger.debug(f"processor [{processor.node_id}] generate message for ability: [{ability.name}]")
         return processor.generator(schema, stream_callback)
 
     def _error_callback(self, error):

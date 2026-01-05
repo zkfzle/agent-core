@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID, FINISH_INDEX
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import ComponentComposable, ComponentExecutable
+from openjiuwen.core.workflow.components.component import ComponentComposable, WorkflowComponent
 from openjiuwen.core.workflow.components.flow_related.loop.break_comp import BreakComponent, LoopController
 from openjiuwen.core.workflow.components.condition.array import ArrayConditionInSession
 from openjiuwen.core.workflow.components.condition.condition import Condition, AlwaysTrue, FuncCondition
@@ -31,7 +31,7 @@ from openjiuwen.core.session import BaseSession, Session
 from openjiuwen.core.session import NodeSession, SubWorkflowSession
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.workflow._workflow import BaseWorkflow
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
 from openjiuwen.core.graph.pregel import GraphInterrupt, START, END
 
@@ -318,7 +318,7 @@ class LoopInput(BaseModel):
     intermediate_var: Dict[str, Union[str, Any]] = Field(default_factory=dict)
 
 
-class LoopComponent(ComponentComposable, ComponentExecutable):
+class LoopComponent(WorkflowComponent):
     def __init__(self, loop_group: LoopGroup, output_schema: dict):
         super().__init__()
         self._loop_group = loop_group

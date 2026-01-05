@@ -5,7 +5,7 @@ from typing import Callable, Union, Hashable, Any
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import ComponentExecutable, ComponentComposable
+from openjiuwen.core.workflow.components.component import WorkflowComponent
 from openjiuwen.core.workflow.components.branch_router import BranchRouter
 from openjiuwen.core.workflow.components.condition.condition import Condition
 from openjiuwen.core.context_engine import ModelContext
@@ -14,7 +14,7 @@ from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 
 
-class BranchComponent(ComponentComposable, ComponentExecutable):
+class BranchComponent(WorkflowComponent):
 
     def __init__(self):
         super().__init__()

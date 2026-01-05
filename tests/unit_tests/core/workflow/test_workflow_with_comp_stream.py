@@ -8,14 +8,13 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import ComponentComposable, Input, Output, WorkflowCard
+from openjiuwen.core.workflow import Input, Output, WorkflowCard
 from openjiuwen.core.workflow import End, EndConfig
 from openjiuwen.core.workflow import Start
-from openjiuwen.core.workflow.components.base import WorkflowComponent
+from openjiuwen.core.workflow import WorkflowComponent
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable
-from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import BaseSession, Session
@@ -23,7 +22,7 @@ from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowChunk
 from openjiuwen.core.workflow import WorkflowInputsSchema
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow import ComponentAbility
 from tests.unit_tests.core.workflow.mock_nodes import ComputeComponent2, DualAbilityWithErrorComponent
 
 pytestmark = pytest.mark.asyncio
@@ -31,7 +30,7 @@ pytestmark = pytest.mark.asyncio
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
 
-class MockStreamNode(ComponentExecutable, ComponentComposable):
+class MockStreamNode(WorkflowComponent):
     def __init__(self):
         super().__init__()
 
@@ -74,7 +73,7 @@ async def test_no_stream_called():
     assert error.value.error_code == StatusCode.WORKFLOW_STREAM_TIMEOUT.code
 
 
-class Producer(ComponentExecutable, ComponentComposable):
+class Producer(WorkflowComponent):
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return {"output": inputs.get("array")}
 
@@ -402,7 +401,7 @@ async def test_stream_component_in_sub_workflow_with_substream_template():
     assert expect_chunks == chunks
 
 
-class Interaction(ComponentComposable, ComponentExecutable):
+class Interaction(WorkflowComponent):
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         result = await session.interact("please enter any input")
         return {"output": result}
@@ -456,7 +455,7 @@ async def test_interaction_with_stream():
 async def test_interaction_with_exception():
     run_times = 0
 
-    class ExceptionComp(ComponentComposable, ComponentExecutable):
+    class ExceptionComp(WorkflowComponent):
         async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
             if run_times == 0:
                 raise Exception("first time")
@@ -509,7 +508,7 @@ async def test_interaction_with_exception():
     assert res.result == expect_result
 
 
-class StreamNodeWithException(ComponentComposable, ComponentExecutable):
+class StreamNodeWithException(WorkflowComponent):
     def __init__(self):
         super().__init__()
         self._raise_error: bool = True

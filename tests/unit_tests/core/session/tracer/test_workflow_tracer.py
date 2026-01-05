@@ -8,9 +8,10 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, Input, Output, WorkflowCard
+from openjiuwen.core.workflow import Input, Output, WorkflowCard
 from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import WorkflowComponent
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.workflow import LoopGroup
@@ -19,7 +20,7 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow import ComponentAbility
 from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
 
@@ -57,7 +58,7 @@ def record_tracer_info(tracer_chunks, file_path):
         print(f"调测信息保存失败：{e}")
 
 
-class Producer(ComponentExecutable, ComponentComposable):
+class Producer(WorkflowComponent):
     async def stream(self, inputs: Input, session: Session, context: ModelContext) -> AsyncIterator[Output]:
         logger.debug(f"producer inputs: {inputs}")
         for v in inputs.get("array"):
@@ -65,7 +66,7 @@ class Producer(ComponentExecutable, ComponentComposable):
             yield {"output": v}
 
 
-class AnyTypeReturnNode(ComponentExecutable, ComponentComposable):
+class AnyTypeReturnNode(WorkflowComponent):
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
         return inputs.get("data")
 

@@ -20,7 +20,7 @@ from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWo
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow import ComponentAbility
 from openjiuwen.core.graph.visualization.drawable import Drawable
 from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, MockEndNode, MockStartNode, CommonNode, \

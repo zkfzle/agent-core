@@ -12,7 +12,7 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.common.utils.dict_utils import extract_leaf_nodes, format_path
-from openjiuwen.core.workflow.components.base import ComponentExecutable, ComponentComposable
+from openjiuwen.core.workflow.components.component import WorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, \
@@ -27,7 +27,7 @@ class EndConfig(TypedDict):
     responseTemplate: str
 
 
-class End(ComponentExecutable, ComponentComposable):
+class End(WorkflowComponent):
     def __init__(self, conf: Union[EndConfig, dict] = None):
         super().__init__()
         self.conf = conf

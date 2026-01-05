@@ -9,11 +9,11 @@
 import os
 import uuid
 
-from openjiuwen.core.workflow import ComponentComposable, WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
-from openjiuwen.core.workflow import ComponentExecutable
 from openjiuwen.core.session import Session
+from openjiuwen.core.workflow import WorkflowComponent
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"
@@ -53,7 +53,7 @@ def build_current_date():
     return current_datetime.strftime("%Y-%m-%d")
 
 
-class DelayedComponent(ComponentExecutable, ComponentComposable):
+class DelayedComponent(WorkflowComponent):
     """
     带延迟的组件，用于模拟慢速执行场景，测试实时打断功能。
     """

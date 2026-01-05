@@ -14,7 +14,7 @@ from typing import Self, Union
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow import WorkflowCard
-from openjiuwen.core.workflow.components.base import ComponentComposable
+from openjiuwen.core.workflow.components.component import ComponentComposable
 from openjiuwen.core.workflow.components.branch_router import BranchRouter, WORKFLOW_DRAWABLE
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Graph, Router, ExecutableGraph
@@ -27,7 +27,7 @@ from openjiuwen.core.session import RouterSession
 from openjiuwen.core.graph.stream_actor.base import StreamGraph
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 from openjiuwen.core.common.schema.workflow_spec import CompIOConfig, NodeSpec
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow.components.base import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
 
 @dataclass

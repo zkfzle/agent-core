@@ -15,7 +15,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.workflow.base import WorkflowCard, WorkflowChunk, WorkflowExecutionState, \
     WorkflowOutput
 from openjiuwen.core.workflow._workflow import BaseWorkflow
-from openjiuwen.core.workflow.components.base import ComponentComposable
+from openjiuwen.core.workflow.components.component import ComponentComposable
 from openjiuwen.core.workflow.components.flow_related.end_comp import End
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Router, INPUTS_KEY, CONFIG_KEY
@@ -34,12 +34,26 @@ from openjiuwen.core.session.tracer import Tracer
 from openjiuwen.core.session.tracer import TracerWorkflowUtils
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig
-from openjiuwen.core.common.constants.enums import ComponentAbility
+from openjiuwen.core.workflow.components.base import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
 
 
 class Workflow:
+    """
+    A workflow represents a directed graph of components that process data.
+
+    The workflow orchestrates the execution of connected components, managing
+    data flow, error handling, and streaming between components.
+    """
+
     def __init__(self, card: WorkflowCard = None, **kwargs):
+        """
+        Initialize a new workflow.
+
+        Args:
+            card: Metadata describing the workflow (name, description, etc.)
+            kwargs: workflow configs
+        """
         self._card = card if card else WorkflowCard(id=uuid.uuid4().hex)
         self._internal = BaseWorkflow(WorkflowConfig(card=self._card, **kwargs), PregelGraph())
         self._end_comp_id: str = ""
@@ -47,6 +61,7 @@ class Workflow:
 
     @property
     def card(self):
+        """Get the workflow metadata card."""
         return self._card
 
     def set_start_comp(
@@ -56,6 +71,20 @@ class Workflow:
             inputs_schema: dict | Transformer = None,
             outputs_schema: dict | Transformer = None,
     ) -> Self:
+        """
+        Set the starting component of the workflow.
+
+        The start component is the entry point that receives initial inputs.
+
+        Args:
+            start_comp_id: Unique identifier for the start component
+            component: The component instance to use as start
+            inputs_schema: Schema defining expected input structure
+            outputs_schema: Schema defining output structure
+
+        Returns:
+            Self for method chaining
+        """
         self._internal.add_workflow_comp(start_comp_id,
                                          component,
                                          wait_for_all=False,
@@ -76,6 +105,22 @@ class Workflow:
             stream_outputs_schema: dict | Transformer = None,
             comp_ability: list[ComponentAbility] = None
     ) -> Self:
+        """
+        Add a component to the workflow graph.
+
+        Args:
+            comp_id: Unique identifier for the component
+            workflow_comp: The component instance to add
+            wait_for_all: If True, wait for all predecessor outputs before executing
+            inputs_schema: Schema defining expected input structure
+            outputs_schema: Schema defining output structure
+            stream_inputs_schema: Schema for streaming inputs
+            stream_outputs_schema: Schema for streaming outputs
+            comp_ability: List of component capabilities (streaming, batching, etc.)
+
+        Returns:
+            Self for method chaining
+        """
         self._internal.add_workflow_comp(comp_id,
                                          workflow_comp,
                                          wait_for_all=wait_for_all,
@@ -96,6 +141,23 @@ class Workflow:
             stream_outputs_schema: dict | Transformer = None,
             response_mode: str = None
     ) -> Self:
+        """
+        Set the ending component of the workflow.
+
+        The end component produces the final output of the workflow.
+
+        Args:
+            end_comp_id: Unique identifier for the end component
+            component: The component instance to use as end
+            inputs_schema: Schema defining expected input structure
+            outputs_schema: Schema defining output structure
+            stream_inputs_schema: Schema for streaming inputs
+            stream_outputs_schema: Schema for streaming outputs
+            response_mode: How the component should respond (e.g., "stream", "batch")
+
+        Returns:
+            Self for method chaining
+        """
         comp_ability = []
         if response_mode is not None and "streaming" == response_mode:
             self._is_streaming = True
@@ -130,14 +192,51 @@ class Workflow:
         return self
 
     def add_connection(self, src_comp_id: str | list[str], target_comp_id: str) -> Self:
+        """
+        Add a data connection between components.
+
+        Creates a directed edge for regular (non-streaming) data flow.
+
+        Args:
+            src_comp_id: Source component ID or set of IDs
+            target_comp_id: Target component ID
+
+        Returns:
+            Self for method chaining
+        """
         self._internal.add_connection(src_comp_id, target_comp_id)
         return self
 
     def add_stream_connection(self, src_comp_id: str, target_comp_id: str) -> Self:
+        """
+        Add a streaming connection between components.
+
+        Creates a directed edge for streaming data flow.
+
+        Args:
+            src_comp_id: Source component ID
+            target_comp_id: Target component ID
+
+        Returns:
+            Self for method chaining
+        """
         self._internal.add_stream_connection(src_comp_id, target_comp_id)
         return self
 
     def add_conditional_connection(self, src_comp_id: str, router: Router) -> Self:
+        """
+        Add a conditional connection with routing logic.
+
+        Creates a connection where the target is determined dynamically
+        based on the router's logic.
+
+        Args:
+            src_comp_id: Source component ID
+            router: Router instance that decides the target based on data
+
+        Returns:
+            Self for method chaining
+        """
         self._internal.add_conditional_connection(src_comp_id, router)
         return self
 
@@ -148,6 +247,20 @@ class Workflow:
             context: ModelContext = None,
             **kwargs
     ) -> WorkflowOutput:
+        """
+        Execute the workflow synchronously.
+
+        Runs the entire workflow and returns the final output.
+
+        Args:
+            inputs: Input data for the workflow
+            session: Workflow session for state management
+            context: context engine
+            **kwargs: Additional execution parameters,
+
+        Returns:
+            WorkflowOutput containing results and metadata
+        """
         if kwargs.get("is_sub"):
             return await self._sub_invoke(inputs, session, context, **kwargs)
 
@@ -185,6 +298,21 @@ class Workflow:
             stream_modes: list[StreamMode] = None,
             **kwargs
     ) -> AsyncIterator[WorkflowChunk]:
+        """
+        Execute the workflow with streaming output.
+
+        Returns an async iterator that yields workflow chunks as they become available.
+
+        Args:
+            inputs: Input data for the workflow
+            session: Workflow session for state management
+            stream_modes: Type(s) of streaming (e.g., ["output", "logs"])
+            context: context engine
+            **kwargs: Additional execution parameters
+
+        Yields:
+            WorkflowChunk: Stream chunks containing partial results, logs, or events
+        """
         if kwargs.get("is_sub"):
             async for chunk in self._sub_stream(inputs, session, context, **kwargs):
                 yield chunk
@@ -252,6 +380,22 @@ class Workflow:
             enable_animation: bool = False,  # only works for "mermaid" format
             **kwargs
     ) -> str | bytes:
+        """
+        Generate a Mermaid diagram of the workflow.
+
+        Visualizes the workflow structure as a flowchart.
+
+        Args:
+            title: Diagram title
+            output_format: Output format ("mermaid", "png", or "svg")
+            expand_subgraph: Level of subgraph expansion (False/True or integer depth)
+            enable_animation: Enable animation in Mermaid diagram (Mermaid format only)
+            **kwargs: Additional rendering options
+
+        Returns:
+            str: Mermaid syntax when output_format="mermaid"
+            bytes: Image binary data when output_format="png" or "svg"
+        """
         if output_format == "png":
             return self._internal.to_mermaid_png(title, expand_subgraph)
         if output_format == "svg":

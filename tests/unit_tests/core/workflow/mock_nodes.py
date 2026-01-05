@@ -2,7 +2,6 @@ import asyncio
 from typing import Any, AsyncIterator
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import ComponentExecutable, ComponentComposable
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ModelContext
@@ -11,9 +10,10 @@ from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import Session, is_ref_path, extract_origin_key
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import Workflow
+from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, WorkflowComponent
 
 
-class MockNodeBase(ComponentExecutable, ComponentComposable):
+class MockNodeBase(WorkflowComponent):
     def __init__(self, node_id: str = ''):
         super().__init__()
         self.node_id = node_id
@@ -123,7 +123,7 @@ class Node4Cp(MockNodeBase):
         return inputs
 
 
-class AddTenNode4Cp(ComponentExecutable, ComponentComposable):
+class AddTenNode4Cp(WorkflowComponent):
     raise_exception = True
 
     def __init__(self, node_id: str):
@@ -261,7 +261,7 @@ class MultiCollectCompNode(MockNodeBase):
         return result
 
 
-class CommonNode(ComponentExecutable, ComponentComposable):
+class CommonNode(WorkflowComponent):
 
     def __init__(self, node_id: str):
         super().__init__()
@@ -274,7 +274,7 @@ class CommonNode(ComponentExecutable, ComponentComposable):
         yield await self.invoke(inputs, session, context)
 
 
-class AddTenNode(ComponentExecutable, ComponentComposable):
+class AddTenNode(WorkflowComponent):
 
     def __init__(self, node_id: str, check_map: dict = None):
         super().__init__()
@@ -295,7 +295,7 @@ class AddTenNode(ComponentExecutable, ComponentComposable):
         return {"result": inputs["source"] + 10}
 
 
-class MockStreamNode(ComponentExecutable, ComponentComposable):
+class MockStreamNode(WorkflowComponent):
     def __init__(self):
         super().__init__()
 

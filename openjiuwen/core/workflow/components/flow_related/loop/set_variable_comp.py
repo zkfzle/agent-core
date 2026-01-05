@@ -5,14 +5,14 @@ from typing import Any
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow.components.base import ComponentComposable, ComponentExecutable
+from openjiuwen.core.workflow.components.component import WorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session, NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
 from openjiuwen.core.session import NodeSession
 
 
-class SetVariableComponent(ComponentComposable, ComponentExecutable):
+class SetVariableComponent(WorkflowComponent):
 
     def __init__(self, variable_mapping: dict[str, Any]):
         super().__init__()

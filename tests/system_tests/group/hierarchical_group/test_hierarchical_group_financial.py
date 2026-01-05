@@ -23,7 +23,7 @@ from examples.groups.hierarchical_group import (
 from examples.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.controller import Event
 from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, WorkflowCard
+from openjiuwen.core.workflow import WorkflowComponent, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import (
@@ -1671,7 +1671,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
 # ============ 自定义Interactive组件 ============
 
 
-class InteractiveConfirmComponent(ComponentExecutable, ComponentComposable):
+class InteractiveConfirmComponent(WorkflowComponent):
     """
     交互确认组件 - 用于用户确认操作
     """
@@ -1686,7 +1686,7 @@ class InteractiveConfirmComponent(ComponentExecutable, ComponentComposable):
         return {"confirm_result": confirm}
 
 
-class InteractivePasswordComponent(ComponentExecutable, ComponentComposable):
+class InteractivePasswordComponent(WorkflowComponent):
     """
     交互密码输入组件
     """

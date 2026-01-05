@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.common.schema.workflow_spec import WorkflowSpec
 from openjiuwen.core.workflow import WorkflowCard
 
-
+# todo: Workflow input schema will be deleted
 class WorkflowInputsSchema(BaseModel):
     type: str = Field(default="")
     properties: Dict[str, Any] = Field(default_factory=dict)

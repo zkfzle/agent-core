@@ -7,7 +7,8 @@ from openjiuwen.core.workflow.base import (
     WorkflowOutput,
     WorkflowChunk,
     generate_workflow_key,
-    WorkflowCard
+    WorkflowCard,
+
 )
 from openjiuwen.core.workflow.workflow import Workflow
 
@@ -16,11 +17,19 @@ from openjiuwen.core.workflow.workflow_config import (
     WorkflowConfig,
 )
 
-from openjiuwen.core.workflow.components.base import (
+from openjiuwen.core.workflow.components.component import (
+    ComponentExecutable,
     ComponentComposable,
+    WorkflowComponent,
+    Input,
+    Output,
+)
+
+from openjiuwen.core.workflow.components.base import (
+    ComponentAbility,
     WorkflowComponentMetadata,
     ComponentConfig,
-    ComponentState, ComponentExecutable, Input, Output,
+    ComponentState,
 )
 
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
@@ -48,31 +57,28 @@ from openjiuwen.core.workflow.components.condition.array import ArrayCondition
 from openjiuwen.core.workflow.components.condition.number import NumberCondition
 
 
+
 _WORKFLOW_CLASSES = [
     "Workflow",
-    "WorkflowConfig",
-    "ComponentExecutable",
-    "WorkflowCard"
-]
-
-_WORKFLOW_METHODS = [
-    "generate_workflow_key"
-]
-
-_WORKFLOW_INPUTS_AND_OUTPUTS_CLASSES = [
-    "Input",
-    "Output",
+    "WorkflowCard",
     "WorkflowInputsSchema",
     "WorkflowOutput",
     "WorkflowChunk",
     "WorkflowExecutionState",
 ]
 
+_WORKFLOW_METHODS = [
+    "generate_workflow_key"
+]
+
 _COMPONENTS_CLASSES = [
     "WorkflowComponent",
+    "ComponentExecutable",
+    "ComponentComposable",
     "WorkflowComponentMetadata",
     "ComponentConfig",
     "ComponentState",
+    "ComponentAbility"
 ]
 
 _LLM_RELATED_COMPONENTS = [
@@ -117,7 +123,6 @@ _CONDITION_CLASSES = [
 
 __all__ = (
         _WORKFLOW_CLASSES +
-        _WORKFLOW_INPUTS_AND_OUTPUTS_CLASSES +
         _COMPONENTS_CLASSES +
         _LLM_RELATED_COMPONENTS +
         _FLOW_RELATED_COMPONENTS +

@@ -8,7 +8,7 @@ LONG_TERM_MEMORY_EXTRACTOR_PROMPT = """
 # 提取记忆内容{USER_PROFILE_PROMPT}{SEMANTIC_MEMORY_PROMPT}{EPISODIC_MEMORY_PROMPT}
 
 # 输入
-`current_messages`为当前最新的用户和AI的对话消息，historical_messages为历史对话消息。这两类消息会在后续的输入中给出
+`current_messages`为当前最新的用户和AI的对话消息，historical_messages为历史对话消息，`current_timestamp`为当前对话消息发生时间戳。这三类消息会在后续的输入中给出
 
 # 输出
 1.   不要使用示例的内容作为输出。

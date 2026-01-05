@@ -23,7 +23,7 @@ from examples.groups.hierarchical_group import (
 from examples.groups.hierarchical_group.agents.main_controller import HierarchicalMainController
 from openjiuwen.core.controller import Event
 from openjiuwen.core.common.constants import constant as const
-from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable
+from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import (
@@ -39,7 +39,6 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 
 # 模型配置
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -108,15 +107,13 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             Workflow: 包含 start -> questioner -> end 的工作流
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
                 description=workflow_desc,
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
 
         # 创建组件
         start = self._create_start_component()
@@ -194,15 +191,13 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             Workflow: 包含 start -> questioner -> end 的工作流
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
                 description=workflow_desc,
             )
-        )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
 
         # 创建组件
         start = self._create_start_component()
@@ -1534,15 +1529,13 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
                      start -> interactive \
                               questioner  -> end
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
                 description=workflow_desc,
             )
-        )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
 
         # 创建组件
         start = self._create_start_component()
@@ -1614,15 +1607,14 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             Workflow: 包含 start -> interactive1 -> interactive2 -> end 的工作流
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
                 description=workflow_desc,
-            )
+
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
 
         # 创建组件
         start = self._create_start_component()

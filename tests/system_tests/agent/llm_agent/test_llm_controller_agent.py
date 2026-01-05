@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import End, WorkflowCard
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
 from openjiuwen.core.workflow import Start
@@ -25,7 +25,7 @@ from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import WorkflowInputsSchema
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -249,14 +249,12 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         id = "weather_generation_text_workflow"
         version = "1.0"
         name = "weather_generation_text"
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=name,
                 id=id,
                 version=version,
-                description="根据天气生成对应文本"
-            ),
-            workflow_inputs_schema=WorkflowInputsSchema(
+                description="根据天气生成对应文本",
+                inputs_schema=WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
@@ -268,7 +266,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
                 required=['query']
             )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
         flow.set_start_comp("start", start, inputs_schema={"query": "${query}"})
         flow.add_workflow_comp("intent", intent, inputs_schema={"query": "${start.query}"})
         flow.add_workflow_comp("llm_1", llm_1, inputs_schema={"query": "${start.query}"})

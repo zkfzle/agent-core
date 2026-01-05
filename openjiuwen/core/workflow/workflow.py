@@ -3,6 +3,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import asyncio
 import json
+import uuid
 
 from collections import OrderedDict
 from typing import Self, Union, AsyncIterator, List, Tuple
@@ -11,7 +12,8 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import WorkflowCard, WorkflowChunk, WorkflowExecutionState, WorkflowOutput
+from openjiuwen.core.workflow.base import WorkflowCard, WorkflowChunk, WorkflowExecutionState, \
+    WorkflowOutput
 from openjiuwen.core.workflow._workflow import BaseWorkflow
 from openjiuwen.core.workflow.components.base import ComponentComposable
 from openjiuwen.core.workflow.components.flow_related.end_comp import End
@@ -37,19 +39,15 @@ from openjiuwen.core.graph.graph import PregelGraph
 
 
 class Workflow:
-    def __init__(self, workflow_config: WorkflowConfig = None, card: WorkflowCard = None):
-        self._internal = BaseWorkflow(workflow_config, PregelGraph())
-        self._card = card
+    def __init__(self, card: WorkflowCard = None, **kwargs):
+        self._card = card if card else WorkflowCard(id=uuid.uuid4().hex)
+        self._internal = BaseWorkflow(WorkflowConfig(card=self._card, **kwargs), PregelGraph())
         self._end_comp_id: str = ""
         self._is_streaming = False
-        self._tool_info = None
 
     @property
     def card(self):
         return self._card
-
-    def config(self):
-        return self._internal._workflow_config
 
     def set_start_comp(
             self,
@@ -355,7 +353,7 @@ class Workflow:
 
     def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode]):
         if isinstance(session, WorkflowSession):
-            session.set_workflow_id(self._internal._workflow_config.metadata.id)
+            session.set_workflow_id(self._card.id)
         self._internal._auto_complete_abilities()
         mq_manager = ActorManager(self._internal._workflow_config.spec, self._internal._stream_actor, sub_graph=False,
                                   session=session)
@@ -381,27 +379,13 @@ class Workflow:
                                      session=session)
         sub_workflow_session = SubWorkflowSession(
             session,
-            workflow_id=self._internal._workflow_config.metadata.id,
+            workflow_id=self._card.id,
             actor_manager=actor_manager
         )
         return actor_manager, sub_workflow_session
 
     def get_tool_info(self) -> ToolInfo:
-        if self._tool_info:
-            return self._tool_info
-        workflow_config = self._internal._workflow_config
-        inputs_schema = workflow_config.workflow_inputs_schema
-        parameters = {
-            "type": inputs_schema.type,
-            "properties": inputs_schema.properties,
-            "required": inputs_schema.required,
-        }
-        self._tool_info = ToolInfo(
-            name=workflow_config.metadata.name,
-            description=workflow_config.metadata.description,
-            parameters=parameters,
-        )
-        return self._tool_info
+        return self.card.tool_info()
 
     @staticmethod
     def _add_messages_to_context(inputs: Input, results: Union[dict, List[OutputSchema]], context):

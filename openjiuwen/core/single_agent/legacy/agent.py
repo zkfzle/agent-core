@@ -22,7 +22,7 @@ from openjiuwen.core.session import (
 from openjiuwen.core.session.stream import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.workflow import Workflow, generate_workflow_key, WorkflowInputsSchema, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow, generate_workflow_key, WorkflowInputsSchema
 
 if TYPE_CHECKING:
     pass
@@ -103,7 +103,6 @@ class WorkflowFactory:
         self.name = workflow_name
         self.input_schema = input_schema if input_schema else {}
         self.workflow_description = workflow_description
-        self._metadata = WorkflowMetadata(id=workflow_id, version=workflow_version, name=workflow_name)
         if self.name and self.input_schema:
             workflow_input_schema = self.input_schema if isinstance(self.input_schema,
                                                                     WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
@@ -395,11 +394,11 @@ class BaseAgent(ABC):
             else:
                 # Workflow instance: use directly
                 workflow = item
-                workflow_config = workflow.config()
-                workflow_id = workflow_config.metadata.id
-                workflow_version = workflow_config.metadata.version
-                workflow_name = workflow_config.metadata.name
-                workflow_description = workflow_config.metadata.description
+                workflow_card = workflow.card
+                workflow_id = workflow_card.id
+                workflow_version = workflow_card.version
+                workflow_name = workflow_card.name
+                workflow_description = workflow_card.description
                 provider = None
                 is_provider = False
 

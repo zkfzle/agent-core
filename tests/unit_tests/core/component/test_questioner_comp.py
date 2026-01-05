@@ -22,7 +22,6 @@ from openjiuwen.core.session.stream import TraceSchema, OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.workflow import WorkflowConfig
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -357,7 +356,7 @@ class TestQuestionerStream:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_stream_start_questioner_end_with_interaction(self):
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start_component = Start(
             {
@@ -421,7 +420,7 @@ class TestQuestionerStream:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_invoke_start_questioner_end_with_interaction(self):
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start_component = Start(
             {

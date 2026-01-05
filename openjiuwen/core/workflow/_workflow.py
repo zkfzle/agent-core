@@ -6,12 +6,14 @@ import inspect
 import json
 import os
 import re
+import uuid
 from dataclasses import dataclass
 from enum import Enum
 from typing import Self, Union
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.workflow import WorkflowCard
 from openjiuwen.core.workflow.components.base import ComponentComposable
 from openjiuwen.core.workflow.components.branch_router import BranchRouter, WORKFLOW_DRAWABLE
 from openjiuwen.core.context_engine import ModelContext
@@ -23,7 +25,7 @@ from openjiuwen.core.session import WorkflowSession, SubWorkflowSession
 from openjiuwen.core.session import RouterSession
 
 from openjiuwen.core.graph.stream_actor.base import StreamGraph
-from openjiuwen.core.workflow.workflow_config import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow.workflow_config import WorkflowConfig
 from openjiuwen.core.common.schema.workflow_spec import CompIOConfig, NodeSpec
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
@@ -53,9 +55,7 @@ class ConnectionType(Enum):
 class BaseWorkflow:
     def __init__(self, workflow_config: WorkflowConfig = None, new_graph: Graph = None):
         self._graph = new_graph if new_graph else PregelGraph()
-        self._workflow_config = workflow_config if workflow_config else WorkflowConfig()
-        if not self._workflow_config.metadata:
-            self._workflow_config.metadata = WorkflowMetadata()
+        self._workflow_config = workflow_config if workflow_config else WorkflowConfig(card=WorkflowCard(id=uuid.uuid4().hex))
         self._workflow_spec = self._workflow_config.spec
         self._stream_actor = StreamGraph()
         self._session = ProxySession()
@@ -205,8 +205,8 @@ class BaseWorkflow:
 
     def compile(self, session: BaseSession, context: ModelContext = None) -> ExecutableGraph:
         if isinstance(session, WorkflowSession):
-            session.set_workflow_id(self._workflow_config.metadata.id)
-        session.config().add_workflow_config(self._workflow_config.metadata.id, self._workflow_config)
+            session.set_workflow_id(self._workflow_config.card.id)
+        session.config().add_workflow_config(self._workflow_config.card.id, self._workflow_config)
 
         if isinstance(session, SubWorkflowSession):
             main_workflow_config = session.config().get_workflow_config(

@@ -12,7 +12,6 @@ from openjiuwen.core.workflow.base import (
 from openjiuwen.core.workflow.workflow import Workflow
 
 from openjiuwen.core.workflow.workflow_config import (
-    WorkflowMetadata,
     WorkflowInputsSchema,
     WorkflowConfig,
 )
@@ -52,7 +51,6 @@ from openjiuwen.core.workflow.components.condition.number import NumberCondition
 _WORKFLOW_CLASSES = [
     "Workflow",
     "WorkflowConfig",
-    "WorkflowMetadata",
     "ComponentExecutable",
     "WorkflowCard"
 ]

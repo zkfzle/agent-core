@@ -24,9 +24,9 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponent, ToolComponentConfig
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
+from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import WorkflowInputsSchema
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import generate_workflow_key
@@ -243,15 +243,13 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         id = "test_weather_agent"
         version = "1.0"
         name = "weather"
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=name,
                 id=id,
                 version=version,
-            )
         )
         flow = Workflow(
-            workflow_config=workflow_config
+            card=card
         )
         context = TaskSession(trace_id="test")
 
@@ -309,15 +307,14 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         workflow_id = "test_interrupt_workflow"
         version = "1.0"
         name = "interrupt_test"
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=name,
                 id=workflow_id,
                 version=version,
             )
-        )
+
         flow = Workflow(
-            workflow_config=workflow_config
+            card=card
         )
         context = TaskSession(trace_id="test")
 
@@ -359,14 +356,12 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         workflow_id = "test_multiple_interrupt_workflow"
         version = "1.0"
         name = "multiple_interrupt_test"
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=name,
                 id=workflow_id,
                 version=version,
                 description="包含两个并行中断节点的测试工作流",
-            ),
-            workflow_inputs_schema=WorkflowInputsSchema(
+                inputs_schema=WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
@@ -378,7 +373,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 required=['query']
             )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
         context = TaskSession(trace_id="test")
 
         # 2. 实例化各组件
@@ -483,7 +478,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
         _, workflow = self.build_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置30秒超时）
@@ -537,7 +532,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self.build_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
@@ -621,7 +616,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self.build_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
@@ -705,7 +700,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("=== 测试 WorkflowAgent.invoke 方法 ===")
         _, workflow = self.build_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置30秒超时）
@@ -759,7 +754,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         print("=== 测试 WorkflowAgent.stream 方法 ===")
         _, workflow = self.build_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)), workflow)
         agent = self._create_agent(workflow)
 
         # 第一次调用 - 应该触发中断（设置50秒超时）
@@ -1077,7 +1072,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 构建包含两个并行中断节点的工作流
         _, workflow = self.build_multiple_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)),
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)),
             workflow
         )
         agent = self._create_agent(workflow)
@@ -1222,7 +1217,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         # 构建包含两个并行中断节点的工作流
         _, workflow = self.build_multiple_interrupt_workflow()
         Runner.resource_mgr.add_workflow(
-            WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)),
+            WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)),
             workflow
         )
         agent = self._create_agent(workflow)

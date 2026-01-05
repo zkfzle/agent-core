@@ -9,7 +9,7 @@ import pytest
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import BranchComponent
+from openjiuwen.core.workflow import BranchComponent, WorkflowCard
 from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
@@ -23,9 +23,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, TraceSchema, OutputSchema
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.workflow import WorkflowConfig
 from openjiuwen.core.common.constants.enums import ComponentAbility
-from openjiuwen.core.workflow import WorkflowMetadata
 from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import (
     InteractiveNode4StreamCp,
@@ -76,7 +74,7 @@ async def test_simple_workflow():
 def create_simple_workflow():
     mock_start = MockStartNode4Cp("start")
     mock_node = Node4Cp("a")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="simple_workflow")))
+    flow = Workflow(card=WorkflowCard(id="simple_workflow"))
     flow.set_start_comp("start", mock_start,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -101,7 +99,7 @@ async def test_workflow_comp():
     """
     mock_start = MockStartNode4Cp("a1")
     mock_node = Node4Cp("a2")
-    subflow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_workflow_comp")))
+    subflow = Workflow(card=WorkflowCard(id="test_workflow_comp"))
     subflow.set_start_comp("a1", mock_start,
                            inputs_schema={
                                "a": "${a}",
@@ -154,7 +152,7 @@ async def test_workflow_comp():
 
 
 async def test_workflow_with_loop():
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_workflow_with_loop")))
+    flow = Workflow(card=WorkflowCard(id="test_workflow_with_loop"))
     flow.set_start_comp("s", MockStartNode("s"))
     flow.set_end_comp("e", MockEndNode("e"),
                       inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
@@ -232,7 +230,7 @@ async def test_workflow_with_loop():
 
 
 async def test_workflow_with_loop_interactive():
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_workflow_with_loop_interactive")))
+    flow = Workflow(card=WorkflowCard(id="test_workflow_with_loop_interactive"))
     flow.set_start_comp("s", MockStartNode("s"))
     flow.set_end_comp("e", MockEndNode("e"),
                       inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
@@ -379,7 +377,7 @@ async def test_workflow_with_loop_interactive():
                                  state=WorkflowExecutionState.COMPLETED)
 
 async def test_workflow_with_loop_comp_interactive():
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_workflow_with_loop_interactive")))
+    flow = Workflow(card=WorkflowCard(id="test_workflow_with_loop_interactive"))
     flow.set_start_comp("s", MockStartNode("s"))
     flow.set_end_comp("e", MockEndNode("e"),
                       inputs_schema={"array_result": "${b.array_result}", "user_var": "${b.user_var}"})
@@ -533,7 +531,7 @@ async def test_simple_interactive_workflow():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -575,7 +573,7 @@ async def test_simple_stream_interactive_workflow():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_stream_interactive_workflow")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_stream_interactive_workflow"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -655,7 +653,7 @@ async def test_simple_concurrent_interactive_workflow():
                  ->b->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_concurrent_interactive_workflow")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_concurrent_interactive_workflow"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -708,7 +706,7 @@ async def test_simple_concurrent_interactive_workflow():
 
 
 async def test_workflow_with_branch():
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_workflow_with_branch")))
+    flow = Workflow(card=WorkflowCard(id="test_workflow_with_branch"))
     flow.set_start_comp("start", MockStartNode("start"))
     flow.set_end_comp("end", MockEndNode("end"),
                       inputs_schema={"a": "${a.result}", "b": "${b.result}"})
@@ -747,7 +745,7 @@ async def test_simple_interactive_workflow_raw_input():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow_raw_input")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow_raw_input"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -790,7 +788,7 @@ async def test_simple_interactive_workflow_both_raw_input_update():
         graph : start->a->end
         """
         start_node = MockStartNode4Cp("start")
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow_both_raw_input_update")))
+        flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow_both_raw_input_update"))
         flow.set_start_comp("start", start_node,
                             inputs_schema={
                                 "a": "${inputs.a}",
@@ -840,7 +838,7 @@ async def test_simple_interactive_workflow_raw_inputs_empty_str_list():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow_raw_inputs_empty_str_list")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow_raw_inputs_empty_str_list"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -888,7 +886,7 @@ async def test_simple_interactive_workflow_update_empty_str_list():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow_update_empty_str_list")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow_update_empty_str_list"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -937,7 +935,7 @@ async def test_simple_interactive_workflow_none():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow_none")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow_none"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -985,7 +983,7 @@ async def test_simple_interactive_workflow_checkpointer():
     """
     workflow_id = "test_simple_interactive_workflow_checkpointer"
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id=workflow_id)))
+    flow = Workflow(card=WorkflowCard(id=workflow_id))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -1048,7 +1046,7 @@ async def test_simple_interactive_workflow_checkpointer_manual_release():
     """
     workflow_id = "test_simple_interactive_workflow_checkpointer"
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id=workflow_id)))
+    flow = Workflow(card=WorkflowCard(id=workflow_id))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",
@@ -1091,7 +1089,7 @@ async def test_simple_interactive_workflow_clear_checkpointer():
     graph : start->a->end
     """
     start_node = MockStartNode4Cp("start")
-    flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_simple_interactive_workflow")))
+    flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow"))
     flow.set_start_comp("start", start_node,
                         inputs_schema={
                             "a": "${inputs.a}",

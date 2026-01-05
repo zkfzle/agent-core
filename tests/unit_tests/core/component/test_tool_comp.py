@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock, Mock
 
 import pytest
 
-from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import End, WorkflowCard
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import ToolComponentConfig, ToolComponent
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
@@ -11,7 +11,6 @@ from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
 from openjiuwen.core.workflow.components.tool_related.tool_comp import ToolExecutable
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
@@ -127,7 +126,7 @@ class TestToolComponent:
         id = "tool_workflow"
         version = "1.0"
         name = "tool"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version, )))
+        flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
         start_component = Start(
             {

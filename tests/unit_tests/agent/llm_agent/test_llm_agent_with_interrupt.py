@@ -13,7 +13,7 @@ from openjiuwen.core.application.agents_for_studio.workflow_agent import Workflo
 from openjiuwen.core.controller import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import End, WorkflowCard
 from openjiuwen.core.workflow import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.session import FORCE_DEL_WORKFLOW_STATE_ENV_KEY
@@ -22,7 +22,6 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -89,15 +88,13 @@ class TestReActAgentInterrupt:  # ① 关键改动
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        questioner_workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        questioner_workflow_card = WorkflowCard(
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
             )
-        )
 
-        flow = Workflow(workflow_config=questioner_workflow_config)
+        flow = Workflow(card=questioner_workflow_card)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -132,9 +129,9 @@ class TestReActAgentInterrupt:  # ① 关键改动
         flow.add_connection("questioner", "e")
 
         workflow_schema = WorkflowSchema(
-            id = flow.config().metadata.id,
-            name = flow.config().metadata.name,
-            version = flow.config().metadata.version,
+            id = flow.card.id,
+            name = flow.card.name,
+            version = flow.card.version,
             description = "追问器工作流",
             inputs = {"query": {
                 "type": "string",
@@ -200,15 +197,13 @@ class TestReActAgentInterrupt:  # ① 关键改动
             dict(role="user", content="你是一个AI助手")
         ]
 
-        questioner_workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        questioner_workflow_card = WorkflowCard(
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
             )
-        )
 
-        flow = Workflow(workflow_config=questioner_workflow_config)
+        flow = Workflow(card=questioner_workflow_card)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -252,9 +247,9 @@ class TestReActAgentInterrupt:  # ① 关键改动
         flow.add_connection("questioner", "e")
 
         workflow_schema = WorkflowSchema(
-            id=flow.config().metadata.id,
-            name=flow.config().metadata.name,
-            version=flow.config().metadata.version,
+            id=flow.card.id,
+            name=flow.card.name,
+            version=flow.card.version,
             description="追问器工作流",
             inputs={"query": {
                 "type": "string",
@@ -309,15 +304,13 @@ class TestReActAgentInterrupt:  # ① 关键改动
         # Mock extraction to return expected fields
         mock_extraction.return_value = {"location": "hangzhou", "time": "today"}
         
-        questioner_workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        questioner_workflow_card = WorkflowCard(
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
-            )
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config)
+        flow = Workflow(card=questioner_workflow_card)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -363,9 +356,9 @@ class TestReActAgentInterrupt:  # ① 关键改动
         flow.add_connection("questioner", "e")
 
         workflow_schema = WorkflowSchema(
-            id=flow.config().metadata.id,
-            name=flow.config().metadata.name,
-            version=flow.config().metadata.version,
+            id=flow.card.id,
+            name=flow.card.name,
+            version=flow.card.version,
             description="追问器工作流",
             inputs={
                 "type": "object",
@@ -408,15 +401,14 @@ class TestReActAgentInterrupt:  # ① 关键改动
         # Mock extraction to return expected fields
         mock_extraction.return_value = {"location": "hangzhou", "time": "today"}
         
-        questioner_workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        questioner_workflow_card = WorkflowCard(
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
-            )
+
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config)
+        flow = Workflow(card=questioner_workflow_card)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -462,9 +454,9 @@ class TestReActAgentInterrupt:  # ① 关键改动
         flow.add_connection("questioner", "e")
 
         workflow_schema = WorkflowSchema(
-            id=flow.config().metadata.id,
-            name=flow.config().metadata.name,
-            version=flow.config().metadata.version,
+            id=flow.card.id,
+            name=flow.card.name,
+            version=flow.card.version,
             description="追问器工作流",
             inputs={
                 "type": "object",

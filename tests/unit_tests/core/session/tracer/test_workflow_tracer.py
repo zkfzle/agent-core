@@ -8,7 +8,7 @@ import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, Input, Output
+from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, Input, Output, WorkflowCard
 from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
@@ -19,7 +19,6 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import AddTenNode, CommonNode, MockStartNode, MockEndNode, StreamCompNode
@@ -74,7 +73,7 @@ class AnyTypeReturnNode(ComponentExecutable, ComponentComposable):
 class TestTraceWorkflow:
     async def test_any_type_trace(self):
         async def inner_test(inputs):
-            workflow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test")))
+            workflow = Workflow(card=WorkflowCard(id="test"))
             workflow.set_start_comp("start", Start())
             workflow.add_workflow_comp("node", AnyTypeReturnNode(), inputs_schema={"data": "${inputs}"})
             workflow.set_end_comp("end", End(), inputs_schema={"output": "${node}"},
@@ -93,7 +92,7 @@ class TestTraceWorkflow:
             await inner_test(item)
 
     async def test_stream_workflow_with_trace(self):
-        workflow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test")))
+        workflow = Workflow(card=WorkflowCard(id="test"))
         workflow.set_start_comp("start", Start())
         workflow.add_workflow_comp("producer", Producer(), inputs_schema={"array": "${inputs}"})
         workflow.set_end_comp("end", End(), stream_inputs_schema={"output": "${producer.output}"},

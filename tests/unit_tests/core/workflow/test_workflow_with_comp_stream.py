@@ -8,7 +8,7 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import ComponentComposable, Input, Output
+from openjiuwen.core.workflow import ComponentComposable, Input, Output, WorkflowCard
 from openjiuwen.core.workflow import End, EndConfig
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow.components.base import WorkflowComponent
@@ -22,7 +22,7 @@ from openjiuwen.core.session import BaseSession, Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowChunk
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import WorkflowInputsSchema
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from tests.unit_tests.core.workflow.mock_nodes import ComputeComponent2, DualAbilityWithErrorComponent
 
@@ -54,8 +54,7 @@ class MockStreamNode(ComponentExecutable, ComponentComposable):
 
 async def test_no_stream_called():
     with pytest.raises(JiuWenBaseException) as error:
-        config = WorkflowConfig()
-        flow = Workflow(config)
+        flow = Workflow()
         flow.set_start_comp("start", Start())
         flow.set_end_comp("end", End(), inputs_schema={}, response_mode="streaming")
         flow.add_workflow_comp("stream", MockStreamNode(), inputs_schema={})
@@ -160,8 +159,7 @@ async def test_batch_multi_stream_workflow():
 
 
 def create_component_stream_workflow_with_template() -> Workflow:
-    config = WorkflowConfig()
-    workflow = Workflow(config)
+    workflow = Workflow()
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
     workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
     workflow.add_workflow_comp("b", Producer(), inputs_schema={"array": "${start.array}"})
@@ -185,8 +183,7 @@ def create_component_stream_workflow_with_template() -> Workflow:
 
 
 def create_component_stream_workflow_without_template() -> Workflow:
-    config = WorkflowConfig()
-    workflow = Workflow(config)
+    workflow = Workflow()
     workflow.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
     workflow.add_workflow_comp("a", Producer(), inputs_schema={"array": "${start.array}"})
     workflow.add_workflow_comp("b", Producer(), inputs_schema={"array": "${start.array}"})
@@ -332,7 +329,7 @@ async def test_stream_component_in_sub_workflow_with_stream_collect():
 
 # Test the ability of workflow components to stream between components
 async def test_stream_component_in_sub_workflow_with_substream():
-    wf = Workflow(workflow_config=WorkflowConfig())
+    wf = Workflow()
     wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
     wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_without_template()),
                          inputs_schema={"inputs": "${main_start.array}"})
@@ -367,7 +364,7 @@ async def test_stream_component_in_sub_workflow_with_substream():
 
 # Test the ability of workflow components to stream between components with templates
 async def test_stream_component_in_sub_workflow_with_substream_template():
-    wf = Workflow(workflow_config=WorkflowConfig())
+    wf = Workflow()
     wf.set_start_comp("main_start", Start(), inputs_schema={"array": "${inputs}"})
     wf.add_workflow_comp("workflow", SubWorkflowComponent(create_component_stream_workflow_with_template()),
                          inputs_schema={"inputs": "${main_start.array}"})
@@ -413,7 +410,7 @@ class Interaction(ComponentComposable, ComponentExecutable):
 
 async def test_interaction_with_stream():
     def create_workflow() -> Workflow:
-        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_stream")))
+        wf = Workflow(card=WorkflowCard(id="test_interaction_with_stream"))
         wf.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
         wf.add_workflow_comp("interaction", Interaction())
         wf.add_workflow_comp("stream", Producer(), inputs_schema={"array": "${start.array}"})
@@ -468,7 +465,7 @@ async def test_interaction_with_exception():
                     yield dict(output=i)
 
     def create_workflow_with_exception() -> Workflow:
-        wf = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(id="test_interaction_with_exception")))
+        wf = Workflow(card=WorkflowCard(id="test_interaction_with_exception"))
         wf.set_start_comp("start", Start(), inputs_schema={"array": "${inputs}"})
         wf.add_workflow_comp("exception", ExceptionComp())
         end = End(EndConfig(responseTemplate="a: {{a}}; batch: {{batch}}"))
@@ -822,9 +819,8 @@ async def test_stream_trigger_consumer_twice():
         }
     }
     workflow_inputs_schema = WorkflowInputsSchema(**inputs_schem_dict)
-    workflow_config = WorkflowConfig(metadata=WorkflowMetadata(name=name, id=wf_id, version=version, ),
-                                     workflow_inputs_schema=workflow_inputs_schema)
-    flow = Workflow(workflow_config=workflow_config)
+    workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
+    flow = Workflow(card=workflow_card)
 
     start_component = Start(
         {
@@ -866,9 +862,8 @@ async def test_stream_trigger_consumer():
         }
     }
     workflow_inputs_schema = WorkflowInputsSchema(**inputs_schem_dict)
-    workflow_config = WorkflowConfig(metadata=WorkflowMetadata(name=name, id=wf_id, version=version, ),
-                                     workflow_inputs_schema=workflow_inputs_schema)
-    flow = Workflow(workflow_config=workflow_config)
+    workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
+    flow = Workflow(card=workflow_card)
 
     start_component = Start(
         {

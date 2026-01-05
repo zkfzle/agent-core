@@ -12,8 +12,7 @@ from openjiuwen.core.session.agent import AgentSession
 from openjiuwen.core.session import Config
 from openjiuwen.core.session import TaskSession
 from openjiuwen.core.foundation.tool import tool, ToolCard
-from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowExecutionState
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
+from openjiuwen.core.workflow import Workflow, WorkflowCard, WorkflowOutput, WorkflowExecutionState
 from openjiuwen.core.runner import Runner
 from tests.unit_tests.core.workflow.mock_nodes import MockEndNode, Node1, MockStartNode
 
@@ -47,14 +46,13 @@ def session():
 class TestRunner:
     @staticmethod
     def _build_workflow(name, workflow_id, version):
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 id=workflow_id,
                 version=version,
                 name=name,
-            )
+
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "query": "${query}"})

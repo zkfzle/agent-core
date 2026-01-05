@@ -5,7 +5,7 @@ import pytest
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.workflow import LLMCompConfig
+from openjiuwen.core.workflow import LLMCompConfig, WorkflowCard
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode
@@ -16,7 +16,6 @@ from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo, ToolCard
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
-from openjiuwen.core.workflow import WorkflowMetadata, WorkflowConfig
 from openjiuwen.core.workflow.components.llm_related.llm_comp import LLMExecutable
 
 pytestmark = pytest.mark.asyncio
@@ -73,12 +72,13 @@ class MockWorkflow:
         logger.info(f"begin to ainvoke , inputs={inputs}")
         yield inputs
 
-    def config(self):
-        return WorkflowConfig(metadata=WorkflowMetadata(
+    @property
+    def card(self):
+        return WorkflowCard(
             name="weather",
             id="test_weather_agent",
             version="1.0",
-        ))
+        )
 
 
 class MockModel(BaseModelClient):

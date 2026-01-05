@@ -41,7 +41,6 @@ from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode
 
 # 注意：切勿将真实密钥提交到仓库！
@@ -236,7 +235,6 @@ class RealWorkflowTest(unittest.TestCase):
 
         # 2. 初始化工作流与上下文
         flow = Workflow(
-            workflow_config=WorkflowConfig()
         )
         context = TaskSession(trace_id="test")
 
@@ -329,7 +327,7 @@ class RealWorkflowTest(unittest.TestCase):
         测试LLM组件通过StreamWriter流出数据
         """
         context = TaskSession(trace_id="test")
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
         end_component = End({"responseTemplate": "{{output}}"})

@@ -11,14 +11,13 @@ from openjiuwen.core.common.constants.enums import ControllerType, ComponentAbil
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.workflow import End
+from openjiuwen.core.workflow import End, WorkflowCard
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.foundation.llm import AIMessage, BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm import BaseMessageChunk
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow.components.llm_related.llm_comp import LLMExecutable
 
 fake_base = types.ModuleType("base")
@@ -282,7 +281,7 @@ class TestLLMExecutableInvokeNew:
         id = "write_poem_workflow"
         version = "1.0"
         name = "poem"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version, )))
+        flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
         start_component = Start(
             {
@@ -321,9 +320,9 @@ class TestLLMExecutableInvokeNew:
 
         """根据 workflow 实例化 WorkflowAgent。"""
         from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-        workflow_id = flow.config().metadata.id
-        workflow_name = flow.config().metadata.name
-        workflow_version = flow.config().metadata.version
+        workflow_id = flow.card.id
+        workflow_name = flow.card.name
+        workflow_version = flow.card.version
         schema = WorkflowSchema(id=workflow_id,
                                 name=workflow_name,
                                 description="写诗工作流",
@@ -348,7 +347,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_invoke_start_llm_end_with_stream_writer(self):
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start_component = Start(
             {
@@ -396,7 +395,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_invoke_start_llm_end_with_json_output(self):
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start_component = Start(
             {
@@ -456,7 +455,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_stream_start_llm_end_with_component_streaming(self):
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start_component = Start(
             {
@@ -506,7 +505,7 @@ class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
     async def test_real_workflow_stream_start_llm_end_with_component_streaming_with_json_output_schema(self):
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
 
         start_component = Start(
             {
@@ -569,7 +568,7 @@ class TestLLMExecutableInvokeNew:
         id = "write_poem_workflow"
         version = "1.0"
         name = "poem"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version,)))
+        flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
         start_component = Start(
             {
@@ -608,9 +607,9 @@ class TestLLMExecutableInvokeNew:
 
         """根据 workflow 实例化 WorkflowAgent。"""
         from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-        workflow_id = flow.config().metadata.id
-        workflow_name = flow.config().metadata.name
-        workflow_version = flow.config().metadata.version
+        workflow_id = flow.card.id
+        workflow_name = flow.card.name
+        workflow_version = flow.card.version
         schema = WorkflowSchema(id=workflow_id,
                               name=workflow_name,
                               description="写诗工作流",

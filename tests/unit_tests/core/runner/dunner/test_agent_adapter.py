@@ -9,7 +9,6 @@ from openjiuwen.core.single_agent import AgentCard, WorkflowAgentConfig, Workflo
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow import WorkflowCard
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
@@ -19,14 +18,12 @@ class TestRunnerIntegration:
 
     @staticmethod
     def _build_workflow(name, id, version):
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 id=id,
                 version=version,
                 name=name,
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "query": "${query}"})

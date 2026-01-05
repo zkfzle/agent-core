@@ -50,7 +50,7 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import WorkflowInputsSchema
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner import Runner
@@ -249,14 +249,12 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             # ==================== 构建 Workflow ====================
             react_agent_prompt_template = self._create_prompt_template()
             
-            questioner_workflow_config = WorkflowConfig(
-                metadata=WorkflowMetadata(
+            questioner_workflow_card = WorkflowCard(
                     name="questioner_weather_workflow",
                     id="questioner_weather_workflow",
                     version="1.0",
-                    description="天气查询"
-                ),
-                workflow_inputs_schema=WorkflowInputsSchema(
+                    description="天气查询",
+                    inputs_schema=WorkflowInputsSchema(
                     type="object",
                     properties={
                         "query": {
@@ -269,7 +267,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 )
             )
             
-            flow = Workflow(workflow_config=questioner_workflow_config)
+            flow = Workflow(card=questioner_workflow_card)
             
             key_fields = [
                 FieldInfo(field_name="location", description="地点", required=True),
@@ -302,9 +300,9 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             flow.add_connection("questioner", "e")
             
             workflow_schema = WorkflowSchema(
-                id=flow.config().metadata.id,
-                name=flow.config().metadata.name,
-                version=flow.config().metadata.version,
+                id=flow.card.id,
+                name=flow.card.name,
+                version=flow.card.version,
                 description="追问器工作流",
                 inputs={
                     "type": "object",
@@ -337,7 +335,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             
             # 绑定 workflow
             Runner.resource_mgr.add_workflow(
-                WorkflowCard(id=generate_workflow_key(flow.config().metadata.id, flow.config().metadata.version)),
+                WorkflowCard(id=generate_workflow_key(flow.card.id, flow.card.version)),
                 flow
             )
             

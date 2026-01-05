@@ -17,6 +17,7 @@ from openjiuwen.core.foundation.llm import ToolMessage
 from openjiuwen.core.foundation.tool import ToolCall, ToolInfo
 from openjiuwen.core.foundation.tool.base import ToolCard
 from openjiuwen.core.protocols.mcp import McpServerConfig
+from openjiuwen.core.session.stream import StreamMode
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 if TYPE_CHECKING:

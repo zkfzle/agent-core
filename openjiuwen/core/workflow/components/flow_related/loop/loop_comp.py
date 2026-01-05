@@ -137,7 +137,7 @@ class LoopGroup(BaseWorkflow, Executable):
                                       StatusCode.LOOP_COMPONENT_MISSING_END_NODES_ERROR.errmsg)
         self._auto_complete_abilities()
         actor_manager = ActorManager(self._workflow_spec, self._stream_actor, sub_graph=True, session=session)
-        loop_session = SubWorkflowSession(session.parent(), self._workflow_config.metadata.id, actor_manager)
+        loop_session = SubWorkflowSession(session.parent(), self._workflow_config.card.id, actor_manager)
         self.compiled_graph = self.compile(loop_session, context=kwargs.get("context"))
         await self.compiled_graph.invoke(inputs, loop_session)
         return None

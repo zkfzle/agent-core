@@ -22,7 +22,6 @@ from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.protocols.mcp import McpServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow import WorkflowCard
 
 API_BASE = "https://mock.com/v1"
@@ -43,7 +42,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             _, workflow = self._build_interrupt_workflow()
             self.workflow = workflow
             Runner.resource_mgr.add_workflow(
-                WorkflowCard(id=generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)), workflow)
+                WorkflowCard(id=generate_workflow_key(workflow.card.id, workflow.card.version)), workflow)
         except Exception:
             pass
         await Runner.start()
@@ -51,7 +50,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         try:
             Runner.resource_mgr.remove_workflow(
-                generate_workflow_key(self.workflow.config().metadata.id, self.workflow.config().metadata.version))
+                generate_workflow_key(self.workflow.card.id, self.workflow.card.version))
             await Runner.stop()
         except Exception:
             pass
@@ -141,15 +140,13 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
         id = "test_interrupt_workflow"
         version = "1.0"
         name = "interrupt_test"
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=name,
                 id=id,
                 version=version,
-            )
         )
         flow = Workflow(
-            workflow_config=workflow_config
+            card=card
         )
         context = TaskSession(trace_id="test")
 
@@ -197,9 +194,9 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。"""
         from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-        workflow_id = workflow.config().metadata.id
-        workflow_name = workflow.config().metadata.name
-        workflow_version = workflow.config().metadata.version
+        workflow_id = workflow.card.id
+        workflow_name = workflow.card.name
+        workflow_version = workflow.card.version
         schema = self._create_workflow_schema(workflow_id, workflow_name, workflow_version)
         config = WorkflowAgentConfig(
             id="test_weather_agent",

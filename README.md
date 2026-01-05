@@ -63,22 +63,21 @@ model_config = ModelConfig(
 )
 
 # 创建工作流配置
-workflow_config = WorkflowConfig(
-    metadata=WorkflowMetadata(
+workflow_card = WorkflowCard(
         id="generate_text_workflow",
         name="generate_text",
         version="1.0",
         description="根据用户输入生成文本"
     ),
-    workflow_inputs_schema=WorkflowInputsSchema(
+    inputs_schema=WorkflowInputsSchema(
         type="object",
         properties={"query": {"type": "string", "description": "用户输入", "required": True}},
         required=['query']
     )
-)
+
 
 # 初始化工作流
-flow = Workflow(workflow_config=workflow_config)
+flow = Workflow(card=workflow_card)
 
 # 创建组件
 start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
@@ -102,9 +101,9 @@ flow.add_connection("llm", "end")
 
 # 创建并绑定Agent
 schema = WorkflowSchema(
-    id=flow.config().metadata.id,
-    name=flow.config().metadata.name,
-    version=flow.config().metadata.version,
+    id=flow.card.id,
+    name=flow.card.name,
+    version=flow.card.version,
     description="第一个工作流",
     inputs={"query": {"type": "string"}},
 )

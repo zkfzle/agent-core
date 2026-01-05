@@ -19,7 +19,7 @@ from typing import Any, List
 
 from openjiuwen.core.single_agent import WorkflowAgentConfig
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.workflow import ComponentComposable, ComponentConfig, ComponentExecutable
+from openjiuwen.core.workflow import ComponentComposable, ComponentConfig, ComponentExecutable, WorkflowCard
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.graph.executable import Output, Input
@@ -28,7 +28,6 @@ from openjiuwen.core.session import Session
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm import ModelConfig
@@ -120,15 +119,13 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         构建包含UserInputComponent的工作流
         这个工作流会产生dict格式的中断
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 name="用户输入工作流",
                 id="user_input_flow",
                 version="1.0",
                 description="测试dict格式中断的工作流"
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
 
         # 创建组件
         start = self._create_start_component()
@@ -269,15 +266,13 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         )
 
         # 1. 构建包含Questioner的工作流
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 name="问答工作流",
                 id="questioner_flow",
                 version="1.0",
                 description="测试str格式中断的工作流"
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
 
         start = self._create_start_component()
         questioner_config = QuestionerConfig(
@@ -318,15 +313,13 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
             ),
         )
 
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 name="问答工作流",
                 id="questioner_flow",
                 version="1.0",
                 description="测试str格式中断的工作流"
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
 
         start = self._create_start_component()
         questioner_config = QuestionerConfig(
@@ -467,8 +460,8 @@ class WorkflowAgentUserInputTest(unittest.IsolatedAsyncioTestCase):
         questioner_workflow = self._build_questioner_workflow()
 
         # 更新workflow的metadata.description，用于意图识别
-        user_input_workflow.config().metadata.description = "查询天气信息、温度、气象数据"
-        questioner_workflow.config().metadata.description = "询问地点信息、位置查询"
+        user_input_workflow.card.description = "查询天气信息、温度、气象数据"
+        questioner_workflow.card.description = "询问地点信息、位置查询"
 
         # 创建模型配置
         model_config = ModelConfig(

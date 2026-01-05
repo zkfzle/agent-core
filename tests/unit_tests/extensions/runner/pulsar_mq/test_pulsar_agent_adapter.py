@@ -18,7 +18,6 @@ from openjiuwen.core.runner.runner_config import RunnerConfig, MessageQueueConfi
 from openjiuwen.core.session.stream import OutputSchema, TraceSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow import WorkflowCard
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
@@ -121,14 +120,12 @@ class TestAdapterTest:
 
     @staticmethod
     def _build_workflow(name, id, version):
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 id=id,
                 version=version,
                 name=name,
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "query": "${query}"})

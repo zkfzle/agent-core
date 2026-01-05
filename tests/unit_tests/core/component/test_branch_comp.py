@@ -12,7 +12,6 @@ from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1
 
 pytestmark = pytest.mark.asyncio
@@ -40,7 +39,7 @@ class MockSubWorkflowComponent(ComponentComposable, ComponentExecutable):
         return SUB_WORKFLOW_COMPONENT
 
     def sub_workflow(self) -> Workflow:
-        flow = Workflow(workflow_config=WorkflowConfig())
+        flow = Workflow()
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={"a": "${a}",
                                            "b": "${b}",

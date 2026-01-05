@@ -238,7 +238,7 @@ class Runner:
         if isinstance(workflow, str):
             workflow_key = workflow
         else:
-            workflow_key = generate_workflow_key(workflow.config().metadata.id, workflow.config().metadata.version)
+            workflow_key = generate_workflow_key(workflow.card.id, workflow.card.version)
 
         if not self._check_is_agent_workflow(session, workflow_key):
             raise JiuWenBaseException(StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code,

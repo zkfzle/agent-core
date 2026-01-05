@@ -5,6 +5,8 @@
 from functools import wraps
 from types import MethodType
 
+from docutils.nodes import description
+
 from openjiuwen.core.session.utils import create_wrapper_class
 from openjiuwen.core.session.tracer.data import InvokeType
 
@@ -55,9 +57,10 @@ def decorate_workflow_with_trace(workflow, agent_session):
     if not _should_decorate(workflow, agent_session):
         return workflow
     wrapped_workflow = create_wrapper_class(workflow, "WrappedWorkflow")
-    metadata = wrapped_workflow.config().metadata if wrapped_workflow and wrapped_workflow.config() else {}
+    metadata = dict(id=wrapped_workflow.card.id, name=wrapped_workflow.card.name, description=wrapped_workflow.card.description,
+                    version=wrapped_workflow.card.version) if wrapped_workflow else {}
     try:
-        workflow_name = workflow.config().metadata.name
+        workflow_name = workflow.card.name
     except Exception:
         workflow_name = type(workflow).__name__
     instance_info = {"class_name": workflow_name, "type": "workflow", "metadata": dict(metadata)}

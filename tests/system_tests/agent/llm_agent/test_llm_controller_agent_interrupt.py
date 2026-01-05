@@ -6,7 +6,7 @@ from typing import List
 
 from openjiuwen.core.single_agent import WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable
+from openjiuwen.core.workflow import ComponentComposable, ComponentExecutable, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
@@ -18,9 +18,9 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
-from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
+from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
+from openjiuwen.core.workflow import WorkflowInputsSchema
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -155,14 +155,12 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                      start -> interactive \
                               questioner  -> end
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
                 description=workflow_desc,
-            ),
-            workflow_inputs_schema=WorkflowInputsSchema(
+                inputs_schema=WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
@@ -174,7 +172,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 required=['query']
             )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -230,14 +228,12 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
         llm_agent_prompt_template = self._create_prompt_template()
 
-        questioner_workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        questioner_workflow_card = WorkflowCard(
                 name="questioner_weather_workflow",
                 id="questioner_weather_workflow",
                 version="1.0",
-                description="天气查询"
-            ),
-            workflow_inputs_schema=WorkflowInputsSchema(
+                description="天气查询",
+                inputs_schema=WorkflowInputsSchema(
                 type="object",
                 properties={
                     "query": {
@@ -250,7 +246,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        flow = Workflow(workflow_config=questioner_workflow_config)
+        flow = Workflow(card=questioner_workflow_card)
 
         key_fields = [
             FieldInfo(field_name="location", description="地点", required=True),
@@ -293,9 +289,9 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
         flow.add_connection("questioner", "e")
 
         workflow_schema = WorkflowSchema(
-            id=flow.config().metadata.id,
-            name=flow.config().metadata.name,
-            version=flow.config().metadata.version,
+            id=flow.card.id,
+            name=flow.card.name,
+            version=flow.card.version,
             description="追问器工作流",
             inputs={
                 "type": "object",

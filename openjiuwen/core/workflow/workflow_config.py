@@ -7,13 +7,7 @@ from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
 from openjiuwen.core.common.schema.workflow_spec import WorkflowSpec
-
-
-class WorkflowMetadata(BaseModel):
-    name: str = Field(default="")
-    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
-    version: str = Field(default="")
-    description: str = Field(default="")
+from openjiuwen.core.workflow import WorkflowCard
 
 
 class WorkflowInputsSchema(BaseModel):
@@ -23,7 +17,6 @@ class WorkflowInputsSchema(BaseModel):
 
 
 class WorkflowConfig(BaseModel):
-    metadata: Optional[WorkflowMetadata] = Field(default_factory=WorkflowMetadata)
+    card: WorkflowCard
     spec: Optional[WorkflowSpec] = Field(default_factory=WorkflowSpec)
-    workflow_inputs_schema: Optional[WorkflowInputsSchema] = Field(default_factory=WorkflowInputsSchema)
     workflow_max_nesting_depth: int = Field(default=5, ge=0, le=10)

@@ -13,7 +13,6 @@ from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig
 
 pytestmark = pytest.mark.asyncio
 
@@ -37,7 +36,7 @@ class CustomStream(ComponentExecutable, ComponentComposable):
 
 class TestSubWorkflowComp:
     async def test_add_component(self):
-        main_workflow = Workflow(WorkflowConfig(workflow_max_nesting_depth=2))
+        main_workflow = Workflow(workflow_max_nesting_depth=2)
         main_workflow.set_start_comp("start", Start())
         main_workflow.add_workflow_comp("fick_comp", SubWorkflowComponent(main_workflow))
         main_workflow.set_end_comp("end", End())
@@ -46,8 +45,8 @@ class TestSubWorkflowComp:
         with pytest.raises(JiuWenBaseException):
             await main_workflow.invoke(inputs={}, session=WorkflowSession())
 
-    def create_nesting_workflow(self, sub_workflow_depth=0, workflow_config=None):
-        workflow = Workflow(workflow_config)
+    def create_nesting_workflow(self, sub_workflow_depth=0, **kwargs):
+        workflow = Workflow(**kwargs)
         workflow.set_start_comp("start", Start())
         if sub_workflow_depth > 0:
             workflow.add_workflow_comp(f'sub{sub_workflow_depth}',
@@ -62,21 +61,18 @@ class TestSubWorkflowComp:
 
     async def test_sub_invoke(self):
         with pytest.raises(JiuWenBaseException) as err:
-            workflow_config = WorkflowConfig(workflow_max_nesting_depth=1)
-            main_workflow = self.create_nesting_workflow(3, workflow_config)
+            main_workflow = self.create_nesting_workflow(3, workflow_max_nesting_depth=1)
             await main_workflow.invoke(inputs={}, session=WorkflowSession())
         assert err.value.message == StatusCode.COMPONENT_EXECUTE_ERROR.errmsg.format(node_id="sub2",
              ability="invoke",
              error=StatusCode.SUB_WORKFLOW_COMPONENT_RUNNING_ERROR.errmsg.format(
                  detail='workflow nesting hierarchy is too big, must <= 1'))
 
-        workflow_config = WorkflowConfig(workflow_max_nesting_depth=3)
-        main_workflow = self.create_nesting_workflow(3, workflow_config)
+        main_workflow = self.create_nesting_workflow(3, workflow_max_nesting_depth=3)
 
         await main_workflow.invoke(inputs={}, session=WorkflowSession())
 
-        workflow_config = WorkflowConfig(workflow_max_nesting_depth=0)
-        main_workflow = self.create_nesting_workflow(0, workflow_config)
+        main_workflow = self.create_nesting_workflow(0, workflow_max_nesting_depth=0)
 
         await main_workflow.invoke(inputs={}, session=WorkflowSession())
 

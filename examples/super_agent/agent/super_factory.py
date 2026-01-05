@@ -97,12 +97,12 @@ def create_super_main_agent(
 
     workflow_schemas = []
     for workflow in (workflows or []):
-        wf_config = workflow.config()
+        card = workflow.card
         workflow_schemas.append(WorkflowSchema(
-            id=wf_config.metadata.id,
-            name=wf_config.metadata.name,
-            version=wf_config.metadata.version,
-            description=wf_config.metadata.description
+            id=card.id,
+            name=card.name,
+            version=card.version,
+            description=card.description
         ))
 
     # Create main single_agent config
@@ -202,12 +202,11 @@ def create_super_sub_agent(
 
     workflow_schemas = []
     for workflow in (workflows or []):
-        wf_config = workflow.config()
         workflow_schemas.append(WorkflowSchema(
-            id=wf_config.metadata.id,
-            name=wf_config.metadata.name,
-            version=wf_config.metadata.version,
-            description=wf_config.metadata.description
+            id=workflow.card.id,
+            name=workflow.card.name,
+            version=workflow.card.version,
+            description=workflow.card.description
         ))
 
     # Create sub-single_agent config

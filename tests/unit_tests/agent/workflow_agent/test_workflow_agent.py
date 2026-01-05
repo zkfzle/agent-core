@@ -3,9 +3,8 @@ import pytest
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
-from openjiuwen.core.workflow import WorkflowConfig
+from openjiuwen.core.workflow import WorkflowCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowMetadata
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, MockEndNode
 
 
@@ -13,14 +12,12 @@ from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, Node1, Mock
 class TestWorkflowAgent:
     @staticmethod
     def _build_workflow(name, id, version):
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 id=id,
                 version=version,
                 name=name,
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
         flow.set_start_comp("start", MockStartNode("start"),
                             inputs_schema={
                                 "query": "${query}"})

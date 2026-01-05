@@ -5,7 +5,7 @@ import pytest
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.workflow import Input, Output
+from openjiuwen.core.workflow import Input, Output, WorkflowCard
 from openjiuwen.core.workflow import BranchComponent
 from openjiuwen.core.workflow import BranchRouter
 from openjiuwen.core.workflow import BreakComponent
@@ -25,7 +25,6 @@ from openjiuwen.core.session import Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import BaseStreamMode, CustomSchema, TraceSchema
 from openjiuwen.core.workflow import Workflow, WorkflowExecutionState, WorkflowOutput
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.workflow.components.flow_related.loop.loop_comp import AdvancedLoopComponent
 from tests.unit_tests.core.workflow.mock_nodes import MockStartNode, MockEndNode, CommonNode, \
@@ -988,7 +987,7 @@ async def test_auto_complete_abilities_detects_unregistered_edge_nodes():
 
     # Use mock to inject an edge with an unregistered target node to simulate configuration error
     # This bypasses add_connection validation to test _auto_complete_abilities defensive check
-    workflow_spec = flow.config().spec
+    workflow_spec = flow._internal._workflow_config.spec
     original_edges = workflow_spec.edges.copy()
     workflow_spec.edges["a"] = ["unregistered_node"]
 
@@ -1193,7 +1192,7 @@ async def test_workflow_with_interrupt_recovery():
 
 
 def create_workflow2() -> Workflow:
-    workflow = Workflow(WorkflowConfig(metadata=WorkflowMetadata(id="123")))
+    workflow = Workflow(WorkflowCard(id="123"))
     workflow.set_start_comp("start", Start(), inputs_schema={"out": "${inputs}"})
     workflow.add_workflow_comp("a", LogComp("a"), inputs_schema={"num": "${start.out}"})
     workflow.add_workflow_comp("b", LogComp("b"), stream_inputs_schema={"stream": "${a.out}"})

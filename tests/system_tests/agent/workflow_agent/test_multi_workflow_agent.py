@@ -9,7 +9,7 @@
 import os
 import uuid
 
-from openjiuwen.core.workflow import ComponentComposable
+from openjiuwen.core.workflow import ComponentComposable, WorkflowCard
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.workflow import ComponentExecutable
@@ -36,7 +36,6 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 
@@ -105,14 +104,12 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         构建简单的工作流，输出带指定前缀的结果。
         用于测试工作流路由。
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
-                name=workflow_name,
-                id=workflow_id,
-                version="1.0",
-            )
+        card = WorkflowCard(
+            name=workflow_name,
+            id=workflow_id,
+            version="1.0",
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
         start = self._create_start_component()
         end = End({"responseTemplate": f"{prefix}{{{{output}}}}"})
 
@@ -150,14 +147,12 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         Returns:
             Workflow: 包含 start -> questioner -> end 的工作流
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        workflow_card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
-            )
         )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=workflow_card)
 
         # 创建组件
         start = self._create_start_component()
@@ -216,14 +211,12 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         Returns:
             Workflow: 包含 start -> delayed -> questioner -> end 的工作流
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
             )
-        )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
 
         # 创建组件
         start = self._create_start_component()
@@ -283,8 +276,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         # 更新 workflow 的 metadata，添加详细描述（用于意图识别）
-        weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
-        stock_workflow.config().metadata.description = "查询股票价格、股市行情、股票走势等金融信息"
+        weather_workflow.card.description = "查询某地的天气情况、温度、气象信息"
+        stock_workflow.card.description = "查询股票价格、股市行情、股票走势等金融信息"
 
         # 创建最小化配置（workflows 为空列表）
         config = WorkflowAgentConfig(
@@ -356,8 +349,8 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         # 更新 workflow 的 metadata，添加详细描述（用于意图识别）
-        weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
-        stock_workflow.config().metadata.description = "查询股票价格、股市行情、股票走势等金融信息"
+        weather_workflow.card.description = "查询某地的天气情况、温度、气象信息"
+        stock_workflow.card.description = "查询股票价格、股市行情、股票走势等金融信息"
 
         # 创建最小化配置（workflows 为空列表）
         config = WorkflowAgentConfig(
@@ -506,10 +499,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         )
 
         # 更新 metadata 描述（用于意图识别）
-        weather_workflow.config().metadata.description = (
+        weather_workflow.card.description = (
             "查询某地的天气情况、温度、气象信息"
         )
-        stock_workflow.config().metadata.description = (
+        stock_workflow.card.description = (
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 
@@ -628,14 +621,12 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
         Returns:
             Workflow: 构建的工作流
         """
-        workflow_config = WorkflowConfig(
-            metadata=WorkflowMetadata(
+        card = WorkflowCard(
                 name=workflow_name,
                 id=workflow_id,
                 version="1.0",
             )
-        )
-        flow = Workflow(workflow_config=workflow_config)
+        flow = Workflow(card=card)
 
         # Start 组件
         start = self._create_start_component()
@@ -868,7 +859,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             question_fields=weather_fields,
             sleep=3  # 关键：3秒延迟让打断有足够时间窗口
         )
-        weather_workflow.config().metadata.description = "查询某地的天气情况、温度、气象信息"
+        weather_workflow.card.description = "查询某地的天气情况、温度、气象信息"
 
         # 创建存取钱工作流（无延迟，快速响应）
         cash_fields = [
@@ -882,7 +873,7 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             question_fields=cash_fields,
             sleep=0  # 无延迟
         )
-        cash_workflow.config().metadata.description = "银行存钱、取钱业务办理"
+        cash_workflow.card.description = "银行存钱、取钱业务办理"
 
         # 创建 Agent
         config = WorkflowAgentConfig(
@@ -991,10 +982,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             question_desc="股票代码"
         )
 
-        weather_workflow.config().metadata.description = (
+        weather_workflow.card.description = (
             "查询某地的天气情况、温度、气象信息"
         )
-        stock_workflow.config().metadata.description = (
+        stock_workflow.card.description = (
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 
@@ -1118,10 +1109,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             questioner_id="stock_questioner"
         )
 
-        weather_workflow.config().metadata.description = (
+        weather_workflow.card.description = (
             "查询某地的天气情况、温度、气象信息"
         )
-        stock_workflow.config().metadata.description = (
+        stock_workflow.card.description = (
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 
@@ -1277,10 +1268,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             prefix="stock:"
         )
 
-        weather_workflow.config().metadata.description = (
+        weather_workflow.card.description = (
             "查询某地的天气情况、温度、气象信息"
         )
-        stock_workflow.config().metadata.description = (
+        stock_workflow.card.description = (
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 
@@ -1361,10 +1352,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             prefix="stock:"
         )
 
-        weather_workflow.config().metadata.description = (
+        weather_workflow.card.description = (
             "查询某地的天气情况、温度、气象信息"
         )
-        stock_workflow.config().metadata.description = (
+        stock_workflow.card.description = (
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 
@@ -1456,10 +1447,10 @@ class MultiWorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             prefix="stock:"
         )
 
-        weather_workflow.config().metadata.description = (
+        weather_workflow.card.description = (
             "查询某地的天气情况、温度、气象信息"
         )
-        stock_workflow.config().metadata.description = (
+        stock_workflow.card.description = (
             "查询股票价格、股市行情、股票走势等金融信息"
         )
 

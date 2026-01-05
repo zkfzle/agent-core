@@ -6,7 +6,7 @@ import sys
 import types
 from unittest.mock import Mock, AsyncMock, patch
 
-from openjiuwen.core.workflow import BranchRouter
+from openjiuwen.core.workflow import BranchRouter, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionCompConfig, \
@@ -17,7 +17,6 @@ from openjiuwen.core.session import NodeSession, WorkflowSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata
 from openjiuwen.core.workflow.components.llm_related.intent_detection_comp import IntentDetectionExecutable
 
 fake_base = types.ModuleType("base")
@@ -95,7 +94,7 @@ class TestIntentDetectionComponent:
         id = "intent_stream"
         version = "1.0"
         name = "intent"
-        flow = Workflow(workflow_config=WorkflowConfig(metadata=WorkflowMetadata(name=name, id=id, version=version)))
+        flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
         start_component = Start(
             {

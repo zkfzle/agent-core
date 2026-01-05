@@ -16,7 +16,7 @@ class TracerWorkflowUtils:
     def _get_workflow_metadata(session) -> dict:
         executable_id = session._workflow_id
         workflow_config = session.config().get_workflow_config(executable_id)
-        workflow_metadata = workflow_config.metadata if workflow_config else None
+        workflow_metadata = workflow_config.card if workflow_config else None
         return {
             "workflow_id": executable_id,
             "workflow_version": workflow_metadata.version if workflow_metadata else '',

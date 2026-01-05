@@ -4,14 +4,12 @@ from datetime import datetime, timezone
 import json
 import logging
 import os
-from pathlib import Path
 import time
-import uuid
 from sqlalchemy.ext.asyncio import create_async_engine
 from tqdm import tqdm
-import sys
 from dotenv import load_dotenv
-load_dotenv(dotenv_path=r"C:\Users\12975\Desktop\git_huawei\agent-core-zhao\tests\test_locomo\.env")
+
+load_dotenv(dotenv_path=r"./tests/test_locomo/.env")
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.component.common.configs.model_config import ModelConfig
@@ -24,15 +22,20 @@ from openjiuwen.core.memory.store.impl.chroma_semantic_store import ChromaSemant
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.llm.messages import AIMessage, BaseMessage, HumanMessage
 from openjiuwen.core.utils.llm.model_library.siliconflow import Siliconflow
-from test_locomo_prompt import validation_prompt, ANSWER_PROMPT, CHAR_PROMPT
+from test_locomo_prompt import validation_prompt, ANSWER_PROMPT
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
-data_path = "D://data/locomo10.json"
-response_path = "./test_response"
-result_path = "../test_result.json"
+data_path = os.getenv("INPUT_DATA_FILE", "")
+work_dir = os.getenv("WORK_DIR", "")
+utc_now = datetime.now(timezone.utc)
+time_str = utc_now.strftime("%Y%m%d%H%M%S")
+cur_work_dir = os.path.join(work_dir, time_str)
+response_path = os.path.join(cur_work_dir, "response.json")
+result_path = os.path.join(cur_work_dir, "result.json")
+
 
 class TESTLOCOMO():
     def __init__(self):
@@ -54,13 +57,9 @@ class TESTLOCOMO():
             return data
 
     async def _create_memory_engine(self):
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        resource_dir = os.path.join(project_root, 'resources')
-        if not os.path.exists(resource_dir):
-            os.makedirs(resource_dir)
-        message_path = os.path.join(resource_dir, 'message_db')
-        path = Path(message_path)
-        kv_db_path = os.path.join(resource_dir, 'dbmstore')
+        if not os.path.exists(cur_work_dir):
+            os.makedirs(cur_work_dir)
+        kv_db_path = os.path.join(cur_work_dir, 'dbmstore')
         embed_model = APIEmbedModel(
             base_url=os.getenv("EMBED_API_BASE"),
             model_name=os.getenv("EMBED_MODEL_NAME"),
@@ -68,18 +67,16 @@ class TESTLOCOMO():
             timeout=int(os.getenv("EMBED_TIMEOUT")),
             max_retries=int(os.getenv("EMBED_MAX_RETRIES")),
         )
-        semantic_store = ChromaSemanticStore(resource_dir, embed_model)
-        utc_now = datetime.now(timezone.utc)
-        time_str = utc_now.strftime("%Y%m%d%H%M%S")
-        uuid_str = uuid.uuid4().hex[:6]
-        path = Path(f"{resource_dir}/test_sql_db_{time_str}_{uuid_str}.db").resolve()
-        db_store = DefaultDbStore(create_async_engine(f"sqlite+aiosqlite:///{path}"))
+        semantic_store = ChromaSemanticStore(cur_work_dir, embed_model)
+        db_path = os.path.join(cur_work_dir, "test_sql_db.db")
+        db_store = DefaultDbStore(create_async_engine(f"sqlite+aiosqlite:///{db_path}"))
         MemoryEngine.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
         await MemoryEngine.create_mem_engine_instance(SysMemConfig())
-        MemoryEngine.set_group_llm_config(MemoryEngine.get_mem_engine_instance(), "default", ModelConfig("siliconflow", BaseModelInfo(api_key=API_KEY, api_base=API_BASE, model=MODEL_NAME)))
+        MemoryEngine.get_mem_engine_instance().set_group_llm_config("default", ModelConfig("siliconflow", BaseModelInfo(
+            api_key=API_KEY, api_base=API_BASE, model=MODEL_NAME)))
         print("✅ Memory engine created")
-    
-    async def process_locomo_data(self, speaker_a: str, speaker_b: str, data: dict, idx: int):
+
+    async def add_conversation_data(self, speaker_a: str, speaker_b: str, data: dict, idx: int):
         conversation_data = data['conversation']
         user_id = "default"
         app_id = "default"
@@ -105,10 +102,13 @@ class TESTLOCOMO():
                     messages = []
             if messages:
                 await self.add_memory(user_id, app_id, messages, timestamp, session_id)
-    async def add_memory(self, user_id: str, app_id: str, messages: list[BaseMessage], timestamp: datetime, session_id: str, retries=3) -> None:
+
+    async def add_memory(self, user_id: str, app_id: str, messages: list[BaseMessage], timestamp: datetime,
+                         session_id: str, retries=3) -> None:
         for retry in range(retries):
             try:
-                await self.memory_engine.add_conversation_messages(user_id=user_id, group_id=app_id, messages=messages, timestamp=timestamp, session_id=session_id)
+                await self.memory_engine.add_conversation_messages(user_id=user_id, group_id=app_id, messages=messages,
+                                                                   timestamp=timestamp, session_id=session_id)
                 break
             except Exception as e:
                 if retry < retries - 1:
@@ -119,21 +119,21 @@ class TESTLOCOMO():
 
     async def llm_answer(self, user_id: str, app_id: str, query: str, retrieve_num: int = 5) -> str:
         user_memory = await self.memory_engine.search_user_mem(user_id=user_id, group_id=app_id, query=query,
-                                           num=retrieve_num)
+                                                               num=retrieve_num)
         memory_msg = ""
         for memory in user_memory:
             memory_msg += f"${memory['timestamp']}: ${memory['mem']}\n"
         llm_prompt = ANSWER_PROMPT.substitute(question=query, memory=memory_msg)
         logger.info(f"llm_prompt:{llm_prompt}")
         message = HumanMessage(content=llm_prompt)
-        response = self.llm_base.invoke(model_name=MODEL_NAME, messages=[message])
+        response = await self.llm_base.ainvoke(model_name=MODEL_NAME, messages=[message])
         return response.content
 
-    async def generate_response(self, qa_data: list, user_name1: str, user_name2: str, response_path_qa: str, retries=3) -> None:
+    async def test_question_and_answer(self, qa_data: list, user_name1: str, user_name2: str, response_path_qa: str,
+                                       retries=3) -> None:
         # Generate answer with memory
         user_id = "default"
         app_id = "default"
-        agent_id = "default"
         for idx, qa_enum in enumerate(tqdm(qa_data, desc="Processing QA")):
             category = qa_enum['category']
             if category > 4:
@@ -146,22 +146,28 @@ class TESTLOCOMO():
             for retry in range(retries):
                 try:
                     response = await self.llm_answer(user_id=user_id,
-                                        app_id=app_id, query=question, retrieve_num=10)
+                                                     app_id=app_id, query=question, retrieve_num=10)
                     data_dict = {"question": question, "answer": answer, "response": response, "category": category}
+                    if str(response).strip() != "":
+                        test_prompt = validation_prompt.format(question=question, gold_answer=answer,
+                                                               response=response)
+                        result = await self.llm_service(test_prompt)
+                        logger.info(f"result: {result}")
+                        data_dict["correct"] = "CORRECT" in result.content and "WRONG" not in result.content
+
                     with open(response_path_qa, 'a', encoding='utf-8') as file:
                         json.dump(data_dict, file, ensure_ascii=False)
                         file.write('\n')
                     break
                 except Exception as e:
                     if retry < retries - 1:
+                        logger.error(f"llm answer error, go to retry: {e}")
                         time.sleep(2)
                         continue
                     else:
                         raise e
 
-
-    def validate_locomo_data(self, speaker_a: str, speaker_b: str, response_path_enum: str) -> None:
-        # Verify whether the agent's response is correct through LLM.
+    def statistics_conversation(self, response_path_enum: str) -> None:
         qa_result_dict = defaultdict(int)
         correct_result_dict = defaultdict(int)
         with open(response_path_enum, 'r', encoding='utf-8') as f:
@@ -169,21 +175,10 @@ class TESTLOCOMO():
             for qa_enum in tqdm(f, desc="Processing validation"):
                 if qa_enum.strip():
                     qa_enum = json.loads(qa_enum)
-                    question = qa_enum['question']
-                    gold_answer = qa_enum['answer']
                     category = qa_enum['category']
-                    response = qa_enum['response']
-                    question = question.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
-                    gold_answer = str(gold_answer)
-                    gold_answer = gold_answer.replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                    correct = qa_enum['correct']
                     qa_result_dict[category] += 1
-                    if str(response).strip() == "":
-                        continue
-                    test_prompt = validation_prompt.format(question=question, gold_answer=gold_answer, response=response)
-                    result = self.llm_service(test_prompt)
-                    logger.info(f"result:{result}")
-                    if "CORRECT" in result.content and "WRONG" not in result.content:
-                        print("Correct!")
+                    if correct:
                         correct_result_dict[category] += 1
         logger.info(f"qa_result_dict:{qa_result_dict}, correct_result_dict:{correct_result_dict}")
         accuracy_per_class = {}
@@ -193,12 +188,12 @@ class TESTLOCOMO():
             accuracy = correct / total if total != 0 else 0.0  # 避免除零
             accuracy_per_class[cls] = round(accuracy, 4)
         with open(result_path, 'a', encoding='utf-8') as file:
-            total_result = {"accuracy_per_class": accuracy_per_class, "qa_result_dict": qa_result_dict, "correct_result_dict": correct_result_dict}
+            total_result = {"accuracy_per_class": accuracy_per_class, "qa_result_dict": qa_result_dict,
+                            "correct_result_dict": correct_result_dict}
             json.dump(total_result, file, ensure_ascii=False)
             file.write('\n')
 
-
-    def llm_service(self, user_message: str) -> AIMessage:
+    async def llm_service(self, user_message: str) -> AIMessage:
         messages = [
             BaseMessage(**{
                 "role": "system",
@@ -209,7 +204,7 @@ class TESTLOCOMO():
                 "content": user_message
             })
         ]
-        response = self.llm_base.invoke(MODEL_NAME, messages)
+        response = await self.llm_base.ainvoke(MODEL_NAME, messages)
         return response
 
     @staticmethod
@@ -259,7 +254,7 @@ class TESTLOCOMO():
         logger.info("总正确量统计：", dict(total_correct))
         logger.info("总准确率：", total_accuracy)
 
-        with open(result_path_enum,"a", encoding="utf-8") as f:
+        with open(result_path_enum, "a", encoding="utf-8") as f:
             json.dump({
                 "total_samples": dict(total_qa),
                 "total_correct": dict(total_correct),
@@ -274,17 +269,17 @@ async def main():
     data = test.get_locomo_data(data_path)
     for idx, data_enum in enumerate(tqdm(data, desc="Processing total data")):
         try:
-            await test.memory_engine.delete_mem_by_user_id("default", "default") # delete memory
+            await test.memory_engine.delete_mem_by_user_id("default", "default")  # delete memory
         except:
             pass
         speaker_a = data_enum['conversation']['speaker_a']
         speaker_b = data_enum['conversation']['speaker_b']
         response_path_enum = response_path + str(idx) + ".json"
-        await test.process_locomo_data(speaker_a, speaker_b, data_enum, idx)
-        await test.generate_response(data_enum['qa'], speaker_a, speaker_b, response_path_enum)
-        test.validate_locomo_data(speaker_a, speaker_b, response_path_enum)
+        await test.add_conversation_data(speaker_a, speaker_b, data_enum, idx)
+        await test.test_question_and_answer(data_enum['qa'], speaker_a, speaker_b, response_path_enum)
+        test.statistics_conversation(response_path_enum)
     test.overall_compute(result_path)
-    
+
+
 if __name__ == '__main__':
     asyncio.run(main())
-    

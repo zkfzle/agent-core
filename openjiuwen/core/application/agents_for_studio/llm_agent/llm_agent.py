@@ -240,9 +240,9 @@ class LLMAgent(ControllerAgent):
         group_id = f"{self.agent_config.id}"
         logger.info(f"When init Memory Engine, group_id: {group_id}")
         if memory_config is not None:
-            self._memory_engine = LongTermMemory.get_mem_engine_instance()
+            self._memory_engine = LongTermMemory()
             if self._memory_engine:
-                self._memory_engine.set_group_config(group_id, memory_config)
+                self._memory_engine.set_scope_config(group_id, memory_config)
 
     async def _write_messages_to_memory(self, inputs, result = None):
         user_id = inputs.get("user_id")

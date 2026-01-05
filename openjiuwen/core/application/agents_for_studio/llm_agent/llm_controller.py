@@ -1268,7 +1268,7 @@ class LLMController(BaseController):
         else:
             query = ""
         logger.info(f"group_id: {group_id} | user_id: {user_id} | inputs: {inputs}")
-        memory_engine = LongTermMemory.get_mem_engine_instance()
+        memory_engine = LongTermMemory()
         if not memory_engine:
             return result
         if user_id and group_id:

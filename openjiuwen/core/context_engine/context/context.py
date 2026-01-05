@@ -3,9 +3,10 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import List, Optional, Union
 
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.context_engine.token.base import TokenCounter
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm import BaseMessage, ToolMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.context_engine.base import ModelContext, ContextWindow, ContextStats
 from openjiuwen.core.context_engine.context.message_buffer import ContextMessageBuffer
@@ -43,13 +44,23 @@ class SessionModelContext(ModelContext):
 
     def pop_messages(self, size: int = 1, with_history: bool = True) -> List[BaseMessage]:
         if size is not None and size < 0:
-            raise JiuWenBaseException()
+            raise JiuWenBaseException(
+                StatusCode.CONTEXT_ENGINE_POP_MESSAGE_ERROR.code,
+                StatusCode.CONTEXT_ENGINE_POP_MESSAGE_ERROR.errmsg.format(
+                    error_msg="pop size should be larger than 0"
+                )
+            )
         popped_messages = self._message_buffer.pop_back(size, with_history)
         return popped_messages
 
     def get_messages(self, size: Optional[int] = None, with_history: bool = True) -> List[BaseMessage]:
         if size is not None and size < 0:
-            raise JiuWenBaseException()
+            raise JiuWenBaseException(
+                StatusCode.CONTEXT_ENGINE_GET_MESSAGE_ERROR.code,
+                StatusCode.CONTEXT_ENGINE_GET_MESSAGE_ERROR.errmsg.format(
+                    error_msg="get size should be larger than 0"
+                )
+            )
         messages = self._message_buffer.get_back(size, with_history=with_history)
         return messages
 
@@ -64,19 +75,24 @@ class SessionModelContext(ModelContext):
     async def get_context_window(self,
                                  system_messages: List[BaseMessage] = None,
                                  tools: List[ToolInfo] = None,
-                                 context_window_messages_limit: Optional[int] = None,
+                                 window_size: Optional[int] = None,
                                  **kwargs
                                  ) -> ContextWindow:
-        if context_window_messages_limit is not None and context_window_messages_limit <= 0:
-            raise JiuWenBaseException()
-        if context_window_messages_limit is None:
-            context_window_messages_limit = self._window_size_limit
+        if window_size is not None and window_size <= 0:
+            raise JiuWenBaseException(
+                StatusCode.CONTEXT_ENGINE_GET_CONTEXT_WINDOW_ERROR.code,
+                StatusCode.CONTEXT_ENGINE_GET_CONTEXT_WINDOW_ERROR.errmsg.format(
+                    error_msg="window size should be larger than 0"
+                )
+            )
+        if window_size is None:
+            window_size = self._window_size_limit
 
         system_messages = system_messages or []
-        system_messages_size = min(len(system_messages), context_window_messages_limit)
+        system_messages_size = min(len(system_messages), window_size)
         system_messages = system_messages[:system_messages_size]
 
-        context_messages_size = context_window_messages_limit - system_messages_size
+        context_messages_size = window_size - system_messages_size
         context_messages = self._message_buffer.get_back(context_messages_size)
 
         window = ContextWindow(
@@ -84,6 +100,8 @@ class SessionModelContext(ModelContext):
             context_messages=context_messages,
             tools=tools or []
         )
+
+        self._validate_and_fix_context_window(window)
         window.statistic = self._stat_context_window(window)
         return window
 
@@ -144,6 +162,36 @@ class SessionModelContext(ModelContext):
         if isinstance(messages, list):
             for msg in messages:
                 if not isinstance(msg, BaseMessage):
-                    raise JiuWenBaseException()
+                    raise JiuWenBaseException(
+                        StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.code,
+                        StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.errmsg.format(
+                            error_msg="messages should be a BaseMessage or a list of BaseMessage"
+                        )
+                    )
             return
-        raise JiuWenBaseException()
+        raise JiuWenBaseException(
+            StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.code,
+            StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.errmsg.format(
+                error_msg="messages should be a BaseMessage or a list of BaseMessage"
+            )
+        )
+
+    @staticmethod
+    def _validate_and_fix_context_window(context_window: ContextWindow):
+        messages: List[BaseMessage] = context_window.context_messages
+        if not messages:  # empty window, nothing to do
+            return
+
+        # locate the first non-ToolMessage
+        first_non_tool = 0
+        while first_non_tool < len(messages) and isinstance(messages[first_non_tool], ToolMessage):
+            first_non_tool += 1
+
+        # entirely tool messages → invalid window
+        if first_non_tool == len(messages):
+            context_window.context_messages = []
+            return
+
+        # slice away leading tool messages (if any)
+        if first_non_tool > 0:
+            context_window.context_messages = messages[first_non_tool:]

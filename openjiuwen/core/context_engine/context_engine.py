@@ -2,10 +2,8 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import List, Dict, Optional, Tuple
-import functools
+from typing import List, Dict, Optional
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.session import Session

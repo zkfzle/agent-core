@@ -6,6 +6,8 @@
 import pytest
 from typing import List
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.context_engine import ContextEngine, ContextEngineConfig, ModelContext
 from openjiuwen.core.foundation.llm import (
     BaseMessage,SystemMessage, HumanMessage, AIMessage, ToolMessage
@@ -29,6 +31,20 @@ class TestModelContext:
         assert context.get_messages(with_history=True) == [HumanMessage(content="test")]
         assert len(context) == 1
         context.pop_messages()
+
+    @pytest.mark.asyncio
+    async def test_model_context_add_invalid_messages(self):
+        context = await self.create_context()
+        try:
+            await context.add_messages(123)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.code
+
+        try:
+            invalid_messages = [HumanMessage(content="test"), {"role": "user", "content": "test"}]
+            await context.add_messages(invalid_messages)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.code
 
     @pytest.mark.asyncio
     async def test_model_context_add_batch_messages(self):
@@ -76,6 +92,14 @@ class TestModelContext:
         assert messages == []
         messages = context.get_messages(10)
         assert messages == []
+
+    @pytest.mark.asyncio
+    async def test_model_context_get_messages_with_invalid_size(self):
+        context = await self.create_context()
+        try:
+            await context.get_messages(size=-1)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_GET_MESSAGE_ERROR.code
 
     @pytest.mark.asyncio
     async def test_model_context_get_empty_messages_with_history(self):
@@ -254,6 +278,14 @@ class TestModelContext:
         assert messages == message_list[:90]
 
     @pytest.mark.asyncio
+    async def test_model_context_pop_messages_with_invalid_size(self):
+        context = await self.create_context()
+        try:
+            context.pop_messages(size=-1)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_POP_MESSAGE_ERROR.code
+
+    @pytest.mark.asyncio
     async def test_model_context_pop_messages_with_history(self):
         history_list = [HumanMessage(content=f"history-{i}") for i in range(100)]
         message_list = [HumanMessage(content=f"test-{i}") for i in range(100)]
@@ -340,12 +372,34 @@ class TestModelContext:
         assert messages == history_list[:50] + message_list
 
     @pytest.mark.asyncio
+    async def test_model_context_set_invalid_messages(self):
+        context = await self.create_context()
+        try:
+            context.set_messages(123)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.code
+
+        try:
+            invalid_messages = [HumanMessage(content="test"), {"role": "user", "content": "test"}]
+            await context.set_messages(invalid_messages)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR.code
+
+    @pytest.mark.asyncio
     async def test_model_context_set_empty_context_window(self):
         context = await self.create_context()
         window = await context.get_context_window()
         assert window.context_messages == []
         assert window.system_messages == []
         assert window.tools == []
+
+    @pytest.mark.asyncio
+    async def test_model_context_get_context_window_with_invalid_size(self):
+        context = await self.create_context()
+        try:
+            await context.get_context_window(window_size=-1)
+        except JiuWenBaseException as e:
+            assert e.error_code == StatusCode.CONTEXT_ENGINE_GET_CONTEXT_WINDOW_ERROR.code
 
     @pytest.mark.asyncio
     async def test_model_context_set_context_window_with_system_messages(self):
@@ -421,3 +475,24 @@ class TestModelContext:
         assert stat.assistant_messages == 25
         assert stat.tool_messages == 25
         assert stat.user_messages == 25
+
+    @pytest.mark.asyncio
+    async def test_model_context_window_validation(self):
+        # 1. Build a context with 10 human messages
+        tool_msgs = [
+            ToolMessage(content='tool-0', tool_call_id='tc-0'),
+            ToolMessage(content='tool-1', tool_call_id='tc-1'),
+            ToolMessage(content='tool-2', tool_call_id='tc-2'),
+        ]
+        message_list = tool_msgs + [HumanMessage(content=f"human-{i}") for i in range(10)]
+        context = await self.create_context(context_message_limit=20)
+        await context.add_messages(message_list)
+
+        # 2. Fetch the window – validation should drop the leading ToolMessages
+        system_msgs = [SystemMessage(content="sys")]
+        window = await context.get_context_window(system_messages=system_msgs)
+
+        # 3. Assertions
+        assert window.system_messages == system_msgs
+        # Ensure no ToolMessage remains in the returned list
+        assert not any(isinstance(m, ToolMessage) for m in window.context_messages)

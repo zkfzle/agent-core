@@ -60,7 +60,7 @@ def test_visualize_simple_workflow():
         \tnode_1 --> node_2
         \tnode_2 --> node_3
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -90,7 +90,7 @@ def test_visualize_simple_stream_workflow():
         \tnode_2 ==> node_3
         \tnode_3 --> node_4
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
 def test_visualize_workflow_with_branch_comp():
@@ -132,7 +132,7 @@ def test_visualize_workflow_with_branch_comp():
         \tnode_4 --> node_2
         \tnode_5 --> node_2
         """).lstrip()
-    assert flow.to_mermaid() == mermaid_script
+    assert flow.draw() == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -171,7 +171,7 @@ def test_visualize_workflow_with_branch_router():
         \tnode_2 --> node_4
         \tnode_3 --> node_4
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -217,7 +217,7 @@ def test_visualize_workflow_with_condition():
         \tnode_2 --> node_4
         \tnode_3 --> node_4
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -273,7 +273,7 @@ def test_visualize_sub_workflow():
         \tnode_2 --> node_3
         \tnode_3 --> node_4
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
     # expand sub graph
     mermaid_script = textwrap.dedent("""
@@ -296,7 +296,7 @@ def test_visualize_sub_workflow():
         \tnode_3 --> node_4
         \tnode_4 --> node_5
         """).lstrip()
-    assert flow.to_mermaid(title="jiuwen workflow", expand_subgraph=True) == mermaid_script
+    assert flow.draw(title="jiuwen workflow", expand_subgraph=True) == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -372,7 +372,7 @@ def test_visualize_multi_layer_sub_workflow():
         \tnode_2 --> node_3
         \tnode_3 --> node_4
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
     # expand first layer sub graph
     mermaid_script = textwrap.dedent("""
@@ -397,7 +397,7 @@ def test_visualize_multi_layer_sub_workflow():
         \tnode_4 --> node_5
         \tnode_5 --> node_6
         """).lstrip()
-    assert flow.to_mermaid(title="jiuwen workflow", expand_subgraph=1) == mermaid_script
+    assert flow.draw(title="jiuwen workflow", expand_subgraph=1) == mermaid_script
 
     # expand second layer sub graph
     mermaid_script = textwrap.dedent("""
@@ -429,10 +429,10 @@ def test_visualize_multi_layer_sub_workflow():
         \tnode_5 --> node_6
         \tnode_6 --> node_7
         """).lstrip()
-    assert flow.to_mermaid(title="jiuwen workflow", expand_subgraph=2) == mermaid_script
+    assert flow.draw(title="jiuwen workflow", expand_subgraph=2) == mermaid_script
 
     # expand all layer sub graph
-    assert flow.to_mermaid(title="jiuwen workflow", expand_subgraph=True) == mermaid_script
+    assert flow.draw(title="jiuwen workflow", expand_subgraph=True) == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -483,7 +483,7 @@ def test_visualize_workflow_with_advanced_loop():
         \tnode_3 -.-> node_4
         \tnode_4 --> node_5
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
     # expand loop
     mermaid_script = textwrap.dedent("""
@@ -509,7 +509,7 @@ def test_visualize_workflow_with_advanced_loop():
         \tnode_3 --> node_4
         \tnode_4 --> node_5
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow", expand_subgraph=True) == mermaid_script
+    assert flow.draw("jiuwen workflow", expand_subgraph=True) == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -569,7 +569,7 @@ def test_visualize_workflow_with_loop():
         \tnode_3 -.-> node_4
         \tnode_4 --> node_5
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
     # expand loop
     mermaid_script = textwrap.dedent("""
@@ -597,7 +597,7 @@ def test_visualize_workflow_with_loop():
         \tnode_4 --> node_5
         \tnode_5 --> node_6
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow", expand_subgraph=True) == mermaid_script
+    assert flow.draw("jiuwen workflow", expand_subgraph=True) == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -656,7 +656,7 @@ def test_visualize_workflow_with_loop_unset_end_nodes():
         \tnode_3 -.-> node_4
         \tnode_4 --> node_5
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script
 
     # expand loop
     mermaid_script = textwrap.dedent("""
@@ -684,7 +684,7 @@ def test_visualize_workflow_with_loop_unset_end_nodes():
         \tnode_4 --> node_5
         \tnode_5 --> node_6
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow", expand_subgraph=True) == mermaid_script
+    assert flow.draw("jiuwen workflow", expand_subgraph=True) == mermaid_script
 
 
 def test_drawable_exception():
@@ -794,7 +794,7 @@ def test_visualize_simple_stream_workflow_animation():
         link_1@{animate: true}
         \tnode_3 --> node_4
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow", enable_animation=True) == mermaid_script
+    assert flow.draw("jiuwen workflow", enable_animation=True) == mermaid_script
 
 
 @patch.dict(os.environ, {WORKFLOW_DRAWABLE: "true"})
@@ -887,4 +887,4 @@ def test_visualize_simple_workflow_intent():
         \tnode_3 --> node_4
         \tnode_4 --> node_5
         """).lstrip()
-    assert flow.to_mermaid("jiuwen workflow") == mermaid_script
+    assert flow.draw("jiuwen workflow") == mermaid_script

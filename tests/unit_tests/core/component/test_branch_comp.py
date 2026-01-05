@@ -27,7 +27,7 @@ class MockSubWorkflowComponent(ComponentComposable, ComponentExecutable):
         results = []
         for i in range (0,8):
             workflow = self.sub_workflow()
-            results.append(await workflow.sub_invoke({"a": "1", "b": 2}, session.base(), inputs.get(CONFIG_KEY)))
+            results.append(await workflow.invoke({"a": "1", "b": 2}, session.base(), config=inputs.get(CONFIG_KEY), is_sub=True))
         output = {"results": results}
         print(output)
         return output

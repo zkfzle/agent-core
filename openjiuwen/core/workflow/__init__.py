@@ -3,13 +3,13 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from openjiuwen.core.workflow.base import (
-    Workflow,
     WorkflowExecutionState,
     WorkflowOutput,
     WorkflowChunk,
     generate_workflow_key,
     WorkflowCard
 )
+from openjiuwen.core.workflow.workflow import Workflow
 
 from openjiuwen.core.workflow.workflow_config import (
     WorkflowMetadata,

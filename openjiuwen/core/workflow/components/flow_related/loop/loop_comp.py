@@ -26,11 +26,11 @@ from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.atomic_node import AtomicNode
 from openjiuwen.core.graph.base import Graph, INPUTS_KEY
 from openjiuwen.core.graph.executable import Output, Input, Executable
-from openjiuwen.core.session import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY
+from openjiuwen.core.session import LOOP_NUMBER_MAX_LIMIT_DEFAULT, LOOP_NUMBER_MAX_LIMIT_KEY, Transformer
 from openjiuwen.core.session import BaseSession, Session
 from openjiuwen.core.session import NodeSession, SubWorkflowSession
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
-from openjiuwen.core.workflow.base import BaseWorkFlow
+from openjiuwen.core.workflow._workflow import BaseWorkflow
 from openjiuwen.core.common.constants.enums import ComponentAbility
 from openjiuwen.core.graph.graph import PregelGraph
 from openjiuwen.core.graph.pregel import GraphInterrupt, START, END
@@ -67,7 +67,7 @@ class PostLoopBody(Executable):
         self._finish_index = finish_index
 
 
-class LoopGroup(BaseWorkFlow, Executable):
+class LoopGroup(BaseWorkflow, Executable):
 
     def __init__(self):
         super().__init__()
@@ -80,17 +80,14 @@ class LoopGroup(BaseWorkFlow, Executable):
     def add_workflow_comp(
             self,
             comp_id: str,
-            workflow_comp: Union[Executable, ComponentComposable],
+            workflow_comp: ComponentComposable,
             *,
-            comp_ability: list[ComponentAbility] = None,
             wait_for_all: bool = None,
-            inputs_schema: dict = None,
-            stream_inputs_schema: dict = None,
-            outputs_schema: dict = None,
-            stream_outputs_schema: dict = None,
-            inputs_transformer=None,
-            outputs_transformer=None,
-            **kwargs
+            inputs_schema: dict | Transformer = None,
+            outputs_schema: dict | Transformer = None,
+            stream_inputs_schema: dict | Transformer = None,
+            stream_outputs_schema: dict | Transformer = None,
+            comp_ability: list[ComponentAbility] = None
     ) -> Self:
         # Check for nested loop components
         if isinstance(workflow_comp, LoopComponent):
@@ -101,8 +98,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         super().add_workflow_comp(comp_id, workflow_comp, wait_for_all=wait_for_all, inputs_schema=inputs_schema,
                                   stream_inputs_schema=stream_inputs_schema,
                                   stream_outputs_schema=stream_outputs_schema,
-                                  outputs_schema=outputs_schema, inputs_transformer=inputs_transformer,
-                                  outputs_transformer=outputs_transformer, comp_ability=comp_ability)
+                                  outputs_schema=outputs_schema, comp_ability=comp_ability)
         if self._drawable and isinstance(workflow_comp, BreakComponent):
             self._drawable.set_break_node(comp_id)
 
@@ -113,7 +109,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     def start_comp(self, start_comp_id: str) -> Self:
-        """Record start nodes even if caller uses BaseWorkFlow API directly."""
+        """Record start nodes even if caller uses BaseWorkflow API directly."""
         super().start_comp(start_comp_id)
         if start_comp_id not in self._start_nodes:
             self._start_nodes.append(start_comp_id)
@@ -126,7 +122,7 @@ class LoopGroup(BaseWorkFlow, Executable):
         return self
 
     def end_comp(self, end_comp_id: str) -> Self:
-        """Record end nodes even if caller uses BaseWorkFlow API directly."""
+        """Record end nodes even if caller uses BaseWorkflow API directly."""
         super().end_comp(end_comp_id)
         if end_comp_id not in self._end_nodes:
             self._end_nodes.append(end_comp_id)

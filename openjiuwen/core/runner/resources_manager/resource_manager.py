@@ -27,8 +27,8 @@ from typing import Optional, Union, Tuple
 
 from openjiuwen.core.session import Session
 from openjiuwen.core.single_agent import BaseAgent, AgentCard
-from openjiuwen.core.workflow.base import Workflow, WorkflowCard
-
+from openjiuwen.core.workflow.workflow import Workflow
+from openjiuwen.core.workflow import WorkflowCard
 
 class ResourceMgr:
     """

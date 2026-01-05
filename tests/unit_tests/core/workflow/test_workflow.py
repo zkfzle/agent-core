@@ -225,7 +225,7 @@ async def test_workflow_with_wait_for_all():
                                   "d": "${d}"}
             return state.get(start_input_schema)
 
-        flow.set_start_comp("start", MockStartNode("start"), inputs_transformer=start_input_transformer)
+        flow.set_start_comp("start", MockStartNode("start"), inputs_schema=start_input_transformer)
         flow.add_workflow_comp("a", Node1("a"), inputs_schema={"a": "${start.a}"})
         flow.add_workflow_comp("a1", SlowNode("a1", 1), inputs_schema={"a": "${a.a}"})
         flow.add_workflow_comp("b", Node1("b"), inputs_schema={"b": "${start.b}"})
@@ -1220,7 +1220,7 @@ async def test_illegal_nested_workflow():
             nested_flow.set_start_comp("start", Start(), inputs_schema={"out": "${inputs}"})
             nested_flow.set_end_comp("end", End(), inputs_schema={"result": "${start.out}"})
             nested_flow.add_connection("start", "end")
-            result = await nested_flow.sub_invoke(inputs, session.base())
+            result = await nested_flow.invoke(inputs, session.base(), is_sub=True)
             return {"output": result}
 
     workflow = Workflow()

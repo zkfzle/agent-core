@@ -10,10 +10,8 @@ from openjiuwen.core.session import Transformer
 
 
 class CompIOConfig(BaseModel):
-    inputs_schema: Optional[Dict] = None
-    outputs_schema: Optional[Dict] = None
-    inputs_transformer: Optional[Transformer] = None
-    outputs_transformer: Optional[Transformer] = None
+    inputs_schema: Optional[Dict | Transformer] = None
+    outputs_schema: Optional[Dict | Transformer] = None
 
 
 class NodeSpec(BaseModel):

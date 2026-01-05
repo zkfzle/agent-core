@@ -72,7 +72,7 @@ class Drawable:
             self.add_edge(node_id, node_id)
         elif isinstance(component, SubWorkflowComponent):
             self._graph.nodes[node_id] = DrawableSubgraphNode(id=node_id,
-                                                              subgraph=component.sub_workflow.drawable.get_graph())
+                                                              subgraph=component.sub_workflow._internal.drawable.get_graph())
         elif isinstance(component, BranchComponent) or isinstance(component, IntentDetectionComponent):
             self._graph.nodes[node_id] = DrawableNode(node_id)
             self.add_edge(source=node_id, conditional=True, data=component.router())

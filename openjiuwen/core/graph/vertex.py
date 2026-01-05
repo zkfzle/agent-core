@@ -151,9 +151,9 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
 
     async def _pre_invoke(self) -> Optional[dict]:
         await self.__trace_component_begin__()
-        inputs_transformer = self._node_config.io_config.inputs_transformer if self._node_config else None
+        inputs_schema = self._node_config.io_config.inputs_schema if self._node_config else None
+        inputs_transformer = inputs_schema if not isinstance(inputs_schema, dict) else None
         if inputs_transformer is None:
-            inputs_schema = self._node_config.io_config.inputs_schema if self._node_config else None
             inputs = self._session.state().get_inputs(inputs_schema) if inputs_schema is not None else None
         else:
             inputs = self._session.state().get_inputs_by_transformer(inputs_transformer)
@@ -161,15 +161,15 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         return inputs
 
     async def _post_invoke(self, results: Optional[dict]) -> Any:
-        output_transformer = self._node_config.io_config.outputs_transformer if self._node_config else None
-        if output_transformer is None:
-            output_schema = self._node_config.io_config.outputs_schema if self._node_config else None
-            if output_schema:
-                results = get_by_schema(output_schema, results)
+        outputs_schema = self._node_config.io_config.outputs_schema if self._node_config else None
+        outputs_transformer = outputs_schema if not isinstance(outputs_schema, dict) else None
+        if outputs_transformer is None:
+            if outputs_schema:
+                results = get_by_schema(outputs_schema, results)
                 if (not self.is_end_node) and results and isinstance(results, dict):
                     results = {key: value for key, value in results.items() if value is not None}
         else:
-            results = output_transformer(results)
+            results = outputs_transformer(results)
         self._session.state().set_outputs(results)
         await self.__trace_component_outputs__(results)
         self._clear_interactive()
@@ -179,6 +179,8 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         await self.__trace_component_begin__()
         actor_manager = self._session.actor_manager()
         inputs_schema = self._node_config.stream_io_configs.inputs_schema if self._node_config else None
+        if not isinstance(inputs_schema, dict):
+            inputs_schema = None
         logger.debug(f"{ability} consumer handler inputs schema: {inputs_schema}")
         if (not self._session.tracer()) or self._executable.skip_trace():
             return await actor_manager.consume(self._node_id, ability, inputs_schema)
@@ -192,8 +194,9 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         is_end_node = self.is_end_node
         is_sub_graph = self._session.parent_id() != ''
         actor_manager = self._session.actor_manager()
-        output_transformer = self._node_config.stream_io_configs.outputs_transformer if self._node_config else None
-        output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config else None
+        output_schema = self._node_config.stream_io_configs.outputs_schema if self._node_config.stream_io_configs else None
+        if not isinstance(output_schema, dict):
+            output_transformer = output_schema
         end_stream_index = 0
         async for chunk in results_iter:
             if output_transformer is None:

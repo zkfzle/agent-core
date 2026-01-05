@@ -7,7 +7,8 @@ from openjiuwen.core.utils.llm.messages import BaseMessage
 
 def build_model_input(messages: List[BaseMessage],
                       history_messages: List[BaseMessage] | str,
-                      prompt: str) -> List[dict]:
+                      prompt: str,
+                      timestamp: str) -> List[dict]:
     history = ""
     if isinstance(history_messages, str):
         history = history_messages
@@ -28,6 +29,7 @@ def build_model_input(messages: List[BaseMessage],
         user_input += (f"如果当前输入与历史消息有关联，可参考历史消息，历史消息如下：\n"
                        f"<historical_messages>{history}</historical_messages>\n")
     user_input += f"现在开始：请根据设定的规则处理以下输入并生成出输出：\n<current_messages>{conversation}</current_messages>\n"
+    user_input += f"当前对话发生时间: \n<current_timestamp>{timestamp}</current_timestamp>\n"
     model_input.append({
         "role": "user",
         "content": user_input

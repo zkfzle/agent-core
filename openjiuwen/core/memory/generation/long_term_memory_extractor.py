@@ -100,6 +100,7 @@ class LongTermMemoryExtractor:
             history_messages: list[BaseMessage],
             messages: list[BaseMessage],
             base_chat_model: Tuple[str, BaseModelClient],
+            timestamp: str,
             user_define: dict[str, str] = None,
             retries: int = 3
     ) -> Dict[str, Any]:
@@ -117,7 +118,8 @@ class LongTermMemoryExtractor:
         model_input = build_model_input(
             messages,
             history_messages,
-            sys_prompt
+            sys_prompt,
+            timestamp
         )
         logger.info(f"Start to get long term memory, input: {model_input}")
         model_name, model_client = base_chat_model

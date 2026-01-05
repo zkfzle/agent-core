@@ -114,6 +114,7 @@ class Generator:
             history_messages=history_messages,
             messages=messages,
             base_chat_model=base_chat_model,
+            timestamp=timestamp,
         )
         memory_units.extend(await self._get_user_profile_unit(
             user_id=user_id,

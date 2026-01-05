@@ -24,9 +24,10 @@ MEMORY_ANALYZER_PROMPT = """
 VARIABLES_DESCRIPTION_TEMPLATE
 SUMMARY_TEMPLATE
 ## 输出格式
-1. 最终的输出必须是**纯净的，可直接解析的JSON对象**，不要有任何额外的解释性文字。
-2. 保留Markdown格式```json``` 代码块标记。
-3. 根据你的分析，填充以下JSON结构，不要修改JSON结构，确保所有字段有值(即使为空也用空字符串或空列表填充)。
+1. 输入输出的语言类别应保持一致。如果输入的`current_messages`和`historical_messages`是英文，则输出的记忆内容也应该是英文；
+2. 最终的输出必须是**纯净的，可直接解析的JSON对象**，不要有任何额外的解释性文字。
+3. 保留Markdown格式```json``` 代码块标记。
+4. 根据你的分析，填充以下JSON结构，不要修改JSON结构，确保所有字段有值(即使为空也用空字符串或空列表填充)。
 ```json
 {
   "categories":[]

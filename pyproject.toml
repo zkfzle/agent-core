@@ -1,34 +1,48 @@
 [project]
-name = "jiuwen-opensource"
+name = "openjiuwen"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "aiohttp==3.11.12",
-    "mcp==1.12.2",
-    "pydantic==2.11.5",
-    "python-dateutil==2.9.0.post0",
+    # HTTP clients
+    "aiohttp>=3.11.12",
+    "requests>=2.32.3",
+
+    # Date & time
+    "python-dateutil>=2.9.0.post0",
+
+    # File & locking
     "filelock>=3.20.1",
-    "sqlalchemy==2.0.41",
-    "openai==1.108.0",
-    "cacheout==0.16.0",
-    "mermaid-py==0.8.0",
-    "pymupdf==1.26.4",
-    "elasticsearch==8.17.1",
-    "llama-index==0.12.36",
-    "llama-index-vector-stores-elasticsearch==0.4.3",
-    "transformers==4.52.4",
-    "portalocker==3.2.0",
-    "pymilvus[milvus-lite]==2.6.2",
-    "pycryptodome==3.23.0",
-    "chromadb==1.3.7",
-    "python-docx==1.2.0",
-    "pdfplumber==0.11.8",
-    "charset-normalizer==3.4.4",
-    "aiofiles==25.1.0",
-    "tiktoken==0.12.0",
-    "pysbd==0.3.4",
+    "portalocker>=3.2.0",
+    "aiofiles>=25.1.0",
+
+    # Database ORM
+    "sqlalchemy>=2.0.41",
+
+    # AI/LLM
+    "openai>=1.108.0",
+    "transformers>=4.52.4",
+    "tiktoken>=0.12.0",
+
+    # Vector database
+    "pymilvus[milvus-lite]>=2.6.2",
+    "chromadb>=1.3.7",
+
+    # MCP server
+    "fastmcp>=2.14.2,<3.0",
+
+    # Document processing
+    "docx2txt>=0.8",
+    "python-docx>=1.2.0",
+    "pdfplumber>=0.11.8",
+
+    # Utilities
+    "cacheout>=0.16.0",
+    "mermaid-py>=0.8.0",
+    "pycryptodome>=3.23.0",
+    "charset-normalizer>=3.4.4",
+    "pysbd>=0.3.4",
 ]
 
 [tool.uv]
@@ -36,17 +50,23 @@ default-groups = ['dev']
 
 [[tool.uv.index]]
 name = "aliyun"
-url = "https://mirrors.aliyun.com/pypi/simple/"
+url = "https://mirrors.aliyun.com/pypi/simple"
+default = true
 
 [dependency-groups]
 dev = [
-    "autodoc-pydantic==2.2.0",
-    "coverage==7.7.1",
-    "pytest==8.3.5",
+    # Testing
+    "pytest>=8.3.5",
     "pytest-asyncio>=1.0.0",
     "pytest-html>=4.1.1",
-    "pytest-mock==3.14.0",
-    "ruff==0.11.2"
+    "pytest-mock>=3.14.0",
+    "coverage>=7.7.1",
+
+    # Documentation
+    "autodoc-pydantic>=2.2.0",
+
+    # Linting & formatting
+    "ruff>=0.11.2",
 ]
 
 [tool.coverage.run]
@@ -57,7 +77,3 @@ asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 pythonpath = ["jiuwen"]
 addopts = ["-v", "--html=report/index.html", "--self-contained-html"]
-
-[project.optional-dependencies]
-pulsar = ["pulsar-client==3.5.0"]
-

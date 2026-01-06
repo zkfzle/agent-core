@@ -42,7 +42,7 @@ class AgentGroupMgr(AbstractManager[BaseGroup]):
             topic = agent_group.get_topic()
             if topic is not None:
                 from openjiuwen.core.runner import Runner
-                subscription = await Runner._pubsub().subscribe(topic)
+                subscription = await Runner.pubsub.subscribe(topic)
                 agent_group.set_subscription(subscription)
 
     async def remove_agent_group(self, agent_group_id: str) -> Union[BaseGroup, AgentGroupProvider]:
@@ -52,7 +52,7 @@ class AgentGroupMgr(AbstractManager[BaseGroup]):
             topic = agent_group.get_topic()
             if topic is not None and hasattr(agent_group, '_subscription'):
                 from openjiuwen.core.runner import Runner
-                await Runner._pubsub().unsubscribe(topic, agent_group.get_subscription)
+                await Runner.pubsub.unsubscribe(topic, agent_group.get_subscription)
         return agent_group
 
     def _add_agent_group(self, agent_group_id: str, agent_group: Union[AgentGroupProvider]) -> None:

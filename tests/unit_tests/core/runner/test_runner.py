@@ -113,7 +113,7 @@ class TestRunner:
         assert result == WorkflowOutput(result={"result": "query workflow"}, state=WorkflowExecutionState.COMPLETED)
 
     async def test_run_tool(self, session):
-        result = await Runner.run_tool(tool=self.add_function, inputs={"a": 1, "b": 2}, session=session)
+        result = await self.add_function.invoke(inputs={"a": 1, "b": 2})
         assert result == 3
 
     async def test_run_workflow_not_bound(self, session):
@@ -125,9 +125,3 @@ class TestRunner:
             await Runner.run_workflow(workflow, inputs={"query": "query workflow"}, session=session)
         assert exc_info.value.error_code == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.code
         assert exc_info.value.message == StatusCode.WORKFLOW_NOT_BOUND_TO_AGENT.errmsg
-
-    async def test_run_tool_not_bound(self, session):
-        with pytest.raises(JiuWenBaseException) as exc_info:
-            await Runner.run_tool(tool=self.multiply_function, inputs={"a": 1, "b": 2}, session=session)
-        assert exc_info.value.error_code == StatusCode.TOOL_NOT_BOUND_TO_AGENT.code
-        assert exc_info.value.message == StatusCode.TOOL_NOT_BOUND_TO_AGENT.errmsg

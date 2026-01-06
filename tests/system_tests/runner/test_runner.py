@@ -406,13 +406,14 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert server_tools[0].name == "browser-use-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.list_tools("browser-use-server")
+            tools = await Runner.resource_mgr.get_mcp_tool_info(server_name="browser-use-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
-            result = await Runner.run_tool(tool_id, test_inputs)
+            tool = Runner.resource_mgr.get_tool(tool_id)
+            result = await tool.invoke(test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
@@ -489,13 +490,14 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert server_tools[0].name == "doubter-mcp-server.doubter"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.list_tools("doubter-mcp-server")
+            tools = await Runner.resource_mgr.get_mcp_tool_info(server_name="doubter-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
-            result = await Runner.run_tool(tool_id, test_inputs)
+            tool = Runner.resource_mgr.get_tool(tool_id)
+            result = await tool.invoke(test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(
@@ -576,7 +578,8 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             tool_id = first_tool.name
 
             # -------------------- 调用工具 --------------------
-            result = await Runner.run_tool(tool_id, test_inputs)
+            tool = Runner.resource_mgr.get_tool(tool_id)
+            result = await tool.invoke(test_inputs)
 
             # -------------------- 实例级调用断言 --------------------
             mock_call_tool.assert_awaited_once_with(

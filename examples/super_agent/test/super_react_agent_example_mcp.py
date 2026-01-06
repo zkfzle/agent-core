@@ -214,7 +214,8 @@ def _make_mcp_call_coroutine(server_name: str, tool_name: str):
     """
     async def _wrapper(**kwargs):
         tool_id = f"{server_name}.{tool_name}"  # 例如：browser-use-server.browser_navigate
-        result = await Runner.run_tool(tool_id, kwargs)
+        tool = Runner.resource_mgr.get_tool(tool_id)
+        result = await tool.invoke(kwargs)
 
         # Test 里约定：如果返回 dict 且有 "result" 字段，就用它
         if isinstance(result, dict) and "result" in result:
@@ -252,7 +253,7 @@ async def _register_mcp_server_as_local_tools(
         raise RuntimeError(f"Failed to add MCP server: {server_name}")
 
     # 2. 用 Runner.list_tools 拿到工具列表（McpToolInfo）
-    tool_infos = await Runner.list_tools(server_name)
+    tool_infos = await Runner.resource_mgr.get_mcp_tool_info(server_name=server_name)
 
     local_tools = []
 

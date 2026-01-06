@@ -1,6 +1,6 @@
 """Single Agent Base Class Definition
 
-Main Classes:
+Main classes included:
  - Ability: Ability type definition
  - AbilityKit: Agent ability manager
  - BaseAgent: Single agent base class
@@ -10,32 +10,33 @@ Author: huenrui1@huawei.com
 """
 from __future__ import annotations
 
+import asyncio
+import json
 from abc import abstractmethod, ABC
-from typing import List, Any, AsyncIterator, Union, Optional, Tuple, Dict, TYPE_CHECKING
+from typing import List, Any, AsyncIterator, Union, Optional, Tuple, Dict
 
+from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import ToolMessage
 from openjiuwen.core.foundation.tool import ToolCall, ToolInfo
 from openjiuwen.core.foundation.tool.base import ToolCard
-from openjiuwen.core.protocols.mcp import McpServerConfig
-from openjiuwen.core.session.stream import StreamMode
+from openjiuwen.core.protocols import McpServerConfig
+from openjiuwen.core.session.session import Session
+from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
+from openjiuwen.core.workflow import WorkflowCard
 
-if TYPE_CHECKING:
-    from openjiuwen.core.session import Session
-    from openjiuwen.core.workflow import WorkflowCard
-
-# Ability type definition (use string for WorkflowCard to avoid circular import at runtime)
-Ability = Union[ToolCard, 'WorkflowCard', AgentCard, McpServerConfig]
+# Ability type definition
+Ability = Union[ToolCard, WorkflowCard, AgentCard, McpServerConfig]
 
 
 class AbilityKit:
-    """Agent能力管理器
+    """Agent Ability Manager
 
-    职责:
-    - 存储Agent可用的能力Card（只存元数据，不存实例）
-    - 提供能力的增删查接口
-    - 将Card转换为ToolInfo供LLM使用
-    - 执行能力调用（从ResourceManager获取实例）
+    Responsibilities:
+    - Store available ability Cards for Agent (metadata only, no instances)
+    - Provide add/remove/query interfaces for abilities
+    - Convert Cards to ToolInfo for LLM usage
+    - Execute ability calls (get instances from ResourceManager)
     """
 
     def __init__(self):
@@ -45,93 +46,263 @@ class AbilityKit:
         self._mcp_servers: Dict[str, McpServerConfig] = {}
 
     def add(self, ability: Ability) -> None:
-        """添加能力"""
-        # TODO: 根据ability类型添加到对应的dict
-        pass
+        """Add an ability
+
+        Args:
+            ability: Ability Card to add
+        """
+        if isinstance(ability, ToolCard):
+            self._tools[ability.name] = ability
+        elif isinstance(ability, WorkflowCard):
+            self._workflows[ability.name] = ability
+        elif isinstance(ability, AgentCard):
+            self._agents[ability.name] = ability
+        elif isinstance(ability, McpServerConfig):
+            self._mcp_servers[ability.name] = ability
+        else:
+            logger.warning(f"Unknown ability type: {type(ability)}")
 
     def remove(self, name: str) -> Optional[Ability]:
-        """移除能力"""
-        # TODO: 从各个dict中查找并移除
-        pass
+        """Remove an ability by name
+
+        Args:
+            name: Ability name to remove
+
+        Returns:
+            Removed ability Card, or None if not found
+        """
+        if name in self._tools:
+            return self._tools.pop(name)
+        if name in self._workflows:
+            return self._workflows.pop(name)
+        if name in self._agents:
+            return self._agents.pop(name)
+        if name in self._mcp_servers:
+            return self._mcp_servers.pop(name)
+        return None
 
     def get(self, name: str) -> Optional[Ability]:
-        """获取能力Card"""
-        # TODO: 从各个dict中查找
-        pass
+        """Get an ability Card by name
+
+        Args:
+            name: Ability name
+
+        Returns:
+            Ability Card, or None if not found
+        """
+        if name in self._tools:
+            return self._tools[name]
+        if name in self._workflows:
+            return self._workflows[name]
+        if name in self._agents:
+            return self._agents[name]
+        if name in self._mcp_servers:
+            return self._mcp_servers[name]
+        return None
 
     def list(self) -> List[Ability]:
-        """列出所有能力Card"""
-        # TODO: 从各个dict中收集所有Card
-        pass
+        """List all ability Cards
+
+        Returns:
+            List of all ability Cards
+        """
+        abilities: List[Ability] = []
+        abilities.extend(self._tools.values())
+        abilities.extend(self._workflows.values())
+        abilities.extend(self._agents.values())
+        abilities.extend(self._mcp_servers.values())
+        return abilities
 
     def list_tool_info(
             self,
             names: Optional[List[str]] = None,
             mcp_server_name: Optional[str] = None
     ) -> List[ToolInfo]:
-        """获取ToolInfo列表（供LLM使用）"""
-        # TODO: 将Card转换为ToolInfo
-        pass
+        """Get ToolInfo list (for LLM usage)
+
+        Args:
+            names: Filter by ability names (optional)
+            mcp_server_name: Filter by MCP server name (optional)
+
+        Returns:
+            List of ToolInfo objects for LLM
+        """
+        tool_infos: List[ToolInfo] = []
+
+        # Convert ToolCards to ToolInfo
+        for name, tool_card in self._tools.items():
+            if names is None or name in names:
+                tool_info = ToolInfo(
+                    name=tool_card.name,
+                    description=tool_card.description or "",
+                    parameters=tool_card.parameters or {}
+                )
+                tool_infos.append(tool_info)
+
+        # Convert WorkflowCards to ToolInfo
+        for name, workflow_card in self._workflows.items():
+            if names is None or name in names:
+                tool_info = ToolInfo(
+                    name=workflow_card.name,
+                    description=workflow_card.description or "",
+                    parameters=workflow_card.parameters or {}
+                )
+                tool_infos.append(tool_info)
+
+        # Convert AgentCards to ToolInfo
+        for name, agent_card in self._agents.items():
+            if names is None or name in names:
+                # Build parameters from input_params
+                params = {"type": "object", "properties": {}, "required": []}
+                if hasattr(agent_card, 'input_params'):
+                    for param in agent_card.input_params:
+                        params["properties"][param.name] = {
+                            "type": param.type,
+                            "description": param.description or ""
+                        }
+                        if getattr(param, 'required', False):
+                            params["required"].append(param.name)
+
+                tool_info = ToolInfo(
+                    name=agent_card.name,
+                    description=agent_card.description or "",
+                    parameters=params
+                )
+                tool_infos.append(tool_info)
+
+        # TODO: Handle MCP servers if needed
+
+        return tool_infos
 
     async def execute(
             self,
             tool_call: ToolCall,
             session: Session
     ) -> Tuple[Any, ToolMessage]:
-        """执行能力调用
+        """Execute an ability call
 
-        从ResourceManager获取实例，执行并返回结果
+        Get instance from Session/ResourceManager, execute and return result
+
+        Args:
+            tool_call: Tool call from LLM
+            session: Session instance
+
+        Returns:
+            (result, ToolMessage) tuple
         """
-        # TODO: 
-        # 1. 根据tool_call.name查找是哪种能力
-        # 2. 从Runner().resource_mgr获取实例
-        # 3. 执行并返回结果
-        pass
+        tool_name = tool_call.name
+
+        # Parse arguments
+        try:
+            tool_args = (
+                json.loads(tool_call.arguments)
+                if isinstance(tool_call.arguments, str)
+                else tool_call.arguments
+            )
+        except (json.JSONDecodeError, AttributeError):
+            tool_args = {}
+
+        result = None
+        error_msg = None
+
+        # Check ability type and execute accordingly
+        if tool_name in self._tools:
+            # Execute Tool
+            tool = session.get_tool(tool_name)
+            if tool:
+                try:
+                    result = await tool.invoke(tool_args)
+                except Exception as e:
+                    error_msg = f"Tool execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = f"Tool instance not found: {tool_name}"
+
+        elif tool_name in self._workflows:
+            # Execute Workflow
+            workflow = await session.get_workflow(tool_name)
+            if workflow:
+                try:
+                    result = await workflow.invoke(tool_args, session)
+                except Exception as e:
+                    error_msg = f"Workflow execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = f"Workflow instance not found: {tool_name}"
+
+        elif tool_name in self._agents:
+            # Execute sub-Agent
+            # TODO: Get agent instance from ResourceManager
+            error_msg = f"Sub-agent execution not yet implemented: {tool_name}"
+
+        elif tool_name in self._mcp_servers:
+            # Execute MCP tool
+            # TODO: Get MCP tool from MCP server
+            error_msg = f"MCP tool execution not yet implemented: {tool_name}"
+
+        else:
+            # Fallback: try to get tool from session
+            tool = session.get_tool(tool_name)
+            if tool:
+                try:
+                    result = await tool.invoke(tool_args)
+                except Exception as e:
+                    error_msg = f"Tool execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = f"Ability not found: {tool_name}"
+
+        # Build ToolMessage
+        content = str(result) if result is not None else (error_msg or "")
+        tool_message = ToolMessage(
+            content=content,
+            tool_call_id=tool_call.id
+        )
+
+        return result, tool_message
 
 
 class BaseAgent(ABC):
-    """单Agent基类
+    """Single Agent Base Class
 
-    设计原则:
-    - Card必需（定义Agent是什么）
-    - Config可选（定义Agent怎么运行）
-    - 所有配置方法支持链式调用
+    Design principles:
+    - Card is required (defines what the Agent is)
+    - Config is optional (defines how the Agent runs)
+    - All configuration methods support chaining
 
     Attributes:
-        card: Agent名片（必需）
-        _ability_kit: 能力管理器
+        card: Agent card (required)
+        _ability_kit: Ability manager
     """
 
     def __init__(
             self,
             card: AgentCard,
     ):
-        """初始化Agent
+        """Initialize Agent
 
         Args:
-            card: Agent名片（必需）
-            config: Agent配置（可选，有默认值）
-            context_engine: 上下文引擎（可选）
+            card: Agent card (required)
         """
         self.card = card
         self._ability_kit = AbilityKit()
 
-    # ========== 配置接口 ==========
+    # ========== Configuration Interface ==========
     @abstractmethod
     def configure(self, config) -> 'BaseAgent':
-        """设置配置"""
+        """Set configuration"""
         pass
 
-    # ========== 能力管理接口 ==========
+    # ========== Ability Management Interface ==========
 
     def add_ability(self, ability: Union[Ability, List[Ability]]) -> 'BaseAgent':
-        """添加能力
+        """Add an ability
 
         Args:
-            ability: 能力Card或列表（ToolCard/WorkflowCard/AgentCard/McpServerConfig）
+            ability: Ability Card or list (ToolCard/WorkflowCard/AgentCard/McpServerConfig)
 
         Returns:
-            self（支持链式调用）
+            self (supports chaining)
         """
         abilities = [ability] if not isinstance(ability, list) else ability
         for ab in abilities:
@@ -139,13 +310,13 @@ class BaseAgent(ABC):
         return self
 
     def remove_ability(self, name: Union[str, List[str]]) -> 'BaseAgent':
-        """移除能力
+        """Remove an ability
 
         Args:
-            name: 能力名称或列表
+            name: Ability name or list
 
         Returns:
-            self（支持链式调用）
+            self (supports chaining)
         """
         names = [name] if isinstance(name, str) else name
         for n in names:
@@ -153,43 +324,105 @@ class BaseAgent(ABC):
         return self
 
     def get_ability(self, name: str) -> Optional[Ability]:
-        """获取能力Card
+        """Get an ability Card
 
         Args:
-            name: 能力名称
+            name: Ability name
 
         Returns:
-            能力Card，如果不存在返回None
+            Ability Card, or None if not found
         """
         return self._ability_kit.get(name)
 
     def list_abilities(self) -> List[Ability]:
-        """列出所有能力Card
+        """List all ability Cards
 
         Returns:
-            能力Card列表
+            List of ability Cards
         """
         return self._ability_kit.list()
 
-    # ========== 查询接口 ==========
-    def get_tool_info(self) -> ToolInfo:
-        """将当前Agent转换为ToolInfo（作为子Agent使用）"""
-        # TODO: 从self.card构造ToolInfo
-        pass
+    def list_tool_info(
+            self,
+            names: Optional[List[str]] = None
+    ) -> List[ToolInfo]:
+        """Get ToolInfo list for LLM usage
 
-    # ========== 执行接口 ==========
+        Args:
+            names: Filter by ability names (optional)
+
+        Returns:
+            List of ToolInfo objects
+        """
+        return self._ability_kit.list_tool_info(names=names)
+
+    # ========== Query Interface ==========
+    def get_tool_info(self) -> ToolInfo:
+        """Convert current Agent to ToolInfo (for use as sub-agent)
+
+        Returns:
+            ToolInfo representing this agent
+        """
+        # Build parameters from agent card's input_params
+        params = {"type": "object", "properties": {}, "required": []}
+        if hasattr(self.card, 'input_params'):
+            for param in self.card.input_params:
+                params["properties"][param.name] = {
+                    "type": param.type,
+                    "description": getattr(param, 'description', "") or ""
+                }
+                if getattr(param, 'required', False):
+                    params["required"].append(param.name)
+
+        return ToolInfo(
+            name=self.card.name,
+            description=self.card.description or "",
+            parameters=params
+        )
+
+    # ========== Execution Interface ==========
 
     async def _execute_ability(
             self,
             tool_calls: Union[ToolCall, List[ToolCall]],
             session: Session
     ) -> List[Tuple[Any, ToolMessage]]:
-        """执行能力调用（支持并行）"""
-        # TODO:
-        # 1. 将单个tool_call转为列表
-        # 2. 并行调用self._ability_kit.execute()
-        # 3. 返回结果列表
-        pass
+        """Execute ability calls (supports parallel execution)
+
+        Args:
+            tool_calls: Single tool call or list of tool calls
+            session: Session instance
+
+        Returns:
+            List of (result, ToolMessage) tuples
+        """
+        # Convert single tool_call to list
+        if not isinstance(tool_calls, list):
+            tool_calls = [tool_calls]
+
+        # Execute all tool calls in parallel
+        tasks = [
+            self._ability_kit.execute(tool_call, session)
+            for tool_call in tool_calls
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results
+        final_results: List[Tuple[Any, ToolMessage]] = []
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                # Handle exception
+                error_msg = f"Ability execution error: {str(result)}"
+                logger.error(error_msg)
+                tool_message = ToolMessage(
+                    content=error_msg,
+                    tool_call_id=tool_calls[i].id
+                )
+                final_results.append((None, tool_message))
+            else:
+                final_results.append(result)
+
+        return final_results
 
     @abstractmethod
     async def invoke(
@@ -197,17 +430,17 @@ class BaseAgent(ABC):
             inputs: Any,
             session: Optional[Session] = None,
     ) -> Any:
-        """批执行（运行时可传入config覆盖）
+        """Batch execution (can pass config at runtime to override)
 
         Args:
-            inputs: Agent输入，支持以下格式：
-                - dict: 必须包含 "user_input" 和 "session_id"
-                   例如: {"user_input": "xxx", "session_id": "session_123"}
-                - str: 直接作为user_input，需要单独传入session或通过其他方式获取session_id
-            session: 会话对象（可选，如果不传会根据inputs中的session_id创建）
+            inputs: Agent input, supports the following formats:
+                - dict: Must contain "user_input" and "session_id"
+                   e.g.: {"user_input": "xxx", "session_id": "session_123"}
+                - str: Used directly as user_input, requires session or other way to get session_id
+            session: Session object (optional, will be created from session_id in inputs if not provided)
 
         Returns:
-            Agent输出结果
+            Agent output result
         """
         ...
 
@@ -218,17 +451,17 @@ class BaseAgent(ABC):
             session: Optional[Session] = None,
             stream_modes: Optional[List[StreamMode]] = None
     ) -> AsyncIterator[Any]:
-        """流式执行（运行时可传入config覆盖）
+        """Stream execution (can pass config at runtime to override)
 
         Args:
-            inputs: Agent输入，支持以下格式：
-                - dict: 必须包含 "user_input" 和 "session_id"
-                   例如: {"user_input": "xxx", "session_id": "session_123"}
-                - str: 直接作为user_input，需要单独传入session或通过其他方式获取session_id
-            session: 会话对象（可选，如果不传会根据inputs中的session_id创建）
-            stream_modes: 流式输出模式（可选）
+            inputs: Agent input, supports the following formats:
+                - dict: Must contain "user_input" and "session_id"
+                   e.g.: {"user_input": "xxx", "session_id": "session_123"}
+                - str: Used directly as user_input, requires session or other way to get session_id
+            session: Session object (optional, will be created from session_id in inputs if not provided)
+            stream_modes: Stream output modes (optional)
 
         Yields:
-            Agent流输出结果
+            Agent stream output result
         """
         ...

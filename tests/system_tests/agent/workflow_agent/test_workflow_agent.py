@@ -2,7 +2,7 @@
 import os
 import uuid
 
-from openjiuwen.core.workflow import WorkflowCard
+from openjiuwen.core.workflow import WorkflowCard, WorkflowComponent
 
 os.environ["LLM_SSL_VERIFY"] = "false"
 os.environ["RESTFUL_SSL_VERIFY"] = "false"

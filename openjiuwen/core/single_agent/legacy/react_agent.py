@@ -2,9 +2,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """
-Legacy ReActAgent - Backward compatible version with LegacyMethodsMixin
+Legacy ReActAgent - Backward compatible version
 
-This is the legacy version of ReActAgent that includes deprecated methods.
+This is the legacy version of ReActAgent for backward compatibility.
 For new code, use openjiuwen.core.single_agent.agents.react_agent.ReActAgent
 
 Will be removed in v1.0.0
@@ -14,46 +14,28 @@ import asyncio
 import json
 from typing import Dict, Any, AsyncIterator, List
 
-from pydantic import ValidationError, Field
+from pydantic import ValidationError
 
-from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.common.utils.message_utils import MessageUtils
-from openjiuwen.core.memory.config.config import MemoryScopeConfig
 from openjiuwen.core.single_agent.legacy.agent import BaseAgent
-from openjiuwen.core.single_agent.legacy.compat import LegacyMethodsMixin
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.single_agent.legacy.config import AgentConfig, ConstrainConfig
-from openjiuwen.core.single_agent.schema.schema import PluginSchema
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.single_agent.legacy.config import (
+    LegacyReActAgentConfig,
+)
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm import AIMessage, ToolMessage
+from openjiuwen.core.foundation.llm import AIMessage, ToolMessage, ModelConfig
 from openjiuwen.core.foundation.llm import ModelFactory
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.tool import Tool
 
 
-class LegacyReActAgentConfig(AgentConfig):
-    """Legacy ReAct Agent configuration
+class LegacyReActAgent(BaseAgent):
+    """Legacy ReAct Agent for backward compatibility
     
-    This is the legacy version. For new code, use ReActAgentConfig.
-    Will be removed in v1.0.0
-    """
-    controller_type: ControllerType = Field(default=ControllerType.ReActController)
-    prompt_template_name: str = Field(default="react_system_prompt")
-    prompt_template: List[Dict] = Field(default_factory=list)
-    constrain: ConstrainConfig = Field(default=ConstrainConfig())
-    plugins: List[PluginSchema] = Field(default_factory=list)
-    memory_config: MemoryScopeConfig = Field(default=MemoryScopeConfig())
-
-
-class LegacyReActAgent(LegacyMethodsMixin, BaseAgent):
-    """Legacy ReAct Agent with backward compatibility support
-    
-    This version includes LegacyMethodsMixin for deprecated methods.
     For new code, use openjiuwen.core.single_agent.agents.react_agent.ReActAgent
     
     Will be removed in v1.0.0
@@ -95,7 +77,8 @@ class LegacyReActAgent(LegacyMethodsMixin, BaseAgent):
             await MessageUtils.add_user_message(user_input, self.context_engine, session)
 
         chat_history = MessageUtils.get_chat_history(
-            self.context_engine, session, self.agent_config
+            self.context_engine, session,
+            self.agent_config
         )
 
         messages = []
@@ -249,3 +232,40 @@ class LegacyReActAgent(LegacyMethodsMixin, BaseAgent):
             yield final_result_holder["result"]
 
 
+def create_react_agent_config(
+        agent_id: str,
+        agent_version: str,
+        description: str,
+        model: ModelConfig,
+        prompt_template: List[Dict]
+) -> LegacyReActAgentConfig:
+    """Create ReAct Agent config
+
+    Args:
+        agent_id: Agent ID
+        agent_version: Agent version
+        description: Agent description
+        model: Model config
+        prompt_template: Prompt template
+
+    Returns:
+        LegacyReActAgentConfig instance
+    
+    Deprecated:
+        This function is deprecated and will be removed in v1.0.0.
+        Use ReActAgentConfig directly instead.
+    """
+    import warnings
+    warnings.warn(
+        "create_react_agent_config() is deprecated and will be removed "
+        "in the future. Please use ReActAgentConfig() constructor instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return LegacyReActAgentConfig(
+        id=agent_id,
+        version=agent_version,
+        description=description,
+        model=model,
+        prompt_template=prompt_template
+    )

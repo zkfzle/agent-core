@@ -8,8 +8,9 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, List, Tuple, Union
 
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema, PluginSchema
+from openjiuwen.core.workflow import WorkflowCard as WorkflowSchema
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.single_agent.legacy.schema import PluginSchema
 from openjiuwen.core.context_engine import ContextEngine, ContextEngineConfig
 from openjiuwen.core.session import StaticAgentSession
 from openjiuwen.core.session import Config

@@ -6,9 +6,26 @@ from typing import List, Optional, Dict, Any, Literal
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from openjiuwen.core.single_agent.legacy.schema import WorkflowSchema
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.foundation.llm import ModelConfig
+
+
+class LegacyMemoryConfig(BaseModel):
+    """Legacy Memory configuration for backward compatibility
+    
+    This class provides the old MemoryConfig interface that was expected by
+    legacy code. The original class was in openjiuwen.core.memory.config.config
+    but has been renamed to MemoryScopeConfig with different fields.
+    """
+    mem_variables: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Memory variables config"
+    )
+    enable_long_term_mem: bool = Field(
+        default=True,
+        description="Enable long term memory or not"
+    )
 
 
 class AgentConfig(BaseModel):
@@ -53,6 +70,13 @@ class DefaultResponse(BaseModel):
     text: str = None
 
 
+class MemoryConfig(BaseModel):
+    """Memory configuration for agent"""
+    enabled: bool = Field(default=True)
+    scope: str = Field(default="")
+    config: Dict[str, Any] = Field(default_factory=dict)
+
+
 class WorkflowAgentConfig(AgentConfig):
     """Configuration for workflow agent"""
     controller_type: ControllerType = Field(default=ControllerType.WorkflowController)
@@ -62,3 +86,48 @@ class WorkflowAgentConfig(AgentConfig):
     global_params: Dict[str, Any] = Field(default_factory=dict)
     constrain: ConstrainConfig = Field(default=ConstrainConfig())
     default_response: DefaultResponse = Field(default_factory=DefaultResponse)
+
+
+class LegacyReActAgentConfig(AgentConfig):
+    """Legacy ReAct Agent configuration for backward compatibility
+    
+    This class maintains the old interface structure for legacy code and tests.
+    For new code, use openjiuwen.core.single_agent.agents.react_agent.ReActAgentConfig
+    """
+    controller_type: ControllerType = Field(
+        default=ControllerType.ReActController,
+        description="Controller type"
+    )
+    prompt_template_name: str = Field(
+        default="react_system_prompt",
+        description="Prompt template name"
+    )
+    prompt_template: List[Dict] = Field(
+        default_factory=list,
+        description="Prompt template list"
+    )
+    constrain: ConstrainConfig = Field(
+        default=ConstrainConfig(),
+        description="Constraint configuration"
+    )
+    plugins: List[Any] = Field(
+        default_factory=list,
+        description="List of plugin schemas"
+    )
+    memory_config: LegacyMemoryConfig = Field(
+        default_factory=LegacyMemoryConfig,
+        description="Memory configuration"
+    )
+    
+    @property
+    def context_window_limit(self) -> int:
+        """Context window limit - alias for constrain.reserved_max_chat_rounds
+        
+        This property provides backward compatibility with newer LLMController
+        that expects this attribute directly on config.
+        """
+        return self.constrain.reserved_max_chat_rounds
+
+
+# Alias for backward compatibility
+ReActAgentConfig = LegacyReActAgentConfig

@@ -3,84 +3,153 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Single Agent Module
 
-New interfaces (recommended):
-    - AgentCard: Agent business card
-    - BaseAgent: New Agent base class with Ability/AbilityKit
-    - Ability, AbilityKit: Ability management
+This module provides backward compatible exports for legacy code.
+All legacy implementations are in the legacy/ directory.
 
-Legacy interfaces (deprecated, will be removed in v1.0.0):
-    - All classes imported from legacy package
-    
 For migration guide, see: docs/AGENT_MIGRATION_GUIDE.md
-
-Created on: 2025-01-04
 """
+import warnings
+from typing import Any
 
-# ========== New interfaces (recommended) ==========
+# New classes (no deprecation warning)
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
-from openjiuwen.core.single_agent.agent import (
-    BaseAgent,
-    AbilityKit,
-    Ability,
-)
 
-# Schema classes
-from openjiuwen.core.single_agent.schema.schema import (
-    WorkflowSchema,
-    PluginSchema
-)
-
-# ========== Legacy interfaces (deprecated, backward compatible) ==========
-from openjiuwen.core.single_agent.legacy import (
-    # Mixin
-    LegacyMethodsMixin,
-    # Factory functions
-    create_react_agent_config,
-    workflow_provider,
-    # Legacy agents
-    LegacyReActAgent,
-    LegacyReActAgentConfig,
+# Mapping of deprecated names to their modules and alternatives
+_DEPRECATED_NAMES = {
     # Legacy base classes
-    LegacyBaseAgent,
-    ControllerAgent,
-    AgentSession,
-    WorkflowFactory,
+    "BaseAgent": (
+        "openjiuwen.core.single_agent.legacy.agent",
+        "BaseAgent",
+        "openjiuwen.core.single_agent.agent.BaseAgent"
+    ),
+    "ControllerAgent": (
+        "openjiuwen.core.single_agent.legacy.agent",
+        "ControllerAgent",
+        "openjiuwen.core.single_agent.agent.BaseAgent"
+    ),
+    "AgentSession": (
+        "openjiuwen.core.single_agent.legacy.agent",
+        "AgentSession",
+        "openjiuwen.core.session.Session"
+    ),
+    "WorkflowFactory": (
+        "openjiuwen.core.single_agent.legacy.agent",
+        "WorkflowFactory",
+        "Workflow class directly"
+    ),
+    "workflow_provider": (
+        "openjiuwen.core.single_agent.legacy.agent",
+        "workflow_provider",
+        "Workflow class directly"
+    ),
+    "PluginSchema": (
+        "openjiuwen.core.single_agent.legacy.schema",
+        "PluginSchema",
+        "Tool class directly"
+    ),
     # Legacy configs
-    AgentConfig,
-    LLMCallConfig,
-    IntentDetectionConfig,
-    ConstrainConfig,
-    DefaultResponse,
-    WorkflowAgentConfig,
-)
-
-# For backward compatibility, map old names to legacy versions
-ReActAgent = LegacyReActAgent
-ReActAgentConfig = LegacyReActAgentConfig
-
-__all__ = [
-    # New interfaces
-    "AgentCard",
-    "BaseAgent",              # New BaseAgent with Ability/AbilityKit
-    "AbilityKit",
-    "Ability",
-    # Legacy interfaces (compatible)
-    "ReActAgent",              # Points to LegacyReActAgent
-    "ReActAgentConfig",        # Points to LegacyReActAgentConfig
-    "LegacyBaseAgent",         # Old BaseAgent
-    "AgentConfig",
-    "ControllerAgent",
-    "AgentSession",
-    "WorkflowFactory",
-    "workflow_provider",
-    "create_react_agent_config",
-    "LLMCallConfig",
-    "IntentDetectionConfig",
-    "ConstrainConfig",
-    "DefaultResponse",
-    "WorkflowAgentConfig",
-    "LegacyMethodsMixin",
+    "AgentConfig": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "AgentConfig",
+        "AgentCard + ReActAgentConfig"
+    ),
+    "ReActAgentConfig": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "LegacyReActAgentConfig",
+        "openjiuwen.core.single_agent.agents.react_agent.ReActAgentConfig"
+    ),
+    "LLMCallConfig": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "LLMCallConfig",
+        "ReActAgentConfig"
+    ),
+    "IntentDetectionConfig": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "IntentDetectionConfig",
+        "new config classes"
+    ),
+    "ConstrainConfig": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "ConstrainConfig",
+        "ReActAgentConfig"
+    ),
+    "DefaultResponse": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "DefaultResponse",
+        "new config classes"
+    ),
+    "WorkflowAgentConfig": (
+        "openjiuwen.core.single_agent.legacy.config",
+        "WorkflowAgentConfig",
+        "WorkflowAgentConfig from workflow module"
+    ),
     # Schema classes
-    "WorkflowSchema",
-    "PluginSchema",
-]
+    "WorkflowSchema": (
+        "openjiuwen.core.single_agent.legacy.schema",
+        "WorkflowSchema",
+        "WorkflowCard"
+    ),
+    # Legacy ReAct agent
+    "ReActAgent": (
+        "openjiuwen.core.single_agent.legacy.react_agent",
+        "LegacyReActAgent",
+        "openjiuwen.core.single_agent.agents.react_agent.ReActAgent"
+    ),
+    "create_react_agent_config": (
+        "openjiuwen.core.single_agent.legacy.react_agent",
+        "create_react_agent_config",
+        "ReActAgentConfig() constructor"
+    ),
+}
+
+# Cache for loaded modules
+_loaded_modules = {}
+
+
+def _import_deprecated(name: str) -> Any:
+    """Import a deprecated name and issue warning.
+    
+    Args:
+        name: Name to import
+        
+    Returns:
+        The imported object
+    """
+    if name not in _DEPRECATED_NAMES:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    
+    module_path, attr_name, alternative = _DEPRECATED_NAMES[name]
+    
+    # Issue deprecation warning
+    warnings.warn(
+        f"{name} is deprecated and will be removed in the future. "
+        f"Please use {alternative} instead.",
+        DeprecationWarning,
+        stacklevel=3
+    )
+    
+    # Import and cache
+    if module_path not in _loaded_modules:
+        import importlib
+        _loaded_modules[module_path] = importlib.import_module(module_path)
+    
+    return getattr(_loaded_modules[module_path], attr_name)
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy loading with deprecation warnings.
+    
+    This is called when an attribute is not found in the module's namespace.
+    We use it to issue deprecation warnings when legacy names are accessed.
+    """
+    if name in _DEPRECATED_NAMES:
+        return _import_deprecated(name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__():
+    """Return list of available attributes."""
+    return ["AgentCard"] + list(_DEPRECATED_NAMES.keys())
+
+
+__all__ = ["AgentCard"] + list(_DEPRECATED_NAMES.keys())

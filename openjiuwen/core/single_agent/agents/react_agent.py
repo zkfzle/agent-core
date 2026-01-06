@@ -1,334 +1,462 @@
-#!/usr/bin/env python
-# coding: utf-8
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+"""ReActAgent Implementation
+
+ReAct (Reasoning + Acting) paradigm Agent implementation
+
+Created on: 2025-11-25
+Author: huenrui1@huawei.com
 """
-ReActAgent - Minimal ReAct Agent (no interruption, no Controller)
-"""
+from __future__ import annotations
 
 import asyncio
-import json
-from typing import Dict, Any, AsyncIterator, List
+from typing import Any, AsyncIterator, Dict, List, Optional
 
-from pydantic import ValidationError, Field
+from pydantic import Field, BaseModel
 
-from openjiuwen.core.common.constants.enums import ControllerType
-from openjiuwen.core.common.utils.message_utils import MessageUtils
-from openjiuwen.core.memory.config.config import MemoryScopeConfig
-from openjiuwen.core.single_agent.legacy.agent import BaseAgent
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.single_agent.legacy.config import AgentConfig, ConstrainConfig
-from openjiuwen.core.single_agent.schema.schema import PluginSchema
-from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.session import Session
-from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm import AIMessage, ToolMessage
-from openjiuwen.core.foundation.llm import ModelFactory
+from openjiuwen.core.common.utils.message_utils import MessageUtils
+from openjiuwen.core.context_engine import ContextEngine
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
+from openjiuwen.core.foundation.llm import AIMessage, ModelFactory
 from openjiuwen.core.foundation.prompt import PromptTemplate
-from openjiuwen.core.foundation.tool import Tool
+from openjiuwen.core.memory import LongTermMemory, MemoryScopeConfig
+from openjiuwen.core.session.session import Session
+from openjiuwen.core.session.stream import OutputSchema
+from openjiuwen.core.session.stream.base import StreamMode
+from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 
-class ReActAgentConfig(AgentConfig):
-    """ReAct Agent configuration"""
-    controller_type: ControllerType = Field(default=ControllerType.ReActController)
-    prompt_template_name: str = Field(default="react_system_prompt")
-    prompt_template: List[Dict] = Field(default_factory=list)
-    constrain: ConstrainConfig = Field(default=ConstrainConfig())
-    plugins: List[PluginSchema] = Field(default_factory=list)
-    memory_config: MemoryScopeConfig = Field(default=MemoryScopeConfig())
+class ReActAgentConfig(BaseModel):
+    """ReActAgent Configuration Class
+
+    Attributes:
+        max_iterations: Maximum number of ReAct loop iterations
+    """
+    mem_scope_id: str = Field(default="", description="Memory scope ID")
+    model_name: str = Field(default="", description="Model name")
+    model_provider: str = Field(default="openai", description="Model provider")
+    api_key: str = Field(default="", description="API key")
+    api_base: str = Field(default="", description="API base URL")
+    prompt_template_name: str = Field(default="", description="Prompt template name")
+    prompt_template: List[Dict] = Field(
+        default_factory=list,
+        description="Prompt template list"
+    )
+    context_window_limit: int = Field(default=20, description="Context window limit")
+    max_iterations: int = Field(default=5, description="Maximum iterations")
+
+    def configure_model(self, model_name: str) -> 'ReActAgentConfig':
+        """Configure model name
+
+        Args:
+            model_name: Model name
+
+        Returns:
+            self (supports chaining)
+        """
+        self.model_name = model_name
+        return self
+
+    def configure_model_provider(
+            self,
+            provider: str,
+            api_key: str,
+            api_base: str
+    ) -> 'ReActAgentConfig':
+        """Configure model provider details
+
+        Args:
+            provider: Model provider name (e.g., "openai")
+            api_key: API key
+            api_base: API base URL
+
+        Returns:
+            self (supports chaining)
+        """
+        self.model_provider = provider
+        self.api_key = api_key
+        self.api_base = api_base
+        return self
+
+    def configure_prompt(self, prompt_name: str) -> 'ReActAgentConfig':
+        """Configure prompt template name
+
+        Args:
+            prompt_name: Prompt template name
+
+        Returns:
+            self (supports chaining)
+        """
+        self.prompt_template_name = prompt_name
+        return self
+
+    def configure_prompt_template(
+            self,
+            prompt_template: List[Dict]
+    ) -> 'ReActAgentConfig':
+        """Configure prompt template directly
+
+        Args:
+            prompt_template: Prompt template list, format like
+                [{"role": "system", "content": "..."}]
+
+        Returns:
+            self (supports chaining)
+        """
+        self.prompt_template = prompt_template
+        return self
+
+    def configure_context_limit(self, limit: int) -> 'ReActAgentConfig':
+        """Configure context window limit
+
+        Args:
+            limit: Context window limit (message count)
+
+        Returns:
+            self (supports chaining)
+        """
+        self.context_window_limit = limit
+        return self
+
+    def configure_mem_scope(self, mem_scope_id: str) -> 'ReActAgentConfig':
+        """Configure memory scope ID
+
+        Args:
+            mem_scope_id: Memory scope ID
+
+        Returns:
+            self (supports chaining)
+        """
+        self.mem_scope_id = mem_scope_id
+        return self
+
+    def configure_max_iterations(self, max_iterations: int) -> 'ReActAgentConfig':
+        """Configure maximum iterations
+
+        Args:
+            max_iterations: Maximum number of ReAct loop iterations
+
+        Returns:
+            self (supports chaining)
+        """
+        self.max_iterations = max_iterations
+        return self
 
 
 class ReActAgent(BaseAgent):
-    """ReAct Agent - Minimal implementation (no interruption, no Controller)
-    
-    This is the clean version without legacy methods.
-    For backward compatibility, see openjiuwen.core.single_agent.legacy.react_agent
+    """ReAct paradigm Agent implementation
+    ReAct loop: Reasoning -> Acting -> Observation -> Repeat
+
+    Input format (compatible with legacy):
+        {"query": "user question", "conversation_id": "session_123"}
+
+    Output format (compatible with legacy):
+        invoke: {"output": "response content", "result_type": "answer|error"}
+        stream: yields OutputSchema objects
     """
 
     def __init__(
             self,
-            agent_config: ReActAgentConfig,
-            workflows: List[Workflow] = None,
-            tools: List[Tool] = None
+            card: AgentCard,
     ):
         """Initialize ReActAgent
-        
+
         Args:
-            agent_config: ReAct config
-            workflows: Workflow list
-            tools: Tool list
+            card: Agent card (required)
         """
-        # Call parent init (BaseAgent creates session, context_engine, etc.)
-        super().__init__(agent_config)
-
-        # LLM instance (lazy creation)
+        self.config = self._create_default_config()
+        self.context_engine = ContextEngine(
+            ContextEngineConfig(
+                default_window_message_num=self.config.context_window_limit
+            )
+        )
         self._llm = None
+        self._init_memory_scope()
+        super().__init__(card)
 
-        # Add tools and workflows via BaseAgent interface (auto sync)
-        if tools:
-            self.add_tools(tools)
-        if workflows:
-            self.add_workflows(workflows)
+    def _init_memory_scope(self) -> None:
+        """Initialize memory scope (subclass can override configuration)"""
+        if self.config.mem_scope_id:
+            LongTermMemory().set_scope_config(
+                self.config.mem_scope_id,
+                MemoryScopeConfig()
+            )
+
+    def _create_default_config(self) -> ReActAgentConfig:
+        """Create default configuration"""
+        return ReActAgentConfig()
+
+    def configure(self, config: ReActAgentConfig) -> 'BaseAgent':
+        """Set configuration
+
+        Args:
+            config: ReActAgentConfig configuration object
+
+        Returns:
+            self (supports chaining)
+
+        Note:
+            After config update, context_engine and memory_scope
+            will be updated accordingly
+        """
+        old_config = self.config
+        self.config = config
+
+        # Reset LLM if model config changed
+        if (old_config.model_provider != config.model_provider or
+                old_config.api_key != config.api_key or
+                old_config.api_base != config.api_base):
+            self._llm = None
+
+        # Update context_engine if context window limit changed
+        if old_config.context_window_limit != config.context_window_limit:
+            self.context_engine = ContextEngine(
+                ContextEngineConfig(
+                    default_window_message_num=config.context_window_limit
+                )
+            )
+
+        # Update memory_scope if memory scope ID changed
+        if old_config.mem_scope_id != config.mem_scope_id:
+            self._init_memory_scope()
+
+        return self
 
     def _get_llm(self):
-        """Get LLM instance"""
+        """Get LLM instance (lazy initialization)"""
         if self._llm is None:
             self._llm = ModelFactory().get_model(
-                model_provider=self.agent_config.model.model_provider,
-                **self.agent_config.model.model_info.model_dump(exclude=['model_name', 'streaming'])
+                model_provider=self.config.model_provider,
+                api_key=self.config.api_key,
+                api_base=self.config.api_base,
+                model_name=self.config.model_name
             )
         return self._llm
 
-    async def call_model(self, user_input: str, session: Session, is_first_call: bool = False):
-        """Call LLM for reasoning
-        
+    async def _call_llm(
+        self,
+        messages: List[Dict],
+        tools: Optional[List[Dict]] = None
+    ) -> AIMessage:
+        """Call LLM with messages and optional tools
+
         Args:
-            user_input: User input or tool result
-            session: Session instance
-            is_first_call: Whether first call (first call needs to add user message)
-        
+            messages: Message list
+            tools: Optional tool definitions
+
         Returns:
-            llm_output: LLM output (contains content and tool_calls)
+            AI message from LLM
         """
-        # 1. If first call, add user message
-        if is_first_call:
-            await MessageUtils.add_user_message(user_input, self.context_engine, session)
-
-        # 2. Get chat history
-        chat_history = MessageUtils.get_chat_history(
-            self.context_engine, session, self.agent_config
-        )
-
-        # 3. Format prompt
-        messages = []
-        # Add system prompt
-        try:
-            system_prompt = PromptTemplate(content=self.agent_config.prompt_template).to_messages()
-            for prompt in system_prompt:
-                prompt_dict = prompt.model_dump(exclude_none=True)
-                messages.append(prompt_dict)
-        except ValidationError as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.PROMPT_PARAMS_CHECK_ERROR.code,
-                message=StatusCode.PROMPT_PARAMS_CHECK_ERROR.errmsg.format(msg=str(e))
-            ) from e
-
-        # Add chat history (need complete BaseMessage conversion)
-        for msg in chat_history:
-            # Use model_dump to export message completely, exclude None values
-            msg_dict = msg.model_dump(exclude_none=True)
-            messages.append(msg_dict)
-
-        # 4. Get available tool info
-        tools = session.get_tool_info()
-
-        # 5. Call LLM
         llm = self._get_llm()
-        llm_output = await llm.ainvoke(
-            self.agent_config.model.model_info.model_name,
-            messages,
-            tools
+        return await llm.ainvoke(
+            model_name=self.config.model_name,
+            messages=messages,
+            tools=tools
         )
 
-        # 6. Save AI response to chat history
-        ai_message = AIMessage(
-            content=llm_output.content,
-            tool_calls=llm_output.tool_calls
-        )
-        await MessageUtils.add_ai_message(ai_message, self.context_engine, session)
+    async def invoke(
+            self,
+            inputs: Any,
+            session: Optional[Session] = None
+    ) -> Dict[str, Any]:
+        """Execute ReAct process
 
-        return llm_output
-
-    async def _execute_tool_call(self, tool_call, session: Session) -> Any:
-        """Execute single tool call
-        
         Args:
-            tool_call: Tool call object returned by LLM
-            session: Session instance
-        
+            inputs: User input, supports to following formats:
+                - dict (legacy): {"query": "...", "conversation_id": "..."}
+                - dict (new): {"user_input": "...", "session_id": "..."}
+                - str: Used directly as user_input
+            session: Session object (optional)
+
         Returns:
-            Tool execution result
+            Dict with output and result_type
         """
-        # Parse tool name and parameters
-        tool_name = tool_call.name
-        try:
-            tool_args = json.loads(tool_call.arguments) if isinstance(tool_call.arguments, str) else tool_call.arguments
-        except (json.JSONDecodeError, AttributeError):
-            tool_args = {}
-
-        # Get and execute tool
-        tool = session.get_tool(tool_name)
-        if not tool:
-            raise ValueError(f"Tool not found: {tool_name}")
-
-        result = await tool.invoke(tool_args)
-
-        # Add tool result to chat history
-        tool_message = ToolMessage(
-            content=str(result),
-            tool_call_id=tool_call.id
-        )
-        await MessageUtils.add_tool_message(tool_message, self.context_engine, session)
-
-        return result
-
-    async def invoke(self, inputs: Dict, session: Session = None) -> Dict:
-        """Sync call - Complete ReAct loop
-        
-        Args:
-            inputs: Input data, must contain 'query' field
-            session: Optional Session (if not provided, use BaseAgent's _session)
-        
-        Returns:
-            Execution result
-        """
-        # 1. Prepare Session
-        session_id = inputs.get("conversation_id", "default_session")
-        session_created = False
-        if session is None:
-            # Use BaseAgent's _session, need to create task session
-            session = await self._session.pre_run(session_id=session_id, inputs=inputs)
-            session_created = True
-        await self.context_engine.create_context(session=session)
-
-        try:
-            user_input = inputs.get("query", "")
-            if not user_input:
-                return {"output": "No query provided", "result_type": "error"}
-
-            # 2. ReAct loop
-            iteration = 0
-            max_iteration = self.agent_config.constrain.max_iteration
-            is_first_call = True
-
-            while iteration < max_iteration:
-                iteration += 1
-                logger.info(f"ReAct iteration {iteration}")
-
-                # 2.1 Call model for reasoning
-                llm_output = await self.call_model(
-                    user_input,
-                    session,
-                    is_first_call=is_first_call
+        # Normalize inputs
+        if isinstance(inputs, dict):
+            if "query" in inputs:
+                user_input = inputs["query"]
+            elif "user_input" in inputs:
+                user_input = inputs["user_input"]
+            else:
+                raise ValueError(
+                    "Input dict must contain either 'query' or 'user_input'"
                 )
-                is_first_call = False  # Set to False after first call
-
-                # 2.2 If no tool calls, LLM thinks problem is solved
-                if not llm_output.tool_calls:
-                    logger.info("No tool calls, task completed")
-                    return {
-                        "output": llm_output.content,
-                        "result_type": "answer"
-                    }
-
-                # 2.3 Execute tool calls (tool results already added to history in _execute_tool_call)
-                for tool_call in llm_output.tool_calls:
-                    tool_name = tool_call.name
-                    logger.info(f"Executing tool: {tool_name}")
-                    result = await self._execute_tool_call(tool_call, session)
-                    logger.info(f"Tool {tool_name} completed with result: {result}")
-
-            # 3. Exceeded max iteration count
-            logger.warning(f"Exceeded max iteration {max_iteration}")
-            return {
-                "output": "Exceeded max iteration",
-                "result_type": "error"
-            }
-        finally:
-            # 4. Cleanup session (if we created it)
-            if session_created:
-                await session.post_run()
-
-    async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
-        """Stream call - minimal version
-        
-        Note:
-            When external session is provided, data is written to it but not read
-            from stream_iterator (to avoid nested read deadlock). External caller
-            reads stream data from session.
-        """
-        # Prepare session
-        session_id = inputs.get("conversation_id", "default_session")
-        if session is None:
-            # Use BaseAgent's _session, need to create task session
-            agent_session = await self._session.pre_run(
-                session_id=session_id, inputs=inputs
-            )
-            need_cleanup = True
-            own_stream = True  # Owns stream lifecycle
+        elif isinstance(inputs, str):
+            user_input = inputs
         else:
-            agent_session = session
-            need_cleanup = False
-            own_stream = False  # External owns stream lifecycle
+            raise ValueError(
+                "Input must be dict (with 'query' or 'user_input') or str"
+            )
 
-            # Sync single_agent's tools to external session
-            # When external session is provided, single_agent's tools need to be registered
-            if hasattr(self, '_tools') and self._tools:
-                tools_to_add = [(tool.name, tool) for tool in self._tools]
-                agent_session.add_tools(tools_to_add)
-        await self.context_engine.create_context(session=agent_session)
+        # Create session if not provided
+        if session is None:
+            from openjiuwen.core.session.session import Session as SessionImpl
+            session = SessionImpl()
 
-        # Store final result for send_to_agent
+        # Add user message
+        await MessageUtils.add_user_message(user_input, self.context_engine, session)
+
+        # ReAct loop
+        for iteration in range(self.config.max_iterations):
+            logger.info(f"ReAct iteration {iteration + 1}/{self.config.max_iterations}")
+
+            # Get chat history
+            messages = MessageUtils.get_chat_history(
+                self.context_engine, session,
+                self.config.context_window_limit
+            )
+
+            # Convert to message dicts
+            message_dicts = []
+            for msg in messages:
+                if hasattr(msg, 'model_dump'):
+                    msg_dict = msg.model_dump(exclude_none=True)
+                elif hasattr(msg, 'dict'):
+                    msg_dict = msg.dict(exclude_none=True)
+                else:
+                    msg_dict = msg
+                message_dicts.append(msg_dict)
+
+            # Add system prompt
+            if self.config.prompt_template:
+                system_prompt = PromptTemplate(
+                    content=self.config.prompt_template
+                )
+                prompt_messages = system_prompt.to_messages()
+                if hasattr(prompt_messages[0], 'model_dump'):
+                    message_dicts.insert(
+                        0,
+                        prompt_messages[0].model_dump(exclude_none=True)
+                    )
+                else:
+                    message_dicts.insert(0, prompt_messages[0])
+
+            # Get tool info
+            tools = session.get_tool_info()
+            tool_dicts = []
+            for tool in tools:
+                if hasattr(tool, 'model_dump'):
+                    tool_dicts.append(tool.model_dump(exclude_none=True))
+                elif hasattr(tool, 'dict'):
+                    tool_dicts.append(tool.dict(exclude_none=True))
+                else:
+                    tool_dicts.append(tool)
+
+            # Call LLM
+            ai_message = await self._call_llm(message_dicts, tool_dicts or None)
+
+            # Add AI message
+            await MessageUtils.add_ai_message(ai_message, self.context_engine, session)
+
+            # Check for tool calls
+            if ai_message.tool_calls and len(ai_message.tool_calls) > 0:
+                # Execute tools
+                for tool_call in ai_message.tool_calls:
+                    tool_name = tool_call.name
+                    tool_args = tool_call.arguments
+
+                    if isinstance(tool_args, str):
+                        import json
+                        try:
+                            tool_args = json.loads(tool_args)
+                        except json.JSONDecodeError:
+                            pass
+
+                    logger.info(
+                        f"Executing tool: {tool_name} with args: {tool_args}"
+                    )
+
+                    # Execute tool
+                    result = await session.execute_tool(
+                        tool_name,
+                        tool_args
+                    )
+
+                    logger.info(f"Tool result: {result}")
+
+                    # Add tool message
+                    from openjiuwen.core.foundation.llm import ToolMessage
+                    tool_msg = ToolMessage(
+                        tool_call_id=tool_call.id or "",
+                        content=str(result)
+                    )
+                    await MessageUtils.add_tool_message(
+                        tool_msg, self.context_engine, session
+                    )
+            else:
+                # No tool calls, return AI response
+                return {
+                    "output": ai_message.content,
+                    "result_type": "answer"
+                }
+
+        # Max iterations reached
+        return {
+            "output": "Max iterations reached without completion",
+            "result_type": "error"
+        }
+
+    async def stream(
+            self,
+            inputs: Any,
+            session: Optional[Session] = None,
+            stream_modes: Optional[List[StreamMode]] = None
+    ) -> AsyncIterator[Any]:
+        """Stream execute ReAct process
+
+        Args:
+            inputs: User input, supports the following formats:
+                - dict (legacy): {"query": "...", "conversation_id": "..."}
+                - dict (new): {"user_input": "...", "session_id": "..."}
+                - str: Used directly as user_input
+            session: Session object (optional)
+            stream_modes: Stream output modes (optional)
+
+        Yields:
+            Legacy compatible format - OutputSchema objects or final result dict
+        """
+        # Determine if we own the stream
+        own_stream = session is None
+
+        # Store final result for yielding
         final_result_holder = {"result": None}
 
         async def stream_process():
             try:
-                final_result = await self.invoke(inputs, agent_session)
+                final_result = await self.invoke(inputs, session)
                 final_result_holder["result"] = final_result
-                await agent_session.write_stream(OutputSchema(
-                    type="answer",
-                    index=0,
-                    payload={"output": final_result, "result_type": "answer"}
-                ))
+                # Write to session stream if available
+                if session is not None and hasattr(session, 'write_stream'):
+                    await session.write_stream(OutputSchema(
+                        type="answer",
+                        index=0,
+                        payload={
+                            "output": final_result,
+                            "result_type": "answer"
+                        }
+                    ))
             except Exception as e:
                 logger.error(f"ReActAgent stream error: {e}")
-            finally:
-                # Cleanup session (if we created it)
-                if need_cleanup:
-                    await agent_session.post_run()
+                final_result_holder["result"] = {
+                    "output": str(e),
+                    "result_type": "error"
+                }
 
         task = asyncio.create_task(stream_process())
 
-        if own_stream:
-            # Read from stream_iterator only when owning stream
-            # External caller reads if external session provided
-            async for result in agent_session.stream_iterator():
+        # If we own's stream, read from session's stream iterator
+        if own_stream and session is not None and hasattr(session, 'stream_iterator'):
+            async for result in session.stream_iterator():
                 yield result
 
         await task
 
-        # When own_stream=False, yield final result to send_to_agent
-        # so send_to_agent can get single_agent's actual return value
-        if not own_stream and final_result_holder["result"] is not None:
+        # Yield final result
+        if final_result_holder["result"] is not None:
             yield final_result_holder["result"]
 
 
-# ===== Factory Functions =====
-def create_react_agent_config(
-        agent_id: str,
-        agent_version: str,
-        description: str,
-        model: ModelConfig,
-        prompt_template: List[Dict]
-) -> ReActAgentConfig:
-    """Create ReAct Agent config
-    
-    Args:
-        agent_id: Agent ID
-        agent_version: Agent version
-        description: Agent description
-        model: Model config
-        prompt_template: Prompt template
-    
-    Returns:
-        ReActAgentConfig instance
-    """
-    return ReActAgentConfig(
-        id=agent_id,
-        version=agent_version,
-        description=description,
-        model=model,
-        prompt_template=prompt_template
-    )
+__all__ = [
+    "ReActAgent",
+    "ReActAgentConfig",
+]

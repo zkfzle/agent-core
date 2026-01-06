@@ -22,6 +22,11 @@ class WorkflowCard(BaseCard):
     version: str = ''
     inputs_schema: Optional[dict[str, Any] | BaseModel] = None
 
+    @property
+    def inputs(self) -> Optional[dict[str, Any] | BaseModel]:
+        """Alias for inputs_schema for backward compatibility"""
+        return self.inputs_schema
+
     def tool_info(self):
         return ToolInfo(
             name=self.name,

@@ -14,9 +14,9 @@ from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import ComponentAbility, End, WorkflowCard
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
-from openjiuwen.core.foundation.llm import AIMessage, BaseMessage
+from openjiuwen.core.foundation.llm1.schema.message import AssistantMessage, BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.foundation.llm import BaseMessageChunk
+from openjiuwen.core.foundation.llm1.schema.message_chunk import AssistantMessageChunk
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow.components.llm_related.llm_comp import LLMExecutable
 
@@ -37,7 +37,9 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
 from openjiuwen.core.session import WorkflowSession, NodeSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
-from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
+from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm1.schema.config import ModelConfig as LLM1ModelConfig, ModelClientConfig
 
 USER_FIELDS = "userFields"
 
@@ -73,22 +75,38 @@ def fake_model_config() -> ModelConfig:
         ),
     )
 
-class FakeModel(BaseModelClient):
-    def __init__(self, api_key, api_base):
-        super().__init__(api_key=api_key, api_base=api_base)
+class FakeModel(Model):
+    def __init__(self, api_key=None, api_base=None):
+        # 创建假的配置以满足 Model 的初始化要求
+        model_client_config = ModelClientConfig(
+            client_id="fake",
+            client_type="OpenAI",
+            api_key=api_key or "fake-key",
+            api_base=api_base or "https://fake.api.com",
+            timeout=60,
+            max_retries=3,
+            verify_ssl=False,
+            ssl_cert=None
+        )
+        model_config = LLM1ModelConfig(
+            model_name="fake-model",
+            temperature=0.7,
+            top_p=0.9
+        )
+        super().__init__(model_client_config=model_client_config, model_config=model_config)
 
     async def astream(self, messages: Union[List[BaseMessage], List[Dict], str],
                       tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any) -> AsyncIterator[
-        BaseMessageChunk]:
-        yield BaseMessageChunk(role="assistant", content="mocked response")
+        AssistantMessageChunk]:
+        yield AssistantMessageChunk(role="assistant", content="mocked response")
 
     async def ainvoke(self, messages: Union[List[BaseMessage], List[Dict], str],
                       tools: Union[List[ToolInfo], List[Dict]] = None, **kwargs: Any):
-        return BaseMessageChunk(role="assistant", content="mocked response")
+        return AssistantMessage(role="assistant", content="mocked response")
 
 
 @patch(
-    "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model",
+    "openjiuwen.core.workflow.components.llm_related.llm_comp.Model",
     autospec=True,
 )
 class TestLLMExecutableInvoke:
@@ -96,7 +114,7 @@ class TestLLMExecutableInvoke:
     @pytest.mark.asyncio
     async def test_invoke_success(
             self,
-            mock_get_model,  # 这就是补丁
+            mock_model,  # 这就是补丁
             fake_node_ctx,
             fake_input,
             fake_model_config,
@@ -110,11 +128,11 @@ class TestLLMExecutableInvoke:
                 "required": True,
             }},
         )
-        exe = LLMExecutable(config)
-
+        
         fake_llm = FakeModel(api_base="1111", api_key="ssss")
-
-        mock_get_model.return_value = fake_llm
+        mock_model.return_value = fake_llm
+        
+        exe = LLMExecutable(config)
 
         output = await exe.invoke(fake_input(userFields=dict(query="pytest")), fake_node_ctx, context=Mock())
 
@@ -123,7 +141,7 @@ class TestLLMExecutableInvoke:
     @pytest.mark.asyncio
     async def test_stream_success(
             self,
-            mock_get_model,  # 这就是补丁
+            mock_model,  # 这就是补丁
             fake_node_ctx,
             fake_input,
             fake_model_config,
@@ -137,38 +155,31 @@ class TestLLMExecutableInvoke:
                 "required": True,
             }},
         )
-        exe = LLMExecutable(config)
-
-        #
-        # fake_llm = FakeModel(api_base="1111", api_key="ssss")
-        #
-        # # 模拟异步生成器，返回多个 AIMessage chunk
-        # async def mock_stream_response(model_name, messa: Any):
-        #     for chunk in ["mocked ", "response"]:
-        #         yield AIMessage(content=chunk)
 
         fake_llm = AsyncMock()
 
-        async def mock_stream_response(*, model_name: str, messages: list, **kwargs):
+        async def mock_stream_response(*, model: str, messages: list, **kwargs):
             # yield whatever chunks you want
             for chunk in ["mocked ", "response"]:
-                yield AIMessage(content=chunk)
+                yield AssistantMessage(content=chunk)
 
         fake_llm.astream = mock_stream_response
-        mock_get_model.return_value = fake_llm
+        mock_model.return_value = fake_llm
+        
+        exe = LLMExecutable(config)
 
         # 调用 stream 方法，异步迭代所有 chunk
         chunks = []
         async for chunk in exe.stream(fake_input(userFields=dict(query="pytest")), fake_node_ctx, context=Mock()):
             chunks.append(chunk)
 
-        # 假设 LLMExecutable.stream 会把每个 AIMessage.content 直接 yield 出来
+        # 假设 LLMExecutable.stream 会把每个 AssistantMessage.content 直接 yield 出来
         assert len(chunks) == 2
 
     @pytest.mark.asyncio
     async def test_invoke_llm_exception(
             self,
-            mock_get_model,
+            mock_model,
             fake_node_ctx,
             fake_input,
             fake_model_config,
@@ -182,7 +193,7 @@ class TestLLMExecutableInvoke:
     @pytest.mark.asyncio  # 新增
     async def test_llm_in_workflow(
             self,
-            mock_get_model,
+            mock_model,
             fake_model_config,
     ):
         """LLM 节点在完整工作流中的异步测试"""
@@ -190,7 +201,7 @@ class TestLLMExecutableInvoke:
 
         # 1. 打桩 LLM
         fake_llm = FakeModel(api_key="111", api_base="ssss")
-        mock_get_model.return_value = fake_llm
+        mock_model.return_value = fake_llm
 
         # 2. 构造工作流
         flow = Workflow()
@@ -224,10 +235,10 @@ class TestLLMExecutableInvoke:
         assert result is not None
 
     @pytest.mark.asyncio  # 新增
-    async def test_start_llm_end_in_workflow(self, mock_get_model,
+    async def test_start_llm_end_in_workflow(self, mock_model,
                                              fake_model_config):
         fake_llm = FakeModel(api_key="1111", api_base="ssss")
-        mock_get_model.return_value = fake_llm
+        mock_model.return_value = fake_llm
 
         flow = Workflow()
 

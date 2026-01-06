@@ -56,7 +56,7 @@ class Model:
         else:
             raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
                                       StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config is none."))
+                                          error_msg="model client config is none."))
 
     def _create_model_client(self, client_config: ModelClientConfig) -> BaseModelClient:
         """Create corresponding ModelClient instance based on client_type
@@ -73,11 +73,11 @@ class Model:
         if client_config.client_type is None:
             raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
                                       StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config client_type is none."))
+                                          error_msg="model client config client_type is none."))
         if client_config.client_id is None:
             raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
                                       StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          "model client config client_id is none."))
+                                          error_msg="model client config client_id is none."))
         client_type = client_config.client_type
 
         client_class = _CLIENT_TYPE_REGISTRY.get(client_type)
@@ -87,7 +87,7 @@ class Model:
 
             raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
                                       StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          f"Unsupported client_type: '{client_type}'. "
+                                          error_msg=f"Unsupported client_type: '{client_type}'. "
                                           f"Supported types: {supported_types}"))
 
         return client_class(self.model_config, client_config)

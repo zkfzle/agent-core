@@ -1,6 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Any, Dict, Optional, AsyncIterator, Union
@@ -17,9 +18,9 @@ from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
 from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
-from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm import SystemMessage, HumanMessage
-from openjiuwen.core.foundation.llm import ModelFactory
+from openjiuwen.core.foundation.llm1.schema.message import SystemMessage, UserMessage
+from openjiuwen.core.foundation.llm1.schema.config import ModelConfig as LLMModelConfig, ModelClientConfig
+from openjiuwen.core.foundation.llm1.model import Model
 from openjiuwen.core.foundation.prompt import PromptTemplate
 
 WORKFLOW_CHAT_HISTORY = "workflow_chat_history"
@@ -365,7 +366,7 @@ class LLMExecutable(ComponentExecutable):
         super().__init__()
         self._validate_config(component_config)
         self._config: LLMCompConfig = component_config
-        self._llm: Union[BaseModelClient, None] = None
+        self._llm: Union[Model, None] = None
         self._initialized: bool = False
         self._session = None
         self._context = None
@@ -388,7 +389,7 @@ class LLMExecutable(ComponentExecutable):
             if_contain_user_message = False
             for element in template_content:
                 if element.get(_ROLE, "") == "user":
-                    HumanMessage.model_validate(element)
+                    UserMessage.model_validate(element)
                     if_contain_user_message = True
                 if if_contain_user_message and element.get(_ROLE, "") == "system":
                     SystemMessage.model_validate(element)
@@ -445,7 +446,7 @@ class LLMExecutable(ComponentExecutable):
         response = ""
         try:
             llm_response = await self._llm.ainvoke(
-                model_name=self._config.model.model_info.model_name, messages=model_inputs)
+                model=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
         except Exception as e:
             if UserConfig.is_sensitive():
@@ -488,13 +489,34 @@ class LLMExecutable(ComponentExecutable):
                                                "Failed to initialize llm if needed", e)
 
     def _create_llm_instance(self):
-        if isinstance(self._config.model.model_info, BaseModelInfo):
-            kwargs = self._config.model.model_info.model_dump(exclude={'model_name', 'streaming'})
-            return ModelFactory().get_model(model_provider=self._config.model.model_provider, **kwargs)
-        else:
-            return ModelFactory().get_model(model_provider=self._config.model.model_provider,
-                                            api_base=self._config.model.model_info.api_base,
-                                            api_key=self._config.model.model_info.api_key)
+        model_info = self._config.model.model_info
+        
+        # 创建 ModelClientConfig
+        model_client_config = ModelClientConfig(
+            client_id=model_info.api_key,
+            client_type=self._config.model.model_provider,
+            api_key=model_info.api_key,
+            api_base=model_info.api_base,
+            timeout=getattr(model_info, 'timeout', 60),
+            max_retries=3,
+            verify_ssl=os.getenv("LLM_SSL_VERIFY").strip().lower() == 'true',
+            ssl_cert=os.getenv("LLM_SSL_CERT")
+        )
+        
+        # 创建 ModelConfig
+        llm1_model_config = LLMModelConfig(
+            model_name=model_info.model_name if hasattr(model_info, 'model_name') else "",
+            temperature=getattr(model_info, 'temperature', 0.95),
+            top_p=getattr(model_info, 'top_p', 0.1),
+            max_tokens=getattr(model_info, 'max_tokens', None),
+            stop=getattr(model_info, 'stop', None)
+        )
+        
+        # 创建并返回 Model 实例
+        return Model(
+            model_client_config=model_client_config,
+            model_config=llm1_model_config
+        )
 
     def _build_user_prompt_content(self, inputs: dict) -> list[dict]:
         template_content_list = self._config.template_content
@@ -557,14 +579,14 @@ class LLMExecutable(ComponentExecutable):
             logger.info("[%s] model inputs", self._session.executable_id())
         else:
             logger.info("[%s] model inputs %s", self._session.executable_id(), model_inputs)
-        llm_output = await self._llm.ainvoke(model_name=self._config.model.model_info.model_name,
+        llm_output = await self._llm.ainvoke(model=self._config.model.model_info.model_name,
                                              messages=model_inputs) # Add await if invoke is async
         llm_output_content = llm_output.content
         yield self._create_output(llm_output_content)
 
     async def _stream_with_chunks(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
-        async for chunk in self._llm.astream(model_name=self._config.model.model_info.model_name,
+        async for chunk in self._llm.astream(model=self._config.model.model_info.model_name,
                                              messages=model_inputs):
             content = WorkflowLLMUtils.extract_content(chunk)
             if content:

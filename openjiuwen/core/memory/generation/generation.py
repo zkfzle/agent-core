@@ -89,6 +89,8 @@ class Generator:
     ) -> list[VariableUnit]:
         variable_units = []
         for tmp_data in variable_results:
+            if not tmp_data.variable_value:
+                continue
             variable_units.append(VariableUnit(
                 user_id=user_id,
                 group_id=group_id,

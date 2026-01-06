@@ -5,7 +5,6 @@ from sqlalchemy import Column, String
 from sqlalchemy.orm import declarative_mixin, declarative_base
 from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 
-
 Base = declarative_base()
 
 
@@ -24,8 +23,12 @@ class UserMessage(MessageMixin, Base):
     __tablename__ = "user_message"
 
 
+class SummaryMemId(MessageMixin, Base):
+    __tablename__ = "summary_mem_id"
+
+
 async def create_tables(
-    db_store: BaseDbStore,
+        db_store: BaseDbStore,
 ):
     # MySQL table
     async with db_store.get_async_engine().begin() as conn:
@@ -33,6 +36,14 @@ async def create_tables(
             lambda sync_conn: Base.metadata.create_all(
                 sync_conn,
                 tables=[UserMessage.__table__],
+                checkfirst=True
+            )
+        )
+
+        await conn.run_sync(
+            lambda sync_conn: Base.metadata.create_all(
+                sync_conn,
+                tables=[SummaryMemId.__table__],
                 checkfirst=True
             )
         )

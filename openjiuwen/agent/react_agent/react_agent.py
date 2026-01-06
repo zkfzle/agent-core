@@ -2,11 +2,15 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """
 ReActAgent - Minimal ReAct Agent (no interruption, no Controller)
+
+Modified by openjiuwen-code project to support:
+- Streaming LLM output (content_chunk events)
+- Tool call events (tool_call, tool_result)
 """
 
 import json
 import asyncio
-from typing import Dict, Any, AsyncIterator, List
+from typing import Dict, Any, AsyncIterator, List, Optional, Tuple
 
 from pydantic import ValidationError
 
@@ -22,12 +26,15 @@ from openjiuwen.core.component.common.configs.model_config import ModelConfig
 from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.utils.llm.messages import AIMessage, ToolMessage
+from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
 from openjiuwen.core.utils.prompt.template.template import Template
 from openjiuwen.agent.utils import MessageUtils
 
 
 class ReActAgent(BaseAgent):
     """ReAct Agent - Minimal implementation (no interruption, no Controller)
+    
+    Enhanced with streaming support for content and tool events.
     """
 
     def __init__(
@@ -56,16 +63,16 @@ class ReActAgent(BaseAgent):
             )
         return self._llm
 
-    async def call_model(self, user_input: str, runtime: Runtime, is_first_call: bool = False):
-        """Call LLM for reasoning
-        
-        Args:
-            user_input: User input or tool result
-            runtime: Runtime instance
-            is_first_call: Whether first call (first call needs to add user message)
+    def _prepare_messages(
+        self, 
+        user_input: str, 
+        runtime: Runtime, 
+        is_first_call: bool = False
+    ) -> Tuple[List[Dict], List[Dict]]:
+        """Prepare messages for LLM call
         
         Returns:
-            llm_output: LLM output (contains content and tool_calls)
+            Tuple of (messages, tools)
         """
         # 1. If first call, add user message
         if is_first_call:
@@ -80,7 +87,9 @@ class ReActAgent(BaseAgent):
         messages = []
         # Add system prompt
         try:
-            system_prompt = Template(content=self.agent_config.prompt_template).to_messages()
+            system_prompt = Template(
+                content=self.agent_config.prompt_template
+            ).to_messages()
             for prompt in system_prompt:
                 prompt_dict = prompt.model_dump(exclude_none=True)
                 messages.append(prompt_dict)
@@ -90,16 +99,35 @@ class ReActAgent(BaseAgent):
                 message=StatusCode.PROMPT_PARAMS_CHECK_ERROR.errmsg.format(msg=str(e))
             ) from e
 
-        # Add chat history (need complete BaseMessage conversion)
+        # Add chat history
         for msg in chat_history:
-            # Use model_dump to export message completely, exclude None values
             msg_dict = msg.model_dump(exclude_none=True)
             messages.append(msg_dict)
 
         # 4. Get available tool info
         tools = runtime.get_tool_info()
+        
+        return messages, tools
 
-        # 5. Call LLM
+    async def call_model(
+        self, 
+        user_input: str, 
+        runtime: Runtime, 
+        is_first_call: bool = False
+    ):
+        """Call LLM for reasoning (non-streaming)
+        
+        Args:
+            user_input: User input or tool result
+            runtime: Runtime instance
+            is_first_call: Whether first call
+        
+        Returns:
+            llm_output: LLM output (contains content and tool_calls)
+        """
+        messages, tools = self._prepare_messages(user_input, runtime, is_first_call)
+
+        # Call LLM
         llm = self._get_llm()
         llm_output = await llm.ainvoke(
             self.agent_config.model.model_info.model_name,
@@ -107,7 +135,7 @@ class ReActAgent(BaseAgent):
             tools
         )
 
-        # 6. Save AI response to chat history
+        # Save AI response to chat history
         ai_message = AIMessage(
             content=llm_output.content,
             tool_calls=llm_output.tool_calls
@@ -115,6 +143,67 @@ class ReActAgent(BaseAgent):
         MessageUtils.add_ai_message(ai_message, self.context_engine, runtime)
 
         return llm_output
+
+    async def call_model_stream(
+        self, 
+        user_input: str, 
+        runtime: Runtime, 
+        is_first_call: bool = False
+    ) -> AsyncIterator[AIMessageChunk]:
+        """Call LLM for reasoning with streaming output
+        
+        Args:
+            user_input: User input or tool result
+            runtime: Runtime instance
+            is_first_call: Whether first call
+        
+        Yields:
+            AIMessageChunk: Streaming chunks from LLM
+        """
+        messages, tools = self._prepare_messages(user_input, runtime, is_first_call)
+
+        # Call LLM with streaming
+        llm = self._get_llm()
+        
+        # Accumulate full message for chat history
+        full_content = ""
+        full_tool_calls = []
+        
+        async for chunk in llm.astream(
+            self.agent_config.model.model_info.model_name,
+            messages,
+            tools
+        ):
+            # Accumulate content
+            if chunk.content:
+                full_content += chunk.content
+            
+            # Accumulate tool calls
+            if chunk.tool_calls:
+                for tc in chunk.tool_calls:
+                    # Check if this is continuation of existing tool call
+                    found = False
+                    for existing in full_tool_calls:
+                        if (existing.id and tc.id and existing.id == tc.id) or \
+                           (not existing.id or not tc.id):
+                            existing.id = existing.id or tc.id
+                            existing.name = (existing.name or "") + (tc.name or "")
+                            existing.arguments = (
+                                (existing.arguments or "") + (tc.arguments or "")
+                            )
+                            found = True
+                            break
+                    if not found:
+                        full_tool_calls.append(tc)
+            
+            yield chunk
+        
+        # Save full AI response to chat history
+        ai_message = AIMessage(
+            content=full_content,
+            tool_calls=full_tool_calls if full_tool_calls else None
+        )
+        MessageUtils.add_ai_message(ai_message, self.context_engine, runtime)
 
     async def _execute_tool_call(self, tool_call, runtime: Runtime) -> Any:
         """Execute single tool call
@@ -129,7 +218,11 @@ class ReActAgent(BaseAgent):
         # Parse tool name and parameters
         tool_name = tool_call.name
         try:
-            tool_args = json.loads(tool_call.arguments) if isinstance(tool_call.arguments, str) else tool_call.arguments
+            tool_args = (
+                json.loads(tool_call.arguments) 
+                if isinstance(tool_call.arguments, str) 
+                else tool_call.arguments
+            )
         except (json.JSONDecodeError, AttributeError):
             tool_args = {}
 
@@ -150,11 +243,11 @@ class ReActAgent(BaseAgent):
         return result
 
     async def invoke(self, inputs: Dict, runtime: Runtime = None) -> Dict:
-        """Sync call - Complete ReAct loop
+        """Sync call - Complete ReAct loop (non-streaming)
         
         Args:
             inputs: Input data, must contain 'query' field
-            runtime: Optional Runtime (if not provided, use BaseAgent's _runtime)
+            runtime: Optional Runtime
         
         Returns:
             Execution result
@@ -163,9 +256,15 @@ class ReActAgent(BaseAgent):
         session_id = inputs.get("conversation_id", "default_session")
         runtime_created = False
         if runtime is None:
-            # Use BaseAgent's _runtime, need to create task runtime
-            runtime = await self._runtime.pre_run(session_id=session_id, inputs=inputs)
+            runtime = await self._runtime.pre_run(
+                session_id=session_id, inputs=inputs
+            )
             runtime_created = True
+
+        # Register tools to runtime
+        if hasattr(self, '_tools') and self._tools:
+            tools_to_add = [(tool.name, tool) for tool in self._tools]
+            runtime.add_tools(tools_to_add)
 
         try:
             user_input = inputs.get("query", "")
@@ -187,9 +286,9 @@ class ReActAgent(BaseAgent):
                     runtime,
                     is_first_call=is_first_call
                 )
-                is_first_call = False  # Set to False after first call
+                is_first_call = False
 
-                # 2.2 If no tool calls, LLM thinks problem is solved
+                # 2.2 If no tool calls, task completed
                 if not llm_output.tool_calls:
                     logger.info("No tool calls, task completed")
                     return {
@@ -197,85 +296,214 @@ class ReActAgent(BaseAgent):
                         "result_type": "answer"
                     }
 
-                # 2.3 Execute tool calls (tool results already added to history in _execute_tool_call)
+                # 2.3 Execute tool calls
                 for tool_call in llm_output.tool_calls:
                     tool_name = tool_call.name
                     logger.info(f"Executing tool: {tool_name}")
                     result = await self._execute_tool_call(tool_call, runtime)
-                    logger.info(f"Tool {tool_name} completed with result: {result}")
+                    logger.info(f"Tool {tool_name} completed")
 
-            # 3. Exceeded max iteration count
+            # 3. Exceeded max iteration
             logger.warning(f"Exceeded max iteration {max_iteration}")
             return {
                 "output": "Exceeded max iteration",
                 "result_type": "error"
             }
         finally:
-            # 4. Cleanup runtime (if we created it)
             if runtime_created:
                 await runtime.post_run()
 
-    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
-        """Stream call - minimal version
+    async def invoke_stream(
+        self, 
+        inputs: Dict, 
+        runtime: Runtime
+    ) -> AsyncIterator[OutputSchema]:
+        """Streaming ReAct loop - yields events as they occur
         
-        Note:
-            When external runtime is provided, data is written to it but not read
-            from stream_iterator (to avoid nested read deadlock). External caller
-            reads stream data from runtime.
+        Args:
+            inputs: Input data with 'query' field
+            runtime: Runtime instance
+        
+        Yields:
+            OutputSchema: Events (content_chunk, tool_call, tool_result, answer)
+        """
+        # Register tools to runtime
+        if hasattr(self, '_tools') and self._tools:
+            tools_to_add = [(tool.name, tool) for tool in self._tools]
+            runtime.add_tools(tools_to_add)
+
+        user_input = inputs.get("query", "")
+        if not user_input:
+            yield OutputSchema(
+                type="error",
+                index=0,
+                payload={"error": "No query provided", "result_type": "error"}
+            )
+            return
+
+        # Send thinking event
+        yield OutputSchema(
+            type="thinking",
+            index=0,
+            payload={"status": "thinking"}
+        )
+
+        # ReAct loop
+        iteration = 0
+        max_iteration = self.agent_config.constrain.max_iteration
+        is_first_call = True
+        event_index = 0
+
+        while iteration < max_iteration:
+            iteration += 1
+
+            # Call model with streaming
+            full_content = ""
+            full_tool_calls = []
+            
+            async for chunk in self.call_model_stream(
+                user_input, runtime, is_first_call=is_first_call
+            ):
+                # Yield content chunks for streaming display
+                if chunk.content:
+                    full_content += chunk.content
+                    event_index += 1
+                    yield OutputSchema(
+                        type="content_chunk",
+                        index=event_index,
+                        payload={"content": chunk.content}
+                    )
+                
+                # Accumulate tool calls
+                if chunk.tool_calls:
+                    for tc in chunk.tool_calls:
+                        found = False
+                        for existing in full_tool_calls:
+                            if existing.id == tc.id or (not existing.id or not tc.id):
+                                existing.id = existing.id or tc.id
+                                existing.name = (existing.name or "") + (tc.name or "")
+                                existing.arguments = (
+                                    (existing.arguments or "") + (tc.arguments or "")
+                                )
+                                found = True
+                                break
+                        if not found:
+                            full_tool_calls.append(tc)
+
+            is_first_call = False
+
+            # If no tool calls, task completed
+            if not full_tool_calls:
+                event_index += 1
+                yield OutputSchema(
+                    type="answer",
+                    index=event_index,
+                    payload={"output": full_content, "result_type": "answer"}
+                )
+                return
+
+            # Execute tool calls with events
+            for tool_call in full_tool_calls:
+                tool_name = tool_call.name
+                try:
+                    tool_args = (
+                        json.loads(tool_call.arguments) 
+                        if isinstance(tool_call.arguments, str) 
+                        else tool_call.arguments
+                    )
+                except (json.JSONDecodeError, AttributeError):
+                    tool_args = {}
+
+                # Yield tool_call event (tool starting)
+                event_index += 1
+                yield OutputSchema(
+                    type="tool_call",
+                    index=event_index,
+                    payload={
+                        "tool_call": {
+                            "id": tool_call.id,
+                            "name": tool_name,
+                            "arguments": tool_args
+                        }
+                    }
+                )
+
+                # Execute tool
+                try:
+                    result = await self._execute_tool_call(tool_call, runtime)
+                    
+                    # Yield tool_result event (tool completed)
+                    event_index += 1
+                    yield OutputSchema(
+                        type="tool_result",
+                        index=event_index,
+                        payload={
+                            "tool_result": {
+                                "name": tool_name,
+                                "result": str(result),
+                                "success": True
+                            }
+                        }
+                    )
+                except Exception as e:
+                    # Tool execution failed
+                    event_index += 1
+                    yield OutputSchema(
+                        type="tool_result",
+                        index=event_index,
+                        payload={
+                            "tool_result": {
+                                "name": tool_name,
+                                "result": str(e),
+                                "success": False
+                            }
+                        }
+                    )
+
+        # Exceeded max iteration
+        yield OutputSchema(
+            type="error",
+            index=event_index + 1,
+            payload={"error": "Exceeded max iteration", "result_type": "error"}
+        )
+
+    async def stream(self, inputs: Dict, runtime: Runtime = None) -> AsyncIterator[Any]:
+        """Stream call - with streaming LLM output and tool events
+        
+        Yields OutputSchema events:
+        - thinking: Agent is thinking
+        - content_chunk: Streaming text content from LLM
+        - tool_call: Tool is being called (with name and arguments)
+        - tool_result: Tool execution completed (with result)
+        - answer: Final answer
+        - error: Error occurred
         """
         # Prepare runtime
         session_id = inputs.get("conversation_id", "default_session")
         if runtime is None:
-            # Use BaseAgent's _runtime, need to create task runtime
             agent_runtime = await self._runtime.pre_run(
                 session_id=session_id, inputs=inputs
             )
             need_cleanup = True
-            own_stream = True  # Owns stream lifecycle
         else:
             agent_runtime = runtime
             need_cleanup = False
-            own_stream = False  # External owns stream lifecycle
-            
-            # Sync agent's tools to external runtime
-            # When external runtime is provided, agent's tools need to be registered
-            if hasattr(self, '_tools') and self._tools:
-                tools_to_add = [(tool.name, tool) for tool in self._tools]
-                agent_runtime.add_tools(tools_to_add)
 
-        # Store final result for send_to_agent
-        final_result_holder = {"result": None}
-
-        async def stream_process():
-            try:
-                final_result = await self.invoke(inputs, agent_runtime)
-                final_result_holder["result"] = final_result
-                await agent_runtime.write_stream(OutputSchema(
-                    type="answer",
-                    index=0,
-                    payload={"output": final_result, "result_type": "answer"}
-                ))
-            except Exception as e:
-                logger.error(f"ReActAgent stream error: {e}")
-            finally:
-                # Cleanup runtime (if we created it)
-                if need_cleanup:
-                    await agent_runtime.post_run()
-
-        task = asyncio.create_task(stream_process())
-
-        if own_stream:
-            # Read from stream_iterator only when owning stream
-            # External caller reads if external runtime provided
-            async for result in agent_runtime.stream_iterator():
-                yield result
-
-        await task
-
-        # When own_stream=False, yield final result to send_to_agent
-        # so send_to_agent can get agent's actual return value
-        if not own_stream and final_result_holder["result"] is not None:
-            yield final_result_holder["result"]
+        try:
+            # Use streaming invoke method
+            async for event in self.invoke_stream(inputs, agent_runtime):
+                yield event
+                
+        except Exception as e:
+            logger.error(f"ReActAgent stream error: {e}")
+            yield OutputSchema(
+                type="error",
+                index=0,
+                payload={"error": str(e), "result_type": "error"}
+            )
+        finally:
+            if need_cleanup:
+                await agent_runtime.post_run()
 
 
 # ===== Factory Functions =====

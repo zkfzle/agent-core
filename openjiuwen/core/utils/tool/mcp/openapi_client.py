@@ -8,14 +8,27 @@ from typing import Union, List, Any, Dict
 import yaml
 import httpx
 import anyio
-from fastmcp.experimental.utilities.openapi.director import RequestDirector
-from fastmcp.experimental.utilities.openapi import (
-    HTTPRoute,
-    extract_output_schema_from_responses,
-    format_simple_description,
-    parse_openapi_to_http_routes,
-)
-from fastmcp.experimental.server.openapi import OpenAPITool
+# 兼容新版 fastmcp API (修复 deprecated import)
+try:
+    # 新版 fastmcp (2.x+)
+    from fastmcp.utilities.openapi import (
+        HTTPRoute,
+        extract_output_schema_from_responses,
+        format_simple_description,
+        parse_openapi_to_http_routes,
+    )
+    from fastmcp.utilities.openapi.director import RequestDirector
+    from fastmcp.server.openapi import OpenAPITool
+except ImportError:
+    # 回退到旧版 API（兼容旧版本 fastmcp）
+    from fastmcp.experimental.utilities.openapi.director import RequestDirector
+    from fastmcp.experimental.utilities.openapi import (
+        HTTPRoute,
+        extract_output_schema_from_responses,
+        format_simple_description,
+        parse_openapi_to_http_routes,
+    )
+    from fastmcp.experimental.server.openapi import OpenAPITool
 from fastmcp.tools.tool import ToolResult
 from jsonschema_path import SchemaPath
 

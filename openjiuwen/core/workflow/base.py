@@ -8,7 +8,11 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
-from typing import Self, Any, Union, AsyncIterator, List, Tuple
+from typing import Any, Union, AsyncIterator, List, Tuple
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
 
 from pydantic import BaseModel
 

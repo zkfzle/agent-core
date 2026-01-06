@@ -1,0 +1,58 @@
+[MASTER]
+ignore=
+	./data
+	./output
+	./models
+    ./.cache
+    ./.idea
+    ./.vscode
+    ./cryptor
+
+load-plugins=
+    pylint.extensions.bad_builtin,
+
+[pylint.DEPRECATED_BUILTINS]
+bad-functions=print
+
+[FORMAT]
+max-line-length = 120
+max-return = 5
+max-args = 10
+max-locals = 15
+max-branches = 25
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    too-few-public-methods,
+    invalid-name,
+    unnecessary-lambda,
+    no-member,
+    c-extension-no-member,
+    too-many-instance-attributes,
+    import-error,
+    use-dict-literal,
+    use-list-literal,
+    unused-argument,
+    no-else-return,
+    unspecified-encoding,
+    consider-using-set-comprehension,
+    keyword-arg-before-vararg,
+    trailing-whitespace,
+    useless-object-inheritance,
+    broad-exception-caught,
+    fixme,
+    assignment-from-no-return,
+    import-outside-toplevel,
+    broad-exception-raised,
+    unsubscriptable-object,
+    unsupported-assignment-operation,
+    too-many-nested-blocks,
+    cell-var-from-loop,
+    not-callable,
+    comparison-with-callable,
+    missing-timeout,
+    too-many-ancestors,
+    protected-access,
+    pointless-string-statement,
+    too-many-positional-arguments

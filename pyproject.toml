@@ -67,7 +67,7 @@ dev = [
 
     # Linting & formatting
     "ruff>=0.11.2",
-    "mypy",
+    "mypy>=1.12.0",
 ]
 
 [tool.coverage.run]

@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """ReActAgent Implementation
 
 ReAct (Reasoning + Acting) paradigm Agent implementation

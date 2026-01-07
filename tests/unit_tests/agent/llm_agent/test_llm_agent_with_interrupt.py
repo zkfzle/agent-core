@@ -2,7 +2,7 @@ import os
 import unittest
 from datetime import datetime
 from typing import List
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -186,6 +186,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
     @pytest.mark.asyncio
     @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
+    @patch("openjiuwen.core.memory.long_term_memory.LongTermMemory.set_scope_config", return_value=MagicMock())
     async def test_real_react_agent_invoke_with_workflow_interrupt(self, mock_get_model):
         # Mock LLM model
         mock_get_model.return_value = MockLLMModel()

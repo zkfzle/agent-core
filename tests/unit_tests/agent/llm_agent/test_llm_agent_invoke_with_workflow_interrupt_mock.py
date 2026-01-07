@@ -35,7 +35,7 @@ import os
 import unittest
 from datetime import datetime
 from typing import List, Any, AsyncIterator, Dict, Iterator
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -242,9 +242,13 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
         mock_llm.set_responses(all_llm_responses)
         
         # ==================== 使用 Patch Mock LLM（在创建组件之前开始 patch）====================
-        with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
-            # 所有组件共享同一个 mock LLM 实例
-            mock_get_model.return_value = mock_llm
+        with patch(
+                'openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model',
+                return_value=mock_llm
+        ), patch(
+            'openjiuwen.core.memory.long_term_memory.LongTermMemory.set_scope_config',
+            return_value=MagicMock()
+        ):
             
             # ==================== 构建 Workflow ====================
             react_agent_prompt_template = self._create_prompt_template()

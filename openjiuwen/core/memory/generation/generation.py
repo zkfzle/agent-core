@@ -10,8 +10,8 @@ from openjiuwen.core.memory.generation.memory_info import ExtractedData
 from openjiuwen.core.memory.generation.user_profile_extractor import UserProfileExtractor
 from openjiuwen.core.memory.generation.variable_extractor import ComprehensionExtractor
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType, BaseMemoryUnit, VariableUnit, UserProfileUnit
-from openjiuwen.core.foundation.llm import BaseModelClient
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1.schema.message import BaseMessage
+from openjiuwen.core.foundation.llm1.model import Model
 
 category_to_class = {
     "user_profile": MemoryType.USER_PROFILE
@@ -24,14 +24,14 @@ class ExtractMemoryParams:
     group_id: str
     messages: list[BaseMessage]
     history_messages: list[BaseMessage]
-    base_chat_model: Tuple[str, BaseModelClient]
+    base_chat_model: Tuple[str, Model]
 
 
 async def _generate_extract(
         config: MemoryScopeConfig,
         history_messages: list[BaseMessage],
         messages: list[BaseMessage],
-        base_chat_model: Tuple[str, BaseModelClient]
+        base_chat_model: Tuple[str, Model]
 ) -> list[ExtractedData]:
     history_summary = ""
     for msg in history_messages:

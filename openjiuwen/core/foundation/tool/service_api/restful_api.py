@@ -59,7 +59,7 @@ class RestfulApi(Tool):
     async def invoke(self, inputs: Input, **kwargs) -> Output:
         try:
             if not kwargs.get("skip_inputs_validate"):
-                inputs = SchemaUtils.format_with_schema(inputs, self._card.parameters,
+                inputs = SchemaUtils.format_with_schema(inputs, self._card.input_params,
                                                         kwargs.get("skip_none_value", False))
             request_arg = {}
             if self._method in ["GET"]:

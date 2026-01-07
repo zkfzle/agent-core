@@ -39,7 +39,7 @@ def mock_tool():
         card=RestfulApiCard(
             name="test",
             description="test",
-            parameters={
+            input_params={
                 "type": "object",
                 "properties": {
                     "location": {"description": "location", "type": "string"},
@@ -106,7 +106,7 @@ async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, f
     card=ToolCard(
         name="test_local_function",
         description="测试本地函数",
-        parameters={
+        input_params={
             "type": "object",
             "properties": {
                 "a": {"description": "参数1", "type": "string"},

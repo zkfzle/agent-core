@@ -19,13 +19,13 @@ class WorkflowCard(BaseCard):
     Contains descriptive information and input schema for a workflow.
     """
     version: str = ''
-    inputs_schema: Optional[dict[str, Any] | BaseModel] = None
+    input_params: Optional[dict[str, Any] | BaseModel] = None
 
     def tool_info(self):
         return ToolInfo(
             name=self.name,
             description=self.description,
-            parameters=self.inputs_schema if self.inputs_schema else {}
+            parameters=self.input_params if self.input_params else {}
         )
 
 
@@ -36,7 +36,7 @@ class WorkflowChunkType(str, Enum):
     Used to categorize different kinds of output streams.
     """
     INTERACTION = "interaction"  # Stream from user/agent interactions
-    END_NODE = "end_node_stream"  # Stream from final output node
+    OUTPUT = "output"  # Stream from final output node
     ERROR = "error"  # Stream containing error information
 
 

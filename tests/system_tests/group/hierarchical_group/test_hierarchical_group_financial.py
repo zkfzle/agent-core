@@ -299,7 +299,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
                 card=ToolCard(
                     name="multiply",
                     description="将两个数字相乘",
-                    parameters={
+                    input_params={
                         "type": "object",
                         "properties": {
                             "a": {"description": "第一个数", "type": "number"},

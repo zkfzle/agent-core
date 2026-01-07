@@ -135,7 +135,7 @@ class AbilityKit:
                 tool_info = ToolInfo(
                     name=tool_card.name,
                     description=tool_card.description or "",
-                    parameters=tool_card.parameters or {}
+                    parameters=tool_card.input_params or {}
                 )
                 tool_infos.append(tool_info)
 
@@ -145,7 +145,7 @@ class AbilityKit:
                 tool_info = ToolInfo(
                     name=workflow_card.name,
                     description=workflow_card.description or "",
-                    parameters=workflow_card.parameters or {}
+                    parameters=workflow_card.input_params or {}
                 )
                 tool_infos.append(tool_info)
 

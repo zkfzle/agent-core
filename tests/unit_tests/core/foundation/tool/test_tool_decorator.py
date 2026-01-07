@@ -14,7 +14,7 @@ from openjiuwen.core.foundation.tool.schema import ToolInfo
     card=ToolCard(
         name="local_sub",
         description="local function for sub",
-        parameters={
+        input_params={
             "type": "object",
             "properties": {
                 "a": {

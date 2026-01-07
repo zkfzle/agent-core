@@ -674,7 +674,7 @@ class ResourceMgr:
                 results.append(self._resource_registry.prompt().get_prompt(template_id=template_id))
             return results
 
-    async def get_tool_info(self,
+    async def get_tool_infos(self,
                             *,
                             id: Union[str, list[str]] = None,
                             type: Union[str, list[str]] = None,
@@ -820,7 +820,7 @@ class ResourceMgr:
         """
         pass
 
-    async def get_mcp_tool_info(self,
+    async def get_mcp_tool_infos(self,
                                 *,
                                 name: Union[str, list[str]] = None,
                                 server_name: Union[str, list[str]] = None,

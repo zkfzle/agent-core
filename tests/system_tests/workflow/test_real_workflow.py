@@ -57,7 +57,7 @@ _MOCK_TOOL = RestfulApi(
     card=RestfulApiCard(
         name="test",
         description="test",
-        parameters={
+        input_params={
             "type": "object",
             "properties": {
                 "location": {"description": "地点", "type": "string"},

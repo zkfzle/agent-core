@@ -257,7 +257,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                     id="questioner_weather_workflow",
                     version="1.0",
                     description="天气查询",
-                    inputs_schema=dict(
+                    input_params=dict(
                     type="object",
                     properties={
                         "query": {

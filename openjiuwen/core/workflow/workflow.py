@@ -264,8 +264,8 @@ class Workflow:
         if kwargs.get("is_sub"):
             return await self._sub_invoke(inputs, session, context, **kwargs)
 
-        if not kwargs.get("skip_inputs_validate") and self._card.inputs_schema is not None:
-            inputs = SchemaUtils.format_with_schema(inputs, self._card.inputs_schema)
+        if not kwargs.get("skip_inputs_validate") and self._card.input_params is not None:
+            inputs = SchemaUtils.format_with_schema(inputs, self._card.input_params)
 
         async def _invoke_task():
             logger.info(f"begin to invoke, input: {inputs}")
@@ -321,8 +321,8 @@ class Workflow:
             async for chunk in self._sub_stream(inputs, session, context, **kwargs):
                 yield chunk
             return
-        if not kwargs.get("skip_inputs_validate") and self._card.inputs_schema is not None:
-            inputs = SchemaUtils.format_with_schema(inputs, self._card.inputs_schema)
+        if not kwargs.get("skip_inputs_validate") and self._card.input_params is not None:
+            inputs = SchemaUtils.format_with_schema(inputs, self._card.input_params)
         self._validate_and_init_session(session, stream_modes)
         # workflow start tracer info
         await TracerWorkflowUtils.trace_workflow_start(session, inputs)

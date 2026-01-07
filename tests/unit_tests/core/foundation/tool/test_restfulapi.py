@@ -75,7 +75,7 @@ class TestRestFulApi:
             card=RestfulApiCard(
                 name="test",
                 description="test",
-                parameters={
+                input_params={
                     "type": "object",
                     "properties": {
                         "test": {"description": "test", "type": "string", "default": "123"},

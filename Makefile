@@ -6,7 +6,7 @@
 
 # Get all staged .py or .pyi Python files
 CHANGED_FILES := $(shell \
-	git diff --name-only --cached --diff-filter=ACM \
+	git diff --name-only --cached --diff-filter=ACMR \
 	| grep -E '\.pyi?$$' || true \
 )
 

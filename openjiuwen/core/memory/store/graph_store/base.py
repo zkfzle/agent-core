@@ -519,7 +519,7 @@ class GraphMemory:
         config_e = self._search_strategies[search_strategy][col_idx]
         config_e = config_e.model_copy()
         config_e.filter_expr = config_e.filter_expr & filter_by_user if config_e.filter_expr else filter_by_user
-        tasks[self.executor.submit(self._search, col="entities", search_config=config_e, **kwargs)] = names[col_idx]
+        tasks[self.executor.submit(self._search, col=names[col_idx], search_config=config_e, **kwargs)] = names[col_idx]
 
     def _search(self, col: str, query: str, search_config: SearchConfig, query_embedding: Optional[List[float]] = None):
         return self.db_backend.search(

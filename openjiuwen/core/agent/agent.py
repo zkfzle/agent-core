@@ -47,7 +47,7 @@ class AgentRuntime(WrappedRuntime, StaticWrappedRuntime):
     def __init__(self, config: Config = None, resource_mgr: ResourceMgr = None):
         inner = StaticAgentRuntime(config, resource_mgr=resource_mgr)
         super().__init__(inner)
-        self._runtime = inner
+        self._runtime = inner 
 
     async def write_stream(self, data: Union[dict, OutputSchema]):
         return await self.write_custom_stream(data)

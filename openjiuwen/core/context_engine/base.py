@@ -64,7 +64,7 @@ class ModelContext(ABC):
             New sequence of messages to insert into the window.
         with_history : bool, default True
             - `True`  – replace the concatenated [`context_messages` + `history_messages`].
-            - `False` – replace `history_messages` only, leaving `context_messages` intact.
+            - `False` – replace `context_messages` only, leaving `history_messages` intact.
             In both cases the original order of the preserved segments is maintained.
 
         Returns

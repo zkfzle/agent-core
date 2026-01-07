@@ -126,6 +126,7 @@ class SessionModelContext(ModelContext):
 
         stat.tools = len(tools)
         stat.tool_tokens = count_tools(tools)
+        stat.total_tokens += stat.tool_tokens
 
     def _stat_messages(self, stat: ContextStats, messages: List[BaseMessage]):
         def count_message(message: BaseMessage) -> int:
@@ -147,7 +148,7 @@ class SessionModelContext(ModelContext):
             elif msg.role == "tool":
                 stat.tool_messages += 1
                 stat.tool_message_tokens += count_message(msg)
-        stat.tool_tokens += (
+        stat.total_tokens += (
             stat.assistant_message_tokens +
             stat.user_message_tokens +
             stat.system_message_tokens +

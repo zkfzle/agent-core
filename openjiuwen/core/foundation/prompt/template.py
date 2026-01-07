@@ -5,22 +5,10 @@ from typing import Union, List
 
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.common.schema.card import BaseCard
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm import BaseMessage,HumanMessage
 from openjiuwen.core.foundation.prompt.assemble.assembler import PromptAssembler
-
-
-class PromptTemplateCard(BaseCard):
-    """
-    Visual card component for PromptTemplate rendering.
-
-    Extends BaseCard to provide a UI wrapper around the PromptTemplate model,
-    enabling visual rendering, theming, and card-level metadata for
-    template-based content.
-    """
-    pass
 
 
 class PromptTemplate(BaseModel):
@@ -31,8 +19,8 @@ class PromptTemplate(BaseModel):
 
     Attributes
     ----------
-    card : PromptTemplateCard | None
-        Optional visual card component for UI rendering.
+    name : str
+        Template name
     content : str | List[BaseMessage]
         Template content (string or message list).
     placeholder_prefix : str
@@ -40,7 +28,7 @@ class PromptTemplate(BaseModel):
     placeholder_suffix : str
         Right delimiter for placeholders (default "}}").
     """
-    card: PromptTemplateCard | None = Field(default=None)
+    name: str = Field(default="")
     content: Union[str, List[BaseMessage]] = Field(default="")
     placeholder_prefix: str = Field(default="{{")
     placeholder_suffix: str = Field(default="}}")
@@ -84,4 +72,9 @@ class PromptTemplate(BaseModel):
         input_keys = assembler.input_keys
         valid_keywords = dict([(key, keywords[key]) for key in input_keys if key in keywords])
         content = assembler.prompt_assemble(**valid_keywords)
-        return PromptTemplate(card=copy.deepcopy(self.card), content=content)
+        return PromptTemplate(
+            name=self.name,
+            content=content,
+            placeholder_prefix=self.placeholder_prefix,
+            placeholder_suffix=self.placeholder_suffix
+        )

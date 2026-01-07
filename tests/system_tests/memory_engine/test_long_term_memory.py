@@ -202,7 +202,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(TestLongTermMemory._check_user_profile(expect_user_profile, user_profile_set))
 
         #test search user profile
-        search_res = await self.engine.search_user_mem(user_id=user_id, group_id=scope_id, query="用户的职业", num=1)
+        search_res = await self.engine.search_user_mem(user_id=user_id, scope_id=scope_id, query="用户的职业", num=1)
         logger.info(f"search_res: {search_res}")
         self.assertEqual(len(search_res), 1)
         self.assertEqual(search_res[0].mem_info.content, "用户的职业是软件工程师")
@@ -219,7 +219,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
         if user_profile:
             for mem in user_profile:
                 logger.info(f"after update user profile: {mem.content}")
-        search_res = await self.engine.search_user_mem(user_id=user_id, group_id=scope_id,
+        search_res = await self.engine.search_user_mem(user_id=user_id, scope_id=scope_id,
                                                        query="用户的职业", num=5)
         time.sleep(0.5)
         logger.info(f"search_res: {search_res}")
@@ -256,7 +256,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
         user_profile = await self.engine.get_user_mem_by_page(user_id=user_id, scope_id=scope_id,
                                                               page_size=10, page_idx=1)
         test_variable = await self.engine.get_user_variable(user_id=user_id, scope_id=scope_id)
-        search_res = await self.engine.search_user_mem(user_id=user_id, group_id=scope_id, query="用户的职业", num=1)
+        search_res = await self.engine.search_user_mem(user_id=user_id, scope_id=scope_id, query="用户的职业", num=1)
         self.assertTrue(not user_profile)
         self.assertTrue(not test_variable)
         self.assertTrue(not search_res)

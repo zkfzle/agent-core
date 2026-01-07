@@ -184,10 +184,10 @@ class TestReActAgentInterrupt:  # ① 关键改动
             result = await react_agent.invoke({"conversation_id": "12345", "query": "查询杭州天气"})
             print(f"LLMAgent 第二次输出结果：{result}")
 
-    @pytest.mark.asyncio
     @patch("openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model")
     @patch("openjiuwen.core.memory.long_term_memory.LongTermMemory.set_scope_config", return_value=MagicMock())
-    async def test_real_react_agent_invoke_with_workflow_interrupt(self, mock_get_model):
+    @pytest.mark.asyncio
+    async def test_real_react_agent_invoke_with_workflow_interrupt(self, mock_set_scope, mock_get_model):
         # Mock LLM model
         mock_get_model.return_value = MockLLMModel()
         

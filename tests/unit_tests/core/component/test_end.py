@@ -197,7 +197,6 @@ async def test_end_stream_workflow():
     print(actual_chunks)
     assert expect_chunks == actual_chunks
 
-
 async def test_end_batch_stream_workflow():
     flow = Workflow()
     start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
@@ -208,19 +207,29 @@ async def test_end_batch_stream_workflow():
     }
     flow.set_start_comp("start", start, inputs_schema=input_schema)
 
-    flow.add_workflow_comp("a", StreamCompNode("a"), inputs_schema={"value": "${a}"},
-                           comp_ability=[ComponentAbility.STREAM], wait_for_all=True)
+    flow.add_workflow_comp(
+        "a",
+        StreamCompNode("a"),
+        inputs_schema={"value": "${a}"},
+        comp_ability=[ComponentAbility.STREAM],
+        wait_for_all=True
+    )
 
-    flow.set_end_comp("end", End({"responseTemplate": "hello:{{value}}"}),
-                      stream_inputs_schema={"value": "${a.value}"}, inputs_schema={"value": "${a.value}"},
-                      response_mode="streaming")
+    flow.set_end_comp(
+        "end",
+        End({"responseTemplate": "hello:{{value}}"}),
+        stream_inputs_schema={"value": "${a.value}"},
+        response_mode="streaming"
+    )
+
     flow.add_connection("start", "a")
     flow.add_stream_connection("a", "end")
 
     expect_results = [
         OutputSchema(type='end node stream', index=0, payload={'answer': 'hello:'}),
         OutputSchema(type='end node stream', index=1, payload={'answer': 1}),
-        OutputSchema(type='end node stream', index=2, payload={'answer': 2})]
+        OutputSchema(type='end node stream', index=2, payload={'answer': 2})
+    ]
 
     real_result = []
     async for chunk in flow.stream({"a": 1, "b": "haha"},
@@ -229,6 +238,7 @@ async def test_end_batch_stream_workflow():
 
     print(real_result)
     assert expect_results == real_result
+
 
 
 class MockStreamNode(WorkflowComponent):

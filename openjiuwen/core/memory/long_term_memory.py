@@ -259,7 +259,7 @@ class LongTermMemory(metaclass=Singleton):
     async def delete_mem_by_id(self,
                                mem_id: str,
                                user_id: str = DEFAULT_VALUE,
-                               scope_id: str = DEFAULT_VALUE) -> bool:
+                               scope_id: str = DEFAULT_VALUE):
         """
         Delete a specific memory by ID.
 
@@ -273,11 +273,10 @@ class LongTermMemory(metaclass=Singleton):
             if not self.write_manager:
                 raise ValueError("Write manager is not initialized.")
             await self.write_manager.delete_mem_by_id(user_id=user_id, group_id=scope_id, mem_id=mem_id)
-            return True
 
     async def delete_mem_by_user_id(self,
                                     user_id: str = DEFAULT_VALUE,
-                                    scope_id: str = DEFAULT_VALUE) -> bool:
+                                    scope_id: str = DEFAULT_VALUE):
         """
         Delete all type memories for a user with scope id.
 
@@ -292,13 +291,12 @@ class LongTermMemory(metaclass=Singleton):
             if not self.write_manager:
                 raise ValueError("Write manager is not initialized.")
             await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=scope_id)
-            return True
 
     async def update_mem_by_id(self,
                                mem_id: str,
                                memory: str,
                                user_id: str = DEFAULT_VALUE,
-                               scope_id: str = DEFAULT_VALUE) -> bool:
+                               scope_id: str = DEFAULT_VALUE):
         """
         Update the content of an existing memory entry.
 
@@ -314,7 +312,6 @@ class LongTermMemory(metaclass=Singleton):
                 raise ValueError("Write manager is not initialized.")
             await self.write_manager.update_mem_by_id(user_id=user_id, group_id=scope_id,
                                                       mem_id=mem_id, memory=memory)
-            return True
 
     async def get_user_variable(self,
                                 names: list[str] | str | None = None,
@@ -350,13 +347,18 @@ class LongTermMemory(metaclass=Singleton):
             return ret
         raise TypeError("names must be str | list[str] | None")
 
-    async def search_user_mem(self, user_id: str, group_id: str, query: str, num: int,
-                              threshold: float = 0.3) -> list[MemResult]:
+    async def search_user_mem(self,
+                              query: str,
+                              num: int,
+                              user_id: str = DEFAULT_VALUE,
+                              scope_id: str = DEFAULT_VALUE,
+                              threshold: float = 0.3
+                              ) -> list[MemResult]:
         if not self.search_manager:
             raise ValueError("Search Manager is not initialized")
         params = SearchParams(
             query=query,
-            group_id=group_id,
+            group_id=scope_id,
             top_k=num,
             user_id=user_id,
             threshold=threshold

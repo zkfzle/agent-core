@@ -233,3 +233,6 @@ openjiuwen/integrations/retriever/upload/
 # Ignore evaluation data
 tests/longmemeval/data/
 tests/halumem/data/
+eval_results/
+tests/longmemeval/README.md
+tests/longmemeval/RUN.md

@@ -119,8 +119,8 @@ class BaseModelClient:
         if all(isinstance(item, Dict) for item in tools):
             return tools
         else:
-            return [self._convert_tool_info_to_dict(self.convert_to_tool_info(
-                self._convert_tool_info_to_dict(tool))) for tool in tools]
+            # Convert ToolInfo objects directly to OpenAI format dict
+            return [self._convert_tool_info_to_dict(tool) for tool in tools]
 
     @staticmethod
     def clean_tools(tools):
@@ -145,7 +145,15 @@ class BaseModelClient:
 
     @staticmethod
     def _convert_tool_info_to_dict(tool: ToolInfo):
-        return tool.model_dump()
+        """Convert ToolInfo to OpenAI tool format dict."""
+        return {
+            "type": tool.type,
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters
+            }
+        }
 
     # switch ToolInfo
     @staticmethod

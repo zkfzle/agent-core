@@ -34,6 +34,12 @@ _TYPE = "type"
 _INSTRUCTION_NAME = "instruction_name"
 _TEMPLATE_NAME = "template_name"
 
+# Provider name mapping: lowercase -> correct case for _CLIENT_TYPE_REGISTRY
+_PROVIDER_NAME_MAP = {
+    "openai": "OpenAI",
+    "siliconflow": "SiliconFlow",
+}
+
 
 class MessageRole(str, Enum):
     USER = "user"
@@ -297,9 +303,31 @@ class LLMPromptFormatter:
     )
 
     @staticmethod
+    def _get_role(msg) -> str:
+        """Get role from message (dict or BaseMessage)."""
+        if isinstance(msg, dict):
+            return msg.get("role", "")
+        return getattr(msg, "role", "")
+
+    @staticmethod
+    def _get_content(msg) -> str:
+        """Get content from message (dict or BaseMessage)."""
+        if isinstance(msg, dict):
+            return msg.get("content", "")
+        return getattr(msg, "content", "")
+
+    @staticmethod
+    def _set_content(msg, content: str):
+        """Set content on message (dict or BaseMessage)."""
+        if isinstance(msg, dict):
+            msg["content"] = content
+        else:
+            msg.content = content
+
+    @staticmethod
     def _find_last_user_index(history: List[Dict[str, Any]]) -> int | None:
         for idx in range(len(history) - 1, -1, -1):
-            if history[idx].get("role") == "user":
+            if LLMPromptFormatter._get_role(history[idx]) == "user":
                 return idx
         return None
 
@@ -316,7 +344,7 @@ class LLMPromptFormatter:
         last_user_idx = LLMPromptFormatter._find_last_user_index(history)
         if last_user_idx is None:
             return history
-        query = history[last_user_idx]["content"]
+        query = LLMPromptFormatter._get_content(history[last_user_idx])
         prompt = query
 
         if res_type == "markdown":
@@ -338,7 +366,7 @@ class LLMPromptFormatter:
                 .replace("${query}", query)
             )
 
-        history[last_user_idx]["content"] = prompt
+        LLMPromptFormatter._set_content(history[last_user_idx], prompt)
         return history
 
 
@@ -490,16 +518,20 @@ class LLMExecutable(ComponentExecutable):
 
     def _create_llm_instance(self):
         model_info = self._config.model.model_info
-        
+
+        # Map provider name to correct case for _CLIENT_TYPE_REGISTRY
+        provider = self._config.model.model_provider
+        client_type = _PROVIDER_NAME_MAP.get(provider.lower(), provider)
+
         # 创建 ModelClientConfig
         model_client_config = ModelClientConfig(
             client_id=model_info.api_key,
-            client_type=self._config.model.model_provider,
+            client_type=client_type,
             api_key=model_info.api_key,
             api_base=model_info.api_base,
             timeout=getattr(model_info, 'timeout', 60),
             max_retries=3,
-            verify_ssl=os.getenv("LLM_SSL_VERIFY").strip().lower() == 'true',
+            verify_ssl=(os.getenv("LLM_SSL_VERIFY") or "false").strip().lower() == 'true',
             ssl_cert=os.getenv("LLM_SSL_CERT")
         )
         

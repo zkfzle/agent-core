@@ -240,7 +240,11 @@ class LLMAgent(ControllerAgent):
         logger.info(f"When init Memory Engine, group_id: {group_id}")
         if memory_config is not None:
             self._memory_engine = LongTermMemory()
-            if self._memory_engine:
+            # Only set scope config if model_cfg is provided
+            # set_scope_config requires valid model_cfg and model_client_cfg
+            if (self._memory_engine and
+                    hasattr(memory_config, 'model_cfg') and
+                    memory_config.model_cfg is not None):
                 self._memory_engine.set_scope_config(group_id, memory_config)
 
     async def _write_messages_to_memory(self, inputs, result = None):

@@ -8,23 +8,7 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.single_agent.legacy.schema import WorkflowSchema
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.foundation.llm import ModelConfig
-
-
-class LegacyMemoryConfig(BaseModel):
-    """Legacy Memory configuration for backward compatibility
-    
-    This class provides the old MemoryConfig interface that was expected by
-    legacy code. The original class was in openjiuwen.core.memory.config.config
-    but has been renamed to MemoryScopeConfig with different fields.
-    """
-    mem_variables: Dict[str, str] = Field(
-        default_factory=dict,
-        description="Memory variables config"
-    )
-    enable_long_term_mem: bool = Field(
-        default=True,
-        description="Enable long term memory or not"
-    )
+from openjiuwen.core.memory.config.config import MemoryScopeConfig
 
 
 class AgentConfig(BaseModel):
@@ -113,8 +97,8 @@ class LegacyReActAgentConfig(AgentConfig):
         default_factory=list,
         description="List of plugin schemas"
     )
-    memory_config: LegacyMemoryConfig = Field(
-        default_factory=LegacyMemoryConfig,
+    memory_config: MemoryScopeConfig = Field(
+        default_factory=MemoryScopeConfig,
         description="Memory configuration"
     )
     

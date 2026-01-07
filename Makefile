@@ -1,4 +1,4 @@
-# Get all staged .py files
+# Get all staged .py or .pyi Python files
 CHANGED_FILES := $(shell \
 	git diff --name-only --cached --diff-filter=ACM \
 	| grep -E '\.pyi?$$' || true \
@@ -14,7 +14,7 @@ has-staged-changes:
 
 # Install dependencies via uv
 install:
-	uv pip install ruff mypy types-requests
+	uv pip install "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests"
 
 # Formatting check via ruff
 format: has-staged-changes
@@ -23,6 +23,10 @@ format: has-staged-changes
 # Linting check via ruff
 lint: has-staged-changes
 	@ruff check --show-fixes $(CHANGED_FILES)
+
+# Linting check via pylint (more comprehensive than ruff check)
+pylint: has-staged-changes
+	@pylint $(CHANGED_FILES)
 
 # Fix formatting errors via ruff
 fix-format: has-staged-changes
@@ -37,10 +41,10 @@ type-check: has-staged-changes
 	@mypy $(CHANGED_FILES)
 
 # Execute all checks
-check: format lint
+check: format lint pylint
 
 # Execute all auto-fixes
 fix: fix-lint fix-format
 
 # All targets
-.PHONY: has-staged-changes install format lint fix-format fix-lint type-check check fix
+.PHONY: has-staged-changes install format lint pylint fix-format fix-lint type-check check fix

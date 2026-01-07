@@ -1,0 +1,32 @@
+[MAIN]
+ignore-paths = ^(examples)|(tests)/.*
+load-plugins = pylint.extensions.bad_builtin
+py-version = 3.11
+
+[DEPRECATED_BUILTINS]
+bad-functions = print
+
+[FORMAT]
+max-line-length = 120
+
+[DESIGN]
+max-return = 5
+max-args = 10
+max-locals = 15
+max-branches = 25
+
+[MESSAGES CONTROL]
+disable=
+    import-outside-toplevel,
+    missing-module-docstring,
+    too-few-public-methods,
+    use-dict-literal,
+    use-list-literal,
+    unused-argument,
+    too-many-nested-blocks,
+    too-many-positional-arguments,
+    too-many-instance-attributes,
+    too-many-ancestors,
+    broad-exception-caught,
+    broad-exception-raised,
+    missing-timeout

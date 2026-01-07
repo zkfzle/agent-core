@@ -25,7 +25,6 @@ from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowInputsSchema
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -254,7 +253,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
                 id=id,
                 version=version,
                 description="根据天气生成对应文本",
-                inputs_schema=WorkflowInputsSchema(
+                inputs_schema=dict(
                 type="object",
                 properties={
                     "query": {

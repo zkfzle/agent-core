@@ -9,6 +9,10 @@ class StatusCode(Enum):
     SUCCESS = (0, "success")
     ERROR = (-1, "error")
 
+    # Util Error
+    SCHEMA_INVALID_ERROR = (90000, "Schema validation failed: {reason}")
+    SCHEMA_FORMAT_ERROR = (90001, "Schema format failed: {reason}")
+
     # Workflow Component  100000 - 109999
 
     # Workflow: Interactive And Recovery 100000 - 100029

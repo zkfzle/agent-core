@@ -852,7 +852,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
 
         @workflow_provider(workflow_id="test_provider_workflow", workflow_version="1.0",
                            workflow_name="test_provider_workflow", workflow_description="haha",
-                           inputs=WorkflowInputsSchema(
+                           inputs=dict(
                                type="object",
                                properties={
                                    "query": {

@@ -11,6 +11,7 @@ from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.utils.schema_utils import SchemaUtils
 from openjiuwen.core.workflow.base import WorkflowCard, WorkflowChunk, WorkflowExecutionState, \
     WorkflowOutput
 from openjiuwen.core.workflow._workflow import BaseWorkflow
@@ -263,10 +264,14 @@ class Workflow:
         if kwargs.get("is_sub"):
             return await self._sub_invoke(inputs, session, context, **kwargs)
 
+        if not kwargs.get("skip_inputs_validate") and self._card.inputs_schema is not None:
+            inputs = SchemaUtils.format_with_schema(inputs, self._card.inputs_schema)
+
         async def _invoke_task():
             logger.info(f"begin to invoke, input: {inputs}")
             chunks = []
-            async for chunk in self.stream(inputs, session, context=context, stream_modes=[BaseStreamMode.OUTPUT]):
+            async for chunk in self.stream(inputs, session, context=context, stream_modes=[BaseStreamMode.OUTPUT],
+                                           skip_inputs_validate=True):
                 chunks.append(chunk)
 
             is_interaction = False
@@ -316,6 +321,8 @@ class Workflow:
             async for chunk in self._sub_stream(inputs, session, context, **kwargs):
                 yield chunk
             return
+        if not kwargs.get("skip_inputs_validate") and self._card.inputs_schema is not None:
+            inputs = SchemaUtils.format_with_schema(inputs, self._card.inputs_schema)
         self._validate_and_init_session(session, stream_modes)
         # workflow start tracer info
         await TracerWorkflowUtils.trace_workflow_start(session, inputs)
@@ -526,9 +533,6 @@ class Workflow:
             actor_manager=actor_manager
         )
         return actor_manager, sub_workflow_session
-
-    def get_tool_info(self) -> ToolInfo:
-        return self.card.tool_info()
 
     @staticmethod
     def _add_messages_to_context(inputs: Input, results: Union[dict, List[OutputSchema]], context):

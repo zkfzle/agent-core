@@ -19,7 +19,6 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowInputsSchema
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
@@ -159,7 +158,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 id=workflow_id,
                 version="1.0",
                 description=workflow_desc,
-                inputs_schema=WorkflowInputsSchema(
+                inputs_schema=dict(
                 type="object",
                 properties={
                     "query": {
@@ -232,7 +231,7 @@ class LLMAgentInterruptTest(unittest.IsolatedAsyncioTestCase):
                 id="questioner_weather_workflow",
                 version="1.0",
                 description="天气查询",
-                inputs_schema=WorkflowInputsSchema(
+                inputs_schema=dict(
                 type="object",
                 properties={
                     "query": {

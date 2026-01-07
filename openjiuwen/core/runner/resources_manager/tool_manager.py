@@ -37,8 +37,8 @@ class ToolMgr(AbstractManager[Tool]):
         # Define validation function for non-callable tools
         def validate_tool(tool_obj):
             # Store tool info
-            if hasattr(tool_obj, "get_tool_info"):
-                self._tool_infos[tool_id] = tool_obj.get_tool_info()
+            if hasattr(tool_obj, "card"):
+                self._tool_infos[tool_id] = tool_obj.card.tool_info()
             else:
                 logger.warning(f"Tool {tool_id} does not have a get_tool_info method, add tool failed")
             return tool_obj
@@ -65,11 +65,11 @@ class ToolMgr(AbstractManager[Tool]):
         def create_tool_from_provider(provider):
             tool = provider()
             # Store tool info
-            if hasattr(tool, "get_tool_info"):
-                if tool.get_tool_info() is None:
+            if hasattr(tool, "card"):
+                if tool.card.tool_info() is None:
                     logger.warn(f"add a tool without tool_info, tool_name={name}")
                 else:
-                    self._tool_infos[name] = tool.get_tool_info()
+                    self._tool_infos[name] = tool.card.tool_info()
             else:
                 self._tool_infos[name] = ToolInfo()
             return tool

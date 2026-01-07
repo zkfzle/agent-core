@@ -56,8 +56,9 @@ class ToolExecutable(ComponentExecutable):
         if self._tool is None:
             ExceptionUtils.raise_exception(StatusCode.TOOL_COMPONENT_BIND_TOOL_FAILED)
         tool_inputs = self._validate_inputs(inputs)
+
         try:
-            response = await self._tool.invoke(tool_inputs)
+            response = await self._tool.invoke(tool_inputs, skip_inputs_validate=False, skip_none_value=True)
             response = self._post_process_tool_result(response)
         except Exception as e:
             response = {constant.ERR_MESSAGE: "Failed to execute tool", constant.RESTFUL_DATA: "",

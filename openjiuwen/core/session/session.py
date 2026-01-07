@@ -64,6 +64,9 @@ class Session(ABC):
     def session_id(self) -> str:
         pass
 
+    def user_id(self) -> str:
+        return ''
+
     @abstractmethod
     def update_state(self, data: dict):
         pass

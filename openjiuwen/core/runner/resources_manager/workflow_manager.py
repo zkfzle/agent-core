@@ -24,10 +24,10 @@ class WorkflowMgr(AbstractManager["Workflow"]):
 
         # Define validation function for non-callable workflows
         def validate_workflow(workflow_obj):
-            if workflow_obj.get_tool_info() is None:
+            if workflow_obj.card.tool_info() is None:
                 logger.warn(f"add a workflow without tool_info, workflow_id={workflow_id}")
             else:
-                self._workflow_tool_infos[workflow_id] = workflow_obj.get_tool_info()
+                self._workflow_tool_infos[workflow_id] = workflow_obj.card.tool_info()
             return workflow_obj
 
         self._add_resource(workflow_id, workflow, StatusCode.SESSION_WORKFLOW_ADD_FAILED, validate_workflow)

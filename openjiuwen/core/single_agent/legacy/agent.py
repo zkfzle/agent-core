@@ -7,6 +7,8 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, AsyncIterator, Callable, Dict, List, Tuple, Union
 
+from pydantic.v1 import BaseModel
+
 from openjiuwen.core.workflow import WorkflowCard as WorkflowSchema
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.single_agent.legacy.schema import PluginSchema
@@ -22,7 +24,7 @@ from openjiuwen.core.session import (
 from openjiuwen.core.session.stream import OutputSchema, CustomSchema
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import ToolInfo
-from openjiuwen.core.workflow import Workflow, generate_workflow_key, WorkflowInputsSchema
+from openjiuwen.core.workflow import Workflow, generate_workflow_key
 
 if TYPE_CHECKING:
     pass
@@ -104,9 +106,7 @@ class WorkflowFactory:
         self.input_schema = input_schema if input_schema else {}
         self.workflow_description = workflow_description
         if self.name and self.input_schema:
-            workflow_input_schema = self.input_schema if isinstance(self.input_schema,
-                                                                    WorkflowInputsSchema) else WorkflowInputsSchema.model_validate(
-                self.input_schema)
+            workflow_input_schema = self.input_schema
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
             from openjiuwen.core.runner import Runner
             #todo: next line will be deleted when resource_mgr supports tag feature
@@ -154,7 +154,7 @@ class WorkflowFactory:
 
 
 def workflow_provider(workflow_id: str, workflow_version: str, workflow_name: str = '', workflow_description: str = '',
-                      inputs: Union[dict, WorkflowInputsSchema] = None):
+                      inputs: Union[dict, BaseModel] = None):
     """Decorator to create a WorkflowFactory from a factory function.
 
     Usage:
@@ -300,8 +300,8 @@ class BaseAgent(ABC):
 
         for tool in tools:
             # 1. Add tool name to config.tools
-            if tool.name not in self.agent_config.tools:
-                self.agent_config.tools.append(tool.name)
+            if tool.card.name not in self.agent_config.tools:
+                self.agent_config.tools.append(tool.card.name)
 
             # 2. Generate PluginSchema (if configuration supports)
             if hasattr(self.agent_config, 'plugins'):
@@ -309,17 +309,17 @@ class BaseAgent(ABC):
                 existing_plugin_names = {
                     p.name for p in self.agent_config.plugins
                 }
-                if tool.name not in existing_plugin_names:
+                if tool.card.name not in existing_plugin_names:
                     plugin_schema = self._tool_to_plugin_schema(tool)
                     self.agent_config.plugins.append(plugin_schema)
 
             # 3. Add to self._tools (avoid duplication)
-            existing_tool_names = {t.name for t in self._tools}
-            if tool.name not in existing_tool_names:
+            existing_tool_names = {t.card.name for t in self._tools}
+            if tool.card.name not in existing_tool_names:
                 self._tools.append(tool)
 
             # 4. Sync to session (auto register)
-            self._session.add_tools([(tool.name, tool)])
+            self._session.add_tools([(tool.card.name, tool)])
 
     def add_workflows(
             self,
@@ -552,8 +552,8 @@ class BaseAgent(ABC):
             tool_description = tool.description
 
         return PluginSchema(
-            id=tool.name,
-            name=tool.name,
+            id=tool.card.name,
+            name=tool.card.name,
             description=tool_description,
             inputs=inputs
         )

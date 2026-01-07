@@ -21,20 +21,11 @@ class WorkflowCard(BaseCard):
     version: str = ''
     inputs_schema: Optional[dict[str, Any] | BaseModel] = None
 
-    @property
-    def inputs(self) -> Optional[dict[str, Any] | BaseModel]:
-        """Alias for inputs_schema for backward compatibility"""
-        return self.inputs_schema
-
     def tool_info(self):
         return ToolInfo(
             name=self.name,
             description=self.description,
-            parameters={
-                "type": self.inputs_schema.type if self.inputs_schema else None,
-                "properties": self.inputs_schema.properties if self.inputs_schema else None,
-                "required": self.inputs_schema.required if self.inputs_schema else None,
-            }
+            parameters=self.inputs_schema if self.inputs_schema else {}
         )
 
 

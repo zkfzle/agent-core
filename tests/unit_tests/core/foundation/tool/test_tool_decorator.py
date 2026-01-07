@@ -66,12 +66,12 @@ class TestToolDecorator:
     async def test_tool(self):
         # invoke
         sub_result = await sub.invoke({"a": 5, "b": 1})
-        self.assertEqual(sub.name, "local_sub")
+        self.assertEqual(sub.card.name, "local_sub")
         self.assertEqual(sub.card.description, "local function for sub")
         self.assertEqual(sub_result, 4)
 
         # get_tool_info
-        sub_res = sub.get_tool_info()
+        sub_res = sub.card.tool_info()
         sub_too_info = ToolInfo(
             name="local_sub",
             description="local function for sub",
@@ -110,12 +110,12 @@ class TestToolDecorator:
             ],
         }
         summarize_result = await summarize.invoke(input)
-        self.assertEqual(summarize.name, "summarize")
+        self.assertEqual(summarize.card.name, "summarize")
         self.assertEqual(summarize.card.description, "汇总商品信息")
         self.assertEqual(summarize_result, 7.0)
 
         # get_tool_info
-        summarize_res = summarize.get_tool_info()
+        summarize_res = summarize.card.tool_info()
         summarize_tool_info = ToolInfo(
             type="function",
             name="summarize",

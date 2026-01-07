@@ -2,10 +2,19 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from abc import abstractmethod
-from typing import AsyncIterator
+from typing import Any, AsyncIterator, Dict
 
-from openjiuwen.core.foundation.tool.schema import ToolInfo, ToolCard
+from pydantic import BaseModel, Field
+
+from openjiuwen.core.common import BaseCard
+from openjiuwen.core.foundation.tool.schema import ToolInfo
 from openjiuwen.core.foundation.tool.constant import Input, Output
+
+class ToolCard(BaseCard):
+    parameters: Dict[str, Any] | BaseModel = Field(default_factory=dict)
+
+    def tool_info(self):
+        return ToolInfo(name=self.name, description=self.description, parameters=self.parameters)
 
 
 class Tool:
@@ -21,11 +30,11 @@ class Tool:
             The tool card is stored internally and used for validation and
             metadata purposes throughout the tool's lifecycle.
         """
-        self.name = card.name
-        self.card = card
+        self._card = card
 
+    @property
     def card(self) -> ToolCard:
-        return self.card
+        return self._card
 
     @abstractmethod
     async def invoke(self, inputs: Input, **kwargs) -> Output:
@@ -63,21 +72,3 @@ class Tool:
 
         """
         pass
-
-    def get_tool_info(self) -> ToolInfo:
-        """Generate comprehensive tool information for large language model integration.
-
-        Converts the internal ToolCard configuration into a structured ToolInfo object
-        optimized for LLM consumption. This includes formatting tool descriptions and
-        parameter schemas in a way that helps language models understand and correctly
-        invoke the tool.
-
-        Returns:
-            ToolInfo: Complete tool metadata including name, description,
-                     parameter schemas, execution capabilities, and version info
-
-        Note:
-            This method typically extracts information from the tool card
-            and may augment it with session-derived metadata.
-        """
-        return ToolInfo(name=self.name, description=self.card.description, parameters=self.card.parameters)

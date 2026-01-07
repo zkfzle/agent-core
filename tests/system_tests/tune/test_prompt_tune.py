@@ -58,7 +58,7 @@ TOOLS = [
     ),
 ]
 
-TOOL_INFOS = [tool.get_tool_info() for tool in TOOLS]
+TOOL_INFOS = [tool.card.tool_info() for tool in TOOLS]
 
 # --------------------------- 待优化提示词 --------------------------- #
 INFORMATION_EXTRACTION_TEMPLATE = """

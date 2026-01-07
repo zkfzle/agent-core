@@ -16,3 +16,6 @@ class BaseCard(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     name: str= Field(default='')
     description: str = Field(default='')
+
+    def tool_info(self):
+        ...

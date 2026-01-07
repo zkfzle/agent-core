@@ -110,7 +110,7 @@ async def test_tool_comp_in_workflow(mock_invoke, mock_tool, mock_tool_config, f
             "type": "object",
             "properties": {
                 "a": {"description": "参数1", "type": "string"},
-                "b": {"description": "参数2", "type": "integer", "default": 789},
+                "b": {"description": "参数2", "type": ["integer", "null"], "default": 789},
             },
             "required": ["a"],
         },

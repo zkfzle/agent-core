@@ -87,7 +87,7 @@ class TestRestFulApi:
                 method="GET",
             ),
         )
-        res = mock_data.get_tool_info()
+        res = mock_data.card.tool_info()
         too_info = ToolInfo(
             name="test",
             description="test",

@@ -50,7 +50,6 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
 from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
 from openjiuwen.core.foundation.tool import ToolCall
-from openjiuwen.core.workflow import WorkflowInputsSchema
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
 from openjiuwen.core.runner import Runner
@@ -258,13 +257,12 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                     id="questioner_weather_workflow",
                     version="1.0",
                     description="天气查询",
-                    inputs_schema=WorkflowInputsSchema(
+                    inputs_schema=dict(
                     type="object",
                     properties={
                         "query": {
                             "type": "string",
-                            "description": "天气查询用户输入",
-                            "required": True
+                            "description": "天气查询用户输入"
                         }
                     },
                     required=['query']

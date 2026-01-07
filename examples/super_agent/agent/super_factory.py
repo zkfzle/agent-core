@@ -84,13 +84,13 @@ def create_super_main_agent(
     ] if system_prompt else []
 
     # Create tool and workflow schemas
-    tool_names = [tool.name for tool in (tools or [])]
+    tool_names = [tool.card.name for tool in (tools or [])]
 
     plugin_schemas = []
     for tool in (tools or []):
         plugin_schemas.append(PluginSchema(
-            id=tool.name,
-            name=tool.name,
+            id=tool.card.name,
+            name=tool.card.name,
             description=getattr(tool, 'description', ''),
             inputs={}
         ))
@@ -189,13 +189,13 @@ def create_super_sub_agent(
     ] if system_prompt else []
 
     # Create tool and workflow schemas
-    tool_names = [tool.name for tool in (tools or [])]
+    tool_names = [tool.card.name for tool in (tools or [])]
 
     plugin_schemas = []
     for tool in (tools or []):
         plugin_schemas.append(PluginSchema(
-            id=tool.name,
-            name=tool.name,
+            id=tool.card.name,
+            name=tool.card.name,
             description=getattr(tool, 'description', ''),
             inputs={}
         ))

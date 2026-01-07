@@ -21,7 +21,6 @@ from openjiuwen.core.session import BaseSession, Session
 from openjiuwen.core.session import WorkflowSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.workflow import Workflow, WorkflowOutput, WorkflowChunk
-from openjiuwen.core.workflow import WorkflowInputsSchema
 from openjiuwen.core.workflow import ComponentAbility
 from tests.unit_tests.core.workflow.mock_nodes import ComputeComponent2, DualAbilityWithErrorComponent
 
@@ -813,11 +812,10 @@ async def test_stream_trigger_consumer_twice():
             "query": {
                 "type": "string",
                 "description": "用户输入信息",
-                "required": True
             }
         }
     }
-    workflow_inputs_schema = WorkflowInputsSchema(**inputs_schem_dict)
+    workflow_inputs_schema = inputs_schem_dict
     workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
     flow = Workflow(card=workflow_card)
 
@@ -856,11 +854,10 @@ async def test_stream_trigger_consumer():
             "query": {
                 "type": "string",
                 "description": "用户输入信息",
-                "required": True
             }
         }
     }
-    workflow_inputs_schema = WorkflowInputsSchema(**inputs_schem_dict)
+    workflow_inputs_schema = inputs_schem_dict
     workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
     flow = Workflow(card=workflow_card)
 

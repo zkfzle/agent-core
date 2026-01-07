@@ -345,8 +345,11 @@ class BaseWorkFlow:
         loop_end_nodes = getattr(self, '_end_nodes', None) or []
 
         for node in loop_start_nodes:
-            if not user_provided[node] and node in edge_topology.source_stream_map:
-                self._add_ability_to_node(node, ComponentAbility.STREAM)
+            if not user_provided[node]:
+                if node in edge_topology.source_stream_map:
+                    self._add_ability_to_node(node, ComponentAbility.STREAM)
+                if node in edge_topology.source_map:
+                    self._add_ability_to_node(node, ComponentAbility.INVOKE)
 
         for node in loop_end_nodes:
             if not user_provided[node] and node in edge_topology.target_stream_map:

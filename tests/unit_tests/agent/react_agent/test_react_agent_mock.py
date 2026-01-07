@@ -140,7 +140,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
             card=ToolCard(
                 name="add",
                 description="加法运算",
-                parameters={
+                input_params={
                     "type": "object",
                     "properties": {
                         "a": {"description": "第一个加数", "type": "number"},

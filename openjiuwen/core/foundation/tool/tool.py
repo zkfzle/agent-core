@@ -1,14 +1,12 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import List, Callable, Type, get_args, get_origin, Annotated, overload, get_type_hints
+from typing import Callable, overload, get_type_hints
 from inspect import Parameter, signature
-from pydantic_core import PydanticUndefined
-from pydantic import BaseModel, Field, create_model
+
+from pydantic import Field, create_model
 
 from openjiuwen.core.foundation.tool.function.function import LocalFunction, ToolCard
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
 
 def extract_params(func: Callable) -> dict:
     name = func.__name__
@@ -49,7 +47,7 @@ def extract_params(func: Callable) -> dict:
     return {
         "name": name,
         "description": description,
-        "parameters": parameters_schema
+        "input_params": parameters_schema
     }
 
 
@@ -69,7 +67,6 @@ def tool(func: Callable = None, *, card: ToolCard = None) -> LocalFunction:
         return LocalFunction(card=ToolCard(**tmp_params), func=func)
 
     else:
-
         def decorator(func):
             return LocalFunction(card=card, func=func)
 

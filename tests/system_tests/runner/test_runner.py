@@ -406,7 +406,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert server_tools[0].name == "browser-use-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.resource_mgr.get_mcp_tool_info(server_name="browser-use-server")
+            tools = await Runner.resource_mgr.get_mcp_tool_infos(server_name="browser-use-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
@@ -428,7 +428,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             # -------------------- 移除服务器 --------------------
             await Runner.resource_mgr.remove_mcp_server("browser-use-server")
-            empty_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="browser-use-server")
+            empty_tools = await Runner.resource_mgr.get_mcp_tool_infos(tool_server_name="browser-use-server")
             assert empty_tools == None
 
             return True
@@ -485,12 +485,12 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
 
             # -------------------- 工具列表校验 --------------------
-            server_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="doubter-mcp-server")
+            server_tools = await Runner.resource_mgr.get_mcp_tool_infos(tool_server_name="doubter-mcp-server")
             assert len(server_tools) == 2
             assert server_tools[0].name == "doubter-mcp-server.doubter"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.resource_mgr.get_mcp_tool_info(server_name="doubter-mcp-server")
+            tools = await Runner.resource_mgr.get_mcp_tool_infos(server_name="doubter-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
@@ -512,7 +512,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             # -------------------- 移除服务器 --------------------
             await Runner.resource_mgr.remove_mcp_server("doubter-mcp-server")
-            empty_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="doubter-mcp-server")
+            empty_tools = await Runner.resource_mgr.get_mcp_tool_infos(tool_server_name="doubter-mcp-server")
             assert empty_tools == None
 
             return True
@@ -567,12 +567,12 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert ok_list[0].is_ok() == True
 
             # -------------------- 工具列表校验 --------------------
-            server_tools = await Runner.resource_mgr.get_mcp_tool_info(tool_server_name="playwright-mcp-server")
+            server_tools = await Runner.resource_mgr.get_mcp_tool_infos(tool_server_name="playwright-mcp-server")
             assert len(server_tools) == 2
             assert server_tools[0].name == "playwright-mcp-server.browser_navigate"
 
             # -------------------- Runner 拉取工具 --------------------
-            tools = await Runner.resource_mgr.get_mcp_tool_info("playwright-mcp-server")
+            tools = await Runner.resource_mgr.get_mcp_tool_infos("playwright-mcp-server")
             assert len(tools) == 2
             first_tool = tools[0]
             tool_id = first_tool.name
@@ -594,7 +594,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
             # -------------------- 移除服务器 --------------------
             await Runner.resource_mgr.remove_mcp_server("playwright-mcp-server")
-            empty_tools = Runner.resource_mgr.get_mcp_tool_info(tool_server_name="playwright-mcp-server")
+            empty_tools = Runner.resource_mgr.get_mcp_tool_infos(tool_server_name="playwright-mcp-server")
             assert empty_tools == None
 
             return True

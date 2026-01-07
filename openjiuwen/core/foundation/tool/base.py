@@ -11,10 +11,10 @@ from openjiuwen.core.foundation.tool.schema import ToolInfo
 from openjiuwen.core.foundation.tool.constant import Input, Output
 
 class ToolCard(BaseCard):
-    parameters: Dict[str, Any] | BaseModel = Field(default_factory=dict)
+    input_params: Dict[str, Any] | BaseModel = Field(default_factory=dict)
 
     def tool_info(self):
-        return ToolInfo(name=self.name, description=self.description, parameters=self.parameters)
+        return ToolInfo(name=self.name, description=self.description, parameters=self.input_params)
 
 
 class Tool:

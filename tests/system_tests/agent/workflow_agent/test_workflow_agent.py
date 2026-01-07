@@ -26,7 +26,6 @@ from openjiuwen.core.session import BaseSession
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import RestfulApi, RestfulApiCard
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import WorkflowInputsSchema
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import generate_workflow_key
@@ -47,7 +46,7 @@ _MOCK_TOOL = RestfulApi(
     card=RestfulApiCard(
         name="test",
         description="test",
-        parameters={
+        input_params={
             "type": "object",
             "properties": {
                 "location": {"description": "地点", "type": "string"},
@@ -208,7 +207,7 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
             card=RestfulApiCard(
                 name="WeatherReporter",
                 description="天气查询插件",
-                parameters={
+                input_params={
                     "type": "object",
                     "properties": {
                         "location": {"description": "地点", "type": "string"},
@@ -359,13 +358,12 @@ class WorkflowAgentTest(unittest.IsolatedAsyncioTestCase):
                 id=workflow_id,
                 version=version,
                 description="包含两个并行中断节点的测试工作流",
-                inputs_schema=WorkflowInputsSchema(
+                input_params=dict(
                 type="object",
                 properties={
                     "query": {
                         "type": "string",
                         "description": "用户输入",
-                        "required": True
                     }
                 },
                 required=['query']

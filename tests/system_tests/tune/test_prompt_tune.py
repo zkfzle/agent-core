@@ -47,7 +47,7 @@ TOOLS = [
         card=ToolCard(
             name="ac_control",
             description="空调温度调节工具，按用户指令设置温度",
-            parameters={
+            input_params={
                 "type": "object",
                 "properties": {
                     "temperature": {"description": "需要设置的温度", "type": "integer"},

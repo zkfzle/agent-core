@@ -253,7 +253,7 @@ async def _register_mcp_server_as_local_tools(
         raise RuntimeError(f"Failed to add MCP server: {server_name}")
 
     # 2. 用 Runner.list_tools 拿到工具列表（McpToolInfo）
-    tool_infos = await Runner.resource_mgr.get_mcp_tool_info(server_name=server_name)
+    tool_infos = await Runner.resource_mgr.get_mcp_tool_infos(server_name=server_name)
 
     local_tools = []
 

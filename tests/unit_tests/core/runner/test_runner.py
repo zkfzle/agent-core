@@ -71,7 +71,7 @@ class TestRunner:
         card=ToolCard(
             name="add",
             description="加法",
-            parameters={
+            input_params={
                 "type": "object",
                 "properties": {
                     "a": {"description": "加数", "type": "number"},
@@ -90,7 +90,7 @@ class TestRunner:
         card=ToolCard(
             name="multiply",
             description="乘法",
-            parameters={
+            input_params={
                 "type": "object",
                 "properties": {
                     "a": {"description": "乘数", "type": "number"},

@@ -27,27 +27,40 @@ from openjiuwen.core.foundation.llm1.schema.message import BaseMessage
 from openjiuwen.core.foundation.llm1.model import Model
 from openjiuwen.core.common.utils.singleton import Singleton
 
+DEFAULT_VALUE: str = "__default__"
+
+
 class MemInfo(BaseModel):
     mem_id: str = Field(default="", description="memory id")
     content: str = Field(default="", description="memory content")
     type: MemoryType = Field(default=MemoryType.USER_PROFILE, description="memory type")
 
+
 class MemResult(BaseModel):
     mem_info: MemInfo = Field(default=None, description="memory information")
     score: float = Field(default=0.0, description="memory score of relevance")
 
+
+class AddLongTermMemoryRequest(BaseModel):
+    messages: list[BaseMessage]
+    user_id: str = DEFAULT_VALUE
+    scope_id: str = DEFAULT_VALUE
+    session_id: str = DEFAULT_VALUE
+    timestamp: datetime | None = None
+    gen_mem: bool = True
+    gen_mem_with_history_msg_num: int = 5
+
 class LongTermMemory(metaclass=Singleton):
     """
-            Abstract base class for memory engine.
+    Abstract base class for memory engine.
 
-            Defines the core interface for memory storage and retrieval operations.
-            Provides unified memory management functionality including conversation memory,
-            user variables, semantic search, and persistence.
+    Defines the core interface for memory storage and retrieval operations.
+    Provides unified memory management functionality including conversation memory,
+    user variables, semantic search, and persistence.
 
-            Concrete implementations should handle memory operations across multiple storage
-            backends (KV store, semantic store, database store).
-        """
-    DEFAULT_VALUE: str = "__default__"
+    Concrete implementations should handle memory operations across multiple storage
+    backends (KV store, semantic store, database store).
+    """
 
     def __init__(self):
         """
@@ -152,56 +165,50 @@ class LongTermMemory(metaclass=Singleton):
 
     async def add_messages(
             self,
-            messages: list[BaseMessage],
-            user_id: str = DEFAULT_VALUE,
-            scope_id: str = DEFAULT_VALUE,
-            session_id: str = DEFAULT_VALUE,
-            timestamp: datetime | None = None,
-            gen_mem: bool = True,
-            gen_mem_with_history_msg_num: int = 5
+            request: AddLongTermMemoryRequest
     ):
         msg_id = "-1"
-        llm = self._get_group_llm(scope_id)
+        llm = self._get_group_llm(request.scope_id)
         # user level distributed lock
-        lock = DistributedLock(self.kv_store, f"user/{user_id}")
+        lock = DistributedLock(self.kv_store, f"user/{request.user_id}")
         async with lock:
             if not llm:
                 logger.error("llm is not initialized.")
                 return
             history_messages = await self._get_history_messages(
-                user_id=user_id,
-                group_id=scope_id,
-                session_id=session_id,
-                history_window_size=gen_mem_with_history_msg_num)
+                user_id=request.user_id,
+                group_id=request.scope_id,
+                session_id=request.session_id,
+                history_window_size=request.gen_mem_with_history_msg_num)
             # when multi messages, use last msg_id
-            if gen_mem:
-                for i, msg in enumerate(messages):
-                    msg_timestamp = timestamp + timedelta(milliseconds=i)
+            if request.gen_mem:
+                for i, msg in enumerate(request.messages):
+                    msg_timestamp = request.timestamp + timedelta(milliseconds=i)
                     add_req = MessageAddRequest(
-                        user_id=user_id,
-                        group_id=scope_id,
+                        user_id=request.user_id,
+                        group_id=request.cope_id,
                         role=msg.role,
                         content=msg.content,
-                        session_id=session_id,
+                        session_id=request.session_id,
                         timestamp=msg_timestamp
                     )
                     msg_id = await self.message_manager.add(add_req)
             else:
                 msg_id = None
 
-            check_res, messages = self._check_messages(messages=messages)
+            check_res, messages = self._check_messages(messages=request.messages)
             if not check_res:
                 logger.info("Memory engine no need to process messages.")
                 return
 
-            group_mem_config = self._get_group_config(scope_id)
+            group_mem_config = self._get_group_config(request.scope_id)
 
             all_memory: list[BaseMemoryUnit] = await self.generator.gen_all_memory(
-                group_id=scope_id,
-                user_id=user_id,
+                group_id=request.scope_id,
+                user_id=request.user_id,
                 messages=messages,
                 history_messages=history_messages,
-                session_id=session_id,
+                session_id=request.session_id,
                 config=group_mem_config,
                 base_chat_model=llm,
                 message_mem_id=msg_id

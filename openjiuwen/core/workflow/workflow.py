@@ -418,6 +418,9 @@ class Workflow:
             await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: kwargs.get(CONFIG_KEY)}, session)
             if self._is_streaming:
                 messages = []
+                sub_end_ability = self._internal._workflow_config.spec.comp_configs.get(self._end_comp_id).abilities
+                required_abilities = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
+                stream_ability_count = sum(ability in sub_end_ability for ability in required_abilities)
                 while True:
                     frame = await actor_manager.sub_workflow_stream().receive(
                         session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
@@ -426,7 +429,10 @@ class Workflow:
                         continue
                     if frame == StreamEmitter.END_FRAME:
                         logger.info("received end frame of sub_invoke")
-                        break
+                        stream_ability_count -= 1
+                        if stream_ability_count == 0:
+                            break
+                        continue
                     messages.append(frame)
                 if messages:
                     logger.debug(f"sub workflow messages: {messages}")

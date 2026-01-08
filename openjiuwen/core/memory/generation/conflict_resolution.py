@@ -25,12 +25,14 @@ def _get_message(old_messages: List[str], new_message: str) -> list[dict]:
     }
 
     old_msg_input = []
-    for i in range(len(old_messages)):
+    index = 0
+    for old_message in old_messages:
         old_msg_input.append({
-            "id": str(i + 1),
-            "text": old_messages[i],
+            "id": str(index + 1),
+            "text": old_message,
             "event": "operation"
         })
+        index += 1
     user_input = {
         "new_message": new_msg_input,
         "old_messages": old_msg_input,

@@ -2,12 +2,23 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from typing import Any, Optional, Tuple
+from pydantic import BaseModel
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import BaseModelClient
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
 from openjiuwen.core.memory.mem_unit.memory_unit import VariableUnit
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
+
+
+class VariablePairInput(BaseModel):
+    usr_id: str
+    for_deletion: bool
+    group_id: str
+    var_name: Optional[str] = None
+    session_id: Optional[str] = None
+    user_var_value: Optional[str] = None
+    session_var_value: Optional[str] = None
 
 
 class VariableManager(BaseMemoryManager):
@@ -25,13 +36,15 @@ class VariableManager(BaseMemoryManager):
             logger.error("kv_store cannot be None")
             return
         key, value = self._make_variable_pairs(
-            memory.user_id,
-            False,
-            memory.group_id,
-            memory.variable_name,
-            None,
-            memory.variable_mem,
-            None
+            VariablePairInput(
+                usr_id=memory.user_id,
+                for_deletion=False,
+                group_id=memory.group_id,
+                var_name=memory.variable_name,
+                session_id=None,
+                user_var_value=memory.variable_mem,
+                session_var_value=None
+            )
         )
         await self.kv_store.set(key, value)
 
@@ -46,8 +59,17 @@ class VariableManager(BaseMemoryManager):
         existing_variable = await self.query_variable(user_id=user_id, group_id=group_id, name=var_name)
         if not VariableManager._check_exist(existing_variable, var_name):
             return
-        key, value = self._make_variable_pairs(usr_id=user_id, for_deletion=False,
-                                               group_id=group_id, var_name=var_name, user_var_value=var_mem)
+        key, value = self._make_variable_pairs(
+            VariablePairInput(
+                usr_id=user_id,
+                for_deletion=False,
+                group_id=group_id,
+                var_name=var_name,
+                session_id=None,
+                user_var_value=var_mem,
+                session_var_value=None
+            )
+        )
         await self.kv_store.set(key, value)
 
     async def delete(self, user_id: str, group_id: str, mem_id: str, **kwargs):
@@ -67,7 +89,17 @@ class VariableManager(BaseMemoryManager):
         if self.kv_store is None:
             logger.error("kv_store cannot be None")
             return
-        key, _ = self._make_variable_pairs(usr_id=user_id, for_deletion=False, group_id=group_id, var_name=var_name)
+        key, _ = self._make_variable_pairs(
+            VariablePairInput(
+                usr_id=user_id,
+                for_deletion=False,
+                group_id=group_id,
+                var_name=var_name,
+                session_id=None,
+                user_var_value=None,
+                session_var_value=None
+            )
+        )
         await self.kv_store.delete(key)
 
     async def get(self, user_id: str, group_id: str, mem_id: str) -> dict[str, Any] | None:
@@ -99,39 +131,31 @@ class VariableManager(BaseMemoryManager):
         kv_ret = BaseMemoryManager.decrypt_memory_if_needed(key=self.crypto_key, ciphertext=kv_ret)
         return {name: kv_ret}
 
-    def _make_variable_pairs(
-            self,
-            usr_id: str,
-            for_deletion: bool,
-            group_id: str,
-            var_name: Optional[str] = None,
-            session_id: Optional[str] = None,
-            user_var_value: Optional[str] = None,
-            session_var_value: Optional[str] = None
-    ) -> Tuple[str, str]:
+    def _make_variable_pairs(self, pair_input: VariablePairInput) -> Tuple[str, str]:
         key, value = "", ""
+
         user_var_value = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
-                                                                    plaintext=user_var_value)
+                                                                    plaintext=pair_input.user_var_value)
         session_var_value = BaseMemoryManager.encrypt_memory_if_needed(key=self.crypto_key,
-                                                                       plaintext=session_var_value)
-        if var_name is not None:
+                                                                       plaintext=pair_input.session_var_value)
+        if pair_input.var_name is not None:
             # 1) user_var
-            if session_id is None:
+            if pair_input.session_id is None:
                 key = (
-                    f"user_var{VariableManager.SEPARATOR}{usr_id}"
-                    f"{VariableManager.SEPARATOR}{group_id}"
-                    f"{VariableManager.SEPARATOR}{var_name}"
+                    f"user_var{VariableManager.SEPARATOR}{pair_input.usr_id}"
+                    f"{VariableManager.SEPARATOR}{pair_input.group_id}"
+                    f"{VariableManager.SEPARATOR}{pair_input.var_name}"
                 )
-                value = None if for_deletion else user_var_value
+                value = None if pair_input.for_deletion else user_var_value
             # 2) session_var
             else:
                 key = (
-                    f"session_var{VariableManager.SEPARATOR}{usr_id}"
-                    f"{VariableManager.SEPARATOR}{group_id}"
-                    f"{VariableManager.SEPARATOR}{session_id}"
-                    f"{VariableManager.SEPARATOR}{var_name}"
+                    f"session_var{VariableManager.SEPARATOR}{pair_input.usr_id}"
+                    f"{VariableManager.SEPARATOR}{pair_input.group_id}"
+                    f"{VariableManager.SEPARATOR}{pair_input.session_id}"
+                    f"{VariableManager.SEPARATOR}{pair_input.var_name}"
                 )
-                value = None if for_deletion else session_var_value
+                value = None if pair_input.for_deletion else session_var_value
         return key, value
 
     @staticmethod

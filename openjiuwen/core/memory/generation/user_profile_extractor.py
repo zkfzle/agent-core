@@ -6,9 +6,9 @@ from typing import List, Dict, Tuple, Any
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.generation.common import build_model_input
 from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_EXTRACTOR_PROMPT
-from openjiuwen.core.foundation.llm import BaseMessage
-from openjiuwen.core.foundation.llm import JsonOutputParser
-from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm1 import BaseMessage
+from openjiuwen.core.foundation.llm1 import JsonOutputParser
+from openjiuwen.core.foundation.llm1 import Model
 
 
 def _get_message(user_define: Dict[str, str] = None) -> str:

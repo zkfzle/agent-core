@@ -2,12 +2,12 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
 from typing import List, Tuple
-from openjiuwen.core.foundation.llm import BaseMessage
-from openjiuwen.core.foundation.llm import JsonOutputParser
+from openjiuwen.core.foundation.llm1 import BaseMessage
+from openjiuwen.core.foundation.llm1 import JsonOutputParser
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.generation.common import build_model_input
 from openjiuwen.core.memory.prompt.categorizer import CATEGORIZATION_PROMPT
-from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm1 import Model
 
 
 class Categorizer:

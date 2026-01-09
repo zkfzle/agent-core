@@ -22,9 +22,8 @@ from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
-from openjiuwen.core.foundation.llm.messages import HumanMessage
-from openjiuwen.core.foundation.llm1.schema.message import BaseMessage
-from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm1 import BaseMessage, UserMessage
+from openjiuwen.core.foundation.llm1 import Model
 from openjiuwen.core.common.utils.singleton import Singleton
 
 
@@ -146,12 +145,11 @@ class LongTermMemory(metaclass=Singleton):
                                                 model_client_config=config.default_model_client_cfg)
         self._base_llm = (config.default_model_cfg.model_name, llm)
 
-    def set_scope_config(self, scope_id: str, memory_scope_config: MemoryScopeConfig) -> bool:
+    def set_scope_config(self, scope_id: str, memory_scope_config: MemoryScopeConfig):
         self._scope_config[scope_id] = memory_scope_config
         llm = LongTermMemory._get_llm_from_config(model_config=memory_scope_config.model_cfg,
                                                 model_client_config=memory_scope_config.model_client_cfg)
         self._scope_llm[scope_id] = (memory_scope_config.model_cfg.model_name, llm)
-        return True
 
     async def add_messages(
             self,
@@ -503,7 +501,7 @@ class LongTermMemory(metaclass=Singleton):
     def _check_messages(self, messages: list[BaseMessage]) -> Tuple[bool, list[BaseMessage]]:
         out_messages = []
         has_human_msg = False
-        human_message: HumanMessage = HumanMessage()
+        human_message: UserMessage = UserMessage()
         for msg in messages:
             if msg.role == human_message.role:
                 out_messages.append(msg)
@@ -530,7 +528,7 @@ class LongTermMemory(metaclass=Singleton):
             message_len=threshold
         )
         history_messages = []
-        human_message: HumanMessage = HumanMessage()
+        human_message: UserMessage = UserMessage()
         for msg, _ in history_messages_tuple:
             if msg.role == human_message.role:
                 history_messages.append(msg)

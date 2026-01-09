@@ -80,7 +80,7 @@ class FakeModel(Model):
         # 创建假的配置以满足 Model 的初始化要求
         model_client_config = ModelClientConfig(
             client_id="fake",
-            client_type="OpenAI",
+            client_provider="OpenAI",
             api_key=api_key or "fake-key",
             api_base=api_base or "https://fake.api.com",
             timeout=60,
@@ -89,7 +89,7 @@ class FakeModel(Model):
             ssl_cert=None
         )
         model_config = LLM1ModelConfig(
-            model_name="fake-model",
+            model="fake-model",
             temperature=0.7,
             top_p=0.9
         )

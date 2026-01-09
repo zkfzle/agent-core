@@ -98,10 +98,6 @@ class BaseModelClient(ABC):
         for msg in messages:
             msg_dict = {"role": msg.role, "content": msg.content}
 
-            # Add optional fields
-            if msg.name:
-                msg_dict["name"] = msg.name
-
             # Handle tool_calls for AssistantMessage
             if isinstance(msg, AssistantMessage) and msg.tool_calls:
                 tool_calls_list = []
@@ -237,7 +233,7 @@ class BaseModelClient(ABC):
         return params
 
     @abstractmethod
-    async def ainvoke(
+    async def invoke(
             self,
             messages: Union[str, List[BaseMessage], List[dict]],
             tools: Union[List[ToolInfo], List[dict], None] = None,
@@ -247,6 +243,7 @@ class BaseModelClient(ABC):
             max_tokens: Optional[int] = None,
             stop: Union[Optional[str], None] = None,
             output_parser: Optional[BaseOutputParser] = None,
+            timeout: float = None,
             **kwargs
     ) -> AssistantMessage:
         """Asynchronously invoke LLM
@@ -260,6 +257,7 @@ class BaseModelClient(ABC):
             :param messages:
             :param top_p:
             :param max_tokens:
+            :param timeout:
             **kwargs: Additional parameters
 
         Returns:
@@ -268,7 +266,7 @@ class BaseModelClient(ABC):
         pass
 
     @abstractmethod
-    async def astream(
+    async def stream(
             self,
             messages: Union[str, List[BaseMessage], List[dict]],
             tools: Union[List[ToolInfo], List[dict], None] = None,
@@ -278,6 +276,7 @@ class BaseModelClient(ABC):
             max_tokens: Optional[int] = None,
             stop: Union[Optional[str], None] = None,
             output_parser: Optional[BaseOutputParser] = None,
+            timeout: float = None,
             **kwargs
     ) -> AsyncIterator[AssistantMessageChunk]:
         """Asynchronously stream invoke LLM
@@ -291,6 +290,7 @@ class BaseModelClient(ABC):
             :param messages:
             :param top_p:
             :param max_tokens:
+            :param timeout:
             **kwargs: Additional parameters
 
         Yields:

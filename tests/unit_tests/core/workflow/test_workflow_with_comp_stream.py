@@ -69,7 +69,7 @@ async def test_no_stream_called():
         async for chunk in flow.stream({"a": "生成markdown回复"}, session,
                                        stream_modes=[BaseStreamMode.OUTPUT]):
             logger.info(chunk)
-    assert error.value.error_code == StatusCode.WORKFLOW_STREAM_TIMEOUT.code
+    assert error.value.error_code == StatusCode.WORKFLOW_STREAM_EXECUTION_TIMEOUT.code
 
 
 class Producer(WorkflowComponent):

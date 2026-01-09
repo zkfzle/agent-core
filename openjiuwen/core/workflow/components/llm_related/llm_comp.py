@@ -526,8 +526,7 @@ class LLMExecutable(ComponentExecutable):
 
         # 创建 ModelClientConfig
         model_client_config = ModelClientConfig(
-            client_id=model_info.api_key,
-            client_type=client_type,
+            client_provider=client_type,
             api_key=model_info.api_key,
             api_base=model_info.api_base,
             timeout=getattr(model_info, 'timeout', 60),

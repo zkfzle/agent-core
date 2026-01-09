@@ -71,7 +71,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
         default_model_cfg = ModelConfig(model="xxxx")
         default_model_client_cfg = ModelClientConfig(
             client_id="xxxx",
-            client_type="OpenAI",
+            client_provider="OpenAI",
             api_key="xxxx",
             api_base="xxxx",
             verify_ssl=False
@@ -107,7 +107,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
         scope_model_cfg = ModelConfig(model="xxxx", temperature=0.05)
         scope_model_client_cfg = ModelClientConfig(
             client_id="xxxx",
-            client_type="OpenAI",
+            client_provider="OpenAI",
             api_key="xxxx",
             api_base="xxxx",
             verify_ssl=False
@@ -130,7 +130,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
         scope_model_cfg = ModelConfig(model="xxxx", temperature=0.05)
         scope_model_client_cfg = ModelClientConfig(
             client_id="xxxx",
-            client_type="OpenAI",
+            client_provider="OpenAI",
             api_key="xxxx",
             api_base="xxxx",
             verify_ssl=False

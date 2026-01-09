@@ -625,5 +625,9 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(tools, list)
             self.assertGreater(len(tools), 0, "Expected the server to return at least one tool")
         finally:
+<<<<<<< HEAD
             await asyncio.wait_for(client.disconnect(timeout=15), timeout=15)
             
+=======
+            await asyncio.wait_for(client.disconnect(timeout=15), timeout=15)
+>>>>>>> 14c7fbc5dbe1f29b0e900612045e4725694eeca7

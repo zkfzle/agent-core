@@ -18,7 +18,7 @@ from openjiuwen.core.memory.manage.user_profile_manager import UserProfileManage
 from openjiuwen.core.memory.manage.variable_manager import VariableManager
 from openjiuwen.core.memory.manage.summary_manager import SummaryManager
 from openjiuwen.core.memory.manage.write_manager import WriteManager
-from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType
+from openjiuwen.core.memory.mem_unit.memory_unit import BaseMemoryUnit, MemoryType, SummaryUnit
 from openjiuwen.core.memory.search.search_manager.search_manager import SearchManager
 from openjiuwen.core.memory.store.base_db_store import BaseDbStore
 from openjiuwen.core.memory.store.base_kv_store import BaseKVStore
@@ -330,8 +330,13 @@ class MemoryEngine(BaseMemoryEngine):
         if db_store:
             sql_db_store = SqlDbStore(db_store)
             self.message_manager = MessageManager(sql_db_store, data_id_generator, self._sys_mem_config.crypto_key)
+            self.summary_mem_id_manager = MessageManager(sql_db_store=sql_db_store,
+                                                         data_id_manager=data_id_generator,
+                                                         crypto_key=b'',
+                                                         message_table="summary_mem_id")
         else:
             self.message_manager = None
+            self.summary_mem_id_manager = None
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=semantic_store,
             user_mem_store=user_mem_store,
@@ -440,6 +445,8 @@ class MemoryEngine(BaseMemoryEngine):
                 message_mem_id=msg_id,
                 timestamp=timestamp_str,
             )
+            if self._sys_mem_config.history_summary_to_gen_mem:
+                await self._add_history_summary(all_memory=all_memory, timestamp=timestamp, msg_len=len(messages))
             try:
                 await self.write_manager.add_mem(mem_units=all_memory, llm=llm)
             except ValueError as e:
@@ -585,14 +592,65 @@ class MemoryEngine(BaseMemoryEngine):
 
         return has_human_msg, out_messages
 
+    async def _get_history_summary(self,
+                                   user_id: str,
+                                   group_id: str,
+                                   session_id: str,
+                                   window_size: int,
+                                   ) -> list[BaseMessage]:
+        if not self.summary_mem_id_manager:
+            return []
+
+        summary_mem_id_manager_res = await self.summary_mem_id_manager.get_raw_data(user_id=user_id,
+                                                                                    group_id=group_id,
+                                                                                    session_id=session_id,
+                                                                                    message_len=window_size)
+        unique_summary_mem_id = []
+        for manager_res in reversed(summary_mem_id_manager_res):
+            mem_id = manager_res["content"]
+            if mem_id not in unique_summary_mem_id:
+                unique_summary_mem_id.append(mem_id)
+
+        history = []
+        for mem_id in unique_summary_mem_id:
+            summary = await self.summary_manager.get(user_id=user_id, group_id=group_id, mem_id=mem_id)
+            history.append(BaseMessage(
+                role="summary",
+                content=summary["mem"],
+            ))
+        return history
+
+    async def _add_history_summary(self,
+                                   all_memory: list[BaseMemoryUnit],
+                                   timestamp: datetime,
+                                   msg_len: int):
+        if not self.summary_mem_id_manager:
+            return
+        summary_unit: SummaryUnit | None = None
+        for memory in all_memory:
+            if isinstance(memory, SummaryUnit):
+                summary_unit = memory
+                break
+        if not summary_unit:
+            logger.info(f"not found summary unit: {summary_unit}")
+            return
+
+        for i in range(msg_len):
+            msg_timestamp = timestamp + timedelta(milliseconds=i)
+            await self.summary_mem_id_manager.add(user_id=summary_unit.user_id,
+                                            group_id=summary_unit.group_id,
+                                            content=summary_unit.mem_id,
+                                            timestamp=msg_timestamp)
+
     async def _get_history_messages(self,
                                     user_id: str,
                                     group_id: str,
                                     session_id: str,
                                     config: SysMemConfig,
                                     ) -> list[BaseMessage]:
+        if config.history_summary_to_gen_mem:
+            return await self._get_history_summary(user_id, group_id, session_id, config.history_window_size_to_gen_mem)
         threshold = config.history_window_size_to_gen_mem
-        history_message_length_limit = config.ai_msg_gen_max_len
         if not self.message_manager:
             return []
         history_messages_tuple = await self.message_manager.get(

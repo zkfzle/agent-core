@@ -53,7 +53,7 @@ class SummaryManager(BaseMemoryManager):
 
     async def delete_by_user_id(self, user_id: str, group_id: str):
         """delete memory by user id and app id."""
-        data = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=MemoryType.USER_PROFILE.value)
+        data = await self.mem_store.get_all(user_id=user_id, group_id=group_id, mem_type=MemoryType.SUMMARY.value)
         if data is None:
             logger.error(f"Delete summary in store failed, the mem of user_id({user_id}) is not exist.")
             return False

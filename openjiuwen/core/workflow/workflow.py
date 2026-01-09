@@ -372,8 +372,8 @@ class Workflow:
         except JiuWenBaseException as e:
             raise e
         except Exception as e:
-            raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
-                                      StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e))
+            raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
+                                      StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e))
         finally:
             await session.close()
             await self._internal.reset()
@@ -490,12 +490,12 @@ class Workflow:
                 if isinstance(task.exception(), JiuWenBaseException):
                     raise task.exception()
                 else:
-                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
-                                              StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(
+                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
+                                              StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(
                                                   error=task.exception())) from e
             else:
-                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.code,
-                                          StatusCode.WORKFLOW_EXECUTE_INNER_ERROR.errmsg.format(error=e)) from e
+                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
+                                          StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e)) from e
         finally:
             if not task.done():
                 task.cancel()

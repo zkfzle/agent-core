@@ -474,7 +474,7 @@ class LLMExecutable(ComponentExecutable):
             logger.info("[%s] model inputs %s", self._session.executable_id(), model_inputs)
         response = ""
         try:
-            llm_response = await self._llm.ainvoke(
+            llm_response = await self._llm.invoke(
                 model=self._config.model.model_info.model_name, messages=model_inputs)
             response = llm_response.content
         except Exception as e:
@@ -526,8 +526,7 @@ class LLMExecutable(ComponentExecutable):
 
         # 创建 ModelClientConfig
         model_client_config = ModelClientConfig(
-            client_id=model_info.api_key,
-            client_type=client_type,
+            client_provider=client_type,
             api_key=model_info.api_key,
             api_base=model_info.api_base,
             timeout=getattr(model_info, 'timeout', 60),
@@ -609,14 +608,14 @@ class LLMExecutable(ComponentExecutable):
             logger.info("[%s] model inputs", self._session.executable_id())
         else:
             logger.info("[%s] model inputs %s", self._session.executable_id(), model_inputs)
-        llm_output = await self._llm.ainvoke(model=self._config.model.model_info.model_name,
+        llm_output = await self._llm.invoke(model=self._config.model.model_info.model_name,
                                              messages=model_inputs) # Add await if invoke is async
         llm_output_content = llm_output.content
         yield self._create_output(llm_output_content)
 
     async def _stream_with_chunks(self, inputs: Input) -> AsyncIterator[Output]:
         model_inputs = self._prepare_model_inputs(inputs)
-        async for chunk in self._llm.astream(model=self._config.model.model_info.model_name,
+        async for chunk in self._llm.stream(model=self._config.model.model_info.model_name,
                                              messages=model_inputs):
             content = WorkflowLLMUtils.extract_content(chunk)
             if content:

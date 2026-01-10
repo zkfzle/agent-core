@@ -1,0 +1,160 @@
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+from typing import Union, List, Optional, AsyncIterator
+
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.foundation.llm1.schema.message import BaseMessage, AssistantMessage
+from openjiuwen.core.foundation.llm1.schema.message_chunk import AssistantMessageChunk
+from openjiuwen.core.foundation.tool import ToolInfo
+from openjiuwen.core.foundation.llm1.schema.config import ModelConfig, ModelClientConfig
+from openjiuwen.core.foundation.llm1.output_parsers.output_parser import BaseOutputParser
+from openjiuwen.core.foundation.llm1.model_clients.inference_affinity_model_client import InferenceAffinityModelClient
+
+
+class InferenceAffinityModel:
+    """InferenceAffinity (vLLM) model unified invocation entry point
+
+    Responsibilities:
+    1. Manage InferenceAffinityModelClient instances
+    2. Provide unified asynchronous interfaces (ainvoke, astream)
+    3. Support release functionality
+
+    Usage:
+        model = InferenceAffinityModel(model_config, client_config)
+        response = await model.ainvoke("Hello")
+    """
+
+    def __init__(
+            self,
+            model_client_config: Optional[ModelClientConfig],
+            model_config: ModelConfig = None,
+    ):
+        """Initialize Model instance
+
+        Args:
+            :param model_config: Model parameter configuration
+            :param model_client_config: Client configuration
+        """
+        self.model_config = model_config
+        self.model_client_config = model_client_config
+        self._client: Optional[InferenceAffinityModelClient] = None
+
+        if model_client_config is not None:
+            self._client = InferenceAffinityModelClient(model_config, model_client_config)
+        else:
+            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          "model client config is none."))
+
+    async def ainvoke(
+            self,
+            messages: Union[str, List[BaseMessage], List[dict]],
+            tools: Union[List[ToolInfo], List[dict], None] = None,
+            temperature: Optional[float] = None,
+            top_p: Optional[float] = None,
+            max_tokens: Optional[int] = None,
+            stop: Union[Optional[str], None] = None,
+            model: str = None,
+            output_parser: Optional[BaseOutputParser] = None,
+            **kwargs
+    ) -> AssistantMessage:
+        """Asynchronous LLM invocation
+
+        Args:
+            :param messages:
+            :param tools:
+            :param temperature:
+            :param top_p:
+            :param max_tokens:
+            :param stop:
+            :param model:
+            :param output_parser:
+            **kwargs: Other parameters
+
+        Returns:
+            AssistantMessage
+        """
+        return await self._client.ainvoke(
+            messages=messages,
+            stop=stop,
+            model=model,
+            tools=tools,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            output_parser=output_parser,
+            **kwargs
+        )
+
+    async def astream(
+            self,
+            messages: Union[str, List[BaseMessage], List[dict]],
+            tools: Union[List[ToolInfo], List[dict], None] = None,
+            temperature: Optional[float] = None,
+            top_p: Optional[float] = None,
+            max_tokens: Optional[int] = None,
+            stop: Union[Optional[str], None] = None,
+            model: str = None,
+            output_parser: Optional[BaseOutputParser] = None,
+            **kwargs
+    ) -> AsyncIterator[AssistantMessageChunk]:
+        """Asynchronous streaming LLM invocation
+
+        Args:
+            :param messages:
+            :param tools:
+            :param temperature:
+            :param top_p:
+            :param max_tokens:
+            :param stop:
+            :param model:
+            :param output_parser:
+            **kwargs: Other parameters
+
+        Yields:
+            AssistantMessageChunk
+        """
+        async for chunk in self._client.astream(
+                messages=messages,
+                stop=stop,
+                model=model,
+                tools=tools,
+                temperature=temperature,
+                top_p=top_p,
+                max_tokens=max_tokens,
+                output_parser=output_parser,
+                **kwargs
+        ):
+            yield chunk
+
+    async def release(
+            self,
+            cache_salt: str,
+            messages: List,
+            messages_released_index: int,
+            tools: List = None,
+            tools_released_index: Optional[int] = None,
+            model: str = None
+    ) -> bool:
+        """Release model cache
+
+        Args:
+            :param cache_salt: Cache salt value, used to identify session_id
+            :param messages: Message list
+            :param messages_released_index: Message release index
+            :param tools: Tool list
+            :param tools_released_index: Tool release index
+            :param model: Model name
+
+        Returns:
+            bool: Whether the release was successful
+        """
+        return await self._client.release(
+            model=model,
+            cache_salt=cache_salt,
+            messages=messages,
+            messages_released_index=messages_released_index,
+            tools=tools,
+            tools_released_index=tools_released_index
+        )

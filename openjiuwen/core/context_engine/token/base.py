@@ -1,10 +1,11 @@
+#!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 from abc import ABC, abstractmethod
 from typing import List
 
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 
 
@@ -43,7 +44,7 @@ class TokenCounter(ABC):
         """
 
     @abstractmethod
-    def count_tools(self, tools: List[ToolInfo],  *, model: str = "", **kwargs) -> int:
+    def count_tools(self, tools: List[ToolInfo], *, model: str = "", **kwargs) -> int:
         """
         Count the number of tokens that a list of tool-calling metadata will consume.
 

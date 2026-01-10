@@ -70,8 +70,8 @@ class AssistantMessage(BaseMessage):
             "role": self.role,
             "content": self.content,
         }
-        if self.name:
-            result["name"] = self.name
+        # if self.name:
+        #     result["name"] = self.name
         if self.tool_calls:
             tool_calls = []
             for call in self.tool_calls:

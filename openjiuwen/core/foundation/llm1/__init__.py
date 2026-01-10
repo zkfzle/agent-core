@@ -3,6 +3,7 @@
 
 # Core classes
 from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm1.inference_affinity_model import InferenceAffinityModel
 from openjiuwen.core.foundation.llm1.model_clients.base_model_client import BaseModelClient
 from openjiuwen.core.foundation.llm1.output_parsers.output_parser import BaseOutputParser
 
@@ -35,6 +36,7 @@ from openjiuwen.core.foundation.llm1.output_parsers.markdown_output_parser impor
 # Core classes
 _CORE_CLASSES = [
     "Model",
+    "InferenceAffinityModel",
     "BaseModelClient",
     "BaseOutputParser",
 ]

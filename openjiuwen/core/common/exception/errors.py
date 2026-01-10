@@ -12,7 +12,7 @@ from typing import (
 )
 
 from openjiuwen.core.common.exception.codes import StatusCode
-from openjiuwen.core.common.exception.status_mapping import build_status_exception_map
+# from openjiuwen.core.common.exception.status_mapping import build_status_exception_map
 
 
 class BaseError(Exception):
@@ -57,7 +57,7 @@ class BaseError(Exception):
         Never raise formatting exception outward.
         """
         try:
-            return _format_template(self.status.errmsg, **self.params)
+            return _format_template(self.status.errmsg, self.params)
         except Exception:
             return self.status.errmsg
 
@@ -214,8 +214,8 @@ class SessionError(ExecutionError):
     pass
 
 
-STATUS_TO_EXCEPTION = build_status_exception_map()
-
+# STATUS_TO_EXCEPTION = build_status_exception_map()
+STATUS_TO_EXCEPTION = None
 
 def build_error(
     status: StatusCode,

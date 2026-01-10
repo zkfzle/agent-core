@@ -99,8 +99,8 @@ class BaseModelClient(ABC):
             msg_dict = {"role": msg.role, "content": msg.content}
 
             # Add optional fields
-            if msg.name:
-                msg_dict["name"] = msg.name
+            # if msg.name:
+            #     msg_dict["name"] = msg.name
 
             # Handle tool_calls for AssistantMessage
             if isinstance(msg, AssistantMessage) and msg.tool_calls:

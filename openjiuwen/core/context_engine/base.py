@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
@@ -5,8 +6,9 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
+from openjiuwen.core.context_engine.token.base import TokenCounter
 
 
 class ModelContext(ABC):
@@ -64,7 +66,7 @@ class ModelContext(ABC):
             New sequence of messages to insert into the window.
         with_history : bool, default True
             - `True`  – replace the concatenated [`context_messages` + `history_messages`].
-            - `False` – replace `context_messages` only, leaving `history_messages` intact.
+            - `False` – replace `history_messages` only, leaving `context_messages` intact.
             In both cases the original order of the preserved segments is maintained.
 
         Returns
@@ -169,6 +171,13 @@ class ModelContext(ABC):
         """
         Return the globally unique identifier of the current context
         (conversation, request, or task) within the session.
+        """
+
+    @abstractmethod
+    def token_counter(self) -> TokenCounter:
+        """
+        Return a TokenCounter instance that can accurately count tokens
+        for the model family used by this context.
         """
 
 

@@ -1,8 +1,9 @@
+#!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import List, Optional, Union
 
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage
 
 
 class ContextMessageBuffer:

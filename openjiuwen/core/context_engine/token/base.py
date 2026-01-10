@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
@@ -43,7 +44,7 @@ class TokenCounter(ABC):
         """
 
     @abstractmethod
-    def count_tools(self, tools: List[ToolInfo],  *, model: str = "", **kwargs) -> int:
+    def count_tools(self, tools: List[ToolInfo], *, model: str = "", **kwargs) -> int:
         """
         Count the number of tokens that a list of tool-calling metadata will consume.
 

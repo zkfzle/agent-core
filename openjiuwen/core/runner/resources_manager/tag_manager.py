@@ -70,6 +70,29 @@ class TagMgr:
                 del self._tag_to_resource[tag]
         del self._resource_tags[resource_id]
 
+    def remove_resource_tags(self, resource_id: str, tags: list[Tag] | Tag):
+        """
+        Remove specific tags from a resource.
+
+        Args:
+            resource_id (str): The unique identifier of the resource.
+            tags (list[Tag] | Tag): Tags to remove from the resource.
+        """
+        tags_set = self._normalize_tags(tags)
+        if resource_id not in self._resource_tags:
+            return
+
+        for tag in tags_set:
+            if tag in self._resource_tags[resource_id]:
+                self._resource_tags[resource_id].remove(tag)
+                if tag in self._tag_to_resource:
+                    self._tag_to_resource[tag].discard(resource_id)
+                    if not self._tag_to_resource[tag]:
+                        del self._tag_to_resource[tag]
+
+        if not self._resource_tags[resource_id]:
+            del self._resource_tags[resource_id]
+
     def replace_resource_tags(self, resource_id: str, tags: list[Tag] | Tag, tag_update_strategy: TagUpdateStrategy):
         """
         Replace resource tags according to tag_update_strategy

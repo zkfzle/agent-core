@@ -259,7 +259,7 @@ class StatusCode(Enum):
     # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
     # Optimization Toolchain - AgentRL 172000 - 172999
     # Optimization Toolchain - Prompt Builder 173000 - 173999
-    AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR = (173000, "Meta-template register failed: {error_msg}")
+    AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR = (173000, "Meta-template _register failed: {error_msg}")
     AGENT_BUILDER_META_TEMPLATE_ERROR = (173001, "Meta-template builder  failed: {error_msg}")
     AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR = (173002, "Feedback-template builder failed: {error_msg}")
     AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR = (173003, "Bad case-template builder failed: {error_msg}")
@@ -333,6 +333,8 @@ class StatusCode(Enum):
     SESSION_MODEL_ADD_FAILED = (190302, "failed to add model, reason: {reason}")
 
     SESSION_TAG_MANAGE_FAILED = (190401, "failed to manage tag, reason: {reason}")
+
+    SESSION_RESOURCE_REGISTRY_FAILED = (190501, "failed to registry resource, reason: {reason}")
 
     # Session - Tracer 191000 - 191999
     SESSION_TRACE_ERROR_FAILED = (191001, "failed to record error trace info, reason: {reason}")

@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
+from openjiuwen.core.common.exception.status_code import StatusCode
 from pydantic import BaseModel
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -24,10 +24,12 @@ from openjiuwen.core.runner.resources_manager.resource_registry import ResourceR
 
 from typing import Optional, Union, Tuple
 
+from openjiuwen.core.runner.resources_manager.tag_manager import TagMgr
 from openjiuwen.core.session import Session
 from openjiuwen.core.single_agent import BaseAgent, AgentCard
 from openjiuwen.core.workflow.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowCard
+
 
 class ResourceMgr:
     """
@@ -36,6 +38,7 @@ class ResourceMgr:
 
     def __init__(self, ) -> None:
         self._resource_registry = ResourceRegistry()
+        self._tag_mgr = TagMgr()
 
     async def add_agent_group(self,
                               card: GroupCard,
@@ -61,6 +64,8 @@ class ResourceMgr:
         """
         try:
             await self._resource_registry.agent_group().add_agent_group(card.id, agent_group)
+            if tag is not None:
+                self._tag_mgr.replace_resource_tags(card.id, tag, tag_update_strategy)
             return Ok(card)
         except Exception as e:
             return Error(e)
@@ -93,7 +98,28 @@ class ResourceMgr:
         """
         try:
             await self._resource_registry.agent_group().remove_agent_group(agent_group_id=id)
-            return Ok(GroupCard(id=id))
+            if id and tag:
+                raise JiuWenBaseException(
+                    StatusCode.SESSION_AGENT_GROUP_REMOVE_FAILED.code,
+                    StatusCode.SESSION_AGENT_GROUP_REMOVE_FAILED.errmsg.format(
+                        reason=f"When removing agent group, id and tag parameter cannot be used together with tag parameter."
+                    )
+                )
+            removed_ids = []
+            if isinstance(id, str):
+                self._tag_mgr.untag_resource(id)
+                # todo GroupCard的实例如何获取
+                return Ok(GroupCard(id=id))
+            elif isinstance(id, list):
+                for _id in id:
+                    self._tag_mgr.untag_resource(_id)
+                removed_ids = id
+            if id is None:
+                matched_ids = self._tag_mgr.find_resources_by_tags(tag, tag_match_strategy=tag_match_strategy)
+                for _matched_id in matched_ids:
+                    self._tag_mgr.untag_resource(_matched_id)
+                removed_ids = matched_ids
+            return [Ok(GroupCard(id=_removed_id)) for _removed_id in removed_ids]
         except Exception as e:
             return Error(e)
 
@@ -121,7 +147,18 @@ class ResourceMgr:
         Raises:
             ValueError: When neither id nor tag is provided.
         """
-        return self._resource_registry.agent_group().get_agent_group(agent_group_id=id, session=session)
+        if id is None and tag is None:
+            raise ValueError("Either id or tag must be provided.")
+        if id:
+            if tag is not None:
+                matched_ids = self._tag_mgr.find_resources_by_tags(tag, tag_match_strategy=tag_match_strategy)
+                if id not in matched_ids:
+                    return None
+            return self._resource_registry.agent_group().get_agent_group(agent_group_id=id, session=session)
+        matched_ids = self._tag_mgr.find_resources_by_tags(tag, tag_match_strategy=tag_match_strategy)
+        # todo 是否改为能够返回List类型
+        return [self._resource_registry.agent_group().get_agent_group(agent_group_id=matched_id, session=session) for
+                matched_id in matched_ids]
 
     def add_agent(self,
                   card: AgentCard,
@@ -675,13 +712,13 @@ class ResourceMgr:
             return results
 
     async def get_tool_infos(self,
-                            *,
-                            id: Union[str, list[str]] = None,
-                            type: Union[str, list[str]] = None,
-                            tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
-                            tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
-                            ignore_exception: bool = False,
-                            ) -> Optional[ToolInfo] | list[Optional[ToolInfo]]:
+                             *,
+                             id: Union[str, list[str]] = None,
+                             type: Union[str, list[str]] = None,
+                             tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                             tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                             ignore_exception: bool = False,
+                             ) -> Optional[ToolInfo] | list[Optional[ToolInfo]]:
         """
         Get tool information/metadata by ID, type, or tag.
 
@@ -821,13 +858,13 @@ class ResourceMgr:
         pass
 
     async def get_mcp_tool_infos(self,
-                                *,
-                                name: Union[str, list[str]] = None,
-                                server_name: Union[str, list[str]] = None,
-                                tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
-                                tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
-                                ignore_exception: bool = False,
-                                ) -> Optional[ToolInfo] | list[Optional[ToolInfo]]:
+                                 *,
+                                 name: Union[str, list[str]] = None,
+                                 server_name: Union[str, list[str]] = None,
+                                 tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                                 tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                                 ignore_exception: bool = False,
+                                 ) -> Optional[ToolInfo] | list[Optional[ToolInfo]]:
         """
         Get MCP tool information/metadata by name and server.
 
@@ -915,7 +952,11 @@ class ResourceMgr:
             Result[list[Tag], Exception]: Result object containing the new tag list or an exception.
 
         """
-        pass
+        try:
+            self._tag_mgr.replace_resource_tags(id, tag, TagUpdateStrategy.REPLACE)
+            return Ok(self._tag_mgr.get_resources_tags(id))
+        except Exception as e:
+            return Error(e)
 
     def add_resource_tag(self,
                          id: str,
@@ -931,7 +972,11 @@ class ResourceMgr:
         Returns:
             Result[list[Tag], Exception]: Result object containing all tags now associated with the resource.
         """
-        pass
+        try:
+            self._tag_mgr.tag_resource(id, tag)
+            return Ok(self._tag_mgr.get_resources_tags(id))
+        except Exception as e:
+            return Error(e)
 
     def remove_resource_tag(self,
                             id: str,
@@ -950,7 +995,23 @@ class ResourceMgr:
         Returns:
             Result[list[Tag], Exception]: Result object containing remaining tags on the resource.
         """
-        pass
+        existed_tags = self._tag_mgr.get_resources_tags(id)
+        if isinstance(tag, Tag):
+            tag = [tag]
+        existing_tags_to_remove = set(tag) & set(existed_tags)
+        non_existing_tags = set(tag) - set(existed_tags)
+
+        if non_existing_tags and not ignore_if_not_exists:
+            return Error(
+                JiuWenBaseException(
+                    StatusCode.SESSION_TAG_MANAGE_FAILED.code,
+                    StatusCode.SESSION_TAG_MANAGE_FAILED.errmsg.format(
+                        reason=f"Remove specific tag(s) from a resource error, non-existent tag(s): {non_existing_tags}."
+                    )
+                )
+            )
+        self._tag_mgr.remove_resource_tags(id, list(existing_tags_to_remove))
+        return Ok(self._tag_mgr.get_resources_tags(id))
 
     def get_resource_tag(self, id: str) -> Optional[list[Tag]]:
         """
@@ -962,9 +1023,10 @@ class ResourceMgr:
         Returns:
             List of tags associated with the resource, or None if resource not found.
         """
-        pass
+        resource_tag = self._tag_mgr.get_resources_tags(id)
+        return resource_tag if resource_tag else None
 
-    def resource_has_tag(self, id: str, tag: str) -> bool:
+    def resource_has_tag(self, id: str, tag: Tag) -> bool:
         """
         Check if a specific resource is associated with the given tag.
 
@@ -974,7 +1036,7 @@ class ResourceMgr:
         Returns:
             True if the resource has the specified tag, False otherwise.
         """
-        pass
+        return tag in self._tag_mgr.get_resources_tags(id)
 
     async def release(self):
         await self._resource_registry.tool().release()

@@ -54,8 +54,8 @@ class Model:
         if model_client_config is not None:
             self._client = self._create_model_client(model_client_config)
         else:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+            raise JiuWenBaseException(StatusCode.MODEL_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.MODEL_SERVICE_CONFIG_ERROR.errmsg.format(
                                           error_msg="model client config is none."))
 
     def _create_model_client(self, client_config: ModelClientConfig) -> BaseModelClient:
@@ -70,13 +70,13 @@ class Model:
         Raises:
             ValueError: When client_provider is not supported
         """
-        if client_config.client_provider is None:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          error_msg="model client config client_provider is none."))
+        if client_config.client_type is None:
+            raise JiuWenBaseException(StatusCode.MODEL_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.MODEL_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          error_msg="model client config client_type is none."))
         if client_config.client_id is None:
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
+            raise JiuWenBaseException(StatusCode.MODEL_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.MODEL_SERVICE_CONFIG_ERROR.errmsg.format(
                                           error_msg="model client config client_id is none."))
         client_provider = client_config.client_provider
 
@@ -85,10 +85,10 @@ class Model:
         if client_class is None:
             supported_types = ", ".join(_CLIENT_TYPE_REGISTRY.keys())
 
-            raise JiuWenBaseException(StatusCode.LLM_SERVICE_CONFIG_ERROR.code,
-                                      StatusCode.LLM_SERVICE_CONFIG_ERROR.errmsg.format(
-                                          error_msg=f"Unsupported client_provider: '{client_provider}'. "
-                                                    f"Supported types: {supported_types}"))
+            raise JiuWenBaseException(StatusCode.MODEL_SERVICE_CONFIG_ERROR.code,
+                                      StatusCode.MODEL_SERVICE_CONFIG_ERROR.errmsg.format(
+                                          error_msg=f"Unsupported client_type: '{client_type}'. "
+                                          f"Supported types: {supported_types}"))
 
         return client_class(self.model_config, client_config)
 

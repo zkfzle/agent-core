@@ -15,6 +15,20 @@ class ResourceRegistry:
         self._agent_mgr: AgentMgr = AgentMgr()
         self._agent_group_mgr: AgentGroupMgr = AgentGroupMgr()
 
+    def remove_by_id(self, resource_id: str):
+        if self.tool().remove_tool(resource_id):
+            return
+        if self.workflow().remove_workflow(resource_id):
+            return
+        if self.agent().remove_agent(resource_id):
+            return
+        if self.agent_group().remove_agent_group(resource_id):
+            return
+        if self.prompt().remove_prompt(resource_id):
+            return
+        if self.model().remove_model(resource_id):
+            return
+
     def tool(self) -> ToolMgr:
         return self._tool_mgr
 

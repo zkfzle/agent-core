@@ -15,6 +15,22 @@ class ResourceRegistry:
         self._agent_mgr: AgentMgr = AgentMgr()
         self._agent_group_mgr: AgentGroupMgr = AgentGroupMgr()
 
+    def is_id_unique(self, id: str) -> bool:
+        if id in self._tool_mgr._providers.keys():
+            return False
+        if id in self._prompt_mgr._repo.keys():
+            return False
+        if id in self._model_mgr._models.keys():
+            return False
+        if id in self._workflow_mgr._providers.keys():
+            return False
+        if id in self._agent_mgr._providers.keys():
+            return False
+        if id in self._agent_group_mgr._providers.keys():
+            return False
+        return True
+
+
     def tool(self) -> ToolMgr:
         return self._tool_mgr
 

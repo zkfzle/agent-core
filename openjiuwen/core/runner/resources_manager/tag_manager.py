@@ -38,6 +38,40 @@ class TagMgr:
                 )
             )
 
+    def has_tag(self, tag: Tag) -> bool:
+        """
+        Check if tag is in tag_mgr.
+
+        Args:
+            tag: (Tag): Tag to assign to the resource.
+
+        Returns:
+            bool
+        """
+        return True if self._tag_to_resource.get(tag, set()) else False
+
+    def has_tags(self) -> list[Tag]:
+        """
+        Get all tags in tag_mgr.
+
+        Returns:
+            list[Tag]:
+        """
+        return [tag for tag, resources in self._tag_to_resource.items() if resources]
+
+    def has_resource(self, resource_id: str) -> bool:
+        """
+        Check if resource_id in tag_mgr.
+
+        Args:
+            resource_id (str): The unique identifier of the resource.
+
+        Returns:
+            bool
+
+        """
+        return True if resource_id in self._resource_tags.keys() else False
+
     def tag_resource(self, resource_id: str, tags: list[Tag] | Tag):
         """
         Tag the resource with resource_id
@@ -69,6 +103,29 @@ class TagMgr:
             if not self._tag_to_resource[tag]:
                 del self._tag_to_resource[tag]
         del self._resource_tags[resource_id]
+
+    def remove_resource_tags(self, resource_id: str, tags: list[Tag] | Tag):
+        """
+        Remove specific tags from a resource.
+
+        Args:
+            resource_id (str): The unique identifier of the resource.
+            tags (list[Tag] | Tag): Tags to remove from the resource.
+        """
+        tags_set = self._normalize_tags(tags)
+        if resource_id not in self._resource_tags:
+            return
+
+        for tag in tags_set:
+            if tag in self._resource_tags[resource_id]:
+                self._resource_tags[resource_id].remove(tag)
+                if tag in self._tag_to_resource:
+                    self._tag_to_resource[tag].discard(resource_id)
+                    if not self._tag_to_resource[tag]:
+                        del self._tag_to_resource[tag]
+
+        if not self._resource_tags[resource_id]:
+            del self._resource_tags[resource_id]
 
     def replace_resource_tags(self, resource_id: str, tags: list[Tag] | Tag, tag_update_strategy: TagUpdateStrategy):
         """

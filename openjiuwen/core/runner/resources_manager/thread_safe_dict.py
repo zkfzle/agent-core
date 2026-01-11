@@ -4,7 +4,7 @@
 import threading
 from typing import (
     Dict, Generic, Iterator, KeysView, MutableMapping,
-    Optional, TypeVar, ValuesView, ItemsView, Iterable, Mapping
+    Optional, TypeVar, ValuesView, ItemsView, Iterable, Mapping, Callable
 )
 
 K = TypeVar("K")
@@ -57,6 +57,12 @@ class ThreadSafeDict(MutableMapping[K, V], Generic[K, V]):
     def setdefault(self, key: K, default: Optional[V] = None) -> V:
         with self._lock:
             return self._data.setdefault(key, default)
+
+    def get_or_create(self, key: K, creator: Callable[..., V], *args, **kwargs) -> V:
+        with self._lock:
+            if key not in self._data:
+                self._data[key] = creator(*args, **kwargs)
+            return self._data[key]
 
     def update(
             self,

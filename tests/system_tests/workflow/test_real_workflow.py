@@ -65,7 +65,7 @@ _MOCK_TOOL = RestfulApi(
             },
             "required": ["location", "date"],
         },
-        path="http://127.0.0.1:8000",
+        url="http://127.0.0.1:8000",
         headers={},
         method="GET",
     ),

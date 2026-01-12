@@ -11,7 +11,7 @@ from openjiuwen.core.foundation.tool import ToolInfo, RestfulApiCard
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 
-
+os.environ["SSRF_PROTECT_ENABLED"] = "false"
 @pytest.mark.asyncio
 class TestRestFulApi:
     def assertEqual(self, left, right):
@@ -38,7 +38,7 @@ class TestRestFulApi:
             card=RestfulApiCard(
                 name="test",
                 description="test",
-                path="http://127.0.0.1:8000",
+                url="http://127.0.0.1:8000",
                 headers={},
                 method="GET",
             ),
@@ -50,7 +50,7 @@ class TestRestFulApi:
             del os.environ["RESTFUL_SSL_CERT"]
         except Exception as e:
             pass
-        self.assertEqual(mock_data._headers, {})
+        self.assertEqual(mock_data.card.headers, {})
 
     @patch("requests.sessions.Session.request")
     async def test_stream(self, mock_request):
@@ -58,7 +58,7 @@ class TestRestFulApi:
             card=RestfulApiCard(
                 name="test",
                 description="test",
-                path="http://127.0.0.1:8000",
+                url="http://127.0.0.1:8000",
                 headers={},
                 method="GET",
             ),
@@ -82,7 +82,7 @@ class TestRestFulApi:
                     },
                     "required": ["test"],
                 },
-                path="http://127.0.0.1:8000",
+                url="http://127.0.0.1:8000",
                 headers={},
                 method="GET",
             ),

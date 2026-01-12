@@ -12,6 +12,7 @@ from typing import Any
 
 # New classes (no deprecation warning)
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
+from openjiuwen.core.session.agent import Session, create_agent_session
 
 # Mapping of deprecated names to their modules and alternatives
 _DEPRECATED_NAMES = {
@@ -160,4 +161,4 @@ def __dir__():
     return ["AgentCard"] + list(_DEPRECATED_NAMES.keys())
 
 
-__all__ = ["AgentCard"] + list(_DEPRECATED_NAMES.keys())
+__all__ = ["AgentCard"] + list(_DEPRECATED_NAMES.keys()) + ["Session", "create_agent_session"]

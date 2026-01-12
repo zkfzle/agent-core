@@ -21,14 +21,14 @@ from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Router, INPUTS_KEY, CONFIG_KEY
 from openjiuwen.core.graph.executable import Executable, Input, Output
 from openjiuwen.core.session import WORKFLOW_EXECUTE_TIMEOUT, \
-    WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT
+    WORKFLOW_STREAM_FRAME_TIMEOUT, WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT, BaseSession
 from openjiuwen.core.session import InteractiveInput
-from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session import Transformer
-from openjiuwen.core.session import WorkflowSession, SubWorkflowSession, NodeSession
+from openjiuwen.core.session import SubWorkflowSession, NodeSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode, OutputSchema
 from openjiuwen.core.session.stream import StreamEmitter
 from openjiuwen.core.session.stream import StreamWriterManager
+from openjiuwen.core.session.workflow import Session
 from openjiuwen.core.graph.stream_actor.manager import ActorManager
 from openjiuwen.core.session.tracer import Tracer
 from openjiuwen.core.session.tracer import TracerWorkflowUtils
@@ -243,7 +243,7 @@ class Workflow:
     async def invoke(
             self,
             inputs: Input,
-            session: BaseSession,
+            session: Session,
             context: ModelContext = None,
             **kwargs
     ) -> WorkflowOutput:
@@ -298,7 +298,7 @@ class Workflow:
     async def stream(
             self,
             inputs: Input,
-            session: BaseSession,
+            session: Session,
             context: ModelContext = None,
             stream_modes: list[StreamMode] = None,
             **kwargs
@@ -340,7 +340,7 @@ class Workflow:
         session.config().set_envs({WORKFLOW_STREAM_FIRST_FRAME_TIMEOUT: first_frame_timeout})
 
         async def stream_process():
-            compiled_graph = self._internal.compile(session, context)
+            compiled_graph = self._internal.compile(session.base(), context)
             try:
                 await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: None}, session)
             finally:
@@ -413,10 +413,10 @@ class Workflow:
             return self._internal.to_mermaid_svg(title, expand_subgraph)
         return self._internal.to_mermaid(title, expand_subgraph, enable_animation)
 
-    async def _sub_invoke(self, inputs: Input, session: BaseSession,
+    async def _sub_invoke(self, inputs: Input, session: Session,
                           context: ModelContext = None, **kwargs) -> Output:
         logger.info(f"begin to sub_invoke, inputs: {inputs}")
-        actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session)
+        actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session.base())
 
         try:
             compiled_graph = self._internal.compile(sub_workflow_session, context)
@@ -428,7 +428,7 @@ class Workflow:
                 stream_ability_count = sum(ability in sub_end_ability for ability in required_abilities)
                 while stream_ability_count > 0:
                     frame = await actor_manager.sub_workflow_stream().receive(
-                        session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
+                        session.base().config().get_env(WORKFLOW_EXECUTE_TIMEOUT))
                     if frame is None:
                         logger.warning("no frame received")
                         continue
@@ -441,7 +441,7 @@ class Workflow:
                     logger.debug(f"sub workflow messages: {messages}")
                     return dict(stream=messages)
 
-            node_session = NodeSession(session, self._end_comp_id)
+            node_session = NodeSession(session.base(), self._end_comp_id)
             output_key = self._end_comp_id
 
             results = node_session.state().get_outputs(output_key)
@@ -451,17 +451,17 @@ class Workflow:
             await sub_workflow_session.close()
             await self._internal.reset()
 
-    async def _sub_stream(self, inputs: Input, session: BaseSession, context: ModelContext = None, **kwargs) -> \
+    async def _sub_stream(self, inputs: Input, session: Session, context: ModelContext = None, **kwargs) -> \
             AsyncIterator[Output]:
         logger.info(f"begin to sub_stream, input: {inputs}")
-        actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session)
+        actor_manager, sub_workflow_session = self._prepare_sub_workflow_session(session.base())
 
         try:
             compiled_graph = self._internal.compile(sub_workflow_session, context=context)
             await compiled_graph.invoke({INPUTS_KEY: inputs, CONFIG_KEY: kwargs.get(CONFIG_KEY)}, session)
             if self._is_streaming:
                 frame_count = 0
-                stream_timeout = session.config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
+                stream_timeout = session.base().config().get_env(WORKFLOW_EXECUTE_TIMEOUT)
                 sub_end_ability = self._internal.config().spec.comp_configs.get(self._end_comp_id).abilities
             required_abilities = [ComponentAbility.STREAM, ComponentAbility.TRANSFORM]
             stream_ability_count = sum(ability in sub_end_ability for ability in required_abilities)
@@ -509,8 +509,8 @@ class Workflow:
                 except Exception:
                     pass
 
-    def _validate_and_init_session(self, session: BaseSession, stream_modes: list[StreamMode]):
-        if isinstance(session, WorkflowSession):
+    def _validate_and_init_session(self, session: Session, stream_modes: list[StreamMode]):
+        if isinstance(session, Session):
             session.set_workflow_id(self._card.id)
         self._internal._auto_complete_abilities()
         mq_manager = ActorManager(self._internal._workflow_config.spec, self._internal._stream_actor, sub_graph=False,

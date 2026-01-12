@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Self, Union, AsyncIterator, List, Tuple
 
 from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -372,10 +373,10 @@ class Workflow:
         except JiuWenBaseException as e:
             raise e
         except Exception as e:
-            raise JiuWenBaseException(
-                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e),
-            ) from e
+            raise build_error(
+                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
+                error_msg=str(e)
+            )
 
         finally:
             await session.close()
@@ -493,12 +494,9 @@ class Workflow:
                 if isinstance(task.exception(), JiuWenBaseException):
                     raise task.exception()
                 else:
-                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                                              StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(
-                                                  error=task.exception())) from e
+                    raise build_error(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR, error_msg=str(task.exception()))
             else:
-                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                                          StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e)) from e
+                raise build_error(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR, error_msg=str(e))
         finally:
             if not task.done():
                 task.cancel()

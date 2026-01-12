@@ -74,9 +74,9 @@ class RestfulApi(Tool):
         else:
             connector = aiohttp.TCPConnector(ssl=False)
         url = self._url
-        path_params = map_results.get(APIParamLocation.PATH)
+        path_params = {k: str(v) for k,v in map_results.get(APIParamLocation.PATH).items()}
         if path_params:
-            url = url.format(path_params)
+            url = url.format(**path_params)
         query_params = [(k, v) for k, v in map_results.get(APIParamLocation.QUERY, {}).items()]
         if query_params:
             url = f'{url}?{urlencode(query_params)}'

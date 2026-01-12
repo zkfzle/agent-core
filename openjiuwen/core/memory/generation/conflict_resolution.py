@@ -93,7 +93,7 @@ class ConflictResolution:
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
-                response = await model_client.ainvoke(model=model_name, messages=messages)
+                response = await model_client.invoke(model=model_name, messages=messages)
                 result = await parser.parse(str(response.content).strip().replace("'", '"'))
                 logger.debug(f"Succeed to check conflict, result: {result}")
                 if not isinstance(result, dict):

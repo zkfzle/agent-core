@@ -6,12 +6,12 @@ ChromaDB Vector Store Implementation
 Supports vector search, sparse search (text matching), and hybrid search.
 """
 
-from math import log
 import uuid
 import asyncio
 import json
 from typing import Any, List, Optional
 import chromadb
+from chromadb.config import DEFAULT_DATABASE, Settings
 
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
@@ -67,7 +67,11 @@ class ChromaVectorStore(VectorStore):
         self.doc_id_field = doc_id_field
 
         # Initialize ChromaDB persistent client
-        self._client = chromadb.PersistentClient(path=chroma_path)
+        if config.database_name and config.database_name != DEFAULT_DATABASE:
+            admin_client = chromadb.AdminClient(Settings(is_persistent=True, persist_directory=chroma_path))
+            if config.database_name not in {db.get("name") for db in admin_client.list_databases()}:
+                admin_client.create_database(config.database_name)
+        self._client = chromadb.PersistentClient(path=chroma_path, database=config.database_name)
 
         # Get or create collection
         self._collection = self._client.get_or_create_collection(

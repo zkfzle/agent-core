@@ -5,6 +5,7 @@ Milvus Index Manager Implementation
 
 Responsible for building, updating and deleting Milvus indices.
 """
+
 import asyncio
 from typing import Any, List, Optional, Dict
 
@@ -37,7 +38,7 @@ class MilvusIndexer(Indexer):
     ):
         """
         Initialize Milvus index manager
-        
+
         Args:
             milvus_uri: Milvus URI
             milvus_token: Milvus Token (optional)
@@ -53,7 +54,7 @@ class MilvusIndexer(Indexer):
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
-        
+
         self._client = MilvusClient(
             uri=self.milvus_uri,
             token=self.milvus_token,
@@ -74,7 +75,7 @@ class MilvusIndexer(Indexer):
         """Build index"""
         try:
             collection_name = config.index_name
-            
+
             # Ensure collection exists
             await self._ensure_collection(
                 collection_name=collection_name,
@@ -88,7 +89,7 @@ class MilvusIndexer(Indexer):
                 if not embed_model:
                     raise JiuWenBaseException(
                         StatusCode.INDEXING_EMBED_MODEL_REQUIRED_ERROR.code,
-                        "embed_model is required for vector/hybrid index type"
+                        "embed_model is required for vector/hybrid index type",
                     )
                 texts = [chunk.text for chunk in chunks]
                 embeddings = await embed_model.embed_documents(texts)
@@ -96,7 +97,7 @@ class MilvusIndexer(Indexer):
                     chunk.embedding = embedding
 
             vector_store_config = VectorStoreConfig(
-                collection_name=collection_name,
+                collection_name=collection_name, database_name=kwargs.pop("database_name", "")
             )
 
             vector_store = MilvusVectorStore(
@@ -120,9 +121,7 @@ class MilvusIndexer(Indexer):
 
             await vector_store.add(data=data)
 
-            logger.info(
-                f"Successfully built index {collection_name} with {len(chunks)} chunks"
-            )
+            logger.info(f"Successfully built index {collection_name} with {len(chunks)} chunks")
             return True
         except Exception as e:
             logger.error(f"Failed to build index: {e}")
@@ -313,7 +312,7 @@ class MilvusIndexer(Indexer):
             dimension = None
             if embed_model:
                 dimension = embed_model.dimension
-            
+
             # If dimension is 0 (placeholder) or None, get actual dimension through API call
             if (dimension is None or dimension == 0) and embed_model:
                 try:
@@ -327,7 +326,7 @@ class MilvusIndexer(Indexer):
             if dimension is None or dimension == 0:
                 raise JiuWenBaseException(
                     StatusCode.INDEXING_DIMENSION_REQUIRED_ERROR.code,
-                    "dimension is required for vector/hybrid index type"
+                    "dimension is required for vector/hybrid index type",
                 )
 
             schema.add_field(

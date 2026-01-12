@@ -5,6 +5,7 @@ ChromaDB Index Manager Implementation
 
 Responsible for building, updating and deleting ChromaDB indices.
 """
+
 import asyncio
 from typing import Any, List, Optional, Dict
 import chromadb
@@ -35,7 +36,7 @@ class ChromaIndexer(Indexer):
     ):
         """
         Initialize ChromaDB index manager
-        
+
         Args:
             chroma_path: ChromaDB persistence path
             text_field: Text field name
@@ -46,17 +47,16 @@ class ChromaIndexer(Indexer):
         """
         if not chroma_path or not chroma_path.strip():
             raise JiuWenBaseException(
-                StatusCode.INDEXING_PATH_REQUIRED_ERROR.code,
-                "chroma_path is required and cannot be empty"
+                StatusCode.INDEXING_PATH_REQUIRED_ERROR.code, "chroma_path is required and cannot be empty"
             )
-        
+
         self.chroma_path = chroma_path
         self.text_field = text_field
         self.vector_field = vector_field
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
-        
+
         self._client = chromadb.PersistentClient(path=self.chroma_path)
 
     @property
@@ -74,14 +74,14 @@ class ChromaIndexer(Indexer):
         """Build index"""
         try:
             collection_name = config.index_name
-            
+
             # If vector index is needed, generate embeddings
             embeddings = None
             if config.index_type in ("vector", "hybrid"):
                 if not embed_model:
                     raise JiuWenBaseException(
                         StatusCode.INDEXING_EMBED_MODEL_REQUIRED_ERROR.code,
-                        "embed_model is required for vector/hybrid index type"
+                        "embed_model is required for vector/hybrid index type",
                     )
                 texts = [chunk.text for chunk in chunks]
                 embeddings = await embed_model.embed_documents(texts)
@@ -89,7 +89,7 @@ class ChromaIndexer(Indexer):
                     chunk.embedding = embedding
 
             vector_store_config = VectorStoreConfig(
-                collection_name=collection_name,
+                collection_name=collection_name, database_name=kwargs.pop("database_name", "")
             )
 
             vector_store = ChromaVectorStore(
@@ -118,9 +118,7 @@ class ChromaIndexer(Indexer):
 
             await vector_store.add(data=data)
 
-            logger.info(
-                f"Successfully built index {collection_name} with {len(chunks)} chunks"
-            )
+            logger.info(f"Successfully built index {collection_name} with {len(chunks)} chunks")
             return True
         except Exception as e:
             logger.error(f"Failed to build index: {e}")
@@ -158,24 +156,24 @@ class ChromaIndexer(Indexer):
                 self._client.get_collection,
                 name=index_name,
             )
-            
+
             # Query all records matching doc_id
             results = await asyncio.to_thread(
                 collection.get,
                 where={self.doc_id_field: doc_id},
             )
-            
+
             if not results or not results.get("ids") or len(results["ids"]) == 0:
                 logger.info(f"No entries found for doc_id={doc_id}")
                 return False
-            
+
             # Delete matching records
             ids_to_delete = results["ids"]
             await asyncio.to_thread(
                 collection.delete,
                 ids=ids_to_delete,
             )
-            
+
             delete_count = len(ids_to_delete)
             logger.info(f"Deleted {delete_count} entries for doc_id={doc_id}")
             return delete_count > 0
@@ -211,12 +209,12 @@ class ChromaIndexer(Indexer):
                 self._client.get_collection,
                 name=index_name,
             )
-            
+
             # Get collection statistics
             count = await asyncio.to_thread(
                 collection.count,
             )
-            
+
             # Get collection metadata
             metadata = collection.metadata or {}
 
@@ -240,4 +238,3 @@ class ChromaIndexer(Indexer):
                 pass
             except Exception as e:
                 logger.warning(f"Failed to close ChromaDB client: {e}")
-

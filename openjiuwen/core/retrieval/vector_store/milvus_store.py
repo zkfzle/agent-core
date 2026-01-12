@@ -55,10 +55,15 @@ class MilvusVectorStore(VectorStore):
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
 
+        # Initialize Milvus client & database
         self._client = MilvusClient(
             uri=self.milvus_uri,
             token=self.milvus_token,
         )
+        if config.database_name and config.database_name != "default":
+            if config.database_name not in self._client.list_databases():
+                self._client.create_database(config.database_name)
+            self._client.use_database(config.database_name)
 
     @property
     def client(self) -> MilvusClient:

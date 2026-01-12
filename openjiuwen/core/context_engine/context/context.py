@@ -1,11 +1,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import List, Optional, Union
+from typing import List, Optional
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.context_engine.token.base import TokenCounter
-from openjiuwen.core.foundation.llm import BaseMessage, ToolMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage, ToolMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.context_engine.base import ModelContext, ContextWindow, ContextStats
 from openjiuwen.core.context_engine.context.message_buffer import ContextMessageBuffer

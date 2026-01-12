@@ -5,7 +5,7 @@ from typing import Union, List
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage
 from openjiuwen.core.foundation.prompt.assemble.variables.textable import TextableVariable
 from openjiuwen.core.foundation.prompt.assemble.variables.variable import Variable
 

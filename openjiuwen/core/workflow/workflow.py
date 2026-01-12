@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Self, Union, AsyncIterator, List, Tuple
 
 from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.common.exception.errors import build_error, BaseError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -369,12 +370,12 @@ class Workflow:
                 self._add_messages_to_context(inputs, interaction_chuck_list, context)
             else:
                 self._add_messages_to_context(inputs, chunks, context)
-        except JiuWenBaseException as e:
+        except (JiuWenBaseException, BaseError) as e:
             raise e
         except Exception as e:
-            raise JiuWenBaseException(
-                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e),
+            raise build_error(
+                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
+                error_msg=str(e)
             ) from e
 
         finally:
@@ -484,21 +485,20 @@ class Workflow:
         task = asyncio.create_task(func())
         try:
             return await asyncio.wait_for(task, timeout=timeout if (timeout and timeout > 0) else None)
-        except asyncio.TimeoutError:
-            raise JiuWenBaseException(status_code.code, status_code.errmsg.format(timeout=timeout))
-        except JiuWenBaseException as e:
+        except asyncio.TimeoutError as e:
+            raise build_error(status_code, timeout=timeout, error_msg=str(e) or "execution timeout") from e
+        except (JiuWenBaseException, BaseError) as e:
             raise e
         except Exception as e:
             if task.done() and not task.cancelled():
-                if isinstance(task.exception(), JiuWenBaseException):
-                    raise task.exception()
+                task_exc = task.exception()
+                if isinstance(task_exc, (JiuWenBaseException, BaseError)):
+                    raise task_exc from task_exc
                 else:
-                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                                              StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(
-                                                  error=task.exception())) from e
+                    raise build_error(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
+                                      error_msg=str(task_exc)) from e
             else:
-                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                                          StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e)) from e
+                raise build_error(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR, error_msg=str(e)) from e
         finally:
             if not task.done():
                 task.cancel()

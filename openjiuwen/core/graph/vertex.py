@@ -6,6 +6,7 @@ from asyncio import CancelledError
 from typing import Any, Optional, AsyncIterator, Literal
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT, END_NODE_STREAM, INPUTS_KEY, CONFIG_KEY
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.workflow.components.base import ComponentAbility
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -112,24 +113,20 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
         except GraphInterrupt:
             raise
         except JiuWenBaseException as e:
-            if e.error_code == StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.code:
+            if e.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code:
                 raise e
-            raise JiuWenBaseException(
-                StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.code,
-                StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.errmsg.format(
-                    node_id=self._node_id,
-                    ability=ability.name,
-                    error=e.message,
-                ),
+            raise build_error(
+                StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR,
+                node_id=self._node_id,
+                ability=ability.name,
+                error_msg=e.message
             ) from e
         except Exception as e:
-            raise JiuWenBaseException(
-                StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.code,
-                StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.errmsg.format(
-                    node_id=self._node_id,
-                    ability=ability.name,
-                    error=e,
-                ),
+            raise build_error(
+                StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR,
+                node_id=self._node_id,
+                ability=ability.name,
+                error_msg=str(e)
             ) from e
         finally:
             if event and not event.is_set():

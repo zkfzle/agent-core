@@ -2,6 +2,7 @@ from typing import AsyncIterator
 
 import pytest
 
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -106,7 +107,7 @@ async def test_start_comp():
 
     flow.add_connection("s", "e")
     # 没有提供必选项
-    with pytest.raises(JiuWenBaseException) as e:
+    with pytest.raises(BaseError) as e:
         await flow.invoke(inputs={"user_inputs": {}}, session=WorkflowSession())
         print(e)
 

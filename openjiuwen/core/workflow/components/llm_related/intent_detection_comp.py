@@ -8,6 +8,7 @@ from typing import Optional, Union, Callable, List
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
@@ -211,8 +212,8 @@ class IntentDetectionExecutable(ComponentExecutable):
                 self._llm = self._create_llm_instance()
                 self._initialized = True
             except Exception as e:
-                ExceptionUtils.raise_exception(StatusCode.COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED,
-                                               "Failed to initialize llm if needed.", e)
+                raise build_error(StatusCode.COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED,
+                                               error_msg="failed to initialize llm if needed", cause=e) from e
 
     def _prepare_detection_inputs(self, inputs, chat_history):
         current_inputs = {}
@@ -240,8 +241,8 @@ class IntentDetectionExecutable(ComponentExecutable):
                 intent_detection_input = IntentDetectionInput.model_validate(inputs)
                 current_inputs.update({INPUT: intent_detection_input.query or ""})
             except ValidationError as e:
-                ExceptionUtils.raise_exception(
-                    StatusCode.COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR, ExceptionUtils.format_validation_error(e))
+                raise build_error(StatusCode.COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR,
+                                  error_msg=ExceptionUtils.format_validation_error(e)) from e
 
         current_inputs['global_intent_map'] = global_intent_map
 
@@ -286,8 +287,8 @@ class IntentDetectionExecutable(ComponentExecutable):
             llm_output = self._llm.invoke(model_name=self._config.model.model_info.model_name, messages=llm_inputs)
             llm_output_content = llm_output.content
         except Exception as e:
-            ExceptionUtils.raise_exception(StatusCode.COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED,
-                                           "Failed to invoke llm and get result", e)
+            raise build_error(StatusCode.COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED,
+                                           error_msg="failed to invoke llm and get result", cause=e) from e
         if UserConfig.is_sensitive():
             logger.info("Success to invoke llm for intent detection")
         else:

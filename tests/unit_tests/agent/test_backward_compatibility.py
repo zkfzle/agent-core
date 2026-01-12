@@ -6,7 +6,23 @@
 Ensure old interfaces continue working and issue proper deprecation warnings
 """
 import warnings
-import pytest
+from openjiuwen.core.foundation.llm1 import ModelConfig, BaseModelInfo
+from openjiuwen.core.single_agent import (
+    AgentConfig,
+    ControllerAgent,
+    AgentSession,
+    WorkflowFactory,
+    workflow_provider,
+    create_react_agent_config,
+    LLMCallConfig,
+    ConstrainConfig,
+)
+from openjiuwen.core.single_agent import (
+    ReActAgent,
+    ReActAgentConfig,
+    AgentCard,
+    BaseAgent
+)
 
 
 def _filter_our_warnings(warnings_list):
@@ -24,17 +40,6 @@ class TestLegacyImports:
         """All old imports issue deprecation warnings"""
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import (
-                AgentConfig,
-                ControllerAgent,
-                AgentSession,
-                WorkflowFactory,
-                workflow_provider,
-                create_react_agent_config,
-                LLMCallConfig,
-                ConstrainConfig,
-            )
             
             # Filter out third-party warnings (e.g., Pydantic)
             our_warnings = _filter_our_warnings(w)
@@ -79,10 +84,7 @@ class TestLegacyConstructor:
         """ReActAgent old construction style still works"""
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import ReActAgent, ReActAgentConfig
-            from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
-            
+
             # Create model config
             model_info = BaseModelInfo(
                 model="gpt-4",
@@ -113,9 +115,6 @@ class TestLegacyConstructor:
         """Support old tools parameter"""
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import ReActAgent, ReActAgentConfig
-            from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
             
             # Create model config
             model_info = BaseModelInfo(
@@ -148,9 +147,6 @@ class TestLegacyMethods:
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             
-            from openjiuwen.core.single_agent import ReActAgent, ReActAgentConfig
-            from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
-            
             # Create agent
             model_info = BaseModelInfo(
                 model="gpt-4",
@@ -176,9 +172,6 @@ class TestLegacyMethods:
         """add_workflows() method works in legacy agent"""
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import ReActAgent, ReActAgentConfig
-            from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
             
             # Create agent
             model_info = BaseModelInfo(
@@ -209,9 +202,6 @@ class TestWarningMessages:
         """Deprecation warnings contain migration information"""
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import ReActAgent
-            
             assert len(w) > 0
             warning_msg = str(w[0].message)
             # Verify contains "in the future"
@@ -229,9 +219,7 @@ class TestCreateReactAgentConfig:
         """create_react_agent_config() issues deprecation warning on import"""
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import create_react_agent_config
-            
+
             # Verify deprecation warning on import
             assert len(w) > 0
             assert any("deprecated" in str(x.message).lower() for x in w)
@@ -240,9 +228,6 @@ class TestCreateReactAgentConfig:
         """create_react_agent_config() still works"""
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import create_react_agent_config
-            from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
             
             model_info = BaseModelInfo(
                 model="gpt-4",
@@ -275,15 +260,7 @@ class TestLegacyCompatibilityIntegration:
         """Old and new APIs can coexist"""
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
-            
-            from openjiuwen.core.single_agent import (
-                ReActAgent,
-                ReActAgentConfig,
-                AgentCard,
-                BaseAgent
-            )
-            from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
-            
+
             # Create model config
             model_info = BaseModelInfo(
                 model="gpt-4",

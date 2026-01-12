@@ -7,7 +7,7 @@ import types
 from unittest.mock import Mock, AsyncMock, patch
 
 from openjiuwen.core.workflow import BranchRouter, WorkflowCard
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm1 import ModelConfig
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionCompConfig, \
     IntentDetectionComponent
@@ -15,7 +15,7 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.session import NodeSession, WorkflowSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
-from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm1 import BaseModelInfo
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow.components.llm_related.intent_detection_comp import IntentDetectionExecutable
 
@@ -28,6 +28,7 @@ API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
+os.environ["LLM_SSL_VERIFY"] = "false"
 
 # ------------------------------------------------
 
@@ -49,6 +50,8 @@ def fake_model_config() -> ModelConfig:
             top_p=1,
             streaming=False,
             timeout=30,
+            max_tokens=None,
+            stop=None
         ),
     )
 
@@ -63,28 +66,20 @@ def fake_config(fake_model_config) -> IntentDetectionCompConfig:
 
 
 class TestIntentDetectionExecutableInvoke:
-    @patch(
-        "openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model",
-        autospec=True,
-    )
     @pytest.mark.asyncio
-    async def test_invoke_success(
-            self, mock_get_model, fake_ctx, fake_config
-    ):
+    async def test_invoke_success(self, fake_ctx, fake_config):
         """LLM 正常返回合法 JSON 时的路径"""
-        # 1. 伪造 LLM
         llm_mock = AsyncMock()
-        llm_mock.invoke = Mock(return_value=Mock(content='{"class": "分类2", "reason": "ok"}'))
-        mock_get_model.return_value = llm_mock
+        llm_mock.invoke.return_value = Mock(content='{"class": "分类2", "reason": "ok"}')
 
-        # 2. 构造 Executable 并调用
-        exe = IntentDetectionExecutable(fake_config)
-        exe.set_router(BranchRouter())
-        output = await exe.invoke({"query": "你好"}, fake_ctx, context=Mock())
-        print(output)
-        # 3. 断言
-        assert output["category_name"] == "name2"
-        llm_mock.invoke.assert_called_once()
+        with patch.object(IntentDetectionExecutable, "_create_llm_instance", return_value=llm_mock):
+            exe = IntentDetectionExecutable(fake_config)
+            exe.set_router(BranchRouter())
+            output = await exe.invoke({"query": "你好"}, fake_ctx, context=Mock())
+            print(output)
+            # 3. 断言
+            assert output["category_name"] == "name2"
+            llm_mock.invoke.assert_called_once()
 
 
 class TestIntentDetectionComponent:

@@ -8,6 +8,7 @@ from openjiuwen.core.foundation.llm1.output_parsers.output_parser import BaseOut
 
 # Configuration
 from openjiuwen.core.foundation.llm1.schema.config import ModelRequestConfig, ModelClientConfig
+from openjiuwen.core.foundation.llm1.schema.mode_info import BaseModelInfo, ModelConfig
 # Messages
 from openjiuwen.core.foundation.llm1.schema.message import (
     BaseMessage,
@@ -41,8 +42,10 @@ _CORE_CLASSES = [
 
 # Configuration classes
 _CONFIG_CLASSES = [
-    "ModelConfig",
+    "ModelRequestConfig",
     "ModelClientConfig",
+    "BaseModelInfo",
+    "ModelConfig"
 ]
 
 # Message classes

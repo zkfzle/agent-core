@@ -94,16 +94,16 @@ def test_register_custom_template():
         builder = MetaTemplateBuilder(config)
         template = "this is a string meta template"
         builder.register_meta_template("custom_general", template)
-        meta_template = builder._meta_template_manager.get(META_TEMPLATE_NAME_PREFIX + "custom_general")
+        meta_template = builder.get_meta_template(META_TEMPLATE_NAME_PREFIX + "custom_general")
         assert meta_template.content == template
-        builder._meta_template_manager.pop(META_TEMPLATE_NAME_PREFIX + "custom_general")
+        builder.pop_meta_template(META_TEMPLATE_NAME_PREFIX + "custom_general")
 
         # register string-Template template
         template = PromptTemplate(content="this is a string meta template")
         builder.register_meta_template("custom_general", template)
-        meta_template = builder._meta_template_manager.get(META_TEMPLATE_NAME_PREFIX + "custom_general")
+        meta_template = builder.get_meta_template(META_TEMPLATE_NAME_PREFIX + "custom_general")
         assert meta_template.content == template.content
-        builder._meta_template_manager.pop(META_TEMPLATE_NAME_PREFIX + "custom_general")
+        builder.pop_meta_template(META_TEMPLATE_NAME_PREFIX + "custom_general")
 
         # register invalid type template
         template = ("this is a invalid tuple meta template", )

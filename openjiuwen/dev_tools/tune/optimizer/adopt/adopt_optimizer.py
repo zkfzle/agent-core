@@ -34,12 +34,20 @@ class AdoptOptimizer(BaseOptimizer):
                  ):
         super().__init__(parameters)
         self._model_name = model_name
-        class ModelWithRetry(BaseModelClient):
-            def __init__(self, model: BaseModelClient):
-                self._model = model
 
-            def invoke(self, model_name:str, messages: List[BaseMessage],
-                       tools: List[ToolInfo] = None, temperature:float=0.3,
+        class ModelWithRetry(BaseModelClient):
+            def __init__(self, wrapped_model: BaseModelClient):
+                super().__init__(
+                    api_key=wrapped_model.api_key,
+                    api_base=wrapped_model.api_base,
+                    max_retries=wrapped_model.max_retries,
+                    timeout=wrapped_model.timeout,
+                    **wrapped_model.extra_params_config
+                )
+                self._model = wrapped_model
+
+            def invoke(self, model_name: str, messages: List[BaseMessage],
+                       tools: List[ToolInfo] = None, temperature: float = 0.3,
                        top_p: float = 0.7, **kwargs: Any):
                 for i in range(1, DEFAULT_MODEL_RETRY_NUM + 1):
                     try:
@@ -94,8 +102,12 @@ class AdoptOptimizer(BaseOptimizer):
             model=self._model,
             model_name=self._model_name,
         )
-        optimizer._parameters = self._parameters
-        optimizer._update()
+        current_parameters = self.parameters()
+        llm_call_parameters = {
+            name: param.llm_call for name, param in current_parameters.items()
+        }
+        optimizer.bind_parameter(llm_call_parameters)
+        optimizer.update()
 
     def _calculate_global_gradient(self) -> Dict[str, str]:
         def differential_analysis(case: EvaluatedCase):
@@ -158,7 +170,6 @@ class AdoptOptimizer(BaseOptimizer):
             ).to_messages())
             response = self._model.invoke(self._model_name, messages).content
             revised_node_output = self._extract_content_from_response(response, "REVISED_NODE_OUTPUT")
-            # TODO: need check revisable
             node_case = EvaluatedCase(
                 case=Case(inputs=dict(inputs=input_list), label=dict(label=revised_node_output)),
                 answer=dict(answer=output_list),
@@ -174,8 +185,8 @@ class AdoptOptimizer(BaseOptimizer):
                 for case in list(executor.map(generate_each_node_cases, self._bad_cases)) if case is not None
             ]
 
-        callback = param.llm_call._optimizer_callback
-        param.llm_call._optimizer_callback = None
+        callback = param.llm_call.get_optimizer_callback
+        param.llm_call.set_optimizer_callback = None
         partial_optimizer = PartialOptimizer(
             model=self._model,
             model_name=self._model_name,

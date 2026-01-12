@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.operator.llm_call import LLMCall
 from openjiuwen.core.session import Session

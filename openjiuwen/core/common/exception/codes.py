@@ -154,6 +154,24 @@ class StatusCode(Enum):
     NUMBER_CONDITION_ERROR = (140003, "number condition error")
 
     # =========================
+    # Foundation Tool 160000–169999
+    # =========================
+    TOOL_STREAM_NOT_SUPPORT = (160001, "tool stream is not support.")
+    TOOL_INVOKE_NOT_SUPPORT = (160002, "tool invoke is not support.")
+
+    # RestfulApi 160100-160199
+    # RestfulApiCard validate 160100-160120
+    TOOL_RESTFUL_API_CARD_INVALID = (160100, "RestfulApiCard config failed, {reason}")
+    # RestfulApiCard Execution 160121 - 160199
+    TOOL_RESTFUL_API_REQUEST_TIMEOUT_ERROR = (160121,
+        "RestfulApi execute {interface} failed, request is timeout, timeout={timeout}s")
+    TOOL_RESTFUL_API_RESPONSE_TOO_BIG_ERROR = (160122,
+        "RestfulApi execute {interface} failed, response is too big, max_size={max_length}b, actual={actual_length}b")
+    TOOL_RESTFUL_API_RESPONSE_ERROR = (160123,
+        "RestfulApi execute {interface} failed, response error, code={code}, reason={reason}")
+    TOOL_RESTFUL_API_EXECUTION_ERROR = (160224, "RestfulApi execute {interface} failed, reason={reason}")
+
+    # =========================
     # Common Capabilities 180000–189999
     # =========================
 

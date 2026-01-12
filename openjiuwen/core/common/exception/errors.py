@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from typing import (
     Optional,
     Any,
@@ -30,13 +31,13 @@ class BaseError(Exception):
     fatal: bool = False
 
     def __init__(
-        self,
-        status: StatusCode,
-        *,
-        msg: Optional[str] = None,
-        details: Optional[Any] = None,
-        cause: Optional[BaseException] = None,
-        **kwargs: dict[str, Any],
+            self,
+            status: StatusCode,
+            *,
+            msg: Optional[str] = None,
+            details: Optional[Any] = None,
+            cause: Optional[BaseException] = None,
+            **kwargs: dict[str, Any],
     ):
         self.status = status
         self.code = self.status.code
@@ -45,20 +46,21 @@ class BaseError(Exception):
         self.cause = cause
         self.__cause__ = cause
 
-        self._template_message = self._render_message()
+        self._template_message = self._render_message(self.status, **self.params)
         self.message = self._template_message if msg is None else msg
         super().__init__(self._template_message)
 
-    def _render_message(self) -> str:
+    @staticmethod
+    def _render_message(status, **params) -> str:
         """
         Render error message from StatusCode template.
 
         Never raise formatting exception outward.
         """
         try:
-            return _format_template(self.status.errmsg, **self.params)
-        except Exception:
-            return self.status.errmsg
+            return _format_template(status.errmsg, **params)
+        except Exception :
+            return status.errmsg
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -92,7 +94,7 @@ class _SafeDict(dict):
 
 
 def _format_template(template: str,
-                     params: Optional[Mapping[str, Any]] = None) -> str:
+                     **params) -> str:
     """
     Safely format a template using provided params. Missing keys will be shown as '<missing:KEY>'.
     If template is None or empty, returns an empty string.
@@ -169,6 +171,10 @@ class Termination(BaseError):
     fatal = False
 
 
+class ToolValidateError(ValidationError):
+    card: "BaseCard"
+
+
 # =========================
 # Module domain exception definitions
 # =========================
@@ -198,7 +204,19 @@ class ModelError(ExecutionError):
 
 
 class ToolError(ExecutionError):
-    pass
+    def __init__(
+            self,
+            status: StatusCode,
+            *,
+            msg: Optional[str] = None,
+            details: Optional[Any] = None,
+            cause: Optional[BaseException] = None,
+            card: "BaseCard" = None,
+            **kwargs: dict[str, Any],
+    ):
+        msg = self._render_message(status, **deepcopy(kwargs)) if not msg else msg
+        card_str = card.str() if card else 'None'
+        super().__init__(status=status, msg=f'{msg}, card=[{card_str}]', details=details, cause=cause)
 
 
 class ContextError(ExecutionError):
@@ -217,12 +235,12 @@ STATUS_TO_EXCEPTION = build_status_exception_map()
 
 
 def build_error(
-    status: StatusCode,
-    *,
-    msg: Optional[str] = None,
-    details: Optional[Any] = None,
-    cause: Optional[BaseException] = None,
-    **kwargs,
+        status: StatusCode,
+        *,
+        msg: Optional[str] = None,
+        details: Optional[Any] = None,
+        cause: Optional[BaseException] = None,
+        **kwargs,
 ) -> BaseError:
     """
     Build exception instance without raising.
@@ -233,12 +251,12 @@ def build_error(
 
 
 def raise_error(
-    status: StatusCode,
-    *,
-    msg: Optional[str] = None,
-    details: Optional[Any] = None,
-    cause: Optional[BaseException] = None,
-    **kwargs,
+        status: StatusCode,
+        *,
+        msg: Optional[str] = None,
+        details: Optional[Any] = None,
+        cause: Optional[BaseException] = None,
+        **kwargs,
 ) -> None:
     """
     Unified error raising entry.
@@ -247,25 +265,25 @@ def raise_error(
 
 
 def system_error(
-    status: StatusCode,
-    *,
-    cause: Optional[Exception] = None,
-    **kwargs,
+        status: StatusCode,
+        *,
+        cause: Optional[Exception] = None,
+        **kwargs,
 ) -> None:
     raise FrameworkError(status, cause=cause, **kwargs)
 
 
 def validate_error(
-    status: StatusCode,
-    *,
-    cause: Optional[Exception] = None,
-    **kwargs,
+        status: StatusCode,
+        *,
+        cause: Optional[Exception] = None,
+        **kwargs,
 ) -> None:
     raise ValidationError(status, cause=cause, **kwargs)
 
 
 def terminate(
-    status: StatusCode,
-    **kwargs,
+        status: StatusCode,
+        **kwargs,
 ) -> None:
     raise Termination(status, **kwargs)

@@ -29,6 +29,7 @@ def _get_exception_class_registry() -> Dict[str, Type]:
         "WorkflowError": _errors.WorkflowError,
         "AgentError": _errors.AgentError,
         "ToolError": _errors.ToolError,
+        "ToolValidateError": _errors.ToolValidateError,
         "GraphError": _errors.GraphError,
         "SessionError": _errors.SessionError,
         "ToolchainError": _errors.ToolchainError,
@@ -43,7 +44,7 @@ KEYWORD_RULES = [
 
     (("INIT", "CONNECT", "SERVICE", "QUEUE", "PROVIDER"), "FrameworkError"),
     (("CALL", "INVOKE_LLM", "MODEL", "REMOTE"), "FrameworkError"),
-
+    (("TOOL"), "ToolError"),
     (("TIMEOUT", "EXECUTE", "EXECUTION", "RUNTIME", "PROCESS", "STREAM"), "ExecutionError"),
 ]
 
@@ -62,6 +63,7 @@ RANGE_RULES = [
 _MANUAL_OVERRIDES_RAW = {
     "CONTROLLER_INVOKE_LLM_FAILED": "FrameworkError",
     "TOOL_EXECUTION_ERROR": "ToolError",
+    "TOOL_RESTFUL_API_CARD_INVALID": "ToolValidateError",
     "TOOL_NOT_FOUND_ERROR": "ValidationError",
     "AGENT_GROUP_EXECUTION_ERROR": "AgentError",
 }

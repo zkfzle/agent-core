@@ -395,7 +395,7 @@ class LoopComponent(WorkflowComponent):
             loop_component = AdvancedLoopComponent(self._loop_group, condition, self._loop_group.break_components,
                                                    callbacks)
             return await loop_component.on_invoke({INPUTS_KEY: {}, CONFIG_KEY: inputs.get(CONFIG_KEY)},
-                                                  session.base())
+                                                  getattr(session, "_inner"))
         except GraphInterrupt:
             raise
         except JiuWenBaseException:

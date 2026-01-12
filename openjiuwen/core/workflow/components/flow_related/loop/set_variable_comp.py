@@ -7,8 +7,9 @@ from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.component import WorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Input, Output
-from openjiuwen.core.session import Session, NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
+from openjiuwen.core.session import NESTED_PATH_SPLIT, is_ref_path, extract_origin_key
 from openjiuwen.core.session import NodeSession
+from openjiuwen.core.session.node import Session
 
 
 class SetVariableComponent(WorkflowComponent):
@@ -22,7 +23,7 @@ class SetVariableComponent(WorkflowComponent):
         self._variable_mapping = variable_mapping
 
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:
-        root_session = session.base().parent()
+        root_session = getattr(session, "_inner").parent()
         for left, right in self._variable_mapping.items():
             left_ref_str = extract_origin_key(left)
             keys = left_ref_str.split(NESTED_PATH_SPLIT)

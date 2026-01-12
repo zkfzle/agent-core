@@ -18,10 +18,12 @@ from openjiuwen.core.workflow.components.branch_router import BranchRouter, WORK
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.base import Graph, Router, ExecutableGraph
 
-from openjiuwen.core.session import BaseSession, ProxySession
+from openjiuwen.core.session import ProxySession
 from openjiuwen.core.session import Transformer
-from openjiuwen.core.session import WorkflowSession, SubWorkflowSession
+from openjiuwen.core.session import SubWorkflowSession
 from openjiuwen.core.session import RouterSession
+from openjiuwen.core.session import BaseSession
+from openjiuwen.core.session import WorkflowSession
 
 from openjiuwen.core.graph.stream_actor.base import StreamGraph
 from openjiuwen.core.workflow.workflow_config import WorkflowConfig

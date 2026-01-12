@@ -3,6 +3,7 @@
 
 
 from openjiuwen.core.common.constants.constant import INTERACTIVE_INPUT
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -36,8 +37,7 @@ class InMemoryCheckpointer(Checkpointer):
                 await self._graph_store.delete(session.session_id(), session.workflow_id())
                 workflow_store.clear(session.workflow_id())
             else:
-                raise JiuWenBaseException(StatusCode.WORKFLOW_STATE_INVALID.code,
-                                          StatusCode.WORKFLOW_STATE_INVALID.errmsg)
+                raise build_error(StatusCode.WORKFLOW_STATE_INVALID)
 
     async def post_workflow_execute(self, session: BaseSession, result, exception):
         workflow_store = self._workflow_stores.get(session.session_id())

@@ -3,6 +3,7 @@
 from abc import ABC
 from typing import AsyncIterator, TypeVar
 
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.graph.base import Graph
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
@@ -211,9 +212,7 @@ class ComponentComposable(ABC):
         """
         if isinstance(self, Executable):
             return self
-        raise JiuWenBaseException(
-            StatusCode.WORKFLOW_EXECUTION_NOT_SUPPORT.code, "workflow component should implement Executable"
-        )
+        raise build_error(StatusCode.WORKFLOW_EXECUTION_NOT_SUPPORT)
 
 
 class WorkflowComponent(ComponentExecutable, ComponentComposable):

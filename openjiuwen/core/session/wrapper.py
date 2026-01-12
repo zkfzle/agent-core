@@ -4,6 +4,7 @@
 from abc import ABC
 from typing import Union, Any, Optional, List, Tuple, AsyncIterator
 
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session.agent import AgentSession
@@ -297,9 +298,8 @@ class WrappedNodeSession(StateSession):
 
     async def interact(self, value):
         if self._stream_mode:
-            raise JiuWenBaseException(
-                StatusCode.WORKFLOW_STREAM_NOT_SUPPORT.code,
-                StatusCode.WORKFLOW_STREAM_NOT_SUPPORT.errmsg,
+            raise build_error(
+                StatusCode.WORKFLOW_STREAM_NOT_SUPPORT
             )
         if self._interaction is None:
             self._interaction = WorkflowInteraction(self._inner)

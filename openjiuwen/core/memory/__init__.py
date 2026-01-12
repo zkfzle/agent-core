@@ -1,12 +1,12 @@
 from openjiuwen.core.memory.config import MemoryEngineConfig, MemoryScopeConfig
-from openjiuwen.core.memory.store import BaseKVStore, BaseSemanticStore, BaseDbStore
+from openjiuwen.core.memory.store import BaseKVStore, SemanticStore, BaseDbStore
 from openjiuwen.core.memory.long_term_memory import LongTermMemory
 
 __all__ = [
     'MemoryEngineConfig',
     'MemoryScopeConfig',
     'BaseKVStore',
-    'BaseSemanticStore',
+    'SemanticStore',
     'BaseDbStore',
     'LongTermMemory'
 ]

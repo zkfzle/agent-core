@@ -109,7 +109,7 @@ def test_register_custom_template():
         template = ("this is a invalid tuple meta template", )
         with pytest.raises(JiuWenBaseException) as context:
             builder.register_meta_template("custom_general", template)
-        assert context.value.error_code == StatusCode.AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR.code
+        assert context.value.error_code == StatusCode.PROMPT_BUILDER_META_TEMPLATE_REGISTER_ERROR.code
 
 
 def test_build_with_default_meta_template():
@@ -162,13 +162,13 @@ def test_build_with_custom_meta_template():
 
         with pytest.raises(JiuWenBaseException) as context:
             response = builder.build(prompt="你是一个旅行助手", template_type="other")
-        assert context.value.error_code == StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code
+        assert context.value.error_code == StatusCode.PROMPT_BUILDER_META_TEMPLATE_ERROR.code
 
         with pytest.raises(JiuWenBaseException) as context:
             builder.register_meta_template("custom_general", template)
             response = builder.build(prompt="你是一个旅行助手", template_type="other",
                                      custom_template_name="not_defined")
-        assert context.value.error_code == StatusCode.AGENT_BUILDER_META_TEMPLATE_ERROR.code
+        assert context.value.error_code == StatusCode.PROMPT_BUILDER_META_TEMPLATE_ERROR.code
 
         response = builder.build(prompt="你是一个旅行助手", template_type="other",
                                  custom_template_name="custom_general")

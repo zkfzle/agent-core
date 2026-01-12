@@ -182,12 +182,13 @@ class StatusCode(Enum):
     # ContextEngine - Context Dynamic Assembly  151000 - 151999
     # ContextEngine - Context Asynchronous Processing 152000 - 152999
     # ContextEngine - Context Common 153000 - 153999
-    CONTEXT_ENGINE_MESSAGE_PROCESS_ERROR = (153000, "Message process error: {error_msg}")
-    CONTEXT_ENGINE_ADD_MESSAGE_ERROR = (153001, "Message add message error: {error_msg}")
-    CONTEXT_ENGINE_GET_MESSAGE_ERROR = (153002, "Message get message error: {error_msg}")
-    CONTEXT_ENGINE_POP_MESSAGE_ERROR = (153003, "Message pop message error: {error_msg}")
-    CONTEXT_ENGINE_GET_CONTEXT_WINDOW_ERROR = (153004, "Message get context window error: {error_msg}")
-    CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR = (153005, "Context engine message validation error: {error_msg}")
+    CONTEXT_MESSAGE_ADD_ERROR = (153000, "context add message error, reason: {error_msg}")
+    CONTEXT_MESSAGE_GET_ERROR = (153001, "context get message error, reason: {error_msg}")
+    CONTEXT_MESSAGE_POP_ERROR = (153002, "context pop message error, reason: {error_msg}")
+    CONTEXT_WINDOW_GET_ERROR = (153003, "context get context window error, reason: {error_msg}")
+    CONTEXT_MESSAGE_VALIDATION_ERROR = (153004, "Context engine message validation error, reason: {error_msg}")
+    CONTEXT_MESSAGE_PROCESS_ERROR = (153005, "Context process message error, reason: {error_msg}")
+
 
     #KnowlageBase Retrieval 155000 - 157999
     #KnowlageBase Retrieval - Embedding 155000 - 155099
@@ -249,28 +250,24 @@ class StatusCode(Enum):
 
     # Optimization Toolchain 170000 - 179999
     # Optimization Toolchain - Prompt Self-optimization 170000 - 170999
-    AGENT_BUILDER_AGENT_PARAMS_ERROR = (170000, "Parameters error: {error_msg}")
-    AGENT_BUILDER_AGENT_OPTIMIZER_BACKWORD_ERROR = (170010, "Do optimizer's backward failed: {error_msg}")
-    AGENT_BUILDER_AGENT_OPTIMIZER_UPDATE_ERROR = (170011, "Do optimizer's update failed: {error_msg}")
-    AGENT_BUILDER_AGENT_OPTIMIZER_PARAMS_ERROR = (170012, "Agent optimizer parameters error: {error_msg}")
-    AGENT_BUILDER_AGENT_EVALUATOR_EVALUATE_ERROR = (170030, "Do evaluator's evaluate failed: {error_msg}")
-    AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR = (170040, "Do trainer's train error: {error_msg}")
+    PROMPT_OPTIMIZATION_AGENT_PARAMS_ERROR = (170000, "parameters error, reason: {error_msg}")
+    PROMPT_OPTIMIZATION_OPTIMIZER_BACKWORD_ERROR = (170010, "do optimizer's backward failed, reason: error_msg}")
+    PROMPT_OPTIMIZATION_OPTIMIZER_UPDATE_ERROR = (170011, "do optimizer's update failed, reason: {error_msg}")
+    PROMPT_OPTIMIZATION_OPTIMIZER_PARAMS_ERROR = (170012, "agent optimizer parameters error, reason: error_msg}")
+    PROMPT_OPTIMIZATION_EVALUATOR_EVALUATE_ERROR = (170030, "do evaluator's evaluate failed, reason: {error_msg}")
+    PROMPT_OPTIMIZATION_TRAINER_TRAIN_ERROR = (170040, "do trainer's train error, reason: {error_msg}")
     # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
     # Optimization Toolchain - AgentRL 172000 - 172999
     # Optimization Toolchain - Prompt Builder 173000 - 173999
-    AGENT_BUILDER_META_TEMPLATE_REGISTER_ERROR = (173000, "Meta-template register failed: {error_msg}")
-    AGENT_BUILDER_META_TEMPLATE_ERROR = (173001, "Meta-template builder  failed: {error_msg}")
-    AGENT_BUILDER_FEEDBACK_TEMPLATE_ERROR = (173002, "Feedback-template builder failed: {error_msg}")
-    AGENT_BUILDER_BAD_CASE_TEMPLATE_ERROR = (173003, "Bad case-template builder failed: {error_msg}")
+    PROMPT_BUILDER_META_TEMPLATE_REGISTER_ERROR = (173000, "meta-template register failed, reason: {error_msg}")
+    PROMPT_BUILDER_META_TEMPLATE_ERROR = (173001, "meta-template builder  failed, reason: {error_msg}")
+    PROMPT_BUILDER_FEEDBACK_TEMPLATE_ERROR = (173002, "feedback-template builder failed, reason: {error_msg}")
+    PROMPT_BUILDER_BAD_CASE_TEMPLATE_ERROR = (173003, "bad case-template builder failed, reason: {error_msg}")
+
     # Common Capabilities 180000 - 189999
     # Common Capabilities - Prompt Template 180000 - 180999
-    PROMPT_ASSEMBLER_VARIABLE_INIT_ERROR = (180000, "Wrong arguments for initializing the variable")
-    PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR = (
-        180001,
-        "Errors occur when formatting the template content due to wrong format")
-    PROMPT_TEMPLATE_DUPLICATED_ERROR = (180002, "Template duplicated")
-    PROMPT_TEMPLATE_NOT_FOUND_ERROR = (180003, "Template not found")
-    PROMPT_TEMPLATE_INCORRECT_ERROR = (180004, "Template data incorrect")
+    PROMPT_TEMPLATE_FORMAT_ERROR = (180000, "prompt template format error, reason: {error_msg}")
+    PROMPT_TEMPLATE_INVALID_CONTENT_ERROR = (180001, "prompt template data content type invalid")
 
     # Common Capabilities - Model API 181000 - 181999
     MODEL_PROVIDER_INVALID_ERROR = (181000, "Invalid model provider, the reason is {error_msg}")

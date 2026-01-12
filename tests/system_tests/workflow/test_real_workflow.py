@@ -52,6 +52,8 @@ MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 # Mock 插件返回值
 _FINAL_RESULT: str = "上海今天晴 30°C"
 
+
+os.environ["SSRF_PROTECT_ENABLED"] = "false"
 # Mock RESTful Api 元信息
 _MOCK_TOOL = RestfulApi(
     card=RestfulApiCard(
@@ -65,7 +67,7 @@ _MOCK_TOOL = RestfulApi(
             },
             "required": ["location", "date"],
         },
-        path="http://127.0.0.1:8000",
+        url="http://127.0.0.1:8000",
         headers={},
         method="GET",
     ),
@@ -97,7 +99,6 @@ _QUESTIONER_USER_TEMPLATE = """\
 
 请充分考虑以上对话历史及用户输入，正确提取最符合约束要求的 JSON 格式参数。
 """
-
 
 class RealWorkflowTest(unittest.TestCase):
     """

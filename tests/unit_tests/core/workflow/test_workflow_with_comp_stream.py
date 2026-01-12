@@ -5,6 +5,7 @@ from typing import AsyncIterator
 import pytest
 
 from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -51,7 +52,7 @@ class MockStreamNode(WorkflowComponent):
 
 
 async def test_no_stream_called():
-    with pytest.raises(JiuWenBaseException) as error:
+    with pytest.raises(BaseError) as error:
         flow = Workflow()
         flow.set_start_comp("start", Start())
         flow.set_end_comp("end", End(), inputs_schema={}, response_mode="streaming")
@@ -62,14 +63,14 @@ async def test_no_stream_called():
         session.config().set_envs({WORKFLOW_EXECUTE_TIMEOUT: 0.2})
         await flow.invoke({"a": "生成markdown回复"}, session)
 
-    assert error.value.error_code == StatusCode.WORKFLOW_INVOKE_TIMEOUT.code
-    with pytest.raises(JiuWenBaseException) as error:
+    assert error.value.code == StatusCode.WORKFLOW_INVOKE_TIMEOUT.code
+    with pytest.raises(BaseError) as error:
         session = WorkflowSession()
         session.config().set_envs({WORKFLOW_EXECUTE_TIMEOUT: 0.2})
         async for chunk in flow.stream({"a": "生成markdown回复"}, session,
                                        stream_modes=[BaseStreamMode.OUTPUT]):
             logger.info(chunk)
-    assert error.value.error_code == StatusCode.WORKFLOW_STREAM_EXECUTION_TIMEOUT.code
+    assert error.value.code == StatusCode.WORKFLOW_STREAM_EXECUTION_TIMEOUT.code
 
 
 class Producer(WorkflowComponent):
@@ -552,8 +553,8 @@ async def test_workflow_stream_with_exception():
     with pytest.raises(JiuWenBaseException) as e:
         await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}},
                               session=WorkflowSession())
-    assert e.value.error_code == StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.code
-    assert e.value.message == StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.errmsg.format(node_id="transform_comp",
+    assert e.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
+    assert e.value.message == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.errmsg.format(node_id="transform_comp",
                                                                                ability="transform",
                                                                                error="mock error")
     logger.info("after exception, execution again")
@@ -730,7 +731,7 @@ async def test_dual_ability_node_with_stream_error():
             pass
 
     # Verify the exception is properly wrapped
-    assert exc_info.value.error_code == StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.code
+    assert exc_info.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
     assert "C" in exc_info.value.message  # Node ID should be in the message
     assert "stream" in exc_info.value.message.lower()  # Ability name should be in the message
 
@@ -785,7 +786,7 @@ async def test_dual_ability_node_with_transform_error():
             pass
 
     # Verify the exception is properly wrapped
-    assert exc_info.value.error_code == StatusCode.COMPONENT_EXECUTION_RUNTIME_ERROR.code
+    assert exc_info.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
     assert "C" in exc_info.value.message  # Node ID should be in the message
     assert "transform" in exc_info.value.message.lower()  # Ability name should be in the message
 

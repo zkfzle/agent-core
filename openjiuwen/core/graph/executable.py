@@ -3,7 +3,8 @@
 import json
 from typing import TypeVar, Generic, AsyncIterator, Any
 
-from openjiuwen.core.common.exception.exception import InterruptException, JiuWenBaseException
+from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.session import BaseSession
 
@@ -25,9 +26,9 @@ class Executable(Generic[Input, Output]):
         raise JiuWenBaseException(-1, "Transform is not supported")
 
     async def interrupt(self, message: dict):
-        raise InterruptException(
-            error_code=StatusCode.CONTROLLER_EXECUTION_INTERRUPTED.code,
-            message=json.dumps(message, ensure_ascii=False)
+        raise build_error(
+            StatusCode.WORKFLOW_INTERRUPT_EXECUTION_ERROR,
+            error_msg=json.dumps(message, ensure_ascii=False)
         )
 
     def skip_trace(self) -> bool:

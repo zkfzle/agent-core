@@ -8,6 +8,7 @@ import pytest
 from unittest.mock import Mock
 
 from openjiuwen.core.common.constants.enums import ControllerType
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.foundation.llm import ModelConfig
@@ -182,8 +183,8 @@ class TestLLMExecutableInvoke:
         config = LLMCompConfig(model=fake_model_config, template_content=[{"role": "user", "content": "Hello {name}"}], response_format={"type": "text"},)
         try:
             exe = LLMExecutable(config)
-        except JiuWenBaseException as e:
-            assert e.error_code == StatusCode.COMPONENT_LLM_CONFIG_INVALID.code
+        except BaseError as e:
+            assert e.code == StatusCode.COMPONENT_LLM_CONFIG_INVALID.code
 
     @pytest.mark.asyncio  # 新增
     async def test_llm_in_workflow(

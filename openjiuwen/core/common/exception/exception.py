@@ -18,8 +18,3 @@ class JiuWenBaseException(Exception):
     @property
     def message(self) -> str:
         return self._message
-
-
-class InterruptException(JiuWenBaseException):
-    def __init__(self, error_code: int, message: str):
-        super().__init__(error_code, message)

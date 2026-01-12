@@ -20,6 +20,7 @@ ALLOWED_SCOPES = {
     "CONTROLLER",
     "RUNNER",
     "PROMPT",
+    "COMMON"
 }
 
 ALLOWED_FAILURE_TYPES = {
@@ -62,6 +63,7 @@ def _exception_semantic_from_failure(failure_type: str) -> str:
 
 def _code_range_by_scope(scope: str) -> str:
     return {
+        "COMMON": "90000–99999",
         "COMPONENT": "100000–109999",
         "WORKFLOW": "110000–119999",
         "AGENT": "120000–129999",

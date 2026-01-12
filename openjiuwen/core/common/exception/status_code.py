@@ -2,6 +2,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from enum import Enum
 
+from openjiuwen.core.common.exception.code_template import generate_error_message_template
+
 
 class StatusCode(Enum):
     """Status code enum"""
@@ -10,63 +12,125 @@ class StatusCode(Enum):
     ERROR = (-1, "error")
 
     # Util Error
-    COMPONENT_CONFIG_INVALID = (90000, "Schema validation failed: {reason}")
-    COMPONENT_CONFIG_PARAM_ERROR = (90001, "Schema format failed: {reason}")
+    COMMON_SCHEMA_INVALID = (90000,
+                             generate_error_message_template(scope="COMMON", subject="SCHEMA", failure_type="INVALID")
+                             .template)
+    COMMON_SCHEMA_CONFIG_ERROR = (90001,
+                                  generate_error_message_template(scope="COMMON", subject="SCHEMA", failure_type="CONFIG_ERROR")
+                                  .template)
 
     # Workflow Component  100000 - 109999
 
     # Workflow: Interactive And Recovery 100000 - 100029
-    WORKFLOW_INPUT_INVALID = (100000, "value of interactive_input is invalid")
-    WORKFLOW_STATE_RUNTIME_ERROR = (100001, "raw_inputs existed, update is invalid")
-    WORKFLOW_EXECUTION_NOT_SUPPORT = (100002, "workflow component should implement Executable")
-    CONTROLLER_EXECUTION_INTERRUPTED = (100003, "controller interrupted error")
-    WORKFLOW_STREAM_NOT_SUPPORT = (100004, "streaming process interface(transform or collect)"
-                                            " does not support interact operations")
-    COMPONENT_EXECUTION_RUNTIME_ERROR = (100005, "component [{node_id}] encountered an exception "
-                                                 "while executing ability [{""ability}], error detail: {error}")
-    WORKFLOW_STATE_INVALID = (100006, "workflow state exists but non-interactive input and cleanup is disabled.")
+    WORKFLOW_INPUT_INVALID = (100000,
+                              generate_error_message_template(scope="WORKFLOW", subject="INPUT", failure_type="INVALID")
+                              .template)
+    WORKFLOW_STATE_RUNTIME_ERROR = (100001,
+                                    generate_error_message_template(scope="WORKFLOW", subject="STATE", failure_type="RUNTIME_ERROR")
+                                    .template)
+    WORKFLOW_EXECUTION_NOT_SUPPORT = (100002,
+                                      generate_error_message_template(scope="WORKFLOW", subject="EXECUTION", failure_type="NOT_SUPPORT")
+                                      .template)
+    WORKFLOW_INTERRUPT_EXECUTION_ERROR = (100003,
+                                          generate_error_message_template(scope="WORKFLOW", subject="INTERRUPT", failure_type="EXECUTION_ERROR")
+                                          .template)
+    WORKFLOW_STREAM_NOT_SUPPORT = (100004,
+                                   generate_error_message_template(scope="WORKFLOW", subject="STREAM", failure_type="NOT_SUPPORT")
+                                   .template)
+    WORKFLOW_COMPONENT_RUNTIME_ERROR = (100005,
+                                        generate_error_message_template(scope="WORKFLOW", subject="COMPONENT", failure_type="RUNTIME_ERROR")
+                                        .template)
+    WORKFLOW_STATE_INVALID = (100006,
+                              generate_error_message_template(scope="WORKFLOW", subject="STATE", failure_type="INVALID")
+                              .template)
 
     # Workflow: Execution 100100 - 100199
-    WORKFLOW_EXECUTION_RUNTIME_ERROR = (100100, "workflow execute inner error: {error}")
-    WORKFLOW_INVOKE_TIMEOUT = (100101, "workflow invoke exceeded {timeout}s")
-    WORKFLOW_STREAM_EXECUTION_TIMEOUT = (100102, "workflow stream exceeded {timeout}s")
+    WORKFLOW_EXECUTION_RUNTIME_ERROR = (100100,
+                                        generate_error_message_template(scope="WORKFLOW", subject="EXECUTION", failure_type="RUNTIME_ERROR")
+                                        .template)
+    WORKFLOW_INVOKE_TIMEOUT = (100101,
+                               generate_error_message_template(scope="WORKFLOW", subject="INVOKE", failure_type="TIMEOUT")
+                               .template)
+    WORKFLOW_STREAM_EXECUTION_TIMEOUT = (100102,
+                                         generate_error_message_template(scope="WORKFLOW", subject="STREAM_EXECUTION", failure_type="TIMEOUT")
+                                         .template)
 
     # Workflow Component - Builtin-workflow Component 101000 - 109999
 
     ## LLMComponent  101000 - 101049
-    COMPONENT_LLM_TEMPLATE_CONFIG_ERROR = (101000, "LLM component template config error, as {error_msg}.")
-    COMPONENT_LLM_CONFIG_INVALID = (101001, "LLM component response format config error, as {error_msg}.")
-    COMPONENT_LLM_CONFIG_ERROR = (101002, "LLM component output config error, as {error_msg}.")
-    COMPONENT_LLM_INVOKE_CALL_FAILED = (101003, "LLM component invoke llm error, as {error_msg}.")
-    COMPONENT_LLM_EXECUTION_PROCESS_ERROR = (101004, "Failed to output json schema, as {error_msg}.")
-    COMPONENT_LLM_INIT_FAILED = (101005, "Failed to init llm, as {error_msg}.")
-    COMPONENT_LLM_TEMPLATE_PROCESS_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
-    COMPONENT_LLM_TEMPLATE_INVALID = (101007, "Invalid json schema, root cause = {error_msg}.")
+    COMPONENT_LLM_TEMPLATE_CONFIG_ERROR = (101000,
+                                           generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="CONFIG_ERROR")
+                                           .template)
+    COMPONENT_LLM_CONFIG_INVALID = (101001,
+                                    generate_error_message_template(scope="COMPONENT", subject="LLM_CONFIG", failure_type="INVALID")
+                                    .template)
+    COMPONENT_LLM_CONFIG_ERROR = (101002,
+                                  generate_error_message_template(scope="COMPONENT", subject="LLM", failure_type="CONFIG_ERROR")
+                                  .template)
+    COMPONENT_LLM_INVOKE_CALL_FAILED = (101003,
+                                        generate_error_message_template(scope="COMPONENT", subject="LLM_INVOKE", failure_type="CALL_FAILED")
+                                        .template)
+    COMPONENT_LLM_EXECUTION_PROCESS_ERROR = (101004,
+                                             generate_error_message_template(scope="COMPONENT", subject="LLM_EXECUTION", failure_type="PROCESS_ERROR")
+                                             .template)
+    COMPONENT_LLM_INIT_FAILED = (101005,
+                                 generate_error_message_template(scope="COMPONENT", subject="LLM", failure_type="INIT_FAILED")
+                                 .template)
+    COMPONENT_LLM_TEMPLATE_PROCESS_ERROR = (101006,
+                                            generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="PROCESS_ERROR")
+                                            .template)
+    COMPONENT_LLM_TEMPLATE_INVALID = (101007,
+                                      generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="INVALID")
+                                      .template)
 
 
     ## LLM Service 102001 - 102999
-    MODEL_SERVICE_CONFIG_ERROR = (102001, "LLM service config error, as {error_msg}.")
-    MODEL_CONFIG_ERROR = (102002, "LLM model config error, as {error_msg}.")
-    MODEL_INVOKE_PARAM_ERROR = (102003, "LLM model call error, as {error_msg}.")
-    MODEL_CLIENT_CONFIG_INVALID = (102004, "LLM model client type error, as {error_msg}.")
+    MODEL_SERVICE_CONFIG_ERROR = (102001,
+                                  generate_error_message_template(scope="MODEL", subject="SERVICE", failure_type="CONFIG_ERROR")
+                                  .template)
+    MODEL_CONFIG_ERROR = (102002,
+                          generate_error_message_template(scope="MODEL", subject="", failure_type="CONFIG_ERROR")
+                          .template)
+    MODEL_INVOKE_PARAM_ERROR = (102003,
+                                generate_error_message_template(scope="MODEL", subject="INVOKE", failure_type="PARAM_ERROR")
+                                .template)
+    MODEL_CLIENT_CONFIG_INVALID = (102004,
+                                   generate_error_message_template(scope="MODEL", subject="CLIENT_CONFIG", failure_type="INVALID")
+                                   .template)
 
     ## IntentDetectionComponent 101050 - 101069
     COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (101050,
-                                                   "Intent detection component user input error, as {error_msg}.")
-    COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED = (101051, "Intent detection component init llm error, as {error_msg}.")
+                                                   generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_INPUT", failure_type="PARAM_ERROR")
+                                                    .template)
+    COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED = (101051,
+                                                  generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_LLM", failure_type="INIT_FAILED")
+                                                  .template)
     COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED = (101052,
-                                                   "Intent detection component invoke llm error, as {error_msg}.")
+                                                   generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_INVOKE", failure_type="CALL_FAILED")
+                                                     .template)
 
     ## QuestionComponent 101070 - 101099
-    COMPONENT_QUESTIONER_INPUT_PARAM_ERROR = (101070, "Questioner component user input error, as {error_msg}.")
-    COMPONENT_QUESTIONER_CONFIG_ERROR = (101071, "Questioner component config error, as {error_msg}.")
-    COMPONENT_QUESTIONER_INPUT_INVALID = \
-        (101072, "Questioner component empty question in direct reply mode.")
-    COMPONENT_QUESTIONER_STATE_INIT_FAILED = (101073, "Questioner component init state error.")
-    COMPONENT_QUESTIONER_RUNTIME_ERROR = (101074, "Questioner component exceed max response.")
-    COMPONENT_QUESTIONER_INVOKE_CALL_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
-    COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (101076, "Questioner component parse llm response error,"
-                                                     " as {error_msg}.")
+    COMPONENT_QUESTIONER_INPUT_PARAM_ERROR = (101070,
+                                              generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INPUT", failure_type="PARAM_ERROR")
+                                              .template)
+    COMPONENT_QUESTIONER_CONFIG_ERROR = (101071,
+                                         generate_error_message_template(scope="COMPONENT", subject="QUESTIONER", failure_type="CONFIG_ERROR")
+                                         .template)
+    COMPONENT_QUESTIONER_INPUT_INVALID = (101072,
+                                          generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INPUT", failure_type="INVALID")
+                                          .template)
+    COMPONENT_QUESTIONER_STATE_INIT_FAILED = (101073,
+                                              generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_STATE", failure_type="INIT_FAILED")
+                                              .template)
+    COMPONENT_QUESTIONER_RUNTIME_ERROR = (101074,
+                                          generate_error_message_template(scope="COMPONENT", subject="QUESTIONER", failure_type="RUNTIME_ERROR")
+                                          .template)
+    COMPONENT_QUESTIONER_INVOKE_CALL_FAILED = (101075,
+                                               generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INVOKE", failure_type="CALL_FAILED")
+                                               .template)
+    COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (101076,
+                                                    generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_EXECUTION", failure_type="PROCESS_ERROR")
+                                                    .template)
 
     ## BranchComponent  101100 - 101119
     BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")
@@ -317,10 +381,10 @@ class StatusCode(Enum):
     SESSION_AGENT_GROUP_ADD_FAILED = (190040, "failed to add single_agent group, reason: {reason}")
     SESSION_AGENT_GROUP_GET_FAILED = (190041, "failed to get single_agent group, reason: {reason}")
     SESSION_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove single_agent group, reason: {reason}")
-    
+
     # Session - Resource Management - Workflow Additional
     SESSION_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
-    
+
     # Session - Resource Management - Agent 190050 - 190059
     SESSION_AGENT_ADD_FAILED = (190050, "failed to add single_agent, reason: {reason}")
     SESSION_AGENT_GET_FAILED = (190051, "failed to get single_agent, reason: {reason}")

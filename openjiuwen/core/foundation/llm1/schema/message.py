@@ -25,6 +25,7 @@ class UsageMetadata(BaseModel):
 class BaseMessage(BaseModel):
     role: str
     content: Union[str, List[Union[str, dict]]] = ""
+    name: Optional[str] = None
 
 
 class AssistantMessage(BaseMessage):

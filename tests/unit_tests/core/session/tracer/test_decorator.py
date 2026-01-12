@@ -4,15 +4,15 @@ from unittest.mock import MagicMock
 import pytest
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm1 import ModelConfig
 from openjiuwen.core.workflow import LLMCompConfig, WorkflowCard
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session.stream import StreamMode, BaseStreamMode
 from openjiuwen.core.session.tracer import decorate_tool_with_trace, decorate_workflow_with_trace, \
     decorate_model_with_trace
-from openjiuwen.core.foundation.llm import BaseModelClient, BaseModelInfo
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseModelClient, BaseModelInfo
+from openjiuwen.core.foundation.llm1 import BaseMessage
 from openjiuwen.core.foundation.tool import ToolInfo, ToolCard
 from openjiuwen.core.foundation.tool.base import Tool
 from openjiuwen.core.foundation.tool.constant import Input, Output
@@ -22,7 +22,7 @@ pytestmark = pytest.mark.asyncio
 
 
 def get_llm_config():
-    model_config = ModelConfig(model_provider="siliconflow",
+    model_config = ModelConfig(model_provider="SiliconFlow",
                                model_info=BaseModelInfo(
                                    model="Qwen/Qwen3-32B",
                                    api_base="sk",

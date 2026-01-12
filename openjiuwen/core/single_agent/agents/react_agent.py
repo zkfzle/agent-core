@@ -14,10 +14,11 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 from pydantic import Field, BaseModel
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.utils.hash_util import generate_key
 from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
-from openjiuwen.core.foundation.llm import AIMessage, ModelFactory
+from openjiuwen.core.foundation.llm1 import AssistantMessage, ModelClientConfig, ModelRequestConfig, Model
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.memory import LongTermMemory, MemoryScopeConfig
 from openjiuwen.core.session.session import Session
@@ -226,19 +227,32 @@ class ReActAgent(BaseAgent):
     def _get_llm(self):
         """Get LLM instance (lazy initialization)"""
         if self._llm is None:
-            self._llm = ModelFactory().get_model(
-                model_provider=self.config.model_provider,
-                api_key=self.config.api_key,
-                api_base=self.config.api_base,
-                model_name=self.config.model_name
+            model_id = generate_key(
+                self.config.model.model_info.api_key,
+                self.config.model.model_info.api_base,
+                self.config.model.model_provider
             )
+
+            model_client_config = ModelClientConfig(
+                client_id=model_id,
+                client_provider=self.config.model_provider,
+                api_key=self.config.model.model_info.api_key,
+                api_base=self.config.model.model_info.api_base,
+                verify_ssl=False,
+                ssl_cert=None,
+            )
+            model_request_config = ModelRequestConfig(
+                model=self.config.model_name,
+            )
+            self._llm = Model(model_client_config=model_client_config, model_config=model_request_config)
+
         return self._llm
 
     async def _call_llm(
         self,
         messages: List[Dict],
         tools: Optional[List[Dict]] = None
-    ) -> AIMessage:
+    ) -> AssistantMessage:
         """Call LLM with messages and optional tools
 
         Args:
@@ -249,7 +263,7 @@ class ReActAgent(BaseAgent):
             AI message from LLM
         """
         llm = self._get_llm()
-        return await llm.ainvoke(
+        return await llm.invoke(
             model_name=self.config.model_name,
             messages=messages,
             tools=tools

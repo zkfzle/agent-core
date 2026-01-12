@@ -1,5 +1,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import asyncio
 import copy
 import random
 import re
@@ -16,8 +17,7 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.operator.llm_call import LLMCall
-from openjiuwen.core.foundation.llm import BaseModelClient
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage, Model
 from openjiuwen.core.foundation.tool import ToolInfo
 
 DEFAULT_BAD_CASES_SAMPLE_NUM: int = 5
@@ -27,15 +27,15 @@ DEFAULT_PARALLEL_NUM: int = 8
 
 class AdoptOptimizer(BaseOptimizer):
     def __init__(self,
-                 model: BaseModelClient,
+                 model: Model,
                  model_name: str,
                  parameters: Optional[Dict[str, LLMCall]] = None,
                  **kwargs
                  ):
         super().__init__(parameters)
         self._model_name = model_name
-        class ModelWithRetry(BaseModelClient):
-            def __init__(self, model: BaseModelClient):
+        class ModelWithRetry(Model):
+            def __init__(self, model: Model):
                 self._model = model
 
             def invoke(self, model_name:str, messages: List[BaseMessage],
@@ -242,7 +242,7 @@ class AdoptOptimizer(BaseOptimizer):
 
 class PartialOptimizer(InstructionOptimizer):
     def __init__(self,
-                 model: BaseModelClient,
+                 model: Model,
                  model_name: str,
                  parameters: Optional[Dict[str, LLMCall]] = None,
                  **kwargs):
@@ -281,7 +281,7 @@ class PartialOptimizer(InstructionOptimizer):
                      node_prompt=node_prompt,
                      )
             ).to_messages())
-            local_gradients.append(self._model.invoke(self._model_name, messages).content)
+            local_gradients.append(asyncio.run(self._model.invoke(self._model_name, messages)).content)
         return local_gradients
 
     def _reduce_textual_gradient(self, param: TextualParameter, local_gradients: List[str]):
@@ -297,5 +297,5 @@ class PartialOptimizer(InstructionOptimizer):
                 current_prompt=node_prompt
             )
         ).to_messages())
-        reduced_gradient = self._model.invoke(self._model_name, messages).content
+        reduced_gradient = asyncio.run(self._model.invoke(self._model_name, messages)).content
         return reduced_gradient

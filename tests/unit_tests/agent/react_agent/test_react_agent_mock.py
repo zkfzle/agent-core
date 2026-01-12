@@ -28,33 +28,32 @@
 """
 import os
 import unittest
-from typing import List, Any, Dict, Iterator, AsyncIterator
+from typing import List, Any, Dict, AsyncIterator
 from unittest.mock import patch
 
 import pytest
 
 from openjiuwen.core.single_agent import create_react_agent_config, ReActAgent
-from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
-from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
-from openjiuwen.core.foundation.tool import ToolCall
+from openjiuwen.core.foundation.llm1 import ModelConfig
+from openjiuwen.core.foundation.llm1 import BaseModelInfo
+from openjiuwen.core.foundation.llm1 import AssistantMessage, UsageMetadata
+from openjiuwen.core.foundation.llm1.schema.tool_call import ToolCall
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 
 
-class MockLLMModel(BaseModelClient):
-    """Mock 大模型，返回预定义的响应"""
+class MockLLMModel:
+    """Mock 大模型，返回预定义的响应（模拟 Model 类）"""
     
-    def __init__(self, api_key: str, api_base: str, **kwargs):
-        super().__init__(api_key=api_key, api_base=api_base)
+    def __init__(self, **kwargs):
         self.call_count = 0
         self.responses = []
         
-    def set_responses(self, responses: List[AIMessage]):
+    def set_responses(self, responses: List[AssistantMessage]):
         """设置预定义的响应序列"""
         self.responses = responses
         self.call_count = 0
     
-    def _get_next_response(self) -> AIMessage:
+    def _get_next_response(self) -> AssistantMessage:
         """获取下一个响应"""
         if self.call_count < len(self.responses):
             response = self.responses[self.call_count]
@@ -62,52 +61,37 @@ class MockLLMModel(BaseModelClient):
             return response
         else:
             # 默认响应
-            return AIMessage(content="这是默认响应")
+            return AssistantMessage(content="这是默认响应")
     
-    def _invoke(
+    async def invoke(
         self, 
-        model_name: str,
         messages: List[Dict],
+        *,
         tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
+        temperature: float = None,
+        top_p: float = None,
+        model: str = None,
+        max_tokens: int = None,
+        stop: str = None,
+        output_parser: Any = None,
+        timeout: float = None,
         **kwargs: Any
-    ) -> AIMessage:
-        """同步调用"""
-        return self._get_next_response()
-        
-    async def _ainvoke(
-        self, 
-        model_name: str,
-        messages: List[Dict],
-        tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
-        **kwargs: Any
-    ) -> AIMessage:
-        """异步调用"""
+    ) -> AssistantMessage:
+        """异步调用 - 匹配 Model.invoke() 签名"""
         return self._get_next_response()
     
-    def _stream(
+    async def stream(
         self,
-        model_name: str,
         messages: List[Dict],
+        *,
         tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
-        **kwargs: Any
-    ) -> Iterator[Any]:
-        """流式返回"""
-        result = self._get_next_response()
-        yield result
-    
-    async def _astream(
-        self,
-        model_name: str,
-        messages: List[Dict],
-        tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
+        temperature: float = None,
+        top_p: float = None,
+        model: str = None,
+        max_tokens: int = None,
+        stop: str = None,
+        output_parser: Any = None,
+        timeout: float = None,
         **kwargs: Any
     ) -> AsyncIterator[Any]:
         """异步流式返回"""
@@ -174,12 +158,12 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
 
         # ==================== 准备 Mock LLM ====================
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="mock_url")
+        mock_llm = MockLLMModel()
 
         # 定义所有 LLM 调用的返回值（按调用顺序）
         all_llm_responses = [
             # 第1次调用：ReAct Agent 决定调用 add 工具
-            AIMessage(
+            AssistantMessage(
                 content='',
                 tool_calls=[
                     ToolCall(
@@ -195,7 +179,7 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
                 )
             ),
             # 第2次调用：ReAct Agent 返回最终答案
-            AIMessage(
+            AssistantMessage(
                 content='根据计算结果，1+2=3',
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
@@ -207,8 +191,11 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
         mock_llm.set_responses(all_llm_responses)
 
         # ==================== 使用 Patch Mock LLM ====================
-        with patch('openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model') as mock_get_model:
-            mock_get_model.return_value = mock_llm
+        # Mock Model 类，使其返回我们的 mock_llm 实例
+        def mock_model_constructor(*args, **kwargs):
+            return mock_llm
+
+        with patch('openjiuwen.core.single_agent.legacy.react_agent.Model', side_effect=mock_model_constructor):
 
             # ==================== 创建工具 ====================
             add_tool = self._create_function_tool()
@@ -236,15 +223,15 @@ class TestReActAgentMock(unittest.IsolatedAsyncioTestCase):
             self.assertIsInstance(result, dict, "应该返回字典")
             self.assertEqual(result['result_type'], 'answer', "应该返回 answer 类型")
             self.assertIn('output', result, "结果应该包含 output 字段")
-            print(f"✅ 测试通过：返回最终答案：{result['output']}")
+            print(f"[PASS] Test passed: final answer: {result['output']}")
 
             # 验证答案内容
             self.assertIn('3', result['output'], "答案应该包含计算结果3")
-            print(f"✅ 答案内容校验通过")
+            print("[PASS] Answer content validation passed")
 
             # 验证 Mock LLM 被调用了 2 次
             self.assertEqual(mock_llm.call_count, 2, "Mock LLM 应该被调用2次")
-            print(f"✅ Mock LLM 调用次数校验通过：{mock_llm.call_count} 次")
+            print(f"[PASS] Mock LLM call count validation passed: {mock_llm.call_count} times")
 
 
 if __name__ == "__main__":

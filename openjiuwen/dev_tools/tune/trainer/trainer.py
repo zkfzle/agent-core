@@ -48,8 +48,8 @@ class Trainer:
               ) -> Optional[BaseAgent]:
         if not self._check_trainable(agent):
             raise JiuWenBaseException(
-                StatusCode.AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR.code,
-                StatusCode.AGENT_BUILDER_AGENT_TRAINER_TRAIN_ERROR.errmsg.format(
+                StatusCode.PROMPT_OPTIMIZATION_TRAINER_TRAIN_ERROR.code,
+                StatusCode.PROMPT_OPTIMIZATION_TRAINER_TRAIN_ERROR.errmsg.format(
                     error_msg=f"trainer only support current Agent right now"
                 )
             )

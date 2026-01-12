@@ -307,6 +307,6 @@ def get_string_prompt(prompt: str | PromptTemplate):
         else:
             return "\n".join("\n".join(item.values()) for item in prompt.content)
     else:
-        raise JiuWenBaseException(StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.code,
-                                StatusCode.AGENT_BUILDER_AGENT_PARAMS_ERROR.errmsg.format(
+        raise JiuWenBaseException(StatusCode.PROMPT_OPTIMIZATION_AGENT_PARAMS_ERROR.code,
+                                  StatusCode.PROMPT_OPTIMIZATION_AGENT_PARAMS_ERROR.errmsg.format(
                                     error_msg=f"Prompt type {str(type(prompt))} is not supported"))

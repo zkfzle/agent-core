@@ -109,7 +109,6 @@ class WorkflowFactory:
             workflow_input_schema = self.input_schema
             self._tool_info = self._convert_to_tool_info(workflow_input_schema)
             from openjiuwen.core.runner import Runner
-            #todo: next line will be deleted when resource_mgr supports tag feature
             Runner.resource_mgr._resource_registry.workflow()._workflow_tool_infos[
                 generate_workflow_key(workflow_id, workflow_version)] = self._convert_to_tool_info(
                 workflow_input_schema)

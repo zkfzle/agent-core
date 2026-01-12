@@ -54,7 +54,7 @@ class UserProfileExtractor:
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
-                response = await model_client.ainvoke(model=model_name, messages=model_input)
+                response = await model_client.invoke(model=model_name, messages=model_input)
                 result = await parser.parse(response.content)
                 logger.debug(f"Succeed to get user profile, result: {result}")
                 if isinstance(result, dict):

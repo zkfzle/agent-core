@@ -52,7 +52,7 @@ from openjiuwen.core.workflow import (
     QuestionerConfig,
     FieldInfo,
 )
-from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
+from openjiuwen.core.foundation.llm1 import ModelConfig, BaseModelInfo
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.session import InteractiveInput
 

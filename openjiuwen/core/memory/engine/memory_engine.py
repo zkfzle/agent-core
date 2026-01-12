@@ -566,6 +566,7 @@ class MemoryEngine(BaseMemoryEngine):
             model_provider=model_config.model_provider,
             api_key=model_config.model_info.api_key,
             api_base=model_config.model_info.api_base,
+            temperature=model_config.model_info.temperature
         )
 
     def _get_group_config(self, group_id: str) -> MemoryConfig:

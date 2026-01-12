@@ -15,6 +15,7 @@ from functools import wraps
 
 # New classes (no deprecation warning)
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
+from openjiuwen.core.session.agent import Session, create_agent_session
 
 
 def _deprecated_class(cls, alternative: str):
@@ -164,4 +165,6 @@ __all__ = [
     "PluginSchema",
     "ReActAgent",
     "create_react_agent_config",
+    "Session",
+    "create_agent_session",
 ]

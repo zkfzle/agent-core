@@ -17,6 +17,7 @@ from openjiuwen.core.session import Checkpointer
 from openjiuwen.core.session import get_default_inmemory_checkpointer
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session import BaseSession
+from openjiuwen.core.session.workflow import Session
 from openjiuwen.core.graph.pregel import Pregel, PregelBuilder, PregelConfig, MAX_RECURSIVE_LIMIT, START, END
 from openjiuwen.core.graph.store import GraphStore
 
@@ -162,7 +163,7 @@ class CompiledGraph(ExecutableGraph):
         self._pregel = pregel
         self._checkpointer = checkpointer
 
-    async def _invoke(self, inputs: Input, session: BaseSession, config: Any = None) -> Output:
+    async def _invoke(self, inputs: Input, session: Session, config: Any = None) -> Output:
         is_main = False
         session_id = session.session_id()
         workflow_id = session.workflow_id()
@@ -172,7 +173,7 @@ class CompiledGraph(ExecutableGraph):
             config = PregelConfig(session_id=session_id, ns=workflow_id, recursion_limit=MAX_RECURSIVE_LIMIT)
 
         if is_main:
-            await self._checkpointer.pre_workflow_execute(session, inputs)
+            await self._checkpointer.pre_workflow_execute(session.base(), inputs)
         if not isinstance(inputs, InteractiveInput):
             session.state().commit_user_inputs(inputs)
 
@@ -185,11 +186,11 @@ class CompiledGraph(ExecutableGraph):
             exception = e
 
         if is_main:
-            await self._checkpointer.post_workflow_execute(session, result, exception)
+            await self._checkpointer.post_workflow_execute(session.base(), result, exception)
         elif exception is not None:
             raise exception
 
-    async def stream(self, inputs: Input, session: BaseSession) -> AsyncIterator[Output]:
+    async def stream(self, inputs: Input, session: Session) -> AsyncIterator[Output]:
         pass
 
     async def interrupt(self, message: dict):

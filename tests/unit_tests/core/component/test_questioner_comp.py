@@ -8,8 +8,7 @@ import pytest
 
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
 from openjiuwen.core.session import InteractionOutput
-from openjiuwen.core.session import Session
-from openjiuwen.core.session import TaskSession
+from openjiuwen.core.session.agent import Session
 from openjiuwen.core.common.constants.constant import INTERACTION
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import End
@@ -56,7 +55,7 @@ class TestQuestionComp:
 
     @staticmethod
     def _create_context(session_id):
-        return TaskSession(trace_id=session_id)
+        return Session(trace_id=session_id)
 
     @patch("openjiuwen.core.workflow.components.llm_related.questioner_comp.QuestionerDirectReplyHandler._invoke_llm_for_extraction")
     @patch("openjiuwen.core.workflow.components.llm_related.questioner_comp.QuestionerDirectReplyHandler._build_llm_inputs")
@@ -74,7 +73,7 @@ class TestQuestionComp:
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        context = TaskSession(trace_id="test")
+        context = Session(trace_id="test")
         flow = Workflow()
 
         key_fields = [
@@ -177,7 +176,7 @@ class TestQuestionComp:
         flow.add_connection("questioner", "e")
 
         session_id = "test_questioner"
-        workflow_context = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_context = Session(trace_id=session_id).create_workflow_session()
         first_question = self.invoke_workflow_with_workflow_context({"query": "你好"}, workflow_context, flow)
         first_question = first_question.result[0] if first_question else dict()
         payload = first_question.payload
@@ -188,7 +187,7 @@ class TestQuestionComp:
         user_input = InteractiveInput()
         user_input.update(component_id, "地点是杭州")  # 第一个入参是组件id
 
-        workflow_context = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_context = Session(trace_id=session_id).create_workflow_session()
         final_result = self.invoke_workflow_with_workflow_context(user_input, workflow_context,
                                                                   flow)  # workflow实例、session id保持一致
         assert final_result.result.get("responseContent") == "hangzhou | today"
@@ -219,7 +218,7 @@ class TestQuestionComp:
         mock_llm_inputs.return_value = mock_prompt_template
         mock_extraction.return_value = dict(location="hangzhou")
 
-        context = TaskSession(trace_id="test")
+        context = Session(trace_id="test")
         flow = Workflow()
 
         key_fields = [
@@ -337,7 +336,7 @@ class TestQuestionerStream:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="questioner_workflow")
-        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session = Session(trace_id=session_id).create_workflow_session()
         interaction_output_schema = []
         async for chunk in flow.stream({"query": "你好"}, workflow_session, workflow_context):
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
@@ -350,7 +349,7 @@ class TestQuestionerStream:
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "杭州")
-            workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+            workflow_session = Session(trace_id=session_id).create_workflow_session()
             async for chunk in flow.stream(user_input, workflow_session, workflow_context):
                 print(f"stream output >>> {chunk}")
 
@@ -403,7 +402,7 @@ class TestQuestionerStream:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="questioner_workflow")
-        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session = Session(trace_id=session_id).create_workflow_session()
         interaction_output_schema = list()
         async for chunk in flow.stream({"query": "时间为2025-10-01"}, workflow_session, workflow_context):
             if isinstance(chunk, OutputSchema) and chunk.type == INTERACTION:
@@ -414,7 +413,7 @@ class TestQuestionerStream:
             for item in interaction_output_schema:
                 component_id = item.payload.id
                 user_input.update(component_id, "地点是杭州")
-            workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+            workflow_session = Session(trace_id=session_id).create_workflow_session()
             async for chunk in flow.stream(user_input, workflow_session, workflow_context):
                 print(f"stream output >>> {chunk}")
 
@@ -464,7 +463,7 @@ class TestQuestionerStream:
         flow.add_connection("questioner", "e")
 
         session_id = "test_questioner"
-        workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session = Session(trace_id=session_id).create_workflow_session()
         workflow_result = await flow.invoke({"query": "时间为2025-10-01"}, workflow_session)
         assert workflow_result.state == WorkflowExecutionState.INPUT_REQUIRED
 
@@ -473,7 +472,7 @@ class TestQuestionerStream:
         if workflow_result.state == WorkflowExecutionState.INPUT_REQUIRED:
             component_id = workflow_result.result[0].payload.id
             assert component_id == "questioner"
-            workflow_session = TaskSession(trace_id=session_id).create_workflow_session()
+            workflow_session = Session(trace_id=session_id).create_workflow_session()
             user_feedback = InteractiveInput()
             user_feedback.update(component_id, "地点是杭州")
             workflow_result = await flow.invoke(user_feedback, workflow_session)
@@ -555,7 +554,7 @@ class TestQuestionerStream:
         
         # ========== 第一次调用 workflow ==========
         session_id = "test_questioner_state_reset"
-        workflow_session_1 = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session_1 = Session(trace_id=session_id).create_workflow_session()
         
         # 第一次调用：触发中断
         workflow_result_1 = await flow.invoke({"query": "请收集用户信息"}, workflow_session_1)
@@ -566,7 +565,7 @@ class TestQuestionerStream:
         assert component_id_1 == "questioner"
         
         # 第一次回答："张三"（需要创建新的 session）
-        workflow_session_1_resume = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session_1_resume = Session(trace_id=session_id).create_workflow_session()
         user_feedback_1 = InteractiveInput()
         user_feedback_1.update(component_id_1, "张三")
         
@@ -583,7 +582,7 @@ class TestQuestionerStream:
         mock_extraction.side_effect = [{}, {"name": "李四"}]
         
         # 使用新的 workflow session
-        workflow_session_2 = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session_2 = Session(trace_id=session_id).create_workflow_session()
         
         # 第二次调用：应该重新触发中断（而不是使用第一次的状态）
         workflow_result_3 = await flow.invoke({"query": "再次收集用户信息"}, workflow_session_2)
@@ -596,7 +595,7 @@ class TestQuestionerStream:
         print(f"[OK] 第二次调用成功触发中断（重新提问）")
         
         # 第二次回答："李四"（需要创建新的 session）
-        workflow_session_2_resume = TaskSession(trace_id=session_id).create_workflow_session()
+        workflow_session_2_resume = Session(trace_id=session_id).create_workflow_session()
         user_feedback_2 = InteractiveInput()
         user_feedback_2.update(component_id_2, "李四")
         

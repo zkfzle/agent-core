@@ -1,202 +1,119 @@
-# -*- coding: UTF-8 -*-
+# coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+from typing import Any, Union, Optional
 
-import uuid
-from typing import Any
-
-from openjiuwen.core.session.config import Config
-from openjiuwen.core.session.callback_manager import CallbackManager
-from openjiuwen.core.session.session import BaseSession
-from openjiuwen.core.session.state import State
-from openjiuwen.core.session.workflow_state import InMemoryState
-from openjiuwen.core.session.stream.manager import StreamWriterManager
-from openjiuwen.core.session.tracer.tracer import Tracer
+from openjiuwen.core.session.callback.callback_manager import CallbackManager
+from openjiuwen.core.session.config.base import Config
+from openjiuwen.core.session.internal.wrapper import WrappedSession
+from openjiuwen.core.session.internal.workflow import  WorkflowSession
+from openjiuwen.core.session.state.base import State
+from openjiuwen.core.session.stream import StreamWriterManager, StreamWriter, OutputSchema
+from openjiuwen.core.session.tracer import Tracer
 
 
-class WorkflowSession(BaseSession):
-    def __init__(self, workflow_id: str = '', parent: BaseSession = None, session_id: str = None, state: State = None):
-        self._session_id = session_id
-        self._parent = parent
-        if parent is not None:
-            if self._session_id is None:
-                self._session_id = parent.session_id()
-            self._config = parent.config()
-            self._resource_manager = parent.resource_manager()
-            self._tracer = parent.tracer()
-        else:
-            if self._session_id is None:
-                self._session_id = uuid.uuid4().hex
-            self._config = Config()
-            from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
-            self._resource_manager = ResourceMgr()
-            self._tracer = None
+class Session(WrappedSession):
+    """
+    Session is the main class for managing the workflow of a session.
+    It extends WrappedSession to provide additional functionality.
+    """
 
-        self._state = state if state is not None else InMemoryState()
-        self._callback_manager = CallbackManager()
-        self._stream_writer_manager = None  # type: StreamWriterManager
-        self._actor_manager = None
-        self._workflow_id = workflow_id
+    def __init__(self, workflow_id: str = '', parent: WrappedSession = None, session_id: str = None,
+                 state: State = None, envs: dict[str, Any] = None):
+        workflow_session = WorkflowSession(workflow_id=workflow_id,
+                                           parent=parent.base() if parent is not None else None, session_id=session_id,
+                                           state=state)
+        super().__init__(workflow_session)
+        self._inner.config().set_envs(envs)
 
     def set_stream_writer_manager(self, stream_writer_manager: StreamWriterManager) -> None:
-        if self._stream_writer_manager is not None:
-            return
-        self._stream_writer_manager = stream_writer_manager
+        self._inner.set_stream_writer_manager(stream_writer_manager)
 
     def set_tracer(self, tracer: Tracer) -> None:
-        self._tracer = tracer
-
+        self._inner.set_tracer(tracer)
 
     def set_actor_manager(self, queue_manager: "ActorManager"):
-        if self._actor_manager is not None:
-            return
-        self._actor_manager = queue_manager
+        self._inner.set_actor_manager(queue_manager)
 
     def set_workflow_id(self, workflow_id):
-        self._workflow_id = workflow_id
+        self._inner.set_workflow_id(workflow_id)
 
     def actor_manager(self) -> "ActorManager":
-        return self._actor_manager
+        return self._inner.actor_manager()
 
     def config(self) -> Config:
-        return self._config
+        return self._inner.config()
 
     def state(self) -> State:
-        return self._state
+        return self._inner.state()
 
     def tracer(self) -> Any:
-        return self._tracer
+        return self._inner.tracer()
 
     def stream_writer_manager(self) -> StreamWriterManager:
-        return self._stream_writer_manager
+        return self._inner.stream_writer_manager()
 
     def callback_manager(self) -> CallbackManager:
-        return self._callback_manager
+        return self._inner.callback_manager()
 
     def session_id(self) -> str:
-        return self._session_id
+        return self._inner.session_id()
 
     def resource_manager(self) -> "ResourceMgr":
-        return self._resource_manager
+        return self._inner.resource_manager()
 
     def checkpointer(self):
-        return self._parent.checkpointer()
+        return self._inner.checkpointer()
 
     def workflow_id(self):
-        return self._workflow_id
+        return self._inner.workflow_id()
 
     def main_workflow_id(self):
-        return self.workflow_id()
+        return self._inner.main_workflow_id()
 
     def workflow_nesting_depth(self):
-        return 0
+        return self._inner.workflow_nesting_depth()
 
     async def close(self):
-        if self._actor_manager is not None:
-            await self._actor_manager.shutdown()
+        await self._inner.close()
+
+    def executable_id(self) -> str:
+        raise NotImplementedError
+
+    def update_state(self, data: dict):
+        raise NotImplementedError
+
+    def get_state(self, key: Union[str, list, dict] = None) -> Any:
+        raise NotImplementedError
+
+    def update_global_state(self, data: dict):
+        raise NotImplementedError
+
+    def get_global_state(self, key: Union[str, list, dict] = None) -> Any:
+        raise NotImplementedError
+
+    def stream_writer(self) -> Optional[StreamWriter]:
+        raise NotImplementedError
+
+    def custom_writer(self) -> Optional[StreamWriter]:
+        raise NotImplementedError
+
+    async def write_stream(self, data: Union[dict, OutputSchema]):
+        raise NotImplementedError
+
+    async def write_custom_stream(self, data: dict):
+        raise NotImplementedError
+
+    async def trace(self, data: dict):
+        raise NotImplementedError
+
+    async def trace_error(self, error: Exception):
+        raise NotImplementedError
+
+    async def interact(self, value):
+        raise NotImplementedError
 
 
-def create_parent_id(session: BaseSession):
-    return session.executable_id() if isinstance(session, NodeSession) else ''
+def create_workflow_session(workflow_id: str = '', parent: WrappedSession = None, session_id: str = None,
+                                  state: State = None, envs: dict[str, Any] = None) -> Session:
+    return Session(workflow_id=workflow_id, parent=parent, session_id=session_id, state=state, envs=envs)
 
-
-def create_executable_id(node_id: str, parent_id: str):
-    return parent_id + "." + node_id if len(parent_id) != 0 else node_id
-
-
-class NodeSession(BaseSession):
-    def __init__(self, session: BaseSession, node_id: str, node_type: str = None):
-        self._node_id = node_id
-        self._node_type = node_type
-        parent_id = create_parent_id(session)
-        executable_id = create_executable_id(node_id, parent_id)
-        state = session.state().create_node_state(executable_id, parent_id)
-        self._state = state
-        self._parent_id = parent_id
-        self._executable_id = executable_id
-        self._session = session
-        self._workflow_id = session.workflow_id()
-        self._workflow_nesting_depth = session.workflow_nesting_depth()
-        self._main_workflow_id = session.main_workflow_id()
-
-    def node_id(self):
-        return self._node_id
-
-    def node_type(self):
-        return self._node_type
-
-    def executable_id(self):
-        return self._executable_id
-
-    def parent_id(self):
-        return self._parent_id
-
-    def workflow_id(self):
-        return self._workflow_id
-
-    def main_workflow_id(self):
-        return self._main_workflow_id
-
-    def workflow_nesting_depth(self):
-        return self._workflow_nesting_depth
-
-    def actor_manager(self) -> "ActorManager":
-        return self._session.actor_manager()
-
-    def parent(self):
-        return self._session
-
-    def tracer(self) -> Tracer:
-        return self._session.tracer()
-
-    def state(self) -> State:
-        return self._state
-
-    def config(self) -> Config:
-        return self._session.config()
-
-    def stream_writer_manager(self) -> StreamWriterManager:
-        return self._session.stream_writer_manager()
-
-    def callback_manager(self) -> CallbackManager:
-        return self._session.callback_manager()
-
-    def session_id(self) -> str:
-        return self._session.session_id()
-
-    def resource_manager(self):
-        return self._session.resource_manager()
-
-    def checkpointer(self):
-        pass
-
-    def node_config(self):
-        workflow_config = self.config().get_workflow_config(self.workflow_id())
-        if workflow_config:
-            return workflow_config.spec.comp_configs.get(self._node_id)
-        else:
-            return None
-
-
-class SubWorkflowSession(NodeSession):
-    def __init__(self, session: NodeSession, workflow_id: str, actor_manager: "ActorManager" = None):
-        super().__init__(session=session.parent(), node_id=session.node_id(), node_type=session.node_type())
-        self._workflow_id = workflow_id
-        self._workflow_nesting_depth = session.workflow_nesting_depth() + 1
-        self._main_workflow_id = session.main_workflow_id()
-        self._actor_manager = actor_manager
-
-    def workflow_id(self):
-        return self._workflow_id
-
-    def workflow_nesting_depth(self):
-        return self._workflow_nesting_depth
-
-    def main_workflow_id(self):
-        return self._main_workflow_id
-
-    def actor_manager(self) -> "ActorManager":
-        return self._actor_manager
-
-    async def close(self):
-        if self._actor_manager is not None:
-            await self._actor_manager.shutdown()

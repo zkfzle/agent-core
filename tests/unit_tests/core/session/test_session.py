@@ -1,9 +1,9 @@
-from openjiuwen.core.session.agent import AgentSession
-from openjiuwen.core.session.workflow import WorkflowSession, NodeSession
-from openjiuwen.core.session.state import ReadableStateLike
+from openjiuwen.core.session.internal.agent import AgentSession
+from openjiuwen.core.session.internal.workflow import WorkflowSession, NodeSession
+from openjiuwen.core.session.state.base import ReadableStateLike
 from openjiuwen.core.session import get_by_schema
 from openjiuwen.core.session.utils import update_dict, root_to_index
-from openjiuwen.core.session.wrapper import TaskSession
+from openjiuwen.core.session.agent import Session
 
 
 class TestSession:
@@ -251,21 +251,21 @@ class TestSession:
         assert source[1][3] is None  # Filled with None
         assert source[1][4] is None  # Filled with None
 
-    def test_task_session(self):
-        session = AgentSession("abc")
-        task_session = TaskSession(inner=session)
+    def test_agent_session(self):
+        internal_agent_session = AgentSession("abc")
+        agent_session = Session(inner=internal_agent_session)
         data = {"data": {"a": 1}}
-        task_session.update_state({"result": data})
-        assert task_session.get_state("result") == {"data": {"a": 1}}
+        agent_session.update_state({"result": data})
+        assert agent_session.get_state("result") == {"data": {"a": 1}}
 
-        assert task_session.get_state("result") == {"data": {"a": 1}}
+        assert agent_session.get_state("result") == {"data": {"a": 1}}
 
         data2 = {"data": {"b": 1}}
-        task_session.update_state({"result": data2})
-        assert task_session.get_state("result") == {"data": {"a": 1, "b": 1}}
+        agent_session.update_state({"result": data2})
+        assert agent_session.get_state("result") == {"data": {"a": 1, "b": 1}}
 
-        task_session.update_state({"result": None})
-        assert task_session.get_state("result") is None
+        agent_session.update_state({"result": None})
+        assert agent_session.get_state("result") is None
 
-        task_session.update_state({"result": data2})
-        assert task_session.get_state("result") == {"data": {"b": 1}}
+        agent_session.update_state({"result": data2})
+        assert agent_session.get_state("result") == {"data": {"b": 1}}

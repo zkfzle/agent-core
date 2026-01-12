@@ -65,13 +65,13 @@ class ChromaVectorStore(VectorStore):
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
+        self.database_name = self.config.database_name
 
         # Initialize ChromaDB persistent client
-        if config.database_name and config.database_name != DEFAULT_DATABASE:
-            admin_client = chromadb.AdminClient(Settings(is_persistent=True, persist_directory=chroma_path))
-            if config.database_name not in {db.get("name") for db in admin_client.list_databases()}:
-                admin_client.create_database(config.database_name)
-        self._client = chromadb.PersistentClient(path=chroma_path, database=config.database_name)
+        self._client = self.create_client(
+            database_name=self.config.database_name,
+            path_or_uri=self.chroma_path,
+        )
 
         # Get or create collection
         self._collection = self._client.get_or_create_collection(
@@ -87,6 +87,18 @@ class ChromaVectorStore(VectorStore):
     def collection(self):
         """Get ChromaDB collection"""
         return self._collection
+
+    @staticmethod
+    def create_client(database_name: str, path_or_uri: str, token: str = "", **kwargs) -> chromadb.PersistentClient:
+        """Create Milvus client and ensure database exists"""
+        if database_name and database_name != DEFAULT_DATABASE:
+            admin_client = chromadb.AdminClient(Settings(is_persistent=True, persist_directory=path_or_uri))
+            if database_name not in {db.get("name") for db in admin_client.list_databases()}:
+                admin_client.create_database(database_name)
+            del admin_client
+        else:
+            database_name = DEFAULT_DATABASE
+        return chromadb.PersistentClient(path=path_or_uri, database=database_name)
 
     async def add(
         self,

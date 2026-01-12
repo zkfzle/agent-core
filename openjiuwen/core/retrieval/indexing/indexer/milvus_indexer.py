@@ -34,6 +34,7 @@ class MilvusIndexer(Indexer):
         sparse_vector_field: str = "sparse_vector",
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
+        database_name: str = "",
         **kwargs: Any,
     ):
         """
@@ -46,6 +47,7 @@ class MilvusIndexer(Indexer):
             vector_field: Vector field name
             sparse_vector_field: Sparse vector field name
             metadata_field: Metadata field name
+            database_name: name of the database to use
         """
         self.milvus_uri = milvus_uri
         self.milvus_token = milvus_token
@@ -54,9 +56,11 @@ class MilvusIndexer(Indexer):
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
+        self.database_name = database_name
 
-        self._client = MilvusClient(
-            uri=self.milvus_uri,
+        self._client = MilvusVectorStore.create_client(
+            database_name=database_name,
+            path_or_uri=self.milvus_uri,
             token=self.milvus_token,
         )
 

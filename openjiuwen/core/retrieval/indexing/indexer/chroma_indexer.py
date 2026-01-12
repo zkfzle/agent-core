@@ -32,6 +32,7 @@ class ChromaIndexer(Indexer):
         sparse_vector_field: str = "sparse_vector",
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
+        database_name: str = "",
         **kwargs: Any,
     ):
         """
@@ -44,6 +45,7 @@ class ChromaIndexer(Indexer):
             sparse_vector_field: Sparse vector field name
             metadata_field: Metadata field name
             doc_id_field: Document ID field name
+            database_name: name of the database to use
         """
         if not chroma_path or not chroma_path.strip():
             raise JiuWenBaseException(
@@ -56,8 +58,12 @@ class ChromaIndexer(Indexer):
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
+        self.database_name = database_name
 
-        self._client = chromadb.PersistentClient(path=self.chroma_path)
+        self._client = ChromaVectorStore.create_client(
+            database_name=database_name,
+            path_or_uri=chroma_path,
+        )
 
     @property
     def client(self) -> chromadb.PersistentClient:
@@ -162,9 +168,13 @@ class ChromaIndexer(Indexer):
                 collection.get,
                 where={self.doc_id_field: doc_id},
             )
+            results2 = await asyncio.to_thread(
+                collection.get,
+            )
 
             if not results or not results.get("ids") or len(results["ids"]) == 0:
                 logger.info(f"No entries found for doc_id={doc_id}")
+                logger.info(f"{index_name=} {results2=}")
                 return False
 
             # Delete matching records

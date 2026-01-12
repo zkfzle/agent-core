@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm import BaseMessage,HumanMessage
+from openjiuwen.core.foundation.llm import BaseMessage, HumanMessage
 from openjiuwen.core.foundation.prompt.assemble.assembler import PromptAssembler
 
 

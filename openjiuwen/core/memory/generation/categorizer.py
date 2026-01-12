@@ -31,7 +31,7 @@ class Categorizer:
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
-                response = await model_client.ainvoke(model=model_name, messages=model_input)
+                response = await model_client.invoke(model=model_name, messages=model_input)
                 categories = await parser.parse(response.content)
                 logger.debug(f"Succeed to get categories, result: {categories}")
                 if isinstance(categories, dict) and "categories" in categories.keys():

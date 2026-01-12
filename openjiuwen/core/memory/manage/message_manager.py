@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.memory.manage.base_memory_manager import BaseMemoryManager
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
-from openjiuwen.core.foundation.llm import BaseMessage
+from openjiuwen.core.foundation.llm1 import BaseMessage
 
 
 class MessageAddRequest(BaseModel):

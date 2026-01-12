@@ -10,7 +10,7 @@ from unittest.mock import Mock
 from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm1 import ModelConfig
 from openjiuwen.core.workflow import ComponentAbility, End, WorkflowCard
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.context_engine import ContextEngineConfig, ContextEngine
@@ -37,12 +37,12 @@ from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.workflow import LLMCompConfig, LLMComponent
 from openjiuwen.core.session import WorkflowSession, NodeSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
-from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm1 import BaseModelInfo
 from openjiuwen.core.foundation.llm1.model import Model
 from openjiuwen.core.foundation.llm1.schema.config import ModelRequestConfig as LLM1ModelConfig, ModelClientConfig
 
 USER_FIELDS = "userFields"
-
+os.environ["LLM_SSL_VERIFY"] = "false"
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")

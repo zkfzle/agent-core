@@ -233,6 +233,10 @@ class StatusCode(Enum):
     KB_VECTOR_STORE_REQUIRED_ERROR = (155503, "Vector store is required: {error_msg}")
     KB_BUILD_INDEX_FAILED_ERROR = (155504, "Failed to build index: {error_msg}")
     KB_BUILD_CHUNK_INDEX_FAILED_ERROR = (155505, "Failed to build chunk index: {error_msg}")
+    KB_VECTORSTORE_AND_INDEXER_DATABASE_MISMATCH_ERROR = (
+        155506,
+        "Vector store and index manager uses different database names: {error_msg}",
+    )
 
     # Memory Engine 158000 - 159999
     MEMORY_ENGINE_KV_STORE_NOT_REGISTER = (158000, "kv store is not registered in memory engine")

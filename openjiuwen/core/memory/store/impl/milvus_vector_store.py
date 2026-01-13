@@ -6,6 +6,8 @@ from pymilvus import FieldSchema, CollectionSchema, DataType, Collection, connec
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 
 MEMORY_ID_LENGTH = 36
 SCOPE_ID_LENGTH = 64
@@ -49,7 +51,9 @@ class MilvusVectorStore(VectorStore):
                 timeout=self.timeout
             )
         except Exception as e:
-            raise RuntimeError(f"milvus connect error: {str(e)}") from e
+            raise build_error(StatusCode.MEMORY_VECTOR_STORE_CONNECT_ERROR,
+                              msg=str(e),
+                              cause=e)
 
     async def _get_collection(self, collection_name: str) -> Collection:
         await self._ensure_connection()
@@ -80,7 +84,8 @@ class MilvusVectorStore(VectorStore):
     async def add(self, data: dict | List[dict], batch_size: int | None = 128, **kwargs: Any):
         table_name = kwargs.get("table_name")
         if table_name is None:
-            raise ValueError("table_name is required")
+            raise build_error(StatusCode.MEMORY_VECTOR_STORE_ADD_ERROR,
+                              msg="table_name is required.")
         if isinstance(data, dict):
             data = [data]
         collection = await self._get_collection(collection_name=table_name)
@@ -101,7 +106,8 @@ class MilvusVectorStore(VectorStore):
                      filters: Optional[dict] = None, **kwargs: Any) -> List[SearchResult]:
         table_name = kwargs.get("table_name")
         if table_name is None:
-            raise ValueError("table_name is required")
+            raise build_error(StatusCode.MEMORY_VECTOR_STORE_SEARCH_ERROR,
+                              msg="table_name is required.")
         scope_id = kwargs.get("scope_id")
         expr_filters = None
         if scope_id:
@@ -133,7 +139,8 @@ class MilvusVectorStore(VectorStore):
                      filter_expr: Optional[str] = None, **kwargs: Any) -> bool:
         table_name = kwargs.get("table_name")
         if table_name is None:
-            raise ValueError("table_name is required")
+            raise build_error(StatusCode.MEMORY_VECTOR_STORE_DELETE_ERROR,
+                              msg="table_name is required.")
         await self._ensure_connection()
         if not utility.has_collection(table_name, using="default"):
             logger.debug(f"Milvus Collection {table_name} does not exist, skip delete vector")

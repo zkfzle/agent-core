@@ -1,7 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from enum import Enum
-
+from openjiuwen.core.common.exception.code_template import generate_error_message_template
 
 class StatusCode(Enum):
     """Status code enum"""
@@ -235,8 +235,18 @@ class StatusCode(Enum):
     KB_BUILD_CHUNK_INDEX_FAILED_ERROR = (155505, "Failed to build chunk index: {error_msg}")
 
     # Memory Engine 158000 - 159999
-    MEMORY_ENGINE_KV_STORE_NOT_REGISTER = (158000, "kv store is not registered in memory engine")
-    MEMORY_ENGINE_SEMANTIC_STORE_NOT_REGISTER = (158001, "semantic store is not registered in memory engine")
+    MEMORY_STORE_REGISTER_ERROR = (158000, "Failed to register {store_type} to memory engine, reason: {error_msg}")
+    MEMORY_SET_CONFIG_ERROR = (158001, "Failed to set {config_type} config, reason: {error_msg}")
+    MEMORY_ADD_MEMORY_INFO_ERROR = (158002, "Failed to add {message_type} memory to {store_type}, "
+                                            "reason: {error_msg}")
+    MEMORY_DELETE_MEMORY_INFO_ERROR = (158003, "Failed to delete {message_type} memory to {store_type}, "
+                                               "reason: {error_msg}")
+    MEMORY_UPDATE_MEMORY_INFO_ERROR = (158004, "Failed to update {message_type} memory to {store_type}, "
+                                               "reason: {error_msg}")
+    MEMORY_SEARCH_MEMORY_INFO_ERROR = (158005, "Failed to search {message_type} memory to {store_type}, "
+                                               "reason: {error_msg}")
+    MEMORY_STORE_INIT_ERROR = (158006, "Failed to init {store_type}, reason: {error_msg}")
+    MEMORY_STORE_CONNECT_ERROR = (158007, "Failed to connect {store_type}, reason: {error_msg}")
 
     # Development Toolchain 160000 - 169999
     # Development Toolchain - Prompt Generation 160000 - 160999

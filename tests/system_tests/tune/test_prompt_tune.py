@@ -36,12 +36,14 @@ TOOLS = [
             name="ac_open",
             description="空调控制工具，根据用户指令打开空调",
         ),
+        func=lambda a : a
     ),
     LocalFunction(
         card=ToolCard(
             name="ac_close",
             description="空调控制工具，根据用户指令关闭空调",
-        )
+        ),
+        func=lambda a : a
     ),
     LocalFunction(
         card=ToolCard(
@@ -54,7 +56,8 @@ TOOLS = [
                 },
                 "required": ["temperature"],
             },
-        )
+        ),
+        func=lambda a : a
     ),
 ]
 

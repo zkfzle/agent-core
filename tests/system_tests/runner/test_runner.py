@@ -8,7 +8,7 @@ from unittest.mock import patch, AsyncMock
 from mcp import StdioServerParameters
 
 from openjiuwen.core.single_agent import AgentCard, WorkflowAgentConfig, WorkflowSchema
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import QuestionerComponent, FieldInfo, QuestionerConfig
@@ -18,7 +18,6 @@ from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session import BaseSession
 from openjiuwen.core.session import TaskSession
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import McpToolCard
 from openjiuwen.core.protocols.mcp import McpServerConfig, SseClient, StdioClient, PlaywrightClient
 from openjiuwen.core.workflow import Workflow
@@ -365,7 +364,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolCard(
                 name="browser_navigate",
                 description="Navigate to a URL",
-                input_schema={
+                input_params={
                     "type": "object",
                     "properties": {"url": {"type": "string", "description": "The URL to navigate to"}},
                     "required": ["url"],
@@ -374,7 +373,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolCard(
                 name="browser_extract_text",
                 description="Extract text from the current page",
-                input_schema={
+                input_params={
                     "type": "object",
                     "properties": {"selector": {"type": "string", "description": "CSS selector for the element"}},
                     "required": ["selector"],
@@ -445,7 +444,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolCard(
                 name="doubter",
                 description="Doubter tool via stdio",
-                input_schema={
+                input_params={
                     "type": "object",
                     "properties": {"history": {"type": "string", "description": "Agent action history"}},
                     "required": ["history"],
@@ -454,7 +453,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolCard(
                 name="checker",
                 description="Checker tool via stdio",
-                input_schema={
+                input_params={
                     "type": "object",
                     "properties": {"url": {"type": "string", "description": "URL to check"}},
                     "required": ["url"],
@@ -529,7 +528,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolCard(
                 name="browser_navigate",
                 description="Navigate to a URL via Playwright",
-                input_schema={
+                input_params={
                     "type": "object",
                     "properties": {"url": {"type": "string", "description": "The URL to navigate to"}},
                     "required": ["url"],
@@ -538,7 +537,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             McpToolCard(
                 name="browser_click",
                 description="Click an element via Playwright",
-                input_schema={
+                input_params={
                     "type": "object",
                     "properties": {"selector": {"type": "string", "description": "CSS selector"}},
                     "required": ["selector"],
@@ -598,20 +597,20 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
             assert empty_tools == None
 
             return True
-
+        
     @unittest.skip("skip system test - requires network")
     async def test_connect_and_list_tools_with_query_ak(self):
-        """端到端测试：带 ak 查询参数的 SSE 客户端连接和工具列表获取（已使用可用的 ak 值测试通过）"""
-        print("=== 测试带 ak 查询参数的 SSE 客户端连接和工具列表获取 ===")
-
-        # 在环境变量中获取实际的 ak 值
-        ak_value = os.getenv("BAIDU_MCP_AK", "your-ak") 
+        """End-to-end test: SSE client connection and tool listing with ak query parameter (set via env vars)."""
+        
+        server_path = os.getenv("MCP_SERVER_PATH", "https://mcp.example.com/sse")
+        query_key = os.getenv("MCP_AUTH_QUERY_PARAM_KEY", "ak")
+        query_value = os.getenv("MCP_AUTH_QUERY_PARAM_VALUE", "your-ak")
 
         config = McpServerConfig(
-            server_name="baidu-map-mcp-server",
-            server_path="https://mcp.map.baidu.com/sse",
+            server_name="example-mcp-server",
+            server_path=server_path,
             client_type="sse",
-            auth_query_params={"ak": ak_value}
+            auth_query_params={query_key: query_value}
         )
 
         client = SseClient(config.server_path, config.server_name,
@@ -619,10 +618,11 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
         try:
             connected = await asyncio.wait_for(client.connect(timeout=60), timeout=60)
-            self.assertTrue(connected, "Should connect to Baidu Map MCP SSE server with ak query parameter")
+            self.assertTrue(connected, "Should connect to the MCP SSE server with ak query parameter")
 
             tools = await asyncio.wait_for(client.list_tools(timeout=60), timeout=60)
             self.assertIsInstance(tools, list)
             self.assertGreater(len(tools), 0, "Expected the server to return at least one tool")
         finally:
             await asyncio.wait_for(client.disconnect(timeout=15), timeout=15)
+            

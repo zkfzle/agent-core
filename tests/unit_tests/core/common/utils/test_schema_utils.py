@@ -5,8 +5,7 @@ from typing import Any, Dict, List
 from pydantic import BaseModel, Field
 from sympy.testing import pytest
 
-from openjiuwen.core.common.exception.errors import BaseError
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.errors import ValidationError
 from openjiuwen.core.common.utils.schema_utils import SchemaUtils
 
 
@@ -100,7 +99,7 @@ def test_format_with_json_schema():
 
 def test_format_none_data():
     """Test formatting with None data"""
-    with pytest.raises(BaseError):
+    with pytest.raises(ValidationError):
         result = SchemaUtils.format_with_schema(None, UserModel)
 
 
@@ -129,10 +128,10 @@ def test_validate_invalidate_date():
         "age": 200,  # Too high, violates maximum
         "email": "invalid-email"  # Invalid email format
     }
-    with pytest.raises(BaseError):
+    with pytest.raises(ValidationError):
         SchemaUtils.validate_with_schema(INVALID_USER_DATA, UserModel)
 
-    with pytest.raises(BaseError):
+    with pytest.raises(ValidationError):
         SchemaUtils.validate_with_schema(INVALID_USER_DATA, USER_SCHEMA)
 
 

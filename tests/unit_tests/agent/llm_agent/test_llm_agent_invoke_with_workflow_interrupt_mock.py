@@ -1,7 +1,7 @@
 """
 使用 Mock 大模型测试 LLM Agent 与 Workflow 中断恢复功能
 
-本测试用例是基于系统测试 test_react_agent_invoke_with_workflow_interrupt_agent_invoke 
+本测试用例是基于系统测试 test_react_agent_invoke_with_workflow_interrupt_agent_invoke
 创建的 Mock 版本，通过模拟大模型返回来提升测试速度。
 
 ## 测试场景
@@ -18,7 +18,7 @@
 
 ## Mock 策略
 
-- 使用 `MockLLMModel` 类继承 `BaseModelClient`，实现所有必要的方法
+- 使用共享的 `MockLLMModel` 类（从 fixtures 导入）
 - 预定义 5 次 LLM 调用的返回值（按调用顺序）
 - 通过 `patch` ModelFactory.get_model 来注入 mock 实例
 - 所有组件（ReAct Agent 和 Questioner）共享同一个 mock LLM 实例
@@ -34,106 +34,39 @@
 import os
 import unittest
 from datetime import datetime
-from typing import List, Any, AsyncIterator, Dict, Iterator
+from typing import List
 from unittest.mock import patch, MagicMock
 
 import pytest
 
 from openjiuwen.core.single_agent import WorkflowSchema
-from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.application.agents_for_studio.llm_agent import (
+    create_llm_agent_config,
+    create_llm_agent,
+    LLMAgent,
+)
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm import BaseModelInfo, BaseModelClient
-from openjiuwen.core.foundation.llm import AIMessage, UsageMetadata
-from openjiuwen.core.foundation.tool import ToolCall
+from openjiuwen.core.foundation.llm import BaseModelInfo, AssistantMessage, UsageMetadata, ModelConfig, ToolCall
 from openjiuwen.core.workflow import Workflow
-from openjiuwen.core.workflow import QuestionerComponent, QuestionerConfig, FieldInfo
+from openjiuwen.core.workflow import (
+    QuestionerComponent,
+    QuestionerConfig,
+    FieldInfo,
+)
 from openjiuwen.core.runner import Runner
 from openjiuwen.core.workflow import WorkflowCard
+
+from tests.unit_tests.fixtures.mock_llm import MockLLMModel
 
 
 def build_current_date():
     """构建当前日期字符串"""
     current_datetime = datetime.now()
     return current_datetime.strftime("%Y-%m-%d")
-
-
-class MockLLMModel(BaseModelClient):
-    """Mock 大模型，返回预定义的响应"""
-    
-    def __init__(self, api_key: str, api_base: str, **kwargs):
-        super().__init__(api_key=api_key, api_base=api_base)
-        self.call_count = 0
-        self.responses = []
-        
-    def set_responses(self, responses: List[AIMessage]):
-        """设置预定义的响应序列"""
-        self.responses = responses
-        self.call_count = 0
-    
-    def _get_next_response(self) -> AIMessage:
-        """获取下一个响应"""
-        if self.call_count < len(self.responses):
-            response = self.responses[self.call_count]
-            self.call_count += 1
-            return response
-        else:
-            # 默认响应
-            return AIMessage(content="这是默认响应")
-    
-    def _invoke(
-        self, 
-        model_name: str,
-        messages: List[Dict],
-        tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
-        **kwargs: Any
-    ) -> AIMessage:
-        """同步调用"""
-        return self._get_next_response()
-        
-    async def _ainvoke(
-        self, 
-        model_name: str,
-        messages: List[Dict],
-        tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
-        **kwargs: Any
-    ) -> AIMessage:
-        """异步调用"""
-        return self._get_next_response()
-    
-    def _stream(
-        self,
-        model_name: str,
-        messages: List[Dict],
-        tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
-        **kwargs: Any
-    ) -> Iterator[Any]:
-        """流式返回"""
-        result = self._get_next_response()
-        yield result
-    
-    async def _astream(
-        self,
-        model_name: str,
-        messages: List[Dict],
-        tools: List[Dict] = None,
-        temperature: float = 0.1,
-        top_p: float = 0.1,
-        **kwargs: Any
-    ) -> AsyncIterator[Any]:
-        """异步流式返回"""
-        result = self._get_next_response()
-        yield result
 
 
 class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
@@ -151,7 +84,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
     def _create_model():
         """创建模型配置"""
         return ModelConfig(
-            model_provider="openai",
+            model_provider="OpenAI",
             model_info=BaseModelInfo(
                 model="gpt-3.5-turbo",
                 api_base="https://api.openai.com",
@@ -185,16 +118,16 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
         """
         os.environ.setdefault("LLM_SSL_VERIFY", "false")
         os.environ.setdefault("RESTFUL_SSL_VERIFY", "false")
-        
+
         # ==================== 准备 Mock LLM ====================
         # 创建一个共享的 mock LLM 实例，所有组件都使用它
-        mock_llm = MockLLMModel(api_key="mock_key", api_base="https://api.openai.com")
+        mock_llm = MockLLMModel()
         
         # 定义所有 LLM 调用的返回值（按调用顺序）
         # 注意：恢复 workflow 时直接使用 InteractiveInput，不会再次调用 ReAct Agent 的 LLM
         all_llm_responses = [
             # 第1次调用：ReAct Agent 决定调用 workflow
-            AIMessage(
+            AssistantMessage(
                 content='',
                 tool_calls=[
                     ToolCall(
@@ -212,7 +145,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 )
             ),
             # 第2次调用：Questioner 组件提取字段，location为null，触发交互
-            AIMessage(
+            AssistantMessage(
                 content='{\n  "location": null,\n  "time": "today"\n}',
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
@@ -221,7 +154,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             ),
             # 第3次调用：Questioner 组件恢复时，从"上海"中提取地点
             # （恢复 workflow 时直接使用 InteractiveInput，跳过 ReAct Agent 的 LLM 调用）
-            AIMessage(
+            AssistantMessage(
                 content='{\n  "location": "上海",\n  "time": "today"\n}',
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
@@ -229,7 +162,7 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                 )
             ),
             # 第4次调用：ReAct Agent workflow 完成后，返回最终答案
-            AIMessage(
+            AssistantMessage(
                 content='我已经为您查询了上海的天气信息。根据返回的结果：上海 | today，这表明查询已成功完成。如果需要更详细的天气数据，请告诉我。',
                 usage_metadata=UsageMetadata(
                     model_name='gpt-3.5-turbo',
@@ -242,8 +175,11 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
         
         # ==================== 使用 Patch Mock LLM（在创建组件之前开始 patch）====================
         with patch(
-                'openjiuwen.core.foundation.llm.model_utils.model_factory.ModelFactory.get_model',
-                return_value=mock_llm
+                'openjiuwen.core.foundation.llm.model.Model.invoke',
+                side_effect=mock_llm.invoke
+        ), patch(
+                'openjiuwen.core.foundation.llm.model.Model.stream',
+                side_effect=mock_llm.stream
         ), patch(
             'openjiuwen.core.memory.long_term_memory.LongTermMemory.set_scope_config',
             return_value=MagicMock()
@@ -354,7 +290,8 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
             self.assertGreater(len(result), 0, "交互请求列表不应为空")
             self.assertEqual(result[0].type, '__interaction__', "应该返回交互类型")
             self.assertEqual(result[0].payload.id, 'questioner', "交互请求应该来自 questioner 组件")
-            print(f"✅ 第一次调用校验通过：返回交互请求，提示：{result[0].payload.value}")
+            print(f"[PASS] di yi ci diao yong jiao yan tong guo: fan hui jiao hu qing qiu, ti shi:"
+                  f" {result[0].payload.value}")
             
             # ==================== 第二次调用：恢复并完成 ====================
             if isinstance(result, List) and isinstance(result[0], OutputSchema) and result[0].type == '__interaction__':
@@ -366,17 +303,17 @@ class TestReActAgentWithWorkflowInterruptMock(unittest.IsolatedAsyncioTestCase):
                     {"conversation_id": "12345", "query": interactive_input}
                 )
                 
-                print(f"LLMAgent 第二次输出结果：{result}")
+                print(f"LLMAgent di er ci shu chu jie guo: {result}")
                 
                 # 验证第二次调用返回最终答案
                 self.assertIsInstance(result, dict, "第二次调用应该返回字典")
                 self.assertEqual(result['result_type'], 'answer', "应该返回 answer 类型")
                 self.assertIn('output', result, "结果应该包含 output 字段")
-                print(f"✅ 第二次调用校验通过：工作流完成，返回最终答案：{result['output']}")
+                print(f"[PASS] di er ci diao yong jiao yan tong guo: gong zuo liu wan cheng")
                 
                 # 验证答案内容
                 self.assertIn('上海', result['output'], "答案应该包含地点信息")
-                print(f"✅ 答案内容校验通过")
+                print(f"[PASS] da an nei rong jiao yan tong guo")
 
 
 if __name__ == "__main__":

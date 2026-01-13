@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from openjiuwen.core.single_agent import PluginSchema, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.workflow import End, WorkflowCard
 from openjiuwen.core.workflow import IntentDetectionComponent, IntentDetectionCompConfig
 from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
@@ -16,15 +16,14 @@ from openjiuwen.core.workflow import Start
 from openjiuwen.core.memory.config.config import MemoryEngineConfig
 from openjiuwen.core.memory.embed_models import APIEmbedModel
 from openjiuwen.core.memory.long_term_memory import LongTermMemory
-from openjiuwen.core.memory.store.impl.dbm_kv_store import DbmKVStore
 from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
-from openjiuwen.core.memory.store.impl.milvus_semantic_store import MilvusSemanticStore
+from openjiuwen.core.memory.store.impl.memory_milvus_vector_store import MemoryMilvusVectorStore as MilvusVectorStore
 from openjiuwen.core.runner import Runner
-from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
 from openjiuwen.core.workflow import Workflow
+from tests.unit_tests.core.memory.store.mock_kv_store import MockKVStore
 
 API_BASE = os.getenv("API_BASE", "")
 API_KEY = os.getenv("API_KEY", "")
@@ -62,7 +61,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
             card=RestfulApiCard(
                 name="WeatherReporter",
                 description="天气查询插件",
-                parameters={
+                input_params={
                     "type": "object",
                     "properties": {
                         "location": {"description": "天气查询的地点，必须为英文", "type": "string"},
@@ -70,7 +69,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
                     },
                     "required": ["location", "date"],
                 },
-                path="http://127.0.0.1:8000/weather",
+                url="http://127.0.0.1:8000/weather",
                 headers={},
                 method="GET",
             ),
@@ -83,7 +82,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
             card=ToolCard(
                 name="add",
                 description="加法",
-                parameters={
+                input_params={
                     "type": "object",
                     "properties": {
                         "a": {"description": "加数", "type": "number"},
@@ -306,12 +305,6 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
 
     async def _create_memory_engine(self):
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        resource_dir = os.path.join(project_root, 'resources')
-        if not os.path.exists(resource_dir):
-            os.makedirs(resource_dir)
-        message_path = os.path.join(resource_dir, 'message_db')
-        path = Path(message_path)
-        kv_db_path = os.path.join(resource_dir, 'dbmstore')
         embed_model = APIEmbedModel(
             base_url=os.getenv("EMBED_API_BASE"),
             model_name=os.getenv("EMBED_MODEL_NAME"),
@@ -335,7 +328,7 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         db_store = DefaultDbStore(create_async_engine(
             f"mysql+aiomysql://{db_user}:{db_passport}@{db_host}:{db_port}/{agent_db_name}?charset=utf8mb4"
         ))
-        LongTermMemory.register_store(kv_store=DbmKVStore(kv_db_path), db_store=db_store, semantic_store=semantic_store)
+        LongTermMemory.register_store(kv_store=MockKVStore(), db_store=db_store, semantic_store=semantic_store)
         await LongTermMemory.create_mem_engine_instance(MemoryEngineConfig())
         print("✅ Memory engine created")
 

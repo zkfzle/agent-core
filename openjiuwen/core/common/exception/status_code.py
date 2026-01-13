@@ -133,43 +133,38 @@ class StatusCode(Enum):
                                                     .template)
 
     ## BranchComponent  101100 - 101119
-    BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")
-    BRANCH_COMPONENT_BRANCH_CONDITION_TYPE_ERROR = (101101, "Branch condition type does not meet the requirements.")
-    BRANCH_COMPONENT_BRANCH_NOT_FOUND_ERROR = (101102, "Branch meeting the condition was not found.")
+    COMPONENT_BRANCH_INIT_FAILED = (101100, "Branch adding error, as {error_msg}.")
+    COMPONENT_BRANCH_CONFIG_ERROR = (101101, "Branch condition type does not meet the requirements.")
+    COMPONENT_BRANCH_NOT_FOUND = (101102, "Branch meeting the condition was not found.")
 
     ## SetVariableComponent  101120 - 101139
-    SET_VAR_COMPONENT_VAR_MAPPING_ERROR = (101120, "Set variable component mapping error, as {error_msg}.")
+    COMPONENT_SET_VAR_INPUT_PARAM_ERROR = (101120, "Set variable component mapping error, as {error_msg}.")
 
     ## SubWorkflowComponent  101140 - 101149
-    SUB_WORKFLOW_COMPONENT_INIT_ERROR = (101140, "Sub workflow component init error, as {error_msg}.")
-    SUB_WORKFLOW_COMPONENT_RUNNING_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
+    COMPONENT_SUB_WORKFLOW_INIT_FAILED = (101140, "Sub workflow component init error, as {error_msg}.")
+    COMPONENT_SUB_WORKFLOW_RUNTIME_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
 
     ## LoopComponent  101150 - 101159
-    LOOP_COMPONENT_NESTED_LOOP_ERROR = (101150, "Nested loops are not supported."
+    COMPONENT_LOOP_NOT_SUPPORT = (101150, "Nested loops are not supported."
                                         " Cannot add LoopComponent to a LoopGroup")
-    LOOP_COMPONENT_EXECUTION_ERROR = (101151, "Loop execution error: {error_msg}")
-    LOOP_COMPONENT_EMPTY_GROUP_ERROR = (101152, "Loop group is empty, no components to execute")
-    LOOP_COMPONENT_INPUT_TYPE_ERROR = (101153, "Inputs must be a dictionary, got {type}")
-    LOOP_COMPONENT_MISSING_INPUT_KEY_ERROR = (101154, "Invalid inputs: missing required key {key}")
-    LOOP_COMPONENT_INVALID_LOOP_TYPE_ERROR = (101155, "Invalid loop type '{loop_type}' for LoopComponent")
-    LOOP_COMPONENT_MISSING_START_NODES_ERROR = (101156, "LoopGroup must have start_nodes configured")
-    LOOP_COMPONENT_MISSING_END_NODES_ERROR = (101157, "LoopGroup must have end_nodes configured")
+    COMPONENT_LOOP_EXECUTION_ERROR = (101151, "Loop execution error: {error_msg}")
+    COMPONENT_LOOP_INPUT_INVALID = (101152, "Invalid inputs: {reason}")
+    COMPONENT_LOOP_CONFIG_NOT_FOUND = (101153, "LoopGroup config error, as {error_msg}.")
 
     ## BreakComponent  101180 - 101189
-    BREAK_COMPONENT_INIT_ERROR = (101180, "Failed to initialize loop controller")
+    COMPONENT_BREAK_EXECUTION_ERROR = (101180, "Failed to initialize loop controller")
 
     ## ToolComponent  102000 - 102019
-    TOOL_COMPONENT_BIND_TOOL_FAILED = (102000, "Tool component failed to bind a valid tool.")
-    TOOL_COMPONENT_INPUTS_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
-    TOOL_COMPONENT_CHECK_PARAM_ERROR = (102002, "Tool component check parameter error, as {error_msg}.")
+    COMPONENT_TOOL_EXECUTION_ERROR = (102000, "Tool component failed to bind a valid tool.")
+    COMPONENT_TOOL_INPUT_PARAM_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
 
     ## StartComponent  102100 - 102119
-    WORKFLOW_START_MISSING_GLOBAL_VARIABLE_VALUE = (102100, "start component: global variable(s)"
+    COMPONENT_START_INPUT_INVALID = (102100, "start component: global variable(s)"
                                                     " defined with no value assigned:  {variable_name}")
-    WORKFLOW_START_CREATE_VALUE = (102101, "start component create error:  {reason}")
+    COMPONENT_START_INIT_FAILED = (102101, "start component create error:  {reason}")
 
     ## EndComponent  102120 - 102149
-    WORKFLOW_END_CREATE_VALUE = (102120, "end component create error: {reason}")
+    COMPONENT_END_INIT_FAILED = (102120, "end component create error: {reason}")
 
     # Workflow 110000 - 119999
     # Workflow - Orchestration And Execution 110000 - 110999
@@ -258,15 +253,15 @@ class StatusCode(Enum):
     CONTEXT_ENGINE_GET_CONTEXT_WINDOW_ERROR = (153004, "Message get context window error: {error_msg}")
     CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR = (153005, "Context engine message validation error: {error_msg}")
 
-    #KnowlageBase Retrieval 155000 - 157999
-    #KnowlageBase Retrieval - Embedding 155000 - 155099
+    # KnowledgeBase Retrieval 155000 - 157999
+    # KnowledgeBase Retrieval - Embedding 155000 - 155099
     EMBEDDING_EMPTY_INPUT_ERROR = (155000, "Empty text or texts list provided for embedding")
     EMBEDDING_MODEL_NOT_FOUND_ERROR = (155001, "Embedding model not found: {error_msg}")
     EMBEDDING_CONNECTION_ERROR = (155002, "Failed to connect to embedding service: {error_msg}")
     EMBEDDING_RESPONSE_FORMAT_ERROR = (155003, "Invalid embedding response format: {error_msg}")
     EMBEDDING_REQUEST_FAILED_ERROR = (155004, "Failed to get embedding after {max_retries} attempts: {error_msg}")
     EMBEDDING_UNREACHABLE_ERROR = (155005, "Unreachable code in embedding: {error_msg}")
-    # KnowlageBase Retrieval - Indexing 155100 - 155199
+    # KnowledgeBase Retrieval - Indexing 155100 - 155199
     INDEXING_CHUNK_SIZE_ERROR = (155100, "Invalid chunk size: {error_msg}")
     INDEXING_CHUNK_OVERLAP_ERROR = (155101, "Invalid chunk overlap: {error_msg}")
     INDEXING_TOKENIZER_ERROR = (155102, "Tokenizer error: {error_msg}")
@@ -275,7 +270,7 @@ class StatusCode(Enum):
     INDEXING_EMBED_MODEL_REQUIRED_ERROR = (155105, "Embed model is required: {error_msg}")
     INDEXING_DIMENSION_REQUIRED_ERROR = (155106, "Dimension is required: {error_msg}")
     INDEXING_PATH_REQUIRED_ERROR = (155107, "Path is required and cannot be empty: {error_msg}")
-    # KnowlageBase Retrieval - Retriever 155200 - 155299
+    # KnowledgeBase Retrieval - Retriever 155200 - 155299
     RETRIEVER_UNSUPPORTED_MODE_ERROR = (155200, "Unsupported retrieval mode: {error_msg}")
     RETRIEVER_SCORE_THRESHOLD_ERROR = (155201, "Score threshold is only supported when mode='vector': {error_msg}")
     RETRIEVER_EMBED_MODEL_REQUIRED_ERROR = (155202, "Embed model is required: {error_msg}")
@@ -287,21 +282,25 @@ class StatusCode(Enum):
     RETRIEVER_GRAPH_RETRIEVER_REQUIRED_ERROR = (155208, "Graph retriever is required: {error_msg}")
     RETRIEVER_LLM_CLIENT_REQUIRED_ERROR = (155209, "LLM client is required: {error_msg}")
     RETRIEVER_TOP_K_REQUIRED_ERROR = (155210, "top_k is required: {error_msg}")
-    # KnowlageBase Retrieval - Utils 155300 - 155399
+    # KnowledgeBase Retrieval - Utils 155300 - 155399
     UTILS_CONFIG_FILE_NOT_FOUND_ERROR = (155300, "Configuration file not found: {error_msg}")
     UTILS_PYYAML_REQUIRED_ERROR = (155301, "PyYAML is required: {error_msg}")
     UTILS_UNSUPPORTED_CONFIG_FORMAT_ERROR = (155302, "Unsupported configuration file format: {error_msg}")
     UTILS_NO_CONFIG_TO_SAVE_ERROR = (155303, "No configuration to save: {error_msg}")
     UTILS_CONFIG_NOT_LOADED_ERROR = (155304, "Configuration not loaded: {error_msg}")
-    # KnowlageBase Retrieval - Vector Store 155400 - 155499
+    # KnowledgeBase Retrieval - Vector Store 155400 - 155499
     VECTOR_STORE_PATH_REQUIRED_ERROR = (155400, "Path is required and cannot be empty: {error_msg}")
-    # KnowlageBase Retrieval - Knowledge Base 155500 - 155599
+    # KnowledgeBase Retrieval - Knowledge Base 155500 - 155599
     KB_PARSER_REQUIRED_ERROR = (155500, "Parser is required: {error_msg}")
     KB_CHUNKER_REQUIRED_ERROR = (155501, "Chunker is required: {error_msg}")
     KB_INDEX_MANAGER_REQUIRED_ERROR = (155502, "Index manager is required: {error_msg}")
     KB_VECTOR_STORE_REQUIRED_ERROR = (155503, "Vector store is required: {error_msg}")
     KB_BUILD_INDEX_FAILED_ERROR = (155504, "Failed to build index: {error_msg}")
     KB_BUILD_CHUNK_INDEX_FAILED_ERROR = (155505, "Failed to build chunk index: {error_msg}")
+    KB_VECTORSTORE_AND_INDEXER_DATABASE_MISMATCH_ERROR = (
+        155506,
+        "Vector store and index manager uses different database names: {error_msg}",
+    )
 
     # Memory Engine 158000 - 159999
     MEMORY_ENGINE_KV_STORE_NOT_REGISTER = (158000, "kv store is not registered in memory engine")
@@ -347,10 +346,13 @@ class StatusCode(Enum):
     # Common Capabilities - Tool Definition and Execution 182000 - 182999
     PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
     PLUGIN_REQUEST_TIMEOUT_ERROR = (182001, "Plugin restful api request timed out")
-    PLUGIN_PROXY_CONNECT_ERROR = (182002, "Plugin restful api proxy connection error")
-    PLUGIN_RESPONSE_TOO_BIG_ERROR = (182003, "Plugin restful api  response too big")
+    PLUGIN_RESPONSE_FORMAT_ERROR = (182002, "Plugin restful api response format error")
+    PLUGIN_RESPONSE_TOO_BIG_ERROR = (182003,
+        "Plugin restful api  response too big, maxLength={max_length}, actualLength={actual_length}")
     PLUGIN_RESPONSE_HTTP_CODE_ERROR = (182004, "Plugin restful api http code error")
     PLUGIN_PARAMS_CHECK_FAILED = (182005, "Plugin params check failed")
+    PLUGIN_RESTFUL_API_METHOD_ERROR = (182006,
+        "Plugin restful api unsupported HTTP method: '{method}', only accepts: {support}")
 
     # Common Capabilities - Logger 183000 - 183999
     LOG_PATH_SENSITIVE_ERROR = (183000, "Log path is sensitive or unsafe: {path}")

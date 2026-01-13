@@ -3,16 +3,14 @@
 from typing import Any, Tuple
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.memory.config.config import MemoryScopeConfig
+from openjiuwen.core.memory.config.config import MemoryAgentConfig
 from openjiuwen.core.memory.generation.common import build_model_input
 from openjiuwen.core.memory.generation.memory_info import (
     ExtractedData,
     ExtractedDataType
 )
 from openjiuwen.core.memory.prompt.variable_extractor import EXTRACT_VARIABLES_PROMPT
-from openjiuwen.core.foundation.llm import BaseMessage
-from openjiuwen.core.foundation.llm import JsonOutputParser
-from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm import BaseMessage, JsonOutputParser, Model
 
 
 class ComprehensionExtractor:
@@ -24,7 +22,7 @@ class ComprehensionExtractor:
             messages: list[BaseMessage],
             history_summary: BaseMessage,
             base_chat_model: Tuple[str, Model],
-            config: MemoryScopeConfig
+            config: MemoryAgentConfig
     ) -> list[ExtractedData]:
         """Extract variables from the given messages using LLM.
 
@@ -70,7 +68,7 @@ class ComprehensionExtractor:
         )
         logger.debug(f"Start to extract variables, input: {model_input}")
         model_name, model_client = base_chat_model
-        response = await model_client.ainvoke(
+        response = await model_client.invoke(
             model=model_name,
             messages=model_input
         )

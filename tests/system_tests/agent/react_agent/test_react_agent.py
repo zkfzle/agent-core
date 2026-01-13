@@ -11,8 +11,7 @@ from datetime import datetime
 
 from openjiuwen.core.single_agent import ReActAgent
 from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
-from openjiuwen.core.foundation.llm import ModelConfig
-from openjiuwen.core.foundation.llm import BaseModelInfo
+from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction
 from openjiuwen.core.foundation.tool import RestfulApi, ToolCard, RestfulApiCard
 from openjiuwen.core.foundation.tool import tool
@@ -68,7 +67,7 @@ class ReActAgentTest(unittest.IsolatedAsyncioTestCase):
                     },
                     "required": ["location", "date"],
                 },
-                path="http://127.0.0.1:8000/weather",
+                url="http://127.0.0.1:8000/weather",
                 headers={},
                 method="GET",
             ),

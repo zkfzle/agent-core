@@ -14,11 +14,11 @@ from typing import Any, AsyncIterator, Dict, List, Optional
 from pydantic import Field, BaseModel
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
-from openjiuwen.core.foundation.llm import AIMessage, ModelFactory
-from openjiuwen.core.foundation.prompt import PromptTemplate
+from openjiuwen.core.foundation.llm import AssistantMessage, Model, UserMessage, \
+    SystemMessage
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.memory import LongTermMemory, MemoryScopeConfig
 from openjiuwen.core.session.session import Session
 from openjiuwen.core.session.stream import OutputSchema
@@ -223,33 +223,43 @@ class ReActAgent(BaseAgent):
 
         return self
 
-    def _get_llm(self):
-        """Get LLM instance (lazy initialization)"""
+    def _get_llm(self) -> Model:
+        """Get LLM instance (lazy initialization)
+
+        Returns:
+            Model instance
+
+        Raises:
+            ValueError: If model_client_config is not configured
+        """
         if self._llm is None:
-            self._llm = ModelFactory().get_model(
-                model_provider=self.config.model_provider,
-                api_key=self.config.api_key,
-                api_base=self.config.api_base,
-                model_name=self.config.model_name
+            if self.config.model_client_config is None:
+                raise ValueError(
+                    "model_client_config is required. "
+                    "Use configure_model_client() to set it."
+                )
+            self._llm = Model(
+                model_client_config=self.config.model_client_config,
+                model_config=self.config.model_config_obj
             )
         return self._llm
 
     async def _call_llm(
         self,
-        messages: List[Dict],
-        tools: Optional[List[Dict]] = None
-    ) -> AIMessage:
+        messages: List,
+        tools: Optional[List[ToolInfo]] = None
+    ) -> AssistantMessage:
         """Call LLM with messages and optional tools
 
         Args:
-            messages: Message list
-            tools: Optional tool definitions
+            messages: Message list (BaseMessage or dict)
+            tools: Optional tool definitions (List[ToolInfo])
 
         Returns:
-            AI message from LLM
+            AssistantMessage from LLM
         """
         llm = self._get_llm()
-        return await llm.ainvoke(
+        return await llm.invoke(
             model_name=self.config.model_name,
             messages=messages,
             tools=tools
@@ -263,10 +273,9 @@ class ReActAgent(BaseAgent):
         """Execute ReAct process
 
         Args:
-            inputs: User input, supports to following formats:
-                - dict (legacy): {"query": "...", "conversation_id": "..."}
-                - dict (new): {"user_input": "...", "session_id": "..."}
-                - str: Used directly as user_input
+            inputs: User input, supports the following formats:
+                - dict: {"query": "...", "conversation_id": "..."}
+                - str: Used directly as query
             session: Session object (optional)
 
         Returns:
@@ -274,116 +283,82 @@ class ReActAgent(BaseAgent):
         """
         # Normalize inputs
         if isinstance(inputs, dict):
-            if "query" in inputs:
-                user_input = inputs["query"]
-            elif "user_input" in inputs:
-                user_input = inputs["user_input"]
-            else:
-                raise ValueError(
-                    "Input dict must contain either 'query' or 'user_input'"
-                )
+            user_input = inputs.get("query")
+            if user_input is None:
+                raise ValueError("Input dict must contain 'query'")
         elif isinstance(inputs, str):
             user_input = inputs
         else:
-            raise ValueError(
-                "Input must be dict (with 'query' or 'user_input') or str"
-            )
+            raise ValueError("Input must be dict with 'query' or str")
 
         # Create session if not provided
         if session is None:
             from openjiuwen.core.session.session import Session as SessionImpl
             session = SessionImpl()
 
-        # Add user message
-        await MessageUtils.add_user_message(user_input, self.context_engine, session)
+        # Get or create model context
+        context = await self.context_engine.create_context(session=session)
+
+        # Add user message to context (convert to legacy type for context_engine)
+        await context.add_messages(UserMessage(content=user_input))
+
+        # Build system messages from prompt template
+        # Convert to legacy type for context_engine compatibility
+        system_messages = [
+            SystemMessage(role=msg.role, content=msg.content)
+            for msg in self.config.prompt_template
+            if msg.role == "system"
+        ]
+
+        # Get tool info from _ability_kit
+        tools = self.list_tool_info()
 
         # ReAct loop
         for iteration in range(self.config.max_iterations):
-            logger.info(f"ReAct iteration {iteration + 1}/{self.config.max_iterations}")
-
-            # Get chat history
-            messages = MessageUtils.get_chat_history(
-                self.context_engine, session,
-                self.config.context_window_limit
+            logger.info(
+                f"ReAct iteration {iteration + 1}/{self.config.max_iterations}"
             )
 
-            # Convert to message dicts
-            message_dicts = []
-            for msg in messages:
-                if hasattr(msg, 'model_dump'):
-                    msg_dict = msg.model_dump(exclude_none=True)
-                elif hasattr(msg, 'dict'):
-                    msg_dict = msg.dict(exclude_none=True)
-                else:
-                    msg_dict = msg
-                message_dicts.append(msg_dict)
+            # Get context window with system messages and tools
+            context_window = await context.get_context_window(
+                system_messages=system_messages,
+                tools=tools if tools else None,
+                window_size=self.config.context_window_limit
+            )
 
-            # Add system prompt
-            if self.config.prompt_template:
-                system_prompt = PromptTemplate(
-                    content=self.config.prompt_template
-                )
-                prompt_messages = system_prompt.to_messages()
-                if hasattr(prompt_messages[0], 'model_dump'):
-                    message_dicts.insert(
-                        0,
-                        prompt_messages[0].model_dump(exclude_none=True)
-                    )
-                else:
-                    message_dicts.insert(0, prompt_messages[0])
+            # Call LLM with messages and tools from context window
+            ai_message = await self._call_llm(
+                context_window.get_messages(),
+                context_window.get_tools() or None
+            )
 
-            # Get tool info
-            tools = session.get_tool_info()
-            tool_dicts = []
-            for tool in tools:
-                if hasattr(tool, 'model_dump'):
-                    tool_dicts.append(tool.model_dump(exclude_none=True))
-                elif hasattr(tool, 'dict'):
-                    tool_dicts.append(tool.dict(exclude_none=True))
-                else:
-                    tool_dicts.append(tool)
-
-            # Call LLM
-            ai_message = await self._call_llm(message_dicts, tool_dicts or None)
-
-            # Add AI message
-            await MessageUtils.add_ai_message(ai_message, self.context_engine, session)
+            # Convert AssistantMessage to legacy AIMessage for context storage
+            # (to be removed after context_engine adapts to llm)
+            ai_msg_for_context = AssistantMessage(
+                content=ai_message.content,
+                tool_calls=ai_message.tool_calls
+            )
+            await context.add_messages(ai_msg_for_context)
 
             # Check for tool calls
-            if ai_message.tool_calls and len(ai_message.tool_calls) > 0:
-                # Execute tools
+            if ai_message.tool_calls:
+                # Log tool calls
                 for tool_call in ai_message.tool_calls:
-                    tool_name = tool_call.name
-                    tool_args = tool_call.arguments
-
-                    if isinstance(tool_args, str):
-                        import json
-                        try:
-                            tool_args = json.loads(tool_args)
-                        except json.JSONDecodeError:
-                            pass
-
                     logger.info(
-                        f"Executing tool: {tool_name} with args: {tool_args}"
+                        f"Executing tool: {tool_call.name} "
+                        f"with args: {tool_call.arguments}"
                     )
 
-                    # Execute tool
-                    result = await session.execute_tool(
-                        tool_name,
-                        tool_args
-                    )
+                # Execute tools using _execute_ability (supports parallel)
+                # llm.ToolCall is duck-type compatible with foundation.tool.ToolCall
+                results = await self._execute_ability(
+                    ai_message.tool_calls, session
+                )
 
+                # Process results and add tool messages to context
+                for (result, tool_msg) in results:
                     logger.info(f"Tool result: {result}")
-
-                    # Add tool message
-                    from openjiuwen.core.foundation.llm import ToolMessage
-                    tool_msg = ToolMessage(
-                        tool_call_id=tool_call.id or "",
-                        content=str(result)
-                    )
-                    await MessageUtils.add_tool_message(
-                        tool_msg, self.context_engine, session
-                    )
+                    await context.add_messages(tool_msg)
             else:
                 # No tool calls, return AI response
                 return {

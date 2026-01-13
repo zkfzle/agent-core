@@ -10,11 +10,10 @@ from openjiuwen.core.common.constants.enums import ControllerType
 from openjiuwen.core.single_agent import ControllerAgent, PluginSchema, ReActAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller import LLMController
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.memory.long_term_memory import LongTermMemory
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream import OutputSchema
-from openjiuwen.core.foundation.llm import HumanMessage, AIMessage
+from openjiuwen.core.foundation.llm import ModelConfig, UserMessage, AssistantMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.workflow import Workflow
 
@@ -72,17 +71,17 @@ def _extract_answer_output(result) -> str:
     return ""
 
 
-def _convert_response_to_message(result) -> AIMessage | None:
+def _convert_response_to_message(result) -> AssistantMessage | None:
     assistant_message = None
     if isinstance(result, OutputSchema) and result.type == "answer" and isinstance(result.payload, dict):
         response = result.payload.get("output")
         if response and isinstance(response, str):
-            assistant_message = AIMessage(content=response)
+            assistant_message = AssistantMessage(content=response)
     elif (isinstance(result, dict) and result.get("result_type") == 'answer'
           and isinstance(result.get("output"), str)):
-        assistant_message = AIMessage(content=result.get("output"))
+        assistant_message = AssistantMessage(content=result.get("output"))
     elif isinstance(result, str):
-        assistant_message = AIMessage(content=result)
+        assistant_message = AssistantMessage(content=result)
     return assistant_message
 
 
@@ -113,8 +112,7 @@ class LLMAgent(ControllerAgent):
         super().__init__(agent_config, controller=None)
 
         self._init_memory_config(agent_config.memory_config)
-        self._enable_memory = (agent_config.memory_config.enable_long_term_mem or
-                               len(agent_config.memory_config.mem_variables) > 0)
+        self._enable_memory = False
 
         self.controller = LLMController(
             config=agent_config,
@@ -178,7 +176,6 @@ class LLMAgent(ControllerAgent):
             # Sync agent's workflows to external session
             # When external session is provided, agent's workflows need to be registered
             try:
-                # todo: next line will be deleted when resource_mgr supports tag feature
                 agent_workflow_mgr = self._session.resource_mgr()._resource_registry.workflow()
                 # Sync workflow instances and providers
                 for workflow_id, workflow in agent_workflow_mgr.get_all_workflows().items():
@@ -260,7 +257,7 @@ class LLMAgent(ControllerAgent):
             return
         query = inputs.get("query")
         if query is not None and isinstance(query, str):
-            user_message = HumanMessage(content=query)
+            user_message = UserMessage(content=query)
             if user_message and user_message.content != "":
                 message_list.append(user_message)
         # Add AI response message if exist

@@ -5,6 +5,7 @@ API Embedding Model Implementation
 
 Universal HTTP embedding client implementation.
 """
+
 from typing import Any, List, Optional
 import asyncio
 
@@ -48,19 +49,19 @@ class APIEmbedding(Embedding):
             self._headers["Authorization"] = f"Bearer {self.api_key}"
         if extra_headers:
             self._headers.update(extra_headers)
-        
+
         # Cache dimension
         self._dimension: Optional[int] = None
 
     @property
     def dimension(self) -> int:
         """Return embedding dimension.
-        
+
         Uses sync method to get dimension, safe to call from any context.
         """
         if self._dimension is not None:
             return self._dimension
-        
+
         # Use sync method to get dimension
         embedding = self.embed_query_sync("test")
         self._dimension = len(embedding)
@@ -69,20 +70,14 @@ class APIEmbedding(Embedding):
 
     async def embed_query(self, text: str, **kwargs: Any) -> List[float]:
         if not text.strip():
-            raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code,
-                "Empty text provided for embedding"
-            )
+            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding")
         embeddings = await self._get_embeddings(text, **kwargs)
         return embeddings[0]
 
     def embed_query_sync(self, text: str, **kwargs: Any) -> List[float]:
         """Embed a single query text (sync version)."""
         if not text.strip():
-            raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code,
-                "Empty text provided for embedding"
-            )
+            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding")
         embeddings = self._get_embeddings_sync(text, **kwargs)
         return embeddings[0]
 
@@ -93,21 +88,15 @@ class APIEmbedding(Embedding):
         **kwargs: Any,
     ) -> List[List[float]]:
         if not texts:
-            raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code,
-                "Empty texts list provided"
-            )
+            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty texts list provided")
         non_empty = [t for t in texts if t.strip()]
         if len(non_empty) != len(texts):
             raise JiuWenBaseException(
                 StatusCode.EMBEDDING_INPUT_INVALID.code,
-                f"{len(texts) - len(non_empty)} chunks are empty while embedding"
+                f"{len(texts) - len(non_empty)} chunks are empty while embedding",
             )
         if not non_empty:
-            raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code,
-                "All texts are empty after filtering"
-            )
+            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "All texts are empty after filtering")
         # Respect caller batch_size but never exceed configured max_batch_size
         bsz = batch_size or self.max_batch_size or 1
         if self.max_batch_size:
@@ -119,13 +108,11 @@ class APIEmbedding(Embedding):
             all_embeddings.extend(await self._get_embeddings(batch, **kwargs))
         return all_embeddings
 
-    async def _get_embeddings(
-        self, text: str | List[str], **kwargs
-    ) -> List[List[float]]:
+    async def _get_embeddings(self, text: str | List[str], **kwargs) -> List[List[float]]:
         """Get embedding vectors"""
-        
+
         payload = {"model": self.model_name, "input": text, **kwargs}
-        
+
         for attempt in range(self.max_retries):
             try:
                 resp = await asyncio.to_thread(
@@ -153,25 +140,24 @@ class APIEmbedding(Embedding):
                     if not embeddings:
                         raise JiuWenBaseException(
                             StatusCode.EMBEDDING_RESPONSE_INVALID.code,
-                            f"No embeddings field found in data items: {result}"
+                            f"No embeddings field found in data items: {result}",
                         )
                 else:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_RESPONSE_INVALID.code,
-                        f"No embeddings in response: {result}"
+                        StatusCode.EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
                     )
-                
+
                 # If dimension not yet determined, get from result and cache
                 if self._dimension is None and embeddings and embeddings[0]:
                     self._dimension = len(embeddings[0])
                     logger.debug(f"Determined embedding dimension: {self._dimension}")
-                
+
                 return embeddings
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
                     raise JiuWenBaseException(
                         StatusCode.EMBEDDING_REQUEST_CALL_FAILED.code,
-                        f"Failed to get embedding after {self.max_retries} attempts"
+                        f"Failed to get embedding after {self.max_retries} attempts",
                     ) from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
@@ -180,17 +166,14 @@ class APIEmbedding(Embedding):
                     e,
                 )
         raise JiuWenBaseException(
-            StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code,
-            "Unreachable code in _get_embeddings"
+            StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code, "Unreachable code in _get_embeddings"
         )
 
-    def _get_embeddings_sync(
-        self, text: str | List[str], **kwargs
-    ) -> List[List[float]]:
+    def _get_embeddings_sync(self, text: str | List[str], **kwargs) -> List[List[float]]:
         """Get embedding vectors (sync version)."""
-        
+
         payload = {"model": self.model_name, "input": text, **kwargs}
-        
+
         for attempt in range(self.max_retries):
             try:
                 resp = requests.post(
@@ -217,25 +200,24 @@ class APIEmbedding(Embedding):
                     if not embeddings:
                         raise JiuWenBaseException(
                             StatusCode.EMBEDDING_RESPONSE_INVALID.code,
-                            f"No embeddings field found in data items: {result}"
+                            f"No embeddings field found in data items: {result}",
                         )
                 else:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_RESPONSE_INVALID.code,
-                        f"No embeddings in response: {result}"
+                        StatusCode.EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
                     )
-                
+
                 # Cache dimension if not yet determined
                 if self._dimension is None and embeddings and embeddings[0]:
                     self._dimension = len(embeddings[0])
                     logger.debug(f"Determined embedding dimension: {self._dimension}")
-                
+
                 return embeddings
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
                     raise JiuWenBaseException(
                         StatusCode.EMBEDDING_REQUEST_CALL_FAILED.code,
-                        f"Failed to get embedding after {self.max_retries} attempts"
+                        f"Failed to get embedding after {self.max_retries} attempts",
                     ) from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
@@ -244,6 +226,5 @@ class APIEmbedding(Embedding):
                     e,
                 )
         raise JiuWenBaseException(
-            StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code,
-            "Unreachable code in _get_embeddings_sync"
+            StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code, "Unreachable code in _get_embeddings_sync"
         )

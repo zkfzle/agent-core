@@ -103,9 +103,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
     ) -> List[str]:
         """Add documents to the knowledge base"""
         if not self.chunker:
-            raise JiuWenBaseException(
-                StatusCode.KB_CHUNKER_NOT_FOUND.code, "chunker is required for add_documents"
-            )
+            raise JiuWenBaseException(StatusCode.KB_CHUNKER_NOT_FOUND.code, "chunker is required for add_documents")
         if not self.index_manager:
             raise JiuWenBaseException(
                 StatusCode.KB_INDEX_MANAGER_NOT_FOUND.code, "index_manager is required for add_documents"
@@ -227,9 +225,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
     ) -> List[str]:
         """Update documents"""
         if not self.chunker:
-            raise JiuWenBaseException(
-                StatusCode.KB_CHUNKER_NOT_FOUND.code, "chunker is required for update_documents"
-            )
+            raise JiuWenBaseException(StatusCode.KB_CHUNKER_NOT_FOUND.code, "chunker is required for update_documents")
         if not self.index_manager:
             raise JiuWenBaseException(
                 StatusCode.KB_INDEX_MANAGER_NOT_FOUND.code, "index_manager is required for update_documents"

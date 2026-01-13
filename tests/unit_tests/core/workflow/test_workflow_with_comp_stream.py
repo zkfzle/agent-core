@@ -5,6 +5,7 @@ from typing import AsyncIterator
 import pytest
 
 from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -51,7 +52,7 @@ class MockStreamNode(WorkflowComponent):
 
 
 async def test_no_stream_called():
-    with pytest.raises(JiuWenBaseException) as error:
+    with pytest.raises(BaseError) as error:
         flow = Workflow()
         flow.set_start_comp("start", Start())
         flow.set_end_comp("end", End(), inputs_schema={}, response_mode="streaming")
@@ -62,14 +63,14 @@ async def test_no_stream_called():
         session.config().set_envs({WORKFLOW_EXECUTE_TIMEOUT: 0.2})
         await flow.invoke({"a": "生成markdown回复"}, session)
 
-    assert error.value.error_code == StatusCode.WORKFLOW_INVOKE_TIMEOUT.code
-    with pytest.raises(JiuWenBaseException) as error:
+    assert error.value.code == StatusCode.WORKFLOW_INVOKE_TIMEOUT.code
+    with pytest.raises(BaseError) as error:
         session = WorkflowSession()
         session.config().set_envs({WORKFLOW_EXECUTE_TIMEOUT: 0.2})
         async for chunk in flow.stream({"a": "生成markdown回复"}, session,
                                        stream_modes=[BaseStreamMode.OUTPUT]):
             logger.info(chunk)
-    assert error.value.error_code == StatusCode.WORKFLOW_STREAM_EXECUTION_TIMEOUT.code
+    assert error.value.code == StatusCode.WORKFLOW_STREAM_EXECUTION_TIMEOUT.code
 
 
 class Producer(WorkflowComponent):

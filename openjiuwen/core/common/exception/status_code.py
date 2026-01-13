@@ -2,6 +2,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from enum import Enum
 
+from openjiuwen.core.common.exception.code_template import generate_error_message_template
+
 
 class StatusCode(Enum):
     """Status code enum"""
@@ -69,38 +71,55 @@ class StatusCode(Enum):
                                                      " as {error_msg}.")
 
     ## BranchComponent  101100 - 101119
-    COMPONENT_BRANCH_INIT_FAILED = (101100, "Branch adding error, as {error_msg}.")
-    COMPONENT_BRANCH_CONFIG_ERROR = (101101, "Branch condition type does not meet the requirements.")
-    COMPONENT_BRANCH_NOT_FOUND = (101102, "Branch meeting the condition was not found.")
+    COMPONENT_BRANCH_PARAM_ERROR = (101100, generate_error_message_template(scope="COMPONENT_BRANCH", subject="",
+                                                                            failure_type="PARAM_ERROR").template)
+    COMPONENT_BRANCH_EXECUTION_ERROR = (101101, generate_error_message_template(scope="COMPONENT_BRANCH", subject="",
+                                                                                failure_type="EXECUTION_ERROR").template)
 
     ## SetVariableComponent  101120 - 101139
-    COMPONENT_SET_VAR_INPUT_PARAM_ERROR = (101120, "Set variable component mapping error, as {error_msg}.")
+    COMPONENT_SET_VAR_INPUT_PARAM_ERROR = (101120, generate_error_message_template(scope="COMPONENT_SET_VAR",
+                                                                                   subject="INPUT",
+                                                                                   failure_type="PARAM_ERROR").template)
+    COMPONENT_SET_VAR_INIT_FAILED = (101121, generate_error_message_template(scope="COMPONENT_SET_VAR", subject="",
+                                                                             failure_type="INIT_FAILED").template)
 
     ## SubWorkflowComponent  101140 - 101149
-    COMPONENT_SUB_WORKFLOW_INIT_FAILED = (101140, "Sub workflow component init error, as {error_msg}.")
-    COMPONENT_SUB_WORKFLOW_RUNTIME_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
+    COMPONENT_SUB_WORKFLOW_INIT_FAILED = (101140, generate_error_message_template(scope="COMPONENT_SUB_WORKFLOW",
+                                                                                  subject="",
+                                                                                  failure_type="INIT_FAILED").template)
+    COMPONENT_SUB_WORKFLOW_RUNTIME_ERROR = (101141, generate_error_message_template(scope="COMPONENT_SUB_WORKFLOW",
+                                                                                    subject="",
+                                                                                    failure_type="RUNTIME_ERROR").template)
 
     ## LoopComponent  101150 - 101159
-    COMPONENT_LOOP_NOT_SUPPORT = (101150, "Nested loops are not supported."
-                                        " Cannot add LoopComponent to a LoopGroup")
-    COMPONENT_LOOP_EXECUTION_ERROR = (101151, "Loop execution error: {error_msg}")
-    COMPONENT_LOOP_INPUT_INVALID = (101152, "Invalid inputs: {reason}")
-    COMPONENT_LOOP_CONFIG_NOT_FOUND = (101153, "LoopGroup config error, as {error_msg}.")
+    COMPONENT_LOOP_NOT_SUPPORT = (101150, generate_error_message_template(scope="COMPONENT_LOOP", subject="",
+                                                                          failure_type="NOT_SUPPORT").template)
+    COMPONENT_LOOP_EXECUTION_ERROR = (101151, generate_error_message_template(scope="COMPONENT_LOOP", subject="",
+                                                                              failure_type="EXECUTION_ERROR").template)
+    COMPONENT_LOOP_INPUT_INVALID = (101152, generate_error_message_template(scope="COMPONENT_LOOP", subject="INPUT",
+                                                                            failure_type="INVALID").template)
+    COMPONENT_LOOP_CONFIG_ERROR = (101153, generate_error_message_template(scope="COMPONENT_LOOP", subject="",
+                                                                           failure_type="CONFIG_ERROR").template)
 
     ## BreakComponent  101180 - 101189
-    COMPONENT_BREAK_EXECUTION_ERROR = (101180, "Failed to initialize loop controller")
+    COMPONENT_BREAK_EXECUTION_ERROR = (101180, generate_error_message_template(scope="COMPONENT_BREAK", subject="",
+                                                                               failure_type="EXECUTION_ERROR").template)
 
     ## ToolComponent  102000 - 102019
-    COMPONENT_TOOL_EXECUTION_ERROR = (102000, "Tool component failed to bind a valid tool.")
-    COMPONENT_TOOL_INPUT_PARAM_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
+    COMPONENT_TOOL_EXECUTION_ERROR = (102000, generate_error_message_template(scope="COMPONENT_TOOL", subject="",
+                                                                              failure_type="EXECUTION_ERROR").template)
+    COMPONENT_TOOL_INPUT_PARAM_ERROR = (102001, generate_error_message_template(scope="COMPONENT_TOOL", subject="INPUT",
+                                                                                failure_type="PARAM_ERROR").template)
 
     ## StartComponent  102100 - 102119
-    COMPONENT_START_INPUT_INVALID = (102100, "start component: global variable(s)"
-                                                    " defined with no value assigned:  {variable_name}")
-    COMPONENT_START_INIT_FAILED = (102101, "start component create error:  {reason}")
+    COMPONENT_START_INPUT_INVALID = (102100, generate_error_message_template(scope="COMPONENT_START", subject="INPUT",
+                                                                             failure_type="INVALID").template)
+    COMPONENT_START_CONFIG_ERROR = (102101, generate_error_message_template(scope="COMPONENT_START", subject="",
+                                                                            failure_type="CONFIG_ERROR").template)
 
     ## EndComponent  102120 - 102149
-    COMPONENT_END_INIT_FAILED = (102120, "end component create error: {reason}")
+    COMPONENT_END_INIT_FAILED = (102120, generate_error_message_template(scope="COMPONENT_END", subject="",
+                                                                         failure_type="INIT_FAILED").template)
 
     # Workflow 110000 - 119999
     # Workflow - Orchestration And Execution 110000 - 110999

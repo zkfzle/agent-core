@@ -10,6 +10,8 @@ import pytest
 from openjiuwen.core.retrieval.indexing.processor.extractor.triple_extractor import TripleExtractor
 from openjiuwen.core.retrieval.common.document import TextChunk
 from openjiuwen.core.retrieval.common.triple import Triple
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 @pytest.fixture
@@ -85,9 +87,10 @@ class TestTripleExtractor:
         chunks = [
             TextChunk(id_="1", text="Alice knows Bob", doc_id="doc_1"),
         ]
-        # Should catch exception and return empty list
-        triples = await extractor.extract(chunks)
-        assert len(triples) == 0
+        # Should raise exception when extraction fails
+        with pytest.raises(JiuWenBaseException) as exc_info:
+            await extractor.extract(chunks)
+        assert exc_info.value.status_code == StatusCode.KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code
 
     @pytest.mark.asyncio
     async def test_extract_invalid_json(self, mock_llm_client):
@@ -103,10 +106,10 @@ class TestTripleExtractor:
         chunks = [
             TextChunk(id_="1", text="Alice knows Bob", doc_id="doc_1"),
         ]
-        # Should handle JSON parsing errors
-        triples = await extractor.extract(chunks)
-        # May return empty list or partial results
-        assert isinstance(triples, list)
+        # Should raise exception when JSON parsing fails
+        with pytest.raises(JiuWenBaseException) as exc_info:
+            await extractor.extract(chunks)
+        assert exc_info.value.status_code == StatusCode.KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code
 
     @pytest.mark.asyncio
     async def test_extract_empty_chunks(self, mock_llm_client):

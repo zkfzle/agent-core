@@ -22,10 +22,11 @@ from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.message import create_tables
 from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
-from openjiuwen.core.foundation.llm.messages import HumanMessage
-from openjiuwen.core.foundation.llm1.schema.message import BaseMessage
-from openjiuwen.core.foundation.llm1.model import Model
+from openjiuwen.core.foundation.llm1 import BaseMessage, UserMessage
+from openjiuwen.core.foundation.llm1 import Model
 from openjiuwen.core.common.utils.singleton import Singleton
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 
 
 class MemInfo(BaseModel):
@@ -86,13 +87,22 @@ class LongTermMemory(metaclass=Singleton):
             db_store: Database store for persistent data storage
         """
         if kv_store is None:
-            raise ValueError("kv_store is required, cannot be None")
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_REGISTER_STORE_ERROR,
+                msg="kv_store is required, cannot be None"
+            )
 
         if semantic_store is not None and not isinstance(semantic_store, BaseSemanticStore):
-            raise TypeError("semantic_store must be instance of BaseSemanticStore")
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_REGISTER_STORE_ERROR,
+                msg="semantic store of memory engine must be instance of BaseSemanticStore"
+            )
 
         if db_store is not None and not isinstance(db_store, BaseDbStore):
-            raise TypeError("db_store must be instance of BaseDbStore")
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_REGISTER_STORE_ERROR,
+                msg="db store of memory engine must be instance of BaseDbStore"
+            )
 
         self.kv_store = kv_store
         self.semantic_store = semantic_store
@@ -109,7 +119,7 @@ class LongTermMemory(metaclass=Singleton):
             config: memory engine configuration parameters
         """
         if not self.kv_store or not self.semantic_store or not self.db_store:
-            raise ValueError("Stores must be registered before setting config.")
+            raise build_error(StatusCode.MEMORY_ENGINE_SET_CONFIG_ERROR)
         self._sys_mem_config = config
         data_id_generator = DataIdManager()
         user_mem_store = UserMemStore(self.kv_store)
@@ -146,12 +156,18 @@ class LongTermMemory(metaclass=Singleton):
                                                 model_client_config=config.default_model_client_cfg)
         self._base_llm = (config.default_model_cfg.model_name, llm)
 
-    def set_scope_config(self, scope_id: str, memory_scope_config: MemoryScopeConfig) -> bool:
+    def set_scope_config(self, scope_id: str, memory_scope_config: MemoryScopeConfig):
         self._scope_config[scope_id] = memory_scope_config
-        llm = LongTermMemory._get_llm_from_config(model_config=memory_scope_config.model_cfg,
-                                                model_client_config=memory_scope_config.model_client_cfg)
-        self._scope_llm[scope_id] = (memory_scope_config.model_cfg.model_name, llm)
-        return True
+        try:
+            llm = LongTermMemory._get_llm_from_config(model_config=memory_scope_config.model_cfg,
+                                                    model_client_config=memory_scope_config.model_client_cfg)
+            self._scope_llm[scope_id] = (memory_scope_config.model_cfg.model_name, llm)
+        except Exception as e:
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_SET_SCOPE_CONFIG_ERROR,
+                msg=str(e),
+                cause=e
+            )
 
     async def add_messages(
             self,
@@ -216,7 +232,10 @@ class LongTermMemory(metaclass=Singleton):
                 await self.write_manager.add_mem(mem_units=all_memory, llm=llm)
             except ValueError as e:
                 logger.error(f"Failed to add mem, error: {str(e)}")
-                raise ValueError(f"Failed to add mem, error: {str(e)}") from e
+                raise build_error(
+                    StatusCode.MEMORY_ENGINE_ADD_MEMORY_ERROR,
+                    msg=str(e),
+                )
             return
 
     async def get_recent_messages(
@@ -277,7 +296,10 @@ class LongTermMemory(metaclass=Singleton):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.write_manager:
-                raise ValueError("Write manager is not initialized.")
+                raise build_error(
+                    StatusCode.MEMORY_ENGINE_DELETE_MEMORY_ERROR,
+                    msg="Write manager is not initialized."
+                )
             await self.write_manager.delete_mem_by_id(user_id=user_id, group_id=scope_id, mem_id=mem_id)
 
     async def delete_mem_by_user_id(self,
@@ -295,7 +317,10 @@ class LongTermMemory(metaclass=Singleton):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.write_manager:
-                raise ValueError("Write manager is not initialized.")
+                raise build_error(
+                    StatusCode.MEMORY_ENGINE_DELETE_MEMORY_ERROR,
+                    msg="Write manager is not initialized."
+                )
             await self.write_manager.delete_mem_by_user_id(user_id=user_id, group_id=scope_id)
 
     async def update_mem_by_id(self,
@@ -315,7 +340,10 @@ class LongTermMemory(metaclass=Singleton):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.write_manager:
-                raise ValueError("Write manager is not initialized.")
+                raise build_error(
+                    StatusCode.MEMORY_ENGINE_UPDATE_MEMORY_ERROR,
+                    msg="Write manager is not initialized."
+                )
             await self.write_manager.update_mem_by_id(user_id=user_id, group_id=scope_id,
                                                       mem_id=mem_id, memory=memory)
 
@@ -338,7 +366,10 @@ class LongTermMemory(metaclass=Singleton):
                 dict[str, str]: variable name -> value
         """
         if not self.search_manager:
-            raise ValueError("Search manager is not initialized.")
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_SEARCH_MEMORY_ERROR,
+                msg="Search manager is not initialized."
+            )
         ret: dict[str, str] = {}
         if names is None:
             return await self.search_manager.get_all_user_variable(user_id=user_id, group_id=scope_id)
@@ -351,7 +382,10 @@ class LongTermMemory(metaclass=Singleton):
                 value = await self.search_manager.get_user_variable(user_id, scope_id, name)
                 ret[name] = value
             return ret
-        raise TypeError("names must be str | list[str] | None")
+        raise build_error(
+            StatusCode.MEMORY_ENGINE_SEARCH_MEMORY_ERROR,
+            msg="names must be str | list[str] | None."
+        )
 
     async def search_user_mem(self,
                               query: str,
@@ -361,7 +395,10 @@ class LongTermMemory(metaclass=Singleton):
                               threshold: float = 0.3
                               ) -> list[MemResult]:
         if not self.search_manager:
-            raise ValueError("Search Manager is not initialized")
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_SEARCH_MEMORY_ERROR,
+                msg="Search Manager is not initialized."
+            )
         params = SearchParams(
             query=query,
             group_id=scope_id,
@@ -423,7 +460,10 @@ class LongTermMemory(metaclass=Singleton):
             List of memory information
         """
         if not self.search_manager:
-            raise ValueError("Search manager is not initialized.")
+            raise build_error(
+                StatusCode.MEMORY_ENGINE_SEARCH_MEMORY_ERROR,
+                msg="Search Manager is not initialized."
+            )
         search_data = await self.search_manager.list_user_mem(user_id=user_id, group_id=scope_id,
                                                               nums=page_size, pages=page_idx)
 
@@ -456,7 +496,10 @@ class LongTermMemory(metaclass=Singleton):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.variable_manager:
-                raise ValueError("Variable manager is not initialized.")
+                raise build_error(
+                    StatusCode.MEMORY_ENGINE_UPDATE_MEMORY_ERROR,
+                    msg="Variable manager is not initialized."
+                )
             for name, value in variables.items():
                 await self.variable_manager.update_user_variable(
                     user_id=user_id,
@@ -480,7 +523,10 @@ class LongTermMemory(metaclass=Singleton):
         lock = DistributedLock(self.kv_store, f"user/{user_id}")
         async with lock:
             if not self.variable_manager:
-                raise ValueError("Variable manager is not initialized.")
+                raise build_error(
+                    StatusCode.MEMORY_ENGINE_DELETE_MEMORY_ERROR,
+                    msg="Variable manager is not initialized."
+                )
             for name in names:
                 await self.variable_manager.delete_user_variable(user_id=user_id, group_id=scope_id, var_name=name)
             return True
@@ -503,7 +549,7 @@ class LongTermMemory(metaclass=Singleton):
     def _check_messages(self, messages: list[BaseMessage]) -> Tuple[bool, list[BaseMessage]]:
         out_messages = []
         has_human_msg = False
-        human_message: HumanMessage = HumanMessage()
+        human_message: UserMessage = UserMessage()
         for msg in messages:
             if msg.role == human_message.role:
                 out_messages.append(msg)
@@ -530,7 +576,7 @@ class LongTermMemory(metaclass=Singleton):
             message_len=threshold
         )
         history_messages = []
-        human_message: HumanMessage = HumanMessage()
+        human_message: UserMessage = UserMessage()
         for msg, _ in history_messages_tuple:
             if msg.role == human_message.role:
                 history_messages.append(msg)

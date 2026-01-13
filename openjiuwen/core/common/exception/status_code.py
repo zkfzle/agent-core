@@ -235,8 +235,23 @@ class StatusCode(Enum):
     KB_BUILD_CHUNK_INDEX_FAILED_ERROR = (155505, "Failed to build chunk index: {error_msg}")
 
     # Memory Engine 158000 - 159999
-    MEMORY_ENGINE_KV_STORE_NOT_REGISTER = (158000, "kv store is not registered in memory engine")
-    MEMORY_ENGINE_SEMANTIC_STORE_NOT_REGISTER = (158001, "semantic store is not registered in memory engine")
+    MEMORY_ENGINE_REGISTER_STORE_ERROR = (158000, "Failed to register store to memory engine: {error_msg}")
+    MEMORY_ENGINE_SET_CONFIG_ERROR = (158001, "Failed to set config: stores must be registered before setting config.")
+    MEMORY_ENGINE_SET_SCOPE_CONFIG_ERROR = (158002, "Failed to set scope config: {error_msg}")
+    MEMORY_ENGINE_ADD_MEMORY_ERROR = (158003, "Failed to add memory: {error_msg}")
+    MEMORY_ENGINE_DELETE_MEMORY_ERROR = (158004, "Failed to delete memory: {error_msg}")
+    MEMORY_ENGINE_UPDATE_MEMORY_ERROR = (158005, "Failed to update memory: {error_msg}")
+    MEMORY_ENGINE_SEARCH_MEMORY_ERROR = (158006, "Failed to search or get memory: {error_msg}")
+    MEMORY_MESSAGE_MANAGER_ADD_ERROR = (158007, "Failed to add message: {error_msg}")
+    MEMORY_MESSAGE_MANAGER_GET_ERROR = (158008, "Failed to get message: {error_msg}")
+    MEMORY_USERPROFILE_MANAGER_ADD_ERROR = (158009, "Failed to add user profile memory: {error_msg}")
+    MEMORY_USERPROFILE_MANAGER_DELETE_ERROR = (158010, "Failed to delete user profile memory: {error_msg}")
+    MEMORY_USE_MEM_STORE_INIT_ERROR = (158011, "Failed to init user mem store: {error_msg}")
+    MEMORY_DB_STORE_GET_ERROR = (158012, "Failed to get message from db store: {error_msg}")
+    MEMORY_VECTOR_STORE_CONNECT_ERROR = (158013, "Failed to connect vector store: {error_msg}")
+    MEMORY_VECTOR_STORE_ADD_ERROR = (158014, "Failed to add memory to vector store: {error_msg}")
+    MEMORY_VECTOR_STORE_SEARCH_ERROR = (158015, "Failed to search memory to vector store: {error_msg}")
+    MEMORY_VECTOR_STORE_DELETE_ERROR = (158016, "Failed to delete memory to vector store: {error_msg}")
 
     # Development Toolchain 160000 - 169999
     # Development Toolchain - Prompt Generation 160000 - 160999

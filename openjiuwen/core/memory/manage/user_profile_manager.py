@@ -14,6 +14,8 @@ from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.mem_unit.memory_unit import UserProfileUnit, MemoryType, ConflictType, BaseMemoryUnit
 from openjiuwen.core.memory.store.base_semantic_store import BaseSemanticStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
+from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 
 
 class UserProfileSearchParams(BaseModel):
@@ -65,15 +67,30 @@ class UserProfileManager(BaseMemoryManager):
 
     async def add(self, memory: BaseMemoryUnit, llm: Tuple[str, BaseModelClient] | None = None):
         if not isinstance(memory, UserProfileUnit):
-            raise ValueError('user profile add Must pass UserProfileUnit class.')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_ADD_ERROR,
+                msg='user profile add must pass UserProfileUnit class.',
+            )
         if not memory.user_id:
-            raise ValueError('user_profile_manager add operation must pass user_id')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_ADD_ERROR,
+                msg='user profile manager add operation must pass user_id.',
+            )
         if not memory.group_id:
-            raise ValueError('user_profile_manager add operation must pass group_id')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_ADD_ERROR,
+                msg='user profile manager add operation must pass group_id.',
+            )
         if not memory.profile_mem:
-            raise ValueError('user_profile_manager add operation must pass profile_mem')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_ADD_ERROR,
+                msg='user profile manager add operation must pass profile_mem.',
+            )
         if not memory.profile_type:
-            raise ValueError('user_profile_manager add operation must pass profile_type')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_ADD_ERROR,
+                msg='user profile manager add operation must pass profile_type.',
+            )
         conflict_info = await self._get_conflict_info(memory=memory, llm=llm)
         for conflict in conflict_info:
             conf_id = conflict['id']
@@ -265,7 +282,10 @@ class UserProfileManager(BaseMemoryManager):
             table_name = generate_idx_name(user_id, group_id, mem_type)
             await self.semantic_recall.add_docs([(memory_id, mem)], table_name)
         else:
-            raise ValueError('vector store must not be None')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_ADD_ERROR,
+                msg='vector store must not be None.',
+            )
 
     async def _delete_vector_user_profile_memory(
             self, user_id: str, group_id: str,
@@ -274,4 +294,7 @@ class UserProfileManager(BaseMemoryManager):
             table_name = generate_idx_name(user_id, group_id, mem_type)
             await self.semantic_recall.delete_docs(memory_id, table_name)
         else:
-            raise ValueError('vector store must not be None')
+            raise build_error(
+                StatusCode.MEMORY_USERPROFILE_MANAGER_DELETE_ERROR,
+                msg='vector store must not be None.',
+            )

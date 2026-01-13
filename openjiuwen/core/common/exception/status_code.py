@@ -20,10 +20,14 @@ class StatusCode(Enum):
     WORKFLOW_STATE_RUNTIME_ERROR = (100001, "raw_inputs existed, update is invalid")
     WORKFLOW_EXECUTION_NOT_SUPPORT = (100002, "workflow component should implement Executable")
     CONTROLLER_EXECUTION_INTERRUPTED = (100003, "controller interrupted error")
-    WORKFLOW_STREAM_NOT_SUPPORT = (100004, "streaming process interface(transform or collect)"
-                                            " does not support interact operations")
-    COMPONENT_EXECUTION_RUNTIME_ERROR = (100005, "component [{node_id}] encountered an exception "
-                                                 "while executing ability [{""ability}], error detail: {error}")
+    WORKFLOW_STREAM_NOT_SUPPORT = (
+        100004,
+        "streaming process interface(transform or collect) does not support interact operations",
+    )
+    COMPONENT_EXECUTION_RUNTIME_ERROR = (
+        100005,
+        "component [{node_id}] encountered an exception while executing ability [{ability}], error detail: {error}",
+    )
     WORKFLOW_STATE_INVALID = (100006, "workflow state exists but non-interactive input and cleanup is disabled.")
 
     # Workflow: Execution 100100 - 100199
@@ -43,7 +47,6 @@ class StatusCode(Enum):
     COMPONENT_LLM_TEMPLATE_PROCESS_ERROR = (101006, "LLM component assemble template error, as {error_msg}.")
     COMPONENT_LLM_TEMPLATE_INVALID = (101007, "Invalid json schema, root cause = {error_msg}.")
 
-
     ## LLM Service 102001 - 102999
     MODEL_SERVICE_CONFIG_ERROR = (102001, "LLM service config error, as {error_msg}.")
     MODEL_CONFIG_ERROR = (102002, "LLM model config error, as {error_msg}.")
@@ -51,22 +54,27 @@ class StatusCode(Enum):
     MODEL_CLIENT_CONFIG_INVALID = (102004, "LLM model client type error, as {error_msg}.")
 
     ## IntentDetectionComponent 101050 - 101069
-    COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (101050,
-                                                   "Intent detection component user input error, as {error_msg}.")
+    COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (
+        101050,
+        "Intent detection component user input error, as {error_msg}.",
+    )
     COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED = (101051, "Intent detection component init llm error, as {error_msg}.")
-    COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED = (101052,
-                                                   "Intent detection component invoke llm error, as {error_msg}.")
+    COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED = (
+        101052,
+        "Intent detection component invoke llm error, as {error_msg}.",
+    )
 
     ## QuestionComponent 101070 - 101099
     COMPONENT_QUESTIONER_INPUT_PARAM_ERROR = (101070, "Questioner component user input error, as {error_msg}.")
     COMPONENT_QUESTIONER_CONFIG_ERROR = (101071, "Questioner component config error, as {error_msg}.")
-    COMPONENT_QUESTIONER_INPUT_INVALID = \
-        (101072, "Questioner component empty question in direct reply mode.")
+    COMPONENT_QUESTIONER_INPUT_INVALID = (101072, "Questioner component empty question in direct reply mode.")
     COMPONENT_QUESTIONER_STATE_INIT_FAILED = (101073, "Questioner component init state error.")
     COMPONENT_QUESTIONER_RUNTIME_ERROR = (101074, "Questioner component exceed max response.")
     COMPONENT_QUESTIONER_INVOKE_CALL_ERROR = (101075, "Questioner component invoke llm error, as {error_msg}.")
-    COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (101076, "Questioner component parse llm response error,"
-                                                     " as {error_msg}.")
+    COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (
+        101076,
+        "Questioner component parse llm response error, as {error_msg}.",
+    )
 
     ## BranchComponent  101100 - 101119
     COMPONENT_BRANCH_INIT_FAILED = (101100, "Branch adding error, as {error_msg}.")
@@ -81,8 +89,7 @@ class StatusCode(Enum):
     COMPONENT_SUB_WORKFLOW_RUNTIME_ERROR = (101141, "Sub workflow component running error, detail: {detail}")
 
     ## LoopComponent  101150 - 101159
-    COMPONENT_LOOP_NOT_SUPPORT = (101150, "Nested loops are not supported."
-                                        " Cannot add LoopComponent to a LoopGroup")
+    COMPONENT_LOOP_NOT_SUPPORT = (101150, "Nested loops are not supported. Cannot add LoopComponent to a LoopGroup")
     COMPONENT_LOOP_EXECUTION_ERROR = (101151, "Loop execution error: {error_msg}")
     COMPONENT_LOOP_INPUT_INVALID = (101152, "Invalid inputs: {reason}")
     COMPONENT_LOOP_CONFIG_NOT_FOUND = (101153, "LoopGroup config error, as {error_msg}.")
@@ -95,8 +102,10 @@ class StatusCode(Enum):
     COMPONENT_TOOL_INPUT_PARAM_ERROR = (102001, "Tool component inputs error, as {error_msg}.")
 
     ## StartComponent  102100 - 102119
-    COMPONENT_START_INPUT_INVALID = (102100, "start component: global variable(s)"
-                                                    " defined with no value assigned:  {variable_name}")
+    COMPONENT_START_INPUT_INVALID = (
+        102100,
+        "start component: global variable(s) defined with no value assigned:  {variable_name}",
+    )
     COMPONENT_START_INIT_FAILED = (102101, "start component create error:  {reason}")
 
     ## EndComponent  102120 - 102149
@@ -108,20 +117,32 @@ class StatusCode(Enum):
     GRAPH_SET_END_NODE_FAILED = (110002, "Graph create error, caused by end node set failed, detail: {detail}")
     GRAPH_ADD_NODE_FAILED = (110003, "Graph create error, caused by add node failed, detail: {detail}")
     GRAPH_ADD_EDGE_FAILED = (110004, "Graph create error, caused by add edge failed, detail: {detail}")
-    GRAPH_ADD_CONDITION_EDGE_FAILED = (110005,
-                                       "Graph create error, caused by add conditional edge failed, detail: {detail}")
+    GRAPH_ADD_CONDITION_EDGE_FAILED = (
+        110005,
+        "Graph create error, caused by add conditional edge failed, detail: {detail}",
+    )
     WORKFLOW_COMPONENT_CONFIG_ERROR = (110006, "Workflow component config error: {error_msg}")
-    DRAWABLE_GRAPH_SET_START_NODE_FAILED = (110021, "Drawable Graph create error, caused by start node set failed, "\
-                                                    "node id: {node_id}")
-    DRAWABLE_GRAPH_SET_END_NODE_FAILED = (110022, "Drawable Graph create error, caused by end node set failed, "\
-                                                    "node id: {node_id}")
-    DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED = (110023, "Drawable Graph create error, caused by break node set failed, "\
-                                                    "node id: {node_id}")
+    DRAWABLE_GRAPH_SET_START_NODE_FAILED = (
+        110021,
+        "Drawable Graph create error, caused by start node set failed, node id: {node_id}",
+    )
+    DRAWABLE_GRAPH_SET_END_NODE_FAILED = (
+        110022,
+        "Drawable Graph create error, caused by end node set failed, node id: {node_id}",
+    )
+    DRAWABLE_GRAPH_SET_BREAK_NODE_FAILED = (
+        110023,
+        "Drawable Graph create error, caused by break node set failed, node id: {node_id}",
+    )
     DRAWABLE_GRAPH_INVALID_TITLE = (110024, "Invalid value of argument 'title', expected a str")
-    DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH = (110025, "Invalid value of argument 'expand_subgraph', "\
-                                              "expected a boolean or a non-negative integer")
-    DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION = (110026, "Invalid value of argument 'enable_animation', "\
-                                              "expected a boolean")
+    DRAWABLE_GRAPH_INVALID_EXPAND_SUBGRAPH = (
+        110025,
+        "Invalid value of argument 'expand_subgraph', expected a boolean or a non-negative integer",
+    )
+    DRAWABLE_GRAPH_INVALID_ENABLE_ANIMATION = (
+        110026,
+        "Invalid value of argument 'enable_animation', expected a boolean",
+    )
 
     # Workflow - Exception Handling 111000 - 111999
     # Agent Orchestration 120000 - 129999
@@ -170,12 +191,13 @@ class StatusCode(Enum):
     # GraphEngine 140000 - 149999
     # GraphEngine - Graph Orchestration and Execution 140000 - 140999
     # GraphEngine - Conditional Evaluation 140000 - 140019
-    EXPRESSION_CONDITION_SYNTAX_ERROR = (140000, "Expression condition has syntax error,"
-                                         " expression as {expression}, error as {error_msg}.")
+    EXPRESSION_CONDITION_SYNTAX_ERROR = (
+        140000,
+        "Expression condition has syntax error, expression as {expression}, error as {error_msg}.",
+    )
     EXPRESSION_CONDITION_EVAL_ERROR = (140001, "Expression condition eval error, as {error_msg}.")
     ARRAY_CONDITION_ERROR = (140002, "Array condition error")
     NUMBER_CONDITION_ERROR = (140003, "Number condition error")
-
 
     # ContextEngine 150000 - 154999
     # ContextEngine - Context Structured Storage and Retrieval 150000 - 150999
@@ -202,17 +224,17 @@ class StatusCode(Enum):
     INDEXING_CHUNK_OVERLAP_INVALID = (155101, "Invalid chunk overlap: {error_msg}")
     INDEXING_TOKENIZER_PROCESS_ERROR = (155102, "Tokenizer error: {error_msg}")
     INDEXING_FILE_NOT_FOUND = (155103, "File not found: {error_msg}")
-    INDEXING_FORMAT_NOT_SUPPORTED = (155104, "Unsupported file format: {error_msg}")
+    INDEXING_FORMAT_NOT_SUPPORT = (155104, "Unsupported file format: {error_msg}")
     INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "Embed model is required: {error_msg}")
     INDEXING_DIMENSION_NOT_FOUND = (155106, "Dimension is required: {error_msg}")
     INDEXING_PATH_NOT_FOUND = (155107, "Path is required and cannot be empty: {error_msg}")
     # KnowledgeBase Retrieval - Retriever 155200 - 155299
-    RETRIEVER_MODE_NOT_SUPPORTED = (155200, "Unsupported retrieval mode: {error_msg}")
+    RETRIEVER_MODE_NOT_SUPPORT = (155200, "Unsupported retrieval mode: {error_msg}")
     RETRIEVER_SCORE_THRESHOLD_INVALID = (155201, "Score threshold is only supported when mode='vector': {error_msg}")
     RETRIEVER_EMBED_MODEL_NOT_FOUND = (155202, "Embed model is required: {error_msg}")
-    RETRIEVER_INDEX_TYPE_NOT_SUPPORTED = (155203, "Unsupported index type: {error_msg}")
+    RETRIEVER_INDEX_TYPE_NOT_SUPPORT = (155203, "Unsupported index type: {error_msg}")
     RETRIEVER_MODE_INVALID = (155204, "Mode is incompatible with index type: {error_msg}")
-    RETRIEVER_CAPABILITY_NOT_SUPPORTED = (155205, "Retriever does not support mode: {error_msg}")
+    RETRIEVER_CAPABILITY_NOT_SUPPORT = (155205, "Retriever does not support mode: {error_msg}")
     RETRIEVER_VECTOR_STORE_NOT_FOUND = (155206, "Vector store is required: {error_msg}")
     RETRIEVER_COLLECTION_NOT_FOUND = (155207, "Collection is required: {error_msg}")
     RETRIEVER_GRAPH_RETRIEVER_NOT_FOUND = (155208, "Graph retriever is required: {error_msg}")
@@ -221,7 +243,7 @@ class StatusCode(Enum):
     # KnowledgeBase Retrieval - Utils 155300 - 155399
     UTILS_CONFIG_FILE_NOT_FOUND = (155300, "Configuration file not found: {error_msg}")
     UTILS_PYYAML_NOT_FOUND = (155301, "PyYAML is required: {error_msg}")
-    UTILS_CONFIG_FORMAT_NOT_SUPPORTED = (155302, "Unsupported configuration file format: {error_msg}")
+    UTILS_CONFIG_FORMAT_NOT_SUPPORT = (155302, "Unsupported configuration file format: {error_msg}")
     UTILS_CONFIG_NOT_FOUND = (155303, "No configuration to save: {error_msg}")
     UTILS_CONFIG_PROCESS_ERROR = (155304, "Configuration not loaded: {error_msg}")
     # KnowledgeBase Retrieval - Vector Store 155400 - 155499
@@ -235,7 +257,7 @@ class StatusCode(Enum):
     KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR = (155505, "Failed to build chunk index: {error_msg}")
     KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR = (155506, "Failed to build triple index: {error_msg}")
     KB_TRIPLE_EXTRACTION_PROCESS_ERROR = (155507, "Failed to extract triples: {error_msg}")
-    KB_DATABASE_MISMATCH_INVALID = (
+    KB_DATABASE_CONFIG_INVALID = (
         155508,
         "Vector store and index manager uses different database names: {error_msg}",
     )
@@ -273,7 +295,8 @@ class StatusCode(Enum):
     PROMPT_ASSEMBLER_VARIABLE_INIT_ERROR = (180000, "Wrong arguments for initializing the variable")
     PROMPT_ASSEMBLER_TEMPLATE_FORMAT_ERROR = (
         180001,
-        "Errors occur when formatting the template content due to wrong format")
+        "Errors occur when formatting the template content due to wrong format",
+    )
     PROMPT_TEMPLATE_DUPLICATED_ERROR = (180002, "Template duplicated")
     PROMPT_TEMPLATE_NOT_FOUND_ERROR = (180003, "Template not found")
     PROMPT_TEMPLATE_INCORRECT_ERROR = (180004, "Template data incorrect")
@@ -285,12 +308,16 @@ class StatusCode(Enum):
     PLUGIN_UNEXPECTED_ERROR = (182000, "Plugin unexpected error")
     PLUGIN_REQUEST_TIMEOUT_ERROR = (182001, "Plugin restful api request timed out")
     PLUGIN_RESPONSE_FORMAT_ERROR = (182002, "Plugin restful api response format error")
-    PLUGIN_RESPONSE_TOO_BIG_ERROR = (182003,
-        "Plugin restful api  response too big, maxLength={max_length}, actualLength={actual_length}")
+    PLUGIN_RESPONSE_TOO_BIG_ERROR = (
+        182003,
+        "Plugin restful api  response too big, maxLength={max_length}, actualLength={actual_length}",
+    )
     PLUGIN_RESPONSE_HTTP_CODE_ERROR = (182004, "Plugin restful api http code error")
     PLUGIN_PARAMS_CHECK_FAILED = (182005, "Plugin params check failed")
-    PLUGIN_RESTFUL_API_METHOD_ERROR = (182006,
-        "Plugin restful api unsupported HTTP method: '{method}', only accepts: {support}")
+    PLUGIN_RESTFUL_API_METHOD_ERROR = (
+        182006,
+        "Plugin restful api unsupported HTTP method: '{method}', only accepts: {support}",
+    )
 
     # Common Capabilities - Logger 183000 - 183999
     LOG_PATH_SENSITIVE_ERROR = (183000, "Log path is sensitive or unsafe: {path}")
@@ -321,10 +348,10 @@ class StatusCode(Enum):
     SESSION_AGENT_GROUP_ADD_FAILED = (190040, "failed to add single_agent group, reason: {reason}")
     SESSION_AGENT_GROUP_GET_FAILED = (190041, "failed to get single_agent group, reason: {reason}")
     SESSION_AGENT_GROUP_REMOVE_FAILED = (190042, "failed to remove single_agent group, reason: {reason}")
-    
+
     # Session - Resource Management - Workflow Additional
     SESSION_WORKFLOW_REMOVE_FAILED = (190003, "failed to remove workflow, reason: {reason}")
-    
+
     # Session - Resource Management - Agent 190050 - 190059
     SESSION_AGENT_ADD_FAILED = (190050, "failed to add single_agent, reason: {reason}")
     SESSION_AGENT_GET_FAILED = (190051, "failed to get single_agent, reason: {reason}")
@@ -351,8 +378,10 @@ class StatusCode(Enum):
     SESSION_STATE_INVALID_SESSION_TYPE = (192001, "Invalid session type: {session_type}, expected BaseSession")
     SESSION_STATE_INVALID_STATE_TYPE = (192002, "Invalid state type: {state_type}, expected CommitState")
     # Session - StreamWriter 193000 - 193999
-    STREAM_WRITER_WRITE_SCHEMA_FAILED = (193001,
-                                         "failed to write stream, stream schema validate failed, details: {detail}")
+    STREAM_WRITER_WRITE_SCHEMA_FAILED = (
+        193001,
+        "failed to write stream, stream schema validate failed, details: {detail}",
+    )
     STREAM_WRITER_WRITE_FAILED = (193002, "failed to write stream, reason: {reason}")
     STREAM_FRAME_TIMEOUT_FAILED = (193003, "stream frame is timeout ({timeout}s), no stream output")
     STREAM_FIRST_FRAME_TIMEOUT_FAILED = (193004, "stream first frame is timeout ({timeout}s), no stream output")
@@ -365,15 +394,17 @@ class StatusCode(Enum):
 
     # Session - Component Executable 196100 - 196199
     SESSION_COMPONENT_INVALID_SESSION_TYPE = (196100, "session should be NodeSession instance")
-    SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED = (196101, "Component ability '{ability}' is registered but '{method}' "
-                                                 "method is not implemented. Please implement the '{method}' method "
-                                                 "in your component class '{class_name}'.")
+    SESSION_COMPONENT_ABILITY_NOT_IMPLEMENTED = (
+        196101,
+        "Component ability '{ability}' is registered but '{method}' "
+        "method is not implemented. Please implement the '{method}' method "
+        "in your component class '{class_name}'.",
+    )
     SESSION_COMPONENT_ABILITY_NOT_SUPPORTED = (196102, "{ability} is not supported")
 
     # Session - Checkpointer 197000 - 197099
     SESSION_CHECKPOINTER_NONE_WORKFLOW_STORE_ERROR = (197000, "workflow store is None")
     SESSION_CHECKPOINTER_NONE_AGENT_STORE_ERROR = (197001, "agent store is None")
-
 
     @property
     def code(self):

@@ -189,7 +189,8 @@ class StatusCode(Enum):
     CONTEXT_ENGINE_GET_CONTEXT_WINDOW_ERROR = (153004, "Message get context window error: {error_msg}")
     CONTEXT_ENGINE_MESSAGE_VALIDATION_ERROR = (153005, "Context engine message validation error: {error_msg}")
 
-    # KnowledgeBase Retrieval 155000 - 157999
+
+# KnowledgeBase Retrieval 155000 - 157999
     # KnowledgeBase Retrieval - Embedding 155000 - 155099
     EMBEDDING_INPUT_INVALID = (155000, "Empty text or texts list provided for embedding")
     EMBEDDING_MODEL_NOT_FOUND = (155001, "Embedding model not found: {error_msg}")
@@ -202,17 +203,17 @@ class StatusCode(Enum):
     INDEXING_CHUNK_OVERLAP_INVALID = (155101, "Invalid chunk overlap: {error_msg}")
     INDEXING_TOKENIZER_PROCESS_ERROR = (155102, "Tokenizer error: {error_msg}")
     INDEXING_FILE_NOT_FOUND = (155103, "File not found: {error_msg}")
-    INDEXING_FORMAT_NOT_SUPPORTED = (155104, "Unsupported file format: {error_msg}")
+    INDEXING_FORMAT_NOT_SUPPORT = (155104, "Unsupported file format: {error_msg}")
     INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "Embed model is required: {error_msg}")
     INDEXING_DIMENSION_NOT_FOUND = (155106, "Dimension is required: {error_msg}")
     INDEXING_PATH_NOT_FOUND = (155107, "Path is required and cannot be empty: {error_msg}")
     # KnowledgeBase Retrieval - Retriever 155200 - 155299
-    RETRIEVER_MODE_NOT_SUPPORTED = (155200, "Unsupported retrieval mode: {error_msg}")
+    RETRIEVER_MODE_NOT_SUPPORT = (155200, "Unsupported retrieval mode: {error_msg}")
     RETRIEVER_SCORE_THRESHOLD_INVALID = (155201, "Score threshold is only supported when mode='vector': {error_msg}")
     RETRIEVER_EMBED_MODEL_NOT_FOUND = (155202, "Embed model is required: {error_msg}")
-    RETRIEVER_INDEX_TYPE_NOT_SUPPORTED = (155203, "Unsupported index type: {error_msg}")
+    RETRIEVER_INDEX_TYPE_NOT_SUPPORT = (155203, "Unsupported index type: {error_msg}")
     RETRIEVER_MODE_INVALID = (155204, "Mode is incompatible with index type: {error_msg}")
-    RETRIEVER_CAPABILITY_NOT_SUPPORTED = (155205, "Retriever does not support mode: {error_msg}")
+    RETRIEVER_CAPABILITY_NOT_SUPPORT = (155205, "Retriever does not support mode: {error_msg}")
     RETRIEVER_VECTOR_STORE_NOT_FOUND = (155206, "Vector store is required: {error_msg}")
     RETRIEVER_COLLECTION_NOT_FOUND = (155207, "Collection is required: {error_msg}")
     RETRIEVER_GRAPH_RETRIEVER_NOT_FOUND = (155208, "Graph retriever is required: {error_msg}")
@@ -221,7 +222,7 @@ class StatusCode(Enum):
     # KnowledgeBase Retrieval - Utils 155300 - 155399
     UTILS_CONFIG_FILE_NOT_FOUND = (155300, "Configuration file not found: {error_msg}")
     UTILS_PYYAML_NOT_FOUND = (155301, "PyYAML is required: {error_msg}")
-    UTILS_CONFIG_FORMAT_NOT_SUPPORTED = (155302, "Unsupported configuration file format: {error_msg}")
+    UTILS_CONFIG_FORMAT_NOT_SUPPORT = (155302, "Unsupported configuration file format: {error_msg}")
     UTILS_CONFIG_NOT_FOUND = (155303, "No configuration to save: {error_msg}")
     UTILS_CONFIG_PROCESS_ERROR = (155304, "Configuration not loaded: {error_msg}")
     # KnowledgeBase Retrieval - Vector Store 155400 - 155499
@@ -235,10 +236,11 @@ class StatusCode(Enum):
     KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR = (155505, "Failed to build chunk index: {error_msg}")
     KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR = (155506, "Failed to build triple index: {error_msg}")
     KB_TRIPLE_EXTRACTION_PROCESS_ERROR = (155507, "Failed to extract triples: {error_msg}")
-    KB_DATABASE_MISMATCH_INVALID = (
+    KB_DATABASE_CONFIG_INVALID = (
         155508,
         "Vector store and index manager uses different database names: {error_msg}",
     )
+    
 
     # Memory Engine 158000 - 159999
     MEMORY_ENGINE_KV_STORE_NOT_REGISTER = (158000, "kv store is not registered in memory engine")

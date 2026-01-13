@@ -34,7 +34,7 @@ class TextChunker(Chunker):
     ):
         """
         Initialize fixed size chunker
-        
+
         Args:
             chunk_size: Chunk size (number of characters)
             chunk_overlap: Chunk overlap size (number of characters)
@@ -53,10 +53,7 @@ class TextChunker(Chunker):
         self.pipeline = PreprocessingPipeline(preprocessors)
         self.chunker = self.get_chunker(chunk_size, chunk_overlap, chunk_unit, embed_model)
 
-    def get_chunker(self, chunk_size: int,
-        chunk_overlap: int,
-        chunk_unit: str,
-        embed_model: Optional[Any]):
+    def get_chunker(self, chunk_size: int, chunk_overlap: int, chunk_unit: str, embed_model: Optional[Any]):
         if chunk_unit == "char":
             return CharChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         else:
@@ -69,7 +66,7 @@ class TextChunker(Chunker):
                 if tiktoken is None:
                     raise JiuWenBaseException(
                         StatusCode.INDEXING_TOKENIZER_PROCESS_ERROR.code,
-                        "chunk_unit='token' requires embed_model with tokenizer or tiktoken to be installed"
+                        "chunk_unit='token' requires embed_model with tokenizer or tiktoken to be installed",
                     )
                 try:
                     tokenizer = tiktoken.get_encoding("cl100k_base")
@@ -77,9 +74,9 @@ class TextChunker(Chunker):
                 except Exception as exc:
                     raise JiuWenBaseException(
                         StatusCode.INDEXING_TOKENIZER_PROCESS_ERROR.code,
-                        f"Failed to load tokenizer for token-based chunking: {exc}"
+                        f"Failed to load tokenizer for token-based chunking: {exc}",
                     ) from exc
-            
+
             # Check if chunk_size needs adjustment
             if (
                 hasattr(tokenizer, "model_max_length")
@@ -96,14 +93,13 @@ class TextChunker(Chunker):
 
             return TokenizerChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap, tokenizer=tokenizer)
 
-
     def chunk_documents(self, documents: List[Document]) -> List[TextChunk]:
         """
         Chunk document list
-        
+
         Args:
             documents: List of documents
-            
+
         Returns:
             List of document chunks
         """

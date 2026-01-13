@@ -17,6 +17,8 @@ from openjiuwen.dev_tools.tune import (
 from openjiuwen.core.single_agent.legacy.config import LLMCallConfig
 from openjiuwen.core.foundation.llm import ModelRequestConfig, ModelClientConfig, ToolCall
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
+from openjiuwen.core.single_agent import LLMCallConfig
+from openjiuwen.core.common.logging import logger
 
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
@@ -120,8 +122,8 @@ TOOL_CALL_CASES = [
 
 INFORMATION_EXTRACTION_CASES_WITH_VARIABLES = [
     Case(inputs={
-             "role":"信息提取",
-             "query":"潘之恒（约1536—1621）字景升，号鸾啸生，冰华生，安徽歙县、岩寺人，侨寓金陵（今江苏南京）"
+             "role": "信息提取",
+             "query": "潘之恒（约1536—1621）字景升，号鸾啸生，冰华生，安徽歙县、岩寺人，侨寓金陵（今江苏南京）"
          },
         label={"output": "[潘之恒]"}
     ),
@@ -152,7 +154,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
     # ------------------------------------------------------------------ #
     def show_result(self, evaluated_cases):
         for eval_result in evaluated_cases:
-            print(f"score: {eval_result.score}, reason: {eval_result.reason}, "
+            logger.info(f"score: {eval_result.score}, reason: {eval_result.reason}, "
                   f"answer: {eval_result.answer}, label: {eval_result.case.label}")
 
     def create_agent(self, prompt: str, tools=None):
@@ -268,19 +270,20 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES)
 
         from openjiuwen.dev_tools.tune.trainer.base import Callbacks, Progress
+
         class MyCallbacks(Callbacks):
             def on_train_epoch_end(self, agent, progress: Progress, cases):
-                print(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")
+                logger.info(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")
 
         trainer.set_callbacks(MyCallbacks())
         score, result = trainer.evaluate(agent, case_loader)
-        print(f"[原提示词推理效果]: score={score}")
+        logger.info(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
         optimized_agent = trainer.train(agent, case_loader)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
-        print(f"[优化后提示词推理效果]: score={score}")
+        logger.info(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
 
     @unittest.skip("skip system test")
@@ -290,13 +293,13 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         case_loader = CaseLoader(cases=TOOL_CALL_CASES)
 
         score, result = trainer.evaluate(agent, case_loader)
-        print(f"[原提示词推理效果]: score={score}")
+        logger.info(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
         optimized_agent = trainer.train(agent, case_loader, num_iterations=2)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
-        print(f"[优化后提示词推理效果]: score={score}")
+        logger.info(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
 
     @unittest.skip("skip system test")
@@ -306,11 +309,11 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES_WITH_VARIABLES)
 
         score, result = trainer.evaluate(agent, case_loader)
-        print(f"[原提示词推理效果]: score={score}")
+        logger.info(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
         optimized_agent = trainer.train(agent, case_loader, num_iterations=3)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
-        print(f"[优化后提示词推理效果]: score={score}")
+        logger.info(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)

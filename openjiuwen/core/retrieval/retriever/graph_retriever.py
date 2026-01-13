@@ -65,12 +65,12 @@ class GraphRetriever(Retriever):
         allowed = self._allowed_modes().get(self.index_type)
         if allowed is None:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_UNSUPPORTED_INDEX_TYPE_ERROR.code,
+                StatusCode.RETRIEVER_INDEX_TYPE_NOT_SUPPORTED.code,
                 f"Unsupported index_type={self.index_type}"
             )
         if mode not in allowed:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_MODE_INCOMPATIBLE_ERROR.code,
+                StatusCode.RETRIEVER_MODE_INVALID.code,
                 f"mode={mode} is incompatible with index_type={self.index_type}; "
                 f"allowed modes: {sorted(allowed)}"
             )
@@ -114,7 +114,7 @@ class GraphRetriever(Retriever):
         if fixed_retriever:
             if not self._retriever_supports_mode(fixed_retriever, mode):
                 raise JiuWenBaseException(
-                    StatusCode.RETRIEVER_NOT_SUPPORT_MODE_ERROR.code,
+                    StatusCode.RETRIEVER_CAPABILITY_NOT_SUPPORTED.code,
                     f"Provided {'chunk' if is_chunk else 'triple'} retriever "
                     f"{fixed_retriever.__class__.__name__} does not support mode={mode}"
                 )
@@ -123,7 +123,7 @@ class GraphRetriever(Retriever):
         # Dynamically create retriever
         if not self.vector_store:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_VECTOR_STORE_REQUIRED_ERROR.code,
+                StatusCode.RETRIEVER_VECTOR_STORE_NOT_FOUND.code,
                 "vector_store is required for dynamic retriever creation"
             )
 
@@ -132,7 +132,7 @@ class GraphRetriever(Retriever):
         if not collection_name:
             collection_type = "chunk" if is_chunk else "triple"
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_COLLECTION_REQUIRED_ERROR.code,
+                StatusCode.RETRIEVER_COLLECTION_NOT_FOUND.code,
                 f"{collection_type}_collection is required for dynamic retriever creation"
             )
 
@@ -141,7 +141,7 @@ class GraphRetriever(Retriever):
             from openjiuwen.core.retrieval.retriever.vector_retriever import VectorRetriever
             if not self.embed_model:
                 raise JiuWenBaseException(
-                    StatusCode.RETRIEVER_EMBED_MODEL_REQUIRED_ERROR.code,
+                    StatusCode.RETRIEVER_EMBED_MODEL_NOT_FOUND.code,
                     "embed_model is required for vector mode"
                 )
             retriever = VectorRetriever(
@@ -189,7 +189,7 @@ class GraphRetriever(Retriever):
         # GraphRetriever always performs graph expansion by default, caller doesn't need to pass graph_expansion flag
         if score_threshold is not None and mode != "vector":
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_SCORE_THRESHOLD_ERROR.code,
+                StatusCode.RETRIEVER_SCORE_THRESHOLD_INVALID.code,
                 "score_threshold is only supported when mode='vector'"
             )
         effective_threshold = score_threshold

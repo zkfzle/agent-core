@@ -84,7 +84,7 @@ class AutoFileParser(Parser):
         """
         if not os.path.exists(doc):
             raise JiuWenBaseException(
-                StatusCode.INDEXING_FILE_NOT_FOUND_ERROR.code,
+                StatusCode.INDEXING_FILE_NOT_FOUND.code,
                 f"File {doc} does not exist"
             )
         
@@ -94,7 +94,7 @@ class AutoFileParser(Parser):
         # Check if format is supported
         if file_ext not in _PARSER_REGISTRY:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_UNSUPPORTED_FORMAT_ERROR.code,
+                StatusCode.INDEXING_FORMAT_NOT_SUPPORTED.code,
                 f"Unsupported format: {file_ext}, "
                 f"only {list(_PARSER_REGISTRY.keys())} are supported"
             )

@@ -32,12 +32,12 @@ class AgenticRetriever(Retriever):
     ) -> None:
         if graph_retriever is None:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_GRAPH_RETRIEVER_REQUIRED_ERROR.code,
+                StatusCode.RETRIEVER_GRAPH_RETRIEVER_NOT_FOUND.code,
                 "graph_retriever is required for AgenticRetriever"
             )
         if llm_client is None:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_LLM_CLIENT_REQUIRED_ERROR.code,
+                StatusCode.RETRIEVER_LLM_CLIENT_NOT_FOUND.code,
                 "llm_client is required for AgenticRetriever"
             )
         self.graph_retriever = graph_retriever
@@ -97,7 +97,7 @@ class AgenticRetriever(Retriever):
     ) -> List[RetrievalResult]:
         if top_k is None:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_TOP_K_REQUIRED_ERROR.code,
+                StatusCode.RETRIEVER_TOP_K_NOT_FOUND.code,
                 "top_k is required for AgenticRetriever"
             )
         topk = top_k

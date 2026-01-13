@@ -36,7 +36,7 @@ class ConfigManager:
         path_obj = Path(path)
         if not path_obj.exists():
             raise JiuWenBaseException(
-                StatusCode.UTILS_CONFIG_FILE_NOT_FOUND_ERROR.code,
+                StatusCode.UTILS_CONFIG_FILE_NOT_FOUND.code,
                 f"Configuration file does not exist: {path}"
             )
         
@@ -47,14 +47,14 @@ class ConfigManager:
         elif suffix in ['.yaml', '.yml']:
             if yaml is None:
                 raise JiuWenBaseException(
-                    StatusCode.UTILS_PYYAML_REQUIRED_ERROR.code,
+                    StatusCode.UTILS_PYYAML_NOT_FOUND.code,
                     "PyYAML is required to support YAML configuration files"
                 )
             with open(path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f)
         else:
             raise JiuWenBaseException(
-                StatusCode.UTILS_UNSUPPORTED_CONFIG_FORMAT_ERROR.code,
+                StatusCode.UTILS_CONFIG_FORMAT_NOT_SUPPORTED.code,
                 f"Unsupported configuration file format: {suffix}"
             )
         
@@ -67,7 +67,7 @@ class ConfigManager:
         """Save configuration to file"""
         if 'knowledge_base' not in self._configs:
             raise JiuWenBaseException(
-                StatusCode.UTILS_NO_CONFIG_TO_SAVE_ERROR.code,
+                StatusCode.UTILS_CONFIG_NOT_FOUND.code,
                 "No configuration to save"
             )
         
@@ -82,14 +82,14 @@ class ConfigManager:
         elif suffix in ['.yaml', '.yml']:
             if yaml is None:
                 raise JiuWenBaseException(
-                    StatusCode.UTILS_PYYAML_REQUIRED_ERROR.code,
+                    StatusCode.UTILS_PYYAML_NOT_FOUND.code,
                     "PyYAML is required to support YAML configuration files"
                 )
             with open(path, 'w', encoding='utf-8') as f:
                 yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
         else:
             raise JiuWenBaseException(
-                StatusCode.UTILS_UNSUPPORTED_CONFIG_FORMAT_ERROR.code,
+                StatusCode.UTILS_CONFIG_FORMAT_NOT_SUPPORTED.code,
                 f"Unsupported configuration file format: {suffix}"
             )
     
@@ -105,7 +105,7 @@ class ConfigManager:
         config = self._configs.get('knowledge_base')
         if not config:
             raise JiuWenBaseException(
-                StatusCode.UTILS_CONFIG_NOT_LOADED_ERROR.code,
+                StatusCode.UTILS_CONFIG_PROCESS_ERROR.code,
                 "Knowledge base configuration not loaded"
             )
         return config

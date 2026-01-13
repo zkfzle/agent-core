@@ -35,17 +35,17 @@ class Splitter(ABC):
         """
         if chunk_size <= 0:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_CHUNK_SIZE_ERROR.code,
+                StatusCode.INDEXING_CHUNK_SIZE_INVALID.code,
                 f"chunk_size must be greater than 0, current value: {chunk_size}"
             )
         if chunk_overlap < 0:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_CHUNK_OVERLAP_ERROR.code,
+                StatusCode.INDEXING_CHUNK_OVERLAP_INVALID.code,
                 f"chunk_overlap must be greater than or equal to 0, current value: {chunk_overlap}"
             )
         if chunk_overlap >= chunk_size:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_CHUNK_OVERLAP_ERROR.code,
+                StatusCode.INDEXING_CHUNK_OVERLAP_INVALID.code,
                 f"chunk_overlap ({chunk_overlap}) must be less than chunk_size ({chunk_size})"
             )
         
@@ -82,7 +82,7 @@ class Splitter(ABC):
         # Check if has encode method or is callable
         if not (hasattr(tokenizer, "encode") or callable(tokenizer)):
             raise JiuWenBaseException(
-                StatusCode.INDEXING_TOKENIZER_ERROR.code,
+                StatusCode.INDEXING_TOKENIZER_PROCESS_ERROR.code,
                 "Tokenizer must have encode method or be callable"
             )
     

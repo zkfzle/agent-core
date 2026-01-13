@@ -54,7 +54,7 @@ class SparseRetriever(Retriever):
         """
         if mode != "sparse":
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_UNSUPPORTED_MODE_ERROR.code,
+                StatusCode.RETRIEVER_MODE_NOT_SUPPORTED.code,
                 f"SparseRetriever only supports 'sparse' mode, got {mode}"
             )
 

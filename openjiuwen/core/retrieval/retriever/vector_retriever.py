@@ -58,20 +58,20 @@ class VectorRetriever(Retriever):
         """
         if mode != "vector":
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_UNSUPPORTED_MODE_ERROR.code,
+                StatusCode.RETRIEVER_MODE_NOT_SUPPORTED.code,
                 f"VectorRetriever only supports 'vector' mode, got {mode}"
             )
 
         if score_threshold is not None and mode != "vector":
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_SCORE_THRESHOLD_ERROR.code,
+                StatusCode.RETRIEVER_SCORE_THRESHOLD_INVALID.code,
                 "score_threshold is only supported when mode='vector'"
             )
 
         # Vector retrieval
         if self.embed_model is None:
             raise JiuWenBaseException(
-                StatusCode.RETRIEVER_EMBED_MODEL_REQUIRED_ERROR.code,
+                StatusCode.RETRIEVER_EMBED_MODEL_NOT_FOUND.code,
                 "embed_model is required for vector search"
             )
         

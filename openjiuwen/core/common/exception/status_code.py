@@ -48,7 +48,8 @@ class StatusCode(Enum):
 
     ## LLMComponent  101000 - 101049
     COMPONENT_LLM_TEMPLATE_CONFIG_ERROR = (101000,
-        generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="CONFIG_ERROR").template)
+        generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="CONFIG_ERROR")
+            .template)
     COMPONENT_LLM_CONFIG_INVALID = (101001,
         generate_error_message_template(scope="COMPONENT", subject="LLM_CONFIG", failure_type="INVALID").template)
     COMPONENT_LLM_CONFIG_ERROR = (101002,
@@ -56,11 +57,13 @@ class StatusCode(Enum):
     COMPONENT_LLM_INVOKE_CALL_FAILED = (101003,
         generate_error_message_template(scope="COMPONENT", subject="LLM_INVOKE", failure_type="CALL_FAILED").template)
     COMPONENT_LLM_EXECUTION_PROCESS_ERROR = (101004,
-        generate_error_message_template(scope="COMPONENT", subject="LLM_EXECUTION", failure_type="PROCESS_ERROR").template)
+        generate_error_message_template(scope="COMPONENT", subject="LLM_EXECUTION", failure_type="PROCESS_ERROR")
+            .template)
     COMPONENT_LLM_INIT_FAILED = (101005,
         generate_error_message_template(scope="COMPONENT", subject="LLM", failure_type="INIT_FAILED").template)
     COMPONENT_LLM_TEMPLATE_PROCESS_ERROR = (101006,
-        generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="PROCESS_ERROR").template)
+        generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="PROCESS_ERROR")
+            .template)
     COMPONENT_LLM_TEMPLATE_INVALID = (101007,
         generate_error_message_template(scope="COMPONENT", subject="LLM_TEMPLATE", failure_type="INVALID").template)
 
@@ -77,27 +80,34 @@ class StatusCode(Enum):
 
     ## IntentDetectionComponent 101050 - 101069
     COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (101050,
-        generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_INPUT", failure_type="PARAM_ERROR").template)
+        generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_INPUT", failure_type="PARAM_ERROR")
+            .template)
     COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED = (101051,
-        generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_LLM", failure_type="INIT_FAILED").template)
+        generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_LLM", failure_type="INIT_FAILED")
+            .template)
     COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED = (101052,
-        generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_INVOKE", failure_type="CALL_FAILED").template)
+        generate_error_message_template(scope="COMPONENT", subject="INTENT_DETECTION_INVOKE", failure_type="CALL_FAILED")
+            .template)
 
     ## QuestionComponent 101070 - 101099
     COMPONENT_QUESTIONER_INPUT_PARAM_ERROR = (101070,
-        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INPUT", failure_type="PARAM_ERROR").template)
+        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INPUT", failure_type="PARAM_ERROR")
+            .template)
     COMPONENT_QUESTIONER_CONFIG_ERROR = (101071,
         generate_error_message_template(scope="COMPONENT", subject="QUESTIONER", failure_type="CONFIG_ERROR").template)
     COMPONENT_QUESTIONER_INPUT_INVALID = (101072,
         generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INPUT", failure_type="INVALID").template)
     COMPONENT_QUESTIONER_STATE_INIT_FAILED = (101073,
-        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_STATE", failure_type="INIT_FAILED").template)
+        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_STATE", failure_type="INIT_FAILED")
+            .template)
     COMPONENT_QUESTIONER_RUNTIME_ERROR = (101074,
         generate_error_message_template(scope="COMPONENT", subject="QUESTIONER", failure_type="RUNTIME_ERROR").template)
     COMPONENT_QUESTIONER_INVOKE_CALL_FAILED = (101075,
-        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INVOKE", failure_type="CALL_FAILED").template)
+        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_INVOKE", failure_type="CALL_FAILED")
+            .template)
     COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (101076,
-        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_EXECUTION", failure_type="PROCESS_ERROR").template)
+        generate_error_message_template(scope="COMPONENT", subject="QUESTIONER_EXECUTION", failure_type="PROCESS_ERROR")
+            .template)
 
     ## BranchComponent  101100 - 101119
     BRANCH_COMPONENT_ADD_BRANCH_ERROR = (101100, "Branch adding error, as {error_msg}.")

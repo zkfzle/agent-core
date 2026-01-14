@@ -493,7 +493,7 @@ class Workflow:
             if task.done() and not task.cancelled():
                 task_exc = task.exception()
                 if isinstance(task_exc, (JiuWenBaseException, BaseError)):
-                    raise task_exc
+                    raise task_exc from task_exc
                 else:
                     raise build_error(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
                                       error_msg=str(task_exc)) from e

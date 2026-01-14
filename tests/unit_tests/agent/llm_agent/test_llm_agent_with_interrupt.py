@@ -12,7 +12,7 @@ from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_a
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.controller import Task, TaskInput
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.foundation.llm import ModelConfig
+from openjiuwen.core.foundation.llm import ModelConfig, ModelRequestConfig, ModelClientConfig
 from openjiuwen.core.workflow import End, WorkflowCard
 from openjiuwen.core.workflow import FieldInfo, QuestionerConfig, QuestionerComponent
 from openjiuwen.core.workflow import Start
@@ -61,6 +61,27 @@ class TestReActAgentInterrupt:  # ① 关键改动
                                top_p=0.9,
                                timeout=30  # 添加超时设置
                            ))
+
+    @staticmethod
+    def _create_model_request_config() -> ModelRequestConfig:
+        """创建模型配置"""
+        return ModelRequestConfig(
+            model="gpt-3.5-turbo",
+            temperature=0.7,
+            top_p=0.9
+        )
+
+    @staticmethod
+    def _create_model_client_config() -> ModelClientConfig:
+        """创建模型配置"""
+        return ModelClientConfig(
+            client_provider="OpenAI",
+            api_key="sk-fake",
+            api_base="https://api.openai.com/v1",
+            timeout=30,
+            max_retries=3,
+            verify_ssl=False
+        )
 
     @staticmethod
     def _create_prompt_template():
@@ -114,7 +135,8 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
         model_config = self._create_model()
         questioner_config = QuestionerConfig(
-            model=model_config,
+            model_config=self._create_model_request_config(),
+            model_client_config=self._create_model_client_config(),
             question_content="查询什么城市的天气",
             extract_fields_from_response=True,
             field_names=key_fields,
@@ -233,7 +255,8 @@ class TestReActAgentInterrupt:  # ① 关键改动
                                    ))
 
         questioner_config = QuestionerConfig(
-            model=model_config,
+            model_config=self._create_model_request_config(),
+            model_client_config=self._create_model_client_config(),
             question_content="查询什么城市的天气",
             extract_fields_from_response=True,
             field_names=key_fields,
@@ -341,7 +364,8 @@ class TestReActAgentInterrupt:  # ① 关键改动
                                    ))
 
         questioner_config = QuestionerConfig(
-            model=model_config,
+            model_config=self._create_model_request_config(),
+            model_client_config=self._create_model_client_config(),
             question_content="",
             extract_fields_from_response=True,
             field_names=key_fields,
@@ -439,7 +463,8 @@ class TestReActAgentInterrupt:  # ① 关键改动
                                    ))
 
         questioner_config = QuestionerConfig(
-            model=model_config,
+            model_config=self._create_model_request_config(),
+            model_client_config=self._create_model_client_config(),
             question_content="",
             extract_fields_from_response=True,
             field_names=key_fields,

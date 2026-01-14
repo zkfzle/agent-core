@@ -26,9 +26,9 @@ from openjiuwen.core.memory.store.sql_db_store import SqlDbStore
 from openjiuwen.core.memory.store.user_mem_store import UserMemStore
 from openjiuwen.core.foundation.llm import UserMessage, BaseMessage, Model
 from openjiuwen.core.common.utils.singleton import Singleton
-from openjiuwen.core.retrieval.embedding.base import Embedding
-from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
-from openjiuwen.core.retrieval.vector_store.base import VectorStore
+from openjiuwen.core.retrieval import Embedding
+from openjiuwen.core.retrieval import APIEmbedding
+from openjiuwen.core.retrieval import VectorStore
 
 
 class MemInfo(BaseModel):
@@ -44,15 +44,16 @@ class MemResult(BaseModel):
 
 class LongTermMemory(metaclass=Singleton):
     """
-        Abstract base class for memory engine.
+    Abstract base class for memory engine.
 
-        Defines the core interface for memory storage and retrieval operations.
-        Provides unified memory management functionality including conversation memory,
-        user variables, semantic search, and persistence.
+    Defines the core interface for memory storage and retrieval operations.
+    Provides unified memory management functionality including conversation memory,
+    user variables, semantic search, and persistence.
 
-        Concrete implementations should handle memory operations across multiple storage
-        backends (KV store, semantic store, database store).
+    Concrete implementations should handle memory operations across multiple storage
+    backends (KV store, semantic store, database store).
     """
+
     DEFAULT_VALUE: str = "__default__"
     SCOPE_CONFIG_KEY: str = "memory_scope_config"
 
@@ -79,10 +80,13 @@ class LongTermMemory(metaclass=Singleton):
         # embedding model cache
         self._scope_embedding: dict[str, Embedding] = {}
 
-    async def register_store(self, kv_store: BaseKVStore,
-                             vector_store: VectorStore | None = None,
-                             db_store: BaseDbStore | None = None,
-                             embedding_model: Embedding | None = None):
+    async def register_store(
+        self,
+        kv_store: BaseKVStore,
+        vector_store: VectorStore | None = None,
+        db_store: BaseDbStore | None = None,
+        embedding_model: Embedding | None = None,
+    ):
         """
         Register store instance.
 
@@ -127,35 +131,25 @@ class LongTermMemory(metaclass=Singleton):
 
         if self.db_store:
             sql_db_store = SqlDbStore(self.db_store)
-            self.message_manager = MessageManager(
-                sql_db_store,
-                data_id_generator,
-                config.crypto_key
-            )
+            self.message_manager = MessageManager(sql_db_store, data_id_generator, config.crypto_key)
         self.user_profile_manager = UserProfileManager(
             semantic_recall_instance=self.semantic_store,
             user_mem_store=user_mem_store,
             data_id_generator=data_id_generator,
-            crypto_key=config.crypto_key
+            crypto_key=config.crypto_key,
         )
-        self.variable_manager = VariableManager(
-            self.kv_store,
-            config.crypto_key
-        )
+        self.variable_manager = VariableManager(self.kv_store, config.crypto_key)
         managers = {
             MemoryType.USER_PROFILE.value: self.user_profile_manager,
-            MemoryType.VARIABLE.value: self.variable_manager
+            MemoryType.VARIABLE.value: self.variable_manager,
         }
         self.write_manager = WriteManager(managers, user_mem_store)
-        self.search_manager = SearchManager(
-            managers,
-            user_mem_store,
-            config.crypto_key
-        )
+        self.search_manager = SearchManager(managers, user_mem_store, config.crypto_key)
         self.generator = Generator()
         # set init llm
-        llm = LongTermMemory._get_llm_from_config(model_config=config.default_model_cfg,
-                                                  model_client_config=config.default_model_client_cfg)
+        llm = LongTermMemory._get_llm_from_config(
+            model_config=config.default_model_cfg, model_client_config=config.default_model_client_cfg
+        )
         self._base_llm = (config.default_model_cfg.model_name, llm)
 
     async def set_scope_config(self, scope_id: str, memory_scope_config: MemoryScopeConfig) -> bool:
@@ -179,14 +173,12 @@ class LongTermMemory(metaclass=Singleton):
         # Encrypt API keys if they exist
         if encrypted_config.model_client_cfg and encrypted_config.model_client_cfg.api_key:
             encrypted_config.model_client_cfg.api_key = BaseMemoryManager.encrypt_memory_if_needed(
-                key=self._sys_mem_config.crypto_key,
-                plaintext=encrypted_config.model_client_cfg.api_key
+                key=self._sys_mem_config.crypto_key, plaintext=encrypted_config.model_client_cfg.api_key
             )
 
         if encrypted_config.embedding_cfg and encrypted_config.embedding_cfg.api_key:
             encrypted_config.embedding_cfg.api_key = BaseMemoryManager.encrypt_memory_if_needed(
-                key=self._sys_mem_config.crypto_key,
-                plaintext=encrypted_config.embedding_cfg.api_key
+                key=self._sys_mem_config.crypto_key, plaintext=encrypted_config.embedding_cfg.api_key
             )
 
         self._scope_config[scope_id] = encrypted_config
@@ -226,14 +218,12 @@ class LongTermMemory(metaclass=Singleton):
         # Decrypt API keys if they exist
         if encrypted_config.model_client_cfg and encrypted_config.model_client_cfg.api_key:
             encrypted_config.model_client_cfg.api_key = BaseMemoryManager.decrypt_memory_if_needed(
-                key=self._sys_mem_config.crypto_key,
-                ciphertext=encrypted_config.model_client_cfg.api_key
+                key=self._sys_mem_config.crypto_key, ciphertext=encrypted_config.model_client_cfg.api_key
             )
 
         if encrypted_config.embedding_cfg and encrypted_config.embedding_cfg.api_key:
             encrypted_config.embedding_cfg.api_key = BaseMemoryManager.decrypt_memory_if_needed(
-                key=self._sys_mem_config.crypto_key,
-                ciphertext=encrypted_config.embedding_cfg.api_key
+                key=self._sys_mem_config.crypto_key, ciphertext=encrypted_config.embedding_cfg.api_key
             )
 
         return encrypted_config
@@ -298,16 +288,16 @@ class LongTermMemory(metaclass=Singleton):
         return True
 
     async def add_messages(
-            self,
-            messages: list[BaseMessage],
-            agent_config: MemoryAgentConfig,
-            *,
-            user_id: str = DEFAULT_VALUE,
-            scope_id: str = DEFAULT_VALUE,
-            session_id: str = DEFAULT_VALUE,
-            timestamp: datetime | None = None,
-            gen_mem: bool = True,
-            gen_mem_with_history_msg_num: int = 5
+        self,
+        messages: list[BaseMessage],
+        agent_config: MemoryAgentConfig,
+        *,
+        user_id: str = DEFAULT_VALUE,
+        scope_id: str = DEFAULT_VALUE,
+        session_id: str = DEFAULT_VALUE,
+        timestamp: datetime | None = None,
+        gen_mem: bool = True,
+        gen_mem_with_history_msg_num: int = 5,
     ):
         if not self._validate_id(scope_id=scope_id):
             logger.error(f"Invalid scope_id format, scope_id={scope_id}")
@@ -326,7 +316,8 @@ class LongTermMemory(metaclass=Singleton):
                 user_id=user_id,
                 scope_id=scope_id,
                 session_id=session_id,
-                history_window_size=gen_mem_with_history_msg_num)
+                history_window_size=gen_mem_with_history_msg_num,
+            )
             # when multi messages, use last msg_id
             if gen_mem:
                 for i, msg in enumerate(messages):
@@ -337,7 +328,7 @@ class LongTermMemory(metaclass=Singleton):
                         role=msg.role,
                         content=msg.content,
                         session_id=session_id,
-                        timestamp=msg_timestamp
+                        timestamp=msg_timestamp,
                     )
                     msg_id = await self.message_manager.add(add_req)
             else:
@@ -356,7 +347,7 @@ class LongTermMemory(metaclass=Singleton):
                 session_id=session_id,
                 config=agent_config,
                 base_chat_model=llm,
-                message_mem_id=msg_id
+                message_mem_id=msg_id,
             )
             try:
                 await self.write_manager.add_mem(mem_units=all_memory, llm=llm)
@@ -367,11 +358,11 @@ class LongTermMemory(metaclass=Singleton):
             return
 
     async def get_recent_messages(
-            self,
-            user_id: str = DEFAULT_VALUE,
-            scope_id: str = DEFAULT_VALUE,
-            session_id: str = DEFAULT_VALUE,
-            num: int = 10
+        self,
+        user_id: str = DEFAULT_VALUE,
+        scope_id: str = DEFAULT_VALUE,
+        session_id: str = DEFAULT_VALUE,
+        num: int = 10,
     ) -> list[BaseMessage]:
         """
         Get recent messages.
@@ -389,10 +380,7 @@ class LongTermMemory(metaclass=Singleton):
             logger.error(f"Invalid scope_id format, scope_id={scope_id}")
             return []
         recent_messages_tuple = await self.message_manager.get(
-            user_id=user_id,
-            scope_id=scope_id,
-            session_id=session_id,
-            message_len=num
+            user_id=user_id, scope_id=scope_id, session_id=session_id, message_len=num
         )
         recent_messages = [msg for msg, _ in recent_messages_tuple]
         return recent_messages
@@ -412,10 +400,7 @@ class LongTermMemory(metaclass=Singleton):
             return None
         return await self.message_manager.get_by_id(msg_id)
 
-    async def delete_mem_by_id(self,
-                               mem_id: str,
-                               user_id: str = DEFAULT_VALUE,
-                               scope_id: str = DEFAULT_VALUE):
+    async def delete_mem_by_id(self, mem_id: str, user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE):
         """
         Delete a specific memory by ID.
 
@@ -435,9 +420,7 @@ class LongTermMemory(metaclass=Singleton):
                 raise ValueError("Write manager is not initialized.")
             await self.write_manager.delete_mem_by_id(user_id=user_id, scope_id=scope_id, mem_id=mem_id)
 
-    async def delete_mem_by_user_id(self,
-                                    user_id: str = DEFAULT_VALUE,
-                                    scope_id: str = DEFAULT_VALUE):
+    async def delete_mem_by_user_id(self, user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE):
         """
         Delete all type memories for a user with scope id.
 
@@ -458,11 +441,9 @@ class LongTermMemory(metaclass=Singleton):
                 raise ValueError("Write manager is not initialized.")
             await self.write_manager.delete_mem_by_user_id(user_id=user_id, scope_id=scope_id)
 
-    async def update_mem_by_id(self,
-                               mem_id: str,
-                               memory: str,
-                               user_id: str = DEFAULT_VALUE,
-                               scope_id: str = DEFAULT_VALUE):
+    async def update_mem_by_id(
+        self, mem_id: str, memory: str, user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE
+    ):
         """
         Update the content of an existing memory entry.
 
@@ -481,26 +462,24 @@ class LongTermMemory(metaclass=Singleton):
         async with lock:
             if not self.write_manager:
                 raise ValueError("Write manager is not initialized.")
-            await self.write_manager.update_mem_by_id(user_id=user_id, scope_id=scope_id,
-                                                      mem_id=mem_id, memory=memory)
+            await self.write_manager.update_mem_by_id(user_id=user_id, scope_id=scope_id, mem_id=mem_id, memory=memory)
 
-    async def get_user_variable(self,
-                                names: list[str] | str | None = None,
-                                user_id: str = DEFAULT_VALUE,
-                                scope_id: str = DEFAULT_VALUE) -> dict[str, str]:
+    async def get_user_variable(
+        self, names: list[str] | str | None = None, user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE
+    ) -> dict[str, str]:
         """
-            Get user variable(s)
+        Get user variable(s)
 
-            Args:
-                names: Name of the variable(s) to get.
-                       - None: return all variables
-                       - str: return one variable
-                       - list[str]: return multiple variables
-                user_id: user identifier
-                scope_id: scope identifier
+        Args:
+            names: Name of the variable(s) to get.
+                   - None: return all variables
+                   - str: return one variable
+                   - list[str]: return multiple variables
+            user_id: user identifier
+            scope_id: scope identifier
 
-            Returns:
-                dict[str, str]: variable name -> value
+        Returns:
+            dict[str, str]: variable name -> value
         """
         if not self._validate_id(scope_id):
             logger.error(f"Invalid scope_id format, scope_id={scope_id}")
@@ -521,14 +500,9 @@ class LongTermMemory(metaclass=Singleton):
             return ret
         raise TypeError("names must be str | list[str] | None")
 
-    async def search_user_mem(self,
-                              query: str,
-                              num: int,
-                              user_id: str = DEFAULT_VALUE,
-                              scope_id: str = DEFAULT_VALUE,
-                              threshold: float = 0.3
-                              ) -> list[MemResult]:
-
+    async def search_user_mem(
+        self, query: str, num: int, user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE, threshold: float = 0.3
+    ) -> list[MemResult]:
         if not self._validate_id(scope_id):
             logger.error(f"Invalid scope_id format, scope_id={scope_id}")
             return []
@@ -536,23 +510,15 @@ class LongTermMemory(metaclass=Singleton):
         await self._set_semantic_store_embedding_model(scope_id)
         if not self.search_manager:
             raise ValueError("Search Manager is not initialized")
-        params = SearchParams(
-            query=query,
-            scope_id=scope_id,
-            top_k=num,
-            user_id=user_id,
-            threshold=threshold
-        )
+        params = SearchParams(query=query, scope_id=scope_id, top_k=num, user_id=user_id, threshold=threshold)
         try:
             search_data = await self.search_manager.search(params)
             mem_results: list[MemResult] = [
                 MemResult(
                     mem_info=MemInfo(
-                        mem_id=item["id"],
-                        content=item["mem"],
-                        type=item.get("mem_type", MemoryType.USER_PROFILE)
+                        mem_id=item["id"], content=item["mem"], type=item.get("mem_type", MemoryType.USER_PROFILE)
                     ),
-                    score=item.get("score", 0.0)
+                    score=item.get("score", 0.0),
                 )
                 for item in search_data
             ]
@@ -567,9 +533,7 @@ class LongTermMemory(metaclass=Singleton):
             logger.warning(f"Search user mem has exception: {str(e)}")
             return []
 
-    async def user_mem_total_num(self,
-                                 user_id: str = DEFAULT_VALUE,
-                                 scope_id: str = DEFAULT_VALUE) -> int:
+    async def user_mem_total_num(self, user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE) -> int:
         """
         return total number of user memory
         """
@@ -577,16 +541,17 @@ class LongTermMemory(metaclass=Singleton):
             logger.error(f"Invalid scope_id format, scope_id={scope_id}")
             return 0
         # Get all user profiles by using get_in_range with a large range
-        search_data = await self.search_manager.list_user_mem(user_id=user_id, scope_id=scope_id,
-                                                              nums=100, pages=1)
+        search_data = await self.search_manager.list_user_mem(user_id=user_id, scope_id=scope_id, nums=100, pages=1)
         return len(search_data) if search_data else 0
 
-    async def get_user_mem_by_page(self,
-                                   user_id: str = DEFAULT_VALUE,
-                                   scope_id: str = DEFAULT_VALUE,
-                                   page_size: int = 10,
-                                   page_idx: int = 0,
-                                   memory_type: MemoryType = MemoryType.UNKNOWN) -> list[MemInfo]:
+    async def get_user_mem_by_page(
+        self,
+        user_id: str = DEFAULT_VALUE,
+        scope_id: str = DEFAULT_VALUE,
+        page_size: int = 10,
+        page_idx: int = 0,
+        memory_type: MemoryType = MemoryType.UNKNOWN,
+    ) -> list[MemInfo]:
         """
         List user memories with pagination support.
 
@@ -608,8 +573,9 @@ class LongTermMemory(metaclass=Singleton):
             return []
         if not self.search_manager:
             raise ValueError("Search manager is not initialized.")
-        search_data = await self.search_manager.list_user_mem(user_id=user_id, scope_id=scope_id,
-                                                              nums=page_size, pages=page_idx)
+        search_data = await self.search_manager.list_user_mem(
+            user_id=user_id, scope_id=scope_id, nums=page_size, pages=page_idx
+        )
 
         if not search_data:
             return []
@@ -619,20 +585,12 @@ class LongTermMemory(metaclass=Singleton):
             mem_type = item.get("mem_type", MemoryType.USER_PROFILE)
             # Apply filtering if type is not UNKNOWN
             if memory_type == MemoryType.UNKNOWN or mem_type == memory_type:
-                mem_results.append(
-                    MemInfo(
-                        mem_id=item["id"],
-                        content=item["mem"],
-                        type=mem_type
-                    )
-                )
+                mem_results.append(MemInfo(mem_id=item["id"], content=item["mem"], type=mem_type))
         return mem_results
 
-    async def update_user_variable(self,
-                                   variables: dict[str, str],
-                                   user_id: str = DEFAULT_VALUE,
-                                   scope_id: str = DEFAULT_VALUE
-                                   ):
+    async def update_user_variable(
+        self, variables: dict[str, str], user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE
+    ):
         """
         Update user variables.
 
@@ -650,16 +608,10 @@ class LongTermMemory(metaclass=Singleton):
                 raise ValueError("Variable manager is not initialized.")
             for name, value in variables.items():
                 await self.variable_manager.update_user_variable(
-                    user_id=user_id,
-                    scope_id=scope_id,
-                    var_name=name,
-                    var_mem=value
+                    user_id=user_id, scope_id=scope_id, var_name=name, var_mem=value
                 )
 
-    async def delete_user_variable(self,
-                                   names: list[str],
-                                   user_id: str = DEFAULT_VALUE,
-                                   scope_id: str = DEFAULT_VALUE):
+    async def delete_user_variable(self, names: list[str], user_id: str = DEFAULT_VALUE, scope_id: str = DEFAULT_VALUE):
         """
         Delete user variables.
 
@@ -680,8 +632,7 @@ class LongTermMemory(metaclass=Singleton):
             return True
 
     @staticmethod
-    def _get_llm_from_config(model_config: ModelRequestConfig,
-                             model_client_config: ModelClientConfig):
+    def _get_llm_from_config(model_config: ModelRequestConfig, model_client_config: ModelClientConfig):
         return Model(model_config=model_config, model_client_config=model_client_config)
 
     async def _get_scope_config(self, scope_id: str) -> MemoryScopeConfig | None:
@@ -704,14 +655,12 @@ class LongTermMemory(metaclass=Singleton):
             # Decrypt API keys if they exist
             if decrypted_config.model_client_cfg and decrypted_config.model_client_cfg.api_key:
                 decrypted_config.model_client_cfg.api_key = BaseMemoryManager.decrypt_memory_if_needed(
-                    key=self._sys_mem_config.crypto_key,
-                    ciphertext=decrypted_config.model_client_cfg.api_key
+                    key=self._sys_mem_config.crypto_key, ciphertext=decrypted_config.model_client_cfg.api_key
                 )
 
             if decrypted_config.embedding_cfg and decrypted_config.embedding_cfg.api_key:
                 decrypted_config.embedding_cfg.api_key = BaseMemoryManager.decrypt_memory_if_needed(
-                    key=self._sys_mem_config.crypto_key,
-                    ciphertext=decrypted_config.embedding_cfg.api_key
+                    key=self._sys_mem_config.crypto_key, ciphertext=decrypted_config.embedding_cfg.api_key
                 )
 
             return decrypted_config
@@ -763,8 +712,10 @@ class LongTermMemory(metaclass=Singleton):
             config = await self._get_scope_config(scope_id)
 
             if config and config.model_cfg and config.model_client_cfg:
-                llm = (config.model_cfg.model_name,
-                       LongTermMemory._get_llm_from_config(config.model_cfg, config.model_client_cfg))
+                llm = (
+                    config.model_cfg.model_name,
+                    LongTermMemory._get_llm_from_config(config.model_cfg, config.model_client_cfg),
+                )
                 return llm
 
             # If the LLM fails to be obtained, try to use the system default configuration.
@@ -775,9 +726,12 @@ class LongTermMemory(metaclass=Singleton):
             elif not self._sys_mem_config.default_model_cfg:
                 logger.debug("Default model config is missing, cannot instantiate LLM")
             else:
-                llm = (self._sys_mem_config.default_model_cfg.model_name,
-                       LongTermMemory._get_llm_from_config(self._sys_mem_config.default_model_cfg,
-                                                           self._sys_mem_config.default_model_client_cfg))
+                llm = (
+                    self._sys_mem_config.default_model_cfg.model_name,
+                    LongTermMemory._get_llm_from_config(
+                        self._sys_mem_config.default_model_cfg, self._sys_mem_config.default_model_client_cfg
+                    ),
+                )
                 return llm
             return self._base_llm
 
@@ -809,25 +763,19 @@ class LongTermMemory(metaclass=Singleton):
                 out_messages.append(msg)
                 has_human_msg = True
                 continue
-            msg.content = msg.content[:self._sys_mem_config.input_msg_max_len]
+            msg.content = msg.content[: self._sys_mem_config.input_msg_max_len]
             out_messages.append(msg)
 
         return has_human_msg, out_messages
 
-    async def _get_history_messages(self,
-                                    user_id: str,
-                                    scope_id: str,
-                                    session_id: str,
-                                    history_window_size: int
-                                    ) -> list[BaseMessage]:
+    async def _get_history_messages(
+        self, user_id: str, scope_id: str, session_id: str, history_window_size: int
+    ) -> list[BaseMessage]:
         threshold = history_window_size
         if not self.message_manager:
             return []
         history_messages_tuple = await self.message_manager.get(
-            user_id=user_id,
-            scope_id=scope_id,
-            session_id=session_id,
-            message_len=threshold
+            user_id=user_id, scope_id=scope_id, session_id=session_id, message_len=threshold
         )
         history_messages = []
         human_message: UserMessage = UserMessage()
@@ -835,7 +783,7 @@ class LongTermMemory(metaclass=Singleton):
             if msg.role == human_message.role:
                 history_messages.append(msg)
                 continue
-            msg.content = msg.content[:self._sys_mem_config.input_msg_max_len]
+            msg.content = msg.content[: self._sys_mem_config.input_msg_max_len]
             history_messages.append(msg)
         return history_messages
 

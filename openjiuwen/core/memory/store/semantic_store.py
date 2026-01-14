@@ -3,8 +3,8 @@
 from typing import List, Tuple
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.retrieval.vector_store.base import VectorStore
-from openjiuwen.core.retrieval.embedding.base import Embedding
+from openjiuwen.core.retrieval import VectorStore
+from openjiuwen.core.retrieval import Embedding
 
 
 class SemanticStore:
@@ -15,11 +15,11 @@ class SemanticStore:
     It uses an embedding model to generate vector representations of text documents and a vector store
     to store and search these embeddings efficiently.
     """
-    
+
     def __init__(self, vector_store: VectorStore, embedding_model: Embedding | None = None):
         """
         Initialize the semantic store with an embedding model and vector store.
-        
+
         Args:
             vector_store: The vector store to use for storing and searching embeddings.
             embedding_model: Optional embedding model to use for generating embeddings.
@@ -27,16 +27,16 @@ class SemanticStore:
         """
         self.embedding_model = embedding_model
         self.vector_store = vector_store
-    
+
     def initialize_embedding_model(self, embedding_model: Embedding):
         """
         Initialize or update the embedding model used by the semantic store.
-        
+
         Args:
             embedding_model: The embedding model to use for generating text embeddings.
         """
         self.embedding_model = embedding_model
-    
+
     async def add_docs(self, docs: List[Tuple[str, str]], table_name: str, scope_id: str | None = None) -> bool:
         """
         Add documents to a specified table after generating their embeddings.
@@ -54,34 +54,30 @@ class SemanticStore:
         if not self.embedding_model:
             logger.error("Embedding model not initialized, please call initialize_embedding_model first.")
             return False
-            
+
         try:
             memory_ids, texts = zip(*docs)
             memory_ids = list(memory_ids)
             texts = list(texts)
-            
+
             # Generate embeddings for the texts
             embeddings = await self.embedding_model.embed_documents(texts=texts)
-            
+
             if len(memory_ids) != len(embeddings):
-                raise ValueError(f"memory_ids and embeddings must have same length")
-            
+                raise ValueError("memory_ids and embeddings must have same length")
+
             # Prepare data for vector store, content is not stored
             data = []
             for doc_id, embedding in zip(memory_ids, embeddings):
-                data.append({
-                    "id": doc_id,
-                    "embedding": embedding,
-                    "scope_id": scope_id
-                })
-            
+                data.append({"id": doc_id, "embedding": embedding, "scope_id": scope_id})
+
             # Add to vector store
             await self.vector_store.add(data=data, table_name=table_name)
             return True
         except Exception as e:
             logger.error(f"Failed to add documents to semantic store: {e}")
             return False
-    
+
     async def delete_docs(self, ids: List[str], table_name: str) -> bool:
         """
         Delete documents from a specified table by their unique identifiers.
@@ -98,9 +94,10 @@ class SemanticStore:
         except Exception as e:
             logger.error(f"Failed to delete documents from semantic store: {e}")
             return False
-    
-    async def search(self, query: str, table_name: str,
-                     scope_id: str | None = None, top_k: int = 5) -> List[Tuple[str, float]]:
+
+    async def search(
+        self, query: str, table_name: str, scope_id: str | None = None, top_k: int = 5
+    ) -> List[Tuple[str, float]]:
         """
         Search for the top-k most similar documents to a query string.
 
@@ -122,7 +119,7 @@ class SemanticStore:
         if not self.embedding_model:
             logger.error("Embedding model not initialized, please call initialize_embedding_model first.")
             return []
-            
+
         try:
             # Generate embedding for the query
             query_embeddings = await self.embedding_model.embed_documents(texts=[query])
@@ -133,18 +130,15 @@ class SemanticStore:
 
             # Search in vector store
             results = await self.vector_store.search(
-                query_vector=query_embedding,
-                top_k=top_k,
-                scope_id=scope_id,
-                table_name=table_name
+                query_vector=query_embedding, top_k=top_k, scope_id=scope_id, table_name=table_name
             )
-            
+
             # Convert to required format
             return [(result.id, result.score) for result in results]
         except Exception as e:
             logger.error(f"Failed to search semantic store: {e}")
             return []
-    
+
     async def delete_table(self, table_name: str) -> bool:
         """
         Delete an entire table and all its stored embeddings.

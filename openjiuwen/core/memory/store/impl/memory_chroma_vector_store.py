@@ -6,8 +6,8 @@ from chromadb import PersistentClient
 from chromadb.api.types import QueryResult
 from chromadb.errors import NotFoundError
 
-from openjiuwen.core.retrieval.vector_store.base import VectorStore
-from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
+from openjiuwen.core.retrieval import VectorStore
+from openjiuwen.core.retrieval import SearchResult
 from openjiuwen.core.common.logging import logger
 
 
@@ -15,7 +15,7 @@ class MemoryChromaVectorStore(VectorStore):
     """Chroma vector store implementation"""
 
     def __init__(self, persist_directory: str):
-        """ Initialize Chroma vector store"""
+        """Initialize Chroma vector store"""
         self.client = PersistentClient(path=persist_directory)
 
         self.collection_cache = {}  # Cache for collections
@@ -52,10 +52,7 @@ class MemoryChromaVectorStore(VectorStore):
     async def is_collection_exists(self, table_name: str) -> bool:
         """Check whether the collection exists"""
         try:
-            await asyncio.to_thread(
-                self.client.get_collection,
-                name=table_name
-            )
+            await asyncio.to_thread(self.client.get_collection, name=table_name)
             return True
         except NotFoundError:
             return False
@@ -78,19 +75,14 @@ class MemoryChromaVectorStore(VectorStore):
 
         # Process in batches
         for i in range(0, len(data), batch_size):
-            batch = data[i:i + batch_size]
+            batch = data[i : i + batch_size]
             ids, embeddings, metadatas = [], [], []
             for item in batch:
                 ids.append(item["id"])
                 embeddings.append(item["embedding"])
                 metadatas.append({"scope_id": item["scope_id"] if item.get("scope_id") else ""})
 
-            await asyncio.to_thread(
-                collection.add,
-                ids=ids,
-                embeddings=embeddings,
-                metadatas=metadatas
-            )
+            await asyncio.to_thread(collection.add, ids=ids, embeddings=embeddings, metadatas=metadatas)
 
     async def search(
         self,
@@ -114,20 +106,15 @@ class MemoryChromaVectorStore(VectorStore):
         )
 
         search_results = []
-        if len(results['ids']) > 0 and results['ids'][0]:
-            ids = results['ids'][0]
-            distances = results['distances'][0] if results.get('distances') else [1.0] * len(ids)
-            metadatas = results['metadatas'][0] if results.get('metadatas') else [{}] * len(ids)
+        if len(results["ids"]) > 0 and results["ids"][0]:
+            ids = results["ids"][0]
+            distances = results["distances"][0] if results.get("distances") else [1.0] * len(ids)
+            metadatas = results["metadatas"][0] if results.get("metadatas") else [{}] * len(ids)
 
             # Convert distances to scores (higher is better)
             for item_id, distance, metadata in zip(ids, distances, metadatas):
                 score = 1 - distance
-                search_results.append(SearchResult(
-                    id=item_id,
-                    text="",
-                    score=score,
-                    metadata=metadata or {}
-                ))
+                search_results.append(SearchResult(id=item_id, text="", score=score, metadata=metadata or {}))
 
         return search_results
 
@@ -159,10 +146,7 @@ class MemoryChromaVectorStore(VectorStore):
         if not collection_is_exists:
             logger.debug(f"Chroma Collection {table_name} does not exist, skip delete collection")
             return True
-        await asyncio.to_thread(
-            self.client.delete_collection,
-            name=table_name
-        )
+        await asyncio.to_thread(self.client.delete_collection, name=table_name)
         self.remove_collection_from_cache(table_name)
         return True
 

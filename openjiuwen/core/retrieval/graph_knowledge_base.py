@@ -85,7 +85,9 @@ class GraphKnowledgeBase(KnowledgeBase):
     ) -> List[Document]:
         """Parse files from file paths into a list of Document objects"""
         if not self.parser:
-            raise JiuWenBaseException(StatusCode.KB_PARSER_NOT_FOUND.code, "parser is required for parse_files")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_PARSER_NOT_FOUND.code, "parser is required for parse_files"
+            )
 
         all_documents = []
         for file_path in file_paths:
@@ -112,10 +114,12 @@ class GraphKnowledgeBase(KnowledgeBase):
     ) -> List[str]:
         """Add documents to the knowledge base (including chunk index and triple index)"""
         if not self.chunker:
-            raise JiuWenBaseException(StatusCode.KB_CHUNKER_NOT_FOUND.code, "chunker is required for add_documents")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.code, "chunker is required for add_documents"
+            )
         if not self.index_manager:
             raise JiuWenBaseException(
-                StatusCode.KB_INDEX_MANAGER_NOT_FOUND.code, "index_manager is required for add_documents"
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code, "index_manager is required for add_documents"
             )
 
         # Chunk documents
@@ -142,7 +146,7 @@ class GraphKnowledgeBase(KnowledgeBase):
 
         if not success:
             raise JiuWenBaseException(
-                StatusCode.KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.code, "Failed to build chunk index"
+                StatusCode.RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.code, "Failed to build chunk index"
             )
 
         # If graph indexing is enabled, extract triples and build triple index
@@ -186,7 +190,7 @@ class GraphKnowledgeBase(KnowledgeBase):
 
                 if not success:
                     raise JiuWenBaseException(
-                        StatusCode.KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.code, "Failed to build triple index"
+                        StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.code, "Failed to build triple index"
                     )
                 else:
                     logger.info(f"Built triple index with {len(triple_chunks)} triples")
@@ -210,7 +214,8 @@ class GraphKnowledgeBase(KnowledgeBase):
             if not self.graph_retriever:
                 if not self.vector_store:
                     raise JiuWenBaseException(
-                        StatusCode.KB_VECTOR_STORE_NOT_FOUND.code, "vector_store is required for graph retrieval"
+                        StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND.code,
+                        "vector_store is required for graph retrieval",
                     )
                 chunk_collection = f"kb_{self.config.kb_id}_chunks"
                 triple_collection = f"kb_{self.config.kb_id}_triples"
@@ -274,7 +279,7 @@ class GraphKnowledgeBase(KnowledgeBase):
         """Delete documents (including chunk index and triple index)"""
         if not self.index_manager:
             raise JiuWenBaseException(
-                StatusCode.KB_INDEX_MANAGER_NOT_FOUND.code, "index_manager is required for delete_documents"
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code, "index_manager is required for delete_documents"
             )
 
         chunk_index_name = f"kb_{self.config.kb_id}_chunks"

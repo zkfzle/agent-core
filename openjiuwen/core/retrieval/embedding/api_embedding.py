@@ -70,14 +70,18 @@ class APIEmbedding(Embedding):
 
     async def embed_query(self, text: str, **kwargs: Any) -> List[float]:
         if not text.strip():
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding"
+            )
         embeddings = await self._get_embeddings(text, **kwargs)
         return embeddings[0]
 
     def embed_query_sync(self, text: str, **kwargs: Any) -> List[float]:
         """Embed a single query text (sync version)."""
         if not text.strip():
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding"
+            )
         embeddings = self._get_embeddings_sync(text, **kwargs)
         return embeddings[0]
 
@@ -88,15 +92,17 @@ class APIEmbedding(Embedding):
         **kwargs: Any,
     ) -> List[List[float]]:
         if not texts:
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty texts list provided")
+            raise JiuWenBaseException(StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "Empty texts list provided")
         non_empty = [t for t in texts if t.strip()]
         if len(non_empty) != len(texts):
             raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code,
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
                 f"{len(texts) - len(non_empty)} chunks are empty while embedding",
             )
         if not non_empty:
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "All texts are empty after filtering")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "All texts are empty after filtering"
+            )
         # Respect caller batch_size but never exceed configured max_batch_size
         bsz = batch_size or self.max_batch_size or 1
         if self.max_batch_size:
@@ -139,12 +145,12 @@ class APIEmbedding(Embedding):
                             embeddings.append(item["embedding"])
                     if not embeddings:
                         raise JiuWenBaseException(
-                            StatusCode.EMBEDDING_RESPONSE_INVALID.code,
+                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
                             f"No embeddings field found in data items: {result}",
                         )
                 else:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
+                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
                     )
 
                 # If dimension not yet determined, get from result and cache
@@ -156,7 +162,7 @@ class APIEmbedding(Embedding):
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_REQUEST_CALL_FAILED.code,
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
                         f"Failed to get embedding after {self.max_retries} attempts",
                     ) from e
                 logger.warning(
@@ -166,7 +172,7 @@ class APIEmbedding(Embedding):
                     e,
                 )
         raise JiuWenBaseException(
-            StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code, "Unreachable code in _get_embeddings"
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code, "Unreachable code in _get_embeddings"
         )
 
     def _get_embeddings_sync(self, text: str | List[str], **kwargs) -> List[List[float]]:
@@ -199,12 +205,12 @@ class APIEmbedding(Embedding):
                             embeddings.append(item["embedding"])
                     if not embeddings:
                         raise JiuWenBaseException(
-                            StatusCode.EMBEDDING_RESPONSE_INVALID.code,
+                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
                             f"No embeddings field found in data items: {result}",
                         )
                 else:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
+                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
                     )
 
                 # Cache dimension if not yet determined
@@ -216,7 +222,7 @@ class APIEmbedding(Embedding):
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_REQUEST_CALL_FAILED.code,
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
                         f"Failed to get embedding after {self.max_retries} attempts",
                     ) from e
                 logger.warning(
@@ -226,5 +232,5 @@ class APIEmbedding(Embedding):
                     e,
                 )
         raise JiuWenBaseException(
-            StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code, "Unreachable code in _get_embeddings_sync"
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code, "Unreachable code in _get_embeddings_sync"
         )

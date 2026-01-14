@@ -123,7 +123,7 @@ class TripleExtractor(Extractor):
                 f"Recent Failed chunks: {', '.join(failed_chunks[:5])}{'...' if len(failed_chunks) > 5 else ''}. "
                 f"This may be due to rate limiting, API errors, or model issues."
             )
-            raise JiuWenBaseException(StatusCode.KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code, error_msg)
+            raise JiuWenBaseException(StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code, error_msg)
 
         return all_triples
 

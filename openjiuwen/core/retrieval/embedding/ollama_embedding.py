@@ -81,13 +81,13 @@ class OllamaEmbedding(Embedding):
 
             if self.model_name not in model_names:
                 raise JiuWenBaseException(
-                    StatusCode.EMBEDDING_MODEL_NOT_FOUND.code,
+                    StatusCode.RETRIEVAL_EMBEDDING_MODEL_NOT_FOUND.code,
                     f"Model '{self.model_name}' not found in available models: {model_names}. "
                     f"Make sure to pull the model first: ollama pull {self.model_name}",
                 )
         except requests.exceptions.RequestException as e:
             raise JiuWenBaseException(
-                StatusCode.EMBEDDING_CALL_FAILED.code,
+                StatusCode.RETRIEVAL_EMBEDDING_CALL_FAILED.code,
                 f"Could not connect to Ollama at {self.base_url}. Is Ollama running?",
             ) from e
 
@@ -116,7 +116,7 @@ class OllamaEmbedding(Embedding):
 
     async def embed_query(self, text: str, **kwargs: Any) -> List[float]:
         if not text.strip():
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding")
+            raise JiuWenBaseException(StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "Empty text provided for embedding")
 
         embeddings = await self._get_ollama_embedding(text, **kwargs)
         return embeddings[0]
@@ -128,18 +128,18 @@ class OllamaEmbedding(Embedding):
         **kwargs: Any,
     ) -> List[List[float]]:
         if not texts:
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty texts list provided")
+            raise JiuWenBaseException(StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "Empty texts list provided")
 
         # Filter out empty texts
         non_empty_texts = [text for text in texts if text.strip()]
         if len(non_empty_texts) != len(texts):
             raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code,
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
                 f"{len(texts) - len(non_empty_texts)} chunks are empty while embedding",
             )
 
         if not non_empty_texts:
-            raise JiuWenBaseException(StatusCode.EMBEDDING_INPUT_INVALID.code, "All texts are empty after filtering")
+            raise JiuWenBaseException(StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "All texts are empty after filtering")
 
         # Process in batches if batch_size is specified
         if batch_size is not None and batch_size > 0:
@@ -161,7 +161,7 @@ class OllamaEmbedding(Embedding):
 
         if not text:
             raise JiuWenBaseException(
-                StatusCode.EMBEDDING_INPUT_INVALID.code, "Empty text or list provided for embedding"
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code, "Empty text or list provided for embedding"
             )
 
         payload = {
@@ -184,7 +184,7 @@ class OllamaEmbedding(Embedding):
                 result = response.json()
                 if "embeddings" not in result:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
+                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code, f"No embeddings in response: {result}"
                     )
 
                 return result["embeddings"]
@@ -192,9 +192,9 @@ class OllamaEmbedding(Embedding):
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
                     raise JiuWenBaseException(
-                        StatusCode.EMBEDDING_REQUEST_CALL_FAILED.code,
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
                         f"Failed to get embedding after {self.max_retries} attempts",
                     ) from e
                 logger.warning(f"Attempt {attempt + 1} failed, retrying: {e}")
 
-        raise JiuWenBaseException(StatusCode.EMBEDDING_UNREACHABLE_CALL_FAILED.code, "This should never be reached")
+        raise JiuWenBaseException(StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code, "This should never be reached")

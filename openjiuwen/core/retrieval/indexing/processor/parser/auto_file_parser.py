@@ -85,7 +85,7 @@ class AutoFileParser(Parser):
             ValueError: Unsupported file format
         """
         if not os.path.exists(doc):
-            raise JiuWenBaseException(StatusCode.INDEXING_FILE_NOT_FOUND.code, f"File {doc} does not exist")
+            raise JiuWenBaseException(StatusCode.RETRIEVAL_INDEXING_FILE_NOT_FOUND.code, f"File {doc} does not exist")
 
         # Get file extension
         file_ext = os.path.splitext(doc)[-1].lower()
@@ -93,7 +93,7 @@ class AutoFileParser(Parser):
         # Check if format is supported
         if file_ext not in _PARSER_REGISTRY:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_FORMAT_NOT_SUPPORT.code,
+                StatusCode.RETRIEVAL_INDEXING_FORMAT_NOT_SUPPORT.code,
                 f"Unsupported format: {file_ext}, only {list(_PARSER_REGISTRY.keys())} are supported",
             )
 

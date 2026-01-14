@@ -44,17 +44,17 @@ class Chunker(Processor):
         """
         if chunk_size <= 0:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_CHUNK_OVERLAP_INVALID.code,
+                StatusCode.RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID.code,
                 f"chunk_size must be greater than 0, current value: {chunk_size}",
             )
         if chunk_overlap < 0:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_CHUNK_OVERLAP_INVALID.code,
+                StatusCode.RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID.code,
                 f"chunk_overlap must be greater than or equal to 0, current value: {chunk_overlap}",
             )
         if chunk_overlap >= chunk_size:
             raise JiuWenBaseException(
-                StatusCode.INDEXING_CHUNK_OVERLAP_INVALID.code, "chunk_overlap must be less than chunk_size"
+                StatusCode.RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID.code, "chunk_overlap must be less than chunk_size"
             )
 
         self.chunk_size = chunk_size

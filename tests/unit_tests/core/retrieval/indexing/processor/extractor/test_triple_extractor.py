@@ -90,7 +90,7 @@ class TestTripleExtractor:
         # Should raise exception when extraction fails
         with pytest.raises(JiuWenBaseException) as exc_info:
             await extractor.extract(chunks)
-        assert exc_info.value.error_code == StatusCode.KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code
+        assert exc_info.value.error_code == StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code
 
     @pytest.mark.asyncio
     async def test_extract_invalid_json(self, mock_llm_client):
@@ -109,7 +109,7 @@ class TestTripleExtractor:
         # Should raise exception when JSON parsing fails
         with pytest.raises(JiuWenBaseException) as exc_info:
             await extractor.extract(chunks)
-        assert exc_info.value.error_code == StatusCode.KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code
+        assert exc_info.value.error_code == StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code
 
     @pytest.mark.asyncio
     async def test_extract_empty_chunks(self, mock_llm_client):

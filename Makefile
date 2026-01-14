@@ -4,7 +4,8 @@
 # Default target
 .DEFAULT_GOAL := help
 
-LINESEP := "------------------------------------------------------------"
+LINESEP := ------------------------------------------------------------
+DEPENDENCIES := "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests" "codespell>=2.2.4"
 
 # Check last COMMITS commits if COMMITS > 0
 COMMITS ?= 0
@@ -30,7 +31,7 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help       - Show this help message"
-	@echo "  install    - Install dependencies via uv (ruff, pylint, mypy, types-requests)"
+	@echo "  install    - Install dependencies via uv or pip (ruff, pylint, mypy, codespell, types-requests)"
 	@echo "  test       - Execute pytest"
 	@echo "  format     - Check formatting of staged Python files via ruff"
 	@echo "  lint       - Check linting of staged Python files via ruff"
@@ -44,7 +45,13 @@ help:
 
 # Install dependencies via uv
 install:
-	uv pip install "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests" "codespell>=2.2.4"
+	@if which uv >/dev/null 2>&1 || where uv >/dev/null 2>&1; then \
+		echo "[Makefile] Installing dependencies via uv"; \
+		uv pip install $(DEPENDENCIES); \
+	else \
+		echo "[Makefile] Installing dependencies via pip"; \
+		python -m pip install $(DEPENDENCIES); \
+	fi
 
 # Execute pytest
 test:

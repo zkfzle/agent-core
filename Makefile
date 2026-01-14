@@ -4,6 +4,8 @@
 # Default target
 .DEFAULT_GOAL := help
 
+LINESEP := "------------------------------------------------------------"
+
 # Check last COMMITS commits if COMMITS > 0
 COMMITS ?= 0
 CHECK_LAST_N_COMMITS := $(shell [ $(COMMITS) -gt 0 ] && echo yes)
@@ -54,7 +56,7 @@ has-staged-changes:
 		echo "No Python files selected."; \
 		echo "Make sure you have used git add first, or have set COMMITS to a positive integer."; \
 		echo ""; \
-		echo "------------------------------------------------------------"; \
+		echo $(LINESEP); \
 		echo ""; \
 		$(MAKE) help; \
 		exit 1; \
@@ -89,7 +91,25 @@ type-check: has-staged-changes
 	@mypy $(CHANGED_FILES)
 
 # Execute all checks
-check: format lint pylint
+check: has-staged-changes
+	@echo $(LINESEP)
+	@echo "[Makefile] Checking code format...\n"
+	@$(MAKE) format COMMITS=$(COMMITS) || true
+	@echo $(LINESEP)
+	@echo "[Makefile] Checking spelling...\n"
+	@$(MAKE) spelling COMMITS=$(COMMITS) || true
+	@echo $(LINESEP)
+	@echo "[Makefile] Checking linting via ruff...\n"
+	@$(MAKE) lint COMMITS=$(COMMITS) || true
+	@echo $(LINESEP)
+	@echo "[Makefile] Checking linting via pylint...\n"
+	@$(MAKE) pylint COMMITS=$(COMMITS) || true
 
 # Execute all auto-fixes
-fix: fix-lint fix-format
+fix: has-staged-changes
+	@echo $(LINESEP)
+	@echo "[Makefile] Fixing linting via ruff...\n"
+	@$(MAKE) fix-lint COMMITS=$(COMMITS) || true
+	@echo $(LINESEP)
+	@echo "[Makefile] Fixing code format...\n"
+	@$(MAKE) fix-format COMMITS=$(COMMITS) || true

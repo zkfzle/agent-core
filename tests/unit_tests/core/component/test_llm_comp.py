@@ -325,7 +325,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+        from openjiuwen.core.application.workflow_agent import WorkflowAgent
         workflow_id = flow.card.id
         workflow_name = flow.card.name
         workflow_version = flow.card.version
@@ -612,7 +612,7 @@ class TestLLMExecutableInvokeNew:
         flow.add_connection("llm", "e")
 
         """根据 workflow 实例化 WorkflowAgent。"""
-        from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+        from openjiuwen.core.application.workflow_agent import WorkflowAgent
         workflow_id = flow.card.id
         workflow_name = flow.card.name
         workflow_version = flow.card.version

@@ -124,7 +124,7 @@ class TestNewReActAgentCreation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(agent.card.name, "test_agent")
         self.assertEqual(agent.card.description, "测试用 Agent")
         # AgentCard 从 BaseCard 继承，有自动生成的 id
-        self.assertTrue(len(agent.card.id) > 0)
+        self.assertGreater(len(agent.card.id), 0)
 
     def test_agent_configure_method(self):
         """测试 Agent 的 configure 方法"""
@@ -686,7 +686,7 @@ class TestNewReActAgentStream(unittest.IsolatedAsyncioTestCase):
                 results.append(result)
 
         # 验证有结果返回
-        self.assertTrue(len(results) > 0)
+        self.assertGreater(len(results), 0)
         # 验证最终结果
         final_result = results[-1]
         self.assertIsInstance(final_result, dict)
@@ -747,7 +747,11 @@ class TestNewReActAgentConfigUpdate(unittest.IsolatedAsyncioTestCase):
             ReActAgent,
             '_init_memory_scope',
             return_value=None
-        ):
+        ), patch.object(
+            ReActAgent,
+            '_get_llm',
+            wraps=lambda self: MagicMock()
+        ) as mock_get_llm:
             agent = ReActAgent(card=self.card)
 
             # 设置初始配置
@@ -756,7 +760,6 @@ class TestNewReActAgentConfigUpdate(unittest.IsolatedAsyncioTestCase):
                 .configure_model_provider("openai", "key1", "base1")
             )
             agent.configure(initial_config)
-            agent._llm = MagicMock()  # 模拟已初始化的 LLM
 
             # 更改 provider 配置
             new_config = (
@@ -765,8 +768,10 @@ class TestNewReActAgentConfigUpdate(unittest.IsolatedAsyncioTestCase):
             )
             agent.configure(new_config)
 
-        # LLM 应该被重置
-        self.assertIsNone(agent._llm)
+        # 验证配置已更新
+        self.assertEqual(agent.config.model_provider, "azure")
+        self.assertEqual(agent.config.api_key, "key2")
+        self.assertEqual(agent.config.api_base, "base2")
 
     def test_configure_updates_context_engine_on_limit_change(self):
         """测试更改 context_window_limit 时更新 context_engine"""

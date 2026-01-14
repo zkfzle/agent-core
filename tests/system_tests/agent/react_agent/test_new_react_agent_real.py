@@ -109,10 +109,6 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
 
         场景：用户问一个简单问题，Agent 直接回答，不需要调用任何工具
         """
-        print("\n" + "=" * 60)
-        print("测试场景: 纯对话（不调用工具）")
-        print("=" * 60)
-
         # 1. 创建 Agent
         card = self._create_card(
             name="chat_agent",
@@ -132,17 +128,11 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
             session=session
         )
 
-        print(f"输入: 你好，请用一句话介绍你自己")
-        print(f"输出: {result}")
-        print(f"结果类型: {result.get('result_type')}")
-
         # 4. 验证结果
         self.assertIsInstance(result, dict)
         self.assertEqual(result['result_type'], 'answer')
         self.assertIn('output', result)
-        self.assertTrue(len(result['output']) > 0)
-
-        print("✅ 纯对话测试通过")
+        self.assertGreater(len(result['output']), 0)
 
     @unittest.skip("skip system test")
     @pytest.mark.asyncio
@@ -151,10 +141,6 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
 
         场景：用户请求计算，Agent 必须调用 add 工具完成计算
         """
-        print("\n" + "=" * 60)
-        print("测试场景: 工具调用（加法计算）")
-        print("=" * 60)
-
         # 1. 创建工具
         add_tool = self._create_add_tool()
 
@@ -190,10 +176,6 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
             session=session
         )
 
-        print(f"输入: {query}")
-        print(f"输出: {result}")
-        print(f"结果类型: {result.get('result_type')}")
-
         # 7. 验证结果
         self.assertIsInstance(result, dict)
         self.assertEqual(result['result_type'], 'answer')
@@ -201,8 +183,6 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
         # 结果中应该包含 579（123 + 456 = 579）
         # 这个数字不太可能被 LLM 直接猜出来，必须调用工具
         self.assertIn('579', result['output'])
-
-        print("✅ 工具调用测试通过")
 
 
 if __name__ == "__main__":

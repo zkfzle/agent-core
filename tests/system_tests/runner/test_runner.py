@@ -193,7 +193,7 @@ class TestRunner(unittest.IsolatedAsyncioTestCase):
 
     def _create_agent(self, workflow):
         """根据 workflow 实例化 WorkflowAgent。"""
-        from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+        from openjiuwen.core.application.workflow_agent import WorkflowAgent
         workflow_id = workflow.card.id
         workflow_name = workflow.card.name
         workflow_version = workflow.card.version

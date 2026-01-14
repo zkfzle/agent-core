@@ -19,7 +19,7 @@ from openjiuwen.core.single_agent.legacy import (
     ControllerAgent,
     WorkflowAgentConfig,
 )
-from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.workflow_agent import WorkflowAgent
 from examples.groups.hierarchical_group import (
     HierarchicalGroup,
     HierarchicalGroupConfig
@@ -277,8 +277,8 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             LLMAgent 实例
         """
-        from openjiuwen.core.application.agents_for_studio.llm_agent import LLMAgent
-        from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
+        from openjiuwen.core.application.llm_agent import LLMAgent
+        from openjiuwen.core.application.llm_agent import ReActAgentConfig
         from openjiuwen.core.foundation.tool.function.function import LocalFunction, ToolCard
 
         model_config = self._create_model_config()
@@ -328,7 +328,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             ReActAgent 实例
         """
         from openjiuwen.core.single_agent.legacy import LegacyReActAgent
-        from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
+        from openjiuwen.core.application.llm_agent import ReActAgentConfig
         from openjiuwen.core.foundation.tool.function.function import LocalFunction, ToolCard
 
         model_config = self._create_model_config()

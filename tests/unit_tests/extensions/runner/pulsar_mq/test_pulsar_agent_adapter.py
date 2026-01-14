@@ -14,7 +14,7 @@ from openjiuwen.core.single_agent.legacy import (
     WorkflowSchema,
     create_react_agent_config,
 )
-from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.workflow_agent import WorkflowAgent
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner import Runner

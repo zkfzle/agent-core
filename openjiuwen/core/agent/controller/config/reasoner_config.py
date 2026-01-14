@@ -16,9 +16,7 @@ DEFAULT_SYSTEM_PROMPT = """你是一个意图分类助手，擅长判断用户�
 直接以JSON格式输出分类ID，不进行任何解释。JSON格式如下：
  {"result": int}"""
 
-DEFAULT_USER_PROMPT = """
-{{user_prompt}}
-用户与助手的对话历史：
+DEFAULT_USER_PROMPT = """用户与助手的对话历史：
 {{chat_history}}
 当前输入：
 {{input}}"""

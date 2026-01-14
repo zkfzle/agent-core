@@ -54,8 +54,8 @@ class SchemaUtils:
             raise
         except Exception as e:
             # Wrap the exception in a custom business exception
-            raise JiuWenBaseException(StatusCode.COMPONENT_CONFIG_PARAM_ERROR.code,
-                                      StatusCode.COMPONENT_CONFIG_PARAM_ERROR.errmsg.format(reason=e)) from e
+            raise JiuWenBaseException(StatusCode.COMMON_SCHEMA_CONFIG_ERROR .code,
+                                      StatusCode.COMMON_SCHEMA_CONFIG_ERROR.errmsg.format(reason=e)) from e
 
     @staticmethod
     def remove_none_values(data: Any) -> Any:
@@ -134,8 +134,8 @@ class SchemaUtils:
                 schema.model_validate(data)
         except Exception as e:
             # Wrap the exception in a custom business exception
-            raise JiuWenBaseException(StatusCode.COMPONENT_CONFIG_INVALID.code,
-                                      StatusCode.COMPONENT_CONFIG_INVALID.errmsg.format(reason=e)) from e
+            raise JiuWenBaseException(StatusCode.COMMON_SCHEMA_INVALID.code,
+                                      StatusCode.COMMON_SCHEMA_INVALID.errmsg.format(reason=e)) from e
 
     @staticmethod
     def get_schema_dict(schema: Type[BaseModel]) -> Dict[str, Any]:

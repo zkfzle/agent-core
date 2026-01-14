@@ -8,7 +8,7 @@ from typing import (
     Optional,
     Any,
     Dict,
-    Mapping,
+    Mapping, Type,
 )
 
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -59,6 +59,25 @@ class BaseError(Exception):
             return _format_template(self.status.errmsg, params=self.params)
         except Exception:
             return self.status.errmsg
+
+    def __reduce__(self):
+        """
+        Custom serialization support for pickle/deepcopy.
+        Returns a tuple (callable, args) to reconstruct the object.
+        """
+        return (
+            _rebuild_base_error,
+            (
+                self.__class__,
+                self.status,
+                self.message,
+                self._template_message,
+                self.code,
+                self.params,
+                self.details,
+                self.cause,
+            ),
+        )
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -111,6 +130,32 @@ def _format_template(template: str,
             return f"{template} (format error, params={dict(params) if params else {} })"
         except Exception:
             return template
+
+
+def _rebuild_base_error(
+    cls: Type["BaseError"],
+    status: StatusCode,
+    message: str,
+    template_message: str,
+    code: int,
+    params: Dict[str, Any],
+    details: Optional[Any],
+    cause: Optional[BaseException],
+) -> "BaseError":
+    """
+    Helper function to rebuild BaseError during unpickling/deepcopy.
+    """
+    obj = cls.__new__(cls)
+    obj.status = status
+    obj.message = message
+    obj._template_message = template_message
+    obj.code = code
+    obj.params = params
+    obj.details = details
+    obj.cause = cause
+    obj.__cause__ = cause
+    Exception.__init__(obj, template_message)
+    return obj
 
 
 # =======================

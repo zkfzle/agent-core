@@ -79,8 +79,8 @@ class ValidationUtils:
     @staticmethod
     def raise_invalid_params_error(error_msg: str = "") -> None:
         raise JiuWenBaseException(
-            StatusCode.COMPONENT_CONFIG_INVALID_SCHEMA.code,
-            StatusCode.COMPONENT_CONFIG_INVALID_SCHEMA.errmsg.format(error_msg=error_msg),
+            StatusCode.COMMON_SCHEMA_INVALID.code,
+            StatusCode.COMMON_SCHEMA_INVALID.errmsg.format(error_msg=error_msg),
         )
 
     @staticmethod

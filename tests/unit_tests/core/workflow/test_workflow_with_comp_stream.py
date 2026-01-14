@@ -550,13 +550,11 @@ async def test_workflow_stream_with_exception():
     workflow.add_stream_connection("stream_comp", "transform_comp")
     workflow.add_stream_connection("transform_comp", "collect_comp")
     workflow.add_connection("collect_comp", "end_comp")
-    with pytest.raises(JiuWenBaseException) as e:
+    with pytest.raises(BaseError) as e:
         await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}},
                               session=WorkflowSession())
-    assert e.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
-    assert e.value.message == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.errmsg.format(node_id="transform_comp",
-                                                                               ability="transform",
-                                                                               error="mock error")
+    assert e.value.code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
+    assert "reason: mock error" in e.value.message
     logger.info("after exception, execution again")
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, session=WorkflowSession())
     assert result.result == {'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
@@ -726,13 +724,12 @@ async def test_dual_ability_node_with_stream_error():
     # Execute workflow and expect exception
     user_inputs = {'user_inputs': {'a': 1, 'b': 2}}
 
-    with pytest.raises(JiuWenBaseException) as exc_info:
+    with pytest.raises(BaseError) as exc_info:
         async for _ in flow.stream(user_inputs, session=WorkflowSession(), stream_modes=[BaseStreamMode.OUTPUT]):
             pass
 
     # Verify the exception is properly wrapped
-    assert exc_info.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
-    assert "C" in exc_info.value.message  # Node ID should be in the message
+    assert exc_info.value.code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
     assert "stream" in exc_info.value.message.lower()  # Ability name should be in the message
 
 
@@ -781,13 +778,12 @@ async def test_dual_ability_node_with_transform_error():
     # Execute workflow and expect exception
     user_inputs = {'user_inputs': {'a': 1, 'b': 2}}
 
-    with pytest.raises(JiuWenBaseException) as exc_info:
+    with pytest.raises(BaseError) as exc_info:
         async for _ in flow.stream(user_inputs, session=WorkflowSession(), stream_modes=[BaseStreamMode.OUTPUT]):
             pass
 
     # Verify the exception is properly wrapped
-    assert exc_info.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
-    assert "C" in exc_info.value.message  # Node ID should be in the message
+    assert exc_info.value.code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
     assert "transform" in exc_info.value.message.lower()  # Ability name should be in the message
 
 

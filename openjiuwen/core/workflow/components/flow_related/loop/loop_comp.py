@@ -7,6 +7,7 @@ from typing import Self, Union, Callable, Any, Optional, Dict
 from pydantic import BaseModel, Field
 
 from openjiuwen.core.common.constants.constant import INDEX, CONFIG_KEY, LOOP_ID, FINISH_INDEX
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.component import ComponentComposable, WorkflowComponent
@@ -222,9 +223,9 @@ class AdvancedLoopComponent(ComponentComposable, LoopController, Executable, Ato
         try:
             outputs = self._condition_invoke(session=self._node_session)
             return outputs
+        except (JiuWenBaseException, BaseError) as e:
+            raise
         except Exception as e:
-            if isinstance(e, JiuWenBaseException):
-                raise
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_EXECUTION_ERROR.code,
                                       StatusCode.LOOP_COMPONENT_EXECUTION_ERROR.errmsg.format(error_msg=str(e))) from e
 
@@ -384,7 +385,7 @@ class LoopComponent(WorkflowComponent):
                                                   session.base())
         except GraphInterrupt:
             raise
-        except JiuWenBaseException:
+        except (JiuWenBaseException, BaseError) as e:
             raise
         except Exception as e:
             raise JiuWenBaseException(StatusCode.LOOP_COMPONENT_EXECUTION_ERROR.code,

@@ -486,8 +486,9 @@ class Workflow:
         task = asyncio.create_task(func())
         try:
             return await asyncio.wait_for(task, timeout=timeout if (timeout and timeout > 0) else None)
-        except asyncio.TimeoutError:
-            raise JiuWenBaseException(status_code.code, status_code.errmsg.format(error_msg="timeout", timeout=timeout))
+        except asyncio.TimeoutError as e:
+            raise JiuWenBaseException(status_code.code, status_code.errmsg.format
+                (error_msg="timeout", timeout=timeout)) from e
         except JiuWenBaseException as e:
             raise e
         except Exception as e:

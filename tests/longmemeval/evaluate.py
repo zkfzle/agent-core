@@ -1,913 +1,853 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
 """
-LongMemEval 图记忆评估脚本
+LongMemEval Graph Memory Evaluation Script
 
-用于评估图记忆（Graph Memory）在 LongMemEval 数据集上的表现。
-图记忆会存储背景信息和对话历史，并在回答问题时检索相关记忆。
+Used to evaluate the performance of Graph Memory on the LongMemEval dataset.
+Graph Memory stores conversation history and retrieves relevant memories to answer questions.
 """
 
 import os
 import sys
-import asyncio
 import json
 import argparse
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
-from datetime import datetime
-import tempfile
-import socket
-
-
+import re
+import concurrent.futures
+from typing import List, Optional, Dict, Any, Tuple
+from datetime import datetime, timedelta
+import numpy as np
+from tqdm import tqdm
+import openai
+from openai import OpenAI
 
 from dotenv import load_dotenv
-# 加载当前目录的 .env 文件
 env_path = os.path.join(os.path.dirname(__file__), '.env')
 if os.path.exists(env_path):
     load_dotenv(env_path)
+    print(f"Load .env file from: {env_path}")
+else:
+    print(f"Did not find .env file: {env_path}")
 
-
-# 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from tests.longmemeval.loader import LongMemEvalLoader, LongMemEvalItem
+from tests.longmemeval.data_loader import LongMemEvalLoader, LongMemEvalItem
+
+# Import official evaluation tool evaluate_qa module
+EVAL_DIR = os.path.join(os.path.dirname(__file__), 'src', 'evaluation')
+if EVAL_DIR not in sys.path:
+    sys.path.insert(0, EVAL_DIR)
+import evaluate_qa
+
 from openjiuwen.core.memory.store.graph_store.base import GraphMemory
 from openjiuwen.core.memory.config.graph.config import GraphConfig, LLMConfig, EpisodeType
 from openjiuwen.core.memory.config.graph.extraction_strategies import DEFAULT_STRATEGY
 from openjiuwen.core.utils.llm.base import BaseModelInfo
 from openjiuwen.core.utils.llm.messages import HumanMessage, SystemMessage
-from openjiuwen.core.utils.llm.model_utils.model_factory import ModelFactory
+from openjiuwen.core.memory.store.graph_store.api_services.llm_reranker import GraphLLMClient
 
 
-@dataclass
-class EvaluationResult:
-    """单个测试用例的评估结果"""
-    item_id: str
-    question: str
-    expected_answer: str
-    predicted_answer: str
-    question_type: str
-    is_correct: bool
-    evaluation_reason: Optional[str] = None  # LLM 评估的理由
-    error: Optional[str] = None
-    retrieved_memories: Optional[Dict[str, Any]] = None  # 检索到的记忆信息
-
-
-@dataclass
-class EvaluationMetrics:
-    """评估指标"""
-    total: int
-    correct: int
-    accuracy: float
-    by_type: Dict[str, Dict[str, float]]  # 按问题类型分组的指标
-
-
-class GraphMemoryEvaluator:
-    """图记忆评估器
-    
-    使用图记忆存储背景信息和对话历史，并在回答问题时检索相关记忆。
+def parse_question_date(date_str: str) -> Optional[datetime]:
     """
+    Parse the question date string, supports multiple date formats.
     
-    def __init__(
-        self,
-        graph_memory: GraphMemory,
-        llm_model: Any,
-        use_background: bool = True,
-        use_conversation: bool = True,
-        use_llm_evaluator: bool = False,
-        evaluator_model: Any = None,
-        search_top_k: int = 5,
-    ):
-        """
-        初始化评估器
-        
-        Args:
-            graph_memory: 图记忆实例
-            llm_model: 用于回答问题的 LLM 模型
-            use_background: 是否使用背景文本
-            use_conversation: 是否使用对话历史
-            use_llm_evaluator: 是否使用 LLM 评估器
-            evaluator_model: LLM 评估器使用的模型（如果 use_llm_evaluator=True）
-            search_top_k: 检索记忆时的 top_k 数量
-        """
-        self.graph_memory = graph_memory
-        self.llm_model = llm_model
-        self.use_background = use_background
-        self.use_conversation = use_conversation
-        self.use_llm_evaluator = use_llm_evaluator
-        self.evaluator_model = evaluator_model
-        self.search_top_k = search_top_k
-        
-        if use_llm_evaluator and evaluator_model is None:
-            raise ValueError("使用 LLM 评估器时必须提供 evaluator_model")
+    Args:
+        date_str: Date string, possible formats include:
+            - ISO format: '2023-05-30T23:40:00Z' or '2023-05-30T23:40:00+00:00'
+            - Format with weekday: '2023/05/30 (Tue) 23:40'
+            - Other common formats
     
-    def _format_conversation_history(self, conversations: List) -> str:
-        """格式化对话历史为字符串"""
-        if not conversations:
-            return ""
-        
-        formatted = []
-        for turn in conversations:
-            role_name = "用户" if turn.role == "user" else "助手"
-            formatted.append(f"{role_name}：{turn.content}")
-        
-        return "\n".join(formatted)
+    Returns:
+        datetime object, or None if parsing fails
+    """
+    if not date_str or not isinstance(date_str, str):
+        return None
     
-    def _format_retrieved_memories(self, search_results: Dict[str, List[Tuple[float, Any]]]) -> str:
-        """格式化检索到的记忆为字符串"""
-        if not search_results:
-            return ""
-        
-        formatted_parts = []
-        
-        # 格式化实体
-        if "entity" in search_results and search_results["entity"]:
-            formatted_parts.append("相关实体：")
-            for score, entity in search_results["entity"][:self.search_top_k]:
-                entity_info = f"- {entity.name}"
-                if entity.content:
-                    entity_info += f": {entity.content}"
-                if hasattr(entity, 'attributes') and entity.attributes:
-                    attrs = ", ".join([f"{k}={v}" for k, v in entity.attributes.items() if v])
-                    if attrs:
-                        entity_info += f" ({attrs})"
-                formatted_parts.append(entity_info)
-        
-        # 格式化关系
-        if "relation" in search_results and search_results["relation"]:
-            formatted_parts.append("\n相关关系：")
-            for score, relation in search_results["relation"][:self.search_top_k]:
-                relation_info = f"- {relation.name}"
-                if relation.content:
-                    relation_info += f": {relation.content}"
-                formatted_parts.append(relation_info)
-        
-        # 格式化事件
-        if "episode" in search_results and search_results["episode"]:
-            formatted_parts.append("\n相关事件：")
-            for score, episode in search_results["episode"][:self.search_top_k]:
-                episode_info = f"- {episode.content}"
-                formatted_parts.append(episode_info)
-        
-        return "\n".join(formatted_parts) if formatted_parts else ""
-    
-    async def _add_memories(self, item: LongMemEvalItem, user_id: str):
-        """将背景信息和对话历史添加到图记忆"""
-        # 添加背景信息
-        if self.use_background and item.background_text:
-            try:
-                print(f"\n📝 添加背景信息...")
-                print(f"   User ID: {user_id}")
-                print(f"   背景文本前100字: {item.background_text[:100]}...")
-                
-                result = self.graph_memory.add_memory(
-                    src_type=EpisodeType.document,
-                    user_id=user_id,
-                    content=item.background_text,
-                )
-                
-                print(f"   提取结果: {result}")
-                
-                self.graph_memory.db_backend.refresh()
-                await asyncio.sleep(2)  # 增加等待时间，确保 Milvus 数据可搜索
-                
-                # 尝试检索，打印详细结果
-                test_search = self.graph_memory.search(
-                    query=item.background_text[:50],
-                    user_id=user_id,
-                )
-                entity_count = len(test_search.get('entity', []))
-                episode_count = len(test_search.get('episode', []))
-                print(f"   立即检索验证: entity={entity_count}, episode={episode_count}")
-                
-                # 如果没找到episode，打印详细信息用于调试
-                if episode_count == 0 and result[0].added_episode:
-                    print(f"   ⚠️  警告: 添加了 {len(result[0].added_episode)} 个episode，但检索时未找到")
-                    print(f"   尝试的查询: {item.background_text[:50]}")
-                    # 尝试直接查询数据库验证数据是否存在
-                    try:
-                        from openjiuwen.core.memory.config.graph import query_expr
-                        query_result = self.graph_memory.db_backend.query(
-                            collection="episodes",
-                            expr=query_expr.filter_user(user_id),
-                            limit=10
-                        )
-                        print(f"   数据库直接查询结果: 找到 {len(query_result)} 个episode（不经过相似度搜索）")
-                        if query_result:
-                            print(f"   第一个episode内容前100字: {query_result[0].get('content', '')[:100]}")
-                    except Exception as e:
-                        print(f"   直接查询失败: {e}")
-                
-            except Exception as e:
-                print(f"❌ 添加背景信息失败: {e}")
-                import traceback
-                traceback.print_exc()
-        
-        # 添加对话历史（作为对话）
-        if self.use_conversation and item.conversations:
-            # 将对话历史转换为消息列表格式
-            messages = []
-            for turn in item.conversations:
-                messages.append({
-                    "role": turn.role,
-                    "content": turn.content
-                })
+    date_str = date_str.strip() 
 
-            if messages:
-                try:
-                    print(f"\n📝 添加对话历史...")
-                    print(f"   User ID: {user_id}")
-                    print(f"   对话轮数: {len(messages)}")
-                    print(f"   第一轮内容前100字: {messages[0]['content'][:100]}...")
-                    
-                    result = self.graph_memory.add_memory(
-                        src_type=EpisodeType.conversation,
-                        user_id=user_id,
-                        content=messages,
-                    )
-                    
-                    print(f"   提取结果: {result}")
-                    
-                    self.graph_memory.db_backend.refresh()
-                    await asyncio.sleep(2)  # 增加等待时间，确保 Milvus 数据可搜索
-                    
-                    # 尝试检索，打印详细结果
-                    test_search = self.graph_memory.search(
-                        query=messages[0]['content'][:50],
-                        user_id=user_id,
-                    )
-                    entity_count = len(test_search.get('entity', []))
-                    episode_count = len(test_search.get('episode', []))
-                    print(f"   立即检索验证: entity={entity_count}, episode={episode_count}")
-                    
-                    # 如果没找到episode，打印详细信息用于调试
-                    if episode_count == 0 and result[0].added_episode:
-                        print(f"   ⚠️  警告: 添加了 {len(result[0].added_episode)} 个episode，但检索时未找到")
-                        print(f"   尝试的查询: {messages[0]['content'][:50]}")
-                        # 尝试直接查询数据库验证数据是否存在
-                        try:
-                            from openjiuwen.core.memory.config.graph import query_expr
-                            query_result = self.graph_memory.db_backend.query(
-                                collection="episodes",
-                                expr=query_expr.filter_user(user_id),
-                                limit=10
-                            )
-                            print(f"   数据库直接查询结果: 找到 {len(query_result)} 个episode（不经过相似度搜索）")
-                            if query_result:
-                                print(f"   第一个episode内容前100字: {query_result[0].get('content', '')[:100]}")
-                        except Exception as e:
-                            print(f"   直接查询失败: {e}")
-                    
-                except Exception as e:
-                    print(f"❌ 添加对话历史失败: {e}")
-                    import traceback
-                    traceback.print_exc()
+    try:
+        # Matching format: YYYY/MM/DD (Day) HH:MM or YYYY/MM/DD HH:MM
+        pattern = r'(\d{4})/(\d{2})/(\d{2})\s*(?:\([^)]+\))?\s*(\d{2}):(\d{2})'
+        match = re.match(pattern, date_str)
+        if match:
+            year, month, day, hour, minute = map(int, match.groups())
+            return datetime(year, month, day, hour, minute)
+    except (ValueError, AttributeError):
+        pass
+        return None
     
-    async def _search_memories(self, query: str, user_id: str) -> Tuple[Dict[str, List[Tuple[float, Any]]], Optional[str]]:
-        """从图记忆中检索相关记忆
-        
-        Returns:
-            Tuple[Dict, Optional[str]]: (检索结果字典, 错误信息)
-        """
-        search_results = {}
-        error_msg = None
-        
-        # 尝试分别检索不同类型，即使某个失败也能返回其他结果
-        try:
-            print(f"  开始检索记忆: query={query[:50]}..., user_id={user_id}")
-            
-            # 先尝试检索实体和事件（通常不会有问题）
-            try:
-                partial_results = self.graph_memory.search(
-                    query=query,
-                    user_id=user_id,
-                    search_strategy="default",
-                    entity=True,
-                    relation=False,  # 先不检索关系，因为可能有验证错误
-                    episode=True,
-                )
-                search_results.update(partial_results)
-            except Exception as e:
-                error_msg = f"检索实体/事件失败: {str(e)}"
-                print(f"警告: {error_msg}")
-            
-            # 再尝试检索关系
-            try:
-                relation_results = self.graph_memory.search(
-                    query=query,
-                    user_id=user_id,
-                    search_strategy="default",
-                    entity=False,
-                    relation=True,
-                    episode=False,
-                )
-                if "relation" in relation_results:
-                    search_results["relation"] = relation_results["relation"]
-            except Exception as e:
-                relation_error = f"检索关系失败: {str(e)}"
-                print(f"警告: {relation_error}")
-                if error_msg:
-                    error_msg += f"; {relation_error}"
-                else:
-                    error_msg = relation_error
-                # 即使关系检索失败，也继续使用其他结果
-            
-            # 打印检索结果统计
-            entity_count = len(search_results.get("entity", []))
-            relation_count = len(search_results.get("relation", []))
-            episode_count = len(search_results.get("episode", []))
-            print(f"  检索结果: 实体={entity_count}, 关系={relation_count}, 事件={episode_count}")
-            if entity_count == 0 and relation_count == 0 and episode_count == 0:
-                print(f"  警告: 未检索到任何记忆")
-                
-            
-            return search_results, error_msg
-            
-        except Exception as e:
-            error_msg = f"检索记忆完全失败: {str(e)}"
-            print(f"警告: {error_msg}")
-            import traceback
-            traceback.print_exc()
-            return {}, error_msg
-    
-    async def _generate_answer(
-        self,
-        question: str,
-        retrieved_memories: str,
-        background_text: Optional[str] = None,
-        conversation_history: Optional[str] = None
-    ) -> str:
-        """使用 LLM 生成答案"""
-        # 构建 prompt
-        prompt_parts = []
-        
-        if retrieved_memories:
-            prompt_parts.append("以下是检索到的相关记忆：")
-            prompt_parts.append(retrieved_memories)
-            prompt_parts.append("")
-        
-        if background_text and self.use_background:
-            prompt_parts.append("背景信息：")
-            prompt_parts.append(background_text)
-            prompt_parts.append("")
-        
-        if conversation_history and self.use_conversation:
-            prompt_parts.append("对话历史：")
-            prompt_parts.append(conversation_history)
-            prompt_parts.append("")
-        
-        prompt_parts.append(f"问题：{question}")
-        prompt_parts.append("\n请基于以上信息回答问题。")
-        
-        prompt = "\n".join(prompt_parts)
-        
-        try:
-            messages = [
-                SystemMessage(content="你是一个智能助手，能够基于提供的背景信息、对话历史和检索到的记忆回答问题。请仔细分析所有信息，然后准确回答用户的问题。"),
-                HumanMessage(content=prompt)
-            ]
-            
-            model_name = getattr(self.llm_model, '_model_name', "default")
-            response = await self.llm_model.ainvoke(
-                model_name=model_name,
-                messages=messages
-            )
-            
-            return response.content.strip() if hasattr(response, 'content') else str(response)
-        except Exception as e:
-            print(f"错误: 生成答案失败: {e}")
-            return f"生成答案时出错: {str(e)}"
-    
-    def _normalize_answer(self, answer: Any) -> str:
-        """标准化答案，用于比较"""
-        if answer is None:
-            return ""
-        
-        if not isinstance(answer, str):
-            answer = str(answer)
-        
-        return answer.strip()
-    
-    def _is_answer_correct_simple(self, predicted: Any, expected: Any) -> bool:
-        """简单字符串匹配判断答案是否正确"""
-        predicted_norm = self._normalize_answer(predicted)
-        expected_norm = self._normalize_answer(expected)
-        
-        if not predicted_norm and not expected_norm:
-            return False
-        if not predicted_norm or not expected_norm:
-            return False
-        
-        # 精确匹配
-        if predicted_norm == expected_norm:
-            return True
-        
-        # 检查预测答案是否包含期望答案
-        if expected_norm in predicted_norm:
-            return True
-        
-        # 检查期望答案是否包含预测答案
-        if predicted_norm in expected_norm:
-            return True
-        
-        # 尝试数字匹配
-        try:
-            expected_num = float(expected_norm)
-            import re
-            numbers = re.findall(r'-?\d+\.?\d*', predicted_norm)
-            if numbers:
-                for num_str in numbers:
-                    if abs(float(num_str) - expected_num) < 0.01:
-                        return True
-        except (ValueError, TypeError):
-            pass
-        
-        return False
-    
-    async def _is_answer_correct_llm(
-        self,
-        predicted: str,
-        expected: str,
-        question: str,
-        question_type: str
-    ) -> Tuple[bool, str]:
-        """使用 LLM 评估器判断答案是否正确"""
-        if question_type in ["时间推理", "time_reasoning"]:
-            evaluation_prompt = """你是一个答案评估专家。请评估模型生成的答案是否正确。
 
-问题类型：时间推理（允许时间上的合理偏差）
 
-问题：{question}
-期望答案：{expected}
-模型答案：{predicted}
+def load_data(data_path: str, limit: Optional[int] = None) -> List[LongMemEvalItem]:
+    """
+    Load the LongMemEval dataset.
+    
+    Args:
+        data_path: Data file path (new format, single JSON file)
+        limit: Optional limit on the number of items to load (for fast testing)
+        
+    Returns:
+        List[LongMemEvalItem]: List of loaded data items
+    """
+    print(f"Load Data from: {data_path}")
+    
+    if not os.path.exists(data_path):
+        raise FileNotFoundError(f"File not found: {data_path}")
+    
+    try:
+        loader = LongMemEvalLoader(data_path=data_path)
+        items = loader.load(limit=limit)
+    except Exception as e:
+        print(f"Failed to load data: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
+    
+    print(f"Successfully loaded {len(items)} test cases")
+    
+    # Print data statistics
+    if items:
+        type_counts = {}
+        total_conversations = 0
+        total_sessions = 0
+        items_with_empty_conversations = 0
+        
+        for item in items:
+            type_counts[item.question_type] = type_counts.get(item.question_type, 0) + 1
+            total_conversations += len(item.conversations)
+            if item.haystack_sessions:
+                total_sessions += len(item.haystack_sessions)
+            if not item.conversations:
+                items_with_empty_conversations += 1
+        
+        print("\nData statistics:")
+        for q_type, count in sorted(type_counts.items()):
+            print(f"  - {q_type}: {count} items")
+        
+        print(f"\nConversation statistics:")
+        print(f"  - Total conversation turns: {total_conversations}")
+        print(f"  - Average turns per item: {total_conversations // len(items) if items else 0}")
+        if total_sessions > 0:
+            print(f"  - Total sessions: {total_sessions}")
+            print(f"  - Average sessions per item: {total_sessions // len(items)}")
+        if items_with_empty_conversations > 0:
+            print(f"  - Warning: {items_with_empty_conversations} items have no conversation history")
+        
+        # Print information of the first sample as an example
+        sample = items[0]
+        print(f"\nFirst sample data:")
+        print(f"  - ID: {sample.id}")
+        print(f"  - Question Type: {sample.question_type}")
+        print(f"  - Question: {sample.question[:80]}...")
+        print(f"  - Conversation Turns: {len(sample.conversations)}")
+        if sample.haystack_sessions:
+            print(f"  - Number of Sessions: {len(sample.haystack_sessions)}")
+        if sample.question_date:
+            print(f"  - Question Date: {sample.question_date}")
+    
+    return items
 
-请判断模型答案是否正确。对于时间推理问题，如果答案在时间上接近或合理，应该判定为正确。
-请以 JSON 格式返回：{{"is_correct": true/false, "reason": "评估理由"}}"""
-        else:
-            evaluation_prompt = """你是一个答案评估专家。请评估模型生成的答案是否正确。
 
-问题：{question}
-期望答案：{expected}
-模型答案：{predicted}
-
-请判断模型答案是否正确。答案不需要完全一致，只要语义上正确即可。
-请以 JSON 格式返回：{{"is_correct": true/false, "reason": "评估理由"}}"""
+def init_evaluator_client() -> Tuple[OpenAI, str]:
+    """
+    initialize evaluator client
         
-        prompt = evaluation_prompt.format(
-            question=question,
-            expected=expected,
-            predicted=predicted
-        )
-        
-        try:
-            messages = [
-                SystemMessage(content="你是一个专业的答案评估专家，能够准确判断答案的正确性。"),
-                HumanMessage(content=prompt)
-            ]
-            
-            model_name = getattr(self.evaluator_model, '_model_name', "default")
-            response = await self.evaluator_model.ainvoke(
-                model_name=model_name,
-                messages=messages
-            )
-            
-            # 解析响应
-            import re
-            content = response.content.strip() if hasattr(response, 'content') else str(response)
-            
-            # 尝试提取 JSON
-            json_match = re.search(r'\{[^{}]*"is_correct"[^{}]*\}', content, re.DOTALL)
-            if json_match:
-                result = json.loads(json_match.group())
-                is_correct = result.get("is_correct", False)
-                reason = result.get("reason", "")
-                return bool(is_correct), reason
-            
-            # 如果无法解析 JSON，尝试从文本中提取
-            if "true" in content.lower() or "正确" in content or "correct" in content.lower():
-                return True, content
-            elif "false" in content.lower() or "错误" in content or "incorrect" in content.lower():
-                return False, content
-            
-            return False, f"无法解析评估结果: {content}"
-            
-        except Exception as e:
-            is_correct = self._is_answer_correct_simple(predicted, expected)
-            return is_correct, f"LLM 评估失败，使用简单匹配: {str(e)}"
+    Returns:
+        Tuple[OpenAI, str]: (evaluator client, model name)
+    """
+    EVALUATOR_MODEL = "gpt-4o"
+    EVALUATOR_API_BASE = os.getenv("EVALUATOR_API_BASE")
+    EVALUATOR_API_KEY = os.getenv("EVALUATOR_API_KEY")
     
-    async def evaluate_item(self, item: LongMemEvalItem) -> EvaluationResult:
-        """评估单个测试用例"""
-        # 使用 background_id 作为 user_id，这样相同背景的问题会共享记忆
-        user_id = f"user_{item.background_id}" if item.background_id else f"user_{item.id}"
-        
-        try:
-            # 添加记忆
-            await self._add_memories(item, user_id)
-            # 确保所有数据都已刷新
-            self.graph_memory.db_backend.refresh()
-            await asyncio.sleep(1)  # 等待数据可搜索 
-            
-            # 检索相关记忆
-            search_results, search_error = await self._search_memories(item.question, user_id)
-            retrieved_memories_str = self._format_retrieved_memories(search_results)
-            
-            # 格式化背景和对话历史
-            background_text = item.background_text if self.use_background else None
-            conversation_history = self._format_conversation_history(item.conversations) if self.use_conversation else None
-            
-            # 生成答案
-            predicted_answer = await self._generate_answer(
-                question=item.question,
-                retrieved_memories=retrieved_memories_str,
-                background_text=background_text,
-                conversation_history=conversation_history
-            )
-            
-            # 判断是否正确
-            if self.use_llm_evaluator:
-                is_correct, reason = await self._is_answer_correct_llm(
-                    predicted_answer, item.answer, item.question, item.question_type
-                )
-            else:
-                is_correct = self._is_answer_correct_simple(predicted_answer, item.answer)
-                reason = None
-            
-            # 记录检索到的记忆信息
-            retrieved_info = {
-                "entity_count": len(search_results.get("entity", [])),
-                "relation_count": len(search_results.get("relation", [])),
-                "episode_count": len(search_results.get("episode", [])),
-                "formatted_content": retrieved_memories_str,  # 格式化的记忆内容
-                "search_error": search_error,  # 检索错误信息（如果有）
-            }
-            
-            # 添加详细的记忆内容（用于调试和分析）
-            detailed_memories = {}
-            
-            # 实体详情
-            if "entity" in search_results and search_results["entity"]:
-                detailed_memories["entities"] = []
-                for score, entity in search_results["entity"][:self.search_top_k]:
-                    entity_detail = {
-                        "name": entity.name if hasattr(entity, 'name') else None,
-                        "content": entity.content if hasattr(entity, 'content') else None,
-                        "score": score,
-                    }
-                    if hasattr(entity, 'attributes') and entity.attributes:
-                        entity_detail["attributes"] = entity.attributes
-                    detailed_memories["entities"].append(entity_detail)
-            
-            # 关系详情
-            if "relation" in search_results and search_results["relation"]:
-                detailed_memories["relations"] = []
-                for score, relation in search_results["relation"][:self.search_top_k]:
-                    relation_detail = {
-                        "name": relation.name if hasattr(relation, 'name') else None,
-                        "content": relation.content if hasattr(relation, 'content') else None,
-                        "score": score,
-                    }
-                    # 尝试获取 lhs 和 rhs（可能是 UUID 字符串）
-                    if hasattr(relation, 'lhs'):
-                        relation_detail["lhs"] = relation.lhs if isinstance(relation.lhs, str) else getattr(relation.lhs, 'uuid', str(relation.lhs))
-                    if hasattr(relation, 'rhs'):
-                        relation_detail["rhs"] = relation.rhs if isinstance(relation.rhs, str) else getattr(relation.rhs, 'uuid', str(relation.rhs))
-                    detailed_memories["relations"].append(relation_detail)
-            
-            # 事件详情
-            if "episode" in search_results and search_results["episode"]:
-                detailed_memories["episodes"] = []
-                for score, episode in search_results["episode"][:self.search_top_k]:
-                    episode_detail = {
-                        "content": episode.content if hasattr(episode, 'content') else None,
-                        "score": score,
-                    }
-                    detailed_memories["episodes"].append(episode_detail)
-            
-            retrieved_info["detailed_memories"] = detailed_memories
-            
-            return EvaluationResult(
-                item_id=item.id,
-                question=item.question,
-                expected_answer=item.answer,
-                predicted_answer=predicted_answer,
-                question_type=item.question_type,
-                is_correct=is_correct,
-                evaluation_reason=reason,
-                retrieved_memories=retrieved_info
-            )
-            
-        except Exception as e:
-            return EvaluationResult(
-                item_id=item.id,
-                question=item.question,
-                expected_answer=item.answer,
-                predicted_answer="",
-                question_type=item.question_type,
-                is_correct=False,
-                error=str(e)
-            )
+    metric_model, _ = evaluate_qa.model_zoo[EVALUATOR_MODEL]
     
-    async def evaluate_batch(self, items: List[LongMemEvalItem]) -> List[EvaluationResult]:
-        """批量评估"""
-        results = []
-        for i, item in enumerate(items):
-            print(f"评估进度: {i+1}/{len(items)} - {item.id}")
-            result = await self.evaluate_item(item)
-            results.append(result)
-        return results
+    metric_client = OpenAI(
+        api_key=EVALUATOR_API_KEY,
+        base_url=EVALUATOR_API_BASE,
+    )
     
-    def calculate_metrics(self, results: List[EvaluationResult]) -> EvaluationMetrics:
-        """计算评估指标"""
-        total = len(results)
-        correct = sum(1 for r in results if r.is_correct)
-        accuracy = correct / total if total > 0 else 0.0
-        
-        # 按问题类型分组统计
-        by_type = {}
-        for result in results:
-            q_type = result.question_type
-            if q_type not in by_type:
-                by_type[q_type] = {"total": 0, "correct": 0}
-            by_type[q_type]["total"] += 1
-            if result.is_correct:
-                by_type[q_type]["correct"] += 1
-        
-        # 计算各类型的准确率
-        for q_type in by_type:
-            stats = by_type[q_type]
-            stats["accuracy"] = stats["correct"] / stats["total"] if stats["total"] > 0 else 0.0
-        
-        return EvaluationMetrics(
-            total=total,
-            correct=correct,
-            accuracy=accuracy,
-            by_type=by_type
-        )
-    
-    def save_results(self, results: List[EvaluationResult], metrics: EvaluationMetrics, output_dir: str):
-        """保存评估结果"""
-        os.makedirs(output_dir, exist_ok=True)
-        
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # 保存详细结果
-        results_file = os.path.join(output_dir, f"results_{timestamp}.json")
-        with open(results_file, 'w', encoding='utf-8') as f:
-            json.dump([asdict(r) for r in results], f, ensure_ascii=False, indent=2)
-        
-        # 保存指标摘要
-        metrics_file = os.path.join(output_dir, f"metrics_{timestamp}.json")
-        with open(metrics_file, 'w', encoding='utf-8') as f:
-            metrics_dict = {
-                "total": metrics.total,
-                "correct": metrics.correct,
-                "accuracy": metrics.accuracy,
-                "by_type": metrics.by_type
-            }
-            json.dump(metrics_dict, f, ensure_ascii=False, indent=2)
-        
-        # 打印摘要
-        print("\n" + "="*60)
-        print("评估结果摘要")
-        print("="*60)
-        print(f"总测试用例数: {metrics.total}")
-        print(f"正确答案数: {metrics.correct}")
-        print(f"总体准确率: {metrics.accuracy:.2%}")
-        print("\n按问题类型统计:")
-        for q_type, stats in metrics.by_type.items():
-            print(f"  {q_type}: {stats['correct']}/{stats['total']} ({stats['accuracy']:.2%})")
-        print(f"\n详细结果已保存到: {results_file}")
-        print(f"指标摘要已保存到: {metrics_file}")
-        print("="*60)
+    return metric_client, metric_model
 
 
 def init_graph_memory(
-    storage_path: Optional[str] = None,
-    language: str = "cn",
+    db_name: str = "longmemeval_evaluation",
+    language: str = "en",
     llm_config: Optional[LLMConfig] = None
 ) -> GraphMemory:
-    """初始化图记忆
-    
-    Args:
-        storage_path: 存储路径（如果为 None，使用临时目录）
-        language: 语言设置（cn 或 en）
-        llm_config: LLM 配置（如果为 None，从环境变量 JIUWEN_GRAPH_MEM_LLM_* 读取）
     """
-    # 配置图记忆数据库
+    Initialize Graph Memory instance.
+    """
+    print(f"\nProcess info: Initializing graph memory (Collection: {db_name})...")
+    
+    # Configure graph memory database
     local_endpoint = os.getenv("LOCAL_ENDPOINT")
+    
     db_uri = f"http://{local_endpoint}"
-    print(f"db_uri: {db_uri}")
+    print(f"Milvus endpoint: {db_uri}")
     
     db_config = GraphConfig(
         uri=db_uri,
-        name="evaluation",  # Milvus 数据库名称
-        backend="milvus",  # 使用 Milvus 后端
-        wipe_at_startup=False,  # 不删除已有数据
-        timeout=5.0,  
+        name=db_name,
+        backend="milvus",
+        wipe_at_startup=True,
+        timeout=30.0,
     )
     
-    # 配置 LLM（用于实体提取等）
+    # Configure LLM
     if llm_config is None:
         try:
             llm_config = LLMConfig.default_config()
-            print("从环境变量读取到LLM 配置")
+            # Explicitly increase timeout to 180 seconds to handle complex graph extraction tasks
+            llm_config.timeout = 180.0
+            print("get llm config from default config")
         except (ValueError, KeyError) as e:
-            print(f"⚠️  无法从环境变量读取 LLM 配置: {e}")
-            print("请设置 JIUWEN_GRAPH_MEM_LLM_URL, JIUWEN_GRAPH_MEM_LLM_KEY, JIUWEN_GRAPH_MEM_LLM_MODEL")
+            print(f"Failed to get LLM config from default config: {e}")
+            print("Please set JIUWEN_GRAPH_MEM_LLM_URL, JIUWEN_GRAPH_MEM_LLM_KEY, JIUWEN_GRAPH_MEM_LLM_MODEL")
             raise
     
-    # 创建图记忆实例
+    # Create Graph Memory instance
     graph_memory = GraphMemory(
         db_config=db_config,
         llm_config=llm_config,
         language=language,
-        extraction_strategy=DEFAULT_STRATEGY,
     )
     
-    print("✅ 图记忆初始化成功")
-    print(f"   存储路径: {db_uri}")
-    print(f"   语言: {language}")
-    print(f"   LLM 模型: {llm_config.model_name}")
-    
+    print("Process info: Successfully initialized graph memory")
     return graph_memory
 
 
-async def main():
-    parser = argparse.ArgumentParser(description="LongMemEval 图记忆评估脚本")
-    parser.add_argument("--questions_path", type=str, required=True,
-                        help="问题文件路径")
-    parser.add_argument("--backgrounds_path", type=str, required=True,
-                        help="背景文件路径")
-    parser.add_argument("--sessions_paths", type=str, nargs="+", required=True,
-                        help="会话文件路径列表")
-    parser.add_argument("--limit", type=int, default=None,
-                        help="限制测试用例数量（用于快速测试）")
-    parser.add_argument("--output_dir", type=str, default="./eval_results",
-                        help="结果输出目录 (默认: ./eval_results)")
-    parser.add_argument("--use_background", action="store_true", default=True,
-                        help="是否使用背景文本 (默认: True)")
-    parser.add_argument("--use_conversation", action="store_true", default=True,
-                        help="是否使用对话历史 (默认: True)")
-    parser.add_argument("--use_llm_evaluator", action="store_true", default=False,
-                        help="是否使用 LLM 评估器（符合 LongMemEval 官方标准，默认: False）")
-    parser.add_argument("--search_top_k", type=int, default=5,
-                        help="检索记忆时的 top_k 数量 (默认: 5)")
-    parser.add_argument("--storage_path", type=str, default=None,
-                        help="图记忆存储路径（默认: 临时目录）")
-    parser.add_argument("--language", type=str, choices=["cn", "en"], default="cn",
-                        help="图记忆语言 (默认: cn)")
+def prepare_chunks(item: LongMemEvalItem, chunk_size: int, chunk_overlap: int) -> List[Tuple[List[dict], datetime]]:
+    """
+    Global Chunking: Flatten all sessions, inject time metadata, and merge chunks by a fixed size.
+    """
+    all_messages = [] # List[Dict[role, content, timestamp]]
+    base_reference_time = parse_question_date(item.question_date) if item.question_date else None
     
-    # 模型配置参数
-    parser.add_argument("--api_base", type=str, default=None,
-                        help="LLM API base URL (或使用环境变量 API_BASE)")
-    parser.add_argument("--api_key", type=str, default=None,
-                        help="LLM API key (或使用环境变量 API_KEY)")
-    parser.add_argument("--model_name", type=str, default=None,
-                        help="模型名称 (或使用环境变量 MODEL_NAME)")
-    parser.add_argument("--model_provider", type=str, default=None,
-                        help="模型提供商 (或使用环境变量 MODEL_PROVIDER)")
-    
-    # 图记忆 LLM 配置（用于实体提取等）
-    parser.add_argument("--graph_llm_api_base", type=str, default=None,
-                        help="图记忆 LLM API base URL (或使用环境变量 JIUWEN_GRAPH_MEM_LLM_URL)")
-    parser.add_argument("--graph_llm_api_key", type=str, default=None,
-                        help="图记忆 LLM API key (或使用环境变量 JIUWEN_GRAPH_MEM_LLM_KEY)")
-    parser.add_argument("--graph_llm_model_name", type=str, default=None,
-                        help="图记忆 LLM 模型名称 (或使用环境变量 JIUWEN_GRAPH_MEM_LLM_MODEL)")
+    # 1. Extract and flatten all messages
+    sessions = item.haystack_sessions if hasattr(item, 'haystack_sessions') and item.haystack_sessions else []
+    if not sessions and item.conversations:
+        # If no session structure, fallback to conversations
+        raw_conv = [{"role": getattr(turn, 'role', 'user'), "content": getattr(turn, 'content', '')} for turn in item.conversations]
+        sessions = [raw_conv]
 
-    # LLM 评估器配置
-    parser.add_argument("--evaluator_api_base", type=str, default=None,
-                        help="评估器 LLM API base URL (或使用环境变量 EVALUATOR_API_BASE)")
-    parser.add_argument("--evaluator_api_key", type=str, default=None,
-                        help="评估器 LLM API key (或使用环境变量 EVALUATOR_API_KEY)")
-    parser.add_argument("--evaluator_model_name", type=str, default=None,
-                        help="评估器模型名称 (或使用环境变量 EVALUATOR_MODEL_NAME)")
-    parser.add_argument("--evaluator_model_provider", type=str, default=None,
-                        help="评估器模型提供商 (或使用环境变量 EVALUATOR_MODEL_PROVIDER)")
+    for s_idx, session in enumerate(sessions):
+        # Get the actual date of the session
+        session_date = None
+        if hasattr(item, 'haystack_dates') and item.haystack_dates and s_idx < len(item.haystack_dates):
+            session_date = parse_question_date(item.haystack_dates[s_idx])
+        
+        if session_date is None and base_reference_time:
+            session_date = base_reference_time - timedelta(hours=1) + timedelta(minutes=s_idx * 10)
+
+        # Inject a timestamp hint at the start of the session (enhance LLM time awareness)
+        date_prefix = f"[System: The following messages occurred on {session_date.strftime('%Y-%m-%d %H:%M:%S')}]\n" if session_date else ""
+        
+        for t_idx, turn in enumerate(session):
+            role = turn.get('role') if isinstance(turn, dict) else getattr(turn, 'role', None)
+            content = turn.get('content') if isinstance(turn, dict) else getattr(turn, 'content', None)
+            
+            if role in ['user', 'assistant'] and content:
+                # Add date prefix only before the first message of the session
+                processed_content = date_prefix + str(content) if t_idx == 0 else str(content)
+                all_messages.append({
+                    "role": role,
+                    "content": processed_content,
+                    "timestamp": session_date + timedelta(seconds=t_idx) if session_date else None
+                })
+
+    if not all_messages:
+        return []
+
+    # 2. Sliding window chunking on messages
+    final_chunks = []
+    total_len = len(all_messages)
+    step = max(1, chunk_size - chunk_overlap)
+    
+    for i in range(0, total_len, step):
+        chunk_data = all_messages[i:i + chunk_size]
+        # Extract start time of current chunk
+        chunk_ref_time = chunk_data[0]["timestamp"]
+        # Remove timestamp field, keep only role and content for graph_memory
+        clean_messages = [{"role": m["role"], "content": m["content"]} for m in chunk_data]
+        final_chunks.append((clean_messages, chunk_ref_time))
+        
+        if i + chunk_size >= total_len:
+            break
+            
+    return final_chunks
+
+
+def store_conversations_to_memory(
+    graph_memory: GraphMemory,
+    item: LongMemEvalItem,
+    user_id: str,
+    use_conversation: bool = True,
+    chunk_size: Optional[int] = 20,
+    chunk_overlap: int = 2,
+    chunk_strategy: str = "session"
+) -> bool:
+    """
+    Storage Phase: Receive preprocessed chunks and store them.
+    """
+    if not use_conversation:
+        return False
+
+    # 1. [Chunking Phase] Execute independently
+    processed_chunks = prepare_chunks(item, chunk_size, chunk_overlap)
+    
+    if not processed_chunks:
+        return False
+
+    # 2. [Storage Phase] Traverse and store
+    total = len(processed_chunks)
+    print(f"\n    [Ingestion] Background: {user_id[:8]}... | Chunks Prepared: {total}")
+    
+    try:
+        for idx, (chunk_messages, ref_time) in enumerate(processed_chunks):
+            start_t = datetime.now()
+            print(f"      > [{start_t.strftime('%H:%M:%S')}] Chunk {idx+1}/{total} Ingesting...", end='', flush=True)
+            
+            graph_memory.add_memory(
+                src_type=EpisodeType.conversation,
+                user_id=user_id,
+                content=chunk_messages,
+                reference_time=ref_time,
+            )
+            
+            dur = (datetime.now() - start_t).total_seconds()
+            print(f" Done! ({dur:.1f}s)")
+        
+        graph_memory.db_backend.refresh()
+        return True
+    except Exception as e:
+        print(f"\n    Background {user_id[:8]} ingestion failed: {e}")
+        return False
+
+
+def format_retrieved_memories(search_results: Dict[str, List[Tuple[float, Any]]]) -> str:
+    """
+    Format retrieved memories into a string.
+    
+    Args:
+        search_results: Search results, format: {collection_name: [(score, object), ...]}
+        
+    Returns:
+        str: Formatted memory text
+    """
+    if not search_results:
+        return ""
+    
+    formatted_parts = []
+    
+    # Format entities
+    if "entity" in search_results and search_results["entity"]:
+        formatted_parts.append("Relevant Entities:")
+        for score, entity in search_results["entity"]:
+            entity_info = f"- {entity.name}"
+            if hasattr(entity, 'content') and entity.content:
+                entity_info += f": {entity.content}"
+            if hasattr(entity, 'attributes') and entity.attributes:
+                attrs = ", ".join([f"{k}={v}" for k, v in entity.attributes.items() if v])
+                if attrs:
+                    entity_info += f" ({attrs})"
+            formatted_parts.append(entity_info)
+    
+    # Format relations
+    if "relation" in search_results and search_results["relation"]:
+        formatted_parts.append("\nRelevant Relations:")
+        for score, relation in search_results["relation"]:
+            relation_info = f"- {relation.name}"
+            if hasattr(relation, 'content') and relation.content:
+                relation_info += f": {relation.content}"
+            formatted_parts.append(relation_info)
+    
+    # Format episodes
+    if "episode" in search_results and search_results["episode"]:
+        formatted_parts.append("\nRelevant Episodes:")
+        for score, episode in search_results["episode"]:
+            episode_info = f"- {episode.content}"
+            formatted_parts.append(episode_info)
+    
+    return "\n".join(formatted_parts) if formatted_parts else ""
+
+
+def search_memories(
+    graph_memory: GraphMemory,
+    query: str,
+    user_id: str,
+    search_top_k: int = 5
+) -> Dict[str, List[Tuple[float, Any]]]:
+    """
+    Retrieve relevant memories from Graph Memory.
+    
+    Args:
+        graph_memory: Graph Memory instance
+        query: Query question
+        user_id: User ID
+        search_top_k: Number of memories to retrieve (top_k)
+        
+    Returns:
+        Dict[str, List[Tuple[float, Any]]]: Search results
+    """
+    try:
+        search_results = graph_memory.search(
+            query=query,
+            user_id=user_id,
+            search_strategy="default",
+            entity=True,
+            relation=True,
+            episode=True,
+        )
+        
+        # Limit return quantity for each type
+        for key in search_results:
+            if search_results[key]:
+                search_results[key] = search_results[key][:search_top_k]
+        
+        return search_results
+    except Exception as e:
+        print(f"Failed to retrieve memories: {e}")
+        return {}
+
+
+def generate_answer(
+    graph_memory: GraphMemory,
+    question: str,
+    retrieved_memories: str,
+    conversation_history: Optional[str] = None,
+    max_history_length: Optional[int] = 5000
+) -> str:
+    """
+    Use LLM to generate an answer based on retrieved memories.
+    
+    Args:
+        graph_memory: Graph Memory instance (used to get LLM client)
+        question: Question
+        retrieved_memories: Formatted retrieved memory text
+        conversation_history: Conversation history (optional)
+        max_history_length: Maximum character length of conversation history (to avoid context overflow)
+        
+    Returns:
+        str: Generated answer
+    """
+    # Build prompt
+    prompt_parts = []
+    
+    if retrieved_memories:
+        prompt_parts.append("Here are the retrieved relevant memories:")
+        prompt_parts.append(retrieved_memories)
+        prompt_parts.append("")
+    
+    # Limit conversation history length to avoid context overflow
+    if conversation_history:
+        if max_history_length and len(conversation_history) > max_history_length:
+            # Truncate the last part (usually most recent conversation)
+            conversation_history = conversation_history[-max_history_length:]
+            prompt_parts.append("Conversation history (recent):")
+        else:
+            prompt_parts.append("Conversation history:")
+        prompt_parts.append(conversation_history)
+        prompt_parts.append("")
+    
+    prompt_parts.append(f"Question: {question}")
+    prompt_parts.append("\nPlease answer the question based on the information above. If you cannot find the answer from the memories, please respond with 'I don't know'.")
+    
+    prompt = "\n".join(prompt_parts)
+    
+    try:
+        # Use LLM client from Graph Memory to generate answer
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant that answers questions based on retrieved memories. Be concise and accurate."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        response = graph_memory.llm_client.invoke(
+            messages=messages,
+            enable_thinking=False,
+        )
+        
+        return response.content.strip() if hasattr(response, 'content') else str(response)
+    except Exception as e:
+        print(f"Failed to generate answer: {e}")
+        return f"Error generating answer: {str(e)}"
+
+
+
+def evaluate_result(
+    output_graphmemory: List[Dict[str, Any]],
+    reference_items: List[LongMemEvalItem],
+    output_file: Optional[str] = None,
+    verbose: bool = True
+) -> Dict[str, Any]:
+    """
+    Calculate the accuracy of generated answers using officially defined evaluation standards.
+    
+    Args:
+        output_graphmemory: List of generated answers, each containing:
+            - question_id: ID of the question
+            - hypothesis: Generated answer
+        reference_items: Reference data list (LongMemEvalItem)
+        output_file: Path to output result file
+        verbose: Whether to print detailed information
+        
+    Returns:
+        Dict[str, Any]: Evaluation results, including:
+            - accuracy: Overall accuracy
+            - by_type: Accuracy grouped by question type
+            - logs: Detailed evaluation logs
+    """
+    print("\n" + "=" * 80)
+    print("Process info: Evaluating results using official standards")
+    print("=" * 80)
+    
+    # Initialize evaluator client
+    metric_client, metric_model = init_evaluator_client()
+    
+    # Map question_id to reference data
+    qid2qdata = {item.id: item for item in reference_items}
+    qid2qtype = {item.id: item.question_type for item in reference_items}
+    qtypes = set(list(qid2qtype.values()))
+    qtype2acc = {t: [] for t in qtypes}
+    
+    # Evaluate each generated answer
+    logs = []
+    for entry in tqdm(output_graphmemory, desc="Evaluating"):
+        question_id = entry.get('question_id')
+        if not question_id:
+            print(f'Warning: skipping entry without question_id: {entry}')
+            continue
+        
+        if question_id not in qid2qtype:
+            print(f'Warning: skipping {question_id} as it is not in reference data.')
+            continue
+        
+        qtype = qid2qtype[question_id]
+        q = qid2qdata[question_id].question
+        ans = qid2qdata[question_id].answer
+        hyp = entry.get('hypothesis', '')
+        
+        is_abstention = '_abs' in question_id
+        
+        prompt = evaluate_qa.get_anscheck_prompt(qtype, q, ans, hyp, abstention=is_abstention)
+        
+        # Call evaluation model
+        kwargs = {
+            'model': metric_model,
+            'messages': [
+                {"role": "user", "content": prompt}
+            ],
+            'n': 1,
+            'temperature': 0,
+            'max_tokens': 10
+        }
+        
+        try:
+            completion = evaluate_qa.chat_completions_with_backoff(metric_client, **kwargs)
+            eval_response = completion.choices[0].message.content.strip()
+            label = 'yes' in eval_response.lower()
+        except Exception as e:
+            print(f'Error evaluating {question_id}: {e}')
+            label = False
+            eval_response = f"Error: {str(e)}"
+        
+        # Record evaluation result
+        entry['autoeval_label'] = {
+            'model': metric_model,
+            'label': label
+        }
+        logs.append(entry)
+        
+        # Record accuracy by question type
+        qtype2acc[qtype].append(1 if label else 0)
+        
+        # Print details
+        if verbose:
+            print(json.dumps({
+                'question_id': question_id,
+                'question': q,
+                'answer': ans,
+                'hypothesis': hyp,
+                'autoeval_label': label
+            }, indent=4, ensure_ascii=False), flush=True)
+    
+    # Calculate overall accuracy
+    overall_accuracy = round(np.mean([1 if x['autoeval_label']['label'] else 0 for x in logs]).item(), 4)
+    
+    # Calculate accuracy by type
+    by_type_accuracy = {}
+    for k, v in qtype2acc.items():
+        if len(v) > 0:
+            by_type_accuracy[k] = {
+                'accuracy': round(np.mean(v), 4),
+                'count': len(v)
+            }
+    
+    # Print evaluation results
+    print("\n" + "=" * 80)
+    print("Evaluation Results:")
+    print("=" * 80)
+    print(f'Overall Accuracy: {overall_accuracy}')
+    print('\nAccuracy by question type:')
+    for k, v in by_type_accuracy.items():
+        print(f'\t{k}: {v["accuracy"]} ({v["count"]})')
+    
+    # Save results to file
+    if output_file:
+        os.makedirs(os.path.dirname(output_file) if os.path.dirname(output_file) else '.', exist_ok=True)
+        with open(output_file, 'w', encoding='utf-8') as out_f:
+            for entry in logs:
+                print(json.dumps(entry, ensure_ascii=False), file=out_f)
+        print(f'\nResults saved to: {output_file}')
+    
+    # Return evaluation results
+    return {
+        'accuracy': overall_accuracy,
+        'by_type': by_type_accuracy,
+        'logs': logs,
+        'total_count': len(logs)
+    }
+
+
+def process_single_item(
+    item: LongMemEvalItem,
+    graph_memory: GraphMemory,
+    use_conversation: bool,
+    search_top_k: int,
+    chunk_size: int,
+    chunk_overlap: int,
+    chunk_strategy: str
+) -> Dict[str, Any]:
+    """
+    Processing flow for a single test item: Ingestion -> Retrieval -> Generation
+    """
+    # 1. Store conversation history for the question (item.id as Key)
+    if use_conversation:
+        store_conversations_to_memory(
+            graph_memory=graph_memory,
+            item=item,
+            user_id=item.id,
+            use_conversation=use_conversation,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            chunk_strategy=chunk_strategy
+        )
+    
+    # 2. Retrieve for the question
+    search_results = search_memories(
+        graph_memory=graph_memory,
+        query=item.question,
+        user_id=item.id,
+        search_top_k=search_top_k
+    )
+    retrieved_memories = format_retrieved_memories(search_results)
+    
+    # 3. Format context conversation
+    conversation_history = None
+    if use_conversation and item.conversations:
+        recent_turns = item.conversations[-10:] if len(item.conversations) > 10 else item.conversations
+        conversation_history = "\n".join([
+            f"{getattr(turn, 'role', 'user')}: {getattr(turn, 'content', '')}" for turn in recent_turns
+        ])
+    
+    # 4. Generate answer
+    answer = generate_answer(
+        graph_memory=graph_memory,
+        question=item.question,
+        retrieved_memories=retrieved_memories,
+        conversation_history=conversation_history,
+        max_history_length=3000
+    )
+    
+    return {
+        'question_id': item.id,
+        'question': item.question,
+        'answer': item.answer,
+        'question_type': item.question_type,
+        'hypothesis': answer,
+        'retrieved_memories': retrieved_memories,
+    }
+
+
+def main():
+    """
+    Main function: Parse arguments, load data
+    """
+    parser = argparse.ArgumentParser(description="LongMemEval Graph Memory Evaluation Script (New Data Format)")
+    
+    # Data related parameters
+    parser.add_argument("--data_path", type=str, required=True,
+                        help="Data file path (new format, single JSON file, e.g., longmemeval_oracle.json)")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="Limit the number of test cases (for fast testing)")
+    parser.add_argument("--num_workers", type=int, default=4,
+                        help="Number of workers for parallel processing (default: 4)")
+    parser.add_argument("--chunk_size", type=int, default=8,
+                        help="Number of conversation turns per chunk (default: 8)")
+    parser.add_argument("--chunk_overlap", type=int, default=2,
+                        help="Number of overlapping turns between chunks (default: 2)")
+    parser.add_argument("--chunk_strategy", type=str, default="session",
+                        choices=["fixed", "session"],
+                        help="Chunking strategy: fixed or session (default: session)")
+    parser.add_argument("--db_name", type=str, default="longmemeval_evaluation",
+                        help="Milvus collection name (default: longmemeval_evaluation)")
     
     args = parser.parse_args()
+    OUTPUT_DIR = "./eval_results"
     
-    # 设置环境变量
+    # Storage path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    STORAGE_PATH = os.path.join(script_dir, "result")
+    # Ensure directory exists
+    os.makedirs(STORAGE_PATH, exist_ok=True)
+    
+    LANGUAGE = "en"
+    
+    # Graph Memory LLM configuration: read from .env file
+    GRAPH_LLM_API_BASE = os.getenv("JIUWEN_GRAPH_MEM_LLM_URL")
+    GRAPH_LLM_API_KEY = os.getenv("JIUWEN_GRAPH_MEM_LLM_KEY")
+    GRAPH_LLM_MODEL_NAME = os.getenv("JIUWEN_GRAPH_MEM_LLM_MODEL")
+    
+    # Milvus configuration: read from .env file
+    LOCAL_ENDPOINT = os.getenv("LOCAL_ENDPOINT")
+    
+    # Evaluator configuration: fixed to official standard
+    EVALUATOR_MODEL = "gpt-4o"
+    EVALUATOR_API_BASE = os.getenv("EVALUATOR_API_BASE")
+    EVALUATOR_API_KEY = os.getenv("EVALUATOR_API_KEY")
+    
+    # Other configurations
+    USE_CONVERSATION = True  # Use conversation history
+    SEARCH_TOP_K = 5  # Retrieval top_k
+    CHUNK_SIZE = args.chunk_size
+    CHUNK_OVERLAP = args.chunk_overlap
+    CHUNK_STRATEGY = args.chunk_strategy
+    NUM_WORKERS = args.num_workers
+    
+    # Set environment variables
     os.environ.setdefault("LLM_SSL_VERIFY", "false")
     
-    # 获取主模型配置 用于回答问题
-    api_base = args.api_base or os.getenv("API_BASE") or os.getenv("JIUWEN_GRAPH_MEM_LLM_URL")
-    api_key = args.api_key or os.getenv("API_KEY") or os.getenv("JIUWEN_GRAPH_MEM_LLM_KEY")
-    model_name = args.model_name or os.getenv("MODEL_NAME") or os.getenv("JIUWEN_GRAPH_MEM_LLM_MODEL")
-    model_provider = args.model_provider or os.getenv("MODEL_PROVIDER")
+    # Print configuration information
+    print("=" * 80)
+    print(f"  Output Directory: {OUTPUT_DIR}")
+    print(f"  Storage Path: {STORAGE_PATH}")
+    print(f"  Graph Memory Language: {LANGUAGE}")
+    print(f"  Evaluator Model: {EVALUATOR_MODEL} (Official Standard)")
+    print(f"  Use Conversation History: {USE_CONVERSATION}")
+    print(f"  Retrieval Top K: {SEARCH_TOP_K}")
+    print(f"  Conversation Chunk Strategy: {CHUNK_STRATEGY}")
+    print(f"  Conversation Chunk Size: {CHUNK_SIZE}")
+    print(f"  Conversation Chunk Overlap: {CHUNK_OVERLAP}")
+    print(f"  Number of Workers: {NUM_WORKERS}")
+    print("=" * 80)
     
-    if not all([api_base, api_key, model_name, model_provider]):
-        print("错误: 请提供主模型配置参数或设置环境变量")
-        print("需要以下之一：")
-        print("  1. API_BASE, API_KEY, MODEL_NAME, MODEL_PROVIDER")
-        print("  2. JIUWEN_GRAPH_MEM_LLM_URL, JIUWEN_GRAPH_MEM_LLM_KEY, JIUWEN_GRAPH_MEM_LLM_MODEL, MODEL_PROVIDER")
+    # ==================== Step 1: Load Data ====================
+    print("\n" + "=" * 80)
+    print("Process info: Loading data")
+    print("=" * 80)
+    
+    try:
+        items = load_data(args.data_path, limit=args.limit)
+    except Exception as e:
+        print(f"Failed to load data: {e}")
+        import traceback
+        traceback.print_exc()
         return
     
-    # 获取图记忆 LLM 配置 用于实体提取等
-    graph_llm_config = None
-    if args.graph_llm_api_base or args.graph_llm_api_key or args.graph_llm_model_name:
-        # 如果提供了命令行参数，手动创建配置
-        graph_llm_api_base = args.graph_llm_api_base or os.getenv("JIUWEN_GRAPH_MEM_LLM_URL") or api_base
-        graph_llm_api_key = args.graph_llm_api_key or os.getenv("JIUWEN_GRAPH_MEM_LLM_KEY") or api_key
-        graph_llm_model_name = args.graph_llm_model_name or os.getenv("JIUWEN_GRAPH_MEM_LLM_MODEL") or model_name
-        
-        # 尝试从环境变量读取 CONFIG
-        graph_llm_config_str = os.getenv("JIUWEN_GRAPH_MEM_LLM_CONFIG", "{}")
-        try:
-            graph_llm_config_dict = json.loads(graph_llm_config_str)
-        except json.JSONDecodeError:
-            graph_llm_config_dict = {}
-        
-        graph_llm_config = LLMConfig(
-            api_key=graph_llm_api_key,
-            api_base=graph_llm_api_base,
-            model_name=graph_llm_model_name,
-            **graph_llm_config_dict
-        )
-        print("✅ 使用命令行参数或环境变量创建图记忆 LLM 配置")
+    print("\n" + "=" * 80)
+    print("Data loaded successfully!")
+    print("=" * 80)
+    print(f"\n Prepare to evaluate {len(items)} test cases")
+    print(f" Results will be saved to {OUTPUT_DIR}")
+    
+    # ==================== Step 2: Initialize Graph Memory ====================
+    print("\n" + "=" * 80)
+    print("Process info: Initializing graph memory")
+    print("=" * 80)
+    
+    try:
+        graph_memory = init_graph_memory(db_name=args.db_name, language=LANGUAGE)
+    except Exception as e:
+        print(f"Failed to initialize graph memory: {e}")
+        import traceback
+        traceback.print_exc()
+        return
+    
+    # ==================== Step 3 & 4: Process items parallelly (Store -> Retrieve -> Generate) ====================
+    print("\n" + "=" * 80)
+    print(f"Process info: Processing Items Parallelly (Workers: {NUM_WORKERS})")
+    print("=" * 80)
+    
+    output_results = []
+    
+    if NUM_WORKERS > 1:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_WORKERS) as executor:
+            futures = [
+                executor.submit(
+                    process_single_item,
+                    item,
+                    graph_memory,
+                    USE_CONVERSATION,
+                    SEARCH_TOP_K,
+                    CHUNK_SIZE,
+                    CHUNK_OVERLAP,
+                    CHUNK_STRATEGY
+                ) for item in items
+            ]
+            for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Evaluating Items"):
+                try:
+                    result = future.result()
+                    output_results.append(result)
+                except Exception as e:
+                    print(f"\nError processing item: {e}")
     else:
-        # 尝试从环境变量自动读取
-        try:
-            graph_llm_config = LLMConfig.default_config()
-            print("✅ 从环境变量 JIUWEN_GRAPH_MEM_LLM_* 自动读取图记忆 LLM 配置")
-        except (ValueError, KeyError):
-            # 如果无法读取，使用主模型配置
-            graph_llm_config = LLMConfig(
-                api_key=api_key,
-                api_base=api_base,
-                model_name=model_name,
+        for item in tqdm(items, desc="Evaluating Items"):
+            result = process_single_item(
+                item,
+                graph_memory,
+                USE_CONVERSATION,
+                SEARCH_TOP_K,
+                CHUNK_SIZE,
+                CHUNK_OVERLAP,
+                CHUNK_STRATEGY
             )
-            print("⚠️  无法从环境变量读取图记忆 LLM 配置，使用主模型配置")
+            output_results.append(result)
     
-    # 初始化图记忆
-    print("初始化图记忆...")
-    graph_memory = init_graph_memory(
-        storage_path=args.storage_path,
-        language=args.language,
-        llm_config=graph_llm_config
+    print(f"\nSuccessfully generated answers for {len(output_results)} questions")
+    
+    # ==================== Step 5: Evaluate Results ====================
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    results_file = os.path.join(OUTPUT_DIR, f"results_{timestamp}.json")
+    metrics_file = os.path.join(OUTPUT_DIR, f"metrics_{timestamp}.json")
+    
+    eval_results = evaluate_result(
+        output_graphmemory=output_results,
+        reference_items=items,
+        output_file=results_file,
+        verbose=False
     )
     
-    # 创建主 LLM 模型（用于回答问题）
-    print(f"创建主 LLM 模型: {model_name}...")
-    main_llm = ModelFactory().get_model(
-        model_provider=model_provider,
-        api_key=api_key,
-        api_base=api_base
-    )
-    # 保存 model_name 以便后续使用
-    main_llm._model_name = model_name
+    # Save evaluation metrics
+    with open(metrics_file, 'w', encoding='utf-8') as f:
+        json.dump({
+            'overall_accuracy': eval_results['accuracy'],
+            'by_type': eval_results['by_type'],
+            'total_count': eval_results['total_count'],
+            'config': {
+                'use_conversation': USE_CONVERSATION,
+                'search_top_k': SEARCH_TOP_K,
+                'language': LANGUAGE,
+                'chunk_size': CHUNK_SIZE,
+                'chunk_overlap': CHUNK_OVERLAP,
+                'chunk_strategy': CHUNK_STRATEGY,
+                'num_workers': NUM_WORKERS,
+            }
+        }, f, indent=2, ensure_ascii=False)
     
-    # 创建评估器模型（如果使用 LLM 评估器）
-    evaluator_model = None
-    if args.use_llm_evaluator:
-        evaluator_api_base = args.evaluator_api_base or os.getenv("EVALUATOR_API_BASE") or api_base
-        evaluator_api_key = args.evaluator_api_key or os.getenv("EVALUATOR_API_KEY") or api_key
-        evaluator_model_name = args.evaluator_model_name or os.getenv("EVALUATOR_MODEL_NAME") or model_name
-        evaluator_model_provider = args.evaluator_model_provider or os.getenv("EVALUATOR_MODEL_PROVIDER") or model_provider
-        
-        evaluator_llm = ModelFactory().get_model(
-            model_provider=evaluator_model_provider,
-            api_key=evaluator_api_key,
-            api_base=evaluator_api_base
-        )
-        evaluator_llm._model_name = evaluator_model_name
-        evaluator_model = evaluator_llm
-        print(f"使用 LLM 评估器: {evaluator_model_name} (符合 LongMemEval 官方标准)")
-    else:
-        print("使用简单字符串匹配评估（快速测试模式）")
-        print("提示: 使用 --use_llm_evaluator 启用 LLM 评估器，符合 LongMemEval 官方标准")
-    
-    # 加载数据
-    print("加载 LongMemEval 数据集...")
-    loader = LongMemEvalLoader(
-        questions_path=args.questions_path,
-        backgrounds_path=args.backgrounds_path,
-        sessions_paths=args.sessions_paths
-    )
-    items = loader.load(limit=args.limit)
-    print(f"加载了 {len(items)} 个测试用例")
-    
-    # 创建评估器
-    evaluator = GraphMemoryEvaluator(
-        graph_memory=graph_memory,
-        llm_model=main_llm,
-        use_background=args.use_background,
-        use_conversation=args.use_conversation,
-        use_llm_evaluator=args.use_llm_evaluator,
-        evaluator_model=evaluator_model,
-        search_top_k=args.search_top_k
-    )
-    
-    # 执行评估
-    print("\n开始评估...")
-    results = await evaluator.evaluate_batch(items)
-    
-    # 计算指标
-    metrics = evaluator.calculate_metrics(results)
-    
-    # 保存结果
-    evaluator.save_results(results, metrics, args.output_dir)
+    print(f"\n Evaluation completed!")
+    print(f"   Results saved to: {results_file}")
+    print(f"   Metrics saved to: {metrics_file}")
+
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
+

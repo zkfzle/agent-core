@@ -17,13 +17,12 @@ from openjiuwen.dev_tools.tune import (
 from openjiuwen.core.single_agent.legacy.config import LLMCallConfig
 from openjiuwen.core.foundation.llm import ModelRequestConfig, ModelClientConfig, ToolCall
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
-
+from openjiuwen.core.common.logging import logger
 
 API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
 API_KEY = os.getenv("API_KEY", "sk-fake")
 MODEL_NAME = os.getenv("MODEL_NAME", "")
 MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
-
 
 # ——————————————————————————————————————————工具信息————————————————————————————————————#
 TOOLS = [
@@ -32,12 +31,14 @@ TOOLS = [
             name="ac_open",
             description="空调控制工具，根据用户指令打开空调",
         ),
+        func=lambda a: a
     ),
     LocalFunction(
         card=ToolCard(
             name="ac_close",
             description="空调控制工具，根据用户指令关闭空调",
-        )
+        ),
+        func=lambda a: a
     ),
     LocalFunction(
         card=ToolCard(
@@ -50,7 +51,8 @@ TOOLS = [
                 },
                 "required": ["temperature"],
             },
-        )
+        ),
+        func=lambda a: a
     ),
 ]
 
@@ -81,11 +83,13 @@ INFORMATION_EXTRACTION_CASES = [
         label={"output": "[潘之恒]"}
     ),
     Case(
-        inputs={"query": "高祖二十二子：窦皇后生建成（李建成）、太宗皇帝（李世民）、玄霸（李玄霸）、元吉（李元吉），万贵妃生智云（李智云），莫嫔生元景（李元景），孙嫔生元昌（李元昌））"},
+        inputs={
+            "query": "高祖二十二子：窦皇后生建成（李建成）、太宗皇帝（李世民）、玄霸（李玄霸）、元吉（李元吉），万贵妃生智云（李智云），莫嫔生元景（李元景），孙嫔生元昌（李元昌））"},
         label={"output": "[李建成, 李世民, 李玄霸, 李元吉, 李智云, 李元景, 李元昌]"}
     ),
     Case(
-        inputs={"query": "郭造卿（1532—1593），字建初，号海岳，福建福清县化南里人（今福清市人），郭遇卿之弟，郭造卿少年的时候就很有名气，曾游学吴越"},
+        inputs={
+            "query": "郭造卿（1532—1593），字建初，号海岳，福建福清县化南里人（今福清市人），郭遇卿之弟，郭造卿少年的时候就很有名气，曾游学吴越"},
         label={"output": "[郭造卿, 郭遇卿]"}
     ),
     Case(
@@ -97,51 +101,51 @@ INFORMATION_EXTRACTION_CASES = [
 
 TOOL_CALL_CASES = [
     Case(inputs=dict(query="请帮我打开空调"),
-        label=dict(output="", tool_calls=[
-            ToolCall(id="", type='function', name="ac_open", arguments="{}")]),
-    ),
+         label=dict(output="", tool_calls=[
+             ToolCall(id="", type='function', name="ac_open", arguments="{}")]),
+         ),
     Case(inputs=dict(query="请帮我关闭空调"),
          label=dict(output="", tool_calls=[
              ToolCall(id="", type='function', name="ac_close", arguments="{}")]),
-    ),
+         ),
     Case(inputs=dict(query="天气太热了，开一下空调"),
          label=dict(output="", tool_calls=[
              ToolCall(id="", type='function', name="ac_open", arguments="{}")]),
-    ),
+         ),
     Case(inputs=dict(query="有点冷，先帮我关窗，再调整到21度"),
          label=dict(output="", tool_calls=[
              ToolCall(id="", type='function', name="ac_control", arguments="{\"temperature\":21}")]),
-    ),
+         ),
     Case(inputs=dict(query="有点热，先帮我开窗，再调整到29度"),
          label=dict(output="", tool_calls=[
              ToolCall(id="", type='function', name="ac_control", arguments="{\"temperature\":29}")]),
-    )
+         )
 ]
 
 INFORMATION_EXTRACTION_CASES_WITH_VARIABLES = [
     Case(inputs={
-             "role":"信息提取",
-             "query":"潘之恒（约1536—1621）字景升，号鸾啸生，冰华生，安徽歙县、岩寺人，侨寓金陵（今江苏南京）"
-         },
+        "role": "信息提取",
+        "query": "潘之恒（约1536—1621）字景升，号鸾啸生，冰华生，安徽歙县、岩寺人，侨寓金陵（今江苏南京）"
+    },
         label={"output": "[潘之恒]"}
     ),
     Case(inputs={
-             "role": "信息提取",
-             "query": "高祖二十二子：窦皇后生建成（李建成）、太宗皇帝（李世民）、玄霸（李玄霸）、元吉（李元吉），万贵妃生智云（李智云），莫嫔生元景（李元景），孙嫔生元昌（李元昌））"
-         },
-         label={"output": "[李建成, 李世民, 李玄霸, 李元吉, 李智云, 李元景, 李元昌]"}
+        "role": "信息提取",
+        "query": "高祖二十二子：窦皇后生建成（李建成）、太宗皇帝（李世民）、玄霸（李玄霸）、元吉（李元吉），万贵妃生智云（李智云），莫嫔生元景（李元景），孙嫔生元昌（李元昌））"
+    },
+        label={"output": "[李建成, 李世民, 李玄霸, 李元吉, 李智云, 李元景, 李元昌]"}
     ),
     Case(inputs={
-             "role": "信息提取",
-             "query": "郭造卿（1532—1593），字建初，号海岳，福建福清县化南里人（今福清市人），郭遇卿之弟，郭造卿少年的时候就很有名气，曾游学吴越"
-         },
-         label={"output": "[郭造卿, 郭遇卿]"}
+        "role": "信息提取",
+        "query": "郭造卿（1532—1593），字建初，号海岳，福建福清县化南里人（今福清市人），郭遇卿之弟，郭造卿少年的时候就很有名气，曾游学吴越"
+    },
+        label={"output": "[郭造卿, 郭遇卿]"}
     ),
     Case(inputs={
-             "role": "信息提取",
-             "query": "沈自邠，字茂仁，号几轩，又号茂秀，浙江秀水长溪（今嘉兴南汇）人"
-         },
-         label={"output": "[沈自邠]"}
+        "role": "信息提取",
+        "query": "沈自邠，字茂仁，号几轩，又号茂秀，浙江秀水长溪（今嘉兴南汇）人"
+    },
+        label={"output": "[沈自邠]"}
     ),
 ]
 
@@ -152,7 +156,7 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
     # ------------------------------------------------------------------ #
     def show_result(self, evaluated_cases):
         for eval_result in evaluated_cases:
-            print(f"score: {eval_result.score}, reason: {eval_result.reason}, "
+            logger.info(f"score: {eval_result.score}, reason: {eval_result.reason}, "
                   f"answer: {eval_result.answer}, label: {eval_result.case.label}")
 
     def create_agent(self, prompt: str, tools=None):
@@ -245,10 +249,10 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
 
         # 创建优化器，执行优化
         with JointOptimizer(
-            model_config,
-            model_client_config,
-            parameters=agent.get_llm_calls(),
-            num_examples=1
+                model_config,
+                model_client_config,
+                parameters=agent.get_llm_calls(),
+                num_examples=1
         ) as optimizer:
             predicts = asyncio.run(forward(agent, INFORMATION_EXTRACTION_CASES))
             results = evaluator.batch_evaluate(INFORMATION_EXTRACTION_CASES, predicts)
@@ -268,19 +272,20 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES)
 
         from openjiuwen.dev_tools.tune.trainer.base import Callbacks, Progress
+
         class MyCallbacks(Callbacks):
             def on_train_epoch_end(self, agent, progress: Progress, cases):
-                print(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")
+                logger.info(f"cur_epoch_accuracy {progress.current_epoch}, {progress.best_batch_score}")
 
         trainer.set_callbacks(MyCallbacks())
         score, result = trainer.evaluate(agent, case_loader)
-        print(f"[原提示词推理效果]: score={score}")
+        logger.info(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
         optimized_agent = trainer.train(agent, case_loader)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
-        print(f"[优化后提示词推理效果]: score={score}")
+        logger.info(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
 
     @unittest.skip("skip system test")
@@ -290,13 +295,13 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         case_loader = CaseLoader(cases=TOOL_CALL_CASES)
 
         score, result = trainer.evaluate(agent, case_loader)
-        print(f"[原提示词推理效果]: score={score}")
+        logger.info(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
         optimized_agent = trainer.train(agent, case_loader, num_iterations=2)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
-        print(f"[优化后提示词推理效果]: score={score}")
+        logger.info(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)
 
     @unittest.skip("skip system test")
@@ -306,11 +311,11 @@ class PromptTuneTest(unittest.IsolatedAsyncioTestCase):
         case_loader = CaseLoader(cases=INFORMATION_EXTRACTION_CASES_WITH_VARIABLES)
 
         score, result = trainer.evaluate(agent, case_loader)
-        print(f"[原提示词推理效果]: score={score}")
+        logger.info(f"[原提示词推理效果]: score={score}")
         self.show_result(result)
 
         optimized_agent = trainer.train(agent, case_loader, num_iterations=3)
 
         score, result = trainer.evaluate(optimized_agent, case_loader)
-        print(f"[优化后提示词推理效果]: score={score}")
+        logger.info(f"[优化后提示词推理效果]: score={score}")
         self.show_result(result)

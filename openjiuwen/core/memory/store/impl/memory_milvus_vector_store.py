@@ -4,8 +4,8 @@ import asyncio
 from typing import List, Any, Optional
 from pymilvus import FieldSchema, CollectionSchema, DataType, Collection, connections, utility
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.retrieval.vector_store.base import VectorStore
-from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
+from openjiuwen.core.retrieval import VectorStore
+from openjiuwen.core.retrieval import SearchResult
 
 MEMORY_ID_LENGTH = 36
 SCOPE_ID_LENGTH = 64
@@ -17,19 +17,11 @@ def convert_milvus_result(results) -> List[SearchResult]:
         for hit in hits_per_query:
             memory_id = hit.entity.get("id")
             distance = hit.distance
-            final_results.append(
-                SearchResult(
-                    id=str(memory_id),
-                    score=distance,
-                    text="",
-                    metadata={}
-                )
-            )
+            final_results.append(SearchResult(id=str(memory_id), score=distance, text="", metadata={}))
     return final_results
 
 
 class MemoryMilvusVectorStore(VectorStore):
-
     def __init__(self, milvus_host: str, milvus_port: str, token: str | None, embedding_dims: int):
         self.embedding_dims = embedding_dims
         self.token = token
@@ -51,7 +43,7 @@ class MemoryMilvusVectorStore(VectorStore):
                 port=self.milvus_port,
                 alias="default",
                 token=self.token,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
         except Exception as e:
             raise RuntimeError(f"milvus connect error: {str(e)}") from e
@@ -63,12 +55,9 @@ class MemoryMilvusVectorStore(VectorStore):
         if not utility.has_collection(collection_name):
             logger.info(f"Collection {collection_name} not found, creating...")
             fields = [
-                FieldSchema(name="id", dtype=DataType.VARCHAR,
-                            is_primary=True, max_length=MEMORY_ID_LENGTH),
-                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR,
-                            dim=self.embedding_dims),
-                FieldSchema(name="scope_id", dtype=DataType.VARCHAR,
-                    max_length=SCOPE_ID_LENGTH)
+                FieldSchema(name="id", dtype=DataType.VARCHAR, is_primary=True, max_length=MEMORY_ID_LENGTH),
+                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.embedding_dims),
+                FieldSchema(name="scope_id", dtype=DataType.VARCHAR, max_length=SCOPE_ID_LENGTH),
             ]
             schema = CollectionSchema(fields, description="embedding collection")
             collection = Collection(name=collection_name, schema=schema, using="default")
@@ -99,11 +88,12 @@ class MemoryMilvusVectorStore(VectorStore):
                 embeddings,
                 scope_id,
             ],
-            timeout=self.timeout
+            timeout=self.timeout,
         )
 
-    async def search(self, query_vector: List[float], top_k: int = 5,
-                     filters: Optional[dict] = None, **kwargs: Any) -> List[SearchResult]:
+    async def search(
+        self, query_vector: List[float], top_k: int = 5, filters: Optional[dict] = None, **kwargs: Any
+    ) -> List[SearchResult]:
         table_name = kwargs.get("table_name")
         if table_name is None:
             raise ValueError("table_name is required")
@@ -124,18 +114,23 @@ class MemoryMilvusVectorStore(VectorStore):
         parsed_results = convert_milvus_result(results)
         return parsed_results if parsed_results else []
 
-    async def sparse_search(self, query_text: str, top_k: int = 5,
-                            filters: Optional[dict] = None, **kwargs: Any) -> List[SearchResult]:
-        pass
-
-    async def hybrid_search(self, query_text: str, query_vector: Optional[List[float]] = None,
-                            top_k: int = 5, alpha: float = 0.5, filters: Optional[dict] = None,
-                            **kwargs: Any,
+    async def sparse_search(
+        self, query_text: str, top_k: int = 5, filters: Optional[dict] = None, **kwargs: Any
     ) -> List[SearchResult]:
         pass
 
-    async def delete(self, ids: Optional[List[str]] = None,
-                     filter_expr: Optional[str] = None, **kwargs: Any) -> bool:
+    async def hybrid_search(
+        self,
+        query_text: str,
+        query_vector: Optional[List[float]] = None,
+        top_k: int = 5,
+        alpha: float = 0.5,
+        filters: Optional[dict] = None,
+        **kwargs: Any,
+    ) -> List[SearchResult]:
+        pass
+
+    async def delete(self, ids: Optional[List[str]] = None, filter_expr: Optional[str] = None, **kwargs: Any) -> bool:
         table_name = kwargs.get("table_name")
         if table_name is None:
             raise ValueError("table_name is required")
@@ -145,7 +140,7 @@ class MemoryMilvusVectorStore(VectorStore):
             return True
         collection = await self._get_collection(table_name)
         ids_str = ", ".join(f'"{i}"' for i in ids)
-        expr = f'id in [{ids_str}]'
+        expr = f"id in [{ids_str}]"
         await asyncio.to_thread(
             collection.delete,
             expr,

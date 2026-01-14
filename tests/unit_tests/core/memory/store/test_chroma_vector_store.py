@@ -4,7 +4,7 @@ import tempfile
 import pytest
 
 from openjiuwen.core.memory.store.impl.memory_chroma_vector_store import MemoryChromaVectorStore
-from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
+from openjiuwen.core.retrieval import SearchResult
 
 
 @pytest.fixture
@@ -92,11 +92,7 @@ class TestMemoryChromaVectorStore:
     async def test_add_single_vector(self, chroma_store, persist_directory, table_name):
         """测试添加单个向量"""
         # 准备测试数据
-        vector_data = {
-            "id": "vec1",
-            "embedding": [0.1, 0.2, 0.3, 0.4],
-            "scope_id": "scope1"
-        }
+        vector_data = {"id": "vec1", "embedding": [0.1, 0.2, 0.3, 0.4], "scope_id": "scope1"}
 
         # 调用add方法
         await chroma_store.add(data=vector_data, table_name=table_name)
@@ -114,16 +110,8 @@ class TestMemoryChromaVectorStore:
         """测试添加多个向量"""
         # 准备测试数据
         vector_data = [
-            {
-                "id": "vec1",
-                "embedding": [0.1, 0.2, 0.3, 0.4],
-                "scope_id": "scope1"
-            },
-            {
-                "id": "vec2",
-                "embedding": [0.5, 0.6, 0.7, 0.8],
-                "scope_id": "scope2"
-            }
+            {"id": "vec1", "embedding": [0.1, 0.2, 0.3, 0.4], "scope_id": "scope1"},
+            {"id": "vec2", "embedding": [0.5, 0.6, 0.7, 0.8], "scope_id": "scope2"},
         ]
 
         # 调用add方法
@@ -140,12 +128,7 @@ class TestMemoryChromaVectorStore:
         """测试批量添加向量"""
         # 准备测试数据（超过默认batch_size=128）
         vector_data = [
-            {
-                "id": f"vec{i}",
-                "embedding": [0.1, 0.2, 0.3, 0.4],
-                "scope_id": f"scope{i}"
-            }
-            for i in range(200)
+            {"id": f"vec{i}", "embedding": [0.1, 0.2, 0.3, 0.4], "scope_id": f"scope{i}"} for i in range(200)
         ]
 
         # 调用add方法，设置较小的batch_size
@@ -161,16 +144,8 @@ class TestMemoryChromaVectorStore:
         """测试搜索功能"""
         # 准备测试数据
         vector_data = [
-            {
-                "id": "vec1",
-                "embedding": [0.1, 0.2, 0.3, 0.4],
-                "scope_id": "scope1"
-            },
-            {
-                "id": "vec2",
-                "embedding": [0.5, 0.6, 0.7, 0.8],
-                "scope_id": "scope2"
-            }
+            {"id": "vec1", "embedding": [0.1, 0.2, 0.3, 0.4], "scope_id": "scope1"},
+            {"id": "vec2", "embedding": [0.5, 0.6, 0.7, 0.8], "scope_id": "scope2"},
         ]
 
         # 添加向量
@@ -204,11 +179,7 @@ class TestMemoryChromaVectorStore:
     async def test_delete(self, chroma_store, persist_directory, table_name):
         """测试删除功能"""
         # 准备测试数据
-        vector_data = {
-            "id": "vec1",
-            "embedding": [0.1, 0.2, 0.3, 0.4],
-            "scope_id": "scope1"
-        }
+        vector_data = {"id": "vec1", "embedding": [0.1, 0.2, 0.3, 0.4], "scope_id": "scope1"}
 
         # 添加向量
         await chroma_store.add(data=vector_data, table_name=table_name)
@@ -249,11 +220,7 @@ class TestMemoryChromaVectorStore:
     async def test_delete_table(self, chroma_store, persist_directory, table_name):
         """测试删除表功能"""
         # 创建表并添加数据
-        vector_data = {
-            "id": "vec1",
-            "embedding": [0.1, 0.2, 0.3, 0.4],
-            "scope_id": "scope1"
-        }
+        vector_data = {"id": "vec1", "embedding": [0.1, 0.2, 0.3, 0.4], "scope_id": "scope1"}
         await chroma_store.add(data=vector_data, table_name=table_name)
 
         # 验证表存在

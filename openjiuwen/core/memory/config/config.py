@@ -5,20 +5,20 @@ from pydantic import BaseModel, Field, field_validator
 from openjiuwen.core.common.schema.param import Param
 from openjiuwen.core.memory.common.crypto import AES_KEY_LENGTH
 from openjiuwen.core.foundation.llm.schema.config import ModelClientConfig, ModelRequestConfig
-from openjiuwen.core.retrieval.common.config import EmbeddingConfig
+from openjiuwen.core.retrieval import EmbeddingConfig
 
 
 class MemoryEngineConfig(BaseModel):
     default_model_cfg: ModelRequestConfig = Field(default=None)
     default_model_client_cfg: ModelClientConfig = Field(default=None)
     input_msg_max_len: int = Field(default=8192)  # max length of input message
-    crypto_key: bytes = Field(default=b'')  # aes key, length must be 32, not enable encrypt memory if empty
+    crypto_key: bytes = Field(default=b"")  # aes key, length must be 32, not enable encrypt memory if empty
 
-    @field_validator('crypto_key')
+    @field_validator("crypto_key")
     @classmethod
     def check_crypto_key(cls, v: bytes) -> bytes:
         if len(v) == 0:
-            return b''
+            return b""
 
         if len(v) == AES_KEY_LENGTH:
             return v

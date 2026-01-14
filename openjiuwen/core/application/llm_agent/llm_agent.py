@@ -13,7 +13,7 @@ from openjiuwen.core.single_agent.legacy import (
     LegacyReActAgentConfig as ReActAgentConfig,
     WorkflowSchema,
 )
-from openjiuwen.core.application.agents_for_studio.llm_agent.llm_controller import LLMController
+from openjiuwen.core.application.llm_agent.llm_controller import LLMController
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.long_term_memory import LongTermMemory
 from openjiuwen.core.session import Session

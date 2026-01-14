@@ -62,6 +62,7 @@ class ExecuteAgent(LegacyBaseAgent):
             "result": "Task is done."
         }
 
+
 class SummaryAgent(LegacyBaseAgent):
     async def stream(self, inputs: Dict, session: Session = None) -> AsyncIterator[Any]:
         pass

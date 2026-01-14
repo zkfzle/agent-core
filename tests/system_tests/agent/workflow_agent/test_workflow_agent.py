@@ -29,7 +29,7 @@ from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.runner import Runner
-from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
+from openjiuwen.core.application.workflow_agent import WorkflowAgent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Output, Input
 from openjiuwen.core.session import Session

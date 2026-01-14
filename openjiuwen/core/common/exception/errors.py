@@ -57,7 +57,7 @@ class BaseError(Exception):
         Never raise formatting exception outward.
         """
         try:
-            return _format_template(self.status.errmsg, params=self.params)
+            return _format_template(self.status.errmsg, **self.params)
         except Exception:
             return self.status.errmsg
 

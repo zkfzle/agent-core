@@ -39,7 +39,7 @@ from openjiuwen.core.session import WorkflowSession, NodeSession
 from openjiuwen.core.session import WrappedNodeSession, TaskSession
 from openjiuwen.core.foundation.llm import BaseModelInfo
 from openjiuwen.core.foundation.llm.model import Model
-from openjiuwen.core.foundation.llm.schema.config import ModelRequestConfig as LLM1ModelConfig, ModelClientConfig
+from openjiuwen.core.foundation.llm.schema.config import ModelRequestConfig, ModelClientConfig
 
 USER_FIELDS = "userFields"
 os.environ["LLM_SSL_VERIFY"] = "false"
@@ -58,21 +58,25 @@ def fake_node_ctx():
 def fake_input():
     return lambda **kw: {USER_FIELDS: kw}
 
+@pytest.fixture
+def fake_model_config() -> ModelRequestConfig:
+    """构造一个最小可用的 ModelConfig"""
+    return ModelRequestConfig(
+        model="gpt-3.5-turbo",
+        temperature=0.8,
+        top_p=0.9,
+    )
 
 @pytest.fixture
-def fake_model_config() -> ModelConfig:
+def fake_model_client_config() -> ModelClientConfig:
     """构造一个最小可用的 ModelConfig"""
-    return ModelConfig(
-        model_provider="OpenAI",
-        model_info=BaseModelInfo(
-            api_key="sk-fake",
-            api_base="https://api.openai.com/v1",
-            model_name="gpt-3.5-turbo",
-            temperature=0.8,
-            top_p=0.9,
-            streaming=False,
-            timeout=30.0,
-        ),
+    return ModelClientConfig(
+        client_provider="OpenAI",
+        api_key="sk-fake",
+        api_base="https://api.openai.com/v1",
+        timeout=30,
+        max_retries=3,
+        verify_ssl=False
     )
 
 class FakeModel(Model):
@@ -88,7 +92,7 @@ class FakeModel(Model):
             verify_ssl=False,
             ssl_cert=None
         )
-        model_config = LLM1ModelConfig(
+        model_config = ModelRequestConfig(
             model="fake-model",
             temperature=0.7,
             top_p=0.9
@@ -119,10 +123,12 @@ class TestLLMExecutableInvoke:
             mock_model,  # 这就是补丁
             fake_node_ctx,
             fake_input,
+            fake_model_client_config,
             fake_model_config,
     ):
         config = LLMCompConfig(
-            model=fake_model_config,
+            model_client_config=fake_model_client_config,
+            model_config=fake_model_config,
             template_content=[{"role": "user", "content": "Hello {query}"}],
             response_format={"type": "text"},
             output_config={"result": {
@@ -147,9 +153,11 @@ class TestLLMExecutableInvoke:
             fake_node_ctx,
             fake_input,
             fake_model_config,
+            fake_model_client_config
     ):
         config = LLMCompConfig(
-            model=fake_model_config,
+            model_client_config=fake_model_client_config,
+            model_config=fake_model_config,
             template_content=[{"role": "user", "content": "Hello {query}"}],
             response_format={"type": "text"},
             output_config={"result": {
@@ -178,8 +186,12 @@ class TestLLMExecutableInvoke:
             fake_node_ctx,
             fake_input,
             fake_model_config,
+            fake_model_client_config
     ):
-        config = LLMCompConfig(model=fake_model_config, template_content=[{"role": "user", "content": "Hello {name}"}], response_format={"type": "text"},)
+        config = LLMCompConfig(model_client_config=fake_model_client_config,
+                               model_config=fake_model_config,
+                               template_content=[{"role": "user", "content": "Hello {name}"}],
+                               response_format={"type": "text"},)
         try:
             exe = LLMExecutable(config)
         except JiuWenBaseException as e:
@@ -190,6 +202,7 @@ class TestLLMExecutableInvoke:
             self,
             mock_model,
             fake_model_config,
+            fake_model_client_config
     ):
         """LLM 节点在完整工作流中的异步测试"""
         session = WorkflowSession()
@@ -212,7 +225,8 @@ class TestLLMExecutableInvoke:
         )
 
         config = LLMCompConfig(
-            model=fake_model_config,
+            model_client_config=fake_model_client_config,
+            model_config=fake_model_config,
             template_content=[{"role": "user", "content": "Hello {name}"}],
             response_format={"type": "text"},
             output_config={"result": {"type": "string", "required": True}},
@@ -231,7 +245,7 @@ class TestLLMExecutableInvoke:
 
     @pytest.mark.asyncio  # 新增
     async def test_start_llm_end_in_workflow(self, mock_model,
-                                             fake_model_config):
+                                             fake_model_config, fake_model_client_config):
         fake_llm = FakeModel(api_key="fake-key", api_base="http://fake.api.com")
         mock_model.return_value = fake_llm
 
@@ -246,22 +260,9 @@ class TestLLMExecutableInvoke:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        # when run, use a real model config instead
-        fake_model_config = ModelConfig(
-            model_provider="OpenAI",
-            model_info=BaseModelInfo(
-                api_key="sk-fake",
-                api_base="https://api.openai.com/v1",
-                model_name="gpt-3.5-turbo",
-                temperature=0.8,
-                top_p=0.9,
-                streaming=False,
-                timeout=30.0,
-            ),
-        )
-
         config = LLMCompConfig(
-            model=fake_model_config,
+            model_client_config=fake_model_client_config,
+            model_config=fake_model_config,
             template_content=[{"role": "user", "content": "Hello {name}"}],
             response_format={"type": "text"},
             output_config={"output": {"type": "string", "required": True}},
@@ -283,7 +284,7 @@ class TestLLMExecutableInvoke:
 class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
-    async def test_real_workflow_agent_stream_start_llm_end_with_stream_writer(self):
+    async def test_real_workflow_agent_stream_start_llm_end_with_stream_writer(self, fake_model_config, fake_model_client_config):
         id = "write_poem_workflow"
         version = "1.0"
         name = "poem"
@@ -309,7 +310,8 @@ class TestLLMExecutableInvokeNew:
                                    ))
 
         config = LLMCompConfig(
-            model=model_config,
+            model_config=fake_model_config,
+            model_client_config=fake_model_client_config,
             template_content=[{"role": "system", "content": "我的系统提示词"}, {"role": "user", "content": "Hello {{query}}"}],
             response_format={"type": "text"},
             output_config={"output": {"type": "string", "required": True}},
@@ -400,7 +402,7 @@ class TestLLMExecutableInvokeNew:
 
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
-    async def test_real_workflow_invoke_start_llm_end_with_json_output(self):
+    async def test_real_workflow_invoke_start_llm_end_with_json_output(self, fake_model_config, fake_model_client_config):
         flow = Workflow()
 
         start_component = Start(
@@ -412,18 +414,9 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
-                                   model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30  # 添加超时设置
-                                   ))
-
         config = LLMCompConfig(
-            model=model_config,
+            model_client_config=fake_model_client_config,
+            model_config=fake_model_config,
             template_content=[{"role": "system", "content": "你是一个AI助手，能够帮我提取参数信息"},
                               {"role": "user", "content": "{{query}}"}],
             response_format={"type": "json"},
@@ -460,7 +453,7 @@ class TestLLMExecutableInvokeNew:
 
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
-    async def test_real_workflow_stream_start_llm_end_with_component_streaming(self):
+    async def test_real_workflow_stream_start_llm_end_with_component_streaming(self, fake_model_config, fake_model_client_config):
         flow = Workflow()
 
         start_component = Start(
@@ -472,18 +465,9 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
-                                   model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30  # 添加超时设置
-                                   ))
-
         config = LLMCompConfig(
-            model=model_config,
+            model_config=fake_model_config,
+            model_client_config=fake_model_client_config,
             template_content=[{"role": "system", "content": "你是一个AI助手，能够帮我完成任务。\n注意：请不要推理，直接输出结果就好了！"},
                               {"role": "user", "content": "Hello {{query}}"}],
             response_format={"type": "markdown"},
@@ -510,7 +494,8 @@ class TestLLMExecutableInvokeNew:
 
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
-    async def test_real_workflow_stream_start_llm_end_with_component_streaming_with_json_output_schema(self):
+    async def test_real_workflow_stream_start_llm_end_with_component_streaming_with_json_output_schema(self,
+                                                                        fake_model_config, fake_model_client_config):
         flow = Workflow()
 
         start_component = Start(
@@ -522,18 +507,9 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
-                                   model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30  # 添加超时设置
-                                   ))
-
         config = LLMCompConfig(
-            model=model_config,
+            model_config=fake_model_config,
+            model_client_config=fake_model_client_config,
             template_content=[{"role": "system", "content": "你是一个AI助手，能够帮我完成任务。\n注意：请不要推理，直接输出结果就好了！"},
                               {"role": "user", "content": "{{query}}"}],
             response_format={"type": "json"},
@@ -570,7 +546,7 @@ class TestLLMExecutableInvokeNew:
 
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
-    async def test_real_workflow_agent_invoke_start_llm_end_with_stream_writer(self):
+    async def test_real_workflow_agent_invoke_start_llm_end_with_stream_writer(self, fake_model_config, fake_model_client_config):
         id = "write_poem_workflow"
         version = "1.0"
         name = "poem"
@@ -585,18 +561,9 @@ class TestLLMExecutableInvokeNew:
         )
         end_component = End({"responseTemplate": "{{output}}"})
 
-        model_config = ModelConfig(model_provider=MODEL_PROVIDER,
-                                   model_info=BaseModelInfo(
-                                       model=MODEL_NAME,
-                                       api_base=API_BASE,
-                                       api_key=API_KEY,
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30  # 添加超时设置
-                                   ))
-
         config = LLMCompConfig(
-            model=model_config,
+            model_config=fake_model_config,
+            model_client_config=fake_model_client_config,
             template_content=[{"role": "system", "content": "我的系统提示词"}, {"role": "user", "content": "Hello {{query}}"}],
             response_format={"type": "text"},
             output_config={"output": {"type": "string", "required": True}},

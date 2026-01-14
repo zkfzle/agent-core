@@ -37,6 +37,7 @@ MODEL_NAME = os.getenv("MODEL_NAME", "")
 VALIDATE_API_BASE = os.getenv("VALIDATE_API_BASE", "mock://api.openai.com/v1")
 VALIDATE_API_KEY = os.getenv("VALIDATE_API_KEY", "sk-fake")
 VALIDATE_MODEL_NAME = os.getenv("VALIDATE_MODEL_NAME", "")
+TEMPERATURE = os.getenv("MODEL_TEMPERATURE", 0.95)
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
 data_path = os.getenv("INPUT_DATA_FILE", "")
 response_path = os.getenv("RESPONSE_PATH", "./test_response")
@@ -112,13 +113,13 @@ class ConversationProcessor:
                             api_key=API_KEY, 
                             api_base=API_BASE, 
                             model=MODEL_NAME,
-                            temperature=0.1
+                            temperature=TEMPERATURE
                         )
                     )
                 )
 
                 # 7. 初始化LLM客户端
-                self.llm_base = ModelFactory().get_model("siliconflow", API_KEY, API_BASE, temperature=0.1)
+                self.llm_base = ModelFactory().get_model("siliconflow", API_KEY, API_BASE, temperature=TEMPERATURE)
                 
                 self.init_done = True
                 logger.info(f"✅ Conversation {self.conv_id} 资源初始化完成（独立MemoryEngine）")
@@ -167,7 +168,7 @@ class ConversationProcessor:
                 message = f"{chat['text']}"
                 if chat.get('blip_caption'):
                     message += f"(The conversation is accompanied by an image, and the description of the image is '{chat['blip_caption']}')"
-                message = message.replace(speaker_a, '').replace(speaker_b, '')
+                message = message
                 
                 if chat['speaker'] == speaker_a:
                     message = HumanMessage(content=message, name=chat['speaker'])
@@ -218,8 +219,10 @@ class ConversationProcessor:
             if category > 4:
                 continue
             
-            question = qa_enum['question'].replace(user_name1, 'user').replace(user_name2, 'assistant')
-            answer = str(qa_enum['answer']).replace(user_name1, 'user').replace(user_name2, 'assistant')
+            # question = qa_enum['question'].replace(user_name1, 'user').replace(user_name2, 'assistant')
+            # answer = str(qa_enum['answer']).replace(user_name1, 'user').replace(user_name2, 'assistant')
+            question = qa_enum['question']
+            answer = str(qa_enum['answer'])
 
             for retry in range(3):
                 try:
@@ -282,8 +285,10 @@ class ConversationProcessor:
                     continue
                 
                 qa_enum = json.loads(qa_enum_str)
-                question = qa_enum['question'].replace(speaker_a, 'user').replace(speaker_b, 'assistant')
-                gold_answer = str(qa_enum['answer']).replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                # question = qa_enum['question'].replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                # gold_answer = str(qa_enum['answer']).replace(speaker_a, 'user').replace(speaker_b, 'assistant')
+                question = qa_enum['question']
+                gold_answer = str(qa_enum['answer'])
                 category = qa_enum['category']
                 response = qa_enum['response']
 
@@ -345,11 +350,11 @@ class ConversationProcessor:
                             api_key=VALIDATE_API_KEY, 
                             api_base=VALIDATE_API_BASE, 
                             model=VALIDATE_MODEL_NAME,
-                            temperature=0.1
+                            temperature=TEMPERATURE
                         )
                     )
                 )
-            self.llm_base = ModelFactory().get_model("siliconflow", VALIDATE_API_KEY, VALIDATE_API_BASE, temperature=0.1)
+            self.llm_base = ModelFactory().get_model("siliconflow", VALIDATE_API_KEY, VALIDATE_API_BASE, temperature=TEMPERATURE)
             await self.generate_response(data_enum['qa'], speaker_a, speaker_b)
 
             # 5. 验证结果

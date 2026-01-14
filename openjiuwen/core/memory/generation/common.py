@@ -15,10 +15,16 @@ def build_model_input(messages: List[BaseMessage],
     elif isinstance(history_messages, List):
         if history_messages and len(history_messages) > 0:
             for msg in history_messages:
-                history += f"{msg.role}: {msg.content}\n"
+                if msg.name:
+                    history += f"{msg.name}: {msg.content}\n"
+                else:
+                    history += f"{msg.role}: {msg.content}\n"
     conversation = ""
     for msg in messages:
-        conversation += f"{msg.role}: {msg.content}\n"
+        if msg.name:
+            conversation += f"{msg.name}: {msg.content}\n"
+        else:
+            conversation += f"{msg.role}: {msg.content}\n"
     model_input = [{
         "role": "system",
         "content": prompt

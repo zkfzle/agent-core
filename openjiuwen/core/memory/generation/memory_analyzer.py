@@ -55,13 +55,12 @@ class MemoryAnalyzer:
         )
 
         model_name, model_client = base_chat_model
-        logger.info(f"Start to analyze, input: {model_input}")
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
                 response = await model_client.ainvoke(model_name, model_input)
                 res = await parser.parse(response.content)
-                logger.info(f"Succeed to analyze, result: {res}")
+                logger.info(f"Start to analyze, input: {model_input} | Succeed to analyze, result: {res}")
                 analyze_result = MemoryAnalyzerResult.model_validate(res)
                 if not need_summary:
                     analyze_result.summary = raw_summary
@@ -108,7 +107,10 @@ class MemoryAnalyzer:
         history = ""
         conversation = ""
         for msg in history_messages:
-            history += f"{msg.role}: {msg.content}\n"
+            if msg.name:
+                history += f"{msg.name}: {msg.content}\n"
+            else:
+                history += f"{msg.role}: {msg.content}\n"
         for msg in messages:
             conversation += f"{msg.role}: {msg.content}\n"
         if history != "":

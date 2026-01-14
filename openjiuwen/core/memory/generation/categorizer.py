@@ -28,13 +28,12 @@ class Categorizer:
             CATEGORIZATION_PROMPT,
         )
         model_name, model_client = base_chat_model
-        logger.debug(f"Start to get categories, input: {model_input}")
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
                 response = await model_client.ainvoke(model_name, model_input)
                 categories = await parser.parse(response.content)
-                logger.debug(f"Succeed to get categories, result: {categories}")
+                logger.debug(f"Start to get categories, input: {model_input} | Succeed to get categories, result: {categories}")
                 if isinstance(categories, dict) and "categories" in categories.keys():
                     return categories["categories"]
             except json.JSONDecodeError as e:

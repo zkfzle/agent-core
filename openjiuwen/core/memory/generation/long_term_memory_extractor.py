@@ -4,13 +4,13 @@
 import json
 from typing import Dict, Tuple, Any
 from openjiuwen.core.memory.mem_unit.memory_unit import MemoryType
-from openjiuwen.core.memory.prompt.episodic_memory_extractor import EPISODIC_MEMORY_PROMPT, EPISODIC_MEMORY_JSON_FORMAT
+from openjiuwen.core.memory.prompt.episodic_memory_extractor import EPISODIC_MEMORY_PROMPT, EPISODIC_MEMORY_JSON_FORMAT, EPISODIC_MEMORY_MULTI_USER_PROMPT
 from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import BaseMessage
 from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutputParser
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.memory.generation.common import build_model_input
-from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_PROMPT, USER_PROFILE_JSON_FORMAT
+from openjiuwen.core.memory.prompt.user_profile_extractor import USER_PROFILE_PROMPT, USER_PROFILE_JSON_FORMAT, USER_PROFILE_MULTI_USER_PROMPT
 from openjiuwen.core.memory.prompt.semantic_memory_extractor import SEMANTIC_MEMORY_PROMPT, SEMANTIC_MEMORY_JSON_FORMAT
 from openjiuwen.core.memory.prompt.long_term_memory_extractor import LONG_TERM_MEMORY_EXTRACTOR_PROMPT
 
@@ -26,7 +26,11 @@ def handle_user_profile_prompt(sys_prompt: str, index: int, last_one: bool, user
                 value = user_define[key]
                 user_define_description += f"    *   **{key}:** {value}等相关信息\n"
                 user_define_format += f',\n    "{key}": []'
-        user_profile_prompt = USER_PROFILE_PROMPT.format(
+        # user_profile_prompt = USER_PROFILE_PROMPT.format(
+        #     index=index,
+        #     user_define_description=user_define_description,
+        # )
+        user_profile_prompt = USER_PROFILE_MULTI_USER_PROMPT.format(
             index=index,
             user_define_description=user_define_description,
         )
@@ -58,7 +62,10 @@ def handle_episodic_memory(sys_prompt: str, index: int, last_one: bool) -> str:
     episodic_memory_prompt = ""
     episodic_memory_json_format = ""
     if index > 0:
-        episodic_memory_prompt = EPISODIC_MEMORY_PROMPT.format(
+        # episodic_memory_prompt = EPISODIC_MEMORY_PROMPT.format(
+        #     index=index,
+        # )
+        episodic_memory_prompt = EPISODIC_MEMORY_MULTI_USER_PROMPT.format(
             index=index,
         )
         episodic_memory_json_format = EPISODIC_MEMORY_JSON_FORMAT.format(
@@ -121,14 +128,13 @@ class LongTermMemoryExtractor:
             sys_prompt,
             timestamp
         )
-        logger.info(f"Start to get long term memory, input: {model_input}")
         model_name, model_client = base_chat_model
         parser = JsonOutputParser()
         for attempt in range(retries):
             try:
                 response = await model_client.ainvoke(model_name, model_input)
                 result = await parser.parse(response.content)
-                logger.info(f"Succeed to get long term memory, result: {result}")
+                logger.info(f"Start to get long term memory, input: {model_input} | Succeed to get long term memory, result: {result}")
                 if isinstance(result, dict):
                     return result
             except json.JSONDecodeError as e:

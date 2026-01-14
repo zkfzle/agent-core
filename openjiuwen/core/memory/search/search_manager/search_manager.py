@@ -66,7 +66,7 @@ class SearchManager:
             decomposed_queries = [query]
         retrieval_results = []
 
-        log_retrieval_result = []
+        log_retrieval_result = [f"Original Query: {query}"]
         for subquery in decomposed_queries:
             subresults = await self.search(user_id=user_id, group_id=group_id, query=subquery, top_k=top_k,
                                            threshold=threshold, search_type=search_type, **kwargs)
@@ -82,7 +82,7 @@ class SearchManager:
 
         results = list(dedup_results.values())
         results.sort(key=lambda x: x["score"], reverse=True)
-        logger.info(f"Final Search Results: {results}")
+        logger.info(f"Original Query: {query} | Final Search Results: {results}")
         return [item for item in results if item["score"] >= threshold][:top_k]
 
     async def decompose_query(self, base_chat_model: Tuple[str, BaseModelClient], query: str) -> list[str] | None:

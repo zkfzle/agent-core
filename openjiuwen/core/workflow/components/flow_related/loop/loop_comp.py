@@ -336,13 +336,13 @@ class LoopComponent(WorkflowComponent):
             if not isinstance(inputs, dict):
                 raise JiuWenBaseException(StatusCode.COMPONENT_LOOP_INPUT_INVALID.code,
                                           StatusCode.COMPONENT_LOOP_INPUT_INVALID.errmsg.format(
-                                              reason=f"Inputs must be a dictionary, got {type(inputs).__name__}"
+                                              error_msg=f"Inputs must be a dictionary, got {type(inputs).__name__}"
                                           ))
 
             if INPUTS_KEY not in inputs:
                 raise JiuWenBaseException(StatusCode.COMPONENT_LOOP_INPUT_INVALID.code,
                                           StatusCode.COMPONENT_LOOP_INPUT_INVALID.errmsg.format(
-                                              reason=f"Invalid inputs: missing required key {INPUTS_KEY}"
+                                              error_msg=f"Invalid inputs: missing required key {INPUTS_KEY}"
                                           ))
 
             loop_input = LoopInput.model_validate(inputs.get(INPUTS_KEY))
@@ -377,7 +377,7 @@ class LoopComponent(WorkflowComponent):
             else:
                 raise JiuWenBaseException(StatusCode.COMPONENT_LOOP_INPUT_INVALID.code,
                                           StatusCode.COMPONENT_LOOP_INPUT_INVALID.errmsg.format(
-                                              reason=f"Invalid loop type '{loop_input.loop_type}' for LoopComponent"
+                                              error_msg=f"Invalid loop type '{loop_input.loop_type}' for LoopComponent"
                                           ))
 
             if self._loop_group.is_empty:

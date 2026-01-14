@@ -48,8 +48,10 @@ class PromptTemplate(BaseModel):
 
         if not all(isinstance(msg, BaseMessage) for msg in self.content):
             raise JiuWenBaseException(
-                error_code=StatusCode.PROMPT_TEMPLATE_INCORRECT_ERROR.code,
-                message=f"Prompt template type must be in str or list[BaseMessage]."
+                error_code=StatusCode.PROMPT_INVALID_CONTENT_ERROR.code,
+                message=StatusCode.PROMPT_INVALID_CONTENT_ERROR.errmsg.format(
+                    error_msg=f"prompt template type must be in str or list[BaseMessage]."
+                )
             )
 
         return [copy.deepcopy(msg) for msg in self.content]

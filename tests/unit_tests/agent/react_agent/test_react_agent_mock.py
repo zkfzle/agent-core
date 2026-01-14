@@ -5,7 +5,7 @@
 
 ⚠️ 本测试文件测试的是**老版本接口**：
 - 使用 `create_react_agent_config()` 创建配置
-- 从 `openjiuwen.core.single_agent` 导入 `ReActAgent`（实际是 LegacyReActAgent）
+- 从 `openjiuwen.core.single_agent.legacy` 导入 `LegacyReActAgent`
 - 这些接口已标记为 deprecated，将在 v1.0.0 移除
 
 📌 新接口测试请参考: test_new_react_agent_mock.py
@@ -40,7 +40,10 @@ from unittest.mock import patch
 
 import pytest
 
-from openjiuwen.core.single_agent import create_react_agent_config, ReActAgent
+from openjiuwen.core.single_agent.legacy import (
+    create_react_agent_config,
+    LegacyReActAgent as ReActAgent,
+)
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
 

@@ -6,7 +6,7 @@ import asyncio
 from typing import Dict, List, Optional, Union
 
 from openjiuwen.core.common.constants.enums import TaskType
-from openjiuwen.core.single_agent import AgentConfig, WorkflowSchema
+from openjiuwen.core.single_agent.legacy import AgentConfig, WorkflowSchema
 from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.controller import (
     TaskStatus,

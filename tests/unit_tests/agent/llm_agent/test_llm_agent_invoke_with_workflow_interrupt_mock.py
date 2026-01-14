@@ -39,7 +39,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from openjiuwen.core.single_agent import WorkflowSchema
+from openjiuwen.core.single_agent.legacy import WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import (
     create_llm_agent_config,
     create_llm_agent,

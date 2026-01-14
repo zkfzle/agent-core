@@ -33,15 +33,16 @@ help:
 	@echo "  format     - Check formatting of staged Python files via ruff"
 	@echo "  lint       - Check linting of staged Python files via ruff"
 	@echo "  pylint     - Check linting of staged Python files via pylint (more comprehensive)"
+	@echo "  spelling   - Check spelling of staged Python files via codespell"
 	@echo "  fix-format - Auto-fix formatting errors in staged Python files via ruff"
 	@echo "  fix-lint   - Auto-fix linting errors in staged Python files via ruff"
 	@echo "  type-check - Type-check staged Python files via mypy"
-	@echo "  check      - Run all checks (format, lint, pylint)"
+	@echo "  check      - Run all checks (format, spelling, lint, pylint)"
 	@echo "  fix        - Run all auto-fixes (fix-lint, fix-format)"
 
 # Install dependencies via uv
 install:
-	uv pip install "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests"
+	uv pip install "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests" "codespell>=2.2.4"
 
 # Execute pytest
 test:
@@ -70,6 +71,10 @@ lint: has-staged-changes
 # Linting check via pylint (more comprehensive than ruff check)
 pylint: has-staged-changes
 	@pylint $(CHANGED_FILES)
+
+# Check spelling via codespell
+spelling: has-staged-changes
+	@codespell $(CHANGED_FILES)
 
 # Fix formatting errors via ruff
 fix-format: has-staged-changes

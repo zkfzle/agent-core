@@ -23,9 +23,9 @@ from datetime import datetime
 import unittest
 from unittest.mock import patch, AsyncMock
 
-from openjiuwen.core.single_agent import (
+from openjiuwen.core.single_agent.legacy import (
     WorkflowAgentConfig,
-    DefaultResponse
+    DefaultResponse,
 )
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo

@@ -25,7 +25,8 @@ from openjiuwen.core.runner.resources_manager.resource_registry import ResourceR
 from typing import Optional, Union, Tuple
 
 from openjiuwen.core.session import Session
-from openjiuwen.core.single_agent import BaseAgent, AgentCard
+from openjiuwen.core.single_agent import AgentCard
+from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
 from openjiuwen.core.workflow.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowCard
 

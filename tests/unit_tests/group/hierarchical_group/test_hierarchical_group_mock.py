@@ -23,7 +23,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from openjiuwen.core.single_agent import (
+from openjiuwen.core.single_agent.legacy import (
     AgentConfig,
     ControllerAgent,
     WorkflowAgentConfig,

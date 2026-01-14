@@ -37,10 +37,10 @@ from openjiuwen.core.session import TaskSession
 from openjiuwen.core.runner import Runner
 
 # API 配置
-API_BASE = "https://api.siliconflow.cn/v1/chat/completions"
-API_KEY = "sk-kydadvndkobrybgdizatijrxmvzeuvycfoqlsbkofinpkhnd"
-MODEL_NAME = "Qwen/Qwen3-32B"
-MODEL_PROVIDER = "SiliconFlow"  # 注意大小写
+API_BASE = os.getenv("API_BASE", "mock://api.openai.com/v1")
+API_KEY = os.getenv("API_KEY", "sk-fake")
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+MODEL_PROVIDER = os.getenv("MODEL_PROVIDER", "")
 
 # 禁用 SSL 验证
 os.environ.setdefault("LLM_SSL_VERIFY", "false")
@@ -102,6 +102,7 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
             func=lambda a, b: a + b,
         )
 
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
     async def test_pure_conversation_without_tools(self):
         """测试纯对话场景（不调用工具）
@@ -143,6 +144,7 @@ class TestNewReActAgentReal(unittest.IsolatedAsyncioTestCase):
 
         print("✅ 纯对话测试通过")
 
+    @unittest.skip("skip system test")
     @pytest.mark.asyncio
     async def test_tool_call_with_add(self):
         """测试工具调用场景（调用加法工具）

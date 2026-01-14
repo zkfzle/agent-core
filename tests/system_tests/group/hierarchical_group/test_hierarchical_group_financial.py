@@ -14,7 +14,11 @@ import os
 import unittest
 from unittest.mock import patch
 
-from openjiuwen.core.single_agent import AgentConfig, ControllerAgent, WorkflowAgentConfig
+from openjiuwen.core.single_agent.legacy import (
+    AgentConfig,
+    ControllerAgent,
+    WorkflowAgentConfig,
+)
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from examples.groups.hierarchical_group import (
     HierarchicalGroup,
@@ -323,7 +327,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
         Returns:
             ReActAgent 实例
         """
-        from openjiuwen.core.single_agent import ReActAgent
+        from openjiuwen.core.single_agent.legacy import LegacyReActAgent
         from openjiuwen.core.application.agents_for_studio.llm_agent import ReActAgentConfig
         from openjiuwen.core.foundation.tool.function.function import LocalFunction, ToolCard
 
@@ -340,7 +344,7 @@ class TestHierarchicalGroupFinancial(unittest.IsolatedAsyncioTestCase):
             prompt_template=prompt_template,
         )
 
-        agent = ReActAgent(config)
+        agent = LegacyReActAgent(config)
 
         # 添加求和工具
         sum_tool = LocalFunction(

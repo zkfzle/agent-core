@@ -3,7 +3,7 @@
 
 from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_agent import WorkflowAgent
 from openjiuwen.core.application.agents_for_studio.workflow_agent.workflow_controller import WorkflowController
-from openjiuwen.core.single_agent import WorkflowAgentConfig
+from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig
 
 __all__ = [
     "WorkflowAgent",

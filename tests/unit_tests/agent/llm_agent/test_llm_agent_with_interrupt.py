@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType, TaskType
-from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
+from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig, WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import (
     create_llm_agent_config,
     create_llm_agent,

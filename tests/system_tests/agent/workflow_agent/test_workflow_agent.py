@@ -13,7 +13,7 @@ import unittest
 import pytest
 from typing import List
 
-from openjiuwen.core.single_agent import WorkflowAgentConfig, workflow_provider
+from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig, workflow_provider
 from openjiuwen.core.session import TaskSession
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.workflow import End

@@ -7,8 +7,12 @@ import os
 import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType
-from openjiuwen.core.single_agent import (
-    AgentCard, ReActAgent, WorkflowAgentConfig, WorkflowSchema, create_react_agent_config
+from openjiuwen.core.single_agent import AgentCard
+from openjiuwen.core.single_agent.legacy import (
+    LegacyReActAgent,
+    WorkflowAgentConfig,
+    WorkflowSchema,
+    create_react_agent_config,
 )
 from openjiuwen.core.application.agents_for_studio.workflow_agent import WorkflowAgent
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
@@ -67,7 +71,7 @@ class TestAdapterTest:
         )
 
         # Create single_agent instance
-        react_agent: ReActAgent = ReActAgent(react_agent_config)
+        react_agent: LegacyReActAgent = LegacyReActAgent(react_agent_config)
 
         # Register single_agent with runner
         Runner.resource_mgr.add_agent(AgentCard(id=agent_id), react_agent)

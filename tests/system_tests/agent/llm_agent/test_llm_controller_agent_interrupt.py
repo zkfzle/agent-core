@@ -3,7 +3,7 @@ import uuid
 import unittest
 from datetime import datetime
 
-from openjiuwen.core.single_agent import WorkflowSchema
+from openjiuwen.core.single_agent.legacy import WorkflowSchema
 from openjiuwen.core.application.agents_for_studio.llm_agent import create_llm_agent_config, create_llm_agent, LLMAgent
 from openjiuwen.core.workflow import WorkflowComponent, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo

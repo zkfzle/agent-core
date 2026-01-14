@@ -374,16 +374,16 @@ class ResourceMgr:
         """
         if isinstance(tool, Tool):
             try:
-                self._resource_registry.tool().add_tool(tool.card().id, tool)
-                return Ok(tool.card())
+                self._resource_registry.tool().add_tool(tool.card.id, tool)
+                return Ok(tool.card)
             except Exception as e:
                 return Error(e)
         else:
             results = []
             for item in tool:
                 try:
-                    self._resource_registry.tool().add_tool(item.card().id, item)
-                    results.append(Ok(item.card()))
+                    self._resource_registry.tool().add_tool(item.card.id, item)
+                    results.append(Ok(item.card))
                 except Exception as e:
                     results.append(Error(e))
             return results

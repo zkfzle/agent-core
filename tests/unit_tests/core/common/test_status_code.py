@@ -12,21 +12,21 @@ from tests.unit_tests.core.common.status_code_docgen import generate_markdown
 
 def test_status_code_template():
     tpl = generate_status_code(
-        scope="TOOL",
-        subject="INPUT",
+        scope="CONTROLLER",
+        subject="TASK",
         failure_type="PARAM_ERROR",
     )
 
     print(tpl)
 
-    tpl = generate_status_code(
-        scope="AGENT",
-        subject="INVOKE",
-        detail="LLM",
-        failure_type="CALL_FAILED",
-    )
-
-    print(tpl)
+    # tpl = generate_status_code(
+    #     scope="AGENT",
+    #     subject="INVOKE",
+    #     detail="LLM",
+    #     failure_type="CALL_FAILED",
+    # )
+    #
+    # print(tpl)
 
 
 def test_status_spec():

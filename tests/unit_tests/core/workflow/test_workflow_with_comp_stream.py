@@ -553,8 +553,9 @@ async def test_workflow_stream_with_exception():
         await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}},
                               session=WorkflowSession())
     assert e.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
-    assert e.value.message == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.errmsg.format(node_id="transform_comp",
-        ability="transform", error_msg="mock error")
+    assert e.value.message == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.errmsg.format(
+        error_msg = "node_id: transform_comp, ability: transform, error: [-1] mock error"
+    )
     logger.info("after exception, execution again")
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, session=WorkflowSession())
     assert result.result == {'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}

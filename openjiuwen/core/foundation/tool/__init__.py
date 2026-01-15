@@ -7,6 +7,10 @@ from openjiuwen.core.foundation.tool.mcp.base import (
     MCPTool,
     McpToolCard,
 )
+from openjiuwen.core.foundation.tool.mcp.client.mcp_client import McpClient
+from openjiuwen.core.foundation.tool.mcp.client.playwright_client import PlaywrightClient
+from openjiuwen.core.foundation.tool.mcp.client.sse_client import SseClient
+from openjiuwen.core.foundation.tool.mcp.client.stdio_client import StdioClient
 from openjiuwen.core.foundation.tool.schema import ToolInfo
 from openjiuwen.core.foundation.tool.service_api.restful_api import RestfulApi, RestfulApiCard
 from openjiuwen.core.foundation.tool.tool import tool
@@ -27,4 +31,9 @@ __all__ = [
     "ToolInfo",
     # for mcp tool
     "McpToolCard",
+    # mcp client
+    "McpClient",
+    "SseClient",
+    "StdioClient",
+    "PlaywrightClient"
 ]

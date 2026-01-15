@@ -10,13 +10,13 @@ from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractMa
 from openjiuwen.core.session.tracer import decorate_tool_with_trace
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import McpToolCard, MCPTool
-from openjiuwen.core.protocols.mcp import (
+from openjiuwen.core.foundation.tool import (
     McpClient,
     SseClient,
     StdioClient,
     PlaywrightClient
 )
-from openjiuwen.core.protocols.mcp import McpServerConfig
+from openjiuwen.core.foundation.tool.mcp.base import McpServerConfig
 from openjiuwen.core.foundation.tool import ToolInfo
 
 ToolProvider = Callable[[], Tool]
@@ -203,7 +203,7 @@ class ToolMgr(AbstractManager[Tool]):
         elif config.client_type == "playwright":
             return PlaywrightClient(config.server_path, config.server_name)
         elif config.client_type == "openapi":
-            from openjiuwen.core.protocols.mcp.client.openapi_client import OpenApiClient
+            from openjiuwen.core.foundation.tool.mcp.client import OpenApiClient
             return OpenApiClient(config.server_path, config.server_name)
         else:
             raise ValueError(f"Unsupported MCP client type: {config.client_type}")

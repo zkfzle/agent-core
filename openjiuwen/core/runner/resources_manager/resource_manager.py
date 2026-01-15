@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.foundation.tool import Tool, ToolInfo, ToolCard
 from openjiuwen.core.multi_agent import BaseGroup, GroupCard
-from openjiuwen.core.protocols.mcp import McpServerConfig
+from openjiuwen.core.foundation.tool.mcp.base import McpServerConfig
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.resources_manager.base import (
     AgentGroupProvider,

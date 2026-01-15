@@ -34,7 +34,7 @@ from openjiuwen.core.session import Session
 from openjiuwen.core.foundation.llm import AIMessage
 from openjiuwen.core.foundation.tool import Tool
 from openjiuwen.core.foundation.tool import LocalFunction, ToolCard
-from openjiuwen.core.protocols.mcp import McpServerConfig
+from openjiuwen.core.foundation.tool.mcp.base import McpServerConfig
 from openjiuwen.core.workflow import Workflow
 
 

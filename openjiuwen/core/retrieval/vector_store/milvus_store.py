@@ -388,3 +388,9 @@ class MilvusVectorStore(VectorStore):
             self._client.close()
         except Exception as e:
             logger.warning(f"Failed to close Milvus client: {e}")
+
+    def exists(self, table_name: str) -> bool:
+        pass
+
+    def delete_table(self, table_name: str) -> None:
+        pass

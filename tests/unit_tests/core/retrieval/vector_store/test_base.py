@@ -31,6 +31,12 @@ class ConcreteVectorStore(VectorStore):
     async def delete(self, ids=None, filter_expr=None, **kwargs):
         return True
 
+    def exists(self, table_name: str) -> bool:
+        pass
+
+    def delete_table(self, table_name: str) -> None:
+        pass
+
 
 class TestVectorStore:
     """Vector store abstract base class tests"""

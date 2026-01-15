@@ -1,3 +1,11 @@
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+"""
+Callback Classes for Tracking Indexing Progress
+
+Subclasses of BaseCallback can be passed into Indexer constructor to implement various form of progress tracking.
+"""
+
 import threading
 from typing import Optional, Sequence
 import warnings

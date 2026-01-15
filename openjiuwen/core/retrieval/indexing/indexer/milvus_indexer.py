@@ -7,7 +7,7 @@ Responsible for building, updating and deleting Milvus indices.
 """
 
 import asyncio
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Literal, Optional, Dict
 
 from pymilvus import DataType, Function, FunctionType, MilvusClient, MilvusException
 
@@ -37,6 +37,7 @@ class MilvusIndexer(Indexer):
         doc_id_field: str = "document_id",
         database_name: str = "",
         doc_index_callback: type[BaseCallback] = TqdmCallback,
+        distance_metric: Literal["cosine", "euclidean", "dot"] = "cosine",
         **kwargs: Any,
     ):
         """
@@ -51,6 +52,7 @@ class MilvusIndexer(Indexer):
             metadata_field: Metadata field name
             database_name: name of the database to use
             doc_index_callback: class of callback object to use, must be subclass of BaseCallback
+            distance_metric: distance metric for vector search
         """
         self.milvus_uri = milvus_uri
         self.milvus_token = milvus_token
@@ -69,6 +71,18 @@ class MilvusIndexer(Indexer):
                     argument="doc_index_callback",
                 ),
             )
+        match distance_metric:
+            case "cosine":
+                self._distance_metric = "COSINE"
+            case "euclidean":
+                self._distance_metric = "L2"
+            case "dot":
+                self._distance_metric = "IP"
+            case _:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.RETRIEVAL_INDEXING_INVALID_DISTANCE_METRIC.code,
+                    message=f'Invalid {distance_metric=} selected, must be one of ["cosine", "euclidean", "dot"]',
+                )
 
         self._client = MilvusVectorStore.create_client(
             database_name=database_name,
@@ -80,6 +94,11 @@ class MilvusIndexer(Indexer):
     def client(self) -> MilvusClient:
         """Get Milvus client"""
         return self._client
+
+    @property
+    def distance_metric(self) -> str:
+        """Get raw distance metric string"""
+        return self._distance_metric
 
     async def build_index(
         self,
@@ -355,7 +374,7 @@ class MilvusIndexer(Indexer):
             index_params.add_index(
                 field_name=self.vector_field,
                 index_type="IVF_FLAT",
-                metric_type="COSINE",
+                metric_type=self._distance_metric,
                 params={"nlist": 1024},
             )
 

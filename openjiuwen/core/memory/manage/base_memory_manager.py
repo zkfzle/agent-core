@@ -50,6 +50,11 @@ class BaseMemoryManager(ABC):
         """query memory, return top k results"""
         pass
 
+    @abstractmethod
+    async def delete_by_scope_id(self, scope_id: str, meta_data: list[dict[str, Any]]):
+        """delete memory by scope id"""
+        pass
+
     @staticmethod
     def encrypt_memory_if_needed(key: bytes, plaintext: str) -> str:
         if not key or not plaintext:

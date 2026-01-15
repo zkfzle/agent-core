@@ -207,6 +207,7 @@ class StatusCode(Enum):
         "Failed to get embedding after {max_retries} attempts: {error_msg}",
     )
     RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED = (155005, "Unreachable code in embedding: {error_msg}")
+    RETRIEVAL_EMBEDDING_INVALID_CALLBACK_CLASS = (155006, "Invalid callback_cls passed in: {error_msg}")
     # KnowledgeBase Retrieval - Indexing 155100 - 155199
     RETRIEVAL_INDEXING_CHUNK_SIZE_INVALID = (155100, "Invalid chunk size: {error_msg}")
     RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID = (155101, "Invalid chunk overlap: {error_msg}")

@@ -18,10 +18,16 @@ class MessageMixin:
     role = Column(String(32), nullable=True)
     timestamp = Column(String(32), nullable=True)
 
+@declarative_mixin
+class MetaMixin:
+    scope_id = Column(String(64), nullable=False, primary_key=True)
+    user_id = Column(String(64), nullable=False)
 
 class UserMessage(MessageMixin, Base):
     __tablename__ = "user_message"
 
+class MetaData(MetaMixin, Base):
+    __tablename__ = "meta_data"
 
 async def create_tables(
     db_store: BaseDbStore,
@@ -31,7 +37,10 @@ async def create_tables(
         await conn.run_sync(
             lambda sync_conn: Base.metadata.create_all(
                 sync_conn,
-                tables=[UserMessage.__table__],
+                tables=[
+                    UserMessage.__table__,
+                    MetaData.__table__
+                ],
                 checkfirst=True
             )
         )

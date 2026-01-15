@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm.schema.config import ModelRequestConfig, ModelClientConfig
 from openjiuwen.core.memory.common.distributed_lock import DistributedLock
-from openjiuwen.core.memory.config.config import MemoryEngineConfig, MemoryScopeConfig, MemoryAgentConfig
+from openjiuwen.core.memory.common.base import generate_idx_name
+from openjiuwen.core.memory.config.config import MemoryEngineConfig, MemoryScopeConfig, AgentMemoryConfig
 from openjiuwen.core.memory.generation.generation import Generator
 from openjiuwen.core.memory.manage.data_id_manager import DataIdManager
 from openjiuwen.core.memory.manage.message_manager import MessageManager, MessageAddRequest
@@ -29,6 +30,7 @@ from openjiuwen.core.common.utils.singleton import Singleton
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
+from openjiuwen.core.memory.manage.meta_manager import MetaManager
 
 
 class MemInfo(BaseModel):
@@ -68,6 +70,7 @@ class LongTermMemory(metaclass=Singleton):
         self.semantic_store: SemanticStore | None = None
         self.db_store: BaseDbStore | None = None
         # managers
+        self.meta_manager = None
         self.message_manager = None
         self.user_profile_manager = None
         self.variable_manager = None
@@ -127,6 +130,7 @@ class LongTermMemory(metaclass=Singleton):
 
         if self.db_store:
             sql_db_store = SqlDbStore(self.db_store)
+            self.meta_manager = MetaManager(sql_db_store)
             self.message_manager = MessageManager(
                 sql_db_store,
                 data_id_generator,
@@ -282,8 +286,17 @@ class LongTermMemory(metaclass=Singleton):
             return False
 
         if self.semantic_store:
+            meta_data = await self.meta_manager.get_by_scope_id(scope_id=scope_id)
+            memory_types = list(self.write_manager.managers.keys())
             try:
-                await self.semantic_store.delete_table(scope_id)
+                for mem_type in memory_types:
+                    for meta in meta_data:
+                        table_name = (generate_idx_name(
+                            usr_id=meta["user_id"],
+                            scope_id=scope_id,
+                            mem_type=mem_type)
+                        )
+                        await self.semantic_store.delete_table(table_name)
             except Exception as e:
                 logger.error(f"Failed to delete semantic data for scope {scope_id}", exc_info=e)
 
@@ -294,13 +307,15 @@ class LongTermMemory(metaclass=Singleton):
             except Exception as e:
                 logger.error(f"Failed to delete memories by scope id {scope_id}", exc_info=e)
 
+        self.meta_manager.delete_by_scope_id(scope_id=scope_id)
+
         logger.debug(f"Successfully deleted memories for scope {scope_id}")
         return True
 
     async def add_messages(
             self,
             messages: list[BaseMessage],
-            agent_config: MemoryAgentConfig,
+            agent_config: AgentMemoryConfig,
             *,
             user_id: str = DEFAULT_VALUE,
             scope_id: str = DEFAULT_VALUE,
@@ -327,6 +342,8 @@ class LongTermMemory(metaclass=Singleton):
                 scope_id=scope_id,
                 session_id=session_id,
                 history_window_size=gen_mem_with_history_msg_num)
+            # add meta data
+            await self.meta_manager.add(user_id=user_id, scope_id=scope_id)
             # when multi messages, use last msg_id
             if gen_mem:
                 for i, msg in enumerate(messages):
@@ -484,7 +501,7 @@ class LongTermMemory(metaclass=Singleton):
             await self.write_manager.update_mem_by_id(user_id=user_id, scope_id=scope_id,
                                                       mem_id=mem_id, memory=memory)
 
-    async def get_user_variable(self,
+    async def get_variables(self,
                                 names: list[str] | str | None = None,
                                 user_id: str = DEFAULT_VALUE,
                                 scope_id: str = DEFAULT_VALUE) -> dict[str, str]:
@@ -628,7 +645,7 @@ class LongTermMemory(metaclass=Singleton):
                 )
         return mem_results
 
-    async def update_user_variable(self,
+    async def update_variables(self,
                                    variables: dict[str, str],
                                    user_id: str = DEFAULT_VALUE,
                                    scope_id: str = DEFAULT_VALUE
@@ -656,7 +673,7 @@ class LongTermMemory(metaclass=Singleton):
                     var_mem=value
                 )
 
-    async def delete_user_variable(self,
+    async def delete_variables(self,
                                    names: list[str],
                                    user_id: str = DEFAULT_VALUE,
                                    scope_id: str = DEFAULT_VALUE):

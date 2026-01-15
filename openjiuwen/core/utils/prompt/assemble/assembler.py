@@ -17,7 +17,7 @@ class Assembler:
                  template_content: Union[List[Dict], List[BaseMessage], str],
                  **variables):
         self.template_content = template_content
-        self.template_formater: List[Variable] = self.__get_formater_list()
+        self.template_formatter: List[Variable] = self.__get_formatter_list()
         self.variables = self.__get_variables_with_verify(variables)
 
     @property
@@ -28,32 +28,32 @@ class Assembler:
             keys.extend(variable.input_keys)
         return list(set(keys))
 
-    def __get_formater_list(self):
-        """get template content formater"""
-        template_formater_list = []
+    def __get_formatter_list(self):
+        """get template content formatter"""
+        template_formatter_list = []
         if isinstance(self.template_content, str):
-            template_formater_list.append(TextableVariable(self.template_content, name="__inner__"))
+            template_formatter_list.append(TextableVariable(self.template_content, name="__inner__"))
         else:
             for msg in self.template_content:
                 if isinstance(msg, BaseMessage):
                     if not isinstance(msg.content, str):
-                        template_formater_list.append(None)
+                        template_formatter_list.append(None)
                         continue
-                    template_formater_list.append(TextableVariable(msg.content, name="__inner__"))
+                    template_formatter_list.append(TextableVariable(msg.content, name="__inner__"))
                 else:
                     if not isinstance(msg.get("content"), str):
-                        template_formater_list.append(None)
+                        template_formatter_list.append(None)
                         continue
-                    template_formater_list.append(TextableVariable(msg.get("content"), name="__inner__"))
-        return template_formater_list
+                    template_formatter_list.append(TextableVariable(msg.get("content"), name="__inner__"))
+        return template_formatter_list
 
     def __get_variables_with_verify(self, variables):
         """verify input variables and summarize with template content variables"""
         input_keys = []
-        for formater in self.template_formater:
-            if not formater:
+        for formatter in self.template_formatter:
+            if not formatter:
                 continue
-            input_keys.extend(formater.input_keys)
+            input_keys.extend(formatter.input_keys)
         input_keys = list(set(input_keys))
         for name, variable in variables.items():
             if name not in input_keys:
@@ -106,10 +106,10 @@ class Assembler:
     def _format(self) -> Union[str, List[dict], List[BaseMessage]]:
         """Substitute placeholders in the template with variables values and get formatted prompt."""
         format_kwargs = {var.name: var.value for var in self.variables.values()}
-        for idx, formater in enumerate(self.template_formater):
-            if not formater:
+        for idx, formatter in enumerate(self.template_formatter):
+            if not formatter:
                 continue
-            formatted_prompt = formater.eval(**format_kwargs)
+            formatted_prompt = formatter.eval(**format_kwargs)
             if isinstance(self.template_content, str):
                 self.template_content = formatted_prompt
                 break

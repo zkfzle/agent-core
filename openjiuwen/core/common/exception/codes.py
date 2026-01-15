@@ -131,6 +131,8 @@ class StatusCode(Enum):
     CONTROLLER_STREAM_SEND_FAILED = (123004, "controller stream send failed, reason: {error_msg}")
     CONTROLLER_TOOL_CALL_PARSE_ERROR = (123005, "controller tool call parse error, reason: {error_msg}")
 
+    CONTROLLER_TASK_EXISTS_ERROR = (123006, "controller task exists error, reason: {error_msg}")
+    CONTROLLER_REMOVE_TASK_ERROR = (123007, "controller task remove error, reason: {error_msg}")
     # =========================
     # Runner / Distributed 134000–134999
     # =========================

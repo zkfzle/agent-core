@@ -26,8 +26,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from openjiuwen.core.common.constants.enums import ControllerType
-from openjiuwen.core.single_agent import WorkflowAgentConfig, WorkflowSchema
-from openjiuwen.core.application.agents_for_studio.workflow_agent import (
+from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig, WorkflowSchema
+from openjiuwen.core.application.workflow_agent import (
     WorkflowAgent
 )
 from openjiuwen.core.workflow import WorkflowCard, Workflow, Start, End
@@ -36,7 +36,7 @@ from openjiuwen.core.workflow import (
     QuestionerConfig,
     FieldInfo
 )
-from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
+from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo, ModelRequestConfig, ModelClientConfig
 from openjiuwen.core.session import InteractiveInput
 from openjiuwen.core.runner import Runner
 
@@ -76,6 +76,27 @@ class TestWorkflowAgentMock(unittest.IsolatedAsyncioTestCase):
                 top_p=0.9,
                 timeout=30
             )
+        )
+
+    @staticmethod
+    def _create_model_request_config() -> ModelRequestConfig:
+        """创建模型配置"""
+        return ModelRequestConfig(
+            model="gpt-3.5-turbo",
+            temperature=0.7,
+            top_p=0.9
+        )
+
+    @staticmethod
+    def _create_model_client_config() -> ModelClientConfig:
+        """创建模型配置"""
+        return ModelClientConfig(
+            client_provider="OpenAI",
+            api_key="sk-fake",
+            api_base="https://api.openai.com/v1",
+            timeout=30,
+            max_retries=3,
+            verify_ssl=False
         )
 
     @staticmethod
@@ -152,7 +173,8 @@ class TestWorkflowAgentMock(unittest.IsolatedAsyncioTestCase):
             ),
         ]
         questioner_config = QuestionerConfig(
-            model=self._create_model_config(),
+            model_config=self._create_model_request_config(),
+            model_client_config=self._create_model_client_config(),
             question_content="",
             extract_fields_from_response=True,
             field_names=key_fields,

@@ -50,13 +50,14 @@ class KnowledgeBase(ABC):
             for attr in ["database_name", "distance_metric"]:
                 vector_store_val = getattr(vector_store, attr, None)
                 index_manager_val = getattr(index_manager, attr, None)
-                attr_print_name = attr.capitalize().replace("_", " ")
                 if vector_store_val != index_manager_val:
                     raise JiuWenBaseException(
                         error_code=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.code,
-                        message=f"{attr_print_name} mismatch between vector_store and index_manager:\n"
-                        f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_val}"\n'
-                        f'- Index manager ({type(index_manager).__name__}) is using "{index_manager_val}"',
+                        message=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.errmsg.format(
+                            config_name=attr,
+                            error_msg=f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_val}"'
+                            f'\n- Index manager ({type(index_manager).__name__}) is using "{index_manager_val}"',
+                        ),
                     )
 
     @abstractmethod

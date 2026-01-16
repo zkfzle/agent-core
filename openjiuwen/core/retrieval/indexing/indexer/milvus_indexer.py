@@ -80,7 +80,7 @@ class MilvusIndexer(Indexer):
                 self._distance_metric = "IP"
             case _:
                 raise JiuWenBaseException(
-                    error_code=StatusCode.RETRIEVAL_INDEXING_INVALID_DISTANCE_METRIC.code,
+                    error_code=StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID.code,
                     message=f'Invalid {distance_metric=} selected, must be one of ["cosine", "euclidean", "dot"]',
                 )
 

@@ -47,24 +47,17 @@ class KnowledgeBase(ABC):
         self.index_manager = index_manager
         self.llm_client = llm_client
         if vector_store and index_manager:
-            vector_store_db = getattr(vector_store, "database_name", None)
-            index_manager_db = getattr(index_manager, "database_name", None)
-            if vector_store_db != index_manager_db:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.code,
-                    message="Database name mismatch between vector_store and index_manager:\n"
-                    f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_db}"\n'
-                    f'- Index manager ({type(index_manager).__name__}) is using "{index_manager_db}"',
-                )
-            vector_store_metric = getattr(vector_store, "distance_metric", None)
-            index_manager_metric = getattr(index_manager, "distance_metric", None)
-            if vector_store_metric != index_manager_metric:
-                raise JiuWenBaseException(
-                    error_code=StatusCode.RETRIEVAL_INDEXING_INVALID_DISTANCE_METRIC.code,
-                    message="Distance metric mismatch between vector_store and index_manager:\n"
-                    f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_metric}"\n'
-                    f'- Index manager ({type(index_manager).__name__}) is using "{index_manager_metric}"',
-                )
+            for attr in ["database_name", "distance_metric"]:
+                vector_store_val = getattr(vector_store, attr, None)
+                index_manager_val = getattr(index_manager, attr, None)
+                attr_print_name = attr.capitalize().replace("_", " ")
+                if vector_store_val != index_manager_val:
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.code,
+                        message=f"{attr_print_name} mismatch between vector_store and index_manager:\n"
+                        f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_val}"\n'
+                        f'- Index manager ({type(index_manager).__name__}) is using "{index_manager_val}"',
+                    )
 
     @abstractmethod
     async def parse_files(

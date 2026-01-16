@@ -71,7 +71,9 @@ class ChromaIndexer(Indexer):
             case _:
                 raise JiuWenBaseException(
                     error_code=StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID.code,
-                    message=f'Invalid {distance_metric=} selected, must be one of ["cosine", "euclidean", "dot"]',
+                    message=StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID.errmsg.format(
+                        error_msg=f'expecting one of ["cosine", "euclidean", "dot"], but got "{distance_metric}"'
+                    ),
                 )
 
         self._client = ChromaVectorStore.create_client(

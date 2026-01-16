@@ -252,7 +252,7 @@ class StatusCode(Enum):
     RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR = (155507, "Failed to extract triples: {error_msg}")
     RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (
         155508,
-        "Vector store and index manager uses different database names: {error_msg}",
+        "Vector store and index manager have incompatible configs: {error_msg}",
     )
 
     # Memory Engine 158000 - 159999

@@ -97,7 +97,7 @@ class APIEmbedding(Embedding):
         callback_cls = kwargs.pop("callback_cls", BaseCallback)
         if not isinstance(callback_cls, type) or not issubclass(callback_cls, BaseCallback):
             raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INVALID_CALLBACK_CLASS.code,
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
                 "APIEmbedding.embed_documents received invalid callback_cls argument",
             )
 

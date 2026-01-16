@@ -63,7 +63,7 @@ class MilvusIndexer(Indexer):
         self.doc_index_callback = doc_index_callback
         if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
             raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INVALID_CALLBACK_CLASS.code,
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
                 "MilvusIndexer received invalid doc_index_callback argument",
             )
 

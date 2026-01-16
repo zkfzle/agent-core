@@ -101,7 +101,7 @@ class TestKnowledgeBase:
         mock_vector_store.distance_metric = "some_metric"
         mock_index_manager.distance_metric = "different_metric"
 
-        with pytest.raises(JiuWenBaseException, match="Distance metric mismatch between"):
+        with pytest.raises(JiuWenBaseException, match="incompatible distance_metric configs"):
             kb = ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -130,7 +130,7 @@ class TestKnowledgeBase:
         mock_vector_store.distance_metric = "some_metric"
         mock_index_manager.distance_metric = "some_metric"
 
-        with pytest.raises(JiuWenBaseException, match="Database name mismatch between"):
+        with pytest.raises(JiuWenBaseException, match="incompatible database_name configs"):
             kb = ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,

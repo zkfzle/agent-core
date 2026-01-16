@@ -87,6 +87,20 @@ class MilvusIndexer(Indexer):
                 embed_model=embed_model,
             )
 
+            # Raise exception if any doc_id already exists
+            all_doc_ids = '["' + '","'.join({chunk.doc_id for chunk in chunks}) + '"]'
+            results = self._client.query(
+                collection_name, filter=f"{self.doc_id_field} in {all_doc_ids}", output_fields=[self.doc_id_field]
+            )
+            duplicate_doc_ids = sorted({result.get(self.doc_id_field) for result in results})
+            if duplicate_doc_ids:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code,
+                    message="When adding new documents, some documents with same doc_id already exist, "
+                    "if they are the same documents, please consider updating instead of adding. "
+                    f"{duplicate_doc_ids=}",
+                )
+
             # If vector index is needed, generate embeddings
             embeddings = None
             if config.index_type in ("vector", "hybrid"):
@@ -128,6 +142,10 @@ class MilvusIndexer(Indexer):
             logger.info(f"Successfully built index {collection_name} with {len(chunks)} chunks")
             return True
         except Exception as e:
+            # Stored data could be damaged with runtime errors ignored, therefore it is raised
+            should_raise = [StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code]
+            if isinstance(e, JiuWenBaseException) and getattr(e, "error_code", None) in should_raise:
+                raise e
             logger.error(f"Failed to build index: {e}")
             return False
 

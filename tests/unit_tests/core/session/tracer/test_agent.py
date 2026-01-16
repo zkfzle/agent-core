@@ -50,7 +50,6 @@ class MockPlugin:
 
 
 class TestAgent:
-
     """
     Agent(llm -> tool -> workflow)
     """
@@ -70,7 +69,7 @@ class TestAgent:
         """
 
         # workflow与agent共用一个tracer
-        workflow_session= context.create_workflow_session()
+        workflow_session = context.create_workflow_session()
         assert (workflow_session.tracer() is self.tracer)
 
         flow = Workflow()

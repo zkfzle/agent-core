@@ -19,7 +19,7 @@ from openjiuwen.core.session.tracer.tracer import Tracer
 
 
 class StaticAgentSession(BaseSession):
-    def __init__(self, config: Config = None, resource_mgr = None):
+    def __init__(self, config: Config = None, resource_mgr=None):
         self._config = config if config is not None else Config()
         if resource_mgr:
             self._resource_manager = resource_mgr

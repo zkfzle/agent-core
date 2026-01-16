@@ -48,24 +48,33 @@ class StatusCode(Enum):
     MODEL_CLIENT_CONFIG_INVALID = (102004, "model client_config is invalid, reason: {error_msg}")
 
     ## IntentDetectionComponent 101050 - 101069
-    COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (101050,
-        "component intent_detection_input parameter error, reason: {error_msg}")
-    COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED = (101051,
-        "component intent_detection_llm initialization failed, reason: {error_msg}")
-    COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED = (101052,
-                                                   "component intent_detection_invoke call failed, reason: {error_msg}")
+    COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (
+        101050,
+        "component intent_detection_input parameter error, reason: {error_msg}",
+    )
+    COMPONENT_INTENT_DETECTION_LLM_INIT_FAILED = (
+        101051,
+        "component intent_detection_llm initialization failed, reason: {error_msg}",
+    )
+    COMPONENT_INTENT_DETECTION_INVOKE_CALL_FAILED = (
+        101052,
+        "component intent_detection_invoke call failed, reason: {error_msg}",
+    )
 
     ## QuestionComponent 101070 - 101099
-    COMPONENT_QUESTIONER_INPUT_PARAM_ERROR = (101070,
-        "component questioner_input parameter error, reason: {error_msg}")
+    COMPONENT_QUESTIONER_INPUT_PARAM_ERROR = (101070, "component questioner_input parameter error, reason: {error_msg}")
     COMPONENT_QUESTIONER_CONFIG_ERROR = (101071, "component questioner config error, reason: {error_msg}")
     COMPONENT_QUESTIONER_INPUT_INVALID = (101072, "component questioner_input is invalid, reason: {error_msg}")
-    COMPONENT_QUESTIONER_STATE_INIT_FAILED = (101073,
-        "component questioner_state initialization failed, reason: {error_msg}")
+    COMPONENT_QUESTIONER_STATE_INIT_FAILED = (
+        101073,
+        "component questioner_state initialization failed, reason: {error_msg}",
+    )
     COMPONENT_QUESTIONER_RUNTIME_ERROR = (101074, "component questioner runtime error, reason: {error_msg}")
     COMPONENT_QUESTIONER_INVOKE_CALL_FAILED = (101075, "component questioner_invoke call failed, reason: {error_msg}")
-    COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (101076,
-        "component questioner_execution process error, reason: {error_msg}")
+    COMPONENT_QUESTIONER_EXECUTION_PROCESS_ERROR = (
+        101076,
+        "component questioner_execution process error, reason: {error_msg}",
+    )
 
     ## BranchComponent  101100 - 101119
     COMPONENT_BRANCH_PARAM_ERROR = (101100, "component branch parameter error, reason: {error_msg}")
@@ -199,60 +208,87 @@ class StatusCode(Enum):
 
     # KnowledgeBase Retrieval 155000 - 157999
     # KnowledgeBase Retrieval - Embedding 155000 - 155099
-    RETRIEVAL_EMBEDDING_INPUT_INVALID = (155000, "Empty text or texts list provided for embedding")
-    RETRIEVAL_EMBEDDING_MODEL_NOT_FOUND = (155001, "Embedding model not found: {error_msg}")
-    RETRIEVAL_EMBEDDING_CALL_FAILED = (155002, "Failed to connect to embedding service: {error_msg}")
-    RETRIEVAL_EMBEDDING_RESPONSE_INVALID = (155003, "Invalid embedding response format: {error_msg}")
-    RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED = (
-        155004,
-        "Failed to get embedding after {max_retries} attempts: {error_msg}",
-    )
-    RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED = (155005, "Unreachable code in embedding: {error_msg}")
+    RETRIEVAL_EMBEDDING_INPUT_INVALID = (155000, "retrieval embedding input is invalid, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_MODEL_NOT_FOUND = (155001, "retrieval embedding model not found, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_CALL_FAILED = (155002, "retrieval embedding call failed, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_RESPONSE_INVALID = (155003, "retrieval embedding response is invalid, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED = (155004, "retrieval embedding request call failed, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED = (155005, "retrieval embedding call failed, reason: {error_msg}")
     # KnowledgeBase Retrieval - Indexing 155100 - 155199
-    RETRIEVAL_INDEXING_CHUNK_SIZE_INVALID = (155100, "Invalid chunk size: {error_msg}")
-    RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID = (155101, "Invalid chunk overlap: {error_msg}")
-    RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR = (155102, "Tokenizer error: {error_msg}")
-    RETRIEVAL_INDEXING_FILE_NOT_FOUND = (155103, "File not found: {error_msg}")
-    RETRIEVAL_INDEXING_FORMAT_NOT_SUPPORT = (155104, "Unsupported file format: {error_msg}")
-    RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "Embed model is required: {error_msg}")
-    RETRIEVAL_INDEXING_DIMENSION_NOT_FOUND = (155106, "Dimension is required: {error_msg}")
-    RETRIEVAL_INDEXING_PATH_NOT_FOUND = (155107, "Path is required and cannot be empty: {error_msg}")
+    RETRIEVAL_INDEXING_CHUNK_SIZE_INVALID = (155100, "retrieval indexing chunk_size is invalid, reason: {error_msg}")
+    RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID = (
+        155101,
+        "retrieval indexing chunk_overlap is invalid, reason: {error_msg}",
+    )
+    RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR = (
+        155102,
+        "retrieval indexing tokenizer process error, reason: {error_msg}",
+    )
+    RETRIEVAL_INDEXING_FILE_NOT_FOUND = (155103, "retrieval indexing file not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_FORMAT_NOT_SUPPORT = (155104, "retrieval indexing format is not supported, reason: {error_msg}")
+    RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "retrieval indexing embed_model not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_DIMENSION_NOT_FOUND = (155106, "retrieval indexing dimension not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_PATH_NOT_FOUND = (155107, "retrieval indexing path not found, reason: {error_msg}")
     # KnowledgeBase Retrieval - Retriever 155200 - 155299
-    RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT = (155200, "Unsupported retrieval mode: {error_msg}")
+    RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT = (155200, "retrieval retriever mode is not supported, reason: {error_msg}")
     RETRIEVAL_RETRIEVER_SCORE_THRESHOLD_INVALID = (
         155201,
-        "Score threshold is only supported when mode='vector': {error_msg}",
+        "retrieval retriever score_threshold is invalid, reason: {error_msg}",
     )
-    RETRIEVAL_RETRIEVER_EMBED_MODEL_NOT_FOUND = (155202, "Embed model is required: {error_msg}")
-    RETRIEVAL_RETRIEVER_INDEX_TYPE_NOT_SUPPORT = (155203, "Unsupported index type: {error_msg}")
-    RETRIEVAL_RETRIEVER_MODE_INVALID = (155204, "Mode is incompatible with index type: {error_msg}")
-    RETRIEVAL_RETRIEVER_CAPABILITY_NOT_SUPPORT = (155205, "Retriever does not support mode: {error_msg}")
-    RETRIEVAL_RETRIEVER_VECTOR_STORE_NOT_FOUND = (155206, "Vector store is required: {error_msg}")
-    RETRIEVAL_RETRIEVER_COLLECTION_NOT_FOUND = (155207, "Collection is required: {error_msg}")
-    RETRIEVAL_RETRIEVER_GRAPH_RETRIEVER_NOT_FOUND = (155208, "Graph retriever is required: {error_msg}")
-    RETRIEVAL_RETRIEVER_LLM_CLIENT_NOT_FOUND = (155209, "LLM client is required: {error_msg}")
-    RETRIEVAL_RETRIEVER_TOP_K_NOT_FOUND = (155210, "top_k is required: {error_msg}")
+    RETRIEVAL_RETRIEVER_EMBED_MODEL_NOT_FOUND = (
+        155202,
+        "retrieval retriever embed_model not found, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_INDEX_TYPE_NOT_SUPPORT = (
+        155203,
+        "retrieval retriever index_type is not supported, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_MODE_INVALID = (155204, "retrieval retriever mode is invalid, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_CAPABILITY_NOT_SUPPORT = (
+        155205,
+        "retrieval retriever capability is not supported, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_VECTOR_STORE_NOT_FOUND = (
+        155206,
+        "retrieval retriever vector_store not found, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_COLLECTION_NOT_FOUND = (155207, "retrieval retriever collection not found, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_GRAPH_RETRIEVER_NOT_FOUND = (
+        155208,
+        "retrieval retriever graph_retriever not found, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_LLM_CLIENT_NOT_FOUND = (155209, "retrieval retriever llm_client not found, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_TOP_K_NOT_FOUND = (155210, "retrieval retriever top_k not found, reason: {error_msg}")
     # KnowledgeBase Retrieval - Utils 155300 - 155399
-    RETRIEVAL_UTILS_CONFIG_FILE_NOT_FOUND = (155300, "Configuration file not found: {error_msg}")
-    RETRIEVAL_UTILS_PYYAML_NOT_FOUND = (155301, "PyYAML is required: {error_msg}")
-    RETRIEVAL_UTILS_CONFIG_FORMAT_NOT_SUPPORT = (155302, "Unsupported configuration file format: {error_msg}")
-    RETRIEVAL_UTILS_CONFIG_NOT_FOUND = (155303, "No configuration to save: {error_msg}")
-    RETRIEVAL_UTILS_CONFIG_PROCESS_ERROR = (155304, "Configuration not loaded: {error_msg}")
-    # KnowledgeBase Retrieval - Vector Store 155400 - 155499
-    RETRIEVAL_VECTOR_STORE_PATH_NOT_FOUND = (155400, "Path is required and cannot be empty: {error_msg}")
-    # KnowledgeBase Retrieval - Knowledge Base 155500 - 155599
-    RETRIEVAL_KB_PARSER_NOT_FOUND = (155500, "Parser is required: {error_msg}")
-    RETRIEVAL_KB_CHUNKER_NOT_FOUND = (155501, "Chunker is required: {error_msg}")
-    RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND = (155502, "Index manager is required: {error_msg}")
-    RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND = (155503, "Vector store is required: {error_msg}")
-    RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR = (155504, "Failed to build index: {error_msg}")
-    RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR = (155505, "Failed to build chunk index: {error_msg}")
-    RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR = (155506, "Failed to build triple index: {error_msg}")
-    RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR = (155507, "Failed to extract triples: {error_msg}")
-    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (
-        155508,
-        "Vector store and index manager uses different database names: {error_msg}",
+    RETRIEVAL_UTILS_CONFIG_FILE_NOT_FOUND = (155300, "retrieval utils config_file not found, reason: {error_msg}")
+    RETRIEVAL_UTILS_PYYAML_NOT_FOUND = (155301, "retrieval utils pyyaml not found, reason: {error_msg}")
+    RETRIEVAL_UTILS_CONFIG_FORMAT_NOT_SUPPORT = (
+        155302,
+        "retrieval utils config_format is not supported, reason: {error_msg}",
     )
+    RETRIEVAL_UTILS_CONFIG_NOT_FOUND = (155303, "retrieval utils config not found, reason: {error_msg}")
+    RETRIEVAL_UTILS_CONFIG_PROCESS_ERROR = (155304, "retrieval utils config process error, reason: {error_msg}")
+    # KnowledgeBase Retrieval - Vector Store 155400 - 155499
+    RETRIEVAL_VECTOR_STORE_PATH_NOT_FOUND = (155400, "retrieval vector_store path not found, reason: {error_msg}")
+    # KnowledgeBase Retrieval - Knowledge Base 155500 - 155599
+    RETRIEVAL_KB_PARSER_NOT_FOUND = (155500, "retrieval kb parser not found, reason: {error_msg}")
+    RETRIEVAL_KB_CHUNKER_NOT_FOUND = (155501, "retrieval kb chunker not found, reason: {error_msg}")
+    RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND = (155502, "retrieval kb index_manager not found, reason: {error_msg}")
+    RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND = (155503, "retrieval kb vector_store not found, reason: {error_msg}")
+    RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR = (155504, "retrieval kb index_build execution error, reason: {error_msg}")
+    RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR = (
+        155505,
+        "retrieval kb chunk_index_build execution error, reason: {error_msg}",
+    )
+    RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR = (
+        155506,
+        "retrieval kb triple_index_build execution error, reason: {error_msg}",
+    )
+    RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR = (
+        155507,
+        "retrieval kb triple_extraction process error, reason: {error_msg}",
+    )
+    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (155508, "retrieval kb database_config is invalid, reason: {error_msg}")
 
     # Memory Engine 158000 - 159999
     MEMORY_STORE_REGISTER_FAILED = (158000, "failed to register {store_type} to memory engine, reason: {error_msg}")
@@ -276,14 +312,14 @@ class StatusCode(Enum):
 
     # Optimization Toolchain 170000 - 179999
     # Optimization Toolchain - Prompt Self-optimization 170000 - 170999
-    TOOLCHAIN_AGENT_PARAM_ERROR = (
-        170000, "toolchain agent parameter error, reason: {error_msg}"
-    )
+    TOOLCHAIN_AGENT_PARAM_ERROR = (170000, "toolchain agent parameter error, reason: {error_msg}")
     TOOLCHAIN_OPTIMIZER_BACKWORD_EXECUTION_ERROR = (
-        170001, "toolchain optimizer_backword execution error, reason: {error_msg}"
+        170001,
+        "toolchain optimizer_backword execution error, reason: {error_msg}",
     )
     TOOLCHAIN_OPTIMIZER_UPDATE_EXECUTION_ERROR = (
-        170002, "toolchain optimizer_update execution error, reason: {error_msg}"
+        170002,
+        "toolchain optimizer_update execution error, reason: {error_msg}",
     )
     TOOLCHAIN_OPTIMIZER_PARAM_ERROR = (170003, "toolchain optimizer parameter error, reason: {error_msg}")
     TOOLCHAIN_EVALUATOR_EXECUTION_ERROR = (170004, "toolchain evaluator execution error, reason: {error_msg}")
@@ -291,21 +327,22 @@ class StatusCode(Enum):
     # Optimization Toolchain - End-to-end Performance Optimization 171000 - 171999
     # Optimization Toolchain - AgentRL 172000 - 172999
     # Optimization Toolchain - Prompt Builder 173000 - 173999
-    TOOLCHAIN_META_TEMPLATE_EXECUTION_ERROR = (
-        173000, "toolchain meta_template execution error, reason: {error_msg}"
-    )
+    TOOLCHAIN_META_TEMPLATE_EXECUTION_ERROR = (173000, "toolchain meta_template execution error, reason: {error_msg}")
     TOOLCHAIN_FEEDBACK_TEMPLATE_EXECUTION_ERROR = (
-        173001, "toolchain feedback_template execution error, reason: {error_msg}"
+        173001,
+        "toolchain feedback_template execution error, reason: {error_msg}",
     )
     TOOLCHAIN_BAD_CASE_TEMPLATE_EXECUTION_ERROR = (
-        173002, "toolchain bad_case_template execution error, reason: {error_msg}"
+        173002,
+        "toolchain bad_case_template execution error, reason: {error_msg}",
     )
     # Foundation 180000 - 189999
     # Foundation - Prompt Template 180000 - 180999
-    PROMPT_ASSEMBLER_VARIABLE_INIT_FAILED = (180000,
-                                             "prompt assembler_variable initialization failed, reason: {error_msg}")
-    PROMPT_ASSEMBLER_TEMPLATE_PARAM_ERROR = (
-        180001, "prompt assembler_template parameter error, reason: {error_msg}")
+    PROMPT_ASSEMBLER_VARIABLE_INIT_FAILED = (
+        180000,
+        "prompt assembler_variable initialization failed, reason: {error_msg}",
+    )
+    PROMPT_ASSEMBLER_TEMPLATE_PARAM_ERROR = (180001, "prompt assembler_template parameter error, reason: {error_msg}")
     PROMPT_TEMPLATE_RUNTIME_ERROR = (180002, "prompt template runtime error, reason: {error_msg}")
     PROMPT_TEMPLATE_NOT_FOUND = (180003, "prompt template not found, reason: {error_msg}")
     PROMPT_TEMPLATE_INVALID = (180004, "prompt template is invalid, reason: {error_msg}")
@@ -317,12 +354,10 @@ class StatusCode(Enum):
     PLUGIN_EXECUTION_RUNTIME_ERROR = (182000, "plugin execution runtime error, reason: {error_msg}")
     PLUGIN_REQUEST_TIMEOUT = (182001, "plugin request timeout ({timeout}s), reason: {error_msg}")
     PLUGIN_RESPONSE_PROCESS_ERROR = (182002, "plugin response process error, reason: {error_msg}")
-    PLUGIN_RESPONSE_INVALID = (182003,
-                               "plugin response is invalid, reason: {error_msg}")
+    PLUGIN_RESPONSE_INVALID = (182003, "plugin response is invalid, reason: {error_msg}")
     PLUGIN_RESPONSE_CALL_FAILED = (182004, "plugin response call failed, reason: {error_msg}")
     PLUGIN_INPUT_PARAM_ERROR = (182005, "plugin input parameter error, reason: {error_msg}")
-    PLUGIN_RESTFUL_API_NOT_SUPPORT = (182006,
-                                      "plugin restful_api is not supported, reason: {error_msg}")
+    PLUGIN_RESTFUL_API_NOT_SUPPORT = (182006, "plugin restful_api is not supported, reason: {error_msg}")
 
     # Common Capabilities - Logger 183000 - 183999
     COMMON_LOG_PATH_INVALID = (183000, "common log_path is invalid, reason: {error_msg}")

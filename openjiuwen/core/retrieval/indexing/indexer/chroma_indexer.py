@@ -97,8 +97,9 @@ class ChromaIndexer(Indexer):
             # Raise exception if any doc_id already exists
             all_doc_ids = sorted({chunk.doc_id for chunk in chunks})
             duplicate_doc_ids = []
+            filter_values = {None, ""}
             for doc_id in all_doc_ids:
-                if collection.get(where={self.doc_id_field: doc_id}):
+                if doc_id not in filter_values and collection.get(where={self.doc_id_field: doc_id}):
                     duplicate_doc_ids.append(doc_id)
             if duplicate_doc_ids:
                 raise JiuWenBaseException(

@@ -92,7 +92,7 @@ class MilvusIndexer(Indexer):
             results = self._client.query(
                 collection_name, filter=f"{self.doc_id_field} in {all_doc_ids}", output_fields=[self.doc_id_field]
             )
-            duplicate_doc_ids = sorted({result.get(self.doc_id_field) for result in results})
+            duplicate_doc_ids = sorted({result.get(self.doc_id_field) for result in results} - {None, ""})
             if duplicate_doc_ids:
                 raise JiuWenBaseException(
                     error_code=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code,

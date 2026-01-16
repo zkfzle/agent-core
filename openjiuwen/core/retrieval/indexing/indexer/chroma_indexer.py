@@ -49,7 +49,10 @@ class ChromaIndexer(Indexer):
         """
         if not chroma_path or not chroma_path.strip():
             raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_INDEXING_PATH_NOT_FOUND.code, "chroma_path is required and cannot be empty"
+                StatusCode.RETRIEVAL_INDEXING_PATH_NOT_FOUND.code,
+                StatusCode.RETRIEVAL_INDEXING_PATH_NOT_FOUND.errmsg.format(
+                    error_msg="chroma_path is required and cannot be empty"
+                ),
             )
 
         self.chroma_path = chroma_path
@@ -87,7 +90,9 @@ class ChromaIndexer(Indexer):
                 if not embed_model:
                     raise JiuWenBaseException(
                         StatusCode.RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND.code,
-                        "embed_model is required for vector/hybrid index type",
+                        StatusCode.RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND.errmsg.format(
+                            error_msg="embed_model is required for vector/hybrid index type"
+                        ),
                     )
                 texts = [chunk.text for chunk in chunks]
                 embeddings = await embed_model.embed_documents(texts)

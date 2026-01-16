@@ -84,7 +84,9 @@ class Splitter(ABC):
         if not (hasattr(tokenizer, "encode") or callable(tokenizer)):
             raise JiuWenBaseException(
                 StatusCode.RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR.code,
-                "Tokenizer must have encode method or be callable",
+                StatusCode.RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR.errmsg.format(
+                    error_msg="Tokenizer must have encode method or be callable"
+                ),
             )
 
     @abstractmethod

@@ -64,7 +64,10 @@ class MilvusIndexer(Indexer):
         if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
             raise JiuWenBaseException(
                 StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
-                "MilvusIndexer received invalid doc_index_callback argument",
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.errmsg.format(
+                    method_name="ChromaIndexer",
+                    argument="doc_index_callback",
+                ),
             )
 
         self._client = MilvusVectorStore.create_client(

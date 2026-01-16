@@ -13,7 +13,8 @@ from openjiuwen.core.workflow import ArrayCondition
 from openjiuwen.core.workflow import NumberCondition
 from openjiuwen.core.workflow import End
 from openjiuwen.core.workflow import WorkflowComponent
-from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import IntermediateLoopVarCallback
+from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.intermediate_loop_var import \
+    IntermediateLoopVarCallback
 from openjiuwen.core.workflow.components.flow_related.loop.loop_callback.output import OutputCallback
 from openjiuwen.core.workflow import LoopGroup, LoopComponent
 from openjiuwen.core.workflow import SetVariableComponent
@@ -1047,7 +1048,6 @@ async def test_invoke_validates_unregistered_edge_nodes():
 
 
 async def test_nested_loop():
-
     def create_sub_workflow():
         flow = Workflow()
         flow.set_start_comp("start", Start(), inputs_schema={"input_arr": "${array}", "input_num": "${num}"})
@@ -1100,7 +1100,6 @@ async def test_nested_loop():
 
     main_workflow.add_connection("main_start", "main_loop")
     main_workflow.add_connection("main_loop", "main_end")
-
 
     inputs = {"array": [4, 5, 6], "num": -3}
 
@@ -1207,7 +1206,6 @@ def create_workflow2() -> Workflow:
 
 
 async def test_illegal_nested_workflow():
-
     class InteractionNode(WorkflowComponent):
         async def invoke(self, inputs: Input, session: Session, context: ModelContext):
             res = await session.interact("value")

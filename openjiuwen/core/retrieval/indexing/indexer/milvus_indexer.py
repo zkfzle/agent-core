@@ -129,9 +129,10 @@ class MilvusIndexer(Indexer):
             if duplicate_doc_ids:
                 raise JiuWenBaseException(
                     error_code=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code,
-                    message="When adding new documents, some documents with same doc_id already exist, "
-                    "if they are the same documents, please consider updating instead of adding. "
-                    f"{duplicate_doc_ids=}",
+                    message=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.errmsg.format(
+                        error_msg="some documents with same doc_id already exist, if they are the same documents, "
+                        f"please consider updating instead of adding. {duplicate_doc_ids=}"
+                    ),
                 )
 
             # If vector index is needed, generate embeddings

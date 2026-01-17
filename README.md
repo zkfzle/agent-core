@@ -36,14 +36,13 @@ import os
 import asyncio
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import End
-from openjiuwen.core.workflow import LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow import LLMComponent, LLMCompConfig, WorkflowCard
 from openjiuwen.core.foundation.llm import ModelConfig, BaseModelInfo
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.workflow import WorkflowConfig, WorkflowMetadata, WorkflowInputsSchema
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.application.workflow_agent import WorkflowAgent
-from openjiuwen.core.single_agent.config import WorkflowAgentConfig
-from openjiuwen.core.single_agent.schema.schema import WorkflowSchema
+from openjiuwen.core.single_agent.legacy.config import WorkflowAgentConfig
+from openjiuwen.core.single_agent.legacy.schema import WorkflowSchema
 
 # TODO：请提供用户的大模型配置信息
 os.environ.setdefault("API_BASE", "your_api_base")
@@ -64,16 +63,11 @@ model_config = ModelConfig(
 
 # 创建工作流配置
 workflow_card = WorkflowCard(
-        id="generate_text_workflow",
-        name="generate_text",
-        version="1.0",
-        description="根据用户输入生成文本"
-    ),
-    inputs_schema=WorkflowInputsSchema(
-        type="object",
-        properties={"query": {"type": "string", "description": "用户输入", "required": True}},
-        required=['query']
-    )
+    id="generate_text_workflow",
+    name="generate_text",
+    version="1.0",
+    description="根据用户输入生成文本"
+)
 
 
 # 初始化工作流
@@ -83,7 +77,6 @@ flow = Workflow(card=workflow_card)
 start = Start({"inputs": [{"id": "query", "type": "String", "required": "true", "sourceType": "ref"}]})
 end = End({"responseTemplate": "工作流输出文本: {{output}}"})
 llm_config = LLMCompConfig(
-    model=model_config,
     template_content=[
         {"role": "system", "content": "你是一个AI助手，能够帮我完成任务。\n注意：请不要推理，直接输出结果就好了！"},
         {"role": "user", "content": "{{query}}"}],

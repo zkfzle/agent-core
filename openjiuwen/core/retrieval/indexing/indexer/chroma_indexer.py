@@ -7,7 +7,7 @@ Responsible for building, updating and deleting ChromaDB indices.
 """
 
 import asyncio
-from typing import Any, List, Optional, Dict
+from typing import Any, List, Literal, Optional, Dict
 import chromadb
 
 from openjiuwen.core.common.logging import logger
@@ -33,6 +33,7 @@ class ChromaIndexer(Indexer):
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
         database_name: str = "",
+        distance_metric: Literal["cosine", "euclidean", "dot"] = "cosine",
         **kwargs: Any,
     ):
         """
@@ -46,6 +47,7 @@ class ChromaIndexer(Indexer):
             metadata_field: Metadata field name
             doc_id_field: Document ID field name
             database_name: name of the database to use
+            distance_metric: distance metric for vector search
         """
         if not chroma_path or not chroma_path.strip():
             raise JiuWenBaseException(
@@ -59,6 +61,20 @@ class ChromaIndexer(Indexer):
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
         self.database_name = database_name
+        match distance_metric:
+            case "cosine":
+                self._distance_metric = "cosine"
+            case "euclidean":
+                self._distance_metric = "l2"
+            case "dot":
+                self._distance_metric = "ip"
+            case _:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID.code,
+                    message=StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID.errmsg.format(
+                        error_msg=f'expecting one of ["cosine", "euclidean", "dot"], but got "{distance_metric}"'
+                    ),
+                )
 
         self._client = ChromaVectorStore.create_client(
             database_name=database_name,
@@ -69,6 +85,11 @@ class ChromaIndexer(Indexer):
     def client(self) -> chromadb.PersistentClient:
         """Get ChromaDB client"""
         return self._client
+
+    @property
+    def distance_metric(self) -> str:
+        """Get raw distance metric string"""
+        return self._distance_metric
 
     async def build_index(
         self,

@@ -62,7 +62,7 @@ class OpenAIEmbedding(APIEmbedding):
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self._headers,
-            http_client=sync_client,
+            http_client=async_client,
         )
         self.client = openai.OpenAI(
             api_key=self.api_key,
@@ -70,7 +70,7 @@ class OpenAIEmbedding(APIEmbedding):
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self._headers,
-            http_client=async_client,
+            http_client=sync_client,
         )
 
     @staticmethod

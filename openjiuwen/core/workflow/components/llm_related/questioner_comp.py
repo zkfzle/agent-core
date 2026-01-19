@@ -475,8 +475,6 @@ class QuestionerDirectReplyHandler:
             if not self._exceed_max_response():
                 output.question = QuestionerUtils.format_continue_ask_question(non_extracted_key_fields)
                 is_continue_ask = True
-            else:
-                ExceptionUtils.raise_exception(StatusCode.COMPONENT_QUESTIONER_RUNTIME_ERROR)
         if is_continue_ask:
             output.key_fields.clear()
         else:

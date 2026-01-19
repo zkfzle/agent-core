@@ -5,6 +5,7 @@ Hybrid Retriever Implementation
 
 Hybrid retriever combining vector retrieval and sparse retrieval.
 """
+
 from typing import Any, List, Optional, Dict
 from typing import Literal
 
@@ -13,6 +14,8 @@ from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult
 from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class HybridRetriever(Retriever):
@@ -27,7 +30,7 @@ class HybridRetriever(Retriever):
     ):
         """
         Initialize hybrid retriever
-        
+
         Args:
             vector_store: Vector store instance
             embed_model: Embedding model instance (required for vector retrieval)
@@ -47,21 +50,26 @@ class HybridRetriever(Retriever):
     ) -> List[RetrievalResult]:
         """
         Retrieve documents (hybrid retrieval)
-        
+
         Args:
             query: Query string
             top_k: Number of results to return
             score_threshold: Score threshold
             mode: Retrieval mode (this retriever supports hybrid, can also fallback to vector or sparse)
             **kwargs: Additional parameters (can include alpha parameter to override default)
-            
+
         Returns:
             List of retrieval results
         """
         alpha = kwargs.get("alpha", self.alpha)
 
         if score_threshold is not None and mode != "vector":
-            raise ValueError("score_threshold is only supported when mode='vector'")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_RETRIEVER_SCORE_THRESHOLD_INVALID.code,
+                StatusCode.RETRIEVAL_RETRIEVER_SCORE_THRESHOLD_INVALID.errmsg.format(
+                    error_msg="score_threshold is only supported when mode='vector'"
+                ),
+            )
 
         if mode == "hybrid":
             # Hybrid retrieval
@@ -79,7 +87,12 @@ class HybridRetriever(Retriever):
         elif mode == "vector":
             # Pure vector retrieval
             if self.embed_model is None:
-                raise ValueError("embed_model is required for vector search")
+                raise JiuWenBaseException(
+                    StatusCode.RETRIEVAL_RETRIEVER_EMBED_MODEL_NOT_FOUND.code,
+                    StatusCode.RETRIEVAL_RETRIEVER_EMBED_MODEL_NOT_FOUND.errmsg.format(
+                        error_msg="embed_model is required for vector search"
+                    ),
+                )
 
             query_vector = await self.embed_model.embed_query(query)
             search_results = await self.vector_store.search(
@@ -101,14 +114,16 @@ class HybridRetriever(Retriever):
                 filters=None,
             )
         else:
-            raise ValueError(f"Unsupported mode: {mode}")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT.code,
+                StatusCode.RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT.errmsg.format(error_msg=f"Unsupported mode: {mode}"),
+            )
 
         # Convert to RetrievalResult
         retrieval_results = []
         for result in search_results:
             # Apply score threshold filtering
-            if (mode == "vector" and score_threshold is not None
-                and result.score is not None):
+            if mode == "vector" and score_threshold is not None and result.score is not None:
                 if result.score < score_threshold:
                     continue
 

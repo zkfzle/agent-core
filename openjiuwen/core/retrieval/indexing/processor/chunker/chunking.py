@@ -7,6 +7,8 @@ from typing import List, Optional, Any, Dict
 import tiktoken
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.retrieval.indexing.processor.chunker.base import Chunker
 from openjiuwen.core.retrieval.common.document import Document, TextChunk
 from openjiuwen.core.retrieval.indexing.processor.chunker.text_preprocessor import (
@@ -32,7 +34,7 @@ class TextChunker(Chunker):
     ):
         """
         Initialize fixed size chunker
-        
+
         Args:
             chunk_size: Chunk size (number of characters)
             chunk_overlap: Chunk overlap size (number of characters)
@@ -51,10 +53,7 @@ class TextChunker(Chunker):
         self.pipeline = PreprocessingPipeline(preprocessors)
         self.chunker = self.get_chunker(chunk_size, chunk_overlap, chunk_unit, embed_model)
 
-    def get_chunker(self, chunk_size: int,
-        chunk_overlap: int,
-        chunk_unit: str,
-        embed_model: Optional[Any]):
+    def get_chunker(self, chunk_size: int, chunk_overlap: int, chunk_unit: str, embed_model: Optional[Any]):
         if chunk_unit == "char":
             return CharChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         else:
@@ -65,17 +64,25 @@ class TextChunker(Chunker):
             # If embed_model doesn't have a tokenizer, try to use tiktoken
             if tokenizer is None:
                 if tiktoken is None:
-                    raise ValueError(
-                        "chunk_unit='token' requires embed_model with tokenizer or tiktoken to be installed"
+                    raise JiuWenBaseException(
+                        StatusCode.RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR.code,
+                        StatusCode.RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR.errmsg.format(
+                            error_msg=(
+                                "chunk_unit='token' requires embed_model with tokenizer or tiktoken to be installed"
+                            )
+                        ),
                     )
                 try:
                     tokenizer = tiktoken.get_encoding("cl100k_base")
                     logger.info("Using tiktoken(cl100k_base) as tokenizer")
                 except Exception as exc:
-                    raise ValueError(
-                        f"Failed to load tokenizer for token-based chunking: {exc}"
+                    raise JiuWenBaseException(
+                        StatusCode.RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR.code,
+                        StatusCode.RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR.errmsg.format(
+                            error_msg=f"Failed to load tokenizer for token-based chunking: {exc}"
+                        ),
                     ) from exc
-            
+
             # Check if chunk_size needs adjustment
             if (
                 hasattr(tokenizer, "model_max_length")
@@ -92,14 +99,13 @@ class TextChunker(Chunker):
 
             return TokenizerChunker(chunk_size=chunk_size, chunk_overlap=chunk_overlap, tokenizer=tokenizer)
 
-
     def chunk_documents(self, documents: List[Document]) -> List[TextChunk]:
         """
         Chunk document list
-        
+
         Args:
             documents: List of documents
-            
+
         Returns:
             List of document chunks
         """

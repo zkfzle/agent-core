@@ -5,6 +5,7 @@ Milvus Vector Store Implementation
 
 Supports vector search, sparse search (BM25), and hybrid search.
 """
+
 import asyncio
 from typing import Any, List, Optional
 
@@ -34,7 +35,7 @@ class MilvusVectorStore(VectorStore):
     ):
         """
         Initialize Milvus vector store
-        
+
         Args:
             config: Vector store configuration
             milvus_uri: Milvus URI
@@ -53,9 +54,12 @@ class MilvusVectorStore(VectorStore):
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
-        
-        self._client = MilvusClient(
-            uri=self.milvus_uri,
+        self.database_name = self.config.database_name
+
+        # Initialize Milvus client & database
+        self._client = self.create_client(
+            database_name=self.config.database_name,
+            path_or_uri=self.milvus_uri,
             token=self.milvus_token,
         )
 
@@ -63,6 +67,16 @@ class MilvusVectorStore(VectorStore):
     def client(self) -> MilvusClient:
         """Get Milvus client"""
         return self._client
+
+    @staticmethod
+    def create_client(database_name: str, path_or_uri: str, token: str = "", **kwargs) -> MilvusClient:
+        """Create Milvus client and ensure database exists"""
+        client = MilvusClient(uri=path_or_uri, token=token)
+        if database_name and database_name != "default":
+            if database_name not in client.list_databases():
+                client.create_database(database_name)
+            client.use_database(database_name)
+        return client
 
     async def add(
         self,
@@ -258,13 +272,9 @@ class MilvusVectorStore(VectorStore):
                 return self._milvus_result_to_search_results(result_list, mode="hybrid")
             return []
         except Exception as e:
-            logger.warning(
-                f"Hybrid search failed, falling back to separate searches: {e}"
-            )
+            logger.warning(f"Hybrid search failed, falling back to separate searches: {e}")
             # Fall back to separate searches then fusion
-            return await self._hybrid_search_fallback(
-                query_text, query_vector, top_k, filters
-            )
+            return await self._hybrid_search_fallback(query_text, query_vector, top_k, filters)
 
     async def _hybrid_search_fallback(
         self,
@@ -278,7 +288,7 @@ class MilvusVectorStore(VectorStore):
         task_vector = (
             asyncio.create_task(self.search(query_vector, top_k, None))
             if query_vector
-            else asyncio.create_task(asyncio.coroutine(lambda: [])())
+            else asyncio.create_task(asyncio.sleep(0, result=[]))
         )
         task_text = asyncio.create_task(self.sparse_search(query_text, top_k, None))
 
@@ -332,6 +342,10 @@ class MilvusVectorStore(VectorStore):
                 except Exception:
                     metadata = {}
 
+            # Ensure doc_id is returned in metadata dict
+            if "doc_id" not in metadata:
+                metadata["doc_id"] = metadata.pop(self.doc_id_field, None)
+
             # Include chunk_id for upper layer association
             if item.get("chunk_id") is not None:
                 metadata.setdefault("chunk_id", item.get("chunk_id"))
@@ -374,3 +388,9 @@ class MilvusVectorStore(VectorStore):
             self._client.close()
         except Exception as e:
             logger.warning(f"Failed to close Milvus client: {e}")
+
+    async def table_exists(self, table_name: str) -> bool:
+        pass
+
+    async def delete_table(self, table_name: str) -> None:
+        pass

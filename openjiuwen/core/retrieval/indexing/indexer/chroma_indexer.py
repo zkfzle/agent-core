@@ -5,12 +5,16 @@ ChromaDB Index Manager Implementation
 
 Responsible for building, updating and deleting ChromaDB indices.
 """
+
 import asyncio
 from typing import Any, List, Optional, Dict
 import chromadb
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
+from openjiuwen.core.retrieval.common.callbacks import BaseCallback, TqdmCallback
 from openjiuwen.core.retrieval.common.config import IndexConfig
 from openjiuwen.core.retrieval.common.document import TextChunk
 from openjiuwen.core.retrieval.embedding.base import Embedding
@@ -29,11 +33,13 @@ class ChromaIndexer(Indexer):
         sparse_vector_field: str = "sparse_vector",
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
+        database_name: str = "",
+        doc_index_callback: type[BaseCallback] = TqdmCallback,
         **kwargs: Any,
     ):
         """
         Initialize ChromaDB index manager
-        
+
         Args:
             chroma_path: ChromaDB persistence path
             text_field: Text field name
@@ -41,18 +47,37 @@ class ChromaIndexer(Indexer):
             sparse_vector_field: Sparse vector field name
             metadata_field: Metadata field name
             doc_id_field: Document ID field name
+            database_name: name of the database to use
+            doc_index_callback: class of callback object to use, must be subclass of BaseCallback
         """
         if not chroma_path or not chroma_path.strip():
-            raise ValueError("chroma_path is required and cannot be empty")
-        
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_INDEXING_PATH_NOT_FOUND.code,
+                StatusCode.RETRIEVAL_INDEXING_PATH_NOT_FOUND.errmsg.format(
+                    error_msg="chroma_path is required and cannot be empty"
+                ),
+            )
+
         self.chroma_path = chroma_path
         self.text_field = text_field
         self.vector_field = vector_field
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
-        
-        self._client = chromadb.PersistentClient(path=self.chroma_path)
+        self.database_name = database_name
+        self.doc_index_callback = doc_index_callback
+        if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.errmsg.format(
+                    error_msg=f"doc_index_callback in ChromaIndexer must be a subclass of BaseCallback, got {type(doc_index_callback)}"
+                ),
+            )
+
+        self._client = ChromaVectorStore.create_client(
+            database_name=database_name,
+            path_or_uri=chroma_path,
+        )
 
     @property
     def client(self) -> chromadb.PersistentClient:
@@ -69,23 +94,9 @@ class ChromaIndexer(Indexer):
         """Build index"""
         try:
             collection_name = config.index_name
-            
-            # If vector index is needed, generate embeddings
-            embeddings = None
-            if config.index_type in ("vector", "hybrid"):
-                if not embed_model:
-                    raise ValueError(
-                        "embed_model is required for vector/hybrid index type"
-                    )
-                texts = [chunk.text for chunk in chunks]
-                embeddings = await embed_model.embed_documents(texts)
-                for chunk, embedding in zip(chunks, embeddings):
-                    chunk.embedding = embedding
-
             vector_store_config = VectorStoreConfig(
-                collection_name=collection_name,
+                collection_name=collection_name, database_name=kwargs.pop("database_name", "")
             )
-
             vector_store = ChromaVectorStore(
                 config=vector_store_config,
                 chroma_path=self.chroma_path,
@@ -95,6 +106,38 @@ class ChromaIndexer(Indexer):
                 metadata_field=self.metadata_field,
                 doc_id_field=self.doc_id_field,
             )
+            collection = vector_store.collection
+
+            # Raise exception if any doc_id already exists
+            all_doc_ids = sorted({chunk.doc_id for chunk in chunks})
+            duplicate_doc_ids = []
+            filter_values = {None, ""}
+            for doc_id in all_doc_ids:
+                if doc_id not in filter_values and collection.get(where={self.doc_id_field: doc_id}):
+                    duplicate_doc_ids.append(doc_id)
+            if duplicate_doc_ids:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code,
+                    message=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.errmsg.format(
+                        error_msg="some documents with same doc_id already exist, if they are the same documents, "
+                        f"please consider updating instead of adding. {duplicate_doc_ids=}"
+                    ),
+                )
+
+            # If vector index is needed, generate embeddings
+            embeddings = None
+            if config.index_type in ("vector", "hybrid"):
+                if not embed_model:
+                    raise JiuWenBaseException(
+                        StatusCode.RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND.code,
+                        StatusCode.RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND.errmsg.format(
+                            error_msg="embed_model is required for vector/hybrid index type"
+                        ),
+                    )
+                texts = [chunk.text for chunk in chunks]
+                embeddings = await embed_model.embed_documents(texts, callback_cls=self.doc_index_callback)
+                for chunk, embedding in zip(chunks, embeddings):
+                    chunk.embedding = embedding
 
             # Convert TextChunk to ChromaDB required fields
             data = []
@@ -112,13 +155,24 @@ class ChromaIndexer(Indexer):
 
             await vector_store.add(data=data)
 
-            logger.info(
-                f"Successfully built index {collection_name} with {len(chunks)} chunks"
-            )
+            logger.info(f"Successfully built index {collection_name} with {len(chunks)} chunks")
             return True
         except Exception as e:
+            # Stored data could be damaged with runtime errors ignored, therefore it is raised
+            should_raise = [StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code]
+            if isinstance(e, JiuWenBaseException) and getattr(e, "error_code", None) in should_raise:
+                raise e
+            
+            # If it's a JiuWenBaseException, re-raise it to preserve the original error message
+            if isinstance(e, JiuWenBaseException):
+                raise e
+            
+            # For other exceptions, wrap them in JiuWenBaseException with detailed error message
             logger.error(f"Failed to build index: {e}")
-            return False
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR.code,
+                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(error_msg=str(e)),
+            ) from e
 
     async def update_index(
         self,
@@ -133,11 +187,18 @@ class ChromaIndexer(Indexer):
             # Delete old data first
             await self.delete_index(doc_id, config.index_name)
 
-            # Rebuild
-            return await self.build_index(chunks, config, embed_model, **kwargs)
+            # Rebuild (build_index now raises exceptions instead of returning False)
+            await self.build_index(chunks, config, embed_model, **kwargs)
+            return True
+        except JiuWenBaseException:
+            # Re-raise JiuWenBaseException to preserve the original error message
+            raise
         except Exception as e:
             logger.error(f"Failed to update index: {e}")
-            return False
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR.code,
+                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(error_msg=f"Failed to update index: {str(e)}"),
+            ) from e
 
     async def delete_index(
         self,
@@ -152,24 +213,24 @@ class ChromaIndexer(Indexer):
                 self._client.get_collection,
                 name=index_name,
             )
-            
+
             # Query all records matching doc_id
             results = await asyncio.to_thread(
                 collection.get,
                 where={self.doc_id_field: doc_id},
             )
-            
+
             if not results or not results.get("ids") or len(results["ids"]) == 0:
                 logger.info(f"No entries found for doc_id={doc_id}")
                 return False
-            
+
             # Delete matching records
             ids_to_delete = results["ids"]
             await asyncio.to_thread(
                 collection.delete,
                 ids=ids_to_delete,
             )
-            
+
             delete_count = len(ids_to_delete)
             logger.info(f"Deleted {delete_count} entries for doc_id={doc_id}")
             return delete_count > 0
@@ -205,12 +266,12 @@ class ChromaIndexer(Indexer):
                 self._client.get_collection,
                 name=index_name,
             )
-            
+
             # Get collection statistics
             count = await asyncio.to_thread(
                 collection.count,
             )
-            
+
             # Get collection metadata
             metadata = collection.metadata or {}
 
@@ -234,4 +295,3 @@ class ChromaIndexer(Indexer):
                 pass
             except Exception as e:
                 logger.warning(f"Failed to close ChromaDB client: {e}")
-

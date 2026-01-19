@@ -5,9 +5,12 @@ Knowledge Base Abstract Base Class
 
 Provides a unified interface for knowledge bases as the top-level entry point.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional, Dict
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig, RetrievalConfig
 from openjiuwen.core.retrieval.common.document import Document
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult
@@ -22,7 +25,7 @@ from openjiuwen.core.common.logging import logger
 
 class KnowledgeBase(ABC):
     """Knowledge Base Abstract Base Class"""
-    
+
     def __init__(
         self,
         config: KnowledgeBaseConfig,
@@ -43,7 +46,20 @@ class KnowledgeBase(ABC):
         self.extractor = extractor
         self.index_manager = index_manager
         self.llm_client = llm_client
-    
+        if vector_store and index_manager:
+            for attr in ["database_name", "distance_metric"]:
+                vector_store_val = getattr(vector_store, attr, None)
+                index_manager_val = getattr(index_manager, attr, None)
+                if vector_store_val != index_manager_val:
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.code,
+                        message=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.errmsg.format(
+                            config_name=attr,
+                            error_msg=f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_val}"'
+                            f'\n- Index manager ({type(index_manager).__name__}) is using "{index_manager_val}"',
+                        ),
+                    )
+
     @abstractmethod
     async def parse_files(
         self,
@@ -52,16 +68,16 @@ class KnowledgeBase(ABC):
     ) -> List[Document]:
         """
         Parse files from file paths into a list of Document objects
-        
+
         Args:
             file_paths: List of file paths
             **kwargs: Additional parameters
-            
+
         Returns:
             List of Document objects
         """
         pass
-    
+
     @abstractmethod
     async def add_documents(
         self,
@@ -70,7 +86,7 @@ class KnowledgeBase(ABC):
     ) -> List[str]:
         """Add documents to the knowledge base"""
         pass
-    
+
     @abstractmethod
     async def retrieve(
         self,
@@ -80,7 +96,7 @@ class KnowledgeBase(ABC):
     ) -> List[RetrievalResult]:
         """Retrieve relevant documents"""
         pass
-    
+
     @abstractmethod
     async def delete_documents(
         self,
@@ -89,7 +105,7 @@ class KnowledgeBase(ABC):
     ) -> bool:
         """Delete documents"""
         pass
-    
+
     @abstractmethod
     async def update_documents(
         self,
@@ -98,12 +114,12 @@ class KnowledgeBase(ABC):
     ) -> List[str]:
         """Update documents"""
         pass
-    
+
     @abstractmethod
     async def get_statistics(self) -> Dict[str, Any]:
         """Get knowledge base statistics"""
         pass
-    
+
     async def close(self) -> None:
         """Close the knowledge base and release resources"""
         import inspect

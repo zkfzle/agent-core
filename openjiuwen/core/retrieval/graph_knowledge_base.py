@@ -5,11 +5,14 @@ GraphRAG Knowledge Base Implementation
 
 Knowledge base implementation supporting graph indexing and retrieval.
 """
+
 import json
 from typing import Any, List, Optional, Dict
 import uuid
 
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig, RetrievalConfig
 from openjiuwen.core.retrieval.common.document import Document, TextChunk
@@ -46,7 +49,7 @@ class GraphKnowledgeBase(KnowledgeBase):
     ):
         """
         Initialize GraphRAG knowledge base
-        
+
         Args:
             config: Knowledge base configuration
             vector_store: Vector store instance
@@ -82,7 +85,10 @@ class GraphKnowledgeBase(KnowledgeBase):
     ) -> List[Document]:
         """Parse files from file paths into a list of Document objects"""
         if not self.parser:
-            raise ValueError("parser is required for parse_files")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_PARSER_NOT_FOUND.code,
+                StatusCode.RETRIEVAL_KB_PARSER_NOT_FOUND.errmsg.format(error_msg="parser is required for parse_files"),
+            )
 
         all_documents = []
         for file_path in file_paths:
@@ -109,9 +115,19 @@ class GraphKnowledgeBase(KnowledgeBase):
     ) -> List[str]:
         """Add documents to the knowledge base (including chunk index and triple index)"""
         if not self.chunker:
-            raise ValueError("chunker is required for add_documents")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.code,
+                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.errmsg.format(
+                    error_msg="chunker is required for add_documents"
+                ),
+            )
         if not self.index_manager:
-            raise ValueError("index_manager is required for add_documents")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code,
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.errmsg.format(
+                    error_msg="index_manager is required for add_documents"
+                ),
+            )
 
         # Chunk documents
         chunks = self.chunker.chunk_documents(documents)
@@ -125,14 +141,23 @@ class GraphKnowledgeBase(KnowledgeBase):
             index_type=self.config.index_type,
         )
 
+        database_name = getattr(getattr(self.vector_store, "config", None), "database_name", None)
+        if not isinstance(database_name, str):
+            database_name = ""
         success = await self.index_manager.build_index(
             chunks=chunks,
             config=chunk_index_config,
             embed_model=self.embed_model,
+            database_name=database_name,
         )
 
         if not success:
-            raise RuntimeError("Failed to build chunk index")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.code,
+                StatusCode.RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(
+                    error_msg="Failed to build chunk index"
+                ),
+            )
 
         # If graph indexing is enabled, extract triples and build triple index
         if self.config.use_graph and self.extractor:
@@ -170,10 +195,16 @@ class GraphKnowledgeBase(KnowledgeBase):
                     chunks=triple_chunks,
                     config=triple_index_config,
                     embed_model=self.embed_model,
+                    database_name=database_name,
                 )
 
                 if not success:
-                    logger.error("Failed to build triple index")
+                    raise JiuWenBaseException(
+                        StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.code,
+                        StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(
+                            error_msg="Failed to build triple index"
+                        ),
+                    )
                 else:
                     logger.info(f"Built triple index with {len(triple_chunks)} triples")
 
@@ -195,8 +226,11 @@ class GraphKnowledgeBase(KnowledgeBase):
         if retrieval_config.use_graph or self.config.use_graph:
             if not self.graph_retriever:
                 if not self.vector_store:
-                    raise ValueError(
-                        "vector_store is required for graph retrieval"
+                    raise JiuWenBaseException(
+                        StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND.code,
+                        StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND.errmsg.format(
+                            error_msg="vector_store is required for graph retrieval"
+                        ),
                     )
                 chunk_collection = f"kb_{self.config.kb_id}_chunks"
                 triple_collection = f"kb_{self.config.kb_id}_triples"
@@ -218,7 +252,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                         llm_client=self.llm_client,
                         llm_model_name=self.llm_model_name,
                         agent_topk=retrieval_config.top_k,
-                        )
+                    )
 
             # Use graph retriever
             mode = "hybrid"
@@ -259,7 +293,12 @@ class GraphKnowledgeBase(KnowledgeBase):
     ) -> bool:
         """Delete documents (including chunk index and triple index)"""
         if not self.index_manager:
-            raise ValueError("index_manager is required for delete_documents")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code,
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.errmsg.format(
+                    error_msg="index_manager is required for delete_documents"
+                ),
+            )
 
         chunk_index_name = f"kb_{self.config.kb_id}_chunks"
         triple_index_name = f"kb_{self.config.kb_id}_triples"
@@ -343,6 +382,7 @@ class GraphKnowledgeBase(KnowledgeBase):
 
 
 # ========= Multi-Knowledge Base Retrieval Helpers =========
+
 
 async def retrieve_multi_graph_kb(
     kbs: List[KnowledgeBase],

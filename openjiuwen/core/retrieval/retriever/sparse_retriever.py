@@ -5,12 +5,15 @@ Sparse Retriever Implementation
 
 Sparse retriever based on BM25.
 """
+
 from typing import Any, List, Optional, Dict
 from typing import Literal
 
 from openjiuwen.core.retrieval.retriever.base import Retriever
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.status_code import StatusCode
 
 
 class SparseRetriever(Retriever):
@@ -23,7 +26,7 @@ class SparseRetriever(Retriever):
     ):
         """
         Initialize sparse retriever
-        
+
         Args:
             vector_store: Vector store instance (needs to support sparse search)
         """
@@ -39,19 +42,24 @@ class SparseRetriever(Retriever):
     ) -> List[RetrievalResult]:
         """
         Retrieve documents (sparse retrieval)
-        
+
         Args:
             query: Query string
             top_k: Number of results to return
             score_threshold: Score threshold
             mode: Retrieval mode (this retriever only supports sparse)
             **kwargs: Additional parameters
-            
+
         Returns:
             List of retrieval results
         """
         if mode != "sparse":
-            raise ValueError(f"SparseRetriever only supports 'sparse' mode, got {mode}")
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT.code,
+                StatusCode.RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT.errmsg.format(
+                    error_msg=f"SparseRetriever only supports 'sparse' mode, got {mode}"
+                ),
+            )
 
         # Execute sparse search
         search_results = await self.vector_store.sparse_search(

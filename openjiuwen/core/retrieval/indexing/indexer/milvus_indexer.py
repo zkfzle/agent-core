@@ -15,6 +15,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
+from openjiuwen.core.retrieval.common.callbacks import BaseCallback, TqdmCallback
 from openjiuwen.core.retrieval.common.config import IndexConfig
 from openjiuwen.core.retrieval.common.document import TextChunk
 from openjiuwen.core.retrieval.embedding.base import Embedding
@@ -36,6 +37,7 @@ class MilvusIndexer(Indexer):
         doc_id_field: str = "document_id",
         database_name: str = "",
         distance_metric: Literal["cosine", "euclidean", "dot"] = "cosine",
+        doc_index_callback: type[BaseCallback] = TqdmCallback,
         **kwargs: Any,
     ):
         """
@@ -50,6 +52,7 @@ class MilvusIndexer(Indexer):
             metadata_field: Metadata field name
             database_name: name of the database to use
             distance_metric: distance metric for vector search
+            doc_index_callback: class of callback object to use, must be subclass of BaseCallback
         """
         self.milvus_uri = milvus_uri
         self.milvus_token = milvus_token
@@ -73,6 +76,15 @@ class MilvusIndexer(Indexer):
                         error_msg=f'expecting one of ["cosine", "euclidean", "dot"], but got "{distance_metric}"'
                     ),
                 )
+        self.doc_index_callback = doc_index_callback
+        if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.errmsg.format(
+                    method_name="ChromaIndexer",
+                    argument="doc_index_callback",
+                ),
+            )
 
         self._client = MilvusVectorStore.create_client(
             database_name=database_name,
@@ -117,7 +129,7 @@ class MilvusIndexer(Indexer):
                         "embed_model is required for vector/hybrid index type",
                     )
                 texts = [chunk.text for chunk in chunks]
-                embeddings = await embed_model.embed_documents(texts)
+                embeddings = await embed_model.embed_documents(texts, callback_cls=self.doc_index_callback)
                 for chunk, embedding in zip(chunks, embeddings):
                     chunk.embedding = embedding
 

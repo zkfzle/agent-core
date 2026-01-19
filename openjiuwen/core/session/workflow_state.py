@@ -64,6 +64,9 @@ class StateCollection(State):
         self._comp_state.commit(self._node_id)
         self._io_state.commit(self._node_id)
 
+    def get_io_state(self):
+        return self._io_state
+
 
 class CommitState(StateCollection):
 

@@ -93,7 +93,7 @@ class ChromaVectorStore(VectorStore):
 
     @staticmethod
     def create_client(database_name: str, path_or_uri: str, token: str = "", **kwargs) -> chromadb.PersistentClient:
-        """Create Milvus client and ensure database exists"""
+        """Create Chroma client and ensure database exists"""
         if database_name and database_name != DEFAULT_DATABASE:
             admin_client = chromadb.AdminClient(Settings(is_persistent=True, persist_directory=path_or_uri))
             if database_name not in {db.get("name") for db in admin_client.list_databases()}:
@@ -517,3 +517,9 @@ class ChromaVectorStore(VectorStore):
                 pass
             except Exception as e:
                 logger.warning(f"Failed to close ChromaDB client: {e}")
+
+    async def table_exists(self, table_name: str) -> bool:
+        pass
+
+    async def delete_table(self, table_name: str) -> None:
+        pass

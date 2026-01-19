@@ -9,6 +9,8 @@ from chromadb.errors import NotFoundError
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 
 
 class MemoryChromaVectorStore(VectorStore):
@@ -47,9 +49,13 @@ class MemoryChromaVectorStore(VectorStore):
     def check_table_name(self, table_name: Optional[str] = None, operation: Optional[str] = None):
         """check table name"""
         if table_name is None or table_name.strip() == "":
-            raise ValueError(f"Chroma collection name is required for {operation}")
+            raise build_error(
+                StatusCode.MEMORY_STORE_VALIDATION_INVALID,
+                store_type="chroma vector store",
+                error_msg=f"chroma collection name is required for {operation}"
+            )
 
-    async def is_collection_exists(self, table_name: str) -> bool:
+    async def table_exists(self, table_name: str) -> bool:
         """Check whether the collection exists"""
         try:
             await asyncio.to_thread(
@@ -140,7 +146,7 @@ class MemoryChromaVectorStore(VectorStore):
         """Delete vectors"""
         table_name = kwargs.get("table_name")
         self.check_table_name(table_name, "delete")
-        collection_is_exists = await self.is_collection_exists(table_name)
+        collection_is_exists = await self.table_exists(table_name)
         if not collection_is_exists:
             logger.debug(f"Chroma Collection {table_name} does not exist, skip delete vector")
             return True
@@ -155,7 +161,7 @@ class MemoryChromaVectorStore(VectorStore):
         return True
 
     async def delete_table(self, table_name: str) -> bool:
-        collection_is_exists = await self.is_collection_exists(table_name)
+        collection_is_exists = await self.table_exists(table_name)
         if not collection_is_exists:
             logger.debug(f"Chroma Collection {table_name} does not exist, skip delete collection")
             return True

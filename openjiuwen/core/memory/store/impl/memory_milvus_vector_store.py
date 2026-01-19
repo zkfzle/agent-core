@@ -6,6 +6,8 @@ from pymilvus import FieldSchema, CollectionSchema, DataType, Collection, connec
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 
 MEMORY_ID_LENGTH = 36
 SCOPE_ID_LENGTH = 64
@@ -40,7 +42,7 @@ class MemoryMilvusVectorStore(VectorStore):
 
     @staticmethod
     def create_client(database_name: str, path_or_uri: str, token: str = "", **kwargs) -> Any:
-        logger.error("create_client not implemented in MemoryChromaVectorStore")
+        logger.error("create_client not implemented in MemoryMilvusVectorStore")
         pass
 
     async def _ensure_connection(self):
@@ -54,7 +56,12 @@ class MemoryMilvusVectorStore(VectorStore):
                 timeout=self.timeout
             )
         except Exception as e:
-            raise RuntimeError(f"milvus connect error: {str(e)}") from e
+            raise build_error(
+                StatusCode.MEMORY_CONNECT_STORE_EXECUTION_ERROR,
+                store_type="milvus vector store",
+                error_msg=f"milvus connect error: {str(e)}",
+                cause=e
+            ) from e
 
     async def _get_collection(self, collection_name: str) -> Collection:
         await self._ensure_connection()
@@ -85,7 +92,11 @@ class MemoryMilvusVectorStore(VectorStore):
     async def add(self, data: dict | List[dict], batch_size: int | None = 128, **kwargs: Any):
         table_name = kwargs.get("table_name")
         if table_name is None:
-            raise ValueError("table_name is required")
+            raise build_error(
+                StatusCode.MEMORY_STORE_VALIDATION_INVALID,
+                store_type="milvus vector store",
+                error_msg=f"table_name is required for add operation",
+            )
         if isinstance(data, dict):
             data = [data]
         collection = await self._get_collection(collection_name=table_name)
@@ -106,7 +117,11 @@ class MemoryMilvusVectorStore(VectorStore):
                      filters: Optional[dict] = None, **kwargs: Any) -> List[SearchResult]:
         table_name = kwargs.get("table_name")
         if table_name is None:
-            raise ValueError("table_name is required")
+            raise build_error(
+                StatusCode.MEMORY_STORE_VALIDATION_INVALID,
+                store_type="milvus vector store",
+                error_msg=f"table_name is required for search operation",
+            )
         scope_id = kwargs.get("scope_id")
         expr_filters = None
         if scope_id:
@@ -138,7 +153,11 @@ class MemoryMilvusVectorStore(VectorStore):
                      filter_expr: Optional[str] = None, **kwargs: Any) -> bool:
         table_name = kwargs.get("table_name")
         if table_name is None:
-            raise ValueError("table_name is required")
+            raise build_error(
+                StatusCode.MEMORY_STORE_VALIDATION_INVALID,
+                store_type="milvus vector store",
+                error_msg=f"table_name is required for delete operation",
+            )
         await self._ensure_connection()
         if not utility.has_collection(table_name, using="default"):
             logger.debug(f"Milvus Collection {table_name} does not exist, skip delete vector")
@@ -155,7 +174,7 @@ class MemoryMilvusVectorStore(VectorStore):
 
     async def delete_table(self, table_name: str) -> bool:
         await self._ensure_connection()
-        if not utility.has_collection(table_name, using="default"):
+        if not await self.table_exists(table_name):
             logger.debug(f"Milvus Collection {table_name} does not exist, skip delete collection")
             return True
         await asyncio.to_thread(
@@ -165,3 +184,6 @@ class MemoryMilvusVectorStore(VectorStore):
         )
         self.collections.pop(table_name, None)
         return True
+
+    async def table_exists(self, table_name: str) -> bool:
+        return utility.has_collection(table_name, using="default")

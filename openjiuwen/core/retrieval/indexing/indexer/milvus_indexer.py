@@ -15,6 +15,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
+from openjiuwen.core.retrieval.common.callbacks import BaseCallback, TqdmCallback
 from openjiuwen.core.retrieval.common.config import IndexConfig
 from openjiuwen.core.retrieval.common.document import TextChunk
 from openjiuwen.core.retrieval.embedding.base import Embedding
@@ -35,6 +36,7 @@ class MilvusIndexer(Indexer):
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
         database_name: str = "",
+        doc_index_callback: type[BaseCallback] = TqdmCallback,
         **kwargs: Any,
     ):
         """
@@ -48,6 +50,7 @@ class MilvusIndexer(Indexer):
             sparse_vector_field: Sparse vector field name
             metadata_field: Metadata field name
             database_name: name of the database to use
+            doc_index_callback: class of callback object to use, must be subclass of BaseCallback
         """
         self.milvus_uri = milvus_uri
         self.milvus_token = milvus_token
@@ -57,6 +60,15 @@ class MilvusIndexer(Indexer):
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
         self.database_name = database_name
+        self.doc_index_callback = doc_index_callback
+        if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
+            raise JiuWenBaseException(
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.errmsg.format(
+                    method_name="ChromaIndexer",
+                    argument="doc_index_callback",
+                ),
+            )
 
         self._client = MilvusVectorStore.create_client(
             database_name=database_name,
@@ -87,6 +99,21 @@ class MilvusIndexer(Indexer):
                 embed_model=embed_model,
             )
 
+            # Raise exception if any doc_id already exists
+            all_doc_ids = '["' + '","'.join({chunk.doc_id for chunk in chunks}) + '"]'
+            results = self._client.query(
+                collection_name, filter=f"{self.doc_id_field} in {all_doc_ids}", output_fields=[self.doc_id_field]
+            )
+            duplicate_doc_ids = sorted({result.get(self.doc_id_field) for result in results} - {None, ""})
+            if duplicate_doc_ids:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code,
+                    message=StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.errmsg.format(
+                        error_msg="some documents with same doc_id already exist, if they are the same documents, "
+                        f"please consider updating instead of adding. {duplicate_doc_ids=}"
+                    ),
+                )
+
             # If vector index is needed, generate embeddings
             embeddings = None
             if config.index_type in ("vector", "hybrid"):
@@ -98,7 +125,7 @@ class MilvusIndexer(Indexer):
                         ),
                     )
                 texts = [chunk.text for chunk in chunks]
-                embeddings = await embed_model.embed_documents(texts)
+                embeddings = await embed_model.embed_documents(texts, callback_cls=self.doc_index_callback)
                 for chunk, embedding in zip(chunks, embeddings):
                     chunk.embedding = embedding
 
@@ -130,6 +157,10 @@ class MilvusIndexer(Indexer):
             logger.info(f"Successfully built index {collection_name} with {len(chunks)} chunks")
             return True
         except Exception as e:
+            # Stored data could be damaged with runtime errors ignored, therefore it is raised
+            should_raise = [StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code]
+            if isinstance(e, JiuWenBaseException) and getattr(e, "error_code", None) in should_raise:
+                raise e
             logger.error(f"Failed to build index: {e}")
             return False
 
@@ -286,7 +317,7 @@ class MilvusIndexer(Indexer):
         schema.add_field(
             field_name=self.text_field,
             datatype=DataType.VARCHAR,
-            max_length=4096,
+            max_length=65535,
             enable_analyzer=enable_bm25,
             analyzer_params={"tokenizer": "jieba"} if enable_bm25 else {},
         )

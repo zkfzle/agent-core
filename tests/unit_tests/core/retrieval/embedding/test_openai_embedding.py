@@ -49,14 +49,16 @@ class TestOpenAIEmbedding:
     @classmethod
     def test_init_without_api_key(cls, embedding_config_no_key):
         """Test initialization without API key"""
-        model = OpenAIEmbedding(timeout=1, config=embedding_config_no_key)
-        assert model.api_key is None
+        with pytest.raises(openai.OpenAIError):
+            model = OpenAIEmbedding(timeout=1, config=embedding_config_no_key)
+            del model
 
     @classmethod
     def test_init_with_extra_headers(cls, embedding_config):
         """Test initialization with extra headers"""
         extra_headers = {"X-Custom-Header": "custom-value"}
         model = OpenAIEmbedding(timeout=1, config=embedding_config, extra_headers=extra_headers)
+        del model
 
     @classmethod
     def test_init_with_custom_params(cls, embedding_config):

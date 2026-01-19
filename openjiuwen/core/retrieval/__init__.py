@@ -27,6 +27,8 @@ from openjiuwen.core.retrieval.common.triple import Triple
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 from openjiuwen.core.retrieval.embedding.ollama_embedding import OllamaEmbedding
+from openjiuwen.core.retrieval.embedding.openai_embedding import OpenAIEmbedding
+from openjiuwen.core.retrieval.embedding.utils import parse_base64_embedding
 
 # Vector store related
 from openjiuwen.core.retrieval.vector_store.base import VectorStore

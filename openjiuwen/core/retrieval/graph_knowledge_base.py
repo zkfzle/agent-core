@@ -144,27 +144,42 @@ class GraphKnowledgeBase(KnowledgeBase):
         database_name = getattr(getattr(self.vector_store, "config", None), "database_name", None)
         if not isinstance(database_name, str):
             database_name = ""
-        success = await self.index_manager.build_index(
-            chunks=chunks,
-            config=chunk_index_config,
-            embed_model=self.embed_model,
-            database_name=database_name,
-        )
-
-        if not success:
+        
+        # build_index now raises exceptions instead of returning False
+        # If it's a JiuWenBaseException, re-raise it to preserve the original error message
+        try:
+            await self.index_manager.build_index(
+                chunks=chunks,
+                config=chunk_index_config,
+                embed_model=self.embed_model,
+                database_name=database_name,
+            )
+        except JiuWenBaseException:
+            # Re-raise JiuWenBaseException to preserve the original error message
+            raise
+        except Exception as e:
+            # Wrap other exceptions in JiuWenBaseException with detailed error message
             raise JiuWenBaseException(
                 StatusCode.RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.code,
-                StatusCode.RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(
-                    error_msg="Failed to build chunk index"
-                ),
-            )
+                StatusCode.RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(error_msg=str(e)),
+            ) from e
 
         # If graph indexing is enabled, extract triples and build triple index
         if self.config.use_graph and self.extractor:
-            logger.info("Extracting triples for graph index...")
-            triples = await self.extractor.extract(chunks)
+            try:
+                logger.info("Extracting triples for graph index...")
+                triples = await self.extractor.extract(chunks)
 
-            if triples:
+                if not triples:
+                    # Triple extraction returned empty list, which might indicate failure
+                    logger.warning("Triple extraction returned no triples")
+                    raise JiuWenBaseException(
+                        StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code,
+                        StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.errmsg.format(
+                            error_msg="Triple extraction returned no triples"
+                        ),
+                    )
+
                 logger.info(f"Extracted {len(triples)} triples")
 
                 # Build triple index
@@ -191,22 +206,33 @@ class GraphKnowledgeBase(KnowledgeBase):
                     )
                     triple_chunks.append(chunk)
 
-                success = await self.index_manager.build_index(
-                    chunks=triple_chunks,
-                    config=triple_index_config,
-                    embed_model=self.embed_model,
-                    database_name=database_name,
-                )
-
-                if not success:
+                # build_index now raises exceptions instead of returning False
+                try:
+                    await self.index_manager.build_index(
+                        chunks=triple_chunks,
+                        config=triple_index_config,
+                        embed_model=self.embed_model,
+                        database_name=database_name,
+                    )
+                    logger.info(f"Built triple index with {len(triple_chunks)} triples")
+                except JiuWenBaseException:
+                    # Re-raise JiuWenBaseException to preserve the original error message
+                    raise
+                except Exception as e:
+                    # Wrap other exceptions in JiuWenBaseException with detailed error message
                     raise JiuWenBaseException(
                         StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.code,
-                        StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(
-                            error_msg="Failed to build triple index"
-                        ),
-                    )
-                else:
-                    logger.info(f"Built triple index with {len(triple_chunks)} triples")
+                        StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(error_msg=str(e)),
+                    ) from e
+            except JiuWenBaseException:
+                # Re-raise JiuWenBaseException from triple extraction or triple index building
+                raise
+            except Exception as e:
+                # Wrap other exceptions from triple extraction
+                raise JiuWenBaseException(
+                    StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code,
+                    StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.errmsg.format(error_msg=str(e)),
+                ) from e
 
         # Return document ID list
         doc_ids = [doc.id_ for doc in documents]

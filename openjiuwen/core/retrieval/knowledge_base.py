@@ -51,10 +51,12 @@ class KnowledgeBase(ABC):
             index_manager_db = getattr(index_manager, "database_name", None)
             if vector_store_db != index_manager_db:
                 raise JiuWenBaseException(
-                    error_code=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID,
-                    message="Database name mismatch between vector_store and index_manager:\n"
-                    f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_db}".\n'
-                    f'- Index manager ({type(index_manager).__name__}) is using "{index_manager_db}"',
+                    error_code=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.code,
+                    message=StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID.errmsg.format(
+                        error_msg=f"Database name mismatch between vector_store and index_manager:\n"
+                        f'- Vector Store ({type(vector_store).__name__}) is using "{vector_store_db}".\n'
+                        f'- Index manager ({type(index_manager).__name__}) is using "{index_manager_db}"'
+                    ),
                 )
 
     @abstractmethod

@@ -294,7 +294,7 @@ class MilvusVectorStore(VectorStore):
         task_vector = (
             asyncio.create_task(self.search(query_vector, top_k, None))
             if query_vector
-            else asyncio.create_task(asyncio.coroutine(lambda: [])())
+            else asyncio.create_task(asyncio.sleep(0, result=[]))
         )
         task_text = asyncio.create_task(self.sparse_search(query_text, top_k, None))
 
@@ -402,3 +402,9 @@ class MilvusVectorStore(VectorStore):
             self._client.close()
         except Exception as e:
             logger.warning(f"Failed to close Milvus client: {e}")
+
+    async def table_exists(self, table_name: str) -> bool:
+        pass
+
+    async def delete_table(self, table_name: str) -> None:
+        pass

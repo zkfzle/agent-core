@@ -11,6 +11,7 @@ from openjiuwen.core.retrieval.simple_knowledge_base import (
 from openjiuwen.core.retrieval.graph_knowledge_base import GraphKnowledgeBase
 
 # Common data models and configs
+from openjiuwen.core.retrieval.common.callbacks import BaseCallback, TqdmCallback
 from openjiuwen.core.retrieval.common.config import (
     KnowledgeBaseConfig,
     RetrievalConfig,
@@ -42,7 +43,7 @@ from openjiuwen.core.retrieval.indexing.processor.base import Processor
 from openjiuwen.core.retrieval.indexing.processor.parser.base import Parser
 from openjiuwen.core.retrieval.indexing.processor.chunker.base import Chunker
 from openjiuwen.core.retrieval.indexing.processor.extractor.base import Extractor
-from openjiuwen.core.retrieval.indexing.processor.spliter.base import Splitter
+from openjiuwen.core.retrieval.indexing.processor.splitter.base import Splitter
 
 # Chunker implementations
 from openjiuwen.core.retrieval.indexing.processor.chunker.chunking import TextChunker
@@ -72,7 +73,7 @@ from openjiuwen.core.retrieval.indexing.processor.parser.word_parser import Word
 from openjiuwen.core.retrieval.indexing.processor.extractor.triple_extractor import TripleExtractor
 
 # Splitter implementations
-from openjiuwen.core.retrieval.indexing.processor.spliter.splitter import SentenceSplitter
+from openjiuwen.core.retrieval.indexing.processor.splitter.splitter import SentenceSplitter
 
 # Retriever related
 from openjiuwen.core.retrieval.retriever.base import Retriever
@@ -117,6 +118,8 @@ _COMMON_CLASSES = [
     "RetrievalResult",
     "SearchResult",
     "Triple",
+    "BaseCallback",
+    "TqdmCallback",
 ]
 
 _EMBEDDING_CLASSES = [

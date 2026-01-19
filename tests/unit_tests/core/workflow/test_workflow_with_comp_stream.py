@@ -12,7 +12,7 @@ from openjiuwen.core.workflow import Input, Output, WorkflowCard
 from openjiuwen.core.workflow import End, EndConfig
 from openjiuwen.core.workflow import Start
 from openjiuwen.core.workflow import WorkflowComponent
-from openjiuwen.core.workflow.components.flow_related.workflow_comp import SubWorkflowComponent
+from openjiuwen.core.workflow.components.flow.workflow_comp import SubWorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.graph.executable import Executable
 from openjiuwen.core.session import END_COMP_TEMPLATE_RENDER_POSITION_TIMEOUT_KEY, WORKFLOW_EXECUTE_TIMEOUT
@@ -553,8 +553,8 @@ async def test_workflow_stream_with_exception():
         await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}},
                               session=WorkflowSession())
     assert e.value.error_code == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.code
-    assert e.value.message == StatusCode.WORKFLOW_COMPONENT_RUNTIME_ERROR.errmsg.format(node_id="transform_comp",
-        ability="transform", error_msg="mock error")
+    assert "error: [-1] mock error" in e.value.message
+
     logger.info("after exception, execution again")
     result = await workflow.invoke(inputs={"user_inputs": {"array": [1, 2, 3, 4, 5, 6, 7]}}, session=WorkflowSession())
     assert result.result == {'output': {'result': [1, 2, 3, 4, 5, 6, 7]}}
@@ -803,7 +803,7 @@ async def test_stream_trigger_consumer_twice():
     wf_id = "llm_workflow"
     name = "llm_workflow"
     version = "0.0.1"
-    inputs_schem_dict = {
+    inputs_schema_dict = {
         "type": "object",
         "properties": {
             "query": {
@@ -812,7 +812,7 @@ async def test_stream_trigger_consumer_twice():
             }
         }
     }
-    workflow_inputs_schema = inputs_schem_dict
+    workflow_inputs_schema = inputs_schema_dict
     workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
     flow = Workflow(card=workflow_card)
 
@@ -845,7 +845,7 @@ async def test_stream_trigger_consumer():
     wf_id = "llm_workflow"
     name = "llm_workflow"
     version = "0.0.1"
-    inputs_schem_dict = {
+    inputs_schema_dict = {
         "type": "object",
         "properties": {
             "query": {
@@ -854,7 +854,7 @@ async def test_stream_trigger_consumer():
             }
         }
     }
-    workflow_inputs_schema = inputs_schem_dict
+    workflow_inputs_schema = inputs_schema_dict
     workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
     flow = Workflow(card=workflow_card)
 

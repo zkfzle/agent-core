@@ -115,7 +115,7 @@ class OpenApiClient(McpClient):
             http_route: HTTPRoute,
             original_name: str,
             http_tags: set[str],
-            timout: float,
+            timeout: float,
     ):
         tool_instruction = format_simple_description(
             request_body=http_route.request_body,
@@ -143,7 +143,7 @@ class OpenApiClient(McpClient):
             parameters=http_route.flat_param_schema,
             output_schema=output_schema,
             tags=set(http_route.tags or []) | http_tags,
-            timeout=timout,
+            timeout=timeout,
         )
 
         # add tool to tool_manager

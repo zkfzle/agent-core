@@ -115,7 +115,7 @@ def process_input(task_description, task_file_name):
         else:
             file_type = file_extension
         updated_task_description += f"\nNote: A {file_type} file '{task_file_name}' is associated with this task. You should use available tools to read its content if necessary through {task_file_name}. Additionally, if you need to analyze this file by Linux commands or python codes, you should upload it to the sandbox first. Files in the sandbox cannot be accessed by other tools.\n\n"
-    # output format requiremnt
+    # output format requirement
     # updated_task_description += "\nYou should follow the format instruction in the question strictly and wrap the final answer in \\boxed{}."
 
     # Add text content (may have been updated)
@@ -228,7 +228,7 @@ Question:
 Determine the expected data type of the answer. For questions asking to "identify" something, focus on the final answer type, not the identification process. Format requirements in the question often hint at the expected data type. If the question asks you to write a specific word, return string. Choose only one of the four types below:
 - number — a pure number (may include decimals or signs), e.g., price, distance, length
 - date   — a specific calendar date (e.g., 2025-08-05 or August 5, 2025)
-- time   — a specific time of day or formated time cost (e.g., 14:30 or 1:30.12)
+- time   — a specific time of day or formatted time cost (e.g., 14:30 or 1:30.12)
 - string — any other textual answer
 
 Output:

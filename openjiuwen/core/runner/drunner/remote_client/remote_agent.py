@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.runner.drunner.remote_client.mq_remote_clent import MqRemoteClient
+from openjiuwen.core.runner.drunner.remote_client.mq_remote_client import MqRemoteClient
 from openjiuwen.core.runner.drunner.remote_client.remote_client import RemoteClient
 from openjiuwen.core.runner.drunner.remote_client.remote_client_config import RemoteClientConfig, ProtocolEnum
 from openjiuwen.core.runner.runner_config import get_runner_config

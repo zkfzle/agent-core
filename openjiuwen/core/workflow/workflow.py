@@ -255,7 +255,9 @@ class Workflow:
             inputs: Input data for the workflow
             session: Workflow session for state management
             context: context engine
-            **kwargs: Additional execution parameters,
+            **kwargs: Additional execution parameters
+                - is_sub: Whether this is a sub-workflow execution
+                - skip_inputs_validate: Whether to skip input validation
 
         Returns:
             WorkflowOutput containing results and metadata
@@ -316,9 +318,11 @@ class Workflow:
         Args:
             inputs: Input data for the workflow
             session: Workflow session for state management
-            stream_modes: Type(s) of streaming (e.g., ["output", "logs"])
+            stream_modes: Type(s) of WorkflowChunk
             context: context engine
             **kwargs: Additional execution parameters
+                - is_sub: Whether this is a sub-workflow execution
+                - skip_inputs_validate: Whether to skip input validation
 
         Yields:
             WorkflowChunk: Stream chunks containing partial results, logs, or events

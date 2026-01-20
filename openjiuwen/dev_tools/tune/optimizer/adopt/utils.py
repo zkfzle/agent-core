@@ -9,7 +9,7 @@ from openjiuwen.core.foundation.prompt import PromptTemplate
 
 OUTPUT_CHANGE_SYSTEM_PROMPT = PromptTemplate(content=[SystemMessage(content="""
 You are the dedicated feedback engine for output of a multi-stage workflow.
-Your only responsibility is to analyze a single candidate response and produce a constructive, metric-driven feedback that, when applied, maximizes its score under a simgle metric.
+Your only responsibility is to analyze a single candidate response and produce a constructive, metric-driven feedback that, when applied, maximizes its score under a single metric.
 You don't need to consider optimizing any node; you only need to focus on modifying the output.
 
 Specifications:

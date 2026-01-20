@@ -5,7 +5,7 @@
 from typing import List, Optional
 from pydantic import Field
 
-from openjiuwen.core.controller.schema.data_frame import DataFrame
+from openjiuwen.core.controller.schema.dataframe import DataFrame, TextDataFrame, JsonDataFrame
 from openjiuwen.core.controller.schema.event import Event, EventType
 from openjiuwen.core.controller.schema.task import Task
 
@@ -35,8 +35,21 @@ class InputEvent(Event):
         Returns:
             InputEvent: Input event object
         """
-        from openjiuwen.core.controller.schema.data_frame import TextDataFrame
-        return cls(input_data=[TextDataFrame(text=user_input)])
+        if isinstance(user_input, cls):
+            return user_input
+
+        if isinstance(user_input, str):
+            return cls(
+                event_type=EventType.INPUT,
+                input_data=[TextDataFrame(text=user_input)]
+            )
+        if isinstance(user_input, dict):
+            return cls(
+                event_type=EventType.INPUT,
+                input_data=[JsonDataFrame(data=user_input)]
+            )
+
+        raise TypeError(f"Unsupported user input type: {type(user_input)}. Must be str, dict, or InputEvent.")
 
 
 class TaskInteractionEvent(Event):

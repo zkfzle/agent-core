@@ -19,6 +19,7 @@ from openjiuwen.core.single_agent.agents.react_agent import (
     ReActAgent,
     ReActAgentConfig
 )
+from openjiuwen.core.single_agent.agent import *
 
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "AgentCard",
     "ReActAgent",
     "ReActAgentConfig",
+    "AbilityKit"
 ]

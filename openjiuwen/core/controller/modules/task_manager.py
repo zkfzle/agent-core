@@ -165,6 +165,18 @@ class TaskManager:
         self._child_to_parent = state.children_to_parent.copy()
         self._root_tasks = state.root_tasks.copy()
 
+    def clear_state(self) -> None:
+        """Clear all task manager state
+        
+        Clears all tasks and internal index structures.
+        Used when no saved state exists or state restoration fails.
+        """
+        self.tasks.clear()
+        self._priority_index.clear()
+        self._parent_to_children.clear()
+        self._child_to_parent.clear()
+        self._root_tasks.clear()
+
     # ==================== Task CRUD Operations ====================
     def add_task(self, task: Union[Task, List[Task]]):
         """Add task(s) to task queue
@@ -262,7 +274,7 @@ class TaskManager:
             task = self.tasks[tid]
 
             # Apply other filter conditions
-            if task_filter.status is not None and task.Status != task_filter.status:
+            if task_filter.status is not None and task.status != task_filter.status:
                 continue
             if task_filter.user_id is not None:
                 # user_id is not in Task model, may be stored in metadata
@@ -564,7 +576,7 @@ class TaskManager:
         # Update status for all tasks
         for tid in all_task_ids:
             if tid in self.tasks:
-                self.tasks[tid].Status = new_status
+                self.tasks[tid].status = new_status
 
     # ==================== Task Priority Management ====================
     def set_priority(

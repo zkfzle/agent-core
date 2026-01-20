@@ -1,11 +1,13 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from openjiuwen.core.multi_agent import BaseGroup
 
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
-from openjiuwen.core.multi_agent import BaseGroup
 
 
 class AgentGroupProvider(ABC):
@@ -25,15 +27,15 @@ class AgentGroupProvider(ABC):
         return agent_group
 
     @abstractmethod
-    def create(self) -> BaseGroup:
+    def create(self) -> 'BaseGroup':
         pass
 
 
-class AgentGroupMgr(AbstractManager[BaseGroup]):
+class AgentGroupMgr(AbstractManager['BaseGroup']):
     def __init__(self):
         super().__init__()
 
-    async def add_agent_group(self, agent_group_id: str, agent_group: Union[BaseGroup, AgentGroupProvider]):
+    async def add_agent_group(self, agent_group_id: str, agent_group: Union['BaseGroup', 'AgentGroupProvider']):
         self._add_agent_group(agent_group_id, agent_group)
         # Only subscribe to message queue for AgentGroup with get_topic method
         # BaseGroup (HierarchicalGroup etc.) uses different message mechanism
@@ -44,7 +46,7 @@ class AgentGroupMgr(AbstractManager[BaseGroup]):
                 subscription = await Runner.pubsub.subscribe(topic)
                 agent_group.set_subscription(subscription)
 
-    async def remove_agent_group(self, agent_group_id: str) -> Union[BaseGroup, AgentGroupProvider]:
+    async def remove_agent_group(self, agent_group_id: str) -> Union['BaseGroup', 'AgentGroupProvider']:
         agent_group = self._remove_agent_group(agent_group_id)
         # Only unsubscribe for AgentGroup with get_topic method and subscription
         if agent_group and hasattr(agent_group, 'get_topic') and callable(agent_group.get_topic):
@@ -60,6 +62,7 @@ class AgentGroupMgr(AbstractManager[BaseGroup]):
         # Define validation function for non-callable single_agent groups
         # Support both AgentGroup (legacy) and BaseGroup (new architecture)
         def validate_agent_group(group):
+            from openjiuwen.core.multi_agent import BaseGroup
             if not isinstance(group, BaseGroup):
                 raise TypeError(
                     f"multi_agent must be AgentGroup/BaseGroup instance "
@@ -69,16 +72,17 @@ class AgentGroupMgr(AbstractManager[BaseGroup]):
 
         self._add_resource(agent_group_id, agent_group, StatusCode.SESSION_AGENT_GROUP_ADD_FAILED, validate_agent_group)
 
-    def _remove_agent_group(self, agent_group_id: str) -> Optional[BaseGroup]:
+    def _remove_agent_group(self, agent_group_id: str) -> Optional['BaseGroup']:
         self._validate_id(agent_group_id, StatusCode.SESSION_AGENT_GROUP_REMOVE_FAILED, "multi_agent")
         return self._remove_resource(agent_group_id, StatusCode.SESSION_AGENT_GROUP_REMOVE_FAILED)
 
-    def get_agent_group(self, agent_group_id: str) -> Optional[BaseGroup]:
+    def get_agent_group(self, agent_group_id: str) -> Optional['BaseGroup']:
         self._validate_id(agent_group_id, StatusCode.SESSION_AGENT_GROUP_GET_FAILED, "multi_agent")
 
         # Define function to create single_agent group from provider
         # Support both AgentGroup (legacy) and BaseGroup (new architecture)
         def create_group_from_provider(provider):
+            from openjiuwen.core.multi_agent import BaseGroup
             group = provider()
             if not isinstance(group, BaseGroup):
                 raise TypeError(

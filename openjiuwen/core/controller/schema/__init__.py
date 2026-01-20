@@ -14,7 +14,7 @@ This module defines all controller-related data models, including:
 """
 
 
-from openjiuwen.core.controller.schema.data_frame import TextDataFrame, FileDataFrame, JsonDataFrame, DataFrame
+from openjiuwen.core.controller.schema.dataframe import TextDataFrame, FileDataFrame, JsonDataFrame, DataFrame
 from openjiuwen.core.controller.schema.event import (
     EventType, Event, InputEvent, TaskInteractionEvent, TaskCompletionEvent, TaskFailedEvent
 )

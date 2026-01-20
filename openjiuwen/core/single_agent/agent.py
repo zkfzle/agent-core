@@ -4,17 +4,19 @@ Main classes included:
  - Ability: Ability type definition
  - AbilityKit: Agent ability manager
  - BaseAgent: Single agent base class
-
-Created on: 2025-11-25
-Author: huenrui1@huawei.com
 """
 from __future__ import annotations
 
 import asyncio
 import json
 from abc import abstractmethod, ABC
-from typing import List, Any, AsyncIterator, Union, Optional, Tuple, Dict
+from typing import List, Any, AsyncIterator, Union, Optional, Tuple, Dict, TYPE_CHECKING
+from pydantic import BaseModel
 
+from openjiuwen.core.context_engine import ContextEngine
+from openjiuwen.core.controller.schema.event import InputEvent
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
+from openjiuwen.core.controller.base import Controller
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import ToolMessage, ToolCall
 from openjiuwen.core.foundation.tool import ToolInfo
@@ -24,6 +26,9 @@ from openjiuwen.core.session.session import Session
 from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.workflow import WorkflowCard
+from openjiuwen.core.runner import Runner
+from openjiuwen.core.controller.schema.controller_output import ControllerOutputChunk, ControllerOutput
+from openjiuwen.core.controller.config import ControllerConfig
 
 # Ability type definition
 Ability = Union[ToolCard, WorkflowCard, AgentCard, McpServerConfig]
@@ -484,3 +489,157 @@ class BaseAgent(ABC):
             Agent stream output result
         """
         ...
+
+class ControllerAgent(BaseAgent):
+    """控制器Agent
+
+    基于Controller实现的Agent，用于处理复杂的事件驱动任务。
+    支持任务调度、事件处理等高级功能。
+    """
+
+    def __init__(self, card: AgentCard, controller: Controller):
+        """初始化控制器Agent
+
+        Args:
+            card: Agent名片，定义Agent的身份和能力
+            controller: Controller控制器实例，负责事件处理和任务调度
+        """
+        super().__init__(card=card)
+        self._config = self._create_default_config()
+        self.context_engine = ContextEngine(
+            ContextEngineConfig()
+        )
+        self._controller = controller
+        self._initialize_controller()
+
+    def _initialize_controller(self):
+        """初始化控制器
+
+        将Agent的配置、能力包、上下文引擎等信息传递给Controller。
+        确保Controller能够访问Agent的所有能力。
+        """
+        self._controller.init(
+            card=self.card,
+            config=self._config,
+            ability_kit=self._ability_kit,
+            context_engine=self.context_engine
+        )
+
+    def _create_default_config(self) -> ControllerConfig:
+        """Create default configuration"""
+        return ControllerConfig()
+
+    def configure(self, config: Union[dict, BaseModel]) -> 'BaseAgent':
+        """设置配置
+
+        Args:
+            config: 配置对象或字典
+
+        Returns:
+            self（支持链式调用）
+        """
+        if isinstance(config, dict):
+            self._config = ControllerConfig(**config)
+        elif isinstance(config, ControllerConfig):
+            self._config = config
+        else:
+            raise ValueError(f"Unsupported config type: {type(config)}")
+
+    @property
+    def controller(self):
+        """Get controller"""
+        return self._controller
+
+    async def release_session(self, session_id: str):
+        """释放会话资源
+
+        Args:
+            session_id: 会话ID
+        """
+        self.controller.event_queue.unsubscribe(
+            agent_id=self.card.id,
+            session_id=session_id
+        )
+        await Runner().release(session_id=session_id)
+
+    async def invoke(
+        self,
+        inputs: Union[str, dict, 'InputEvent'],
+        session: Optional[Session] = None,
+        **kwargs
+    ) -> ControllerOutput:
+        """批执行控制器
+
+        Args:
+            inputs: 用户输入，支持以下格式：
+                - str: 直接作为用户输入文本
+                - dict: 包含用户输入的字典
+                - InputEvent: 已构造的输入事件对象
+            session: 会话对象（可选，如果为 None 则使用默认会话）
+            **kwargs: 其他参数
+
+        Returns:
+            ControllerOutput: 控制器输出结果
+
+        Note:
+            - 调用 self._controller 的 invoke 方法
+            - 执行过程中会保存AbilityManager状态和Controller状态到Session
+            - 恢复时会从Session恢复AbilityManager状态和Controller状态
+        """
+        if not self.controller:
+            raise RuntimeError(
+                f"{self.__class__.__name__} has no controller, "
+                "subclass should create controller before invocation"
+            )
+
+        # 将 inputs 转换为 InputEvent
+        input_event = InputEvent.from_user_input(user_input=inputs)
+
+        # 调用 controller 的 invoke 方法
+        return await self.controller.invoke(
+            inputs=input_event,
+            session=session,
+            **kwargs
+        )
+
+    async def stream(
+            self,
+            inputs: Union[str, dict, 'InputEvent'],
+            session: Optional[Session] = None,
+            stream_modes: Optional[List[StreamMode]] = None,
+            **kwargs
+    ) -> AsyncIterator[ControllerOutputChunk]:
+        """流式执行控制器
+
+        Args:
+            inputs: 用户输入
+            session: 会话对象（可选）
+            stream_modes: 流式输出模式列表（可选）
+            **kwargs: 其他参数
+
+        Yields:
+            ControllerOutputChunk: 控制器输出块
+
+        Note:
+            - 调用 self.controller 的 stream 方法 内部会管理自己的生命周期
+            - 执行过程中会保存AbilityManager状态和Controller状态到Session
+            - Controller 内部会处理状态保存和恢复
+            - 如果 session 为 None，会创建 TaskSession
+        """
+        if not self.controller:
+            raise RuntimeError(
+                f"{self.__class__.__name__} has no controller, "
+                "subclass should create controller before invocation"
+            )
+
+        # 将inputs转换为InputEvent
+        input_event = InputEvent.from_user_input(user_input=inputs)
+
+        # 直接转发给 Controller.stream()
+        async for chunk in self.controller.stream(
+            inputs=input_event,
+            session=session,
+            stream_modes=stream_modes,
+            **kwargs
+        ):
+            yield chunk

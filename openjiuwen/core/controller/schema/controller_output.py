@@ -18,10 +18,9 @@ Output Types:
 
 
 from typing import Optional, Dict, Any, List, Literal
-
 from pydantic import BaseModel, Field
 
-from openjiuwen.core.controller.schema.data_frame import DataFrame
+from openjiuwen.core.controller.schema.dataframe import DataFrame
 from openjiuwen.core.controller.schema.event import EventType
 from openjiuwen.core.session.stream.base import OutputSchema
 
@@ -37,7 +36,7 @@ class ControllerOutputPayload(BaseModel):
         data: Output data list, contains the actual output content
         metadata: Metadata, can contain additional output information
     """
-    type: Literal[EventType.TASK_COMPLETION, EventType.TASK_INTERACTION, EventType.TASK_FAILED, "processing"]
+    type: Literal[EventType.TASK_COMPLETION, EventType.TASK_INTERACTION, EventType.TASK_FAILED, "processing", "all_tasks_processed"]
     data: List[DataFrame] = Field(default_factory=list)
     metadata: Optional[Dict[str, Any]] = None
 

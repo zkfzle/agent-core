@@ -4,7 +4,11 @@ from dataclasses import dataclass
 from typing import Optional, Union
 
 from openjiuwen.core.runner.resources_manager.base import AgentProvider
-from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
@@ -17,7 +21,7 @@ from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractMa
 @dataclass
 class AgentWithSession:
     session: StaticAgentSession
-    agent: BaseAgent
+    agent: 'BaseAgent'
 
 
 class AgentMgr(AbstractManager[AgentWithSession]):

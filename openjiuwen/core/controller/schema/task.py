@@ -62,7 +62,7 @@ class Task(BaseModel):
         priority: Task priority, smaller numbers indicate higher priority, default is 1
         inputs: List of all input events related to this task
         outputs: List of output chunks during task execution
-        Status: Task status
+        status: Task status
         parent_task_id: Parent task ID, used to build task hierarchical relationships
         context_id: Context ID, used to associate context information with the task
         input_required_fields: Field definitions for required user input (used when status is INPUT_REQUIRED)
@@ -72,11 +72,11 @@ class Task(BaseModel):
     session_id: str
     task_id: str
     task_type: str
-    description: Optional[str]
+    description: Optional[str] = None
     priority: int = 1
     inputs: Optional[List[Event]] = None
     outputs: List[ControllerOutputChunk] = Field(default_factory=list)
-    Status: TaskStatus = TaskStatus.UNKNOWN
+    status: TaskStatus = TaskStatus.UNKNOWN
     parent_task_id: Optional[str] = None
     context_id: Optional[str] = None
     input_required_fields: Optional[Union[Dict[str, Any], BaseModel]] = Field(default=None)
@@ -157,12 +157,12 @@ class Task(BaseModel):
             raise ValueError("task_id cannot be the same as parent_task_id (circular reference)")
 
         # Validate status-specific fields
-        if self.Status == TaskStatus.FAILED:
+        if self.status == TaskStatus.FAILED:
             if not self.error_message or not self.error_message.strip():
-                raise ValueError("error_message is required when Status is FAILED")
+                raise ValueError("error_message is required when status is FAILED")
 
-        if self.Status == TaskStatus.INPUT_REQUIRED:
+        if self.status == TaskStatus.INPUT_REQUIRED:
             if self.input_required_fields is None:
-                raise ValueError("input_required_fields is required when Status is INPUT_REQUIRED")
+                raise ValueError("input_required_fields is required when status is INPUT_REQUIRED")
 
         return self

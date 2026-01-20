@@ -1,9 +1,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-
 from enum import Enum
 from typing import Any, Dict, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import uuid
 
 
 class EventType(str, Enum):
@@ -27,7 +27,7 @@ class Event(BaseModel):
     Base class for all events, containing event type, event ID, and metadata.
     """
     event_type: EventType
-    event_id: Optional[str] = None
+    event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     metadata: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):

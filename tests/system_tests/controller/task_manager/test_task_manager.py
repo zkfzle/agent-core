@@ -132,7 +132,7 @@ class TestTaskManager(unittest.TestCase):
 
         result = self.task_manager.get_task(task_filter=TaskFilter(status=TaskStatus.SUBMITTED))
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].Status, TaskStatus.SUBMITTED)
+        self.assertEqual(result[0].status, TaskStatus.SUBMITTED)
 
     def test_get_task_by_user_id(self):
         """Test getting tasks by user_id in metadata"""
@@ -277,12 +277,12 @@ class TestTaskManager(unittest.TestCase):
         self.task_manager.add_task(self.sample_task)
 
         self.sample_task.description = "Updated description"
-        self.sample_task.Status = TaskStatus.WORKING
+        self.sample_task.status = TaskStatus.WORKING
 
         success = self.task_manager.update_task(self.sample_task)
         self.assertTrue(success)
         self.assertEqual(self.task_manager.tasks["task1"].description, "Updated description")
-        self.assertEqual(self.task_manager.tasks["task1"].Status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["task1"].status, TaskStatus.WORKING)
 
     def test_update_nonexistent_task(self):
         """Test updating a non-existent task"""
@@ -470,7 +470,7 @@ class TestTaskManager(unittest.TestCase):
 
         self.task_manager.update_task_status("task1", TaskStatus.WORKING)
 
-        self.assertEqual(self.task_manager.tasks["task1"].Status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["task1"].status, TaskStatus.WORKING)
 
     def test_update_task_status_with_children(self):
         """Test updating task status with children"""
@@ -495,8 +495,8 @@ class TestTaskManager(unittest.TestCase):
         self.task_manager.add_task([parent, child])
         self.task_manager.update_task_status("parent", TaskStatus.WORKING, with_children=True)
 
-        self.assertEqual(self.task_manager.tasks["parent"].Status, TaskStatus.WORKING)
-        self.assertEqual(self.task_manager.tasks["child"].Status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["parent"].status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["child"].status, TaskStatus.WORKING)
 
     def test_update_task_status_recursive(self):
         """Test updating task status recursively"""
@@ -530,9 +530,9 @@ class TestTaskManager(unittest.TestCase):
         self.task_manager.add_task([parent, child, grandchild])
         self.task_manager.update_task_status("parent", TaskStatus.WORKING, with_children=True, is_recursive=True)
 
-        self.assertEqual(self.task_manager.tasks["parent"].Status, TaskStatus.WORKING)
-        self.assertEqual(self.task_manager.tasks["child"].Status, TaskStatus.WORKING)
-        self.assertEqual(self.task_manager.tasks["grandchild"].Status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["parent"].status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["child"].status, TaskStatus.WORKING)
+        self.assertEqual(self.task_manager.tasks["grandchild"].status, TaskStatus.WORKING)
 
     # ==================== Set Priority Tests ====================
     def test_set_priority(self):

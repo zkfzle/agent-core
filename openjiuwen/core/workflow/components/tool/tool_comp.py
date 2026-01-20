@@ -28,7 +28,7 @@ class ToolComponentInput(BaseModel):
     model_config = ConfigDict(extra='allow')  # Allow any extra fields
 
 
-# RestFul Res
+# RESTful Response
 ERR_CODE = "errCode"
 ERR_MESSAGE = "errMessage"
 RESTFUL_DATA = "data"

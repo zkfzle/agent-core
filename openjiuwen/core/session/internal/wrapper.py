@@ -60,7 +60,7 @@ class WrappedSession(Session, ABC):
     def __init__(self, inner: BaseSession):
         self._inner = inner
 
-    # todo: alll session's resource_mgr interfaces will be deleted when resource_mgr supports tag features
+    # todo: all session's resource_mgr interfaces will be deleted when resource_mgr supports tag features
     def add_prompt(self, template_id: str, template: PromptTemplate):
         self._inner.resource_manager()._resource_registry.prompt().add_prompt(template_id, template)
 

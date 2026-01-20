@@ -6,6 +6,8 @@ OpenAI Embedding Model Implementation
 Embedding client implementation for services following OpenAI standard.
 """
 
+import os
+import ssl
 from typing import List, Optional
 
 import httpx
@@ -32,8 +34,8 @@ class OpenAIEmbedding(APIEmbedding):
         max_retries: int = 3,
         extra_headers: Optional[dict] = None,
         max_batch_size: int = 8,
-        sync_client: Optional[httpx.Client] = None,
-        async_client: Optional[httpx.AsyncClient] = None,
+        verify: ssl.SSLContext | str | bool = True,
+        **kwargs,
     ):
         """
         Initialize OpenAI embedder.
@@ -44,25 +46,26 @@ class OpenAIEmbedding(APIEmbedding):
             max_retries: Maximum retry count
             extra_headers: Additional request headers
             max_batch_size: Maximum batch size for each query
-            sync_client: Custom http_client to be used by OpenAI client
-            async_client: Custom http_client to be used by AsyncOpenAI client
+            verify: whether to use SSL context with default CA certificate, or a custom `ssl.SSLContext`
+            kwargs: optional keyword arguments to pass into httpx clients
         """
         super().__init__(
             config, timeout=timeout, max_retries=max_retries, extra_headers=extra_headers, max_batch_size=max_batch_size
         )
         if config.base_url is None:
-            self.api_url = None
+            self.api_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
         elif isinstance(self.api_url, str):
             self.api_url = self.api_url.removeprefix("/").removesuffix("/embeddings")
 
         # Create OpenAI clients
+        client_kwargs = dict(verify=verify, timeout=self.timeout, base_url=self.api_url) | kwargs
         self.async_client = openai.AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.api_url,
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self._headers,
-            http_client=async_client,
+            http_client=httpx.AsyncClient(**client_kwargs),
         )
         self.client = openai.OpenAI(
             api_key=self.api_key,
@@ -70,7 +73,7 @@ class OpenAIEmbedding(APIEmbedding):
             timeout=self.timeout,
             max_retries=self.max_retries,
             default_headers=self._headers,
-            http_client=sync_client,
+            http_client=httpx.Client(**client_kwargs),
         )
 
     @staticmethod
@@ -118,8 +121,9 @@ class OpenAIEmbedding(APIEmbedding):
     async def _get_embeddings(self, text: str | List[str], **kwargs) -> List[List[float]]:
         """Get embedding vectors"""
 
-        if "dimensions" not in kwargs and self._dimension is not None:
-            kwargs["dimensions"] = self._dimension
+        dimensions = kwargs.get("dimensions")
+        if isinstance(dimensions, int):
+            self._dimension = dimensions
 
         for attempt in range(self.max_retries):
             try:
@@ -163,8 +167,9 @@ class OpenAIEmbedding(APIEmbedding):
     def _get_embeddings_sync(self, text: str | List[str], **kwargs) -> List[List[float]]:
         """Get embedding vectors (sync version)."""
 
-        if "dimensions" not in kwargs and self._dimension is not None:
-            kwargs["dimensions"] = self._dimension
+        dimensions = kwargs.get("dimensions")
+        if isinstance(dimensions, int):
+            self._dimension = dimensions
 
         for attempt in range(self.max_retries):
             try:

@@ -114,14 +114,16 @@ class TextChunker(Chunker):
             doc_text = self.pipeline(doc.text)
             texts = self.chunker.chunk_text(doc_text)
             for i, text in enumerate(texts):
+                uid = str(uuid.uuid4())
                 chunk = TextChunk(
-                    id_=str(uuid.uuid4()),
+                    id_=uid,
                     text=text,
                     doc_id=doc.id_,
                     metadata={
                         **doc.metadata,
                         "chunk_index": i,
                         "total_chunks": len(texts),
+                        "chunk_id": uid,
                     },
                 )
                 chunks.append(chunk)

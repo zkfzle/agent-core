@@ -7,7 +7,6 @@ Inherits from Processor, provides text chunking interface.
 """
 
 import uuid
-from abc import abstractmethod
 from typing import List, Optional, Any, Callable
 
 from openjiuwen.core.retrieval.indexing.processor.base import Processor
@@ -92,14 +91,16 @@ class Chunker(Processor):
         for doc in documents:
             texts = self.chunk_text(doc.text)
             for i, text in enumerate(texts):
+                uid = str(uuid.uuid4())
                 chunk = TextChunk(
-                    id_=str(uuid.uuid4()),
+                    id_=uid,
                     text=text,
                     doc_id=doc.id_,
                     metadata={
                         **doc.metadata,
                         "chunk_index": i,
                         "total_chunks": len(texts),
+                        "chunk_id": uid,
                     },
                 )
                 chunks.append(chunk)

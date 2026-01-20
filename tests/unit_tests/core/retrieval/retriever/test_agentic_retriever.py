@@ -94,7 +94,7 @@ class TestAgenticRetriever:
 
         mock_response = MagicMock()
         mock_response.content = "original query"  # Rewritten query same as original, should stop
-        mock_llm_client.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm_client.invoke = AsyncMock(return_value=mock_response)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,
@@ -119,9 +119,9 @@ class TestAgenticRetriever:
         # First rewrite returns new query, second returns same query
         mock_responses = [
             MagicMock(content="rewritten query 1"),
-            MagicMock(content="rewritten query 1"),  # Different from original, but same as second
+            MagicMock(content="rewritten query 1"),  # Same as previous, should stop
         ]
-        mock_llm_client.ainvoke = AsyncMock(side_effect=mock_responses)
+        mock_llm_client.invoke = AsyncMock(side_effect=mock_responses)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,
@@ -131,7 +131,7 @@ class TestAgenticRetriever:
 
         results = await retriever.retrieve("original query", top_k=5)
         assert len(results) == 1
-        # Should iterate 2 times (first + one after rewrite)
+        # Should iterate 2 times (first retrieval + one rewrite)
         assert mock_graph_retriever.retrieve.call_count == 2
 
     @pytest.mark.asyncio
@@ -145,7 +145,7 @@ class TestAgenticRetriever:
 
         # Each time returns a different rewritten query
         mock_responses = [MagicMock(content=f"rewritten query {i}") for i in range(3)]
-        mock_llm_client.ainvoke = AsyncMock(side_effect=mock_responses)
+        mock_llm_client.invoke = AsyncMock(side_effect=mock_responses)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,
@@ -180,7 +180,7 @@ class TestAgenticRetriever:
 
         mock_response = MagicMock()
         mock_response.content = "original query"
-        mock_llm_client.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm_client.invoke = AsyncMock(return_value=mock_response)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,
@@ -204,7 +204,7 @@ class TestAgenticRetriever:
 
         mock_response = MagicMock()
         mock_response.content = "original query"
-        mock_llm_client.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm_client.invoke = AsyncMock(return_value=mock_response)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,
@@ -231,7 +231,7 @@ class TestAgenticRetriever:
             MagicMock(content="rewritten query"),
             MagicMock(content="rewritten query"),  # Second time same, stop
         ]
-        mock_llm_client.ainvoke = AsyncMock(side_effect=mock_responses)
+        mock_llm_client.invoke = AsyncMock(side_effect=mock_responses)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,
@@ -254,7 +254,7 @@ class TestAgenticRetriever:
 
         mock_response = MagicMock()
         mock_response.content = "original query"
-        mock_llm_client.ainvoke = AsyncMock(return_value=mock_response)
+        mock_llm_client.invoke = AsyncMock(return_value=mock_response)
 
         retriever = AgenticRetriever(
             graph_retriever=mock_graph_retriever,

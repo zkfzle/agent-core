@@ -28,6 +28,8 @@ class OllamaEmbedding(Embedding):
         timeout: int = 60,
         max_retries: int = 3,
         extra_headers: Optional[dict] = None,
+        max_batch_size: int = 8,
+        dimension: Optional[int] = None,
     ):
         """
         Initialize Ollama embedder.
@@ -46,6 +48,10 @@ class OllamaEmbedding(Embedding):
         self.max_retries = max_retries
         self.embed_url = f"{self.base_url}/api/embed"
         self._headers = extra_headers or {}
+        self.max_batch_size = max_batch_size
+        self._dimension: Optional[int] = None
+        if dimension is not None:
+            self._dimension = dimension
 
         # Initialize tokenizer if provided
         if hf_tokenizer_name:
@@ -58,9 +64,6 @@ class OllamaEmbedding(Embedding):
                 self._tokenizer = None
         else:
             self._tokenizer = None
-
-        # Cache dimension
-        self._dimension: Optional[int] = None
 
         # Test connection and model availability
         self._verify_model_availability()

@@ -10,6 +10,8 @@ import pytest
 from openjiuwen.core.retrieval import GraphRetriever
 from openjiuwen.core.retrieval import RetrievalResult
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.retrieval.common.triple_beam import TripleBeam
+from openjiuwen.core.retrieval.retriever.graph_retriever import TripleBeamSearch
 
 
 @pytest.fixture
@@ -152,3 +154,80 @@ class TestGraphRetriever:
         retriever = GraphRetriever(chunk_retriever=mock_retriever)
         # Should not raise exception
         await retriever.close()
+
+
+class TestTripleBeamSearch:
+    """TripleBeamSearch tests - testing critical beam search functionality"""
+
+    @pytest.fixture
+    def mock_retriever_with_embed(self):
+        """Create mock retriever with embed model"""
+        retriever = AsyncMock()
+        embed_model = AsyncMock()
+        embed_model.max_batch_size = 32
+        embed_model.embed_documents = AsyncMock()
+        retriever.embed_model = embed_model
+        retriever.retrieve = AsyncMock()
+        return retriever
+
+    @classmethod
+    def test_init_invalid_max_length(mock_retriever_with_embed):
+        """Test TripleBeamSearch validation - prevents invalid configuration that would break beam search"""
+        with pytest.raises(ValueError, match="expect max_length >= 1"):
+            TripleBeamSearch(
+                retriever=mock_retriever_with_embed,
+                max_length=0,
+            )
+
+    @pytest.mark.asyncio
+    async def test_beam_search_no_embed_model(self):
+        """Test beam search fails gracefully without embed model - critical for production error handling"""
+        retriever = AsyncMock()
+        retriever.embed_model = None
+        search = TripleBeamSearch(retriever=retriever)
+
+        triples = [RetrievalResult(text="triple1", score=0.9)]
+
+        with pytest.raises(ValueError, match="embed_model is required"):
+            await search.beam_search("test query", triples)
+
+    @pytest.mark.asyncio
+    async def test_beam_search_basic(self, mock_retriever_with_embed):
+        """Test beam search core algorithm - validates the main beam search workflow with embeddings"""
+        # Setup mock embeddings
+        mock_retriever_with_embed.embed_model.embed_documents = AsyncMock(
+            return_value=[
+                [0.1, 0.2, 0.3],  # triple1 embedding
+                [0.2, 0.3, 0.4],  # triple2 embedding
+                [0.15, 0.25, 0.35],  # query embedding
+            ]
+        )
+
+        # Mock retrieve to return empty (no candidates for expansion)
+        mock_retriever_with_embed.retrieve = AsyncMock(return_value=[])
+
+        triples = [
+            RetrievalResult(
+                text="entity1 -> relation -> entity2",
+                score=0.9,
+                metadata={"triple": '["entity1", "relation", "entity2"]'},
+            ),
+            RetrievalResult(
+                text="entity3 -> relation -> entity4",
+                score=0.8,
+                metadata={"triple": '["entity3", "relation", "entity4"]'},
+            ),
+        ]
+
+        search = TripleBeamSearch(
+            retriever=mock_retriever_with_embed,
+            num_beams=2,
+            max_length=1,  # No expansion, just initialization
+        )
+
+        beams = await search.beam_search("test query", triples)
+
+        # Should return beams initialized with top scoring triples
+        assert len(beams) <= 2
+        assert all(isinstance(b, TripleBeam) for b in beams)
+        assert all(len(b) == 1 for b in beams)  # Each beam has one triple

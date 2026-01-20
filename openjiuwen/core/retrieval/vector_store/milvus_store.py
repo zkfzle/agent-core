@@ -139,7 +139,7 @@ class MilvusVectorStore(VectorStore):
         **kwargs: Any,
     ) -> List[SearchResult]:
         """Vector search"""
-        output_fields = [self.text_field, self.metadata_field, self.doc_id_field]
+        output_fields = [self.text_field, self.metadata_field, self.doc_id_field, "chunk_id"]
 
         # Build filter expression
         filter_expr = None

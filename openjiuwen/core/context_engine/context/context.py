@@ -2,6 +2,8 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import List, Optional
 
+from pyexpat.errors import messages
+
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.context_engine.token.base import TokenCounter
@@ -84,15 +86,21 @@ class SessionModelContext(ModelContext):
                     error_msg="window size should be larger than 0"
                 )
             )
-        if window_size is None:
-            window_size = self._window_size_limit
-
-        system_messages = system_messages or []
-        system_messages_size = min(len(system_messages), window_size)
-        system_messages = system_messages[:system_messages_size]
-
-        context_messages_size = window_size - system_messages_size
-        context_messages = self._message_buffer.get_back(context_messages_size)
+        # with specific context size
+        if window_size is not None or self._window_size_limit is not None:
+            window_size = (
+                window_size
+                if window_size is not None
+                else self._window_size_limit
+            )
+            system_messages = system_messages or []
+            system_messages_size = min(len(system_messages), window_size)
+            system_messages = system_messages[:system_messages_size]
+            context_messages_size = window_size - system_messages_size
+            context_messages = self._message_buffer.get_back(context_messages_size)
+        else:
+            system_messages = system_messages or []
+            context_messages = self._message_buffer.get_back()
 
         window = ContextWindow(
             system_messages=system_messages,
@@ -195,3 +203,7 @@ class SessionModelContext(ModelContext):
         # slice away leading tool messages (if any)
         if first_non_tool > 0:
             context_window.context_messages = messages[first_non_tool:]
+
+    def on_save(self):
+        messages = self._message_buffer.get_back()
+        self._message_buffer = ContextMessageBuffer(messages)

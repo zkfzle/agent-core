@@ -46,8 +46,11 @@ class OpenAIEmbedding(APIEmbedding):
             max_retries: Maximum retry count
             extra_headers: Additional request headers
             max_batch_size: Maximum batch size for each query
-            verify: whether to use SSL context with default CA certificate, or a custom `ssl.SSLContext`
-            kwargs: optional keyword arguments to pass into httpx clients
+            verify (bool/str/ssl.SSLContext): Decides SSL context to use for the httpx clients,
+                bool: whether to use SSL context with default CA certificate;
+                str: path to custom CA certificate, this certificate is used to create the SSL context;
+                ssl.SSLContext: custom SSL context to use.
+            **kwargs: optional keyword arguments to pass into httpx clients
         """
         super().__init__(
             config, timeout=timeout, max_retries=max_retries, extra_headers=extra_headers, max_batch_size=max_batch_size

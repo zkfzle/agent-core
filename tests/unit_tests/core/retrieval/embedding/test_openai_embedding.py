@@ -151,7 +151,7 @@ class TestOpenAIEmbedding:
         model.async_client.embeddings.create.side_effect = openai.APIConnectionError(
             message="Connection error", request=mock_request
         )
-        with pytest.raises(JiuWenBaseException, match="Failed to get embedding"):
+        with pytest.raises(JiuWenBaseException, match="reason: Connection error"):
             await model.embed_query("test query")
         assert model.async_client.embeddings.create.call_count == 2
 

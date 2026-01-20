@@ -34,7 +34,7 @@ class OpenAIEmbedding(APIEmbedding):
         max_retries: int = 3,
         extra_headers: Optional[dict] = None,
         max_batch_size: int = 8,
-        verify: ssl.SSLContext | str | bool = True,
+        verify: bool | str | ssl.SSLContext = True,
         **kwargs,
     ):
         """

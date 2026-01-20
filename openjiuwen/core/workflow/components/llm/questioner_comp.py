@@ -464,6 +464,36 @@ class QuestionerDirectReplyHandler:
         formatted_template: PromptTemplate = self._prompt.format(prompt_template_input)
         return formatted_template.to_messages()
 
+    def _format_message_content(self, content) -> str:
+        """
+        Format message content to string representation.
+        
+        Args:
+            content: Could be str or List[Union[str, dict]]
+            
+        Returns:
+            String representation of the content
+        """
+        if isinstance(content, str):
+            return content
+        elif isinstance(content, list):
+            # Handle list of content items (could be text blocks or media)
+            formatted_parts = []
+            for item in content:
+                if isinstance(item, str):
+                    formatted_parts.append(item)
+                elif isinstance(item, dict):
+                    # For dict items, extract type and content if available
+                    if item.get('type') == 'text':
+                        formatted_parts.append(item.get('text', ''))
+                    elif item.get('type') == 'image_url':
+                        formatted_parts.append('[Image]')
+                    else:
+                        formatted_parts.append(f"[{item.get('type', 'unknown')}]")
+            return " ".join(formatted_parts)
+        else:
+            return str(content)
+
     def _create_prompt_template_keywords(self, chat_history: List[BaseMessage]):
         params_list, required_name_list = list(), list()
         for param in self._config.field_names:
@@ -472,7 +502,7 @@ class QuestionerDirectReplyHandler:
                 required_name_list.append(param.cn_field_name or param.description)
         required_name_str = "、".join(required_name_list) + f"{len(required_name_list)}个必要信息"
         all_param_str = "\n".join(params_list)
-        dialogue_history_str = "\n".join([f"{_.role}：{_.content}" for _ in chat_history])
+        dialogue_history_str = "\n".join([f"{_.role}：{self._format_message_content(_.content)}" for _ in chat_history])
 
         return dict(required_name=required_name_str, required_params_list=all_param_str,
                     extra_info=self._config.extra_prompt_for_fields_extraction, example=self._config.example_content,

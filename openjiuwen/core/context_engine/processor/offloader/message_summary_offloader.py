@@ -6,11 +6,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from openjiuwen.core.context_engine.context_engine import ContextEngine
-from openjiuwen.core.context_engine.schema.messages import MemoryOffloadMessage, OffloadMessage
+from openjiuwen.core.context_engine.schema.messages import OffloadMessage
 from openjiuwen.core.foundation.llm import (
     BaseMessage, SystemMessage, UserMessage,
     ModelRequestConfig, ModelClientConfig, Model
 )
+from openjiuwen.core.context_engine.base import ModelContext
 from openjiuwen.core.context_engine.processor.offloader.message_offloader import MessageOffloader
 
 
@@ -90,7 +91,7 @@ class MessageSummaryOffloader(MessageOffloader):
             model_config=self.config.model
         )
 
-    async def _offload_message(self, message: BaseMessage) -> OffloadMessage:
+    async def _offload_message(self, message: BaseMessage, context: ModelContext) -> OffloadMessage:
         prompt = self.config.customized_summary_prompt or DEFAULT_OFFLOAD_SUMMARY_PROMPT
         system_message = SystemMessage(content=prompt)
         response = await self._model.invoke(
@@ -100,8 +101,12 @@ class MessageSummaryOffloader(MessageOffloader):
             ]
         )
         summarized_content = response.content
-        offload_message = MemoryOffloadMessage(role=message.role, content=summarized_content)
-        await offload_message.offload([message])
+        offload_message = await self.offload_messages(
+            role=message.role,
+            content=summarized_content,
+            messages=[message],
+            context=context
+        )
         return offload_message
 
     def _validate_config(self):

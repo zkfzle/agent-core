@@ -44,7 +44,7 @@ class TestLongTermMemory(unittest.IsolatedAsyncioTestCase):
         # vector_store = MemoryMilvusVectorStore(
         #     milvus_host=os.getenv("MILVUS_HOST", "xxxx"),
         #     milvus_port=os.getenv("MILVUS_PORT", "xxxx"),
-        #     embedding_dims=int(os.getenv("EMBEDDING_MODEL_DIMENTION", 1024)),
+        #     embedding_dims=int(os.getenv("EMBEDDING_MODEL_DIMENSION", 1024)),
         #     token=os.getenv("MILVUS_TOKEN", None)
         # )
         vector_store = MemoryChromaVectorStore(persist_directory="./resource_dir")

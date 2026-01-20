@@ -4,6 +4,7 @@ OpenAI embedding model implementation test cases
 """
 
 import base64
+import os
 from unittest.mock import AsyncMock, Mock
 
 import httpx
@@ -49,6 +50,7 @@ class TestOpenAIEmbedding:
     @classmethod
     def test_init_without_api_key(cls, embedding_config_no_key):
         """Test initialization without API key"""
+        os.environ.pop("OPENAI_API_KEY", None)
         with pytest.raises(openai.OpenAIError):
             model = OpenAIEmbedding(timeout=1, config=embedding_config_no_key)
             del model

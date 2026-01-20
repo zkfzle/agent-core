@@ -1,5 +1,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import uuid
 from typing import Any, TYPE_CHECKING
 
 from openjiuwen.core.session.callback.callback_manager import CallbackManager
@@ -18,6 +19,13 @@ class Session:
         self._envs = envs
         self._callback_manager = CallbackManager()
         self._parent = parent
+        if parent is not None:
+            if self._session_id is None:
+                self._session_id = parent.session_id()
+            self._envs = parent.get_envs()
+        else:
+            if self._session_id is None:
+                self._session_id = uuid.uuid4().hex
 
     def get_callback_manager(self) -> CallbackManager:
         return self._callback_manager

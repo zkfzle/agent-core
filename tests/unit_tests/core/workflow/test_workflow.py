@@ -877,10 +877,10 @@ async def test_nested_workflow_same_node_id_with_template():
     flow1.add_workflow_comp("composite", SubWorkflowComponent(flow2),
                             inputs_schema={"input": "${start.b}"})
     flow1.add_workflow_comp("a1", Node1("a1"), inputs_schema={"value_different": "${start.a}",
-                                                              "value_different_result": "${composite.responseContent}"})
+                                                              "value_different_result": "${composite.response}"})
 
     flow1.set_end_comp("end", End({}),
-                       inputs_schema={"b1": "${a1.value_different}", "b2": "${composite.responseContent}",
+                       inputs_schema={"b1": "${a1.value_different}", "b2": "${composite.response}",
                                       "b3": "${a1.value_different_result}"})
 
     flow1.add_connection("start", "composite")

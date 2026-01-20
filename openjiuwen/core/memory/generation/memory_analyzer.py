@@ -13,8 +13,13 @@ from openjiuwen.core.utils.llm.output_parser.json_output_parser import JsonOutpu
 from openjiuwen.core.memory.config.config import MemoryConfig
 from openjiuwen.core.memory.prompt.memory_analyzer import (MEMORY_ANALYZER_PROMPT,
                                                            VARIABLES_DESCRIPTION_TEMPLATE_PROMPT,
-                                                           SUMMARY_TEMPLATE_PROMPT)
-
+                                                           SUMMARY_TEMPLATE_PROMPT, USER_PROFILE_CATEGORY,
+                                                           SEMANTIC_CATEGORY, EPISODIC_CATEGORY)
+MEMORY_CATEGORIES_SCOPE=[
+    "user_profile",
+    # "semantic_memory",
+    # "episodic_memory"
+]
 
 class VariableResult(BaseModel):
     variable_key: str = Field(default="", description="variable key")
@@ -25,6 +30,41 @@ class MemoryAnalyzerResult(BaseModel):
     categories: List[str] = Field(default=[])
     variables: List[VariableResult] = Field(default=[])
     summary: str = Field(default="")
+
+
+def _get_system_prompt():
+    sys_prompt = MEMORY_ANALYZER_PROMPT
+    memory_categories_scope = "["
+    index = 0
+    if 'user_profile' in MEMORY_CATEGORIES_SCOPE:
+        memory_categories_scope += "`user_profile`, "
+        index += 1
+        user_profile_category = USER_PROFILE_CATEGORY.replace("INDEX", str(index))
+    else:
+        user_profile_category = ""
+    sys_prompt = sys_prompt.replace("USER_PROFILE_PROMPT", user_profile_category)
+
+    if 'semantic_memory' in MEMORY_CATEGORIES_SCOPE:
+        memory_categories_scope += "`semantic_memory`, "
+        index += 1
+        semantic_category = SEMANTIC_CATEGORY.replace("INDEX", str(index))
+    else:
+        semantic_category = ""
+    sys_prompt = sys_prompt.replace("SEMANTIC_CATEGORY", semantic_category)
+
+    if 'episodic_memory' in MEMORY_CATEGORIES_SCOPE:
+        memory_categories_scope += "`episodic_memory`, "
+        index += 1
+        episodic_category = EPISODIC_CATEGORY.replace("INDEX", str(index))
+    else:
+        episodic_category = ""
+    sys_prompt = sys_prompt.replace("EPISODIC_CATEGORY", episodic_category)
+
+    if index > 0:
+        memory_categories_scope = memory_categories_scope[:-2]
+    memory_categories_scope += "]"
+    sys_prompt = sys_prompt.replace("MEMORY_CATEGORIES_SCOPE", memory_categories_scope)
+    return sys_prompt
 
 
 class MemoryAnalyzer:
@@ -95,7 +135,8 @@ class MemoryAnalyzer:
         else:
             summary_description, summary_output_format = "", ""
 
-        sys_prompt = MEMORY_ANALYZER_PROMPT.replace("VARIABLES_DESCRIPTION_TEMPLATE", variables_description)
+        sys_prompt = _get_system_prompt()
+        sys_prompt = sys_prompt.replace("VARIABLES_DESCRIPTION_TEMPLATE", variables_description)
         sys_prompt = sys_prompt.replace("VARIABLES_OUTPUT_TEMPLATE", variables_output_format)
         sys_prompt = sys_prompt.replace("SUMMARY_TEMPLATE", summary_description)
         sys_prompt = sys_prompt.replace("SUMMARY_OUTPUT_TEMPLATE", summary_output_format)

@@ -165,20 +165,33 @@ class GraphKnowledgeBase(KnowledgeBase):
             ) from e
 
         # If graph indexing is enabled, extract triples and build triple index
-        if self.config.use_graph and self.extractor:
+        if self.config.use_graph:
+            # Validate that extractor is available when graph indexing is enabled
+            if not self.extractor:
+                raise JiuWenBaseException(
+                    StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code,
+                    StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.errmsg.format(
+                        error_msg="Triple extractor is required when graph indexing is enabled, but extractor is None. Please ensure LLM client is properly configured."
+                    ),
+                )
             try:
                 logger.info("Extracting triples for graph index...")
                 triples = await self.extractor.extract(chunks)
 
                 if not triples:
-                    # Triple extraction returned empty list, which might indicate failure
-                    logger.warning("Triple extraction returned no triples")
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code,
-                        StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.errmsg.format(
-                            error_msg="Triple extraction returned no triples"
-                        ),
+                    # Triple extraction returned empty list
+                    # If extract() returned empty list without raising exception, it means:
+                    # - All chunks were successfully processed (no parsing errors, no API errors)
+                    # - But no triples could be extracted from the document content
+                    # This is not a failure - the document simply doesn't contain extractable triples
+                    logger.warning(
+                        "Triple extraction completed successfully but no triples were extracted. "
+                        "The document may not contain extractable entity-relationship triples. "
+                        "Chunk index has been built successfully, but graph index will not be created."
                     )
+                    # Don't raise exception - chunk index is already built, just skip triple index
+                    # The document will be marked as INDEXED (chunk index only)
+                    return doc_ids
 
                 logger.info(f"Extracted {len(triples)} triples")
 
@@ -215,23 +228,40 @@ class GraphKnowledgeBase(KnowledgeBase):
                         database_name=database_name,
                     )
                     logger.info(f"Built triple index with {len(triple_chunks)} triples")
-                except JiuWenBaseException:
+                except JiuWenBaseException as e:
                     # Re-raise JiuWenBaseException to preserve the original error message
-                    raise
+                    # Note: Chunk index has already been built successfully at this point
+                    original_msg = e.message
+                    enhanced_msg = f"Chunk index built successfully, but triple index building failed: {original_msg}"
+                    raise JiuWenBaseException(
+                        e.error_code,
+                        enhanced_msg,
+                    ) from e
                 except Exception as e:
                     # Wrap other exceptions in JiuWenBaseException with detailed error message
+                    # Note: Chunk index has already been built successfully at this point
+                    enhanced_msg = f"Chunk index built successfully, but triple index building failed: {str(e)}"
                     raise JiuWenBaseException(
                         StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.code,
-                        StatusCode.RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(error_msg=str(e)),
+                        enhanced_msg,
                     ) from e
-            except JiuWenBaseException:
+            except JiuWenBaseException as e:
                 # Re-raise JiuWenBaseException from triple extraction or triple index building
-                raise
+                # Note: Chunk index has already been built successfully at this point
+                # Add a note to the error message indicating chunk index is available
+                original_msg = e.message
+                enhanced_msg = f"Chunk index built successfully, but graph indexing failed: {original_msg}"
+                raise JiuWenBaseException(
+                    e.error_code,
+                    enhanced_msg,
+                ) from e
             except Exception as e:
                 # Wrap other exceptions from triple extraction
+                # Note: Chunk index has already been built successfully at this point
+                enhanced_msg = f"Chunk index built successfully, but graph indexing failed: {str(e)}"
                 raise JiuWenBaseException(
                     StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.code,
-                    StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.errmsg.format(error_msg=str(e)),
+                    enhanced_msg,
                 ) from e
 
         # Return document ID list

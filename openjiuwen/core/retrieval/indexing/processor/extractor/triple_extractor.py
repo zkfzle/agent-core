@@ -96,6 +96,7 @@ class TripleExtractor(Extractor):
         all_triples = []
         total_chunks = len(chunks)
         failed_chunks = []
+        successful_chunks = []
 
         for idx, result in enumerate(results):
             if isinstance(result, Exception):
@@ -107,16 +108,20 @@ class TripleExtractor(Extractor):
                 # Result from _extract_chunk: (triples, success)
                 triples, success = result
                 if not success:
+                    # Parsing failed (JSON decode error, etc.) - this is a real failure
                     chunk_id = chunks[idx].id_ if idx < len(chunks) else f"chunk_{idx}"
                     failed_chunks.append(chunk_id)
-                all_triples.extend(triples)
+                else:
+                    # Parsing succeeded (even if triples is empty) - this is a successful extraction
+                    successful_chunks.append(chunk_id)
+                    all_triples.extend(triples)
             else:
                 # Unexpected result type
                 chunk_id = chunks[idx].id_ if idx < len(chunks) else f"chunk_{idx}"
                 logger.warning(f"Unexpected result type from extraction task for chunk {chunk_id}: {type(result)}")
                 failed_chunks.append(chunk_id)
 
-        # If any chunk extraction failed, raise exception immediately
+        # If any chunk extraction failed (parsing error, API error, etc.), raise exception immediately
         if failed_chunks:
             error_msg = (
                 f"Triple extraction failed for {len(failed_chunks)}/{total_chunks} chunks. "
@@ -128,6 +133,9 @@ class TripleExtractor(Extractor):
                 StatusCode.RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR.errmsg.format(error_msg=error_msg),
             )
 
+        # If all chunks were successfully processed but no triples were extracted,
+        # this means the document content doesn't contain extractable triples (not a failure)
+        # Return empty list - let the caller decide whether to treat this as an error
         return all_triples
 
     def _build_prompt(self, passage: str, title: str = "") -> str:

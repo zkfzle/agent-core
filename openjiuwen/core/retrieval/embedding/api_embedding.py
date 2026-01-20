@@ -196,10 +196,53 @@ class APIEmbedding(Embedding):
                 return embeddings
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
+                    # Extract detailed error message from response if available
+                    error_detail = str(e)
+                    config_issue = None
+                    
+                    if hasattr(e, 'response') and e.response is not None:
+                        status_code = e.response.status_code
+                        try:
+                            error_response = e.response.json()
+                            if isinstance(error_response, dict):
+                                error_msg_from_api = error_response.get('error', {}).get('message', '') or error_response.get('message', '') or error_response.get('error', '')
+                                if error_msg_from_api:
+                                    error_detail = error_msg_from_api
+                        except Exception:
+                            # If JSON parsing fails, use status code to determine issue
+                            pass
+                        
+                        # Determine which config is wrong based on status code and error message
+                        error_lower = error_detail.lower()
+                        if status_code == 401 or status_code == 403:
+                            config_issue = "API key"
+                        elif status_code == 404:
+                            if "model" in error_lower or "not found" in error_lower:
+                                config_issue = "model name"
+                            else:
+                                config_issue = "API URL"
+                        elif status_code == 400:
+                            if "model" in error_lower:
+                                config_issue = "model name"
+                            elif "key" in error_lower or "auth" in error_lower:
+                                config_issue = "API key"
+                            else:
+                                config_issue = "request parameters"
+                        elif status_code >= 500:
+                            config_issue = "API server"
+                        else:
+                            config_issue = "configuration"
+                    
+                    # Build error message with config issue
+                    if config_issue:
+                        error_msg = f"Embedding model '{self.model_name}' {config_issue} is invalid: {error_detail}"
+                    else:
+                        error_msg = f"Embedding model '{self.model_name}' failed after {self.max_retries} attempts: {error_detail}"
+                    
                     raise JiuWenBaseException(
                         StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
                         StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.errmsg.format(
-                            error_msg=f"Failed to get embedding after {self.max_retries} attempts"
+                            error_msg=error_msg
                         ),
                     ) from e
                 logger.warning(
@@ -266,10 +309,53 @@ class APIEmbedding(Embedding):
                 return embeddings
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
+                    # Extract detailed error message from response if available
+                    error_detail = str(e)
+                    config_issue = None
+                    
+                    if hasattr(e, 'response') and e.response is not None:
+                        status_code = e.response.status_code
+                        try:
+                            error_response = e.response.json()
+                            if isinstance(error_response, dict):
+                                error_msg_from_api = error_response.get('error', {}).get('message', '') or error_response.get('message', '') or error_response.get('error', '')
+                                if error_msg_from_api:
+                                    error_detail = error_msg_from_api
+                        except Exception:
+                            # If JSON parsing fails, use status code to determine issue
+                            pass
+                        
+                        # Determine which config is wrong based on status code and error message
+                        error_lower = error_detail.lower()
+                        if status_code == 401 or status_code == 403:
+                            config_issue = "API key"
+                        elif status_code == 404:
+                            if "model" in error_lower or "not found" in error_lower:
+                                config_issue = "model name"
+                            else:
+                                config_issue = "API URL"
+                        elif status_code == 400:
+                            if "model" in error_lower:
+                                config_issue = "model name"
+                            elif "key" in error_lower or "auth" in error_lower:
+                                config_issue = "API key"
+                            else:
+                                config_issue = "request parameters"
+                        elif status_code >= 500:
+                            config_issue = "API server"
+                        else:
+                            config_issue = "configuration"
+                    
+                    # Build error message with config issue
+                    if config_issue:
+                        error_msg = f"Embedding model '{self.model_name}' {config_issue} is invalid: {error_detail}"
+                    else:
+                        error_msg = f"Embedding model '{self.model_name}' failed after {self.max_retries} attempts: {error_detail}"
+                    
                     raise JiuWenBaseException(
                         StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
                         StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.errmsg.format(
-                            error_msg=f"Failed to get embedding after {self.max_retries} attempts"
+                            error_msg=error_msg
                         ),
                     ) from e
                 logger.warning(

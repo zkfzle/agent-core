@@ -38,7 +38,7 @@ class MockPlugin:
     async def stream(self, span):
         try:
             await self.tracer.trigger("tracer_agent", "on_plugin_start", span=span, inputs={"llm": "mock tool"},
-                                      instance_info={"class_name": "RestFulAPI"})
+                                      instance_info={"class_name": "RestfulAPI"})
             await asyncio.sleep(2)
         except Exception as e:
             await self.tracer.trigger("tracer_agent", "on_plugin_error", span=span, error=e,

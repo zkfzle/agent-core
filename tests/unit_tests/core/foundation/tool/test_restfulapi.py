@@ -19,7 +19,7 @@ os.environ["SSRF_PROTECT_ENABLED"] = "false"
 
 
 @pytest.mark.asyncio
-class TestRestFulApi:
+class TestRestfulApi:
     def assertEqual(self, left, right):
         assert left == right
 

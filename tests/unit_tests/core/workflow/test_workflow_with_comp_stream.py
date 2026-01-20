@@ -85,11 +85,11 @@ async def test_multi_stream_workflow():
     wf = create_component_stream_workflow_with_template()
     chunks = []
     expect_chunks = [
-        OutputSchema(type='end node stream', index=0, payload={'answer': 'a: '}),
-        OutputSchema(type='end node stream', index=1, payload={'answer': 1}),
-        OutputSchema(type='end node stream', index=2, payload={'answer': 2}),
-        OutputSchema(type='end node stream', index=3, payload={'answer': 3}),
-        OutputSchema(type='end node stream', index=4, payload={'answer': '; c: '}),
+        OutputSchema(type='end node stream', index=0, payload={'response': 'a: '}),
+        OutputSchema(type='end node stream', index=1, payload={'response': 1}),
+        OutputSchema(type='end node stream', index=2, payload={'response': 2}),
+        OutputSchema(type='end node stream', index=3, payload={'response': 3}),
+        OutputSchema(type='end node stream', index=4, payload={'response': '; c: '}),
         OutputSchema(type='end node stream', index=5, payload={'answer': 1}),
         OutputSchema(type='end node stream', index=6, payload={'answer': 2}),
         OutputSchema(type='end node stream', index=7, payload={'answer': 3}),
@@ -139,13 +139,13 @@ async def test_batch_multi_stream_workflow():
 
     res = await wf.invoke({"inputs": [1, 2, 3]}, create_workflow_session())
     logger.info(res)
-    assert res.result == {'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'}
+    assert res.result == {'response': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'}
 
     chunks = []
     # End 组件批输出时也会发送 end node stream，然后发送 workflow_final
     expect_chunks = [
         OutputSchema(type='workflow_final', index=0,
-                     payload={'responseContent': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'})
+                     payload={'response': 'a: 123; c: 123; batch: [1, 2, 3]; b: 123'})
     ]
 
     async for chunk in wf.stream({"inputs": [1, 2, 3]}, create_workflow_session(),
@@ -821,16 +821,10 @@ async def test_stream_trigger_consumer_twice():
         }
     }
     workflow_inputs_schema = inputs_schema_dict
-    workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
+    workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_params=workflow_inputs_schema)
     flow = Workflow(card=workflow_card)
 
-    start_component = Start(
-        {
-            "inputs": [
-                {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-            ]
-        }
-    )
+    start_component = Start()
     end_component = End({"responseTemplate": "123"})
 
     flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})
@@ -863,16 +857,10 @@ async def test_stream_trigger_consumer():
         }
     }
     workflow_inputs_schema = inputs_schema_dict
-    workflow_card = WorkflowCard(name=name, id=wf_id, version=version, inputs_schema=workflow_inputs_schema)
+    workflow_card = WorkflowCard(name=name, id=wf_id, version=version, input_params=workflow_inputs_schema)
     flow = Workflow(card=workflow_card)
 
-    start_component = Start(
-        {
-            "inputs": [
-                {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-            ]
-        }
-    )
+    start_component = Start()
     end_component = End({"responseTemplate": "123"})
 
     flow.set_start_comp("s", start_component, inputs_schema={"query": "${query}"})

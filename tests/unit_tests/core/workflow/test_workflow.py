@@ -88,32 +88,6 @@ async def create_workflow():
     flow.add_connection("b", "e")
     return flow
 
-
-async def test_start_comp():
-    flow = Workflow()
-    with pytest.raises(JiuWenBaseException):
-        Start(conf={"inputs": [{"required": True}]})
-
-    conf = {"inputs": [
-        {"id": "query", "required": True},
-        {"id": "param1", "required": False},
-        {"id": "param2", "required": False, "default_value": False}
-    ]}
-
-    flow.set_start_comp("s", Start(conf=conf), inputs_schema={"query": "${user_inputs.query}"})
-    flow.set_end_comp("e", Start(),
-                      inputs_schema={"query": "${s.query}", "param1": "${s.param1}", "param2": "${s.param2}"})
-
-    flow.add_connection("s", "e")
-    # 没有提供必选项
-    with pytest.raises(JiuWenBaseException) as e:
-        await flow.invoke(inputs={"user_inputs": {}}, session=create_workflow_session())
-        print(e)
-
-    result = await flow.invoke(inputs={"user_inputs": {"query": "hello"}}, session=create_workflow_session())
-    assert result.result == {"query": "hello", "param1": None, "param2": False}
-
-
 async def test_simple_workflow():
     # flow1: start -> a -> end
     flow = Workflow()
@@ -828,14 +802,14 @@ async def test_nested_workflow():
 
 async def test_nested_workflow_same_node_id():
     flow1 = Workflow()
-    flow1.set_start_comp("start", Start({}),
+    flow1.set_start_comp("start", Start(),
                          inputs_schema={
                              "a": "${a1}",
                              "b": "${a2}"})
 
     # start2->a2->end2
     flow2 = Workflow()
-    flow2.set_start_comp("start", Start({}), inputs_schema={"a1": "${input}"})
+    flow2.set_start_comp("start", Start(), inputs_schema={"a1": "${input}"})
     flow2.add_workflow_comp("a1", Node1("a1"), inputs_schema={"value": "${start.a1}"})
     flow2.set_end_comp("end", End({}), inputs_schema={"result": "${a1.value}"})
     flow2.add_connection("start", "a1")
@@ -859,14 +833,14 @@ async def test_nested_workflow_same_node_id():
 
 async def test_nested_workflow_same_node_id_with_template():
     flow1 = Workflow()
-    flow1.set_start_comp("start", Start({}),
+    flow1.set_start_comp("start", Start(),
                          inputs_schema={
                              "a": "${a1}",
                              "b": "${a2}"})
 
     # start2->a2->end2
     flow2 = Workflow()
-    flow2.set_start_comp("start", Start({}), inputs_schema={"a1": "${input}"})
+    flow2.set_start_comp("start", Start(), inputs_schema={"a1": "${input}"})
     flow2.add_workflow_comp("a1", Node1("a1"), inputs_schema={"value": "${start.a1}"})
     flow2.set_end_comp("end", End(conf={"responseTemplate": "填充结果{{result}}"}),
                        inputs_schema={"result": "${a1.value}"})
@@ -877,10 +851,10 @@ async def test_nested_workflow_same_node_id_with_template():
     flow1.add_workflow_comp("composite", SubWorkflowComponent(flow2),
                             inputs_schema={"input": "${start.b}"})
     flow1.add_workflow_comp("a1", Node1("a1"), inputs_schema={"value_different": "${start.a}",
-                                                              "value_different_result": "${composite.responseContent}"})
+                                                              "value_different_result": "${composite.response}"})
 
     flow1.set_end_comp("end", End({}),
-                       inputs_schema={"b1": "${a1.value_different}", "b2": "${composite.responseContent}",
+                       inputs_schema={"b1": "${a1.value_different}", "b2": "${composite.response}",
                                       "b3": "${a1.value_different_result}"})
 
     flow1.add_connection("start", "composite")

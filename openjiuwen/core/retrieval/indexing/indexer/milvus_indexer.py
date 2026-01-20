@@ -163,6 +163,7 @@ class MilvusIndexer(Indexer):
             for idx, chunk in enumerate(chunks):
                 meta = chunk.metadata or {}
                 item = {
+                    "chunk_id": meta.get("chunk_id", chunk.id_),
                     self.doc_id_field: chunk.doc_id,
                     self.text_field: chunk.text,
                     self.metadata_field: meta,
@@ -329,6 +330,19 @@ class MilvusIndexer(Indexer):
             datatype=DataType.INT64,
             is_primary=True,
             auto_id=True,
+        )
+
+        # Chunk ID field
+        schema.add_field(
+            field_name="chunk_id",
+            datatype=DataType.VARCHAR,
+            max_length=256,
+        )
+
+        # Add scalar index on document_id for fast deletion/filtering
+        index_params.add_index(
+            field_name="chunk_id",
+            index_type="INVERTED",  # Inverted index for VARCHAR
         )
 
         # Text content field (enable analyzer for BM25)

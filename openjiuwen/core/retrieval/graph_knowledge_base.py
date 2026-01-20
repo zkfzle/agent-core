@@ -169,7 +169,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                     # Convert triple to text format
                     triple_text = f"{triple.subject} {triple.predicate} {triple.object}"
                     chunk = TextChunk(
-                        id_=f"triple_{i}",
+                        id_=str(uuid.uuid4()),
                         text=triple_text,
                         doc_id=triple.metadata.get("doc_id", ""),
                         metadata={
@@ -177,6 +177,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                             "triple": json.dumps([triple.subject, triple.predicate, triple.object]),
                             "confidence": triple.confidence if triple.confidence else 0,
                             "chunk_index": i,
+                            "chunk_id": triple.metadata.get("chunk_id", ""),
                         },
                     )
                     triple_chunks.append(chunk)

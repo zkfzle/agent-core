@@ -128,6 +128,7 @@ _EMBEDDING_CLASSES = [
     "Embedding",
     "APIEmbedding",
     "OllamaEmbedding",
+    "OpenAIEmbedding",
 ]
 
 _VECTOR_STORE_CLASSES = [
@@ -186,6 +187,7 @@ _UTILS = [
     "DocumentProcessingError",
     "VectorStoreError",
     "rrf_fusion",
+    "parse_base64_embedding",
 ]
 
 __all__ = (

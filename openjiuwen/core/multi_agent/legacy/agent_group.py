@@ -7,46 +7,12 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, AsyncIterator
 
-from openjiuwen.core.single_agent.legacy import AgentSession, LegacyBaseAgent as BaseAgent
+from openjiuwen.core.session.agent_group import AgentGroupSession, create_agent_group_session
+from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
 from openjiuwen.core.multi_agent.legacy.config import AgentGroupConfig
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.session import Config
-
-
-class AgentGroupSession(AgentSession):
-    """AgentGroup Session
-    
-    Inherits from openjiuwen.core.single_agent.single_agent.AgentSession
-    Reuses all capabilities including Session from pre_run()
-    
-    Why direct inheritance:
-    1. AgentSession(config, resource_mgr) has simple constructor
-    2. Already includes write_stream() method
-    3. Session from pre_run() has stream_iterator()
-    """
-
-    def __init__(self, config: Config = None, resource_mgr=None):
-        """Initialize AgentGroupSession
-        
-        Args:
-            config: Config object (optional, auto-created)
-            resource_mgr: Resource manager (optional, auto-created)
-        """
-        # Create Config with agent_config if not provided
-        if config is None:
-            from openjiuwen.core.single_agent.legacy import AgentConfig
-            config = Config()
-            # Create virtual AgentConfig for Group Session
-            agent_config = AgentConfig(id="agent_group_session")
-            config.set_agent_config(agent_config)
-
-        # Call parent constructor
-        super().__init__(config, resource_mgr)
-
-    # write_stream() already implemented in parent AgentSession
-    # No need to redefine
 
 
 class BaseGroup(ABC):
@@ -183,7 +149,7 @@ class ControllerGroup(BaseGroup):
 
         # Initialize session (like BaseAgent)
         from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMgr
-        self._session = AgentGroupSession(resource_mgr=ResourceMgr())
+        self._session = getattr(create_agent_group_session(resource_mgr=ResourceMgr()), "_inner")
 
         # Auto-configure group_controller
         if self.group_controller is not None:

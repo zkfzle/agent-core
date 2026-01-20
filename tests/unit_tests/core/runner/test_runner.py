@@ -40,7 +40,7 @@ def session():
     config = Config()
     config.set_agent_config(agent_config=workflow_config)
     session_id = "session_id"
-    return create_agent_session(None, AgentSession(session_id, config=config))
+    return create_agent_session(session_id=session_id, config=config)
 
 
 @pytest.mark.asyncio

@@ -134,7 +134,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
         ).to_messages()
         feedback_message = await self._model.invoke(messages)
         try:
-            intent, optimized_feedback = self._extract_intent_from_respones(feedback_message.content)
+            intent, optimized_feedback = self._extract_intent_from_responses(feedback_message.content)
         except JiuWenBaseException:
             logger.warning(f"Intent recognition failed, using original feedback instead")
             return feedback
@@ -200,7 +200,7 @@ class FeedbackPromptBuilder(BasePromptBuilder):
                 )
             )
 
-    def _extract_intent_from_respones(self, input_json: str):
+    def _extract_intent_from_responses(self, input_json: str):
         pattern = rf"```json(.{{1,{JSON_STRING_MAX_LENGTH}}}?)```"
         try:
             match = re.search(pattern, input_json, re.DOTALL)

@@ -10,17 +10,10 @@ MEMORY_ANALYZER_PROMPT = """
 请严格按照以下步骤顺序执行：
 
 ### 步骤1：记忆分类
-请将用户提供的消息进行分类，取值范围[`user_profile`,`semantic_memory`,`episodic_memory`]，填充到输出模板`categories`字段，结果可能属于多个类别；如果不属于任何类别，则结果为空`[]`。
-1. `user_profile`: 指与用户相关的具体信息，包括但不限于以下方面:
- - 姓名、性别、年龄、职业、学历、居住地等个人信息
- - 兴趣爱好与生活习惯（如运动爱好、饮食习惯等）
- - 资产信息与财务状况（如收入、房产、车辆、投资、负债等）
- - 社交关系与沟通方式（如朋友、同事、社交习惯等）
- - 不属于以上类别但对用户有价值的其他信息
-2. `semantic_memory`: 现实世界中确定的事实或者概念；强调不绑定与用户自身的个人信息，如果通过消息能提取出对于实体、概念本身的定义或者关系的描述，则属于semantic_memory
-3. `episodic_memory`: 指用户在特定时间和地点发生的事件。
- - 包括要素: 【时间】,【地点】,【人物】,【事件】,【情感】
- - 即使缺少某些要素，只要是具体事件、行为、经历或互动，也归类为episodic_memory
+请将用户提供的消息进行分类，取值范围MEMORY_CATEGORIES_SCOPE，填充到输出模板`categories`字段，结果可能属于多个类别；如果不属于任何类别，则结果为空`[]`。
+USER_PROFILE_PROMPT
+SEMANTIC_CATEGORY
+EPISODIC_CATEGORY
 VARIABLES_DESCRIPTION_TEMPLATE
 SUMMARY_TEMPLATE
 ## 输出格式
@@ -38,6 +31,19 @@ SUMMARY_TEMPLATE
 }
 ```
 """
+
+USER_PROFILE_CATEGORY = """INDEX. `user_profile`: 指与用户相关的具体信息，包括但不限于以下方面:
+ - 姓名、性别、年龄、职业、学历、居住地等个人信息
+ - 兴趣爱好与生活习惯（如运动爱好、饮食习惯等）
+ - 资产信息与财务状况（如收入、房产、车辆、投资、负债等）
+ - 社交关系与沟通方式（如朋友、同事、社交习惯等）
+ - 不属于以上类别但对用户有价值的其他信息"""
+
+SEMANTIC_CATEGORY = """INDEX. `semantic_memory`: 现实世界中确定的事实或者概念；强调不绑定与用户自身的个人信息，如果通过消息能提取出对于实体、概念本身的定义或者关系的描述，则属于semantic_memory"""
+
+EPISODIC_CATEGORY = """INDEX. `episodic_memory`: 指用户在特定时间和地点发生的事件。
+ - 包括要素: 【时间】,【地点】,【人物】,【事件】,【情感】
+ - 即使缺少某些要素，只要是具体事件、行为、经历或互动，也归类为episodic_memory"""
 
 VARIABLES_DESCRIPTION_TEMPLATE_PROMPT = """
 ### 步骤2：变量提取

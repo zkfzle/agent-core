@@ -136,10 +136,7 @@ class TestMilvusIndexer:
 
         with patch.object(indexer, "_ensure_collection", new_callable=AsyncMock) as mock_ensure:
             mock_ensure.return_value = None
-            try:
-                result = await indexer.build_index(chunks, config)
-            except BaseError:
-                result = False
+            result = await indexer.build_index(chunks, config)
             assert result is False  # Should fail
 
     @pytest.mark.asyncio

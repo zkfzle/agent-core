@@ -176,7 +176,7 @@ class ChromaIndexer(Indexer):
             should_raise = [StatusCode.RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR.code]
             # Re-raise all BaseError exceptions to preserve error information
             # This includes embedding errors, configuration errors, and runtime errors
-            if isinstance(e, BaseError):
+            if isinstance(e, BaseError) and getattr(e, "code", None) in should_raise:
                 raise e
             # For non-BaseError exceptions (e.g., from third-party libraries),
             # log and return False to avoid breaking the process

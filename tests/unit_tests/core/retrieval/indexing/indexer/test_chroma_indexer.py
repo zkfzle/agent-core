@@ -153,10 +153,7 @@ class TestChromaIndexer:
         chunks = [TextChunk(id_="1", text="chunk 1", doc_id="doc_1")]
         config = IndexConfig(index_name="test_index", index_type="vector")
 
-        try:
-            result = await indexer.build_index(chunks, config)
-        except BaseError:
-            result = False
+        result = await indexer.build_index(chunks, config)
         assert result is False  # Should fail
 
     @pytest.mark.asyncio

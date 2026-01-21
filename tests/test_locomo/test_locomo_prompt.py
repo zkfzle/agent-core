@@ -39,7 +39,7 @@ Please follow these guidelines:
 - Keep your response concise, natural, and **directly** responsive to the question.
 
 # Notice
-- Every memory should has its own conversation time, carefully understanding the conversation information and analysis 
+- Every memory should have its own conversation time, carefully understanding the conversation information and analysis 
 the event time based on the conversation time.
 - You can just answer the question **directly**, no need to explain how you get the answer.
 

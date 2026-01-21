@@ -8,8 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig
+from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 
 
 class ConcreteKnowledgeBase(KnowledgeBase):
@@ -62,10 +62,19 @@ class TestKnowledgeBase:
         mock_extractor = MagicMock()
         mock_index_manager = MagicMock()
         mock_llm_client = MagicMock()
-        mock_vector_store.database_name = "database_name"
-        mock_index_manager.database_name = "database_name"
-        mock_vector_store.distance_metric = "mock_metric"
-        mock_index_manager.distance_metric = "mock_metric"
+        # Set required attributes for validation
+        for attr in [
+            "database_name",
+            "distance_metric",
+            "index_type",
+            "text_field",
+            "vector_field",
+            "sparse_vector_field",
+            "metadata_field",
+            "doc_id_field",
+        ]:
+            setattr(mock_vector_store, attr, "test_value")
+            setattr(mock_index_manager, attr, "test_value")
 
         kb = ConcreteKnowledgeBase(
             config=config,
@@ -96,8 +105,18 @@ class TestKnowledgeBase:
         mock_extractor = MagicMock()
         mock_index_manager = MagicMock()
         mock_llm_client = MagicMock()
-        mock_vector_store.database_name = "database_name"
-        mock_index_manager.database_name = "database_name"
+        # Set required attributes for validation - most match, but distance_metric differs
+        for attr in [
+            "database_name",
+            "index_type",
+            "text_field",
+            "vector_field",
+            "sparse_vector_field",
+            "metadata_field",
+            "doc_id_field",
+        ]:
+            setattr(mock_vector_store, attr, "test_value")
+            setattr(mock_index_manager, attr, "test_value")
         mock_vector_store.distance_metric = "some_metric"
         mock_index_manager.distance_metric = "different_metric"
 
@@ -125,10 +144,20 @@ class TestKnowledgeBase:
         mock_extractor = MagicMock()
         mock_index_manager = MagicMock()
         mock_llm_client = MagicMock()
+        # Set required attributes for validation - most match, but database_name differs
+        for attr in [
+            "distance_metric",
+            "index_type",
+            "text_field",
+            "vector_field",
+            "sparse_vector_field",
+            "metadata_field",
+            "doc_id_field",
+        ]:
+            setattr(mock_vector_store, attr, "test_value")
+            setattr(mock_index_manager, attr, "test_value")
         mock_vector_store.database_name = "database_name"
         mock_index_manager.database_name = "different_name"
-        mock_vector_store.distance_metric = "some_metric"
-        mock_index_manager.distance_metric = "some_metric"
 
         with pytest.raises(JiuWenBaseException, match="incompatible database_name configs"):
             kb = ConcreteKnowledgeBase(
@@ -151,10 +180,19 @@ class TestKnowledgeBase:
         mock_vector_store.close = AsyncMock()
         mock_index_manager = AsyncMock()
         mock_index_manager.close = AsyncMock()
-        mock_vector_store.database_name = "database_name"
-        mock_index_manager.database_name = "database_name"
-        mock_vector_store.distance_metric = "mock_metric"
-        mock_index_manager.distance_metric = "mock_metric"
+        # Set required attributes for validation
+        for attr in [
+            "database_name",
+            "distance_metric",
+            "index_type",
+            "text_field",
+            "vector_field",
+            "sparse_vector_field",
+            "metadata_field",
+            "doc_id_field",
+        ]:
+            setattr(mock_vector_store, attr, "test_value")
+            setattr(mock_index_manager, attr, "test_value")
 
         kb = ConcreteKnowledgeBase(
             config=config,
@@ -173,10 +211,19 @@ class TestKnowledgeBase:
         mock_vector_store.close = MagicMock()
         mock_index_manager = MagicMock()
         mock_index_manager.close = MagicMock()
-        mock_vector_store.database_name = "database_name"
-        mock_index_manager.database_name = "database_name"
-        mock_vector_store.distance_metric = "mock_metric"
-        mock_index_manager.distance_metric = "mock_metric"
+        # Set required attributes for validation
+        for attr in [
+            "database_name",
+            "distance_metric",
+            "index_type",
+            "text_field",
+            "vector_field",
+            "sparse_vector_field",
+            "metadata_field",
+            "doc_id_field",
+        ]:
+            setattr(mock_vector_store, attr, "test_value")
+            setattr(mock_index_manager, attr, "test_value")
 
         kb = ConcreteKnowledgeBase(
             config=config,

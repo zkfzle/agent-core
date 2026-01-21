@@ -132,7 +132,7 @@ class TestBranchComponent:
         with pytest.raises(JiuWenBaseException) as error:
             await self.run_with_expression("is_not_empty(${start.input})", None)
         print(error.value)
-        assert error.value.error_code == StatusCode.COMPONENT_BRANCH_EXECUTION_ERROR.code
+        assert error.value.error_code == StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code
 
         with pytest.raises(JiuWenBaseException) as error:
             await self.run_with_expression("is_not_empty(${start.input})", 1.2)

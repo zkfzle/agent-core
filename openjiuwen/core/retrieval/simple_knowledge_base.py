@@ -10,8 +10,8 @@ from typing import Any, List, Optional, Dict
 import uuid
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig, RetrievalConfig
 from openjiuwen.core.retrieval.common.document import Document
@@ -76,9 +76,9 @@ class SimpleKnowledgeBase(KnowledgeBase):
     ) -> List[Document]:
         """Parse files from file paths into a list of Document objects"""
         if not self.parser:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_PARSER_NOT_FOUND.code,
-                StatusCode.RETRIEVAL_KB_PARSER_NOT_FOUND.errmsg.format(error_msg="parser is required for parse_files"),
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_PARSER_NOT_FOUND,
+                error_msg="parser is required for parse_files"
             )
 
         all_documents = []
@@ -106,18 +106,14 @@ class SimpleKnowledgeBase(KnowledgeBase):
     ) -> List[str]:
         """Add documents to the knowledge base"""
         if not self.chunker:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.code,
-                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.errmsg.format(
-                    error_msg="chunker is required for add_documents"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND,
+                error_msg="chunker is required for add_documents"
             )
         if not self.index_manager:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code,
-                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.errmsg.format(
-                    error_msg="index_manager is required for add_documents"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND,
+                error_msg="index_manager is required for add_documents"
             )
 
         # Chunk documents
@@ -134,24 +130,18 @@ class SimpleKnowledgeBase(KnowledgeBase):
         database_name = getattr(getattr(self.vector_store, "config", None), "database_name", "")
         if not isinstance(database_name, str):
             database_name = ""
-        # build_index now raises exceptions instead of returning False
-        # If it's a JiuWenBaseException, re-raise it to preserve the original error message
-        try:
-            await self.index_manager.build_index(
-                chunks=chunks,
-                config=index_config,
-                embed_model=self.embed_model,
-                database_name=database_name,
+        success = await self.index_manager.build_index(
+            chunks=chunks,
+            config=index_config,
+            embed_model=self.embed_model,
+            database_name=database_name,
+        )
+
+        if not success:
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR,
+                error_msg="Failed to build index"
             )
-        except JiuWenBaseException:
-            # Re-raise JiuWenBaseException to preserve the original error message
-            raise
-        except Exception as e:
-            # Wrap other exceptions in JiuWenBaseException with detailed error message
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR.code,
-                StatusCode.RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR.errmsg.format(error_msg=str(e)),
-            ) from e
 
         # Return document ID list
         doc_ids = [doc.id_ for doc in documents]
@@ -168,11 +158,9 @@ class SimpleKnowledgeBase(KnowledgeBase):
         if not self.retriever:
             # Auto-create retriever
             if not self.vector_store:
-                raise JiuWenBaseException(
-                    StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND.code,
-                    StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND.errmsg.format(
-                        error_msg="vector_store or retriever is required for retrieve"
-                    ),
+                raise build_error(
+                    StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND,
+                    error_msg="vector_store or retriever is required for retrieve"
                 )
 
             # Select appropriate retriever based on index_type
@@ -224,11 +212,9 @@ class SimpleKnowledgeBase(KnowledgeBase):
     ) -> bool:
         """Delete documents"""
         if not self.index_manager:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code,
-                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.errmsg.format(
-                    error_msg="index_manager is required for delete_documents"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND,
+                error_msg="index_manager is required for delete_documents"
             )
 
         index_name = f"kb_{self.config.kb_id}_chunks"
@@ -251,18 +237,14 @@ class SimpleKnowledgeBase(KnowledgeBase):
     ) -> List[str]:
         """Update documents"""
         if not self.chunker:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.code,
-                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND.errmsg.format(
-                    error_msg="chunker is required for update_documents"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_CHUNKER_NOT_FOUND,
+                error_msg="chunker is required for update_documents"
             )
         if not self.index_manager:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.code,
-                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND.errmsg.format(
-                    error_msg="index_manager is required for update_documents"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND,
+                error_msg="index_manager is required for update_documents"
             )
 
         # Chunk documents

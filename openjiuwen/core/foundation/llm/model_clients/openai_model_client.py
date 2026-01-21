@@ -94,6 +94,7 @@ class OpenAIModelClient(BaseModelClient):
         Returns:
             AssistantMessage: Model response
         """
+        record_running_data = kwargs.pop("record_running_data", None)
         # Build request parameters
         params = self._build_request_params(
             messages=messages,
@@ -106,6 +107,8 @@ class OpenAIModelClient(BaseModelClient):
             stream=False,
             **kwargs
         )
+        if record_running_data:
+            await record_running_data(llm_params=params)
 
         async_client = None
         try:
@@ -164,6 +167,7 @@ class OpenAIModelClient(BaseModelClient):
         Yields:
             AssistantMessageChunk: Streaming response chunk
         """
+        record_running_data = kwargs.pop("record_running_data", None)
         # Build request parameters
         params = self._build_request_params(
             messages=messages,
@@ -176,6 +180,8 @@ class OpenAIModelClient(BaseModelClient):
             stream=True,
             **kwargs
         )
+        if record_running_data:
+            await record_running_data(llm_params=params)
 
         async_client = None
         try:

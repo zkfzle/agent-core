@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from abc import abstractmethod
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 import json
@@ -73,7 +74,11 @@ class RequestRerankerModel(RequestChatModel):
     Abstract Request Reranker
 
     """
-    api_endpoint_suffix = "/services/rerank/text-rerank/text-rerank"
+
+    def __init__(self, api_key: str = RERANK_API_KEY, api_base: str = RERANK_API_BASE, max_retries: int = RERANK_MAX_RETRIES, timeout: int = RERANK_TIMEOUT, **kwargs):
+        super().__init__(api_base=api_base, api_key=api_key, max_retries=max_retries, timeout=timeout, **kwargs)
+        self.model_name = RERANK_MODEL_NAME
+
 
     def _parse_response(self, model_name: str, response_data: Dict) -> list[float]:
         return [r["relevance_score"] for r in response_data["output"]["results"]]
@@ -92,29 +97,15 @@ class RequestRerankerModel(RequestChatModel):
         )
         return response
 
-
-class APIRequestReranker(RequestRerankerModel):
-
-    def __init__(self, api_key: str = RERANK_API_KEY, api_base: str = RERANK_API_KEY, max_retries: int = RERANK_MAX_RETRIES, timeout: int = RERANK_TIMEOUT, **kwargs):
-        super().__init__(api_base=api_base, api_key=api_key, max_retries=max_retries, timeout=timeout, **kwargs)
-        self.model_name = RERANK_MODEL_NAME
+    @abstractmethod
+    def _build_request_input_parameters(self, model_name: str, query: str, documents: List[Dict], **kwargs):
+        raise NotImplementedError()
 
     def _request_params(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                         **kwargs: Any) -> Dict:
         documents = messages[0]["documents"]
         query = messages[0]["query"]
-        params = {
-            "model": model_name,
-            "input": {
-                "query": query,
-                "documents": documents,
-            },
-            "parameters": {
-                "top_n": len(documents),
-                "return_documents": False,
-            },
-            **kwargs
-        }
+        params = self._build_request_input_parameters(model_name=model_name, query=query, documents=documents, **kwargs)
 
         if tools:
             params["tools"] = tools
@@ -128,6 +119,42 @@ class APIRequestReranker(RequestRerankerModel):
         return params
 
 
+class DashscopeRerankerModel(RequestRerankerModel):
+    api_endpoint_suffix = "/services/rerank/text-rerank/text-rerank"
+
+    def _build_request_input_parameters(self, model_name: str, query: str, documents: List[Dict], **kwargs) -> Dict[str, Any]:
+        return {
+            "model": model_name,
+            "input": {
+                "query": query,
+                "documents": documents,
+            },
+            "parameters": {
+                "top_n": len(documents),
+                "return_documents": False,
+            },
+            **kwargs
+        }
+
+class SiliconFlowRerankerModel(RequestRerankerModel):
+    api_endpoint_suffix = "/rerank"
+
+    def _build_request_input_parameters(self, model_name: str, query: str, documents: List[Dict], **kwargs) -> Dict[str, Any]:
+        return {
+            "model": model_name,
+            "query": query,
+            "documents": documents,
+            "top_n": len(documents),
+            "return_documents": False,
+            **kwargs
+        }
+
+    def _parse_response(self, model_name: str, response_data: Dict) -> list[float]:
+        return [r["relevance_score"] for r in response_data["results"]]
+
+
+
+
 
 class ContextFilter:
     """
@@ -136,7 +163,7 @@ class ContextFilter:
     """
 
     def __init__(self):
-        self.reranker = APIRequestReranker()
+        self.reranker = SiliconFlowRerankerModel()
         self.min_similarity_score = 0.25
         self.min_rerank_score = 0.5
         self.max_ratio = 0.5
@@ -164,7 +191,7 @@ class ConversationProcessor:
         self.context_filter = ContextFilter()
 
 
-    async def init_resources(self):
+    async def init_resources(self, db_path: str = None):
         """初始化当前conversation的独立资源（核心：不使用全局单例）"""
         async with self.init_lock:
             if self.init_done:
@@ -195,7 +222,7 @@ class ConversationProcessor:
                 utc_now = datetime.now(timezone.utc)
                 time_str = utc_now.strftime("%Y%m%d%H%M%S")
                 uuid_str = uuid.uuid4().hex[:6]
-                db_path = Path(f"{self.resource_dir}/test_sql_db_{time_str}_{uuid_str}_{self.conv_id}.db").resolve()
+                db_path = db_path or Path(f"{self.resource_dir}/test_sql_db_{time_str}_{uuid_str}_{self.conv_id}.db").resolve()
                 db_store = DefaultDbStore(create_async_engine(f"sqlite+aiosqlite:///{db_path}"))
                 await create_tables(db_store)
                 # 4. 手动创建MemoryEngine实例（关键：不使用全局单例）
@@ -301,9 +328,9 @@ class ConversationProcessor:
             query=query,
             num=retrieve_num
         )
-
-        filtered_memory = await self.context_filter.afilter(query=query, documents=user_memory)
-        user_memory = [m for m, _ in filtered_memory]
+        if user_memory:
+            filtered_memory = await self.context_filter.afilter(query=query, documents=user_memory)
+            user_memory = [m for m, _ in filtered_memory]
 
         memory_msg_list = []
         for memory in user_memory:
@@ -443,13 +470,13 @@ class ConversationProcessor:
             json.dump(total_result, file, ensure_ascii=False)
             file.write('\n')
 
-    async def process_full(self, data_enum: dict, build_memory=True):
+    async def process_full(self, data_enum: dict, db_path:str = None, build_memory=True):
         """处理单个conversation的完整流程"""
         global processed_conversations, progress_bar
 
         try:
             # 1. 初始化独立资源（关键：创建私有MemoryEngine）
-            await self.init_resources()
+            await self.init_resources(db_path)
 
             # 2. 获取speaker信息
             speaker_a = data_enum['conversation']['speaker_a']
@@ -578,7 +605,7 @@ async def main(args):
         data_enum = data[conv_id]
         processor = ConversationProcessor(conv_id)
         # 添加到任务列表
-        task = processor.process_full(data_enum, build_memory=args.build_memory)
+        task = processor.process_full(data_enum, db_path=args.db_path, build_memory=args.build_memory)
         tasks.append(task)
 
     # 4. 执行所有任务（协程交替执行）
@@ -603,5 +630,6 @@ if __name__ == '__main__':
     parser.add_argument('-rr', '--rerank', action="store_true")
     parser.add_argument('-fc', '--filter-context', action="store_true")
     parser.add_argument('-lm', '--build-memory', action="store_true")
+    parser.add_argument('-dbp', '--db-path', type=str, default=None)
     args = parser.parse_args()
     asyncio.run(main(args))

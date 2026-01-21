@@ -25,6 +25,7 @@ from openjiuwen.core.runner.resources_manager.resource_registry import ResourceR
 from openjiuwen.core.session import Session
 from openjiuwen.core.single_agent import AgentCard
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.workflow import WorkflowCard
 from openjiuwen.core.workflow.workflow import Workflow
 
@@ -975,6 +976,70 @@ class ResourceMgr:
             True if the resource has the specified tag, False otherwise.
         """
         pass
+
+    def add_sys_operation(self, card: SysOperationCard, *, tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                          tag_update_strategy: TagUpdateStrategy = TagUpdateStrategy.MERGE) -> Result[str, Exception]:
+        """
+        Add a sys_operation to the resource manager.
+
+        Args:
+            card: SysOperationCard containing configuration and identification
+            tag: Optional tag(s) for categorizing and filtering the sys_operation
+            tag_update_strategy: Strategy for updating tags when sys_operation already exists
+
+        Returns:
+            Result[str, Exception]: Result object containing the operation ID or an exception
+        """
+        try:
+            self._resource_registry.sys_operation().add_sys_operation(card)
+            return Ok(card.id)
+        except Exception as e:
+            return Error(e)
+
+    def remove_sys_operation(self, *, operation_id: Union[str, list[str]] = None,
+                             tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                             tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                             skip_if_not_exists: bool = False) -> Result[str, Exception] | list[Result[str, Exception]]:
+        """
+        Remove sys_operation(s) by ID or tag.
+
+        Args:
+            operation_id: Single ID or list of IDs of sys_operations to remove
+            tag: Single tag or list of tags; removes all sys_operations with matching tags
+            tag_match_strategy: Strategy for matching tags when using tag parameter
+            skip_if_not_exists: If True, skip non-existent sys_operations
+
+        Returns:
+            Result[str, Exception] or list[Result[str, Exception]]:
+                Result object(s) containing the operation ID(s) or exception(s)
+        """
+        if isinstance(operation_id, str):
+            try:
+                self._resource_registry.sys_operation().remove_sys_operation(operation_id)
+                return Ok(operation_id)
+            except Exception as e:
+                return Error(e)
+        else:
+            results = []
+            for op_id in operation_id:
+                try:
+                    self._resource_registry.sys_operation().remove_sys_operation(op_id)
+                    results.append(Ok(op_id))
+                except Exception as e:
+                    results.append(Error(e))
+            return results
+
+    def get_sys_operation(self, operation_id: str) -> Optional[SysOperation]:
+        """
+        Get a sys_operation instance by ID.
+
+        Args:
+            operation_id: Unique identifier for the operation
+
+        Returns:
+            SysOperation instance if found, None otherwise
+        """
+        return self._resource_registry.sys_operation().get_sys_operation(operation_id)
 
     async def release(self):
         await self._resource_registry.tool().release()

@@ -16,11 +16,11 @@
 - _child_to_parent: 子父关系索引，用于快速查找父任务
 - _root_tasks: 根任务集合，用于快速查找根任务
 """
+from dataclasses import Field
 from typing import Dict, Any, List, Union, Set, Optional
 from collections import defaultdict
 
 from pydantic.v1 import BaseModel
-from typing_extensions import Literal
 
 from openjiuwen.core.controller.schema.task import Task, TaskStatus
 
@@ -41,7 +41,7 @@ class TaskQuery(BaseModel):
     task_id: Optional[Union[str, List[str]]] = None,
     session_id: Optional[str] = None,
     user_id: Optional[str] = None,
-    priority: int = None,
+    priority: Optional[int] = None,
     status: Optional[TaskStatus] = None,
     with_children: bool = False,
     is_recursive: bool = False,
@@ -105,7 +105,7 @@ class TaskManager:
         self._priority_index = state.priority_index
         self._parent_to_children = state.parent_to_children
         self._child_to_parent = state.child_to_parent
-        self.root_tasks = state.root_tasks
+        self._root_tasks = state.root_tasks
 
     # ==================== 任务 CRUD 操作 ====================
     def add_task(self, task: Union[Task, List[Task]]):
@@ -240,6 +240,11 @@ class TaskManager:
             with_children: 是否同时更新子任务状态
             is_recursive: 是否递归更新子任务状态
         """
+        if task_id is not None and isinstance(task_id, str) and task_id in self.tasks:
+            task = self.pop_task(TaskQuery(task_id=task_id))
+            task.status = new_status
+            self.add_task(task)
+        # 其他更新状态逻辑
         ...
 
     # ==================== 任务优先级管理 ====================
@@ -260,6 +265,11 @@ class TaskManager:
             with_children: 是否同时更新子任务优先级
             is_recursive: 是否递归更新子任务优先级
         """
+        if task_id is not None and isinstance(task_id, str) and task_id in self.tasks:
+            task = self.pop_task(TaskQuery(task_id=task_id))
+            task.priority = new_priority
+            self.add_task(task)
+        # 其他设置任务优先级逻辑
         ...
 
 

@@ -5,6 +5,7 @@
 # Less noisy
 MAKEFLAGS += --no-print-directory
 TESTFLAGS ?= .
+PYTHON ?= python
 
 LINESEP := ------------------------------------------------------------------
 DEPENDENCIES := "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests" "codespell>=2.2.4"
@@ -42,7 +43,7 @@ endif
 # Use -z flag (null-terminated) to avoid git quoting filenames
 CHANGES_RAW := $(strip $(shell \
 	git diff -z --name-only $(DIFF_OPTION) --diff-filter=ACMR 2>$(NULL) | \
-	python -c "import re;print(*(f for f in open(0).read().split('\0')if re.search(r'\.pyi?\Z',f)),sep='\n')" \
+	$(PYTHON) -c "import re;print(*(f for f in open(0).read().split('\0')if re.search(r'\.pyi?\Z',f)),sep='\n')" \
 ))
 
 # Helper functions to check for quotes in paths and escape double quotes within a string

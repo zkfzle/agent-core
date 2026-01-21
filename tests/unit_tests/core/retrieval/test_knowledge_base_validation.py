@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig
 from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 
@@ -138,7 +138,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.database_name = "db1"
         mock_index_manager.database_name = "db2"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible database_name configs"):
+        with pytest.raises(BaseError, match="incompatible database_name configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -153,7 +153,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.distance_metric = "cosine"
         mock_index_manager.distance_metric = "euclidean"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible distance_metric configs"):
+        with pytest.raises(BaseError, match="incompatible distance_metric configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -168,7 +168,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.index_type = "vector"
         mock_index_manager.index_type = "bm25"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible index_type configs"):
+        with pytest.raises(BaseError, match="incompatible index_type configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -183,7 +183,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.text_field = "text"
         mock_index_manager.text_field = "content"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible text_field configs"):
+        with pytest.raises(BaseError, match="incompatible text_field configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -198,7 +198,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.vector_field = "embedding"
         mock_index_manager.vector_field = "vector"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible vector_field configs"):
+        with pytest.raises(BaseError, match="incompatible vector_field configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -213,7 +213,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.sparse_vector_field = "sparse_embedding"
         mock_index_manager.sparse_vector_field = "bm25_vector"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible sparse_vector_field configs"):
+        with pytest.raises(BaseError, match="incompatible sparse_vector_field configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -228,7 +228,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.metadata_field = "meta"
         mock_index_manager.metadata_field = "metadata"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible metadata_field configs"):
+        with pytest.raises(BaseError, match="incompatible metadata_field configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -243,7 +243,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.doc_id_field = "document_id"
         mock_index_manager.doc_id_field = "doc_id"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible doc_id_field configs"):
+        with pytest.raises(BaseError, match="incompatible doc_id_field configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -258,7 +258,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.database_name = "db1"
         mock_index_manager.database_name = "db2"
 
-        with pytest.raises(JiuWenBaseException) as exc_info:
+        with pytest.raises(BaseError) as exc_info:
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -310,7 +310,7 @@ class TestKnowledgeBaseConfigurationValidation:
         mock_vector_store.distance_metric = "metric1"
         mock_index_manager.distance_metric = "metric2"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible database_name configs"):
+        with pytest.raises(BaseError, match="incompatible database_name configs"):
             ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,

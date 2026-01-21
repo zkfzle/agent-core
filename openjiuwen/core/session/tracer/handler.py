@@ -127,6 +127,9 @@ class TraceAgentHandler(TraceBaseHandler):
             update_data["elapsed_time"] = elapsed_time
         self._span_manager.update_span(span, update_data)
 
+    def _update_running_trace_data(self, span: TraceAgentSpan, **kwargs):
+        self._span_manager.update_span(span, kwargs)
+
     @trigger_event
     async def on_chain_start(self, span: TraceAgentSpan, inputs: Any, instance_info: dict, **kwargs):
         self._update_start_trace_data(invoke_type=InvokeType.CHAIN.value, span=span, inputs=inputs,
@@ -148,6 +151,10 @@ class TraceAgentHandler(TraceBaseHandler):
         self._update_start_trace_data(invoke_type=InvokeType.LLM.value, span=span, inputs=inputs,
                                       instance_info=instance_info, **kwargs)
         await self._send_data(span)
+
+    @trigger_event
+    async def on_llm_running(self, span: TraceAgentSpan, **kwargs):
+        self._update_running_trace_data(span, **kwargs)
 
     @trigger_event
     async def on_llm_end(self, span: TraceAgentSpan, outputs, **kwargs):

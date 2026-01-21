@@ -107,7 +107,18 @@ def async_trace(func, session, invoke_type: InvokeType, instance_info,
                                  instance_info=instance_info)
 
             args = args[1:]
-            result = await func(*args, **kwargs)
+
+            # record llm running data
+            async def record_running_data(**record_kwargs):
+                await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_running", span=span, **record_kwargs)
+
+            call_kwargs = dict(kwargs)
+            if invoke_type.value == InvokeType.LLM.value:
+                call_kwargs["record_running_data"] = record_running_data
+            # NOTE: for normal async invoke we must await, otherwise we only return a coroutine
+            # and the underlying model/tool/workflow invoke will never actually run.
+            result = await func(*args, **call_kwargs)
+
             await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_end", span=span,
                                  outputs={"outputs": result})
             return result
@@ -163,7 +174,16 @@ def async_trace_stream(func, session, invoke_type: InvokeType, instance_info,
                                  else kwargs.get(inputs_field_name, {})},
                                  instance_info=instance_info)
             args = args[1:]
-            result = func(*args, **kwargs)
+
+            # record llm running data
+            async def record_running_data(**record_kwargs):
+                await tracer.trigger("tracer_agent", "on_" + invoke_type.value + "_running", span=span, **record_kwargs)
+
+            call_kwargs = dict(kwargs)
+            if invoke_type.value == InvokeType.LLM.value:
+                call_kwargs["record_running_data"] = record_running_data
+            result = func(*args, **call_kwargs)
+
             results = []
             if hasattr(result, "__aiter__") or hasattr(result, "__anext__"):
                 async for item in result:

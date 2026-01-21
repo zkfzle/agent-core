@@ -37,6 +37,7 @@ class TraceAgentSpan(Span):
     name: str = Field(default=None, alias="name")
     elapsed_time: Optional[str] = Field(default=None, alias="elapsedTime")
     meta_data: Optional[dict] = Field(default=None, alias="metaData")  # include llm function tools and token infos
+    llm_params: Optional[dict] = Field(default=None, alias="llmParams")
 
 
 class TraceWorkflowSpan(Span):

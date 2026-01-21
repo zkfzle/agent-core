@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
 from openjiuwen.core.retrieval.common.config import KnowledgeBaseConfig
 
@@ -101,7 +101,7 @@ class TestKnowledgeBase:
         mock_vector_store.distance_metric = "some_metric"
         mock_index_manager.distance_metric = "different_metric"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible distance_metric configs"):
+        with pytest.raises(BaseError, match="incompatible distance_metric configs"):
             kb = ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,
@@ -130,7 +130,7 @@ class TestKnowledgeBase:
         mock_vector_store.distance_metric = "some_metric"
         mock_index_manager.distance_metric = "some_metric"
 
-        with pytest.raises(JiuWenBaseException, match="incompatible database_name configs"):
+        with pytest.raises(BaseError, match="incompatible database_name configs"):
             kb = ConcreteKnowledgeBase(
                 config=config,
                 vector_store=mock_vector_store,

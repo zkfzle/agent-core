@@ -1,16 +1,21 @@
-"""任务执行器模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块定义了任务执行器的抽象基类，用于执行不同类型的任务。
 
-主要类：
-- TaskExecutor: 任务执行器抽象基类，定义任务执行的接口
+"""Task executor module.
 
-主要职责：
-- 执行任务（execute）
-- 检查任务是否可以暂停（can_pause）
-- 暂停任务（pause）
-- 检查任务是否可以取消（can_cancel）
-- 取消任务（cancel）
+This module defines the abstract base class for task executors, used to
+execute different kinds of tasks.
+
+Main class:
+- TaskExecutor: abstract base class defining the execution interface.
+
+Key responsibilities:
+- Execute tasks (``execute``).
+- Check whether a task can be paused (``can_pause``).
+- Pause a task (``pause``).
+- Check whether a task can be canceled (``can_cancel``).
+- Cancel a task (``cancel``).
 """
 from __future__ import annotations
 
@@ -29,16 +34,17 @@ if TYPE_CHECKING:
 
 
 class TaskExecutor(ABC):
-    """任务执行器抽象基类
+    """Abstract base class for task executors.
 
-    定义任务执行的接口，不同类型的任务需要实现不同的TaskExecutor。
+    Defines the interface for executing tasks. Different logical task types
+    should implement their own specialized ``TaskExecutor`` subclasses.
 
-    主要职责：
-    - 执行任务（execute_ability）
-    - 检查任务是否可以暂停（can_pause）
-    - 暂停任务（pause）
-    - 检查任务是否可以取消（can_cancel）
-    - 取消任务（cancel）
+    Responsibilities:
+        - Execute tasks (``execute``).
+        - Check if a task can be paused (``can_pause``).
+        - Pause tasks (``pause``).
+        - Check if a task can be canceled (``can_cancel``).
+        - Cancel tasks (``cancel``).
     """
     def __init__(
             self,
@@ -48,14 +54,14 @@ class TaskExecutor(ABC):
             task_manager: TaskManager,
             event_queue: EventQueue
     ):
-        """初始化任务执行器
+        """Initialize a task executor.
 
         Args:
-            config: 控制器配置
-            ability_manager: 能力包，包含可用的工具、工作流等
-            context_engine: 上下文引擎，用于管理对话上下文
-            task_manager: 任务管理器，用于更新任务状态
-            event_queue: 事件队列，用于发布任务相关事件
+            config: Controller configuration.
+            ability_manager: Ability manager containing tools, workflows, etc.
+            context_engine: Context engine used to manage conversation context.
+            task_manager: Task manager used to update task state.
+            event_queue: Event queue used to publish task-related events.
         """
         self._config = config
         self._ability_manager = ability_manager
@@ -65,65 +71,65 @@ class TaskExecutor(ABC):
 
     @abstractmethod
     async def execute(self, task_id: str, session: Session) -> AsyncIterator[ControllerOutputChunk]:
-        """执行任务
+        """Execute a task and stream outputs.
 
         Args:
-            task_id: 任务ID
-            session: 会话对象
+            task_id: Task identifier.
+            session: Session object.
 
         Yields:
-            ControllerOutputChunk: 任务执行过程中的输出块
+            ControllerOutputChunk: Output chunks produced during execution.
         """
         ...
 
     @abstractmethod
     async def can_pause(self, task_id: str, session: Session) -> Tuple[bool, str]:
-        """检查任务是否可以暂停
+        """Check whether the task can be paused.
 
         Args:
-            task_id: 任务ID
-            session: 会话对象
+            task_id: Task identifier.
+            session: Session object.
 
         Returns:
-            Tuple[bool, str]: (是否可以暂停, 如果不能暂停的原因)
+            Tuple[bool, str]: (can_pause, reason_if_not).
         """
         ...
 
     @abstractmethod
     async def pause(self, task_id: str, session: Session) -> bool:
-        """暂停任务
+        """Pause the given task.
 
         Args:
-            task_id: 任务ID
-            session: 会话对象
+            task_id: Task identifier.
+            session: Session object.
 
         Returns:
-            bool: 是否成功暂停
+            bool: Whether the pause operation succeeded.
         """
         ...
 
     @abstractmethod
     async def can_cancel(self, task_id: str, session: Session) -> Tuple[bool, str]:
-        """检查任务是否可以取消
+        """Check whether the task can be canceled.
 
         Args:
-            task_id: 任务ID
-            session: 会话对象
+            task_id: Task identifier.
+            session: Session object.
 
         Returns:
-            Tuple[bool, str]: (是否可以取消, 如果不能取消的原因)
+            Tuple[bool, str]: (can_cancel, reason_if_not).
         """
         ...
 
     @abstractmethod
     async def cancel(self, task_id: str, session: Session) -> bool:
-        """取消任务
+        """Cancel the given task.
 
         Args:
-            task_id: 任务ID
-            session: 会话对象
+            task_id: Task identifier.
+            session: Session object.
 
         Returns:
-            bool: 是否成功取消
+            bool: Whether the cancel operation succeeded.
         """
         ...

@@ -1,14 +1,20 @@
-"""事件处理器模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块定义了事件处理器相关的类，包括：
-- EventHandlerInput: 事件处理器输入数据模型
-- EventHandler: 事件处理器抽象基类
 
-事件处理器负责处理不同类型的事件：
-- INPUT: 用户输入事件
-- TASK_INTERACTION: 任务交互事件（任务执行过程中需要用户交互）
-- TASK_COMPLETION: 任务完成事件
-- TASK_FAILED: 任务失败事件
+"""Event handler module.
+
+This module defines classes related to event handling:
+
+- EventHandlerInput: data model for event handler inputs.
+- EventHandler: abstract base class for concrete event handlers.
+
+Event handlers are responsible for processing different event types:
+- INPUT: user input events.
+- TASK_INTERACTION: task interaction events (when execution requires user
+  interaction).
+- TASK_COMPLETION: task completion events.
+- TASK_FAILED: task failure events.
 """
 from abc import abstractmethod, ABC
 from typing import TYPE_CHECKING
@@ -27,33 +33,36 @@ if TYPE_CHECKING:
 
 
 class EventHandlerInput(BaseModel):
-    """事件处理器输入数据模型
+    """Input payload for event handlers.
 
-    包含事件和会话信息，用于传递给事件处理器。
+    Encapsulates both the event and the associated session so they can be
+    passed together to handler methods.
 
     Attributes:
-        event: 事件对象
-        session: 会话对象
+        event: Event object.
+        session: Session object.
     """
     event: Event
     session: Session
 
 
 class EventHandler(ABC):
-    """事件处理器抽象基类
+    """Abstract base class for event handlers.
 
-    定义事件处理的接口，不同类型的控制器需要实现不同的事件处理器。
+    Defines the interface for handling different types of events. Concrete
+    controllers should implement their own event handlers.
 
-    主要职责：
-    - 处理输入事件（handle_input）
-    - 处理任务交互事件（handle_task_interaction）
-    - 处理任务完成事件（handle_task_completion）
-    - 处理任务失败事件（handle_task_failed）
+    Responsibilities:
+        - Handle input events (``handle_input``).
+        - Handle task interaction events (``handle_task_interaction``).
+        - Handle task completion events (``handle_task_completion``).
+        - Handle task failure events (``handle_task_failed``).
     """
     def __init__(self):
-        """初始化事件处理器
+        """Initialize the event handler.
 
-        初始化时所有依赖为None，需要通过属性设置器注入依赖。
+        All dependencies are initialized as ``None`` and should be injected
+        later via property setters.
         """
         self._config = None
         self._context_engine = None
@@ -103,42 +112,42 @@ class EventHandler(ABC):
 
     @abstractmethod
     async def handle_input(self, inputs: EventHandlerInput):
-        """处理输入事件
+        """Handle user input events.
 
         Args:
-            inputs: 事件处理器输入，包含事件和会话信息
+            inputs: Event handler input containing event and session.
         """
         ...
 
     @abstractmethod
     async def handle_task_interaction(self, inputs: EventHandlerInput):
-        """处理任务交互事件
+        """Handle task interaction events.
 
-        当任务执行过程中需要用户交互时触发。
+        Triggered when a running task requires user interaction.
 
         Args:
-            inputs: 事件处理器输入，包含事件和会话信息
+            inputs: Event handler input containing event and session.
         """
         ...
 
     @abstractmethod
     async def handle_task_completion(self, inputs: EventHandlerInput):
-        """处理任务完成事件
+        """Handle task completion events.
 
-        当任务执行完成时触发。
+        Triggered when a task finishes successfully.
 
         Args:
-            inputs: 事件处理器输入，包含事件和会话信息
+            inputs: Event handler input containing event and session.
         """
         ...
 
     @abstractmethod
     async def handle_task_failed(self, inputs: EventHandlerInput):
-        """处理任务失败事件
+        """Handle task failure events.
 
-        当任务执行失败时触发。
+        Triggered when a task fails during execution.
 
         Args:
-            inputs: 事件处理器输入，包含事件和会话信息
+            inputs: Event handler input containing event and session.
         """
         ...

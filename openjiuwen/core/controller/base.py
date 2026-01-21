@@ -1,10 +1,16 @@
-"""控制器基类定义
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-包含的主要类：
-- ControllerConfig: 控制器状态枚举
-- BaseController: 控制器基类
 
-控制器负责处理事件，管理任务生命周期，并进行意图识别和处理。
+"""Controller core definitions.
+
+This module defines the core configuration and runtime controller:
+
+- ControllerConfig: configuration for controller behavior
+- Controller: high-level controller that orchestrates events and task lifecycle
+
+The controller is responsible for handling events, managing the lifecycle of
+tasks, and coordinating intent recognition and processing.
 """
 from typing import AsyncIterator, Optional, List, Callable
 
@@ -25,37 +31,47 @@ from openjiuwen.core.single_agent.base import AbilityManager
 
 
 class ControllerConfig(BaseModel):
-    """控制器配置
+    """Controller configuration.
 
-    定义控制器的配置参数，用于控制控制器的行为。
-    配置项分为几个类别：任务调度、任务管理、事件队列和意图识别。
+    Defines configuration parameters that control controller behavior.
+    Configuration items are grouped into several categories: task scheduling,
+    task management, event queue, and intent recognition.
 
     Attributes:
-        # ==================== 任务调度配置 ====================
-        max_concurrent_tasks: 最大并发任务数，控制同时执行的任务数量上限。
-                             默认为5，设置为0表示不限制。
-        schedule_interval: 任务调度间隔（秒），调度器定期扫描待执行任务的间隔时间。
-                           默认为1.0秒，较小的值可以提高响应速度但会增加CPU使用。
-        task_timeout: 任务超时时间（秒），超过此时间的任务将被标记为失败。
-                     默认为None，表示不设置超时。
+        # ==================== Task scheduling config ====================
+        max_concurrent_tasks: Maximum number of concurrent tasks. Controls the
+            upper limit of tasks executed at the same time. Default is 5. Set
+            to 0 to indicate no limit.
+        schedule_interval: Task scheduling interval (seconds). The interval at
+            which the scheduler periodically scans for tasks to run. Default is
+            1.0 seconds. Smaller values improve responsiveness but increase CPU
+            usage.
+        task_timeout: Task timeout (seconds). Tasks exceeding this duration
+            will be marked as failed. Default is None, meaning no timeout.
 
-        # ==================== 任务管理配置 ====================
-        default_task_priority: 默认任务优先级，创建任务时如果未指定优先级则使用此值。
-                               默认为1，数字越大优先级越高。
-        enable_task_persistence: 是否启用任务持久化，启用后任务状态会被保存以便恢复。
-                                 默认为False。
+        # ==================== Task management config ====================
+        default_task_priority: Default task priority used when creating a task
+            without an explicit priority. Default is 1. Larger values mean
+            higher priority.
+        enable_task_persistence: Whether to enable task persistence. When
+            enabled, task state is stored so that it can be recovered later.
+            Default is False.
 
-        # ==================== 事件队列配置 ====================
-        event_queue_size: 事件队列大小，限制队列中可存储的事件数量。
-                         默认为None，表示不限制队列大小。
-        event_timeout: 事件处理超时时间（秒），超过此时间未处理的事件将被丢弃。
-                      默认为None，表示不设置超时。
+        # ==================== Event queue config ====================
+        event_queue_size: Event queue capacity. Limits the number of events
+            that can be stored in the queue. Default is None, meaning no
+            limit.
+        event_timeout: Event processing timeout (seconds). Events that are not
+            processed within this period will be dropped. Default is None,
+            meaning no timeout.
 
-        # ==================== 意图识别配置 ====================
-        enable_intent_recognition: 是否启用意图识别功能。
-                                   默认为True，启用后会自动识别用户意图并路由到相应处理。
-        intent_confidence_threshold: 意图识别置信度阈值，低于此值的意图将被视为UNKNOWN_TASK。
-                                    默认为0.7，范围0.0-1.0。
+        # ==================== Intent recognition config ====================
+        enable_intent_recognition: Whether to enable intent recognition.
+            Default is True. When enabled, user intent is automatically
+            detected and routed to the corresponding handler.
+        intent_confidence_threshold: Confidence threshold for intent
+            recognition. Intents below this value are treated as
+            UNKNOWN_TASK. Default is 0.7, range 0.0–1.0.
 
     Example:
         ```python
@@ -67,58 +83,79 @@ class ControllerConfig(BaseModel):
         )
         ```
     """
-    # ==================== 任务调度配置 ====================
+    # ==================== Task scheduling config ====================
     max_concurrent_tasks: int = Field(
         default=5,
-        description="最大并发任务数，控制同时执行的任务数量上限。设置为0表示不限制。"
+        description=(
+            "Maximum number of concurrent tasks. Controls the upper limit of "
+            "tasks executed at the same time. Set to 0 for no limit."
+        ),
     )
     schedule_interval: float = Field(
         default=1.0,
         ge=0.1,
-        description="任务调度间隔（秒），调度器定期扫描待执行任务的间隔时间。"
+        description=(
+            "Task scheduling interval (seconds). The scheduler periodically "
+            "scans for tasks to run with this interval."
+        ),
     )
     task_timeout: Optional[float] = Field(
         default=None,
         ge=600,
-        description="任务超时时间（秒），超过此时间的任务将被标记为失败。None表示不设置超时。"
+        description=(
+            "Task timeout (seconds). Tasks exceeding this duration are marked "
+            "as failed. None means no timeout."
+        ),
     )
 
-    # ==================== 任务管理配置 ====================
+    # ==================== Task management config ====================
     default_task_priority: int = Field(
         default=1,
-        description="默认任务优先级，创建任务时如果未指定优先级则使用此值。数字越大优先级越高。"
+        description=(
+            "Default task priority. Used when no priority is given at task "
+            "creation. Larger values mean higher priority."
+        ),
     )
 
-    # ==================== 事件队列配置 ====================
+    # ==================== Event queue config ====================
     event_queue_size: Optional[int] = Field(
         default=None,
         ge=1,
-        description="事件队列大小，限制队列中可存储的事件数量。None表示不限制队列大小。"
+        description=(
+            "Event queue capacity. Limits the number of events stored in the "
+            "queue. None means no limit."
+        ),
     )
     event_timeout: Optional[float] = Field(
         default=None,
         ge=600,
-        description="事件处理超时时间（秒），超过此时间未处理的事件将被丢弃。None表示不设置超时。"
+        description=(
+            "Event processing timeout (seconds). Events not processed within "
+            "this period are dropped. None means no timeout."
+        ),
     )
 
-    # ==================== 意图识别配置 ====================
+    # ==================== Intent recognition config ====================
     intent_confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
         le=1.0,
-        description="意图识别置信度阈值，低于此值的意图将被视为UNKNOWN_TASK。范围0.0-1.0。"
+        description=(
+            "Confidence threshold for intent recognition. Intents below this "
+            "value are treated as UNKNOWN_TASK. Range 0.0–1.0."
+        ),
     )
 
 
 class Controller:
-    """控制器
-    
-    负责处理事件，管理任务生命周期。
-    是ControllerAgent的核心组件。
+    """High-level controller.
+
+    Responsible for handling events and managing the lifecycle of tasks.
+    This is the core component used by a ControllerAgent.
     """
     
     def __init__(self):
-        """初始化控制器"""
+        """Initialize the controller."""
         super().__init__()
         self._card: Optional[str] = None
         self._ability_manager: Optional[AbilityManager] = None
@@ -136,13 +173,13 @@ class Controller:
             ability_manager: AbilityManager,
             context_engine: ContextEngine
     ):
-        """初始化控制器
-        
+        """Initialize controller dependencies.
+
         Args:
-            card: Agent名片
-            config: 控制器配置
-            ability_manager: 能力包
-            context_engine: 上下文引擎
+            card: Agent card with identity and configuration.
+            config: Controller configuration.
+            ability_manager: Ability manager containing tools, workflows, etc.
+            context_engine: Context engine used to manage conversation context.
         """
         self._card = card
         self._config = config
@@ -160,44 +197,46 @@ class Controller:
 
     @property
     def event_queue(self) -> EventQueue:
-        """获取事件队列"""
+        """Return the underlying event queue."""
         return self._event_queue
 
     @property
     def config(self) -> ControllerConfig:
-        """获取控制器配置"""
+        """Return controller configuration."""
         return self._config
 
     @property
     def context_engine(self) -> ContextEngine:
-        """获取上下文引擎"""
+        """Return the context engine."""
         return self._context_engine
 
     @property
     def ability_manager(self) -> AbilityManager:
-        """获取能力包"""
+        """Return the ability manager."""
         return self._ability_manager
 
     @config.setter
     def config(self, config: ControllerConfig):
-        """设置控制器配置"""
+        """Set controller configuration."""
         self._config = config
 
     @context_engine.setter
     def context_engine(self, context_engine: ContextEngine):
-        """设置上下文引擎"""
+        """Set context engine."""
         self._context_engine = context_engine
 
     @ability_manager.setter
     def ability_manager(self, ability_manager: AbilityManager):
-        """设置能力包"""
+        """Set ability manager."""
         self._ability_manager = ability_manager
 
     def set_event_handler(self, event_handler: EventHandler):
-        """设置事件处理器
-        
+        """Bind an event handler to the controller.
+
+        This injects controller dependencies into the event handler.
+
         Args:
-            event_handler: 事件处理器实例
+            event_handler: Event handler instance.
         """
         self._event_handler = event_handler
         self._event_handler.config = self._config
@@ -213,37 +252,38 @@ class Controller:
                 [ControllerConfig, AbilityManager, ContextEngine, TaskManager, EventQueue], TaskExecutor
             ]
     ) -> "Controller":
-        """添加任务执行器
-        
+        """Register a task executor for a given task type.
+
         Args:
-            task_type: 任务类型
-            task_executor_builder: 任务执行器构建函数
-            
+            task_type: Logical task type identifier.
+            task_executor_builder: Factory function that builds a
+                ``TaskExecutor`` using controller dependencies.
+
         Returns:
-            self（支持链式调用）
+            ``self`` to support fluent-style chaining.
         """
         self._task_scheduler.task_executor_registry.add_task_executor(task_type, task_executor_builder)
         return self
 
     def remove_task_executor(self, task_type: str):
-        """移除任务执行器
+        """Unregister a task executor for the given task type.
 
         Args:
-            task_type: 任务类型
+            task_type: Logical task type identifier.
         """
         self._task_scheduler.task_executor_registry.remove_task_executor(task_type)
 
     def start(self):
-        """启动控制器
-        
-        启动任务调度器，开始处理任务
+        """Start the controller.
+
+        This starts the scheduler and begins processing tasks.
         """
         self._task_scheduler.start()
 
     def stop(self):
-        """停止控制器
-        
-        停止任务调度器，停止处理任务
+        """Stop the controller.
+
+        This stops the scheduler and stops processing tasks.
         """
         self._task_scheduler.stop()
 
@@ -253,19 +293,22 @@ class Controller:
             session: Session,
             **kwargs
     ) -> ControllerOutput:
-        """批执行控制器
-        
+        """Execute the controller in batch mode.
+
+        High-level helper that consumes the stream interface and aggregates
+        results into a single ``ControllerOutput``.
+
         Args:
-            inputs: 输入事件
-            session: 会话对象
-            **kwargs: 其他参数
-            
+            inputs: Input event.
+            session: Session object.
+            **kwargs: Additional parameters passed through.
+
         Returns:
-            ControllerOutput: 控制器输出结果
-            
+            ControllerOutput: Aggregated controller output.
+
         Note:
-            1. 调用 stream 方法
-            2. 将流式消息转为批消息返回
+            1. Calls the ``stream`` method.
+            2. Converts streamed messages into batch output.
         """
         ...
 
@@ -276,26 +319,29 @@ class Controller:
             stream_modes: Optional[List[StreamMode]] = None,
             **kwargs
     ) -> AsyncIterator[ControllerOutputChunk]:
-        """流式执行控制器
-        
+        """Execute the controller in streaming mode.
+
+        This is the core execution entrypoint that wires events, sessions,
+        scheduler, and event queue together.
+
         Args:
-            inputs: 输入事件
-            session: 会话对象
-            stream_modes: 流式输出模式列表（可选）
-            **kwargs: 其他参数
-            
+            inputs: Input event.
+            session: Session object.
+            stream_modes: Optional list of stream output modes.
+            **kwargs: Additional parameters passed through.
+
         Yields:
-            ControllerOutputChunk: 控制器输出块
-            
+            ControllerOutputChunk: Individual controller output chunks.
+
         Note:
-            1. 恢复 controller 状态（包括 task_manager 的状态等）
-            2. 将 Session 放到 task_scheduler 的 sessions 字典中
-            3. 调用 self._event_queue 的 subscribe 方法订阅
-            4. 将输入的事件放到 self._event_queue 中
-            5. 获取事件处理结果并流式输出
-            6. deactivate 所有 subscription
-            7. 保存controller 状态（包括 task_manager 的状态等）
-            8. 将 Session 从 task_scheduler 的 sessions 字典中移除
+            1. Restore controller state (including ``TaskManager`` state, etc.).
+            2. Register the ``Session`` in the scheduler ``sessions`` mapping.
+            3. Subscribe to events via ``self._event_queue.subscribe``.
+            4. Push the input event into the event queue.
+            5. Consume event handler results and stream them out.
+            6. Deactivate all subscriptions.
+            7. Persist controller state (including ``TaskManager`` state).
+            8. Remove the ``Session`` from the scheduler ``sessions`` mapping.
         """
         ...
 

@@ -1,19 +1,28 @@
-"""事件队列模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块实现了事件队列，负责事件的发布和订阅：
-- EventQueue: 事件队列，负责事件的发布和订阅
 
-工作流程：
-1. 事件订阅：通过subscribe订阅特定类型的事件
-2. 事件发布：通过publish_event发布事件到消息队列
-3. 事件处理：订阅的事件会被EventHandler相应方法处理
-4. 事件取消订阅：通过unsubscribe取消订阅
+"""Event queue module.
 
-支持的事件类型：
-- INPUT: 用户输入事件
-- TASK_INTERACTION: 任务交互事件（任务执行过程中需要用户交互）
-- TASK_COMPLETION: 任务完成事件
-- TASK_FAILED: 任务失败事件
+This module implements the event queue responsible for publishing and
+subscribing events:
+
+- EventQueue: event queue that publishes and subscribes controller events.
+
+Workflow:
+    1. Event subscription: subscribe to specific event types via ``subscribe``.
+    2. Event publishing: publish events into the message queue via
+       ``publish_event``.
+    3. Event handling: subscribed events are handled by the appropriate
+       ``EventHandler`` methods.
+    4. Event unsubscription: cancel subscriptions via ``unsubscribe``.
+
+Supported event types:
+- INPUT: user input events.
+- TASK_INTERACTION: task interaction events (when execution requires user
+  interaction).
+- TASK_COMPLETION: task completion events.
+- TASK_FAILED: task failure events.
 """
 from typing import Optional, Callable, Awaitable
 
@@ -25,37 +34,38 @@ from openjiuwen.core.runner.message_queue.message_queue import MessageQueueBase
 
 
 class EventQueue:
-    """事件队列
-    
-    负责事件的发布和订阅，将事件分发给事件处理器的相应方法。
-    
-    基于消息队列实现，支持：
-    - 事件的发布（publish_event）
-    - 事件的订阅（subscribe）
-    - 事件的取消订阅（unsubscribe）
-    - 多种事件类型的处理
-    
-    事件主题格式：{agent_id}_{session_id}_{event_type}
+    """Event queue for the controller.
+
+    Responsible for publishing and subscribing events, and dispatching them
+    to the appropriate event handler methods.
+
+    Implemented on top of a message queue abstraction and supports:
+        - Publishing events (``publish_event``).
+        - Subscribing to events (``subscribe``).
+        - Unsubscribing from events (``unsubscribe`` / ``unsubscribe_all``).
+        - Handling multiple event types.
+
+    Event topic format: ``{agent_id}_{session_id}_{event_type}``.
     """
     
     def __init__(
             self,
             config: ControllerConfig,
     ):
-        """初始化事件队列
-        
+        """Initialize the event queue.
+
         Args:
-            config: 控制器配置
+            config: Controller configuration.
         """
         self._config = config
         self._queue: MessageQueueBase = Runner().pubsub()
         self._event_handler: Optional[EventHandler] = None
 
     def set_event_handler(self, event_handler: EventHandler):
-        """设置事件处理器
-        
+        """Attach an event handler.
+
         Args:
-            event_handler: 事件处理器实例
+            event_handler: Event handler instance.
         """
         self._event_handler = event_handler
 
@@ -64,25 +74,25 @@ class EventQueue:
             topic: str,
             event_handle_func: Callable[[EventHandlerInput], Awaitable[...]]
     ):
-        """订阅单个事件主题
-        
+        """Subscribe to a single event topic.
+
         Args:
-            topic: 事件主题
-            event_handle_func: 事件处理函数
-            
+            topic: Event topic string.
+            event_handle_func: Event handler coroutine for the topic.
+
         Returns:
-            str: 事件主题
+            str: The topic string.
         """
-        # 创建订阅
+        # Create subscription
         subscription = self._queue.subscribe(topic)
 
-        # 设置事件处理器（传递 topic 以便访问缓存的 session）
+        # Set message handler (passing topic to access cached sessions if needed)
         subscription.set_message_handler(event_handle_func)
 
-        # 激活订阅
+        # Activate subscription
         subscription.activate()
 
-        # 保存订阅和控制器映射
+        # Return topic for bookkeeping
         return topic
 
     async def subscribe(
@@ -90,36 +100,38 @@ class EventQueue:
             agent_id: str,
             session_id: str
     ) -> (dict[str, str], dict[str, str]):
-        """订阅所有事件类型
-        
+        """Subscribe to all event types for a given agent/session.
+
         Args:
-            agent_id: Agent ID
-            session_id: 会话ID
-            
+            agent_id: Agent identifier.
+            session_id: Session identifier.
+
         Returns:
-            Tuple[dict, dict]: (订阅字典, 主题字典)
+            Tuple[dict, dict]: (subscriptions, topics) where:
+                - subscriptions maps ``EventType`` to subscription handles.
+                - topics maps ``EventType`` to topic strings.
         """
         topics = {}
         subscriptions = {}
-        # 订阅输入事件
+        # Subscribe to input events
         topic = self._build_topic(agent_id, session_id, EventType.INPUT)
         sub = self._subscribe_event(topic, self._event_handler.handle_input)
         subscriptions[EventType.INPUT] = sub
         topics[EventType.INPUT] = topic
 
-        # 订阅任务执行中交互事件
+        # Subscribe to task interaction events
         topic = self._build_topic(agent_id, session_id, EventType.TASK_INTERACTION)
         sub = self._subscribe_event(topic, self._event_handler.handle_task_interaction)
         subscriptions[EventType.TASK_INTERACTION] = sub
         topics[EventType.TASK_INTERACTION] = topic
 
-        # 订阅任务完成事件
+        # Subscribe to task completion events
         topic = self._build_topic(agent_id, session_id, EventType.TASK_COMPLETION)
         sub = self._subscribe_event(topic, self._event_handler.handle_task_completion)
         subscriptions[EventType.TASK_COMPLETION] = sub
         topics[EventType.TASK_COMPLETION] = topic
 
-        # 订阅任务失败事件
+        # Subscribe to task failure events
         topic = self._build_topic(agent_id, session_id, EventType.TASK_FAILED)
         sub = self._subscribe_event(topic, self._event_handler.handle_task_failed)
         subscriptions[EventType.TASK_FAILED] = sub
@@ -131,15 +143,15 @@ class EventQueue:
             self,
             topic: str
     ):
-        """取消订阅单个事件主题
-        
+        """Unsubscribe from a single event topic.
+
         Args:
-            topic: 事件主题
-            
+            topic: Event topic string.
+
         Returns:
-            bool: 是否成功
+            bool: Whether the operation succeeded.
         """
-        # 取消订阅
+        # Cancel subscription
         await self._queue.unsubscribe(topic)
         return True
 
@@ -148,29 +160,29 @@ class EventQueue:
             agent_id: str,
             session_id: str,
     ):
-        """取消订阅所有事件类型
-        
+        """Unsubscribe from all event types for a given agent/session.
+
         Args:
-            agent_id: Agent ID
-            session_id: 会话ID
-            
+            agent_id: Agent identifier.
+            session_id: Session identifier.
+
         Returns:
-            dict: 主题字典
+            dict: Topic dictionary (for compatibility; currently empty).
         """
         topics = {}
-        # 取消订阅输入事件
+        # Unsubscribe from input events
         topic = self._build_topic(agent_id, session_id, EventType.INPUT)
         await self._unsubscribe_event(topic)
 
-        # 取消订阅任务执行中交互事件
+        # Unsubscribe from task interaction events
         topic = self._build_topic(agent_id, session_id, EventType.TASK_INTERACTION)
         await self._unsubscribe_event(topic)
 
-        # 取消订阅任务完成事件
+        # Unsubscribe from task completion events
         topic = self._build_topic(agent_id, session_id, EventType.TASK_COMPLETION)
         await self._unsubscribe_event(topic)
 
-        # 取消订阅任务失败事件
+        # Unsubscribe from task failure events
         topic = self._build_topic(agent_id, session_id, EventType.TASK_FAILED)
         await self._unsubscribe_event(topic)
 
@@ -182,32 +194,32 @@ class EventQueue:
         session_id: str,
         event: Event
     ) -> None:
-        """发布事件到事件队列
-        
+        """Publish an event into the queue.
+
         Args:
-            agent_id: Agent ID
-            session_id: 会话ID
-            event: 要发布的事件
+            agent_id: Agent identifier.
+            session_id: Session identifier.
+            event: Event to be published.
         """
         topic = self._build_topic(agent_id, session_id, event.event_type)
         # 发布消息
         await self._queue.produce_message(topic, event.model_dump())
 
     async def unsubscribe_all(self) -> None:
-        """取消所有订阅"""
+        """Unsubscribe from all topics (if supported by the underlying queue)."""
         ...
 
     @staticmethod
     def _build_topic(agent_id: str, session_id: str, event_type: str) -> str:
-        """构建事件主题
-        
+        """Build an event topic string.
+
         Args:
-            agent_id: Agent ID
-            session_id: 会话ID
-            event_type: 事件类型
-            
+            agent_id: Agent identifier.
+            session_id: Session identifier.
+            event_type: Event type string.
+
         Returns:
-            str: 事件主题字符串
+            str: Fully qualified topic string.
         """
         return f"{agent_id}_{session_id}_{event_type}"
 

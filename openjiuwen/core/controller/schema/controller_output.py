@@ -1,15 +1,20 @@
-"""控制器输出数据模型定义
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块定义了控制器输出的数据模型，包括：
-- ControllerOutputPayload: 控制器输出负载
-- ControllerOutputChunk: 控制器输出块（用于流式输出）
-- ControllerOutput: 控制器输出（用于批处理输出）
 
-输出类型：
-- task_completion: 任务完成
-- task_interaction: 任务交互（需要用户输入）
-- task_failed: 任务失败
-- processing: 处理中
+"""Controller output data model definitions.
+
+This module defines data models for controller outputs, including:
+
+- ControllerOutputPayload: payload of controller output.
+- ControllerOutputChunk: streaming controller output chunk.
+- ControllerOutput: batch controller output.
+
+Output types:
+- task_completion: task has completed.
+- task_interaction: task requires user interaction.
+- task_failed: task has failed.
+- processing: task is still in progress.
 """
 from typing import Optional, Dict, Any, List, Literal
 
@@ -22,15 +27,17 @@ from openjiuwen.core.session.stream.base import OutputSchema
 
 
 class ControllerOutputPayload(BaseModel):
-    """控制器输出负载
-    
-    包含输出的类型、数据和元数据信息。
-    这是控制器输出的核心数据部分。
-    
+    """Payload of a controller output.
+
+    Contains the output type, data, and metadata. This is the core data part
+    of controller outputs.
+
     Attributes:
-        type: 输出类型，可以是任务完成、任务交互、任务失败或处理中
-        data: 输出数据列表，包含实际的输出内容
-        metadata: 元数据，可以包含额外的输出信息
+        type: Output type, one of task completion, interaction, failure or
+            processing.
+        data: List of data frames representing the actual output content.
+        metadata: Optional metadata with additional information about the
+            output.
     """
     type: Literal[EventType.TASK_COMPLETION, EventType.TASK_INTERACTION, EventType.TASK_FAILED, "processing"]
     data: List[DataFrame] = Field(default_factory=list)
@@ -38,16 +45,16 @@ class ControllerOutputPayload(BaseModel):
 
 
 class ControllerOutputChunk(OutputSchema):
-    """控制器输出块
-    
-    流式输出中的单个数据块，包含索引、类型、负载和是否为最后一块的标志。
-    用于流式输出场景，支持逐步返回处理结果。
-    
+    """Streaming controller output chunk.
+
+    Represents a single chunk in a streaming response, including index,
+    type, payload and whether it is the last chunk.
+
     Attributes:
-        index: 输出块的索引，用于标识输出块的顺序
-        type: 输出类型，固定为"controller_output"
-        payload: 输出负载，包含实际的输出数据
-        last_chunk: 是否为最后一块，用于标识流式输出是否结束
+        index: Index of the chunk, indicating its order.
+        type: Output type, fixed to ``"controller_output"``.
+        payload: Output payload with the actual data.
+        last_chunk: Whether this is the last chunk of the stream.
     """
     index: int
     type: str = "controller_output"
@@ -56,15 +63,18 @@ class ControllerOutputChunk(OutputSchema):
 
 
 class ControllerOutput(BaseModel):
-    """控制器输出
-    
-    批处理输出的结果，包含类型、数据列表和输入事件ID。
-    用于非流式输出场景，一次性返回所有结果。
-    
+    """Batch controller output.
+
+    Represents the result of non-streaming execution, containing the type,
+    data list and the associated input event ID.
+
     Attributes:
-        type: 输出类型，可以是任务完成、任务交互、任务失败或处理中
-        data: 输出数据，可以是ControllerOutputChunk列表或字典
-        input_event_id: 关联的输入事件ID，用于追踪输入输出关系
+        type: Output type, one of task completion, interaction, failure or
+            processing.
+        data: Output data, either a list of ``ControllerOutputChunk`` or a
+            dictionary, depending on the use case.
+        input_event_id: Identifier of the input event this output is related
+            to.
     """
     type: Literal[EventType.TASK_COMPLETION, EventType.TASK_INTERACTION, EventType.TASK_FAILED, "processing"]
     data: List[ControllerOutputChunk] | Dict

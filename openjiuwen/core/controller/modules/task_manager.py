@@ -1,20 +1,27 @@
-"""任务管理器模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块实现了任务管理的核心功能，包括：
-- TaskManagerState: 任务管理器状态，用于序列化和恢复
-- TaskManager: 任务管理器，负责任务的CRUD、状态管理、优先级管理和层级关系管理
 
-主要功能：
-- 任务的增删改查（CRUD）
-- 任务执行状态管理（submitted、working、paused、completed等）
-- 任务优先级管理（支持按优先级查询和排序）
-- 任务层级关系管理（父子任务关系）
+"""Task manager module.
 
-索引结构：
-- _priority_index: 优先级索引，用于快速按优先级查找任务
-- _parent_to_children: 父子关系索引，用于快速查找子任务
-- _child_to_parent: 子父关系索引，用于快速查找父任务
-- _root_tasks: 根任务集合，用于快速查找根任务
+This module implements the core functionality for task management, including:
+
+- TaskManagerState: serializable snapshot of task manager state.
+- TaskManager: manager responsible for task CRUD, state management, priority
+  management, and hierarchical relationships.
+
+Main features:
+- Full CRUD for tasks.
+- Task execution state management (``submitted``, ``working``, ``paused``,
+  ``completed``, etc.).
+- Priority management (querying and sorting by priority).
+- Hierarchical relationship management (parent/child relationships).
+
+Index structures:
+- _priority_index: priority index for fast lookup by priority.
+- _parent_to_children: parent → children index for fast child lookup.
+- _child_to_parent: child → parent index for fast parent lookup.
+- _root_tasks: set of root task IDs for fast root-level queries.
 """
 from dataclasses import Field
 from typing import Dict, Any, List, Union, Set, Optional
@@ -26,9 +33,9 @@ from openjiuwen.core.controller.schema.task import Task, TaskStatus
 
 
 class TaskManagerState(BaseModel):
-    """任务管理器状态
-    
-    用于序列化和恢复任务管理器的状态。
+    """Serializable state of the task manager.
+
+    Used to persist and restore the full state of the task manager.
     """
     tasks: Dict[str, Task]
     priority_index: Dict[int, List[str]]
@@ -49,43 +56,44 @@ class TaskQuery(BaseModel):
 
 
 class TaskManager:
-    """任务管理器
-    
-    负责任务的CRUD操作、状态管理、优先级管理和层级关系管理。
-    提供高效的索引结构用于快速查询任务。
+    """Task manager.
+
+    Handles task CRUD operations, state transitions, priority updates and
+    hierarchical relationships. Provides efficient index structures for
+    querying tasks.
     """
     def __init__(self, config):
-        """初始化任务管理器
-        
+        """Initialize the task manager.
+
         Args:
-            config: Agent配置字典
+            config: Agent configuration dictionary.
         """
         self._config: Dict[str, Any] = config
         self.tasks: Dict[str, Task] = {}  # task_id -> Task
-        
-        # ==================== 优先级索引 ====================
-        # 优先级索引：priority -> List[task_id]
-        # 用于快速按优先级查找和排序任务
-        self._priority_index: Dict[int, List[str]] = defaultdict(list)  # priority_index -> List[Task]
-        
-        # ==================== 层级关系索引 ====================
-        # 父子关系索引：parent_task_id -> Set[child_task_id]
-        # 用于快速查找某个任务的所有直接子任务
+
+        # ==================== Priority index ====================
+        # Maps priority -> List[task_id]
+        # Used for fast lookup and sorting by priority.
+        self._priority_index: Dict[int, List[str]] = defaultdict(list)
+
+        # ==================== Hierarchy indices ====================
+        # Parent → children index: parent_task_id -> Set[child_task_id]
+        # Used to quickly find all direct children of a task.
         self._parent_to_children: Dict[str, Set[str]] = defaultdict(set)
-        
-        # 子父关系索引：child_task_id -> parent_task_id
-        # 用于快速查找某个任务的父任务
+
+        # Child → parent index: child_task_id -> parent_task_id
+        # Used to quickly find the parent task of a given task.
         self._child_to_parent: Dict[str, str] = {}
-        
-        # 根任务集合：存储所有没有父任务的任务ID
-        # 用于快速查找根任务（is_root=True的查询）
+
+        # Root task set: contains IDs of all tasks without a parent.
+        # Used to quickly query root tasks (e.g. ``is_root=True`` filters).
         self._root_tasks: Set[str] = set()
 
     def get_state(self) -> TaskManagerState:
-        """获取任务管理器状态
-        
+        """Return a snapshot of task manager state.
+
         Returns:
-            TaskManagerState: 任务管理器状态对象
+            TaskManagerState: Snapshot of current task manager state.
         """
         return TaskManagerState(
             tasks=self.tasks,
@@ -96,10 +104,10 @@ class TaskManager:
         )
 
     def load_state(self, state: TaskManagerState) -> None:
-        """加载任务管理器状态
-        
+        """Restore task manager state from a snapshot.
+
         Args:
-            state: 任务管理器状态对象
+            state: Previously saved task manager state.
         """
         self.tasks = state.tasks
         self._priority_index = state.priority_index
@@ -107,12 +115,12 @@ class TaskManager:
         self._child_to_parent = state.child_to_parent
         self._root_tasks = state.root_tasks
 
-    # ==================== 任务 CRUD 操作 ====================
+    # ==================== Task CRUD operations ====================
     def add_task(self, task: Union[Task, List[Task]]):
-        """添加任务到任务队列
-        
+        """Add one or more tasks to the manager.
+
         Args:
-            task: 单个任务或任务列表
+            task: Single task or list of tasks to add.
         """
         self.tasks[task.task_id] = task
         ...
@@ -121,82 +129,84 @@ class TaskManager:
             self,
             task_query: Optional[TaskQuery] = None
     ) -> List["Task"]:
-        """查询任务
-        
-        根据多个条件查询任务，支持多种查询方式。
-        
+        """Query tasks with flexible filters.
+
+        Currently only basic querying by ``task_id`` is implemented.
+
         Args:
-            task_query: 任务查询条件
-            
+            task_query: Task query conditions.
+
         Returns:
-            List[Task]: 匹配的任务列表
+            List[Task]: List of matching tasks.
         """
-        # 按 task_id 查询
+        # Query by task_id
         tasks = []
         if task_query.task_id is not None and isinstance(task_query.task_id, str) and task_query.task_id in self.tasks:
             tasks.append(self.tasks[task_query.task_idtask_id])
-        # 其他查询逻辑
+        # TODO: implement additional query filters (session, user, status, etc.)
         return tasks
 
     def pop_task(
             self,
             task_query: Optional[TaskQuery] = None
     ) -> List["Task"]:
-        """弹出任务（查询并移除）
-        
-        查询任务并从任务管理器中移除，参数同get_task。
-        
+        """Query and remove tasks.
+
+        Behaves like ``get_task`` but also removes the returned tasks from the
+        manager.
+
         Args:
-            task_query: 任务查询条件
-            
+            task_query: Task query conditions.
+
         Returns:
-            List[Task]: 匹配的任务列表（已从管理器中移除）
+            List[Task]: Matching tasks that have been removed.
         """
-        # 按 task_id 查询
+        # Query by task_id
         tasks = []
         if task_query.task_id is not None and isinstance(task_query.task_id, str) and task_query.task_id in self.tasks:
             tasks.append(self.tasks[task_query.task_id])
-            # 删除任务
+            # Remove task
             del self.tasks[task_query.task_id]
-            # 在其他数据结构中删除 task_id
-        # 其他查询逻辑
+            # TODO: remove task_id from other index structures.
+        # TODO: additional removal/query logic.
         return tasks
 
     def update_task(self, task: Union[Task, List[Task]]):
-        """更新任务
-        
-        更新任务信息，如果任务不存在则不会创建新任务。
-        
+        """Update one or more existing tasks.
+
+        Updates task information without creating new tasks if they do not
+        already exist.
+
         Args:
-            task: 要更新的任务，可以是单个任务或任务列表
-            
+            task: Task instance or list of tasks to update.
+
         Returns:
-            bool: 是否成功更新
+            bool: Whether the update succeeded.
         """
         if isinstance(task, Task) and task.task_id in self.tasks:
             del self.tasks[task.task_id]
             self.tasks[task.task_id] = task
-            # 处理其他添加逻辑
+            # TODO: update related indices when a task changes.
         ...
 
     def remove_task(
             self,
             task_query: Optional[TaskQuery] = None
     ):
-        """删除任务
-        
-        根据条件删除任务，支持删除子任务。
-        
+        """Remove tasks matching the given query.
+
+        Supports deleting child tasks as well (to be implemented).
+
         Args:
-            task_query: 任务查询条件
+            task_query: Task query conditions.
         """
-        # 按 task_id 删除
+        # Delete by task_id
         tasks = []
         if task_query.task_id is not None and isinstance(task_query.task_id, str) and task_query.task_id in self.tasks:
-            # 删除任务
+            # Remove task
             del self.tasks[task_query.task_id]
-            # 在其他数据结构中删除 task_id
-        # 其他删除逻辑
+            # TODO: remove task_id from other index structures.
+        # TODO: implement additional deletion logic.
         return tasks
 
     def get_child_task(
@@ -204,25 +214,23 @@ class TaskManager:
             task_id: Union[str, List[str]],
             is_recursive: bool = False,
     ) -> List[Task]:
-        """获取子任务
-        
-        获取指定任务的所有子任务。
-        
+        """Get child tasks of a given task.
+
         Args:
-            task_id: 任务ID，可以是单个ID或ID列表
-            is_recursive: 是否递归获取所有子任务（包括子任务的子任务）
-            
+            task_id: Single task ID or list of task IDs.
+            is_recursive: Whether to recursively fetch all descendants.
+
         Returns:
-            List[Task]: 子任务列表
+            List[Task]: List of child tasks.
         """
         tasks = []
         if isinstance(task_id, str) and task_id in self._parent_to_children:
             for child in self._parent_to_children[task_id]:
                 tasks.append(self.tasks.get(child))
-        # 其他获取子任务逻辑
+        # TODO: implement recursive traversal and list support.
         return tasks
 
-    # ==================== 任务执行状态管理 ====================
+    # ==================== Task status management ====================
     def update_task_status(
             self,
             task_id: Union[str, List[str]],
@@ -230,24 +238,24 @@ class TaskManager:
             with_children: bool = False,
             is_recursive: bool = False,
     ):
-        """更新任务状态
-        
-        更新任务的状态，并同步更新优先级索引。
-        
+        """Update task status.
+
+        Updates the status of one or more tasks and keeps indices in sync.
+
         Args:
-            task_id: 任务ID，可以是单个ID或ID列表
-            new_status: 新状态
-            with_children: 是否同时更新子任务状态
-            is_recursive: 是否递归更新子任务状态
+            task_id: Single task ID or list of IDs.
+            new_status: New task status.
+            with_children: Whether to also update child tasks.
+            is_recursive: Whether to recursively update all descendants.
         """
         if task_id is not None and isinstance(task_id, str) and task_id in self.tasks:
             task = self.pop_task(TaskQuery(task_id=task_id))
             task.status = new_status
             self.add_task(task)
-        # 其他更新状态逻辑
+        # TODO: implement support for lists and hierarchy propagation.
         ...
 
-    # ==================== 任务优先级管理 ====================
+    # ==================== Task priority management ====================
     def set_priority(
             self,
             task_id: Union[str, List[str]],
@@ -255,21 +263,21 @@ class TaskManager:
             with_children: bool = False,
             is_recursive: bool = False,
     ):
-        """设置任务优先级
-        
-        更新任务的优先级，并同步更新优先级索引。
-        
+        """Set task priority.
+
+        Updates task priority and keeps the priority index in sync.
+
         Args:
-            task_id: 任务ID，可以是单个ID或ID列表
-            new_priority: 新优先级
-            with_children: 是否同时更新子任务优先级
-            is_recursive: 是否递归更新子任务优先级
+            task_id: Single task ID or list of IDs.
+            new_priority: New priority value.
+            with_children: Whether to also update child tasks.
+            is_recursive: Whether to recursively update all descendants.
         """
         if task_id is not None and isinstance(task_id, str) and task_id in self.tasks:
             task = self.pop_task(TaskQuery(task_id=task_id))
             task.priority = new_priority
             self.add_task(task)
-        # 其他设置任务优先级逻辑
+        # TODO: implement support for lists and hierarchy propagation.
         ...
 
 

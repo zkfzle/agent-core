@@ -1,12 +1,18 @@
-"""控制器内部模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块包含控制器的核心功能模块：
-- EventQueue: 事件队列，负责事件的发布和订阅
-- TaskManager: 任务管理器，负责任务的CRUD和状态管理
-- TaskScheduler: 任务调度器，负责任务的执行调度
-- IntentRecognizer: 意图识别器，识别用户意图
-- EventHandler: 事件处理器基类
-- EventHandlerWithIntentRecognition: 基于意图识别的事件处理器
+
+"""Internal controller modules.
+
+This package contains the core building blocks used by the controller:
+
+- EventQueue: event queue responsible for publishing and subscribing events.
+- TaskManager: task manager that handles task CRUD and state management.
+- TaskScheduler: task scheduler that orchestrates task execution.
+- IntentRecognizer: intent recognizer that detects user intent.
+- EventHandler: base class for event handlers.
+- EventHandlerWithIntentRecognition: event handler with built‑in intent
+  recognition.
 """
 from openjiuwen.core.controller.modules.event_handler import EventHandlerInput, EventHandler
 from openjiuwen.core.controller.modules.event_queue import EventQueue
@@ -16,18 +22,18 @@ from openjiuwen.core.controller.modules.intent_reconizer import IntentRecognizer
 
 
 __all__ = [
-    # 事件队列和事件处理
+    # Event queue and event handling
     "EventHandlerInput",
     "EventHandler",
     "EventQueue",
-    # 任务管理
+    # Task management
     "TaskManagerState",
     "TaskManager",
-    # 任务执行调度
+    # Task execution and scheduling
     "TaskExecutor",
     "TaskExecutorRegistry",
     "TaskScheduler",
-    # 基于意图识别的事件处理
+    # Event handling with intent recognition
     "IntentRecognizer",
     "EventHandlerWithIntentRecognition"
 ]

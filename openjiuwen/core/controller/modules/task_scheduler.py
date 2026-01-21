@@ -1,15 +1,21 @@
-"""任务调度器模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块实现了任务调度和执行的核心功能，包括：
-- TaskExecutorRegistry: 任务执行器注册表，管理不同类型的任务执行器
-- TaskScheduler: 任务调度器，负责任务的调度、执行、暂停和取消
 
-核心工作流程：
-1. 接收待执行的任务（状态为submitted）
-2. 根据任务类型从注册表获取对应的TaskExecutor
-3. 并发执行多个任务
-4. 流式输出任务执行过程中的输出
-5. 根据输出类型更新任务状态（completion/interaction/failed）
+"""Task scheduler module.
+
+This module implements the core logic for scheduling and executing tasks:
+
+- TaskExecutorRegistry: registry of task executors for different task types.
+- TaskScheduler: task scheduler responsible for scheduling, executing,
+  pausing, and canceling tasks.
+
+Core workflow:
+1. Receive tasks to be executed (status ``submitted``).
+2. Look up the corresponding ``TaskExecutor`` from the registry by task type.
+3. Execute multiple tasks concurrently.
+4. Stream outputs produced during task execution.
+5. Update task status based on output type (completion / interaction / failed).
 """
 import asyncio
 from typing import Callable, Dict, Optional
@@ -35,14 +41,15 @@ class TaskExecutorInfo(BaseModel):
 
 
 class TaskExecutorRegistry:
-    """任务执行器注册表
-    
-    管理不同类型的任务执行器，支持动态注册和获取。
-    通过任务类型（task_type）来查找对应的TaskExecutor构建函数。
+    """Registry for task executors.
+
+    Manages executors for different task types, supporting dynamic
+    registration and lookup. Executors are located via the string
+    ``task_type`` and a corresponding factory function.
     """
     
     def __init__(self):
-        """初始化任务执行器注册表"""
+        """Initialize an empty task executor registry."""
         self.task_executor_builders: Dict[
             str,
             Callable[[ControllerConfig, AbilityManager, ContextEngine, TaskManager, EventQueue], TaskExecutor]
@@ -55,19 +62,20 @@ class TaskExecutorRegistry:
                 [ControllerConfig, AbilityManager, ContextEngine, TaskManager, EventQueue], TaskExecutor
             ]
     ):
-        """注册任务执行器
-        
+        """Register a task executor factory.
+
         Args:
-            task_type: 任务类型标识符
-            task_executor_builder: 任务执行器构建函数，接收配置和依赖，返回TaskExecutor实例
+            task_type: Logical identifier for the task type.
+            task_executor_builder: Factory function that accepts configuration
+                and dependencies and returns a ``TaskExecutor`` instance.
         """
         self.task_executor_builders[task_type] = task_executor_builder
 
     def remove_task_executor(self, task_type: str):
-        """移除任务执行器
-        
+        """Unregister a task executor factory.
+
         Args:
-            task_type: 任务类型标识符
+            task_type: Logical identifier for the task type.
         """
         if task_type in self.task_executor_builders:
             del self.task_executor_builders[task_type]
@@ -76,16 +84,16 @@ class TaskExecutorRegistry:
             self,
             task_executor_info: TaskExecutorInfo
     ) -> TaskExecutor:
-        """获取任务执行器实例
-        
+        """Build a concrete task executor instance.
+
         Args:
-            task_executor_info: 任务执行器信息
-            
+            task_executor_info: All information required to build an executor.
+
         Returns:
-            TaskExecutor: 任务执行器实例
-            
+            TaskExecutor: A task executor instance for the given task type.
+
         Raises:
-            Exception: 如果任务类型未注册
+            KeyError: If the task type has not been registered.
         """
         executor_builder = self.task_executor_builders.get(task_executor_info.task_type, None)
         return executor_builder(
@@ -98,23 +106,24 @@ class TaskExecutorRegistry:
 
 
 class TaskScheduler:
-    """任务调度器
-    
-    负责任务的调度、执行、暂停和取消。
-    支持并发执行多个任务，并流式输出任务执行过程中的输出。
-    
-    工作流程：
-    1. 定期扫描待执行任务（状态为submitted）
-    2. 并发执行多个任务
-    3. 流式输出任务执行过程中的输出
-    4. 根据输出类型更新任务状态
-    
+    """Task scheduler.
+
+    Responsible for scheduling, executing, pausing, and canceling tasks.
+    Supports concurrent execution of multiple tasks and streaming of
+    intermediate outputs.
+
+    Workflow:
+        1. Periodically scan for tasks to run (status ``submitted``).
+        2. Execute multiple tasks concurrently.
+        3. Stream outputs produced during task execution.
+        4. Update task status based on the type of output.
+
     Attributes:
-        _sessions: 会话字典，session_id -> Session
-        _running_tasks: 正在执行的任务字典，task_id -> (TaskExecutor, asyncio.Task)
-        _running: 调度器是否正在运行
-        _scheduler_task: 调度器后台任务
-        _lock: 用于同步访问的锁
+        _sessions: Mapping of ``session_id`` to ``Session``.
+        _running_tasks: Mapping of ``task_id`` to ``(TaskExecutor, asyncio.Task)``.
+        _running: Whether the scheduler is currently running.
+        _scheduler_task: Background task for the scheduler loop.
+        _lock: Asyncio lock to synchronize access to internal state.
     """
     
     def __init__(
@@ -125,14 +134,14 @@ class TaskScheduler:
             ability_manager: AbilityManager,
             event_queue: EventQueue
     ):
-        """初始化任务调度器
-        
+        """Initialize the task scheduler.
+
         Args:
-            config: 控制器配置
-            task_manager: 任务管理器
-            context_engine: 上下文引擎
-            ability_manager: 能力包
-            event_queue: 事件队列
+            config: Controller configuration.
+            task_manager: Task manager.
+            context_engine: Context engine.
+            ability_manager: Ability manager.
+            event_queue: Event queue used to publish task events.
         """
         self._config = config
         self._task_manager = task_manager
@@ -154,69 +163,76 @@ class TaskScheduler:
 
     @property
     def sessions(self) -> Dict[str, Session]:
-        """获取会话字典"""
+        """Return the session mapping."""
         return self._sessions
 
     @property
     def task_executor_registry(self):
-        """获取任务执行器注册表"""
+        """Return the task executor registry."""
         return self._task_executor_registry
 
     async def pause_task(self, task_id: str):
-        """暂停任务
-        
-        执行流程：
-        1. 判断当前任务是否在运行中，如果不在运行中，直接返回
-        2. 获取当前任务的executor，执行can_pause方法，如果不可暂停，返回原因；否则继续
-        3. 执行executor的pause方法后，取消当前任务对应的asyncio.Task
-        4. 在task_manager中将该任务的状态改为paused
-        
+        """Pause a running task.
+
+        Workflow:
+            1. Check whether the task is currently running. If not, return.
+            2. Call ``executor.can_pause``. If it cannot be paused, return
+               the reason; otherwise continue.
+            3. Call ``executor.pause`` and then cancel the underlying
+               ``asyncio.Task``.
+            4. Update the task status to ``paused`` in ``TaskManager``.
+
         Args:
-            task_id: 任务ID
+            task_id: Task identifier.
         """
         ...
 
     async def cancel_task(self, task_id: str):
-        """取消任务
-        
-        执行流程：
-        1. 判断当前任务是否在运行中，如果不在运行中，直接返回
-        2. 获取当前任务的executor，执行can_cancel方法，如果不可取消，返回原因；否则继续
-        3. 执行executor的cancel方法后，取消当前任务对应的asyncio.Task
-        4. 在task_manager中将该任务的状态改为cancelled
-        
+        """Cancel a running task.
+
+        Workflow:
+            1. Check whether the task is currently running. If not, return.
+            2. Call ``executor.can_cancel``. If it cannot be canceled, return
+               the reason; otherwise continue.
+            3. Call ``executor.cancel`` and then cancel the underlying
+               ``asyncio.Task``.
+            4. Update the task status to ``cancelled`` in ``TaskManager``.
+
         Args:
-            task_id: 任务ID
+            task_id: Task identifier.
         """
         ...
 
     async def schedule(self):
-        """调度任务
-        
-        定期扫描并执行待执行任务。
-        
-        执行流程：
-        1. 获取所有session_id在sessions中且状态为submitted的任务
-        2. 如果未获取到，直接返回
-        3. 并发执行所有获取到的任务，并流式输出任务执行过程中的输出
-        4. 如果输出中的type为"completion"、"interaction"或"failed"时，
-           停止该任务执行（取消asyncio.Task），并将task_manager中的任务状态置为相应的状态
+        """Main scheduling loop.
+
+        Periodically scans and executes tasks that are ready to run.
+
+        Workflow:
+            1. Fetch all tasks with ``status=submitted`` whose ``session_id``
+               exists in ``sessions``.
+            2. If no tasks are found, return.
+            3. Execute all fetched tasks concurrently and stream outputs.
+            4. When an output with type ``completion``, ``interaction`` or
+               ``failed`` is observed, stop the task (cancel the
+               ``asyncio.Task``) and update the corresponding status in
+               ``TaskManager``.
         """
         ...
 
     def start(self):
-        """启动任务调度器
-        
-        启动后台调度任务，开始定期扫描和执行待执行任务。
+        """Start the scheduler.
+
+        Launch the background scheduling task and begin scanning for tasks.
         """
         self._running = True
         # 其他启动逻辑
         ...
 
     def stop(self):
-        """停止任务调度器
-        
-        停止后台调度任务，停止扫描和执行任务。
+        """Stop the scheduler.
+
+        Stop the background scheduling task and stop executing tasks.
         """
         self._running = False
         # 其他停止逻辑

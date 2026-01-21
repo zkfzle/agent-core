@@ -1,13 +1,19 @@
-"""数据帧数据模型定义
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块定义了数据帧（DataFrame）相关的数据模型，用于在控制器中传输不同类型的数据。
 
-支持的数据类型：
-- TextDataFrame: 文本数据
-- FileDataFrame: 文件数据（支持bytes和URI两种方式）
-- JsonDataFrame: JSON格式数据
+"""Data frame data model definitions.
 
-DataFrame是控制器中数据传递的基本单元，用于在事件、任务输入输出等场景中传递数据。
+This module defines data models related to data frames (``DataFrame``),
+which are used to transfer heterogeneous data types inside the controller.
+
+Supported data frame types:
+- TextDataFrame: text data.
+- FileDataFrame: file data (supports both bytes and URI).
+- JsonDataFrame: JSON data.
+
+``DataFrame`` is the basic unit for data exchange in the controller, used in
+events, task inputs/outputs and other scenarios.
 """
 from typing import Literal, Optional, Dict, Any, Union
 
@@ -15,43 +21,43 @@ from pydantic import BaseModel
 
 
 class BaseDataFrame(BaseModel):
-    """数据帧基类
-    
-    定义数据帧的基本结构，支持文本、文件和JSON三种类型。
-    所有具体的数据帧类型都继承自此类。
-    
+    """Base class for all data frames.
+
+    Defines the common structure for data frames, which can be text, file or
+    JSON. All concrete data frame types inherit from this base class.
+
     Attributes:
-        type: 数据帧类型，必须是"text"、"file"或"json"之一
+        type: Data frame type, must be one of ``"text"``, ``"file"`` or
+            ``"json"``.
     """
     type: Literal["text", "file", "json"]
 
 
 class TextDataFrame(BaseDataFrame):
-    """文本数据帧
-    
-    用于传输文本类型的数据。
-    适用于传输纯文本内容，如用户输入、任务描述等。
-    
+    """Text data frame.
+
+    Used to transport plain text content (e.g. user input, task descriptions).
+
     Attributes:
-        type: 数据帧类型，固定为"text"
-        text: 文本内容
+        type: Data frame type, fixed to ``"text"``.
+        text: Text content.
     """
     type: Literal["text", "file", "json"] = "text"
     text: str
 
 
 class FileDataFrame(BaseDataFrame):
-    """文件数据帧
-    
-    用于传输文件类型的数据，支持bytes和URI两种方式。
-    适用于传输文件内容，如图片、文档等。
-    
+    """File data frame.
+
+    Used to transport file contents and metadata, supporting either inline
+    bytes or an external URI.
+
     Attributes:
-        type: 数据帧类型，固定为"file"
-        name: 文件名
-        mimeType: MIME类型，如"image/png"、"application/pdf"等
-        bytes: 文件内容的字节数据（可选，与uri二选一）
-        uri: 文件URI（可选，与bytes二选一）
+        type: Data frame type, fixed to ``"file"``.
+        name: File name.
+        mimeType: MIME type such as ``"image/png"`` or ``"application/pdf"``.
+        bytes: Raw file bytes (optional, mutually exclusive with ``uri``).
+        uri: File URI (optional, mutually exclusive with ``bytes``).
     """
     type: Literal["text", "file", "json"] = "file"
     name: str
@@ -61,14 +67,14 @@ class FileDataFrame(BaseDataFrame):
 
 
 class JsonDataFrame(BaseDataFrame):
-    """JSON数据帧
-    
-    用于传输JSON格式的数据。
-    适用于传输结构化数据，如配置信息、API响应等。
-    
+    """JSON data frame.
+
+    Used to transport structured JSON data (e.g. configuration, API
+    responses).
+
     Attributes:
-        type: 数据帧类型，固定为"json"
-        data: JSON数据字典
+        type: Data frame type, fixed to ``"json"``.
+        data: JSON payload as a dictionary.
     """
     type: Literal["text", "file", "json"] = "json"
     data: Dict[str, Any]

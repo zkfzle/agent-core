@@ -1,13 +1,18 @@
-"""任务数据模型定义
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块定义了任务相关的数据模型，包括：
-- TaskStatus: 任务状态枚举
-- Task: 任务数据模型
 
-任务状态流转：
-submitted -> working -> (completed | failed | paused | canceled)
-                |
-                -> input-required -> (继续执行或取消)
+"""Task data model definitions.
+
+This module defines data models related to tasks:
+
+- TaskStatus: enumeration of task states.
+- Task: task data model.
+
+Task state transitions:
+    submitted -> working -> (completed | failed | paused | canceled)
+                    |
+                    -> input-required -> (continue execution or cancel)
 """
 from enum import Enum
 from typing import Optional, List, Dict, Any, Union
@@ -19,18 +24,18 @@ from openjiuwen.core.controller.schema.controller_output import ControllerOutput
 
 
 class TaskStatus(str, Enum):
-    """任务状态枚举
-    
-    定义任务的所有可能状态：
-    - SUBMITTED: 已提交，等待执行
-    - WORKING: 正在执行中
-    - PAUSED: 已暂停
-    - INPUT_REQUIRED: 需要用户输入
-    - COMPLETED: 已完成
-    - CANCELED: 已取消
-    - FAILED: 执行失败
-    - WAITING: 等待中（可能等待依赖任务完成）
-    - UNKNOWN: 未知状态
+    """Task status enumeration.
+
+    Defines all possible task states:
+        - SUBMITTED: task has been submitted and is waiting to run.
+        - WORKING: task is currently running.
+        - PAUSED: task has been paused.
+        - INPUT_REQUIRED: task requires user input.
+        - COMPLETED: task finished successfully.
+        - CANCELED: task has been canceled.
+        - FAILED: task execution failed.
+        - WAITING: waiting (e.g. on dependent tasks).
+        - UNKNOWN: unknown state.
     """
     SUBMITTED = "submitted"
     WORKING = "working"
@@ -44,24 +49,28 @@ class TaskStatus(str, Enum):
 
 
 class Task(BaseModel):
-    """任务模型
-    
-    定义任务的结构，包含任务的基本信息、状态、输入输出和层级关系。
-    
+    """Task model.
+
+    Defines the structure of a task, including basic information, status,
+    inputs/outputs, and hierarchical relationships.
+
     Attributes:
-        session_id: 会话ID，标识任务所属的会话
-        task_id: 任务ID，唯一标识一个任务
-        task_type: 任务类型，用于查找对应的TaskExecutor
-        description: 任务描述
-        priority: 任务优先级，数字越小优先级越高，默认为1
-        inputs: 所有跟本次任务有关的输入事件列表
-        outputs: 任务执行过程中的输出帧列表
-        Status: 任务状态
-        parent_task_id: 父任务ID，用于构建任务层级关系
-        context_id: 上下文ID，用于关联任务的上下文信息
-        input_required_fields: 需要用户输入的字段定义（当状态为INPUT_REQUIRED时使用）
-        error_message: 错误信息（当状态为FAILED时使用）
-        metadata: 任务的元数据，可以存储额外的任务信息
+        session_id: Session ID to which this task belongs.
+        task_id: Unique identifier of the task.
+        task_type: Logical task type, used to find the corresponding
+            ``TaskExecutor``.
+        description: Human-readable description of the task.
+        priority: Task priority. Smaller values indicate higher priority.
+            Default is 1.
+        inputs: All input events related to this task.
+        outputs: Output frames produced during task execution.
+        Status: Current task status.
+        parent_task_id: Parent task ID, used for building task hierarchies.
+        context_id: Context ID, used to associate contextual information.
+        input_required_fields: Schema for fields that require user input when
+            status is ``INPUT_REQUIRED``.
+        error_message: Error message when status is ``FAILED``.
+        metadata: Arbitrary metadata associated with the task.
     """
     session_id: str
     task_id: str

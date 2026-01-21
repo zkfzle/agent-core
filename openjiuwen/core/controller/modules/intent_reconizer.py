@@ -1,24 +1,30 @@
-"""意图识别模块
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块实现了基于意图识别的事件处理，包括：
-- IntentRecognizer: 意图识别器，识别用户输入中的意图
-- EventHandlerWithIntentRecognition: 基于意图识别的事件处理器
 
-工作流程：
-1. 接收输入事件
-2. 通过IntentRecognizer识别意图
-3. 根据意图类型调用相应的处理方法
+"""Intent recognition module.
 
-支持的意图类型：
-- CREATE_TASK: 创建新任务
-- PAUSE_TASK: 暂停任务
-- RESUME_TASK: 恢复任务
-- CONTINUE_TASK: 接续任务
-- SUPPLEMENT_TASK: 补充任务信息
-- CANCEL_TASK: 取消任务
-- MODIFY_TASK: 修改任务
-- SWITCH_TASK: 切换任务
-- UNKNOWN_TASK: 未知意图
+This module implements event handling based on intent recognition, including:
+
+- IntentRecognizer: recognizes user intent from input events.
+- EventHandlerWithIntentRecognition: event handler that routes logic by
+  recognized intent.
+
+Workflow:
+    1. Receive an input event.
+    2. Use ``IntentRecognizer`` to recognize intent.
+    3. Call the corresponding handler method based on intent type.
+
+Supported intent types (see ``IntentType`` for details):
+- CREATE_TASK
+- PAUSE_TASK
+- RESUME_TASK
+- CONTINUE_TASK
+- SUPPLEMENT_TASK
+- CANCEL_TASK
+- MODIFY_TASK
+- SWITCH_TASK
+- UNKNOWN_TASK
 """
 from abc import ABC, abstractmethod
 
@@ -33,9 +39,10 @@ from openjiuwen.core.single_agent.base import AbilityManager
 
 
 class IntentRecognizer:
-    """意图识别器
-    
-    负责识别用户输入中的意图，将事件转换为Intent对象。
+    """Intent recognizer.
+
+    Responsible for recognizing user intent from input events and converting
+    them into ``Intent`` objects.
     """
     
     def __init__(
@@ -45,13 +52,13 @@ class IntentRecognizer:
             ability_manager: AbilityManager,
             context_engine: ContextEngine
     ):
-        """初始化意图识别器
-        
+        """Initialize the intent recognizer.
+
         Args:
-            config: 控制器配置
-            task_manager: 任务管理器
-            ability_manager: 能力包
-            context_engine: 上下文引擎
+            config: Controller configuration.
+            task_manager: Task manager.
+            ability_manager: Ability manager.
+            context_engine: Context engine.
         """
         self._config = config
         self._task_manager = task_manager
@@ -59,22 +66,23 @@ class IntentRecognizer:
         self._ability_manager = ability_manager
 
     async def recognize(self, event: Event, session: Session) -> Intent:
-        """识别意图
-        
+        """Recognize intent from an event.
+
         Args:
-            event: 输入事件
-            session: 会话对象
-            
+            event: Input event.
+            session: Session object.
+
         Returns:
-            Intent: 识别出的意图对象
+            Intent: Recognized intent object.
         """
         ...
 
 
 class EventHandlerWithIntentRecognition(ABC, EventHandler):
-    """基于意图识别的事件处理器
-    
-    在EventHandler的基础上增加意图识别功能，根据识别出的意图调用相应的处理方法。
+    """Event handler with intent recognition.
+
+    Extends ``EventHandler`` by adding an intent recognition step and routing
+    to specific handlers based on the recognized intent.
     """
     def __init__(self):
         super().__init__()
@@ -86,133 +94,153 @@ class EventHandlerWithIntentRecognition(ABC, EventHandler):
         )
 
     async def handle_input(self, inputs: EventHandlerInput):
-        """处理输入事件
-        
-        识别输入意图，并调用相应方法处理意图，可重写。
-        
+        """Handle input events.
+
+        Recognizes intent from the input and dispatches to the corresponding
+        handler. Subclasses may override this for custom behavior.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Wrapper containing event and session.
         """
         ...
 
     async def handle_task_interaction(self, inputs: EventHandlerInput):
-        """处理任务交互事件
-        
-        将interaction直接抛出给用户，可重写。
-        
+        """Handle task interaction events.
+
+        Default behavior is to surface the interaction directly to the user.
+        Subclasses may override this.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Wrapper containing event and session.
         """
         ...
 
     async def handle_task_completion(self, inputs: EventHandlerInput):
-        """处理任务完成事件
-        
-        将任务完成信息抛出给用户，可重写。
-        
+        """Handle task completion events.
+
+        Default behavior is to surface completion information to the user.
+        Subclasses may override this.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Wrapper containing event and session.
         """
         ...
 
     async def handle_task_failed(self, inputs: EventHandlerInput):
-        """处理任务失败事件
-        
-        将错误信息抛出给用户，可重写。
-        
+        """Handle task failure events.
+
+        Default behavior is to surface error information to the user.
+        Subclasses may override this.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Wrapper containing event and session.
         """
         ...
 
     @abstractmethod
     async def _process_create_task_intent(self, inputs: EventHandlerInput):
-        """处理创建任务意图
-        
-        用户自定义执行新任务逻辑。
-        
+        """Process CREATE_TASK intent.
+
+        Subclasses should implement custom logic to execute a new task.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_pause_task_intent(self, inputs: EventHandlerInput):
-        """处理暂停任务意图
-        
-        调用 task_scheduler 的 pause_task 方法打断目标任务。
-        
+    async def _process_pause_task_intent(self, inputs: EventHandlerInput):
+        """Process PAUSE_TASK intent.
+
+        Typically calls ``task_scheduler.pause_task`` to interrupt a target
+        task. Subclasses may customize.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_resume_task_intent(self, inputs: EventHandlerInput):
-        """处理恢复任务意图
-        
-        将要恢复的任务的状态置为 submitted。
-        
+    async def _process_resume_task_intent(self, inputs: EventHandlerInput):
+        """Process RESUME_TASK intent.
+
+        Typically sets the target task status back to ``submitted`` so it can
+        be picked up by the scheduler.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_continue_task_intent(self, inputs: EventHandlerInput):
-        """处理接续任务意图
-        
-        根据依赖任务的上下文调用 _process_create_task_intent 执行目标任务。
-        
+    async def _process_continue_task_intent(self, inputs: EventHandlerInput):
+        """Process CONTINUE_TASK intent.
+
+        Typically uses context from a dependent task and delegates to
+        ``_process_create_task_intent`` for the new task.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_supplement_task_intent(self, inputs: EventHandlerInput):
-        """处理补充任务意图
-        
-        基于补充的信息调用_process_create_task_intent继续执行目标任务。
-        
+    async def _process_supplement_task_intent(self, inputs: EventHandlerInput):
+        """Process SUPPLEMENT_TASK intent.
+
+        Typically uses additional information supplied by the user and calls
+        ``_process_create_task_intent`` to continue the target task.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_cancel_task_intent(self, inputs: EventHandlerInput):
-        """处理取消任务意图
-        
-        调用 task_scheduler 的 cancel_task 方法取消目标任务。
-        
+    async def _process_cancel_task_intent(self, inputs: EventHandlerInput):
+        """Process CANCEL_TASK intent.
+
+        Typically calls ``task_scheduler.cancel_task`` to cancel the target
+        task.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_modify_task_intent(self, inputs: EventHandlerInput):
-        """处理修改任务意图
-        
-        修改目标任务后，将其状态置为 submitted。
-        
+    async def _process_modify_task_intent(self, inputs: EventHandlerInput):
+        """Process MODIFY_TASK intent.
+
+        Typically updates the target task parameters or configuration and
+        then sets its status to ``submitted`` to re-run it.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_switch_task_intent(self, inputs: EventHandlerInput):
-        """处理切换任务意图
-        
-        打断所有正在执行的任务，再调用 _process_create_task_intent 执行目标任务。
-        
+    async def _process_switch_task_intent(self, inputs: EventHandlerInput):
+        """Process SWITCH_TASK intent.
+
+        Typically interrupts all currently running tasks and then calls
+        ``_process_create_task_intent`` for the target task.
+
         Args:
-            inputs: 事件处理器输入
+            inputs: Event handler input.
         """
         ...
 
     async def _process_unknown_task_intent(self, event: Event):
-        """处理未知任务意图
-        
-        返回 Intent 的 clarification_prompt 字段给用户。
-        
+    async def _process_unknown_task_intent(self, event: Event):
+        """Process UNKNOWN_TASK intent.
+
+        Typically returns the ``clarification_prompt`` field of the
+        corresponding ``Intent`` to ask the user for more details.
+
         Args:
-            event: 输入事件
+            event: Input event.
         """
         ...
 

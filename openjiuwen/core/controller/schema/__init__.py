@@ -1,11 +1,17 @@
-"""控制器数据模型定义
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-该模块定义了控制器相关的所有数据模型，包括：
-- DataFrame: 数据帧（文本、文件、JSON）
-- Event: 事件（输入事件、任务执行中交互事件、任务完成事件、任务失败事件）和事件类型
-- ControllerOutput: 控制器输出（批处理和流式）
-- Intent: 意图和意图类型
-- Task: 任务和任务执行状态
+
+"""Controller data model definitions.
+
+This package defines all data models related to the controller, including:
+
+- DataFrame: data frames (text, file, JSON).
+- Event: events and event types (input, task interaction, completion,
+  failure).
+- ControllerOutput: controller output (batch and streaming).
+- Intent: intent and intent types.
+- Task: tasks and task execution status.
 """
 from openjiuwen.core.controller.schema.controller_output import (
     ControllerOutputPayload, ControllerOutputChunk, ControllerOutput

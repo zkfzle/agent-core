@@ -21,6 +21,8 @@ from openjiuwen.core.retrieval.common.config import EmbeddingConfig
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 from openjiuwen.core.retrieval.embedding.utils import parse_base64_embedding
 
+NOT_SET = None
+
 
 class OpenAIEmbedding(APIEmbedding):
     """
@@ -34,7 +36,7 @@ class OpenAIEmbedding(APIEmbedding):
         max_retries: int = 3,
         extra_headers: Optional[dict] = None,
         max_batch_size: int = 8,
-        verify: bool | str | ssl.SSLContext = True,
+        verify: bool | str | ssl.SSLContext = NOT_SET,
         **kwargs,
     ):
         """
@@ -61,6 +63,8 @@ class OpenAIEmbedding(APIEmbedding):
             self.api_url = self.api_url.removeprefix("/").removesuffix("/embeddings")
 
         # Create OpenAI clients
+        if verify is NOT_SET:
+            verify = self._verify_ssl
         client_kwargs = dict(verify=verify, timeout=self.timeout, base_url=self.api_url) | kwargs
         self.async_client = openai.AsyncOpenAI(
             api_key=self.api_key,

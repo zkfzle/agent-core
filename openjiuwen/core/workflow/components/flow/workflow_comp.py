@@ -2,7 +2,7 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import AsyncIterator
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.workflow.components.component import WorkflowComponent
 from openjiuwen.core.context_engine import ModelContext
@@ -19,9 +19,10 @@ class SubWorkflowComponent(WorkflowComponent):
     def __init__(self, sub_workflow: Workflow):
         super().__init__()
         if sub_workflow is None:
-            raise JiuWenBaseException(StatusCode.COMPONENT_SUB_WORKFLOW_INIT_FAILED.code,
-                                      StatusCode.COMPONENT_SUB_WORKFLOW_INIT_FAILED.errmsg.format(
-                                          error_msg="sub_workflow is None"))
+            raise build_error(
+                StatusCode.COMPONENT_SUB_WORKFLOW_INIT_FAILED,
+                error_msg="sub_workflow is None"
+            )
         self._sub_workflow = sub_workflow
 
     async def invoke(self, inputs: Input, session: Session, context: ModelContext) -> Output:

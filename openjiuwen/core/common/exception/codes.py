@@ -434,6 +434,13 @@ class StatusCode(Enum):
     SCHEMA_VALIDATE_INVALID = (189001, "validate data with schema failed, reason={reason}, data={data}")
     SCHEMA_FORMAT_INVALID = (189002, "format data with schema failed, reason={reason}, data={data}")
 
+    # =========================
+    # SysOperation 190070–190079
+    # =========================
+
+    FS_SYS_OP_FAILED = (190070, "file system operation failed, reason: {error_msg}")
+    SHELL_SYS_OP_FAILED = (190071, "shell operation failed, reason: {error_msg}")
+
     def __init__(self, code: int, msg: str):
         """Validate and initialize enum member values.
 

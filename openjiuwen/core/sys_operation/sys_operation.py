@@ -67,27 +67,6 @@ class SysOperationCard(BaseCard):
         return v
 
 
-# TODO: 与Runner结合
-# # step1. Agent初始化
-# card = SysOperationCard(...)
-# Runner.resource_mgr.add_sys_operation(card)
-#     tool_card_list = sys_operation.fs().list_tools
-#     # tool_id示例：card.id + "." + "fs().read_file"
-#     for tool_card in tool_card_list:
-#         tool_id = card.id + "." + tool_card.name
-#         # tool_card.name与函数之间映射，desc中决定调用invoke/stream
-#         tool = LocalFunction(tool_card, sys_operation.fs().read_file)
-#         self.add_tool(tool_id, tool)
-# # step2. 使用sys_operation调用方法
-# sys_operation = Runner.resource_mgr.get_sys_operation(card.id)
-# sys_operation.fs().read_file(...)
-# sys_operation.code().execute_code(...)
-# sys_operation.shell().execute_cmd(...)
-#
-# # step3. 使用工具调用
-# sys_operation_tool = Runner.resource_mgr.get_tool(tool_id)
-# sys_operation_tool.invoke(...)
-
 class SysOperation:
     """SysOperation"""
 

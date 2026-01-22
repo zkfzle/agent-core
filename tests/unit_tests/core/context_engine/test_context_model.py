@@ -6,8 +6,8 @@
 from typing import List
 import pytest
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.context_engine import ContextEngine, ContextEngineConfig, ModelContext
 from openjiuwen.core.foundation.llm import (
     BaseMessage, SystemMessage, UserMessage, AssistantMessage, ToolMessage
@@ -37,13 +37,13 @@ class TestModelContext:
         context = await self.create_context()
         try:
             await context.add_messages(123)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_MESSAGE_INVALID.code
 
         try:
             invalid_messages = [UserMessage(content="test"), {"role": "user", "content": "test"}]
             await context.add_messages(invalid_messages)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_MESSAGE_INVALID.code
 
     @pytest.mark.asyncio
@@ -98,7 +98,7 @@ class TestModelContext:
         context = await self.create_context()
         try:
             await context.get_messages(size=-1)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_EXECUTION_ERROR.code
 
     @pytest.mark.asyncio
@@ -282,7 +282,7 @@ class TestModelContext:
         context = await self.create_context()
         try:
             context.pop_messages(size=-1)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_EXECUTION_ERROR.code
 
     @pytest.mark.asyncio
@@ -376,13 +376,13 @@ class TestModelContext:
         context = await self.create_context()
         try:
             context.set_messages(123)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_MESSAGE_INVALID.code
 
         try:
             invalid_messages = [UserMessage(content="test"), {"role": "user", "content": "test"}]
             await context.set_messages(invalid_messages)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_MESSAGE_INVALID.code
 
     @pytest.mark.asyncio
@@ -398,7 +398,7 @@ class TestModelContext:
         context = await self.create_context()
         try:
             await context.get_context_window(window_size=-1)
-        except JiuWenBaseException as e:
+        except build_error as e:
             assert e.error_code == StatusCode.CONTEXT_EXECUTION_ERROR.code
 
     @pytest.mark.asyncio

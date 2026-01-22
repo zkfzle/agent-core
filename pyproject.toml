@@ -1,7 +1,7 @@
 [project]
 name = "openjiuwen"
 version = "0.1.4"
-description = "openJiuwen agent-core is a feature-rich AI Agent SDK, supporting the developing, running, tuning, and improving of your AI agents."
+description = "openJiuwen agent-core is a feature-rich AI agent SDK for developing, running, tuning, and improving your AI agents."
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ['LICENSE']

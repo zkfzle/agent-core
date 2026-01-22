@@ -184,11 +184,11 @@ class ContextFilter:
     efficient usage of the context.
     """
 
-    def __init__(self):
+    def __init__(self, min_similarity_score: float = 0.25, min_rerank_score: float = 0.5, min_ratio_to_top_score: float = 0.5):
         self.reranker = SiliconFlowRerankerModel()
-        self.min_similarity_score = 0.25
-        self.min_rerank_score = 0.5
-        self.max_ratio = 0.5
+        self.min_similarity_score = min_similarity_score
+        self.min_rerank_score = min_rerank_score
+        self.min_ratio_to_top_score = min_ratio_to_top_score
 
     async def afilter(self, query: str, documents: list[dict]):
         documents = [d for d in documents if d["score"] >= self.min_similarity_score]
@@ -199,7 +199,7 @@ class ContextFilter:
             zip(documents, scores), key=lambda x: x[1], reverse=True
         )
         top_score = document_scores[0][1]
-        min_score = max(top_score * self.max_ratio, self.min_rerank_score)
+        min_score = max(top_score * self.min_ratio_to_top_score, self.min_rerank_score)
         document_scores = [
             (doc, score) for doc, score in document_scores if score >= min_score
         ]

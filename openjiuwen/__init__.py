@@ -14,9 +14,10 @@ except PackageNotFoundError:
     __version__ = "unknown"
     pyproject = Path(__file__).parents[1] / "pyproject.toml"
     if pyproject.exists():
-        project_metadata = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-        version_parsed = project_metadata.get("project", {}).get("version")
-        if version_parsed:
+        project_metadata = tomllib.loads(pyproject.read_text(encoding="utf-8")).get("project", {})
+        package_name = project_metadata.get("name")
+        version_parsed = project_metadata.get("version")
+        if package_name == "openjiuwen" and version_parsed:
             __version__ = version_parsed
 
 __all__ = ["__version__"]

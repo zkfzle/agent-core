@@ -6,7 +6,7 @@ import shutil
 import tempfile
 import os
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.sys_operation.sys_operation import SysOperationCard
+from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -29,10 +29,10 @@ async def test_fs_operation_comprehensive(work_dir):
         card_id = "test_fs_op"
         config = LocalWorkConfig(work_dir=work_dir)
         card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=config)
-        add_res = Runner.resource_mgr.add_sys_operation(card)
+        add_res = Runner.resource_mgr.add_sys_operation(card, SysOperation)
         assert add_res.is_ok()
         assert add_res.msg().id == card_id
-        sys_op = Runner.resource_mgr.get_sys_operation(card_id)
+        sys_op = await Runner.resource_mgr.get_sys_operation(card_id)
 
         # 2. Basic Write/Read
         file_name = "basics.txt"
@@ -249,7 +249,7 @@ async def test_fs_operation_comprehensive(work_dir):
         assert special_read.data.content == "Special char test"
 
         # 12. Cleanup
-        rem_res = Runner.resource_mgr.remove_sys_operation(operation_id=card_id)
+        rem_res = Runner.resource_mgr.remove_sys_operation(sys_operation_id=card_id)
         assert rem_res.is_ok()
         assert rem_res.msg().id == card_id
     finally:

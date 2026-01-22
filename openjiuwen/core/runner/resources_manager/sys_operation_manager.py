@@ -1,67 +1,72 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+import inspect
+from typing import Optional
 
-from typing import Optional, Dict
-from openjiuwen.core.runner.resources_manager.abstract_manager import AbstractManager
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.runner.resources_manager.thread_safe_dict import ThreadSafeDict
 from openjiuwen.core.sys_operation.sys_operation import SysOperation, SysOperationCard
 
 
-class SysOperationMgr(AbstractManager[SysOperation]):
+class SysOperationMgr:
     """Manager for SysOperation instances"""
 
     def __init__(self):
-        super().__init__()
+        self._sys_operations: ThreadSafeDict[str, SysOperation] = ThreadSafeDict()
 
-    def add_sys_operation(self, card: SysOperationCard) -> SysOperation:
-        """
-        Add a sys_operation instance.
-
-        Args:
-            card: SysOperationCard containing configuration
-
-        Returns:
-            SysOperation: Created operation instance
-        """
-        operation_id = card.id
-        self._validate_id(operation_id, StatusCode.SESSION_SYS_OP_ADD_FAILED, "sys_operation")
-
-        # Create validate function for add_resource
-        def validate_sys_op(op_card):
-            if operation_id in self._resources:
-                from openjiuwen.core.common.exception.exception import JiuWenBaseException
-                raise JiuWenBaseException(
-                    StatusCode.SESSION_SYS_OP_ADD_FAILED.code,
-                    StatusCode.SESSION_SYS_OP_ADD_FAILED.errmsg.format(
-                        reason=f"SysOperation with id '{operation_id}' already exists")
-                )
-            return SysOperation(op_card)
-
-        self._add_resource(operation_id, card, StatusCode.SESSION_SYS_OP_ADD_FAILED, validate_sys_op)
-        return self._resources.get(operation_id)
-
-    def remove_sys_operation(self, operation_id: str) -> Optional[SysOperation]:
-        """
-        Remove a sys_operation instance by ID.
+    def add_sys_operation(self, sys_operation_id: str, sys_operation_instance: SysOperation):
+        """Add a new system operation instance to the system operation registry.
 
         Args:
-            operation_id: Unique identifier for the operation
+            sys_operation_id: Unique identifier for the system operation. Must be non-duplicate in the registry.
+            sys_operation_instance: System operation instance object (of SysOperation type),
+                containing the specific configuration and implementation of the operation.
 
-        Returns:
-            The removed SysOperation instance, or None if it didn't exist (and skip_if_not_exists is True)
+        Raises:
+            Exception: Raised with status code StatusCode.SYS_OPERATION_ADD_ERROR:
+                1. The input sys_operation_id is empty (None or empty string)
+                2. The input sys_operation_instance is None
+                3. The sys_operation_id already exists in the system operation registry (duplicate ID)
         """
-        self._validate_id(operation_id, StatusCode.SESSION_SYS_OP_REMOVE_FAILED, "sys_operation")
-        return self._remove_resource(operation_id, StatusCode.SESSION_SYS_OP_REMOVE_FAILED)
+        if sys_operation_id is None:
+            raise build_error(StatusCode.SYS_OPERATION_ADD_ERROR,
+                              error_msg="sys_operation_id can not be none")
+        if sys_operation_id in self._sys_operations:
+            raise build_error(StatusCode.SYS_OPERATION_ADD_ERROR,
+                              error_msg=f"already exists sys_operation_card {sys_operation_id}")
+        self._sys_operations[sys_operation_id] = sys_operation_instance
 
-    def get_sys_operation(self, operation_id: str) -> Optional[SysOperation]:
-        """
-        Get a sys_operation instance by ID.
+    def remove_sys_operation(self, sys_operation_id: str) -> Optional[SysOperation]:
+        """Unregister and remove the SysOperation by its unique ID.
 
         Args:
-            operation_id: Unique identifier for the operation
+            sys_operation_id: Unique string ID of the system operation to remove.
 
         Returns:
-            SysOperation instance if found, None otherwise
+            The removed `SysOperation` instance if the ID exists in the registry; `None` otherwise.
+
+        Raises:
+            Exception: Raised with `StatusCode.SYS_OPERATION_REMOVE_ERROR` if `sys_operation_id` is None.
         """
-        self._validate_id(operation_id, StatusCode.SESSION_SYS_OP_GET_FAILED, "sys_operation")
-        return self._get_resource(operation_id, StatusCode.SESSION_SYS_OP_GET_FAILED)
+        if sys_operation_id is None:
+            raise build_error(StatusCode.SYS_OPERATION_REMOVE_ERROR,
+                              error_msg="sys_operation_id can not be none")
+        return self._sys_operations.pop(sys_operation_id, None)
+
+    def get_sys_operation(self, sys_operation_id: str) -> Optional[SysOperation]:
+        """Retrieve the registered SysOperation instance by its unique ID.
+
+        Args:
+            sys_operation_id: Unique string ID of the system operation to retrieve.
+
+        Returns:
+            The `SysOperation` instance associated with the ID if found; `None` otherwise.
+
+        Raises:
+            Exception: Raised with `StatusCode.SYS_OPERATION_GET_ERROR` if `sys_operation_id` is None.
+        """
+        if sys_operation_id is None:
+            raise build_error(StatusCode.SYS_OPERATION_GET_ERROR,
+                              error_msg="sys_operation_id can not be none")
+        return self._sys_operations.get(sys_operation_id)

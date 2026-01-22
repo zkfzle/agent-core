@@ -6,7 +6,7 @@ import shutil
 import tempfile
 import os
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.sys_operation.sys_operation import SysOperationCard
+from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -233,10 +233,10 @@ async def test_fs_operation_comprehensive(work_dir):
         # 11. Security & Error branches
         # Traversal
         trap_res = await sys_op.fs().read_file(path="../outside.txt")
-        assert trap_res.code == StatusCode.FS_SYS_OP_FAILED.code
+        assert trap_res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
         # FNF
         fnf_res = await sys_op.fs().read_file(path="non_existent.txt")
-        assert fnf_res.code == StatusCode.FS_SYS_OP_FAILED.code
+        assert fnf_res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
 
         # Filename with special characters
         special_char_file = "file-with@#$%^&*()!_+-=[]{}|;:,.<>?~+with spaces中文文件名.txt"
@@ -249,7 +249,7 @@ async def test_fs_operation_comprehensive(work_dir):
         assert special_read.data.content == "Special char test"
 
         # 12. Cleanup
-        rem_res = Runner.resource_mgr.remove_sys_operation(operation_id=card_id)
+        rem_res = Runner.resource_mgr.remove_sys_operation(sys_operation_id=card_id)
         assert rem_res.is_ok()
         assert rem_res.msg().id == card_id
     finally:

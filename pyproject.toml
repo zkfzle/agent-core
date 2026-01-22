@@ -6,7 +6,6 @@ readme = "README.md"
 license = "Apache-2.0"
 license-files = ['LICENSE']
 requires-python = ">=3.11,<3.14"
-keywords = ["openjiwen", "jiuwen", "prompt", "llm", "agent", "multi-agent", "tool-use"]
 classifiers = [
     'Development Status :: 4 - Beta',
     'Programming Language :: Python',

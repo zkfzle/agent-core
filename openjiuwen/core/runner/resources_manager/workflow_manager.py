@@ -12,6 +12,7 @@ from openjiuwen.core.foundation.tool import ToolInfo
 
 WorkflowProvider = Union[Callable[[], "Workflow"], Callable[[], Awaitable["Workflow"]]]
 
+
 class WorkflowMgr(AbstractManager["Workflow"]):
     def __init__(self):
         super().__init__()
@@ -68,9 +69,10 @@ class WorkflowMgr(AbstractManager["Workflow"]):
                 workflow = await result
             else:
                 workflow = result
-            if not hasattr(workflow, "get_tool_info"):
-                raise TypeError(f"Workflow must have get_tool_info method")
-            self._workflow_tool_infos[workflow_id] = workflow.get_tool_info()
+            if hasattr(workflow, "card"):
+                self._workflow_tool_infos[workflow_id] = workflow.card.tool_info()
+            else:
+                raise TypeError(f"Workflow must have card")
             return decorate_workflow_with_trace(workflow, session)
         except Exception as e:
             self._handle_exception(e, StatusCode.SESSION_WORKFLOW_GET_FAILED, "get")
@@ -105,7 +107,7 @@ class WorkflowMgr(AbstractManager["Workflow"]):
         except Exception as e:
             self._handle_exception(e, StatusCode.SESSION_WORKFLOW_TOOL_INFO_GET_FAILED, "get_tool_info")
             return []
-    
+
     def get_all_workflows(self) -> dict[str, Union["Workflow", WorkflowProvider]]:
         """
         Get all registered workflows including both instances and providers.

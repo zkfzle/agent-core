@@ -9,8 +9,9 @@ from unittest.mock import Mock
 
 
 from openjiuwen.core.common.constants.enums import ControllerType
+from openjiuwen.core.common.exception.errors import BaseError
 from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig, WorkflowSchema
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.foundation.llm import ModelConfig
 from openjiuwen.core.workflow import ComponentAbility, End, WorkflowCard
 from openjiuwen.core.workflow import Start
@@ -199,8 +200,8 @@ class TestLLMExecutableInvoke:
                                response_format={"type": "text"},)
         try:
             exe = LLMExecutable(config)
-        except JiuWenBaseException as e:
-            assert e.error_code == StatusCode.COMPONENT_LLM_CONFIG_INVALID.code
+        except BaseError as e:
+            assert e.code == StatusCode.COMPONENT_LLM_RESPONSE_CONFIG_INVALID.code
 
     @pytest.mark.asyncio  # 新增
     async def test_llm_in_workflow(
@@ -256,13 +257,7 @@ class TestLLMExecutableInvoke:
 
         flow = Workflow()
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         config = LLMCompConfig(
@@ -286,6 +281,7 @@ class TestLLMExecutableInvoke:
         result = await flow.invoke(inputs={"query": "yzq test query"}, session=context)
         print(f"This is invoke result:{result}")
 
+
 class TestLLMExecutableInvokeNew:
     @unittest.skip("skip system test")
     @pytest.mark.asyncio  # 新增
@@ -296,13 +292,7 @@ class TestLLMExecutableInvokeNew:
         name = "poem"
         flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
@@ -363,13 +353,7 @@ class TestLLMExecutableInvokeNew:
     async def test_real_workflow_invoke_start_llm_end_with_stream_writer(self):
         flow = Workflow()
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider=MODEL_PROVIDER,
@@ -402,7 +386,7 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="llm_workflow")
-        workflow_session = create_agent_session(trace_id=session_id).create_workflow_session()
+        workflow_session = create_agent_session(session_id=session_id).create_workflow_session()
         result = await flow.invoke(inputs={"query": "please write a 3-line poem"},
                                    session=workflow_session, context=workflow_context)
         print(f"invoke result >>> {result}")
@@ -413,13 +397,7 @@ class TestLLMExecutableInvokeNew:
                                                 fake_model_config, fake_model_client_config):
         flow = Workflow()
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         config = LLMCompConfig(
@@ -453,7 +431,7 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="llm_workflow")
-        workflow_session = create_agent_session(trace_id=session_id).create_workflow_session()
+        workflow_session = create_agent_session(session_id=session_id).create_workflow_session()
         result = await flow.invoke(
             inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"},
             session=workflow_session, context=workflow_context)
@@ -465,13 +443,7 @@ class TestLLMExecutableInvokeNew:
                                                 fake_model_config, fake_model_client_config):
         flow = Workflow()
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         config = LLMCompConfig(
@@ -497,7 +469,7 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="llm_workflow")
-        workflow_session = create_agent_session(trace_id=session_id).create_workflow_session()
+        workflow_session = create_agent_session(session_id=session_id).create_workflow_session()
         async for chunk in flow.stream(inputs={"query": "please write a 3-line poem"}, session=workflow_session, context=workflow_context):
             print(f"stream chunk >>> {chunk}")
 
@@ -507,13 +479,7 @@ class TestLLMExecutableInvokeNew:
                                                                         fake_model_config, fake_model_client_config):
         flow = Workflow()
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         config = LLMCompConfig(
@@ -548,7 +514,7 @@ class TestLLMExecutableInvokeNew:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="llm_workflow")
-        workflow_session = create_agent_session(trace_id=session_id).create_workflow_session()
+        workflow_session = create_agent_session(session_id=session_id).create_workflow_session()
         async for chunk in flow.stream(inputs={"query": "收集到的个人信息包括：姓名为张三，年龄为18；姓名为李四，年龄20"}, session=workflow_session,
                                        context=workflow_context):
             print(f"stream chunk >>> {chunk}")
@@ -562,13 +528,7 @@ class TestLLMExecutableInvokeNew:
         name = "poem"
         flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         config = LLMCompConfig(

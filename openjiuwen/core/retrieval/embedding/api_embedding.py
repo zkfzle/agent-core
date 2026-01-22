@@ -8,15 +8,17 @@ Universal HTTP embedding client implementation.
 
 from typing import Any, List, Optional
 import asyncio
+import os
 
 import requests
 
 from openjiuwen.core.common.logging import logger
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.common.callbacks import BaseCallback
 from openjiuwen.core.retrieval.common.config import EmbeddingConfig
+from openjiuwen.core.common.security.ssl_utils import SslUtils
 
 
 class APIEmbedding(Embedding):
@@ -29,6 +31,8 @@ class APIEmbedding(Embedding):
         {"embeddings": [...]}
         {"data": [{"embedding": [...]}, ...]}
     """
+    _EMBEDDING_SSL_VERIFY = "EMBEDDING_SSL_VERIFY"
+    _EMBEDDING_SSL_CERT = "EMBEDDING_SSL_CERT"
 
     def __init__(
         self,
@@ -51,6 +55,30 @@ class APIEmbedding(Embedding):
         if extra_headers:
             self._headers.update(extra_headers)
 
+        # Setup SSL configuration for requests
+        # - verify=True: use system default CA certificates (backward compatible)
+        # - verify=False: disable SSL verification (set EMBEDDING_SSL_VERIFY=false)
+        # - verify=path: use custom CA certificate file (set EMBEDDING_SSL_CERT=/path)
+        url_is_https = self.api_url.startswith("https://") if self.api_url else False
+        if url_is_https:
+            is_ssl_verify_off = SslUtils._bool_env(self._EMBEDDING_SSL_VERIFY, ["false"])
+            ssl_cert = os.getenv(self._EMBEDDING_SSL_CERT)
+            
+            # If SSL verification is disabled, use False
+            if is_ssl_verify_off:
+                self._verify_ssl = False
+            elif ssl_cert:
+                # Custom certificate provided: use certificate file path
+                # requests library supports file path in verify parameter
+                self._verify_ssl = ssl_cert
+            else:
+                # No env vars set: use default behavior (system CA certificates)
+                # This maintains backward compatibility
+                self._verify_ssl = True
+        else:
+            # HTTP URL: no SSL verification needed
+            self._verify_ssl = False
+
         # Cache dimension
         self._dimension: Optional[int] = None
 
@@ -71,11 +99,9 @@ class APIEmbedding(Embedding):
 
     async def embed_query(self, text: str, **kwargs: Any) -> List[float]:
         if not text.strip():
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.errmsg.format(
-                    error_msg="Empty text provided for embedding"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="Empty text provided for embedding"
             )
         embeddings = await self._get_embeddings(text, **kwargs)
         return embeddings[0]
@@ -83,11 +109,9 @@ class APIEmbedding(Embedding):
     def embed_query_sync(self, text: str, **kwargs: Any) -> List[float]:
         """Embed a single query text (sync version)."""
         if not text.strip():
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.errmsg.format(
-                    error_msg="Empty text provided for embedding"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="Empty text provided for embedding"
             )
         embeddings = self._get_embeddings_sync(text, **kwargs)
         return embeddings[0]
@@ -99,36 +123,30 @@ class APIEmbedding(Embedding):
         **kwargs: Any,
     ) -> List[List[float]]:
         if not texts:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.errmsg.format(error_msg="Empty texts list provided"),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="Empty texts list provided"
             )
         callback_cls = kwargs.pop("callback_cls", BaseCallback)
         if not isinstance(callback_cls, type) or not issubclass(callback_cls, BaseCallback):
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID.errmsg.format(
-                    error_msg=(
-                        f"callback_cls in APIEmbedding.embed_documents must be a subclass of "
-                        f"BaseCallback, got {type(callback_cls)}"
-                    )
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_CALLBACK_INVALID,
+                error_msg=(
+                    f"callback_cls in APIEmbedding.embed_documents must be a subclass of "
+                    f"BaseCallback, got {type(callback_cls)}"
+                )
             )
 
         non_empty = [t for t in texts if t.strip()]
         if len(non_empty) != len(texts):
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.errmsg.format(
-                    error_msg=f"{len(texts) - len(non_empty)} chunks are empty while embedding"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg=f"{len(texts) - len(non_empty)} chunks are empty while embedding"
             )
         if not non_empty:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID.errmsg.format(
-                    error_msg="All texts are empty after filtering"
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_INPUT_INVALID,
+                error_msg="All texts are empty after filtering"
             )
         # Respect caller batch_size but never exceed configured max_batch_size
         bsz = batch_size or self.max_batch_size or 1
@@ -157,6 +175,7 @@ class APIEmbedding(Embedding):
                     json=payload,
                     headers=self._headers,
                     timeout=self.timeout,
+                    verify=self._verify_ssl,
                 )
                 resp.raise_for_status()
                 result = resp.json()
@@ -174,18 +193,14 @@ class APIEmbedding(Embedding):
                         if "embedding" in item:
                             embeddings.append(item["embedding"])
                     if not embeddings:
-                        raise JiuWenBaseException(
-                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                                error_msg=f"No embeddings field found in data items: {result}"
-                            ),
+                        raise build_error(
+                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                            error_msg=f"No embeddings field found in data items: {result}"
                         )
                 else:
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                            error_msg=f"No embeddings in response: {result}"
-                        ),
+                    raise build_error(
+                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                        error_msg=f"No embeddings in response: {result}"
                     )
 
                 # If dimension not yet determined, get from result and cache
@@ -196,11 +211,10 @@ class APIEmbedding(Embedding):
                 return embeddings
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.errmsg.format(
-                            error_msg=f"Failed to get embedding after {self.max_retries} attempts"
-                        ),
+                    raise build_error(
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED,
+                        error_msg=f"Failed to get embedding after {self.max_retries} attempts",
+                        cause=e
                     ) from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
@@ -208,11 +222,9 @@ class APIEmbedding(Embedding):
                     self.max_retries,
                     e,
                 )
-        raise JiuWenBaseException(
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code,
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.errmsg.format(
-                error_msg="Unreachable code in _get_embeddings"
-            ),
+        raise build_error(
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED,
+            error_msg="Unreachable code in _get_embeddings"
         )
 
     def _get_embeddings_sync(self, text: str | List[str], **kwargs) -> List[List[float]]:
@@ -227,6 +239,7 @@ class APIEmbedding(Embedding):
                     json=payload,
                     headers=self._headers,
                     timeout=self.timeout,
+                    verify=self._verify_ssl,
                 )
                 resp.raise_for_status()
                 result = resp.json()
@@ -244,18 +257,14 @@ class APIEmbedding(Embedding):
                         if "embedding" in item:
                             embeddings.append(item["embedding"])
                     if not embeddings:
-                        raise JiuWenBaseException(
-                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                                error_msg=f"No embeddings field found in data items: {result}"
-                            ),
+                        raise build_error(
+                            StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                            error_msg=f"No embeddings field found in data items: {result}"
                         )
                 else:
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                            error_msg=f"No embeddings in response: {result}"
-                        ),
+                    raise build_error(
+                        StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                        error_msg=f"No embeddings in response: {result}"
                     )
 
                 # Cache dimension if not yet determined
@@ -266,11 +275,10 @@ class APIEmbedding(Embedding):
                 return embeddings
             except requests.exceptions.RequestException as e:
                 if attempt == self.max_retries - 1:
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.errmsg.format(
-                            error_msg=f"Failed to get embedding after {self.max_retries} attempts"
-                        ),
+                    raise build_error(
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED,
+                        error_msg=f"Failed to get embedding after {self.max_retries} attempts",
+                        cause=e
                     ) from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
@@ -278,9 +286,7 @@ class APIEmbedding(Embedding):
                     self.max_retries,
                     e,
                 )
-        raise JiuWenBaseException(
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code,
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.errmsg.format(
-                error_msg="Unreachable code in _get_embeddings_sync"
-            ),
+        raise build_error(
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED,
+            error_msg="Unreachable code in _get_embeddings_sync"
         )

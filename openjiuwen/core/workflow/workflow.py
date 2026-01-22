@@ -8,9 +8,11 @@ from collections import OrderedDict
 from typing import Self, Union, AsyncIterator, List, Tuple
 
 from openjiuwen.core.common.constants.constant import INTERACTION
+from openjiuwen.core.common.exception.errors import build_error, BaseError
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.utils.dict_utils import flatten_dict
 from openjiuwen.core.common.utils.schema_utils import SchemaUtils
 from openjiuwen.core.workflow.base import WorkflowCard, WorkflowChunk, WorkflowExecutionState, \
     WorkflowOutput
@@ -120,6 +122,7 @@ class Workflow:
         Returns:
             Self for method chaining
         """
+        self._validate_schemas(inputs_schema, outputs_schema, stream_inputs_schema, stream_outputs_schema)
         self._internal.add_workflow_comp(comp_id,
                                          workflow_comp,
                                          wait_for_all=wait_for_all,
@@ -157,6 +160,7 @@ class Workflow:
         Returns:
             Self for method chaining
         """
+        self._validate_schemas(inputs_schema, outputs_schema, stream_inputs_schema, stream_outputs_schema)
         comp_ability = []
         if response_mode is not None and "streaming" == response_mode:
             self._is_streaming = True
@@ -255,7 +259,9 @@ class Workflow:
             inputs: Input data for the workflow
             session: Workflow session for state management
             context: context engine
-            **kwargs: Additional execution parameters,
+            **kwargs: Additional execution parameters
+                - is_sub: Whether this is a sub-workflow execution
+                - skip_inputs_validate: Whether to skip input validation
 
         Returns:
             WorkflowOutput containing results and metadata
@@ -263,10 +269,14 @@ class Workflow:
         if kwargs.get("is_sub"):
             return await self._sub_invoke(inputs, session, context, **kwargs)
 
+        session.set_workflow_card(self._card)
         if self._card.input_params is not None:
             inputs = SchemaUtils.format_with_schema(inputs, self._card.input_params,
                                                     skip_validate=kwargs.get("skip_inputs_validate"))
+
         parent = session.get_parent()
+        if parent is not None and not hasattr(parent, "base"):
+            parent = getattr(parent, "_inner")
         workflow_session = WorkflowSession(workflow_id=self._card.id,
                                            parent=parent.base() if parent is not None else None,
                                            session_id=session.get_session_id(),
@@ -316,9 +326,11 @@ class Workflow:
         Args:
             inputs: Input data for the workflow
             session: Workflow session for state management
-            stream_modes: Type(s) of streaming (e.g., ["output", "logs"])
+            stream_modes: Type(s) of WorkflowChunk
             context: context engine
             **kwargs: Additional execution parameters
+                - is_sub: Whether this is a sub-workflow execution
+                - skip_inputs_validate: Whether to skip input validation
 
         Yields:
             WorkflowChunk: Stream chunks containing partial results, logs, or events
@@ -327,10 +339,14 @@ class Workflow:
             async for chunk in self._sub_stream(inputs, session, context, **kwargs):
                 yield chunk
             return
+
+        session.set_workflow_card(self._card)
         if self._card.input_params is not None:
             inputs = SchemaUtils.format_with_schema(inputs, self._card.input_params,
                                                     skip_validate=kwargs.get("skip_inputs_validate"))
         parent = session.get_parent()
+        if parent is not None and not hasattr(parent, "base"):
+            parent = getattr(parent, "_inner")
         workflow_session = WorkflowSession(workflow_id=self._card.id,
                                            parent=parent.base() if parent is not None else None,
                                            session_id=session.get_session_id(),
@@ -338,7 +354,6 @@ class Workflow:
         workflow_session.config().set_envs(session.get_envs())
         async for chunk in self._stream(inputs, workflow_session, context, stream_modes, **kwargs):
             yield chunk
-
 
     def draw(
             self,
@@ -445,8 +460,12 @@ class Workflow:
         try:
             return await asyncio.wait_for(task, timeout=timeout if (timeout and timeout > 0) else None)
         except asyncio.TimeoutError as e:
-            raise JiuWenBaseException(status_code.code, status_code.errmsg.format
-                (error_msg="timeout", timeout=timeout)) from e
+            raise build_error(
+                status_code,
+                error_msg="timeout",
+                timeout=timeout,
+                cause=e
+            ) from e
         except JiuWenBaseException as e:
             raise e
         except Exception as e:
@@ -454,12 +473,19 @@ class Workflow:
                 if isinstance(task.exception(), JiuWenBaseException):
                     raise task.exception()
                 else:
-                    raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                                              StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(
-                                                  error_msg=task.exception())) from e
+                    raise build_error(
+                        StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
+                        error_msg=task.exception(),
+                        timeout=timeout,
+                        cause=e
+                    ) from e
             else:
-                raise JiuWenBaseException(StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                                          StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error_msg=e)) from e
+                raise build_error(
+                    StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
+                    error_msg=str(e),
+                    timeout=timeout,
+                    cause=e
+                ) from e
         finally:
             if not task.done():
                 task.cancel()
@@ -500,11 +526,11 @@ class Workflow:
         return actor_manager, sub_workflow_session
 
     async def _stream(self, inputs: Input,
-            session: WorkflowSession,
-            context: ModelContext = None,
-            stream_modes: list[StreamMode] = None,
-            **kwargs
-    ) -> AsyncIterator[WorkflowChunk]:
+                      session: WorkflowSession,
+                      context: ModelContext = None,
+                      stream_modes: list[StreamMode] = None,
+                      **kwargs
+                      ) -> AsyncIterator[WorkflowChunk]:
         self._validate_and_init_session(session, stream_modes)
         # workflow start tracer info
         await TracerWorkflowUtils.trace_workflow_start(session, inputs)
@@ -554,9 +580,11 @@ class Workflow:
         except JiuWenBaseException as e:
             raise e
         except Exception as e:
-            raise JiuWenBaseException(
-                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.code,
-                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR.errmsg.format(error=e),
+            raise build_error(
+                StatusCode.WORKFLOW_EXECUTION_RUNTIME_ERROR,
+                error_msg=str(e),
+                timeout=timeout,
+                cause=e
             ) from e
 
         finally:
@@ -606,3 +634,28 @@ class Workflow:
                 assistant_messages.append({"role": "assistant", "content": assistant_reply})
 
         context.add_messages(user_messages + assistant_messages)
+
+    @staticmethod
+    def _validate_schemas(inputs_schema: dict | Transformer = None, outputs_schema: dict | Transformer = None,
+                          stream_inputs_schema: dict | Transformer = None,
+                          stream_outputs_schema: dict | Transformer = None):
+        if isinstance(inputs_schema, dict) and isinstance(stream_inputs_schema, dict):
+            flatten_inputs_schema = flatten_dict(inputs_schema)
+            flatten_stream_inputs_schema = flatten_dict(stream_inputs_schema)
+            for key in flatten_inputs_schema.keys():
+                if key in flatten_stream_inputs_schema.keys():
+                    raise build_error(
+                        StatusCode.WORKFLOW_INPUT_INVALID,
+                        error_msg=f"duplicate key both exist in inputs_schema with stream_inputs_schema, "
+                                  f"key={key}"
+                    )
+        if isinstance(outputs_schema, dict) and isinstance(stream_outputs_schema, dict):
+            flatten_outputs_schema = flatten_dict(outputs_schema)
+            flatten_stream_outputs_schema = flatten_dict(stream_outputs_schema)
+            for key in flatten_outputs_schema.keys():
+                if key in flatten_stream_outputs_schema.keys():
+                    raise build_error(
+                        StatusCode.WORKFLOW_INPUT_INVALID,
+                        error_msg=f"duplicate key both exist in outputs_schema with stream_outputs_schema, "
+                                  f"key={key}"
+                    )

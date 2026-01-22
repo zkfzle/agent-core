@@ -31,13 +31,13 @@ class StatusCode(Enum):
     # Workflow Component - Builtin-workflow Component 101000 - 109999
     ## LLMComponent  101000 - 101049
     COMPONENT_LLM_TEMPLATE_CONFIG_ERROR = (101000, "component llm_template config error, reason: {error_msg}")
-    COMPONENT_LLM_CONFIG_INVALID = (101001, "component llm_config is invalid, reason: {error_msg}")
+    COMPONENT_LLM_RESPONSE_CONFIG_INVALID = (101001, "component llm_response_config is invalid, reason: {error_msg}")
     COMPONENT_LLM_CONFIG_ERROR = (101002, "component llm config error, reason: {error_msg}")
     COMPONENT_LLM_INVOKE_CALL_FAILED = (101003, "component llm_invoke call failed, reason: {error_msg}")
     COMPONENT_LLM_EXECUTION_PROCESS_ERROR = (101004, "component llm_execution process error, reason: {error_msg}")
     COMPONENT_LLM_INIT_FAILED = (101005, "component llm initialization failed, reason: {error_msg}")
     COMPONENT_LLM_TEMPLATE_PROCESS_ERROR = (101006, "component llm_template process error, reason: {error_msg}")
-    COMPONENT_LLM_TEMPLATE_INVALID = (101007, "component llm_template is invalid, reason: {error_msg}")
+    COMPONENT_LLM_CONFIG_INVALID = (101007, "component llm_config is invalid, reason: {error_msg}")
 
     ## IntentDetectionComponent 101050 - 101069
     COMPONENT_INTENT_DETECTION_INPUT_PARAM_ERROR = (101050,
@@ -111,19 +111,29 @@ class StatusCode(Enum):
     # Agent Orchestration 120000–129999
     # =========================
 
-    TOOL_NOT_FOUND = (120000, "tool not found")
-    TOOL_EXECUTION_ERROR = (120001, "tool execution error, reason: {error_msg}")
-    TASK_TYPE_NOT_SUPPORTED = (120002, "task type is not supported")
+    # Agent Orchestration - ReAct Agent Orchestration And Execution 120000 - 120999
+    AGENT_TOOL_NOT_FOUND = (120000, "agent tool not found, reason: {error_msg}")
+    AGENT_TOOL_EXECUTION_ERROR = (120001, "agent tool execution error, reason: {error_msg}")
+    AGENT_TASK_NOT_SUPPORT = (120002, "agent task is not supported, reason: {error_msg}")
     AGENT_WORKFLOW_EXECUTION_ERROR = (120003, "agent workflow execution error, reason: {error_msg}")
-    PROMPT_PARAM_INVALID = (120004, "prompt parameter is invalid")
+    AGENT_PROMPT_PARAM_ERROR = (120004, "agent prompt parameter error, reason: {error_msg}")
 
-    # Agent Controller 123000–123999
-    CONTROLLER_LLM_CALL_FAILED = (123000, "controller llm call failed, reason: {error_msg}")
-    AGENT_SUB_TASK_TYPE_NOT_SUPPORTED = (123001, "agent sub task type is not supported")
-    CONTROLLER_INPUT_HANDLE_ERROR = (123002, "controller input handle error, reason: {error_msg}")
-    CONTROLLER_RUNTIME_ERROR = (123003, "controller runtime error, reason: {error_msg}")
-    CONTROLLER_STREAM_SEND_FAILED = (123004, "controller stream send failed, reason: {error_msg}")
-    CONTROLLER_TOOL_CALL_PARSE_ERROR = (123005, "controller tool call parse error, reason: {error_msg}")
+    # Agent Orchestration - Workflow Agent Orchestration And Execution 121000 - 121999
+    # Agent Orchestration - Custom Agent Interface 122000 - 122999
+
+    # Agent Controller 123000 - 123999
+    AGENT_CONTROLLER_INVOKE_CALL_FAILED = (123000, "agent controller_invoke call failed, reason: {error_msg}")
+    AGENT_SUB_TASK_TYPE_NOT_SUPPORT = (123001, "agent sub_task_type is not supported, reason: {error_msg}")
+    AGENT_CONTROLLER_USER_INPUT_PROCESS_ERROR = (
+        123002,
+        "agent controller_user_input process error, reason: {error_msg}")
+    AGENT_CONTROLLER_RUNTIME_ERROR = (123003, "agent controller runtime error, reason: {error_msg}")
+    AGENT_CONTROLLER_EXECUTION_CALL_FAILED = (
+        123004,
+        "agent controller_execution call failed, reason: {error_msg}")
+    AGENT_CONTROLLER_TOOL_EXECUTION_PROCESS_ERROR = (
+        123005,
+        "agent controller_tool_execution process error, reason: {error_msg}")
 
     # =========================
     # Runner / Distributed 134000–134999
@@ -145,7 +155,119 @@ class StatusCode(Enum):
     EXPRESSION_SYNTAX_ERROR = (140000, "expression syntax error")
     EXPRESSION_EVAL_ERROR = (140001, "expression evaluation error, reason: {error_msg}")
     ARRAY_CONDITION_ERROR = (140002, "array condition error")
-    NUMBER_CONDITION_ERROR = (140003, "number condition error")
+    NUMBER_CONDITION_ERROR = (140003, "number condition error, reason: {error_msg}")
+
+    # =========================
+    # ContextEngine 150000 - 154999
+    # =========================
+
+    CONTEXT_MESSAGE_PROCESS_ERROR = (153000, "context message process error, reason: {error_msg}")
+    CONTEXT_EXECUTION_ERROR = (153001, "context execution execution error, reason: {error_msg}")
+    CONTEXT_MESSAGE_INVALID = (153003, "context message is invalid, reason: {error_msg}")
+
+    # =========================
+    # KnowledgeBase Retrieval 155000 - 157999
+    # =========================
+
+    # KnowledgeBase Retrieval - Embedding 155000 - 155099
+    RETRIEVAL_EMBEDDING_INPUT_INVALID = (155000, "retrieval embedding_input is invalid, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_MODEL_NOT_FOUND = (155001, "retrieval embedding_model not found, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_CALL_FAILED = (155002, "retrieval embedding call failed, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_RESPONSE_INVALID = (155003, "retrieval embedding_response is invalid, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED = (
+        155004,
+        "retrieval embedding_request call failed, reason: {error_msg}",
+    )
+    RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED = (155005, "retrieval embedding call failed, reason: {error_msg}")
+    RETRIEVAL_EMBEDDING_CALLBACK_INVALID = (155006, "retrieval embedding_callback is invalid, reason: {error_msg}")
+
+    # KnowledgeBase Retrieval - Indexing 155100 - 155199
+    RETRIEVAL_INDEXING_CHUNK_SIZE_INVALID = (155100, "retrieval indexing_chunk_size is invalid, reason: {error_msg}")
+    RETRIEVAL_INDEXING_CHUNK_OVERLAP_INVALID = (
+        155101,
+        "retrieval indexing_chunk_overlap is invalid, reason: {error_msg}",
+    )
+    RETRIEVAL_INDEXING_TOKENIZER_PROCESS_ERROR = (
+        155102,
+        "retrieval indexing_tokenizer process error, reason: {error_msg}",
+    )
+    RETRIEVAL_INDEXING_FILE_NOT_FOUND = (155103, "retrieval indexing_file not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_FORMAT_NOT_SUPPORT = (155104, "retrieval indexing_format is not supported, reason: {error_msg}")
+    RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "retrieval indexing_embed_model not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_DIMENSION_NOT_FOUND = (155106, "retrieval indexing_dimension not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_PATH_NOT_FOUND = (155107, "retrieval indexing_path not found, reason: {error_msg}")
+    RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID = (
+        155108, "retrieval invalid distance metric selected, reason: {error_msg}"
+    )
+    RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR = (155109, "retrieval indexing_add_doc runtime error, reason: {error_msg}")
+
+    # KnowledgeBase Retrieval - Retriever 155200 - 155299
+    RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT = (155200, "retrieval retriever_mode is not supported, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_SCORE_THRESHOLD_INVALID = (
+        155201,
+        "retrieval retriever_score_threshold is invalid, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_EMBED_MODEL_NOT_FOUND = (
+        155202,
+        "retrieval retriever_embed_model not found, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_INDEX_TYPE_NOT_SUPPORT = (
+        155203,
+        "retrieval retriever_index_type is not supported, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_MODE_INVALID = (155204, "retrieval retriever_mode is invalid, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_CAPABILITY_NOT_SUPPORT = (
+        155205,
+        "retrieval retriever_capability is not supported, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_VECTOR_STORE_NOT_FOUND = (
+        155206,
+        "retrieval retriever_vector_store not found, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_COLLECTION_NOT_FOUND = (155207, "retrieval retriever_collection not found, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_GRAPH_RETRIEVER_NOT_FOUND = (
+        155208,
+        "retrieval retriever_graph_retriever not found, reason: {error_msg}",
+    )
+    RETRIEVAL_RETRIEVER_LLM_CLIENT_NOT_FOUND = (155209, "retrieval retriever_llm_client not found, reason: {error_msg}")
+    RETRIEVAL_RETRIEVER_TOP_K_NOT_FOUND = (155210, "retrieval retriever_top_k not found, reason: {error_msg}")
+
+    # KnowledgeBase Retrieval - Utils 155300 - 155399
+    RETRIEVAL_UTILS_CONFIG_FILE_NOT_FOUND = (155300, "retrieval utils_config_file not found, reason: {error_msg}")
+    RETRIEVAL_UTILS_PYYAML_NOT_FOUND = (155301, "retrieval utils_pyyaml not found, reason: {error_msg}")
+    RETRIEVAL_UTILS_CONFIG_FORMAT_NOT_SUPPORT = (
+        155302,
+        "retrieval utils_config_format is not supported, reason: {error_msg}",
+    )
+    RETRIEVAL_UTILS_CONFIG_NOT_FOUND = (155303, "retrieval utils_config not found, reason: {error_msg}")
+    RETRIEVAL_UTILS_CONFIG_PROCESS_ERROR = (155304, "retrieval utils_config process error, reason: {error_msg}")
+
+    # KnowledgeBase Retrieval - Vector Store 155400 - 155499
+    RETRIEVAL_VECTOR_STORE_PATH_NOT_FOUND = (155400, "retrieval vector_store_path not found, reason: {error_msg}")
+
+    # KnowledgeBase Retrieval - Knowledge Base 155500 - 155599
+    RETRIEVAL_KB_PARSER_NOT_FOUND = (155500, "retrieval kb_parser not found, reason: {error_msg}")
+    RETRIEVAL_KB_CHUNKER_NOT_FOUND = (155501, "retrieval kb_chunker not found, reason: {error_msg}")
+    RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND = (155502, "retrieval kb_index_manager not found, reason: {error_msg}")
+    RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND = (155503, "retrieval kb_vector_store not found, reason: {error_msg}")
+    RETRIEVAL_KB_INDEX_BUILD_EXECUTION_ERROR = (155504, "retrieval kb_index_build execution error, reason: {error_msg}")
+    RETRIEVAL_KB_CHUNK_INDEX_BUILD_EXECUTION_ERROR = (
+        155505,
+        "retrieval kb_chunk_index_build execution error, reason: {error_msg}",
+    )
+    RETRIEVAL_KB_TRIPLE_INDEX_BUILD_EXECUTION_ERROR = (
+        155506,
+        "retrieval kb_triple_index_build execution error, reason: {error_msg}",
+    )
+    RETRIEVAL_KB_TRIPLE_EXTRACTION_PROCESS_ERROR = (
+        155507,
+        "retrieval kb_triple_extraction process error, reason: {error_msg}",
+    )
+    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (
+        155508,
+        "retrieval kb_database_config is invalid, reason: Vector store and index manager have "
+        "incompatible {config_name} configs: {error_msg}",
+    )
 
     # =========================
     # Memory Engine 158000 – 159999

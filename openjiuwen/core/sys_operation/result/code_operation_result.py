@@ -10,7 +10,7 @@ from openjiuwen.core.sys_operation.base import BaseResult
 
 class ExecuteCodeData(BaseModel):
     """Code Execution Result Data Model"""
-    code: str = Field(..., description="Original code executed")
+    code_content: str = Field(..., description="Original code executed")
     language: str = Field(..., description="Programming language of the original code")
     exit_code: int = Field(default=0, description="Execution exit code")
     stdout: str = Field(default="", description="The code's standard output (stdout) stream")

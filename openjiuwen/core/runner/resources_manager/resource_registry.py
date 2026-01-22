@@ -33,6 +33,8 @@ class ResourceRegistry:
             return
         if self.model().remove_model(resource_id):
             return
+        if self.sys_operation().remove_sys_operation(resource_id):
+            return
 
     def tool(self) -> ToolMgr:
         return self._tool_mgr

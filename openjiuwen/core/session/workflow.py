@@ -1,5 +1,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import uuid
 from typing import Any, TYPE_CHECKING
 
 from openjiuwen.core.session.callback.callback_manager import CallbackManager
@@ -14,10 +15,17 @@ class Session:
     """
 
     def __init__(self, parent: "AgentSession" = None, session_id: str = None, envs: dict[str, Any] = None):
-        self._session_id = session_id
         self._envs = envs
         self._callback_manager = CallbackManager()
         self._parent = parent
+        if parent is not None:
+            self._session_id = parent.get_session_id()
+            self._envs = parent.get_envs()
+        elif session_id is not None:
+            self._session_id = session_id
+        else:
+            self._session_id = str(uuid.uuid4())
+        self._workflow_card = None
 
     def get_callback_manager(self) -> CallbackManager:
         return self._callback_manager
@@ -30,6 +38,12 @@ class Session:
 
     def get_parent(self):
         return self._parent
+
+    def set_workflow_card(self, card):
+        self._workflow_card = card
+
+    def get_workflow_card(self):
+        return self._workflow_card
 
 
 def create_workflow_session(parent: "AgentSession" = None, session_id: str = None,

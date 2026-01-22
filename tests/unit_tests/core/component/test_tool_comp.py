@@ -137,13 +137,7 @@ class TestToolComponent:
         name = "tool"
         flow = Workflow(card=WorkflowCard(name=name, id=id, version=version))
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
 
@@ -162,6 +156,6 @@ class TestToolComponent:
         config = ContextEngineConfig()
         ce_engine = ContextEngine(config)
         workflow_context = await ce_engine.create_context(context_id="tool_workflow")
-        workflow_session = create_agent_session(trace_id=session_id).create_workflow_session()
+        workflow_session = create_agent_session(session_id=session_id).create_workflow_session()
         invoke_result = await flow.invoke({"query": "你好"}, workflow_session, workflow_context)
-        assert invoke_result.result["responseContent"] == "{'res': '你好', 'info': 789}"
+        assert invoke_result.result["response"] == "{'res': '你好', 'info': 789}"

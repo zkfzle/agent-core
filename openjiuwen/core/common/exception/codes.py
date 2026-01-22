@@ -111,19 +111,29 @@ class StatusCode(Enum):
     # Agent Orchestration 120000–129999
     # =========================
 
-    TOOL_NOT_FOUND = (120000, "tool not found")
-    TOOL_EXECUTION_ERROR = (120001, "tool execution error, reason: {error_msg}")
-    TASK_TYPE_NOT_SUPPORTED = (120002, "task type is not supported")
+    # Agent Orchestration - ReAct Agent Orchestration And Execution 120000 - 120999
+    AGENT_TOOL_NOT_FOUND = (120000, "agent tool not found, reason: {error_msg}")
+    AGENT_TOOL_EXECUTION_ERROR = (120001, "agent tool execution error, reason: {error_msg}")
+    AGENT_TASK_NOT_SUPPORT = (120002, "agent task is not supported, reason: {error_msg}")
     AGENT_WORKFLOW_EXECUTION_ERROR = (120003, "agent workflow execution error, reason: {error_msg}")
-    PROMPT_PARAM_INVALID = (120004, "prompt parameter is invalid")
+    AGENT_PROMPT_PARAM_ERROR = (120004, "agent prompt parameter error, reason: {error_msg}")
 
-    # Agent Controller 123000–123999
-    CONTROLLER_LLM_CALL_FAILED = (123000, "controller llm call failed, reason: {error_msg}")
-    AGENT_SUB_TASK_TYPE_NOT_SUPPORTED = (123001, "agent sub task type is not supported")
-    CONTROLLER_INPUT_HANDLE_ERROR = (123002, "controller input handle error, reason: {error_msg}")
-    CONTROLLER_RUNTIME_ERROR = (123003, "controller runtime error, reason: {error_msg}")
-    CONTROLLER_STREAM_SEND_FAILED = (123004, "controller stream send failed, reason: {error_msg}")
-    CONTROLLER_TOOL_CALL_PARSE_ERROR = (123005, "controller tool call parse error, reason: {error_msg}")
+    # Agent Orchestration - Workflow Agent Orchestration And Execution 121000 - 121999
+    # Agent Orchestration - Custom Agent Interface 122000 - 122999
+
+    # Agent Controller 123000 - 123999
+    AGENT_CONTROLLER_INVOKE_CALL_FAILED = (123000, "agent controller_invoke call failed, reason: {error_msg}")
+    AGENT_SUB_TASK_TYPE_NOT_SUPPORT = (123001, "agent sub_task_type is not supported, reason: {error_msg}")
+    AGENT_CONTROLLER_USER_INPUT_PROCESS_ERROR = (
+        123002,
+        "agent controller_user_input process error, reason: {error_msg}")
+    AGENT_CONTROLLER_RUNTIME_ERROR = (123003, "agent controller runtime error, reason: {error_msg}")
+    AGENT_CONTROLLER_EXECUTION_CALL_FAILED = (
+        123004,
+        "agent controller_execution call failed, reason: {error_msg}")
+    AGENT_CONTROLLER_TOOL_EXECUTION_PROCESS_ERROR = (
+        123005,
+        "agent controller_tool_execution process error, reason: {error_msg}")
 
     # =========================
     # Runner / Distributed 134000–134999
@@ -146,6 +156,14 @@ class StatusCode(Enum):
     EXPRESSION_EVAL_ERROR = (140001, "expression evaluation error, reason: {error_msg}")
     ARRAY_CONDITION_ERROR = (140002, "array condition error")
     NUMBER_CONDITION_ERROR = (140003, "number condition error, reason: {error_msg}")
+
+    # =========================
+    # ContextEngine 150000 - 154999
+    # =========================
+
+    CONTEXT_MESSAGE_PROCESS_ERROR = (153000, "context message process error, reason: {error_msg}")
+    CONTEXT_EXECUTION_ERROR = (153001, "context execution execution error, reason: {error_msg}")
+    CONTEXT_MESSAGE_INVALID = (153003, "context message is invalid, reason: {error_msg}")
 
     # =========================
     # KnowledgeBase Retrieval 155000 - 157999
@@ -178,7 +196,9 @@ class StatusCode(Enum):
     RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "retrieval indexing_embed_model not found, reason: {error_msg}")
     RETRIEVAL_INDEXING_DIMENSION_NOT_FOUND = (155106, "retrieval indexing_dimension not found, reason: {error_msg}")
     RETRIEVAL_INDEXING_PATH_NOT_FOUND = (155107, "retrieval indexing_path not found, reason: {error_msg}")
-    RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID = (155108, "Invalid distance metric selected: {error_msg}")
+    RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID = (
+        155108, "retrieval invalid distance metric selected, reason: {error_msg}"
+    )
     RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR = (155109, "retrieval indexing_add_doc runtime error, reason: {error_msg}")
 
     # KnowledgeBase Retrieval - Retriever 155200 - 155299

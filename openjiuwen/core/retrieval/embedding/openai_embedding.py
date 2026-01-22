@@ -21,8 +21,6 @@ from openjiuwen.core.retrieval.common.config import EmbeddingConfig
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 from openjiuwen.core.retrieval.embedding.utils import parse_base64_embedding
 
-NOT_SET = None
-
 
 class OpenAIEmbedding(APIEmbedding):
     """
@@ -36,7 +34,7 @@ class OpenAIEmbedding(APIEmbedding):
         max_retries: int = 3,
         extra_headers: Optional[dict] = None,
         max_batch_size: int = 8,
-        verify: bool | str | ssl.SSLContext = NOT_SET,
+        verify: bool | str | ssl.SSLContext = True,
         **kwargs,
     ):
         """
@@ -49,7 +47,8 @@ class OpenAIEmbedding(APIEmbedding):
             extra_headers: Additional request headers
             max_batch_size: Maximum batch size for each query
             verify (bool/str/ssl.SSLContext): Decides SSL context to use for the httpx clients,
-                bool: whether to use SSL context with default CA certificate;
+                bool: whether to use SSL context with default CA certificate (using EMBEDDING_SSL_CERT from
+                https://gitcode.com/openJiuwen/agent-core/pull/180 if possible, otherwise using system default);
                 str: path to custom CA certificate, this certificate is used to create the SSL context;
                 ssl.SSLContext: custom SSL context to use.
             **kwargs: optional keyword arguments to pass into httpx clients
@@ -63,7 +62,7 @@ class OpenAIEmbedding(APIEmbedding):
             self.api_url = self.api_url.removeprefix("/").removesuffix("/embeddings")
 
         # Create OpenAI clients
-        if verify is NOT_SET:
+        if verify is True and isinstance(self._verify_ssl, str):
             verify = self._verify_ssl
         client_kwargs = dict(verify=verify, timeout=self.timeout, base_url=self.api_url) | kwargs
         self.async_client = openai.AsyncOpenAI(

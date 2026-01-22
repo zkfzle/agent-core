@@ -1,9 +1,11 @@
 # Cross-platform Makefile (Windows-friendly)
-.PHONY: help install has-staged-changes format lint pylint spelling fix-format fix-lint type-check check fix
+.PHONY: help install update test has-staged-changes format lint pylint spelling fix-format fix-lint type-check check fix
 .DEFAULT_GOAL := help
 
 # Less noisy
 MAKEFLAGS += --no-print-directory
+TESTFLAGS ?= .
+PYTHON ?= python
 
 LINESEP := ------------------------------------------------------------------
 DEPENDENCIES := "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests" "codespell>=2.2.4"
@@ -12,15 +14,19 @@ DEPENDENCIES := "ruff>=0.11.2" "pylint>=3.0.0" "mypy>=1.12.0" "types-requests" "
 ifeq ($(filter cmd.exe sh.exe,$(SHELL)),$(SHELL))
 	START := 
 	END := 
+	DQ := "
 	NULL := NUL
 	BLANK := & echo.
 	FAIL_CMD := exit /b 1
+	CURL ?= curl.exe
 else
 	START := "
 	END := "
+	DQ := \"
 	NULL := /dev/null
 	BLANK := ; echo ""
 	FAIL_CMD := exit 1
+	CURL ?= curl
 endif
 
 # Check last COMMITS commits if COMMITS > 0
@@ -33,9 +39,31 @@ else
 	DIFF_OPTION := --cached
 endif
 
-# Get changed files from git, then filter to .py/.pyi using Make
-CHANGED_FILES_RAW := $(strip $(shell git diff --name-only $(DIFF_OPTION) --diff-filter=ACMR 2>$(NULL)))
-CHANGED_FILES := $(filter %.py %.pyi,$(CHANGED_FILES_RAW))
+# Get changed files from git, then filter to get .py/.pyi via Python (cross-platform)
+# Use -z flag (null-terminated) to avoid git quoting filenames
+CHANGES_RAW := $(strip $(shell \
+	git diff -z --name-only $(DIFF_OPTION) --diff-filter=ACMR 2>$(NULL) | \
+	$(PYTHON) -c "import re;print(*(f for f in open(0).read().split('\0')if re.search(r'\.pyi?\Z',f)),sep='\n')" \
+))
+
+# Helper functions to check for quotes in paths and escape double quotes within a string
+has-dquote = $(findstring ",$(1))
+has-squote = $(findstring ',$(1))
+escape-dquote = $(subst ",\",$(1))
+
+# Helper function for handles spaces and quotes in filenames
+# - If path contains double quote: use double quotes with escaped double quotes inside
+# - Otherwise: use double quotes (handles spaces and single quotes safely)
+define quote-path
+$(if $(call has-dquote,$(1)), \
+  "$(call escape-dquote,$(1))" \
+, \
+  "$(1)" \
+)
+endef
+
+# Create a properly quoted list of files (handles spaces and quotes in filenames)
+CHANGED_FILES := $(foreach file,$(CHANGES_RAW),$(call quote-path,$(file)))
 
 # Detect uv
 UV_EXISTS := $(strip $(shell uv --version >$(NULL) 2>&1 && echo yes))
@@ -47,7 +75,8 @@ help:
 	@echo Available targets:
 	@echo $(START)    help       - Show this help message$(END)
 	@echo $(START)    install    - Install dependencies via uv or pip: ruff, pylint, mypy, codespell$(END)
-	@echo $(START)    test       - Execute pytest$(END)
+	@echo $(START)    update     - Download latest version of this Makefile from gitcode.com/openJiuwen/agent-core$(END)
+	@echo $(START)    test       - Execute pytest, you can supply arguments via TESTFLAGS=$(DQ)...$(DQ)$(END)
 	@echo $(START)    format     - Check formatting of selected Python files via ruff$(END)
 	@echo $(START)    lint       - Check linting of selected Python files via ruff$(END)
 	@echo $(START)    pylint     - Check linting of selected Python files via pylint: more comprehensive$(END)
@@ -67,20 +96,30 @@ else
 	@python -m pip install $(DEPENDENCIES)
 endif
 
+
+update:
+	@echo Downloading latest version of this Makefile from gitcode.com/openJiuwen/agent-core...
+	@echo NOTE: If this did not work, try running
+	@echo $(START)  > make update CURL=path/to/your/curl_executable (curl.exe on Windows 10+)$(END)
+	@$(CURL) -fsSL https://raw.gitcode.com/openJiuwen/agent-core/raw/develop/Makefile -o Makefile
+
 test:
-	@pytest
+	@echo NOTE: To supply arguments to pytest (for example, to use pytest-xdist), try running
+	@echo $(START)  > make test TESTFLAGS=$(DQ)...$(DQ)$(END)
+	@pytest $(TESTFLAGS)
 
 # Sanity check - fails if there are no selected Python files
 has-staged-changes:
-ifeq ($(strip $(CHANGED_FILES)),)
+ifeq ($(strip $(CHANGES_RAW)),)
 	@echo No Python files selected.
-	@echo Make sure you have used git add first, or have set COMMITS to a positive integer. $(BLANK)
+	@echo NOTE: Make sure you have used git add first, or have set COMMITS to a positive integer. $(BLANK)
 	@echo $(LINESEP) $(BLANK)
 	@$(MAKE) help
 	@$(FAIL_CMD)
 endif
 
 format: has-staged-changes
+	-@ruff check --select I $(CHANGED_FILES)
 	-@ruff format --check $(CHANGED_FILES)
 
 lint: has-staged-changes
@@ -93,6 +132,7 @@ spelling: has-staged-changes
 	-@codespell $(CHANGED_FILES)
 
 fix-format: has-staged-changes
+	-@ruff check --select I --fix $(CHANGED_FILES)
 	-@ruff format $(CHANGED_FILES)
 
 fix-lint: has-staged-changes

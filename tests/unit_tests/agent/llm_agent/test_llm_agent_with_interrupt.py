@@ -101,7 +101,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
     @pytest.mark.asyncio
     @patch("openjiuwen.single_agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
     @patch(
-        "openjiuwen.core.workflow.components.llm_related.questioner_comp."
+        "openjiuwen.core.workflow.components.llm.questioner_comp."
         "QuestionerDirectReplyHandler._invoke_llm_for_extraction"
     )
     @patch(
@@ -136,13 +136,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
         model_config = self._create_model()
@@ -247,13 +241,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{output}}"})
 
         model_config = ModelConfig(model_provider="OpenAI",
@@ -335,7 +323,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
     @pytest.mark.asyncio
     @patch(
-        "openjiuwen.core.workflow.components.llm_related.questioner_comp."
+        "openjiuwen.core.workflow.components.llm.questioner_comp."
         "QuestionerDirectReplyHandler._invoke_llm_for_extraction"
     )
     @patch("openjiuwen.core.foundation.llm.model.Model")
@@ -358,13 +346,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
 
@@ -436,7 +418,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
     @pytest.mark.asyncio
     @patch(
-        "openjiuwen.core.workflow.components.llm_related.questioner_comp."
+        "openjiuwen.core.workflow.components.llm.questioner_comp."
         "QuestionerDirectReplyHandler._invoke_llm_for_extraction"
     )
     @patch("openjiuwen.core.foundation.llm.model.Model")
@@ -460,13 +442,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
             FieldInfo(field_name="time", description="时间", required=True, default_value="today")
         ]
 
-        start_component = Start(
-            {
-                "inputs": [
-                    {"id": "query", "type": "String", "required": "true", "sourceType": "ref"}
-                ]
-            }
-        )
+        start_component = Start()
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
 
 

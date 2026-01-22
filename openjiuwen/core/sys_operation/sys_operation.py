@@ -6,6 +6,7 @@ from typing import Optional, List
 from pydantic import Field, field_validator
 
 from openjiuwen.core.common.schema import BaseCard
+from openjiuwen.core.foundation.tool import ToolCard
 from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 from openjiuwen.core.sys_operation.registry import OperationRegistry
@@ -99,19 +100,29 @@ class SysOperation:
         return self._get_operation(name)
 
     def fs(self):
-        return self.fs
+        return self._get_operation("fs")
 
     def code(self):
-        return self.code
+        return self._get_operation("code")
 
     def shell(self):
-        return self.shell
+        return self._get_operation("shell")
 
     def _get_operation(self, name):
         """get operation"""
         if name in self._instances:
             return self._instances[name]
         operation_info = OperationRegistry.get_operation_info(name, self.mode)
+        # Lazy loading: try to import the module if not registered
+        if not operation_info:
+            try:
+                import importlib
+                module_path = f"openjiuwen.core.sys_operation.{self.mode.value}.{name}_operation"
+                importlib.import_module(module_path)
+                # Check again after import
+                operation_info = OperationRegistry.get_operation_info(name, self.mode)
+            except (ImportError, AttributeError):
+                pass
         if operation_info is None:
             return None
         operation_cls = operation_info["cls"]

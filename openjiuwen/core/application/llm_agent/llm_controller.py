@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 
 from typing import Dict, Optional, List, Any
 
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.single_agent.legacy import (
     LegacyReActAgentConfig as ReActAgentConfig,
 )
@@ -14,10 +15,9 @@ from openjiuwen.core.controller import BaseController, Event, EventType, Task, T
 from openjiuwen.core.controller.legacy.utils import MessageHandlerUtils
 from openjiuwen.core.common.utils.message_utils import MessageUtils
 from openjiuwen.core.common.constants.enums import TaskType
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.security.exception_utils import ExceptionUtils
 from openjiuwen.core.common.security.json_utils import JsonUtils
 from openjiuwen.core.session import Session
 from openjiuwen.core.common.security.user_config import UserConfig
@@ -96,8 +96,10 @@ class LLMController(BaseController):
         """
         if event.event_type != EventType.USER_INPUT:
             logger.warning(f"Unexpected event type: {event.event_type}, expected USER_INPUT")
-            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_HANDLE_USER_INPUT_ERROR.code,
-                                           f"{event.event_type} is unexpected event type, should be USER_INPUT")
+            raise build_error(
+                StatusCode.AGENT_CONTROLLER_USER_INPUT_PROCESS_ERROR,
+                error_msg=f"{event.event_type} is unexpected event type, should be USER_INPUT"
+            )
 
         try:
             return await self._handle_user_input(event, session)
@@ -106,7 +108,11 @@ class LLMController(BaseController):
             if isinstance(e, JiuWenBaseException):
                 raise e
             else:
-                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_RUNTIME_ERROR, str(e), e)
+                raise build_error(
+                    StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
+                    error_msg=str(e),
+                    cause=e
+                ) from e
 
     async def _handle_user_input(self, event: Event, session: Session) -> Optional[Dict]:
         """Handle user input - ReAct core: LLM reasoning to generate plan
@@ -509,9 +515,9 @@ class LLMController(BaseController):
                 return await self._execute_plugin_task(task, session)
             else:
                 logger.warning(f"Unknown task type: {task.task_type}")
-                raise JiuWenBaseException(
-                    error_code=StatusCode.TASK_NOT_SUPPORT_ERROR.code,
-                    message=StatusCode.TASK_NOT_SUPPORT_ERROR.errmsg.format(msg=str(task.task_type))
+                raise build_error(
+                    StatusCode.AGENT_TASK_NOT_SUPPORT,
+                    error_msg=str(task.task_type)
                 )
         except Exception as e:
             logger.error(f"Error executing task {task.task_id}: {e}")
@@ -597,25 +603,27 @@ class LLMController(BaseController):
                 )
         except JiuWenBaseException as e:
             logger.error(f"Error executing workflow task {task.input.target_name}: {e}")
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_EXECUTION_ERROR.code,
-                message=e.message
-            )
+            raise build_error(
+                StatusCode.AGENT_WORKFLOW_EXECUTION_ERROR,
+                error_msg=e.message,
+                cause=e
+            ) from e
         except Exception as e:
             logger.error(f"Error executing workflow {task.input.target_name}: {e}")
-            raise JiuWenBaseException(
-                error_code=StatusCode.WORKFLOW_EXECUTION_ERROR.code,
-                message=StatusCode.WORKFLOW_EXECUTION_ERROR.errmsg.format(msg=str(e))
-            )
+            raise build_error(
+                StatusCode.AGENT_WORKFLOW_EXECUTION_ERROR,
+                error_msg=str(e),
+                cause=e
+            ) from e
 
     async def _execute_plugin_task(self, task: Task, session: Session) -> TaskResult:
         """Execute plugin task - return result dictionary"""
-        tool = session.get_tool(task.input.target_name)
+        tool = Runner.resource_mgr.get_tool(task.input.target_name)
         if not tool:
             logger.error("Tool not found")
-            raise JiuWenBaseException(
-                error_code=StatusCode.TOOL_NOT_FOUND_ERROR.code,
-                message=StatusCode.TOOL_NOT_FOUND_ERROR.errmsg
+            raise build_error(
+                StatusCode.AGENT_TOOL_NOT_FOUND,
+                error_msg=f"tool '{task.input.target_name}' is not registered in session"
             )
         try:
             result = await tool.invoke(task.input.arguments)
@@ -637,22 +645,24 @@ class LLMController(BaseController):
             )
         except JiuWenBaseException as e:
             logger.error(f"Error executing plugin task {task.input.target_name}: {e}")
-            raise JiuWenBaseException(
-                error_code=StatusCode.TOOL_EXECUTION_ERROR.code,
-                message=e.message
-            )
+            raise build_error(
+                StatusCode.AGENT_TOOL_EXECUTION_ERROR,
+                error_msg=e.message,
+                cause=e
+            ) from e
         except Exception as e:
             logger.error(f"Error executing plugin task {task.input.target_name}: {e}")
-            raise JiuWenBaseException(
-                error_code=StatusCode.TOOL_EXECUTION_ERROR.code,
-                message=StatusCode.TOOL_EXECUTION_ERROR.errmsg.format(msg=str(e))
-            )
+            raise build_error(
+                StatusCode.AGENT_TOOL_EXECUTION_ERROR,
+                error_msg=str(e),
+                cause=e
+            ) from e
 
     async def _generate_plan_from_llm(self, event: Event, session: Session):
         """Call LLM to generate plan - ReAct core method"""
         inputs = event.get_display_content()
         user_id = event.source.user_id
-        tools = session.get_tool_info()
+        tools = await Runner.resource_mgr.get_tool_infos()
         logger.info(f"Loaded {len(tools)} Tool(s) for generating plans")
         system_prompt_keywords = await self._get_system_prompt_keywords(inputs, user_id)
         chat_history = MessageUtils.get_chat_history(self._context_engine, session, self.config)
@@ -664,7 +674,7 @@ class LLMController(BaseController):
             logger.info(f"React llm inputs: {llm_inputs}")
 
         try:
-            model = self._get_model(session)
+            model = await self._get_model()
             llm_output = await self._call_llm_get_output(
                 model,
                 self.config.model.model_info.model_name,
@@ -685,7 +695,11 @@ class LLMController(BaseController):
             if isinstance(e, JiuWenBaseException):
                 raise e
             else:
-                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_INVOKE_LLM_FAILED, str(e), e)
+                raise build_error(
+                    StatusCode.AGENT_CONTROLLER_INVOKE_CALL_FAILED,
+                    error_msg=str(e),
+                    cause=e
+                ) from e
 
         return tasks, llm_output
 
@@ -751,8 +765,10 @@ class LLMController(BaseController):
 
             # Check for empty response
             if accumulated_chunk is None:
-                ExceptionUtils.raise_exception(StatusCode.CONTROLLER_INVOKE_LLM_FAILED,
-                                               "LLM returned empty response")
+                raise build_error(
+                    StatusCode.AGENT_CONTROLLER_INVOKE_CALL_FAILED,
+                    error_msg="LLM returned empty response"
+                )
 
             # Convert accumulated chunk to AIMessage
             return AssistantMessage(
@@ -769,7 +785,7 @@ class LLMController(BaseController):
             logger.error(f"Failed to stream LLM output: {e}")
             raise
 
-    def _get_model(self, session: Session):
+    async def _get_model(self):
         """Get model instance"""
         model_id = generate_key(
             self.config.model.model_info.api_key,
@@ -777,7 +793,7 @@ class LLMController(BaseController):
             self.config.model.model_provider
         )
 
-        model = session.get_model(model_id=model_id)
+        model = await Runner.resource_mgr.get_model(model_id=model_id)
 
         if model is None:
             model_client_config = ModelClientConfig(
@@ -794,10 +810,13 @@ class LLMController(BaseController):
                 temperature=self.config.model.model_info.temperature,
                 top_p=self.config.model.model_info.top_p,
             )
-            model = Model(model_client_config=model_client_config, model_config=model_request_config)
-            session.add_model(model_id=model_id, model=model)
 
-        return session.get_model(model_id=model_id)
+            def model_provider():
+                return Model(model_client_config=model_client_config, model_config=model_request_config)
+
+            Runner.resource_mgr.add_model(model_id=model_id, model=model_provider)
+
+        return await Runner.resource_mgr.get_model(model_id=model_id)
 
     def _get_workflow_id_from_schema(self, workflow_name: str) -> Optional[str]:
         """Get workflow_id from workflow schema by name
@@ -948,7 +967,7 @@ class LLMController(BaseController):
             Workflow object, None if not found
         """
         try:
-            workflow = await session.get_workflow(workflow_id)
+            workflow = await Runner.resource_mgr.get_workflow(workflow_id)
             return workflow
         except Exception as e:
             logger.error(f"Failed to find workflow {workflow_id}: {e}")
@@ -1116,7 +1135,11 @@ class LLMController(BaseController):
             return final_stream
         except Exception as e:
             logger.error(f"Failed to send final stream data: {e}")
-            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_SEND_STREAM_FAILED, str(e), e)
+            raise build_error(
+                StatusCode.AGENT_CONTROLLER_EXECUTION_CALL_FAILED,
+                error_msg=str(e),
+                cause=e
+            ) from e
 
     async def _send_error_stream(self, error_msg: str, session: Session):
         """Send error result stream and return OutputSchema"""
@@ -1134,7 +1157,11 @@ class LLMController(BaseController):
             return error_stream
         except Exception as e:
             logger.error(f"Failed to send error stream: {e}")
-            ExceptionUtils.raise_exception(StatusCode.CONTROLLER_SEND_STREAM_FAILED, str(e), e)
+            raise build_error(
+                StatusCode.AGENT_CONTROLLER_EXECUTION_CALL_FAILED,
+                error_msg=str(e),
+                cause=e
+            ) from e
 
     def _unwrap_result(self, result):
         """Unwrap result - unify return format"""

@@ -14,8 +14,8 @@ import httpx
 import openai
 from openai.types import CreateEmbeddingResponse
 
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.common.config import EmbeddingConfig
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
@@ -47,7 +47,8 @@ class OpenAIEmbedding(APIEmbedding):
             extra_headers: Additional request headers
             max_batch_size: Maximum batch size for each query
             verify (bool/str/ssl.SSLContext): Decides SSL context to use for the httpx clients,
-                bool: whether to use SSL context with default CA certificate;
+                bool: whether to use SSL context with default CA certificate (using EMBEDDING_SSL_CERT from
+                https://gitcode.com/openJiuwen/agent-core/pull/180 if possible, otherwise using system default);
                 str: path to custom CA certificate, this certificate is used to create the SSL context;
                 ssl.SSLContext: custom SSL context to use.
             **kwargs: optional keyword arguments to pass into httpx clients
@@ -61,6 +62,8 @@ class OpenAIEmbedding(APIEmbedding):
             self.api_url = self.api_url.removeprefix("/").removesuffix("/embeddings")
 
         # Create OpenAI clients
+        if verify is True and isinstance(self._verify_ssl, str):
+            verify = self._verify_ssl
         client_kwargs = dict(verify=verify, timeout=self.timeout, base_url=self.api_url) | kwargs
         self.async_client = openai.AsyncOpenAI(
             api_key=self.api_key,
@@ -85,11 +88,9 @@ class OpenAIEmbedding(APIEmbedding):
 
         # Check if any data is returned
         if not isinstance(getattr(resp, "data", None), (list, float, str)):
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                    error_msg=f"No embeddings in response: {resp}",
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                error_msg=f"No embeddings in response: {resp}"
             )
 
         # Get raw embedding results
@@ -103,20 +104,17 @@ class OpenAIEmbedding(APIEmbedding):
             try:
                 embeddings = [parse_base64_embedding(emb) for emb in embeddings]
             except Exception as e:
-                raise JiuWenBaseException(
-                    StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                    StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                        error_msg=f"OpenAI service returned invalid base64 string embedding: {e}",
-                    ),
+                raise build_error(
+                    StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                    error_msg=f"OpenAI service returned invalid base64 string embedding: {e}",
+                    cause=e
                 ) from e
 
         # Check if valid embeddings are returned
         if not embeddings:
-            raise JiuWenBaseException(
-                StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.code,
-                StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID.errmsg.format(
-                    error_msg=f"No embedding field found in data items: {embeddings_raw}",
-                ),
+            raise build_error(
+                StatusCode.RETRIEVAL_EMBEDDING_RESPONSE_INVALID,
+                error_msg=f"No embedding field found in data items: {embeddings_raw}"
             )
 
         return embeddings
@@ -147,12 +145,10 @@ class OpenAIEmbedding(APIEmbedding):
                 return embeddings
             except openai.APIError as e:
                 if attempt == self.max_retries - 1:
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.errmsg.format(
-                            error_msg=str(e),
-                            max_retries=self.max_retries,
-                        ),
+                    raise build_error(
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED,
+                        error_msg=f"{str(e)} (max_retries={self.max_retries})",
+                        cause=e
                     ) from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
@@ -160,11 +156,9 @@ class OpenAIEmbedding(APIEmbedding):
                     self.max_retries,
                     e,
                 )
-        raise JiuWenBaseException(
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code,
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.errmsg.format(
-                error_msg="Unreachable code in _get_embeddings",
-            ),
+        raise build_error(
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED,
+            error_msg="Unreachable code in _get_embeddings"
         )
 
     def _get_embeddings_sync(self, text: str | List[str], **kwargs) -> List[List[float]]:
@@ -188,12 +182,10 @@ class OpenAIEmbedding(APIEmbedding):
                 return embeddings
             except openai.APIError as e:
                 if attempt == self.max_retries - 1:
-                    raise JiuWenBaseException(
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.code,
-                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED.errmsg.format(
-                            error_msg=str(e),
-                            max_retries=self.max_retries,
-                        ),
+                    raise build_error(
+                        StatusCode.RETRIEVAL_EMBEDDING_REQUEST_CALL_FAILED,
+                        error_msg=f"{str(e)} (max_retries={self.max_retries})",
+                        cause=e
                     ) from e
                 logger.warning(
                     "Embedding request failed (attempt %s/%s): %s",
@@ -201,9 +193,7 @@ class OpenAIEmbedding(APIEmbedding):
                     self.max_retries,
                     e,
                 )
-        raise JiuWenBaseException(
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.code,
-            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED.errmsg.format(
-                error_msg="Unreachable code in _get_embeddings",
-            ),
+        raise build_error(
+            StatusCode.RETRIEVAL_EMBEDDING_UNREACHABLE_CALL_FAILED,
+            error_msg="Unreachable code in _get_embeddings"
         )

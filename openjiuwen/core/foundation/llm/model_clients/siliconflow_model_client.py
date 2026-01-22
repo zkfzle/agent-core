@@ -75,6 +75,11 @@ class SiliconFlowModelClient(BaseModelClient):
         # Validate API base URL
         UrlUtils.check_url_is_valid(self.model_client_config.api_base)
 
+        # Build complete API URL - auto-append /chat/completions if not present
+        api_url = self.model_client_config.api_base.rstrip('/')
+        if not api_url.endswith('/chat/completions'):
+            api_url = f"{api_url}/chat/completions"
+
         ssl_verify, ssl_cert = self.model_client_config.verify_ssl, self.model_client_config.ssl_cert
         if ssl_verify:
             ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
@@ -88,8 +93,8 @@ class SiliconFlowModelClient(BaseModelClient):
 
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
-                    url=self.model_client_config.api_base,
-                    proxy=UrlUtils.get_global_proxy_url(self.model_client_config.api_base),
+                    url=api_url,
+                    proxy=UrlUtils.get_global_proxy_url(api_url),
                     headers={
                         "Content-Type": "application/json",
                         "Authorization": f"Bearer {self.model_client_config.api_key}"
@@ -132,6 +137,7 @@ class SiliconFlowModelClient(BaseModelClient):
         Returns:
             AssistantMessage: Model response
         """
+        tracer_record_data = kwargs.pop("tracer_record_data", None)
         params = self._build_and_sanitize_params(
             messages=messages,
             tools=tools,
@@ -143,6 +149,8 @@ class SiliconFlowModelClient(BaseModelClient):
             stream=False,
             **kwargs
         )
+        if tracer_record_data:
+            await tracer_record_data(llm_params=params)
         logger.info(f"Request params: {params}")
 
         try:
@@ -196,6 +204,8 @@ class SiliconFlowModelClient(BaseModelClient):
         Yields:
             AssistantMessageChunk: Streaming response chunk
         """
+        tracer_record_data = kwargs.pop("tracer_record_data", None)
+
         params = self._build_and_sanitize_params(
             messages=messages,
             tools=tools,
@@ -207,6 +217,9 @@ class SiliconFlowModelClient(BaseModelClient):
             stream=True,
             **kwargs
         )
+
+        if tracer_record_data:
+            await tracer_record_data(llm_params=params)
 
         try:
             async with self._apost(params, timeout=timeout) as response:

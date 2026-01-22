@@ -440,6 +440,7 @@ class StatusCode(Enum):
 
     FS_SYS_OP_FAILED = (190070, "file system operation failed, reason: {error_msg}")
     SHELL_SYS_OP_FAILED = (190071, "shell operation failed, reason: {error_msg}")
+    CODE_SYS_OP_FAILED = (190072, "code operation failed, reason: {error_msg}")
 
     def __init__(self, code: int, msg: str):
         """Validate and initialize enum member values.

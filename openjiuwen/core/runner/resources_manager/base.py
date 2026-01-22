@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from openjiuwen.core.multi_agent import BaseGroup, GroupCard
 from openjiuwen.core.single_agent import AgentCard
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowCard
 
@@ -50,6 +51,16 @@ A callable that accepts variable arguments and returns an asynchronous Model ins
 Used for lazy loading of model resources with flexible configuration parameters.
 Note: The ellipsis `...` indicates support for varying numbers and types of configuration arguments,
 allowing different model initialization patterns.
+"""
+
+SysOperationProvider = (Callable[[SysOperationCard], Awaitable[SysOperation]] |
+                        Callable[[SysOperationCard], SysOperation])
+"""
+SysOperation provider type definition.
+
+A callable that takes a SysOperationCard and returns an asynchronous SysOperation instance.
+Used for lazy loading of sys_operation resources, supporting on-demand initialization 
+of complex sys_operation configurations and dependencies.
 """
 
 Tag = str

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from filelock import FileLock
+from sphinx.builders.gettext import timestamp
 from sqlalchemy.ext.asyncio import create_async_engine
 from tqdm import tqdm
 
@@ -398,9 +399,10 @@ class ConversationProcessor:
 
         memory_msg_list = []
         for memory in user_memory:
-            date_str = datetime.fromtimestamp(memory["timestamp"]).strftime("%d %B %Y")
+            memory_timestamp = datetime.strptime(memory["timestamp"], "%Y-%m-%d %H:%M:%S")
+            date_str = memory_timestamp.strftime("%d %B %Y")
             memory_context_entry = f"${date_str}: ${memory['mem']}"
-            memory_msg_list.append((memory["timestamp"], memory_context_entry))
+            memory_msg_list.append((memory_timestamp, memory_context_entry))
             logger.debug(memory_context_entry)
 
         memory_msg_list = [

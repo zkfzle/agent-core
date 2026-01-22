@@ -7,6 +7,14 @@ class SkillToolKit:
     def __init__(self, sys_operation_id):
         self._sys_operation_id = sys_operation_id
 
+    @property
+    def sys_operation_id(self):
+        return self._sys_operation_id
+
+    @sys_operation_id.setter
+    def sys_operation_id(self, sys_operation_id):
+        self._sys_operation_id = sys_operation_id
+
     def create_view_file_tool(self):
         view_file_tool_card = ToolCard(
             id="_internal_view_file",

@@ -23,6 +23,10 @@ class SkillUtil:
     def skill_manager(self):
         return self._skill_manager
 
+    @property
+    def skill_tool_kit(self):
+        return self._skill_tool_kit
+
     def register_skills(self, skill_path: str, agent: BaseAgent, session_id: str = None) -> bool:
         self._skill_tool_kit.add_skill_tools(agent)
         self._skill_manager.register(Path(skill_path), session_id)

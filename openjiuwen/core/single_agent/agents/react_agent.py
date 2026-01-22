@@ -9,7 +9,7 @@ Author: huenrui1@huawei.com
 from __future__ import annotations
 
 import asyncio
-from typing import Any, AsyncIterator, Dict, List, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional, Union
 
 from pydantic import Field, BaseModel
 
@@ -33,6 +33,7 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
+from openjiuwen.core.skills.skill_util import SkillUtil
 
 
 class ReActAgentConfig(BaseModel):
@@ -69,6 +70,8 @@ class ReActAgentConfig(BaseModel):
         default=None,
         description="Model request configuration"
     )
+
+    sys_operation_id: Optional[str] = None
 
     def configure_model(self, model_name: str) -> 'ReActAgentConfig':
         """Configure model name
@@ -243,6 +246,7 @@ class ReActAgent(BaseAgent):
         )
         self._llm = None
         self._init_memory_scope()
+        self._skill_util = SkillUtil(self.config.sys_operation_id)
         super().__init__(card)
 
     def _init_memory_scope(self) -> None:
@@ -291,6 +295,10 @@ class ReActAgent(BaseAgent):
         if old_config.mem_scope_id != config.mem_scope_id:
             self._init_memory_scope()
 
+        # Reset sys operation id if changed
+        if old_config.sys_operation_id != config.sys_operation_id:
+            self._skill_util.skill_tool_kit.sys_operation_id = config.sys_operation_id
+
         return self
 
     def _get_llm(self) -> Model:
@@ -335,6 +343,10 @@ class ReActAgent(BaseAgent):
             tools=tools
         )
 
+    def register_skill(self, skill_path: Union[str, List[str]]):
+        """Register a skill"""
+        self._skill_util.register_skills(skill_path, self)
+
     async def invoke(
             self,
             inputs: Any,
@@ -374,6 +386,10 @@ class ReActAgent(BaseAgent):
             for msg in self.config.prompt_template
             if msg.get("role") == "system"
         ]
+
+        if len(system_messages) > 0 and self._skill_util.has_skill():
+            skill_prompt = self._skill_util.get_skill_prompt()
+            system_messages[-1]["content"] = system_messages[-1]["content"] + "\n" + skill_prompt
 
         # Get tool info from _ability_kit
         tools = self.list_tool_info()

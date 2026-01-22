@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+
+import asyncio
+import os
 from typing import Optional, Dict, Any, AsyncIterator
 
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
 from openjiuwen.core.sys_operation.registry import operation
-from openjiuwen.core.sys_operation.result.shell_operation_result import ExecuteCmdResult, ExecuteCmdStreamResult
+from openjiuwen.core.sys_operation.result.shell_operation_result import (
+    ExecuteCmdResult, ExecuteCmdStreamResult, ExecuteCmdData
+)
 
 
 @operation(name="shell", mode=OperationMode.LOCAL, description="local shell operation")
@@ -34,7 +40,83 @@ class ShellOperation(BaseOperation):
         Returns:
             ExecuteCmdResult: Execution result.
         """
-        pass
+        try:
+            if not self._check_allowlist(command):
+                return ExecuteCmdResult(
+                    code=StatusCode.SHELL_SYS_OP_FAILED.code,
+                    message=StatusCode.SHELL_SYS_OP_FAILED.errmsg.format(error_msg="Command not allowed by allowlist")
+                )
+
+            exec_env = self._prepare_environment(environment)
+            encoding = (options or {}).get("encoding", "utf-8")
+
+            proc = await asyncio.create_subprocess_shell(
+                command,
+                cwd=cwd,
+                env=exec_env,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+
+            stdout_chunks = []
+            stderr_chunks = []
+
+            async def read_stream(stream, chunks):
+                try:
+                    while True:
+                        chunk = await stream.read(4096)
+                        if not chunk:
+                            break
+                        chunks.append(chunk)
+                except Exception:
+                    pass
+
+            stdout_task = asyncio.create_task(read_stream(proc.stdout, stdout_chunks))
+            stderr_task = asyncio.create_task(read_stream(proc.stderr, stderr_chunks))
+
+            timed_out = False
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=timeout or 300)
+            except asyncio.TimeoutError:
+                timed_out = True
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except (ProcessLookupError, Exception):
+                    pass
+
+            # Wait for readers to finish capturing remaining output
+            await asyncio.wait([stdout_task, stderr_task], timeout=5)
+
+            stdout_str = b"".join(stdout_chunks).decode(encoding, errors='replace')
+            stderr_str = b"".join(stderr_chunks).decode(encoding, errors='replace')
+
+            res_data = ExecuteCmdData(
+                command=command,
+                cwd=str(cwd) if cwd else ".",
+                exit_code=proc.returncode if proc.returncode is not None else -1,
+                stdout=stdout_str,
+                stderr=stderr_str
+            )
+
+            if timed_out:
+                return ExecuteCmdResult(
+                    code=StatusCode.SHELL_SYS_OP_FAILED.code,
+                    message=StatusCode.SHELL_SYS_OP_FAILED.errmsg.format(
+                        error_msg=f"Command timed out after {timeout} seconds"),
+                    data=res_data
+                )
+
+            return ExecuteCmdResult(
+                code=StatusCode.SUCCESS.code,
+                message=StatusCode.SUCCESS.errmsg,
+                data=res_data
+            )
+        except Exception as e:
+            return ExecuteCmdResult(
+                code=StatusCode.SHELL_SYS_OP_FAILED.code,
+                message=StatusCode.SHELL_SYS_OP_FAILED.errmsg.format(error_msg=str(e))
+            )
 
     async def execute_cmd_stream(
             self,
@@ -59,3 +141,19 @@ class ShellOperation(BaseOperation):
             AsyncIterator[ExecuteCmdStreamResult]: Streaming structured results.
         """
         pass
+
+    def _prepare_environment(self, custom_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+        """Prepare environment variables."""
+        env = os.environ.copy()
+        if custom_env:
+            env.update(custom_env)
+        return env
+
+    def _check_allowlist(self, command: str) -> bool:
+        """Check if command is in allowlist."""
+        if not hasattr(self._run_config, 'shell_allowlist') or self._run_config.shell_allowlist is None:
+            return True
+
+        cmd_prefix = command.split()[0] if command.strip() else ""
+        return any(cmd_prefix == allowed or cmd_prefix.endswith(os.sep + allowed)
+                   for allowed in self._run_config.shell_allowlist)

@@ -7,7 +7,7 @@ import tempfile
 import os
 import platform
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.sys_operation.sys_operation import SysOperationCard
+from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -37,7 +37,7 @@ async def sys_op(work_dir):
     op_instance = Runner.resource_mgr.get_sys_operation(card_id)
     yield op_instance
 
-    Runner.resource_mgr.remove_sys_operation(operation_id=card_id)
+    Runner.resource_mgr.remove_sys_operation(sys_operation_id=card_id)
     await Runner.stop()
 
 
@@ -92,7 +92,7 @@ async def test_shell_timeout(sys_op):
 
     res = await sys_op.shell().execute_cmd(command=cmd_sleep, timeout=1)
 
-    assert res.code == StatusCode.SHELL_SYS_OP_FAILED.code
+    assert res.code == StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code
     assert "timed out" in res.message
 
 
@@ -106,7 +106,7 @@ async def test_shell_ping_timeout(sys_op):
 
     res = await sys_op.shell().execute_cmd(command=cmd_ping, timeout=1)
 
-    assert res.code == StatusCode.SHELL_SYS_OP_FAILED.code
+    assert res.code == StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code
     assert "timed out" in res.message
     # Verify partial data is captured
     assert res.data is not None
@@ -134,9 +134,9 @@ async def test_shell_allowlist(work_dir):
 
         # Denied
         res_deny = await op.shell().execute_cmd("dir")  # 'dir' not in allowlist
-        assert res_deny.code == StatusCode.SHELL_SYS_OP_FAILED.code
+        assert res_deny.code == StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code
         assert "not allowed" in res_deny.message
 
-        Runner.resource_mgr.remove_sys_operation(operation_id=card_id)
+        Runner.resource_mgr.remove_sys_operation(sys_operation_id=card_id)
     finally:
         await Runner.stop()

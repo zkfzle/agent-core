@@ -405,11 +405,6 @@ class StatusCode(Enum):
     SESSION_AGENT_GET_FAILED = (190051, "failed to get single_agent, reason: {reason}")
     SESSION_AGENT_REMOVE_FAILED = (190052, "failed to remove single_agent, reason: {reason}")
 
-    # Session - Resource Management - SysOperation 190060 - 190069
-    SESSION_SYS_OP_ADD_FAILED = (190060, "failed to add sys_operation, reason: {reason}")
-    SESSION_SYS_OP_GET_FAILED = (190061, "failed to get sys_operation, reason: {reason}")
-    SESSION_SYS_OP_REMOVE_FAILED = (190062, "failed to remove sys_operation, reason: {reason}")
-
     SESSION_TOOL_GET_FAILED = (190101, "failed to get tool, reason: {reason}")
     SESSION_TOOL_ADD_FAILED = (190102, "failed to add tool, reason: {reason}")
     SESSION_TOOL_TOOL_INFO_GET_FAILED = (190103, "failed to get toolInfo of tool, reason: {reason}")

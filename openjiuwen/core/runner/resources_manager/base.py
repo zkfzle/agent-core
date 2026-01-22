@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from openjiuwen.core.multi_agent import BaseGroup, GroupCard
 from openjiuwen.core.single_agent import AgentCard
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowCard
 

@@ -8,9 +8,9 @@ This module provides functionality for:
 - High-level skill utilities (SkillUtil)
 """
 
-from skill_util import SkillUtil
-from skill_manager import SkillManager
-from skill_tool_kit import SkillToolKit
+from openjiuwen.core.skills.skill_util import SkillUtil
+from openjiuwen.core.skills.skill_manager import SkillManager
+from openjiuwen.core.skills.skill_tool_kit import SkillToolKit
 
 
 __all__ = [

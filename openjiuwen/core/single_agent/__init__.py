@@ -15,6 +15,7 @@ legacy classes like LegacyReActAgent, AgentConfig, etc.
 
 # New classes (current API)
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
+from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.single_agent.agents.react_agent import (
     ReActAgent,
     ReActAgentConfig
@@ -25,6 +26,7 @@ from openjiuwen.core.session.agent import Session, create_agent_session
 __all__ = [
     # New classes
     "AgentCard",
+    "BaseAgent",
     "ReActAgent",
     "ReActAgentConfig",
     "Session",

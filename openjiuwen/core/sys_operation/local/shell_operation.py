@@ -43,8 +43,8 @@ class ShellOperation(BaseOperation):
         try:
             if not self._check_allowlist(command):
                 return ExecuteCmdResult(
-                    code=StatusCode.SHELL_SYS_OP_FAILED.code,
-                    message=StatusCode.SHELL_SYS_OP_FAILED.errmsg.format(error_msg="Command not allowed by allowlist")
+                    code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
+                    message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(error_msg="Command not allowed by allowlist")
                 )
 
             exec_env = self._prepare_environment(environment)
@@ -101,8 +101,8 @@ class ShellOperation(BaseOperation):
 
             if timed_out:
                 return ExecuteCmdResult(
-                    code=StatusCode.SHELL_SYS_OP_FAILED.code,
-                    message=StatusCode.SHELL_SYS_OP_FAILED.errmsg.format(
+                    code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
+                    message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(
                         error_msg=f"Command timed out after {timeout} seconds"),
                     data=res_data
                 )
@@ -114,8 +114,8 @@ class ShellOperation(BaseOperation):
             )
         except Exception as e:
             return ExecuteCmdResult(
-                code=StatusCode.SHELL_SYS_OP_FAILED.code,
-                message=StatusCode.SHELL_SYS_OP_FAILED.errmsg.format(error_msg=str(e))
+                code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
+                message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(error_msg=str(e))
             )
 
     async def execute_cmd_stream(

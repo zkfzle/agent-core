@@ -8,7 +8,6 @@ from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
 
 class OperationRegistry:
     """Operation registry, managing the operation cls."""
-    # TODO: 并发安全, 实例化之前需要保证类已被注册
     _repository: Dict[str, Dict[OperationMode, Dict[str, Any]]] = {}  # {name: {mode: {cls, description}}}
 
     @classmethod

@@ -1,3 +1,6 @@
+# -*- coding: UTF-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+
 from openjiuwen.core.runner.resources_manager.agent_group_manager import AgentGroupMgr
 from openjiuwen.core.runner.resources_manager.agent_manager import AgentMgr
 from openjiuwen.core.runner.resources_manager.model_manager import ModelMgr

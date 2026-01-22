@@ -1456,3 +1456,71 @@ class ResourceMgr:
             return "function"
         else:
             return None
+
+    def add_sys_operation(self, card: SysOperationCard, *, tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                          tag_update_strategy: TagUpdateStrategy = TagUpdateStrategy.MERGE) -> Result[
+        SysOperationCard, Exception]:
+        """
+        Add a sys_operation to the resource manager.
+
+        Args:
+            card: SysOperationCard containing configuration and identification
+            tag: Optional tag(s) for categorizing and filtering the sys_operation
+            tag_update_strategy: Strategy for updating tags when sys_operation already exists
+
+        Returns:
+            Result[SysOperationCard, Exception]: Result object containing the operation card or an exception
+        """
+        try:
+            self._resource_registry.sys_operation().add_sys_operation(card)
+            return Ok(card)
+        except Exception as e:
+            return Error(e)
+
+    def remove_sys_operation(self, *, operation_id: Union[str, list[str]] = None,
+                             tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                             tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                             skip_if_not_exists: bool = False
+                             ) -> Result[Optional[SysOperationCard], Exception] | list[
+        Result[Optional[SysOperationCard], Exception]]:
+        """
+        Remove sys_operation(s) by ID or tag.
+
+        Args:
+            operation_id: Single ID or list of IDs of sys_operations to remove
+            tag: Single tag or list of tags; removes all sys_operations with matching tags
+            tag_match_strategy: Strategy for matching tags when using tag parameter
+            skip_if_not_exists: If True, skip non-existent sys_operations
+
+        Returns:
+            Result[str, Exception] or list[Result[str, Exception]]:
+                Result object(s) containing the operation ID(s) or exception(s)
+        """
+        if isinstance(operation_id, str):
+            try:
+                self._resource_registry.sys_operation().remove_sys_operation(operation_id)
+                return Ok(SysOperationCard(id=operation_id))
+            except Exception as e:
+                return Error(e)
+        else:
+            results = []
+            for op_id in operation_id:
+                try:
+                    self._resource_registry.sys_operation().remove_sys_operation(op_id)
+                    results.append(Ok(SysOperationCard(id=op_id)))
+                except Exception as e:
+                    results.append(Error(e))
+            return results
+
+    def get_sys_operation(self, operation_id: str) -> Optional[SysOperation]:
+        """
+        Get a sys_operation instance by ID.
+
+        Args:
+            operation_id: Unique identifier for the operation
+
+        Returns:
+            SysOperation instance if found, None otherwise
+        """
+        return self._resource_registry.sys_operation().get_sys_operation(operation_id)
+

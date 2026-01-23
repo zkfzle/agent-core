@@ -16,16 +16,24 @@ from pydantic.fields import FieldInfo
 DEFAULT = None
 IS_SEARCH = {"json_schema_extra": {"stage": "search"}}
 IS_CONSTRUCT = {"json_schema_extra": {"stage": "construct"}}
-EXTRA_CONSTRUCT_FIELD: dict[str, Any] = Field(
-    default_factory=dict,
-    description="Extra index-building arguments to pass into database during construction",
-    **IS_CONSTRUCT,
-)
-EXTRA_SEARCH_FIELD: dict[str, Any] = Field(
-    default_factory=dict,
-    description="Extra index-building arguments to pass into database during search",
-    **IS_SEARCH,
-)
+
+
+def create_extra_construct_field() -> FieldInfo:
+    """Create the pydantic Field for extra_construct"""
+    return Field(
+        default_factory=dict,
+        description="Extra index-building arguments to pass into database during construction",
+        **IS_CONSTRUCT,
+    )
+
+
+def create_extra_search_field() -> FieldInfo:
+    """Create the pydantic Field for extra_search"""
+    return Field(
+        default_factory=dict,
+        description="Extra index-building arguments to pass into database during search",
+        **IS_SEARCH,
+    )
 
 
 class VectorField(BaseModel):

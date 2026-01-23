@@ -13,7 +13,7 @@ from typing import Any, Literal, Optional, Self
 from pydantic import Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from .base import DEFAULT, EXTRA_CONSTRUCT_FIELD, EXTRA_SEARCH_FIELD, IS_CONSTRUCT, IS_SEARCH, VectorField
+from .base import DEFAULT, create_extra_construct_field, create_extra_search_field, IS_CONSTRUCT, IS_SEARCH, VectorField
 
 
 class MilvusVectorField(VectorField):
@@ -228,8 +228,8 @@ class MilvusIVF(_BaseIVF):
     """
 
     variant: Literal["FLAT", "SQ8", "PQ", "RABITQ"] = Field(default="FLAT", description="IVF variants")
-    extra_construct: dict[str, Any] = EXTRA_CONSTRUCT_FIELD
-    extra_search: dict[str, Any] = EXTRA_SEARCH_FIELD
+    extra_construct: dict[str, Any] = create_extra_construct_field()
+    extra_search: dict[str, Any] = create_extra_search_field()
 
     @model_validator(mode="after")
     def validate_extra_args(self) -> Self:
@@ -334,8 +334,8 @@ class MilvusHNSW(MilvusVectorField):
         default=DEFAULT,
         description="HNSW variants supported by Milvus, using different quantization techniques.",
     )
-    extra_construct: dict[str, Any] = EXTRA_CONSTRUCT_FIELD
-    extra_search: dict[str, Any] = EXTRA_SEARCH_FIELD
+    extra_construct: dict[str, Any] = create_extra_construct_field()
+    extra_search: dict[str, Any] = create_extra_search_field()
 
     @model_validator(mode="after")
     def validate_extra_args(self) -> Self:

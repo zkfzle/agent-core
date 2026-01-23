@@ -13,7 +13,7 @@ from typing import Any, Literal
 from pydantic import Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from .base import EXTRA_SEARCH_FIELD, IS_CONSTRUCT, VectorField
+from .base import create_extra_search_field, IS_CONSTRUCT, VectorField
 
 
 class ChromaVectorField(VectorField):
@@ -65,7 +65,7 @@ class ChromaVectorField(VectorField):
         "High ef_search improves recall at the cost of latency.",
         **IS_CONSTRUCT,
     )
-    extra_search: dict[str, Any] = EXTRA_SEARCH_FIELD
+    extra_search: dict[str, Any] = create_extra_search_field()
 
     @field_validator("extra_search", mode="after")
     @classmethod

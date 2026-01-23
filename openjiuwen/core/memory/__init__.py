@@ -3,8 +3,8 @@ from openjiuwen.core.memory.store import BaseKVStore, BaseDbStore
 from openjiuwen.core.memory.long_term_memory import LongTermMemory
 from openjiuwen.core.memory.store.impl.memory_milvus_vector_store import MemoryMilvusVectorStore
 from openjiuwen.core.memory.store.impl.memory_chroma_vector_store import MemoryChromaVectorStore
-from openjiuwen.core.memory.store.impl.default_kv_store import DefaultKVStore
-from openjiuwen.core.memory.store.impl.default_db_store import DefaultDbStore
+from openjiuwen.core.foundation.store.db_based_kv_store import DbBasedKVStore
+from openjiuwen.core.foundation.store.default_db_store import DefaultDbStore
 
 __all__ = [
     'MemoryEngineConfig',
@@ -14,7 +14,7 @@ __all__ = [
     'BaseDbStore',
     'MemoryMilvusVectorStore',
     'MemoryChromaVectorStore',
-    'DefaultKVStore',
+    'DbBasedKVStore',
     'DefaultDbStore',
     'LongTermMemory'
 ]

@@ -218,7 +218,7 @@ class TaskManager:
 
     def get_task(
             self,
-            task_filter: Optional[TaskFilter],
+            task_filter: Optional[TaskFilter] = None,
     ) -> List["Task"]:
         """Query tasks
 

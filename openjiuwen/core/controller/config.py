@@ -107,6 +107,10 @@ class ControllerConfig(BaseModel):
                     "Default timeout is 120000.0 ms."
     )
 
+    intent_llm_id: str = Field(
+        default="",
+    )
+
     # ==================== Intent recognition configuration ====================
     intent_confidence_threshold: float = Field(
         default=0.7,

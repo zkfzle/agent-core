@@ -19,7 +19,7 @@ from openjiuwen.core.single_agent.agents.react_agent import (
     ReActAgent,
     ReActAgentConfig
 )
-from openjiuwen.core.single_agent.agent import *
+from openjiuwen.core.single_agent.agent import AbilityManager
 
 
 __all__ = [

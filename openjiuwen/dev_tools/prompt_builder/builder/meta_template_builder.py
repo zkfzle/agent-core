@@ -5,7 +5,7 @@ from typing import List, Optional, AsyncGenerator, Literal
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import prompt_builder_logger, LogEventType
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.prompt import PromptTemplate
 from openjiuwen.core.foundation.llm import ModelRequestConfig, ModelClientConfig
@@ -89,7 +89,12 @@ class MetaTemplateBuilder(BasePromptBuilder):
             meta_user_template = TEMPLATE.PROMPT_BUILD_PLAN_META_USER_TEMPLATE
         else:
             if template_type != "general":
-                logger.warning(f"Invalid template_type: {template_type}, using `general` instead")
+                prompt_builder_logger.warning(
+                    f"Invalid template_type, using `general` instead",
+                    event_type=LogEventType.AGENT_ERROR,
+                    input_data=prompt,
+                    metadata={"template_type": template_type}
+                )
             meta_system_template = TEMPLATE.PROMPT_BUILD_GENERAL_META_SYSTEM_TEMPLATE
             meta_user_template = TEMPLATE.PROMPT_BUILD_GENERAL_META_USER_TEMPLATE
 

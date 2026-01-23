@@ -1,11 +1,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
+import os
 import pathlib
+import platform
 import shutil
 import tempfile
-import os
-import platform
 import pytest
 import pytest_asyncio
 from openjiuwen.core.runner.runner import Runner
@@ -23,12 +23,12 @@ def work_dir():
     shutil.rmtree(temp_dir)
 
 
-@pytest_asyncio.fixture
-async def sys_op(work_dir):
+@pytest_asyncio.fixture(name="sys_op")
+async def sys_op_fixture(work_dir):
     """Fixture to setup and teardown Runner and SysOperation"""
     await Runner.start()
     card_id = "test_shell_op"
-    config = LocalWorkConfig(work_dir=work_dir, shell_allowlist=None)  # Allow all for basic tests
+    config = LocalWorkConfig(work_dir=work_dir, shell_allowlist=None)
     card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=config)
 
     add_res = Runner.resource_mgr.add_sys_operation(card)

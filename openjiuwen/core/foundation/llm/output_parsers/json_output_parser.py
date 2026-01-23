@@ -9,7 +9,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.schema.message import AssistantMessage
 from openjiuwen.core.foundation.llm.output_parsers.output_parser import BaseOutputParser
 from openjiuwen.core.foundation.llm.schema.message_chunk import AssistantMessageChunk
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import llm_logger, LogEventType
 
 
 class JsonOutputParser(BaseOutputParser):
@@ -21,15 +21,26 @@ class JsonOutputParser(BaseOutputParser):
         """
         parse
         """
+        model_name = None
         if isinstance(llm_output, AssistantMessage):
             text = llm_output.content
+            if llm_output.usage_metadata:
+                model_name = llm_output.usage_metadata.model_name
         elif isinstance(llm_output, str):
             text = llm_output
         else:
             if UserConfig.is_sensitive():
-                logger.warning("Unsupported llm_output type for parse.")
+                llm_logger.warning(
+                    "Unsupported llm_output type for parse.",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=model_name
+                )
             else:
-                logger.warning(f"Unsupported llm_output type for parse: {type(llm_output)}")
+                llm_logger.warning(
+                    f"Unsupported llm_output type for parse: {type(llm_output)}",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=model_name
+                )
             return None
 
         if not text:
@@ -46,15 +57,31 @@ class JsonOutputParser(BaseOutputParser):
             return parsed_data
         except json.JSONDecodeError as e:
             if UserConfig.is_sensitive():
-                logger.error(f"Failed to decode JSON from LLM output")
+                llm_logger.error(
+                    "Failed to decode JSON from LLM output",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=model_name
+                )
             else:
-                logger.error(f"Failed to decode JSON from LLM output: {e}\nContent: {json_str}")
+                llm_logger.error(
+                    f"Failed to decode JSON from LLM output: {e}\nContent: {json_str}",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=model_name
+                )
             return None
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.error(f"An unexpected error occurred during JSON parsing")
+                llm_logger.error(
+                    "An unexpected error occurred during JSON parsing",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=model_name
+                )
             else:
-                logger.error(f"An unexpected error occurred during JSON parsing: {e}\nContent: {json_str}")
+                llm_logger.error(
+                    f"An unexpected error occurred during JSON parsing: {e}\nContent: {json_str}",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=model_name
+                )
             return None
 
     async def stream_parse(self, streaming_inputs: AsyncIterator[Union[str, AssistantMessageChunk]]) -> AsyncIterator[
@@ -63,17 +90,28 @@ class JsonOutputParser(BaseOutputParser):
         stream_parse json
         """
         buffer = ""
+        model_name = None
         async for chunk in streaming_inputs:
             if isinstance(chunk, AssistantMessageChunk):
                 if chunk.content:
                     buffer += chunk.content
+                if chunk.usage_metadata:
+                    model_name = chunk.usage_metadata.model_name
             elif isinstance(chunk, str):
                 buffer += chunk
             else:
                 if UserConfig.is_sensitive():
-                    logger.warning("Unsupported chunk type for stream_parse.")
+                    llm_logger.warning(
+                        "Unsupported chunk type for stream_parse.",
+                        event_type=LogEventType.LLM_CALL_ERROR,
+                        model_name=model_name
+                    )
                 else:
-                    logger.warning(f"Unsupported chunk type for stream_parse: {type(chunk)}")
+                    llm_logger.warning(
+                        f"Unsupported chunk type for stream_parse: {type(chunk)}",
+                        event_type=LogEventType.LLM_CALL_ERROR,
+                        model_name=model_name
+                    )
                 continue
 
             match = re.search(r"```json\n(.*?)```", buffer, re.DOTALL)
@@ -85,19 +123,31 @@ class JsonOutputParser(BaseOutputParser):
                     buffer = buffer[match.end():].strip()
                 except json.JSONDecodeError as e:
                     if UserConfig.is_sensitive():
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing")
+                        llm_logger.error(
+                            "An unexpected error occurred during streaming JSON parsing",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
                     else:
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
+                        llm_logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
 
                 except Exception as e:
                     if UserConfig.is_sensitive():
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing")
+                        llm_logger.error(
+                            "An unexpected error occurred during streaming JSON parsing",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
                     else:
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
+                        llm_logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
                     buffer = ""
             elif buffer.strip().startswith("{") and buffer.strip().endswith("}"):
                 try:
@@ -106,18 +156,32 @@ class JsonOutputParser(BaseOutputParser):
                     buffer = ""
                 except json.JSONDecodeError as e:
                     if UserConfig.is_sensitive():
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing")
+                        llm_logger.error(
+                            "An unexpected error occurred during streaming JSON parsing",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
                     else:
-                        logger.error(
-                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}")
+                        llm_logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing: {e}\nContent: {json_str}",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
 
                 except Exception as e:
                     if UserConfig.is_sensitive():
-                        logger.error("An unexpected error occurred during streaming JSON parsing (direct)")
+                        llm_logger.error(
+                            "An unexpected error occurred during streaming JSON parsing (direct)",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
                     else:
-                        logger.error(f"An unexpected error occurred during streaming JSON parsing (direct): {e}\n"
-                                     f"Content: {buffer}")
+                        llm_logger.error(
+                            f"An unexpected error occurred during streaming JSON parsing (direct): {e}\n"
+                            f"Content: {buffer}",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=model_name
+                        )
                     buffer = ""
 
         if buffer.strip():
@@ -132,13 +196,27 @@ class JsonOutputParser(BaseOutputParser):
                 yield parsed_data
             except json.JSONDecodeError as e:
                 if UserConfig.is_sensitive():
-                    logger.warning(f"Remaining buffer could not be fully parsed as JSON")
+                    llm_logger.warning(
+                        "Remaining buffer could not be fully parsed as JSON",
+                        event_type=LogEventType.LLM_CALL_ERROR,
+                        model_name=model_name
+                    )
                 else:
-                    logger.warning(f"Remaining buffer could not be fully parsed as JSON: {e}\nContent: {json_str}")
+                    llm_logger.warning(
+                        f"Remaining buffer could not be fully parsed as JSON: {e}\nContent: {json_str}",
+                        event_type=LogEventType.LLM_CALL_ERROR,
+                        model_name=model_name
+                    )
             except Exception as e:
                 if UserConfig.is_sensitive():
-                    logger.error(
-                        f"An unexpected error occurred during final streaming JSON parsing")
+                    llm_logger.error(
+                        "An unexpected error occurred during final streaming JSON parsing",
+                        event_type=LogEventType.LLM_CALL_ERROR,
+                        model_name=model_name
+                    )
                 else:
-                    logger.error(
-                        f"An unexpected error occurred during final streaming JSON parsing: {e}\nContent: {json_str}")
+                    llm_logger.error(
+                        f"An unexpected error occurred during final streaming JSON parsing: {e}\nContent: {json_str}",
+                        event_type=LogEventType.LLM_CALL_ERROR,
+                        model_name=model_name
+                    )

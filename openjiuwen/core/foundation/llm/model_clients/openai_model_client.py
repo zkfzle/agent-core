@@ -8,15 +8,12 @@ import openai
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import llm_logger, LogEventType
 from openjiuwen.core.common.security.ssl_utils import SslUtils
 from openjiuwen.core.common.security.url_utils import UrlUtils
 from openjiuwen.core.foundation.llm.schema.message import (
     BaseMessage,
     AssistantMessage,
-    UserMessage,
-    SystemMessage,
-    ToolMessage,
     UsageMetadata
 )
 from openjiuwen.core.foundation.llm.schema.message_chunk import AssistantMessageChunk
@@ -116,16 +113,44 @@ class OpenAIModelClient(BaseModelClient):
 
             # Call API
             response = await async_client.chat.completions.create(**params)
-            logger.info(f"OpenAI API: {response}")
+            llm_logger.info(
+                f"OpenAI API: {response}",
+                event_type=LogEventType.LLM_CALL_END,
+                model_name=params.get("model"),
+                model_provider=self.model_client_config.client_provider,
+                messages=params.get("messages"),
+                tools=params.get("tools"),
+                temperature=params.get("temperature"),
+                top_p=params.get("top_p"),
+                max_tokens=params.get("max_tokens"),
+                is_stream=False
+            )
 
             # Parse response and apply output parser
-            logger.info(f"Before parse response with output parser, output_parser: {output_parser}")
+            llm_logger.info(
+                f"Before parse response with output parser, output_parser: {output_parser}",
+                event_type=LogEventType.LLM_CALL_END,
+                model_name=params.get("model"),
+                model_provider=self.model_client_config.client_provider,
+                is_stream=False
+            )
             assistant_message = await self._parse_response(response, output_parser)
 
             return assistant_message
 
         except Exception as e:
-            logger.error(f"OpenAI API async invoke error: {e}")
+            llm_logger.error(
+                f"OpenAI API async invoke error: {e}",
+                event_type=LogEventType.LLM_CALL_ERROR,
+                model_name=params.get("model"),
+                model_provider=self.model_client_config.client_provider,
+                messages=params.get("messages"),
+                tools=params.get("tools"),
+                temperature=params.get("temperature"),
+                top_p=params.get("top_p"),
+                max_tokens=params.get("max_tokens"),
+                is_stream=False
+            )
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
                 message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
@@ -201,7 +226,18 @@ class OpenAIModelClient(BaseModelClient):
                         yield parsed_chunk
 
         except Exception as e:
-            logger.error(f"OpenAI API async stream error: {e}")
+            llm_logger.error(
+                f"OpenAI API async stream error: {e}",
+                event_type=LogEventType.LLM_CALL_ERROR,
+                model_name=params.get("model"),
+                model_provider=self.model_client_config.client_provider,
+                messages=params.get("messages"),
+                tools=params.get("tools"),
+                temperature=params.get("temperature"),
+                top_p=params.get("top_p"),
+                max_tokens=params.get("max_tokens"),
+                is_stream=True
+            )
             raise JiuWenBaseException(
                 error_code=StatusCode.MODEL_CALL_FAILED.code,
                 message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
@@ -245,7 +281,13 @@ class OpenAIModelClient(BaseModelClient):
                             parser_content = current_parsed_result
                             accumulated_content = ""  # Clear buffer to implement incremental output
                     except Exception as e:
-                        logger.debug(f"Stream parser attempt: {e}")
+                        llm_logger.debug(
+                            f"Stream parser attempt: {e}",
+                            event_type=LogEventType.LLM_CALL_ERROR,
+                            model_name=self.model_config.model_name,
+                            model_provider=self.model_client_config.client_provider,
+                            is_stream=True
+                        )
                         parser_content = None
                 
                 chunk_with_parser = AssistantMessageChunk(
@@ -326,14 +368,39 @@ class OpenAIModelClient(BaseModelClient):
 
         # Apply output parser (only parse content field)
         parser_content = None
-        logger.info(f"Before parse content with parser, content: {content}")
-        logger.info(f"Before parse content with parser, parser: {parser}")
+        llm_logger.info(
+            f"Before parse content with parser, content: {content}",
+            event_type=LogEventType.LLM_CALL_END,
+            model_name=self.model_config.model_name,
+            model_provider=self.model_client_config.client_provider,
+            response_content=content,
+            is_stream=False
+        )
+        llm_logger.info(
+            f"Before parse content with parser, parser: {parser}",
+            event_type=LogEventType.LLM_CALL_END,
+            model_name=self.model_config.model_name,
+            model_provider=self.model_client_config.client_provider,
+            is_stream=False
+        )
         if parser and content:
             try:
                 parser_content = await parser.parse(content)
-                logger.info(f"Parser parse success, parsed content: {parser_content}")
+                llm_logger.info(
+                    f"Parser parse success, parsed content: {parser_content}",
+                    event_type=LogEventType.LLM_CALL_END,
+                    model_name=self.model_config.model_name,
+                    model_provider=self.model_client_config.client_provider,
+                    is_stream=False
+                )
             except Exception as e:
-                logger.warning(f"Parser parse error: {e}")
+                llm_logger.warning(
+                    f"Parser parse error: {e}",
+                    event_type=LogEventType.LLM_CALL_ERROR,
+                    model_name=self.model_config.model_name,
+                    model_provider=self.model_client_config.client_provider,
+                    is_stream=False
+                )
                 parser_content = None
         return AssistantMessage(
             content=content,

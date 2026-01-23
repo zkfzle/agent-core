@@ -66,17 +66,18 @@ endef
 CHANGED_FILES := $(foreach file,$(CHANGES_RAW),$(call quote-path,$(file)))
 
 # Detect uv
-UV_EXISTS := $(strip $(shell uv --version >$(NULL) 2>&1 && echo yes))
-ifeq ($(UV_EXISTS),yes)
-	RUN_CMD ?=
-else
+UV ?= $(strip $(shell uv --version >$(NULL) 2>&1 && echo yes || echo no))
+ifeq ($(UV),yes)
+	RUN_CMD ?= uv run 
+else ifeq ($(UV),no)
 	RUN_CMD ?= $(PYTHON) -m 
 endif
 
 help:
-	@echo Usage: make [target] [COMMITS=N] $(BLANK)
-	@echo If COMMITS=N is specified and greater than 0, check Python files changed in last N commits
-	@echo Otherwise the currently staged changes are checked $(BLANK)
+	-@echo $(START)Usage: make [target] [COMMITS=N] [UV=yes|no]$(END)$(BLANK)
+	@echo - If COMMITS=N is specified and greater than 0, check Python files changed in last N commits.
+	@echo $(START)  Otherwise the currently staged changes are checked.$(END)
+	@echo - If UV is set, it must be either yes or no, otherwise make will detect if uv is available. $(BLANK)
 	@echo Available targets:
 	@echo $(START)    help       - Show this help message$(END)
 	@echo $(START)    install    - Install dependencies via uv or pip: ruff, pylint, mypy, codespell$(END)
@@ -93,14 +94,16 @@ help:
 	@echo $(START)    fix        - Run all auto-fixes: fix-lint, fix-format$(END)
 
 install:
-ifeq ($(UV_EXISTS),yes)
+ifeq ($(UV),yes)
 	@echo [Makefile] Installing dependencies via uv
 	@uv pip install $(DEPENDENCIES)
-else
+else ifeq ($(UV),no)
 	@echo [Makefile] Installing dependencies via pip
 	@$(RUN_CMD)pip install $(DEPENDENCIES)
+else
+	@echo $(START)[Makefile] Unknown value for UV (yes/no): $(UV)$(END)
+	@$(FAIL_CMD)
 endif
-
 
 update:
 	@echo Downloading latest version of this Makefile from gitcode.com/openJiuwen/agent-core...

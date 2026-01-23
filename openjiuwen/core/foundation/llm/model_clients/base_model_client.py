@@ -6,7 +6,7 @@ from typing import List, Optional, AsyncIterator, Union, Dict, Any
 from openjiuwen.core.common.exception.status_code import StatusCode
 
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import llm_logger, LogEventType
 from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.llm.schema.config import ModelRequestConfig, ModelClientConfig
@@ -227,9 +227,15 @@ class BaseModelClient(ABC):
         # Logging
         client_name = self._get_client_name()
         if UserConfig.is_sensitive():
-            logger.info(f"Before request {client_name} chat model, request params is ready.")
+            llm_logger.info(
+                f"Before request {client_name} chat model, request params is ready.",
+                event_type=LogEventType.LLM_CALL_START
+            )
         else:
-            logger.info(f"Before request {client_name} chat model, request params is ready. params:  {params}")
+            llm_logger.info(
+                f"Before request {client_name} chat model, request params is ready. params:  {params}",
+                event_type=LogEventType.LLM_CALL_START
+            )
 
         return params
 
@@ -300,3 +306,4 @@ class BaseModelClient(ABC):
             AssistantMessageChunk: Streaming response chunk
         """
         pass
+

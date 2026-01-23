@@ -160,7 +160,7 @@ async def test_shell_allowlist(work_dir):
     try:
         card_id = "test_allowlist"
         # Only allow 'echo'
-        config = LocalWorkConfig(shell_allowlist=["echo"])
+        config = LocalWorkConfig(shell_allowlist=['echo', 'pwd'])
         card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=config)
 
         add_res = Runner.resource_mgr.add_sys_operation(card)

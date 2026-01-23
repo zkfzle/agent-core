@@ -1,12 +1,14 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
+import asyncio
 import os
-import pytest
 import shutil
 import tempfile
-import asyncio
+
+import pytest
 import pytest_asyncio
+
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode

@@ -26,6 +26,34 @@ class MemoryEngineConfig(BaseModel):
         raise ValueError(f"Invalid crypto_key, must be empty or {AES_KEY_LENGTH} bytes length")
 
 
+class SummaryConfig(BaseModel):
+    max_token: int = Field(default=128)
+    fraction: float = Field(default=0.3)
+    threshold: int = Field(default=0)
+
+    @field_validator('max_token')
+    @classmethod
+    def check_max_token(cls, v: int) -> int:
+        if v > 0:
+            return v
+        raise ValueError(f"Invalid max_token, must be positive")
+
+    @field_validator('fraction')
+    @classmethod
+    def check_fraction(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError(f"Invalid fraction, must be between 0 and 1")
+
+        return v
+
+    @field_validator('threshold')
+    @classmethod
+    def check_threshold(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError(f"Invalid threshold, must be positive")
+        return v
+
+
 class MemoryScopeConfig(BaseModel):
     model_cfg: ModelRequestConfig = Field(default=None)
     model_client_cfg: ModelClientConfig = Field(default=None)
@@ -35,3 +63,4 @@ class MemoryScopeConfig(BaseModel):
 class AgentMemoryConfig(BaseModel):
     mem_variables: list[Param] = Field(default_factory=list)  # memory variables config
     enable_long_term_mem: bool = Field(default=True)  # enable long term memory or not
+    summary_config: SummaryConfig = Field(default_factory=SummaryConfig)  # summary config

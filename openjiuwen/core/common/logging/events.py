@@ -69,6 +69,8 @@ class LogEventType(Enum):
     MEMORY_RETRIEVE = "memory_retrieve"  # Memory retrieved
     MEMORY_DELETE = "memory_delete"  # Memory deleted
     MEMORY_UPDATE = "memory_update"  # Memory updated
+    MEMORY_PROCESS = "memory_process"  # Memory process
+    MEMORY_VALIDATE = "memory_validate"  # Memory validate
 
     # Session related events
     SESSION_CREATE = "session_create"  # Session created
@@ -435,6 +437,8 @@ EVENT_CLASS_MAP: Dict[LogEventType, type] = {
     LogEventType.TOOL_CALL_END: ToolEvent,
     LogEventType.TOOL_CALL_ERROR: ToolEvent,
     # Memory events
+    LogEventType.MEMORY_VALIDATE: MemoryEvent,
+    LogEventType.MEMORY_PROCESS: MemoryEvent,
     LogEventType.MEMORY_STORE: MemoryEvent,
     LogEventType.MEMORY_RETRIEVE: MemoryEvent,
     LogEventType.MEMORY_DELETE: MemoryEvent,

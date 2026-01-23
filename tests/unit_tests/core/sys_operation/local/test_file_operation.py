@@ -1,10 +1,10 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
+import os
 import pytest
 import shutil
 import tempfile
-import os
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode
@@ -22,13 +22,38 @@ def work_dir():
 
 
 @pytest.mark.asyncio
+async def test_fs_operation_no_work_dir(work_dir):
+    await Runner.start()
+    try:
+        # 1. Setup
+        card_id = "test_fs_op"
+        card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL)
+        add_res = Runner.resource_mgr.add_sys_operation(card)
+        assert add_res.is_ok()
+        assert add_res.msg().id == card_id
+        sys_op = Runner.resource_mgr.get_sys_operation(card_id)
+        # 2. Basic Write/Read
+
+        file_name = work_dir + "/basics.txt"
+        lines = [f"line{i}" for i in range(1, 6)]
+        content = "\n".join(lines)
+        write_res = await sys_op.fs().write_file(path=file_name, content=content, prepend_newline=False)
+        assert write_res.code == StatusCode.SUCCESS.code
+
+        read_res = await sys_op.fs().read_file(path=file_name)
+        assert read_res.code == StatusCode.SUCCESS.code
+        assert read_res.data.content == content
+    finally:
+        await Runner.stop()
+
+
+@pytest.mark.asyncio
 async def test_fs_operation_comprehensive(work_dir):
     await Runner.start()
     try:
         # 1. Setup
         card_id = "test_fs_op"
-        config = LocalWorkConfig(work_dir=work_dir)
-        card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=config)
+        card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=LocalWorkConfig(work_dir=work_dir))
         add_res = Runner.resource_mgr.add_sys_operation(card)
         assert add_res.is_ok()
         assert add_res.msg().id == card_id

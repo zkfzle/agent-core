@@ -5,8 +5,9 @@ from typing import Optional, List
 
 from pydantic import Field, field_validator
 
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.schema import BaseCard
-from openjiuwen.core.foundation.tool import ToolCard
 from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 from openjiuwen.core.sys_operation.registry import OperationRegistry
@@ -34,27 +35,10 @@ class SysOperationCard(BaseCard):
         if not isinstance(v, OperationMode):
             try:
                 return OperationMode(v.lower())
-            except ValueError:
-                raise ValueError(
-                    f"mode must be one of {[e.value for e in OperationMode]}, current value: {v}"
-                )
-        return v
-
-    @classmethod
-    @field_validator("gateway_config")
-    def gateway_config_required_when_sandbox(cls, v, values):
-        """gateway_config cannot be None when mode is set to sandbox"""
-        mode = values.get("mode")
-        if mode == OperationMode.SANDBOX and v is None:
-            raise ValueError("gateway_config is required when mode is sandbox")
-        return v
-
-    @classmethod
-    @field_validator("gateway_config")
-    def cannot_have_both_configs(cls, v, values):
-        work_config = values.get("work_config")
-        if work_config is not None and v is not None:
-            raise ValueError("work_config and gateway_config cannot be configured simultaneously")
+            except ValueError as e:
+                raise build_error(StatusCode.SYS_OPERATION_CARD_PARAM_ERROR,
+                    error_msg=f"mode must be one of {[e.value for e in OperationMode]}, current value: {v}",
+                    cause=e)
         return v
 
 

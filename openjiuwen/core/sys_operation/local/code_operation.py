@@ -6,7 +6,6 @@ import os
 from typing import Optional, Dict, Any, Literal, AsyncIterator, Callable, List
 
 from openjiuwen.core.common.exception.codes import StatusCode
-from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
 from openjiuwen.core.sys_operation.registry import operation
 from openjiuwen.core.sys_operation.result.code_operation_result import (
@@ -15,10 +14,11 @@ from openjiuwen.core.sys_operation.result.code_operation_result import (
     ExecuteCodeData,
 )
 
-SUPPORT_LANGUAGE_CMD_MAP: Dict[str, Callable[[str], List[str]]] = {
+_SUPPORT_LANGUAGE_CMD_MAP: Dict[str, Callable[[str], List[str]]] = {
     "python": lambda code: ["python", "-c", code],
     "javascript": lambda code: ["node", "-e", code]
 }
+
 
 @operation(name="code", mode=OperationMode.LOCAL, description="local code operation")
 class CodeOperation(BaseOperation):
@@ -33,8 +33,7 @@ class CodeOperation(BaseOperation):
             environment: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None
     ) -> ExecuteCodeResult:
-        """
-        Execute arbitrary code asynchronously.
+        """Execute arbitrary code asynchronously.
 
         Args:
             code: Non-empty string containing the source code to execute (required positional argument).
@@ -53,13 +52,13 @@ class CodeOperation(BaseOperation):
                                      message="code can not be empty",
                                      data=None)
 
-        if language not in SUPPORT_LANGUAGE_CMD_MAP:
+        if language not in _SUPPORT_LANGUAGE_CMD_MAP:
             return ExecuteCodeResult(code=StatusCode.SYS_OPERATION_CODE_EXECUTION_ERROR.code,
                                      message=f"{language} is not supported",
                                      data=ExecuteCodeData(code_content=code, language=language))
 
         try:
-            cmd = SUPPORT_LANGUAGE_CMD_MAP[language](code)
+            cmd = _SUPPORT_LANGUAGE_CMD_MAP[language](code)
             # Prepare environment variables, for example interpreter_path
             env = os.environ.copy()
             if environment:
@@ -100,7 +99,8 @@ class CodeOperation(BaseOperation):
             # Create result
             executed_message = "Code executed successfully" if exit_code == 0 else \
                 f"Code execution failed with exit code {exit_code}"
-            executed_code = StatusCode.SUCCESS.code if exit_code == 0 else StatusCode.SYS_OPERATION_CODE_EXECUTION_ERROR.code
+            executed_code = StatusCode.SUCCESS.code if exit_code == 0 else \
+                StatusCode.SYS_OPERATION_CODE_EXECUTION_ERROR.code
             return ExecuteCodeResult(
                 code=executed_code,
                 message=executed_message,
@@ -147,8 +147,7 @@ class CodeOperation(BaseOperation):
             environment: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None
     ) -> AsyncIterator[ExecuteCodeStreamResult]:
-        """
-        Execute arbitrary code asynchronously, by streaming.
+        """Execute arbitrary code asynchronously, by streaming.
 
         Args:
             code: Non-empty string containing the source code to execute (required positional argument).

@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-
-from collections import deque
-from typing import Optional, Tuple, Dict, Any, Literal, List, AsyncIterator, Iterator
+import asyncio
+import datetime
 import os
 import pathlib
-from datetime import datetime
 import re
+from collections import deque
+from dataclasses import dataclass
+from typing import Optional, Tuple, Dict, Any, Literal, List, AsyncIterator, Iterator
 
 import aiofiles
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -23,6 +24,22 @@ from openjiuwen.core.sys_operation.result.fs_operation_result import (
 )
 
 SAFE_PATH_PATTERN = re.compile(r'[^\w.-]')
+
+
+@dataclass(frozen=True)
+class _ListItemsSpec:
+    path: str
+
+    include_files: bool = True
+    include_dirs: bool = True
+
+    recursive: bool = False
+    max_depth: Optional[int] = None
+
+    sort_by: Literal["name", "modified_time", "size"] = "name"
+    sort_descending: bool = False
+
+    file_types: Optional[List[str]] = None
 
 
 @operation(name="fs", mode=OperationMode.LOCAL, description="local fs operation")
@@ -551,9 +568,20 @@ class FsOperation(BaseOperation):
             ListFilesResult: Structured result.
         """
         try:
-            items = await self._list_items_internal(path, include_files=True, include_dirs=False, recursive=recursive,
-                                                    max_depth=max_depth, sort_by=sort_by,
-                                                    sort_descending=sort_descending, file_types=file_types)
+            spec = _ListItemsSpec(
+                path=path,
+                include_files=True,
+                include_dirs=False,
+                recursive=recursive,
+                max_depth=max_depth,
+                sort_by=sort_by,
+                sort_descending=sort_descending,
+                file_types=file_types,
+            )
+            items = await asyncio.to_thread(
+                self._list_items_internal_sync,
+                spec,
+            )
             return ListFilesResult(
                 code=StatusCode.SUCCESS.code,
                 message=StatusCode.SUCCESS.errmsg,
@@ -595,20 +623,40 @@ class FsOperation(BaseOperation):
             ListDirsResult: Structured result.
         """
         try:
-            items = await self._list_items_internal(path, include_files=False, include_dirs=True, recursive=recursive,
-                                                    max_depth=max_depth, sort_by=sort_by,
-                                                    sort_descending=sort_descending)
+            spec = _ListItemsSpec(
+                path=path,
+                include_files=False,
+                include_dirs=True,
+                recursive=recursive,
+                max_depth=max_depth,
+                sort_by=sort_by,
+                sort_descending=sort_descending,
+                file_types=None,
+            )
+
+            items = await asyncio.to_thread(
+                self._list_items_internal_sync,
+                spec,
+            )
+
             return ListDirsResult(
                 code=StatusCode.SUCCESS.code,
                 message=StatusCode.SUCCESS.errmsg,
-                data=FileSystemData(total_count=len(items), list_items=items,
-                                    root_path=str(self._resolve_path(path)), recursive=recursive,
-                                    max_depth=max_depth)
+                data=FileSystemData(
+                    total_count=len(items),
+                    list_items=items,
+                    root_path=str(self._resolve_path(path)),
+                    recursive=recursive,
+                    max_depth=max_depth,
+                ),
             )
+
         except Exception as e:
             return ListDirsResult(
                 code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=str(e))
+                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                    error_msg=str(e)
+                ),
             )
 
     async def search_files(
@@ -629,40 +677,54 @@ class FsOperation(BaseOperation):
             SearchFilesResult: Structured result.
         """
         try:
-            base = self._resolve_path(path)
-            if not base.is_dir():
-                return SearchFilesResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        error_msg=f"Path is not a directory: {base}")
-                )
-
-            matched_paths = list(base.rglob(pattern))
-            if exclude_patterns:
-                exclude_set = set()
-                for pat in exclude_patterns:
-                    exclude_set.update(set(base.rglob(pat)))
-                matched_paths = [p for p in matched_paths if p not in exclude_set]
-
-            items = []
-            for p in matched_paths:
-                if p.is_file():
-                    item = self._create_fs_item(p)
-                    if item:
-                        items.append(item)
+            items = await asyncio.to_thread(
+                self._search_files_internal_sync,
+                path,
+                pattern,
+                exclude_patterns
+            )
 
             return SearchFilesResult(
                 code=StatusCode.SUCCESS.code,
                 message=StatusCode.SUCCESS.errmsg,
-                data=SearchFilesData(total_matches=len(items), matching_files=items,
-                                     search_path=str(base), search_pattern=pattern,
-                                     exclude_patterns=exclude_patterns)
+                data=SearchFilesData(
+                    total_matches=len(items),
+                    matching_files=items,
+                    search_path=str(self._resolve_path(path)),
+                    search_pattern=pattern,
+                    exclude_patterns=exclude_patterns
+                )
             )
         except Exception as e:
             return SearchFilesResult(
                 code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
                 message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=str(e))
             )
+
+    def _search_files_internal_sync(
+            self,
+            path: str,
+            pattern: str,
+            exclude_patterns: Optional[List[str]] = None
+    ) -> List[FileSystemItem]:
+        base = self._resolve_path(path)
+        if not base.is_dir():
+            raise NotADirectoryError(f"Path is not a directory: {base}")
+
+        matched_paths = list(base.rglob(pattern))
+        if exclude_patterns:
+            exclude_set = set()
+            for pat in exclude_patterns:
+                exclude_set.update(set(base.rglob(pat)))
+            matched_paths = [p for p in matched_paths if p not in exclude_set]
+
+        items = []
+        for p in matched_paths:
+            if p.is_file():
+                item = self._create_fs_item(p)
+                if item:
+                    items.append(item)
+        return items
 
     def _resolve_path(self, path: str, create_parent: bool = False) -> pathlib.Path:
         """Resolve path, enforce work_dir sandbox (if configured), and sanitize filenames."""
@@ -677,7 +739,7 @@ class FsOperation(BaseOperation):
                 raw_resolved = (work_dir / path).resolve()
                 rel_path = raw_resolved.relative_to(work_dir)
             except ValueError as e:
-                raise build_error(code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR,
+                raise build_error(status=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR,
                                   error_msg=f"Access denied: Path {path} traverses outside {work_dir}",
                                   cause=e) from e
 
@@ -775,28 +837,29 @@ class FsOperation(BaseOperation):
         elif sort_by == "size":
             items.sort(key=lambda i: i.size, reverse=reverse)
 
-    async def _list_items_internal(
-            self, path: str, include_files: bool = True, include_dirs: bool = True,
-            recursive: bool = False, max_depth: Optional[int] = None,
-            sort_by: str = "name", sort_descending: bool = False, file_types: Optional[List[str]] = None
+    def _list_items_internal_sync(
+            self,
+            spec: _ListItemsSpec,
     ) -> List[FileSystemItem]:
-        """Core logic for listing files and directories."""
-        base = self._resolve_path(path)
+        base = self._resolve_path(spec.path)
         if not base.is_dir():
             raise NotADirectoryError(f"Path is not a directory: {base}")
 
-        items = []
-        for p in self._walk_path(base, recursive, max_depth):
+        items: List[FileSystemItem] = []
+
+        for p in self._walk_path(base, spec.recursive, spec.max_depth):
             is_dir = p.is_dir()
-            if not include_files and not is_dir:
+
+            if not spec.include_files and not is_dir:
                 continue
-            if not include_dirs and is_dir:
+            if not spec.include_dirs and is_dir:
                 continue
-            if file_types and not is_dir and p.suffix not in file_types:
+            if spec.file_types and not is_dir and p.suffix not in spec.file_types:
                 continue
+
             item = self._create_fs_item(p)
             if item:
                 items.append(item)
 
-        self._sort_items(items, sort_by, sort_descending)
+        self._sort_items(items, spec.sort_by, spec.sort_descending)
         return items

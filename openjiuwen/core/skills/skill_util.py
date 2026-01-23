@@ -10,11 +10,10 @@ if TYPE_CHECKING:
     from openjiuwen.core.single_agent.agent import BaseAgent
 
 skill_prompt = PromptTemplate(
-    content='''
-	     To help you better complete tasks, the following skill knowledge is provided:
-	     {{skills}}
-	     You can use the view_file tool to read the corresponding Skill.md file to obtain the relevant skill knowledge.
-	     '''
+    content='''To help you better complete tasks, the following skill knowledge is provided:
+{{skills}}
+You can use the view_file tool to read the corresponding Skill.md file to obtain the relevant skill knowledge.
+'''
 )
 
 
@@ -87,5 +86,6 @@ class SkillUtil:
         skills = self._skill_manager.get_all()
         skills_info = []
         for index, skill in enumerate(skills):
-            skills_info.append(f"{index}.Skill name: {skill.name}; Skill description: {skill.description}; Skill file path: {skill.directory}")
+            skills_info.append(f"{index}.Skill name: {skill.name}; Skill description: {skill.description}; Skill file "
+                               f"path: {skill.directory}")
         return skill_prompt.format({"skills": "\n".join(skills_info)}).content

@@ -1,9 +1,9 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from typing import Dict, Optional, Union, List
+from pathlib import Path
 
 import yaml
 from pydantic import BaseModel
-from pathlib import Path
 
 from openjiuwen.core.runner import Runner
 
@@ -79,7 +79,6 @@ class SkillManager:
         Raises:
             KeyError: If the file does not contain a description field in the YAML front matter.
         """
-        self.description = ""
         yaml_data, _ = self._load_yaml(path, session_id)
         if yaml_data is None or "description" not in yaml_data:
             raise KeyError("Skill.md file does not contain a description field")

@@ -146,8 +146,7 @@ class CodeOperation(BaseOperation):
             environment: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None
     ) -> AsyncIterator[ExecuteCodeStreamResult]:
-        """
-        Execute arbitrary code asynchronously.
+        """Execute arbitrary code asynchronously.
 
         Args:
             code: Non-empty string containing the source code to execute (required positional argument).
@@ -157,6 +156,6 @@ class CodeOperation(BaseOperation):
             options: Additional execution configuration options.
 
         Returns:
-            AsyncIterator[ExecuteCodeStreamResult]: Streaming structured results.
+            ExecuteCodeResult: Execution result.
         """
         pass

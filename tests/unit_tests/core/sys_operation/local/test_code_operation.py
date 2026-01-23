@@ -2,15 +2,13 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 import os
-from typing import Dict, List, Optional
-
-import pytest
+from typing import Dict, List
 import shutil
 import tempfile
+import pytest
 import pytest_asyncio
 
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.sys_operation.local.code_operation import SUPPORT_LANGUAGE_CMD_MAP
 from openjiuwen.core.sys_operation.result.code_operation_result import ExecuteCodeResult
 from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode
@@ -34,8 +32,7 @@ class TestSysOperationExecuteCode:
         """Fixture to setup and teardown Runner and SysOperation"""
         await Runner.start()
         card_id = "test_code_op"
-        config = LocalWorkConfig(work_dir=work_dir, shell_allowlist=None)
-        card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=config)
+        card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL)
 
         add_res = Runner.resource_mgr.add_sys_operation(card)
         assert add_res.is_ok()
@@ -67,11 +64,22 @@ class TestSysOperationExecuteCode:
 
     async def test_execute_javascript_code_success(self, sys_op: SysOperation):
         """Test successful execution of valid JavaScript code (requires Node.js installed)"""
-        if "javascript" not in SUPPORT_LANGUAGE_CMD_MAP:
-            pytest.skip("JavaScript not in supported language list")
-
-        node_dir = r"D:\software\Nodejs"
-        os.environ["PATH"] = f"{node_dir};{os.environ['PATH']}"
+        path_separator = ";" if os.name == "nt" else ":"
+        path_dirs = os.environ.get("PATH", "").split(path_separator)
+        node_exe = "node.exe" if os.name == "nt" else "node"
+        node_found = False
+        for dir_path in path_dirs:
+            if not dir_path:
+                continue
+            node_path = os.path.join(dir_path.strip(), node_exe)
+            if os.path.exists(node_path) and os.path.isfile(node_path) and os.access(node_path, os.X_OK):
+                node_found = True
+                break
+        if not node_found:
+            pytest.skip(
+                f"Node.js not found in system PATH. "
+                f"Please install Node.js and add it to your system environment variable PATH."
+            )
 
         # Test data preparation
         code = "console.log('Hello, JavaScript!'); const x = 3 * 4; console.log(x)"

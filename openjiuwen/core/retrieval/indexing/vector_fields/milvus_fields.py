@@ -13,7 +13,7 @@ from typing import Any, Literal, Optional, Self
 from pydantic import Field, model_validator
 from pydantic_core import PydanticCustomError
 
-from .base import DEFAULT, create_extra_construct_field, create_extra_search_field, IS_CONSTRUCT, IS_SEARCH, VectorField
+from .base import DEFAULT, IS_CONSTRUCT, IS_SEARCH, VectorField, create_extra_construct_field, create_extra_search_field
 
 
 class MilvusVectorField(VectorField):

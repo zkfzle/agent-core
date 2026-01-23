@@ -13,7 +13,7 @@ from typing import Any, Literal
 from pydantic import Field, field_validator
 from pydantic_core import PydanticCustomError
 
-from .base import create_extra_search_field, IS_CONSTRUCT, VectorField
+from .base import IS_CONSTRUCT, VectorField, create_extra_search_field
 
 
 class ChromaVectorField(VectorField):

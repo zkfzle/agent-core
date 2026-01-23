@@ -1,0 +1,234 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+"""
+Chroma vector fields test cases
+"""
+
+import pytest
+from pydantic import ValidationError
+
+from openjiuwen.core.retrieval.indexing.vector_fields.chroma_fields import ChromaVectorField
+
+
+class TestChromaVectorField:
+    """Test cases for ChromaVectorField"""
+
+    def test_init_default(self):
+        """Test initialization with default values"""
+        field = ChromaVectorField()
+        assert field.vector_field == "embedding"
+        assert field.database_type == "chroma"
+        assert field.index_type == "hnsw"
+        assert field.max_neighbours == 16
+        assert field.ef_construction == 100
+        assert field.ef_search == 100
+        assert field.extra_search == {}
+
+    def test_init_custom_vector_field(self):
+        """Test initialization with custom vector field name"""
+        field = ChromaVectorField(vector_field="custom_embedding")
+        assert field.vector_field == "custom_embedding"
+        assert field.database_type == "chroma"
+        assert field.index_type == "hnsw"
+
+    def test_init_custom_parameters(self):
+        """Test initialization with custom parameters"""
+        field = ChromaVectorField(
+            vector_field="embeddings",
+            max_neighbours=32,
+            ef_construction=200,
+            ef_search=150.5,
+        )
+        assert field.vector_field == "embeddings"
+        assert field.max_neighbours == 32
+        assert field.ef_construction == 200
+        assert field.ef_search == 150.5
+
+    def test_init_max_neighbours_min(self):
+        """Test initialization with minimum max_neighbours"""
+        field = ChromaVectorField(max_neighbours=2)
+        assert field.max_neighbours == 2
+
+    def test_init_max_neighbours_max(self):
+        """Test initialization with maximum max_neighbours"""
+        field = ChromaVectorField(max_neighbours=2048)
+        assert field.max_neighbours == 2048
+
+    def test_init_ef_construction_min(self):
+        """Test initialization with minimum ef_construction"""
+        field = ChromaVectorField(ef_construction=1)
+        assert field.ef_construction == 1
+
+    def test_init_ef_search_min(self):
+        """Test initialization with minimum ef_search"""
+        field = ChromaVectorField(ef_search=1)
+        assert field.ef_search == 1
+
+    def test_init_ef_search_float(self):
+        """Test initialization with float ef_search"""
+        field = ChromaVectorField(ef_search=50.5)
+        assert field.ef_search == 50.5
+
+    def test_init_extra_search_empty(self):
+        """Test initialization with empty extra_search"""
+        field = ChromaVectorField(extra_search={})
+        assert field.extra_search == {}
+
+    def test_init_extra_search_valid(self):
+        """Test initialization with valid extra_search parameters"""
+        field = ChromaVectorField(
+            extra_search={
+                "resize_factor": 2.0,
+                "num_threads": 4,
+                "batch_size": 100,
+                "sync_threshold": 10,
+            }
+        )
+        assert field.extra_search["resize_factor"] == 2.0
+        assert field.extra_search["num_threads"] == 4
+        assert field.extra_search["batch_size"] == 100
+        assert field.extra_search["sync_threshold"] == 10
+
+    def test_init_extra_search_partial(self):
+        """Test initialization with partial extra_search parameters"""
+        field = ChromaVectorField(extra_search={"num_threads": 8})
+        assert field.extra_search["num_threads"] == 8
+
+    def test_validation_max_neighbours_too_low(self):
+        """Test validation error for max_neighbours below minimum"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(max_neighbours=1)
+        errors = exc_info.value.errors()
+        assert any(error["type"] == "greater_than_equal" and "max_neighbours" in str(error["loc"]) for error in errors)
+
+    def test_validation_max_neighbours_too_high(self):
+        """Test validation error for max_neighbours above maximum"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(max_neighbours=2049)
+        errors = exc_info.value.errors()
+        assert any(error["type"] == "less_than_equal" and "max_neighbours" in str(error["loc"]) for error in errors)
+
+    def test_validation_ef_construction_too_low(self):
+        """Test validation error for ef_construction below minimum"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(ef_construction=0)
+        errors = exc_info.value.errors()
+        assert any(error["type"] == "greater_than_equal" and "ef_construction" in str(error["loc"]) for error in errors)
+
+    def test_validation_ef_search_too_low(self):
+        """Test validation error for ef_search below minimum"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(ef_search=0.5)
+        errors = exc_info.value.errors()
+        assert any(error["type"] == "greater_than_equal" and "ef_search" in str(error["loc"]) for error in errors)
+
+    def test_validation_extra_search_invalid_resize_factor(self):
+        """Test validation error for invalid resize_factor type"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(extra_search={"resize_factor": "invalid"})
+        errors = exc_info.value.errors()
+        assert any("invalid_resize_factor" in str(error) for error in errors)
+
+    def test_validation_extra_search_invalid_num_threads(self):
+        """Test validation error for invalid num_threads type"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(extra_search={"num_threads": "invalid"})
+        errors = exc_info.value.errors()
+        assert any("invalid_num_threads" in str(error) for error in errors)
+
+    def test_validation_extra_search_invalid_batch_size(self):
+        """Test validation error for invalid batch_size type"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(extra_search={"batch_size": "invalid"})
+        errors = exc_info.value.errors()
+        assert any("invalid_batch_size" in str(error) for error in errors)
+
+    def test_validation_extra_search_invalid_sync_threshold(self):
+        """Test validation error for invalid sync_threshold type"""
+        with pytest.raises(ValidationError) as exc_info:
+            ChromaVectorField(extra_search={"sync_threshold": "invalid"})
+        errors = exc_info.value.errors()
+        assert any("invalid_sync_threshold" in str(error) for error in errors)
+
+    def test_to_dict_search(self):
+        """Test to_dict method for search stage"""
+        field = ChromaVectorField(
+            max_neighbours=32,
+            ef_construction=200,
+            ef_search=150,
+            extra_search={"num_threads": 4},
+        )
+        result = field.to_dict("search")
+        # Search stage should include extra_search contents (unpacked)
+        # Note: ef_search, max_neighbours, ef_construction don't have stage markers
+        # so they won't appear in to_dict results
+        assert "num_threads" in result
+        assert result["num_threads"] == 4
+        # Should not include internal fields
+        assert "database_type" not in result
+        assert "index_type" not in result
+        assert "vector_field" not in result
+        assert "extra_search" not in result  # Should be unpacked
+
+    def test_to_dict_construct(self):
+        """Test to_dict method for construct stage"""
+        field = ChromaVectorField(
+            max_neighbours=32,
+            ef_construction=200,
+            ef_search=150,
+            extra_search={"num_threads": 4},
+        )
+        result = field.to_dict("construct")
+        # Construct stage: ChromaVectorField has no construct-only fields with stage markers
+        # so result should be empty (only extra_construct would appear, but Chroma doesn't have it)
+        # Note: max_neighbours, ef_construction, ef_search don't have stage markers
+        # so they won't appear in to_dict results
+        assert result == {}
+        # Should not include internal fields
+        assert "database_type" not in result
+        assert "index_type" not in result
+        assert "vector_field" not in result
+
+    def test_to_dict_invalid_stage(self):
+        """Test to_dict method with invalid stage"""
+        field = ChromaVectorField()
+        # The error might be an AttributeError if status code doesn't exist,
+        # or the actual error message. Test that an exception is raised.
+        with pytest.raises(Exception):
+            field.to_dict("invalid_stage")
+
+    def test_to_dict_search_with_none_fields(self):
+        """Test to_dict search stage filters out None fields"""
+        field = ChromaVectorField(
+            max_neighbours=32,
+            ef_construction=200,
+            # ef_search uses default, but should still appear if not None
+        )
+        result = field.to_dict("search")
+        # ef_search should be present with default value
+        assert "ef_search" in result
+        assert result["ef_search"] == 100
+
+    def test_to_dict_construct_with_none_fields(self):
+        """Test to_dict construct stage filters out None fields"""
+        field = ChromaVectorField(
+            max_neighbours=32,
+            ef_construction=200,
+        )
+        result = field.to_dict("construct")
+        # Construction fields should be present
+        assert "max_neighbours" in result
+        assert "ef_construction" in result
+
+    def test_extra_search_merged_in_to_dict(self):
+        """Test that extra_search is properly merged in to_dict"""
+        field = ChromaVectorField(
+            ef_search=100,
+            extra_search={"resize_factor": 2.0, "num_threads": 4},
+        )
+        result = field.to_dict("search")
+        # Extra search params should be merged into result
+        assert result["resize_factor"] == 2.0
+        assert result["num_threads"] == 4
+        assert result["ef_search"] == 100
+        # The extra_search key itself should not be present
+        assert "extra_search" not in result

@@ -2,13 +2,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
 import re
-import logging
 
+from openjiuwen.core.common.logging import prompt_logger, LogEventType
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.foundation.prompt.assemble.variables.variable import Variable
-
-logger = logging.getLogger(__name__)
 
 
 class TextableVariable(Variable):
@@ -63,8 +61,10 @@ class TextableVariable(Variable):
                     cause=e
                 ) from e
             if not isinstance(value, (str, int, float, bool)):
-                logger.info(f"Converting non-string value `{placeholder}` using str()."
-                            f" Please check if the style is describe.")
+                prompt_logger.info(
+                    f"Converting non-string value `{placeholder}` using str()."
+                    f" Please check if the style is describe.",
+                    type_event=LogEventType.LLM_CALL_START)
             placeholder_str = f"{self.prefix}{placeholder}{self.suffix}"
             formatted_text = formatted_text.replace(placeholder_str, str(value))
         self.value = formatted_text

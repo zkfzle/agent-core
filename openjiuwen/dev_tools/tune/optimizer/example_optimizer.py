@@ -9,7 +9,7 @@ from typing import List, Optional, Dict
 import asyncio
 
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import prompt_logger, LogEventType
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.foundation.llm import ModelRequestConfig, ModelClientConfig, Model
@@ -69,7 +69,10 @@ class ExampleOptimizer(BaseOptimizer):
                   ):
         """optimize instruction"""
         if self._num_examples <= 0:
-            logger.info(f"skip do example optimization.")
+            prompt_logger.info(
+                f"skip do example optimization.",
+                event_type=LogEventType.AGENT_RESPONSE
+            )
             return
 
         for name, param in self._parameters.items():
@@ -191,7 +194,10 @@ class ExampleOptimizer(BaseOptimizer):
             return selected_examples
 
         except Exception as e:
-            logger.warning(f"Error occur while selecting best examples: {e}")
+            prompt_logger.warning(
+                f"Error occur while selecting best examples: {e}",
+                event_type=LogEventType.AGENT_ERROR
+            )
             return self._sample_example(self._num_examples, evaluated_cases)
 
     def _sample_examples_from_cases(self,

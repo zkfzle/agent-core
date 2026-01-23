@@ -33,7 +33,8 @@ class CodeOperation(BaseOperation):
             environment: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None
     ) -> ExecuteCodeResult:
-        """Execute arbitrary code asynchronously.
+        """
+        Execute arbitrary code asynchronously.
 
         Args:
             code: Non-empty string containing the source code to execute (required positional argument).
@@ -145,7 +146,8 @@ class CodeOperation(BaseOperation):
             environment: Optional[Dict[str, str]] = None,
             options: Optional[Dict[str, Any]] = None
     ) -> AsyncIterator[ExecuteCodeStreamResult]:
-        """Execute arbitrary code asynchronously, by streaming.
+        """
+        Execute arbitrary code asynchronously.
 
         Args:
             code: Non-empty string containing the source code to execute (required positional argument).

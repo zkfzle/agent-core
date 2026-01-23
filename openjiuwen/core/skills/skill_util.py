@@ -28,7 +28,7 @@ class SkillUtil:
         Args:
             sys_operation_id: The system operation ID used for file and code operations.
         """
-        self._skill_manager = SkillManager()
+        self._skill_manager = SkillManager(sys_operation_id)
         self._skill_tool_kit = SkillToolKit(sys_operation_id)
 
     @property
@@ -49,7 +49,7 @@ class SkillUtil:
         """
         return self._skill_tool_kit
 
-    def register_skills(self, skill_path: str, agent: BaseAgent, session_id: str = None) -> bool:
+    def register_skills(self, skill_path: str, agent: "BaseAgent", session_id: str = None) -> bool:
         """Register skills and add skill tools to an agent.
         
         This method registers the skill at the given path and adds all skill-related

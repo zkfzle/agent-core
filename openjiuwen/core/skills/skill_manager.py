@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Dict, Optional, Union, List, Literal
+from typing import Dict, Optional, Union, List
 
 import yaml
 from pydantic import BaseModel

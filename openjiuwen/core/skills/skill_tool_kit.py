@@ -134,7 +134,7 @@ class SkillToolKit:
             func=run_command
         )
 
-    def add_skill_tools(self, agent: BaseAgent):
+    def add_skill_tools(self, agent: "BaseAgent"):
         """Add skill-related tools to an agent.
         
         This method creates and registers three tools with the agent:

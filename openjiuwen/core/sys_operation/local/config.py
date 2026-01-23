@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 
 class LocalWorkConfig(BaseModel):
     """Local working configuration"""
-    work_dir: Optional[str] = Field(default=None, description="Local working directory path")
+    work_dir: Optional[str] = Field(
+        default=None,
+        description="Local working directory path")
 
     shell_allowlist: Optional[List[str]] = Field(
         default=["echo", "ls", "dir", "cd", "pwd", "python", "python3", "pip", "pip3", "npm", "node", "git", "cat",

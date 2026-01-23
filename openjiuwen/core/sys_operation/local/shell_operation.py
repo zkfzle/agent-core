@@ -92,7 +92,7 @@ class ShellOperation(BaseOperation):
                 try:
                     proc.kill()
                     await proc.wait()
-                except (ProcessLookupError, Exception) as e:
+                except Exception as e:
                     return ExecuteCmdResult(
                         code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
                         message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(

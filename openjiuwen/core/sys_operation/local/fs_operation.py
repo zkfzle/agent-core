@@ -11,6 +11,7 @@ import re
 
 import aiofiles
 from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
 from openjiuwen.core.sys_operation.registry import operation
 from openjiuwen.core.sys_operation.result.fs_operation_result import (
@@ -675,8 +676,10 @@ class FsOperation(BaseOperation):
             try:
                 raw_resolved = (work_dir / path).resolve()
                 rel_path = raw_resolved.relative_to(work_dir)
-            except ValueError:
-                raise ValueError(f"Access denied: Path {path} traverses outside {work_dir}")
+            except ValueError as e:
+                raise build_error(code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR,
+                                  error_msg=f"Access denied: Path {path} traverses outside {work_dir}",
+                                  cause=e) from e
 
             sanitized_parts = [re.sub(r'[^\w.-]', '_', part) for part in rel_path.parts]
             final_path = work_dir.joinpath(*sanitized_parts)

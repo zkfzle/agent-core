@@ -1,12 +1,11 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-import inspect
 from typing import Optional
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.runner.resources_manager.thread_safe_dict import ThreadSafeDict
-from openjiuwen.core.sys_operation.sys_operation import SysOperation, SysOperationCard
+from openjiuwen.core.sys_operation.sys_operation import SysOperation
 
 
 class SysOperationMgr:

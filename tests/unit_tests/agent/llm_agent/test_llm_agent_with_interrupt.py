@@ -55,7 +55,7 @@ class MockLLMModel:
 
 
 @patch.dict(os.environ, {FORCE_DEL_WORKFLOW_STATE_ENV_KEY: "True"})
-class TestReActAgentInterrupt:  # ① 关键改动
+class TestReActAgentInterrupt(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     @staticmethod
     def _create_model():
         return ModelConfig(model_provider=MODEL_PROVIDER,
@@ -321,7 +321,6 @@ class TestReActAgentInterrupt:  # ① 关键改动
             assert True
 
 
-    @pytest.mark.asyncio
     @patch(
         "openjiuwen.core.workflow.components.llm.questioner_comp."
         "QuestionerDirectReplyHandler._invoke_llm_for_extraction"

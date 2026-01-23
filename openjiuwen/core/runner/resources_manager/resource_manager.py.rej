@@ -1,0 +1,78 @@
+diff a/openjiuwen/core/runner/resources_manager/resource_manager.py b/openjiuwen/core/runner/resources_manager/resource_manager.py	(rejected hunks)
+@@ -5,7 +5,7 @@ from pydantic import BaseModel
+ 
+ from openjiuwen.core.common.exception.exception import JiuWenBaseException
+ from openjiuwen.core.foundation.tool import Tool, ToolInfo, ToolCard, McpServerConfig
+-from openjiuwen.core.multi_agent import BaseGroup, GroupCard
++from openjiuwen.core.multi_agent.legacy import BaseGroup, GroupCard
+ from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
+ from openjiuwen.core.runner.resources_manager.base import (
+     AgentGroupProvider,
+@@ -21,11 +21,13 @@ from openjiuwen.core.runner.resources_manager.base import (
+     ModelProvider)
+ from openjiuwen.core.runner.resources_manager.resource_registry import ResourceRegistry
+ 
+-from typing import Optional, Union, Tuple
++from typing import Optional, Union, Tuple, TYPE_CHECKING
++
++if TYPE_CHECKING:
++    from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+ 
+ from openjiuwen.core.session import Session
+ from openjiuwen.core.single_agent import AgentCard
+-from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+ from openjiuwen.core.workflow.workflow import Workflow
+ from openjiuwen.core.workflow import WorkflowCard
+ 
+@@ -38,12 +40,12 @@ class ResourceMgr:
+         self._resource_registry = ResourceRegistry()
+ 
+     async def add_agent_group(self,
+-                              card: GroupCard,
++                              card: 'GroupCard',
+                               agent_group: AgentGroupProvider,
+                               *,
+                               tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                               tag_update_strategy: TagUpdateStrategy = TagUpdateStrategy.MERGE
+-                              ) -> Result[GroupCard, Exception]:
++                              ) -> Result['GroupCard', Exception]:
+         """
+         Add a single agent group to the resource manager.
+ 
+@@ -71,8 +73,8 @@ class ResourceMgr:
+                                  tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                                  tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                                  skip_if_not_exists: bool = False,
+-                                 ) -> Result[Optional[GroupCard], Exception] | list[
+-        Result[Optional[GroupCard], Exception]]:
++                                 ) -> Result[Optional['GroupCard'], Exception] | list[
++        Result[Optional['GroupCard'], Exception]]:
+         """
+         Remove agent group(s) by ID or tag.
+ 
+@@ -92,6 +94,7 @@ class ResourceMgr:
+                 Result object(s) containing the removed group card(s) or exception.
+         """
+         try:
++            from openjiuwen.core.multi_agent import GroupCard
+             await self._resource_registry.agent_group().remove_agent_group(agent_group_id=id)
+             return Ok(GroupCard(id=id))
+         except Exception as e:
+@@ -103,7 +106,7 @@ class ResourceMgr:
+                               tag: Optional[Tag] = None,
+                               tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                               session: Optional[Session] = None
+-                              ) -> Optional[BaseGroup]:
++                              ) -> Optional['BaseGroup']:
+         """
+         Get an agent group instance by ID or tag.
+ 
+@@ -217,7 +220,7 @@ class ResourceMgr:
+                         tag: Optional[Union[Tag, list[Tag]]] = GLOBAL,
+                         tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                         session: Optional[Session] = None
+-                        ) -> Optional[BaseAgent] | list[Optional[BaseAgent]]:
++                        ) -> Optional['BaseAgent'] | list[Optional['BaseAgent']]:
+         """
+         Get agent instance(s) by ID or tag.
+ 

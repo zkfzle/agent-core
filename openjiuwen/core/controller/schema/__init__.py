@@ -24,6 +24,8 @@ from openjiuwen.core.controller.schema.intent import IntentType, Intent
 from openjiuwen.core.controller.schema.task import TaskStatus, Task
 
 
+Task.model_rebuild()
+
 __all__ = [
     # 数据单元
     "TextDataFrame",

@@ -375,7 +375,7 @@ class ReActAgent(BaseAgent):
             if msg.get("role") == "system"
         ]
 
-        # Get tool info from _ability_kit
+        # Get tool info from _ability_manager
         tools = self.list_tool_info()
 
         # ReAct loop

@@ -47,6 +47,8 @@ class BaseGroup(ABC):
         self.card = card
         self.config = config if config else self._create_default_config()
         self.group_id = card.name
+        # 延迟导入 BaseAgent，避免循环依赖
+        from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
         self.agents: Dict[str, BaseAgent] = {}
 
     def _create_default_config(self) -> GroupConfig:
@@ -67,7 +69,7 @@ class BaseGroup(ABC):
 
     def add_agent(
         self,
-        agent: BaseAgent,
+        agent: 'BaseAgent',
         agent_id: Optional[str] = None
     ) -> 'BaseGroup':
         """Register agent to group
@@ -134,7 +136,7 @@ class BaseGroup(ABC):
 
     def remove_agent(
         self,
-        agent_id: Union[str, BaseAgent]
+        agent_id: Union[str, 'BaseAgent']
     ) -> 'BaseGroup':
         """Remove agent from group
 
@@ -144,6 +146,7 @@ class BaseGroup(ABC):
         Returns:
             self (supports chaining)
         """
+        from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
         if isinstance(agent_id, BaseAgent):
             if hasattr(agent_id, 'card') and hasattr(agent_id.card, 'name'):
                 agent_id = agent_id.card.name
@@ -162,7 +165,7 @@ class BaseGroup(ABC):
 
         return self
 
-    def get_agent(self, agent_id: str) -> Optional[BaseAgent]:
+    def get_agent(self, agent_id: str) -> Optional['BaseAgent']:
         """Get agent by ID
 
         Args:

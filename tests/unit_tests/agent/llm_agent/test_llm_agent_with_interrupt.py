@@ -105,7 +105,7 @@ class TestReActAgentInterrupt(unittest.IsolatedAsyncioTestCase):  # ① 关键�
         "QuestionerDirectReplyHandler._invoke_llm_for_extraction"
     )
     @patch(
-        "openjiuwen.core.workflow.component.basic_components.questioner_comp."
+        "openjiuwen.core.workflow.components.llm.questioner_comp."
         "QuestionerDirectReplyHandler._build_llm_inputs"
     )
     @patch("openjiuwen.core.foundation.llm.model.Model")

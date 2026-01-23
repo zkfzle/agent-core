@@ -56,13 +56,10 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://openjiuwen.com"
-"Homepage (EN)" = "https://openjiuwen.com/en/"
-"Documentation" = "https://openjiuwen.com/docs-page"
-"Documentation (EN)" = "https://openjiuwen.com/en/docs-page"
-"Source Code" = "https://gitcode.com/openJiuwen/agent-core.git"
-"Changelog" = "https://gitcode.com/openJiuwen/agent-core/releases"
-"Agent Studio" = "https://gitcode.com/openJiuwen/agent-studio.git"
+Homepage = "https://openjiuwen.com"
+Documentation = "https://openjiuwen.com/docs-page"
+Repository = "https://gitcode.com/openJiuwen/agent-core.git"
+Changelog = "https://gitcode.com/openJiuwen/agent-core/releases"
 
 [tool.uv]
 default-groups = ['dev']

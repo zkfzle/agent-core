@@ -86,14 +86,14 @@ class ChromaVectorField(VectorField):
         Returns:
             dict[str, Any]: The validated search dictionary (unchanged if valid).
         """
-        if not isinstance(search_dict.get("resize_factor", 0), (int, float)):
+        if not isinstance(search_dict.get("resize_factor", 1.2), (int, float)):
             raise PydanticCustomError(
                 "invalid_resize_factor",
                 f"{cls.__name__}.extra_search field received invalid resize_factor, neither int nor float",
                 search_dict,
             )
         for int_attr in ["num_threads", "batch_size", "sync_threshold"]:
-            if not isinstance(search_dict.get(int_attr, 0), int):
+            if not isinstance(search_dict.get(int_attr, 1), int):
                 raise PydanticCustomError(
                     f"invalid_{int_attr}",
                     f"{cls.__name__}.extra_search field received invalid {int_attr}, not an integer",

@@ -123,8 +123,9 @@ class TestMilvusSCANN:
 
     def test_init_nlist_min(self):
         """Test initialization with minimum nlist"""
-        field = MilvusSCANN(nlist=1)
+        field = MilvusSCANN(nlist=1, nprobe=1)
         assert field.nlist == 1
+        assert field.nprobe == 1
 
     def test_init_nlist_max(self):
         """Test initialization with maximum nlist"""
@@ -138,7 +139,8 @@ class TestMilvusSCANN:
 
     def test_init_nprobe_max(self):
         """Test initialization with maximum nprobe"""
-        field = MilvusSCANN(nprobe=65536)
+        field = MilvusSCANN(nlist=65536, nprobe=65536)
+        assert field.nlist == 65536
         assert field.nprobe == 65536
 
     def test_init_reorder_k_min(self):

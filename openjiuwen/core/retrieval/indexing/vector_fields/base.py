@@ -13,9 +13,6 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 from pydantic.fields import FieldInfo
 
-from openjiuwen.core.common.exception.codes import StatusCode
-from openjiuwen.core.common.exception.errors import build_error
-
 DEFAULT = None
 IS_SEARCH = {"json_schema_extra": {"stage": "search"}}
 IS_CONSTRUCT = {"json_schema_extra": {"stage": "construct"}}
@@ -81,13 +78,6 @@ class VectorField(BaseModel):
                 with extra arguments merged in.
         """
         cls = self.__class__
-        valid_stages = ["search", "construct"]
-        if stage not in valid_stages:
-            raise build_error(
-                StatusCode.RETRIEVAL_INDEXING_INDEX_CONFIG_INVALID,
-                error_msg=f"{cls}.to_dict received unknown option: {stage=}, valid options are: {valid_stages}",
-            )
-
         # Filter model fields by stages they apply to, then filter out None
         model_filtered = (
             (attr, getattr(self, attr, None))
@@ -97,10 +87,6 @@ class VectorField(BaseModel):
         model_content = {attr: val for attr, val in model_filtered if val is not None}
 
         # Unpack the extra arguments for each stage
-        if stage != "construct":
-            model_content.pop("extra_construct", None)
-        if stage != "search":
-            model_content.pop("extra_search", None)
         for attr in ["database_type", "index_type", "vector_field", "variant"]:
             model_content.pop(attr, None)
         extra = model_content.pop(f"extra_{stage}", {})

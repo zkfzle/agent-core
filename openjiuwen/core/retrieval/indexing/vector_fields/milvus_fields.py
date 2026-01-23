@@ -91,7 +91,7 @@ class MilvusVectorField(VectorField):
             m = extra_construct.get("m")
             nbits = extra_construct.get("nbits", 8)
             if not (m is None or (isinstance(m, int) and (1 <= m <= 65536))):
-                err_msg += '"m" must be either None or int in range [1, 65536]'
+                err_msg += '; "m" must be either None or int in range [1, 65536]'
             if not (isinstance(nbits, int) and (1 <= nbits <= 24)):
                 err_msg += '; "nbits" must be int in range [1, 24]'
         return err_msg
@@ -256,9 +256,9 @@ class MilvusIVF(_BaseIVF):
         match self.variant:
             case "FLAT" | "SQ8":
                 if extra_construct or extra_search:
-                    err_msg = f"{self.variant} does not accept any extra arguments"
+                    err_msg += f"{self.variant} does not accept any extra arguments"
             case "PQ":
-                err_msg = self.validate_pq_construct(extra_construct)
+                err_msg += self.validate_pq_construct(extra_construct)
                 if extra_search:
                     err_msg += "; this variant does not accept extra search arguments"
             case "RABITQ":

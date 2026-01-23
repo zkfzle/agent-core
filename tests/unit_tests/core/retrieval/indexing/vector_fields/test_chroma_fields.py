@@ -159,10 +159,14 @@ class TestChromaVectorField:
         )
         result = field.to_dict("search")
         # Search stage should include extra_search contents (unpacked)
-        # Note: ef_search, max_neighbours, ef_construction don't have stage markers
-        # so they won't appear in to_dict results
+        # Note: ef_search, max_neighbours, ef_construction are marked as IS_CONSTRUCT
+        # so they won't appear in search stage results
         assert "num_threads" in result
         assert result["num_threads"] == 4
+        # Search stage should not include construction-only fields
+        assert "max_neighbours" not in result
+        assert "ef_construction" not in result
+        assert "ef_search" not in result
         # Should not include internal fields
         assert "database_type" not in result
         assert "index_type" not in result
@@ -178,35 +182,32 @@ class TestChromaVectorField:
             extra_search={"num_threads": 4},
         )
         result = field.to_dict("construct")
-        # Construct stage: ChromaVectorField has no construct-only fields with stage markers
-        # so result should be empty (only extra_construct would appear, but Chroma doesn't have it)
-        # Note: max_neighbours, ef_construction, ef_search don't have stage markers
-        # so they won't appear in to_dict results
-        assert result == {}
+        # Construct stage should include all fields marked with IS_CONSTRUCT
+        assert "max_neighbours" in result
+        assert result["max_neighbours"] == 32
+        assert "ef_construction" in result
+        assert result["ef_construction"] == 200
+        assert "ef_search" in result
+        assert result["ef_search"] == 150
         # Should not include internal fields
         assert "database_type" not in result
         assert "index_type" not in result
         assert "vector_field" not in result
-
-    def test_to_dict_invalid_stage(self):
-        """Test to_dict method with invalid stage"""
-        field = ChromaVectorField()
-        # The error might be an AttributeError if status code doesn't exist,
-        # or the actual error message. Test that an exception is raised.
-        with pytest.raises(Exception):
-            field.to_dict("invalid_stage")
+        assert "extra_construct" not in result
+        assert "extra_search" not in result
 
     def test_to_dict_search_with_none_fields(self):
         """Test to_dict search stage filters out None fields"""
         field = ChromaVectorField(
             max_neighbours=32,
             ef_construction=200,
-            # ef_search uses default, but should still appear if not None
+            # ef_search uses default, but it's marked as IS_CONSTRUCT so won't appear in search
         )
         result = field.to_dict("search")
-        # ef_search should be present with default value
-        assert "ef_search" in result
-        assert result["ef_search"] == 100
+        # ef_search is marked as IS_CONSTRUCT, so it won't appear in search stage
+        assert "ef_search" not in result
+        # Search stage only has extra_search contents if provided
+        assert result == {}
 
     def test_to_dict_construct_with_none_fields(self):
         """Test to_dict construct stage filters out None fields"""
@@ -229,6 +230,7 @@ class TestChromaVectorField:
         # Extra search params should be merged into result
         assert result["resize_factor"] == 2.0
         assert result["num_threads"] == 4
-        assert result["ef_search"] == 100
+        # ef_search is marked as IS_CONSTRUCT, so it won't appear in search stage
+        assert "ef_search" not in result
         # The extra_search key itself should not be present
         assert "extra_search" not in result

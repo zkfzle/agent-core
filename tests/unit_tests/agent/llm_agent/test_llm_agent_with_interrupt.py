@@ -55,7 +55,7 @@ class MockLLMModel:
 
 
 @patch.dict(os.environ, {FORCE_DEL_WORKFLOW_STATE_ENV_KEY: "True"})
-class TestReActAgentInterrupt:  # ① 关键改动
+class TestReActAgentInterrupt(unittest.IsolatedAsyncioTestCase):  # ① 关键改动
     @staticmethod
     def _create_model():
         return ModelConfig(model_provider=MODEL_PROVIDER,
@@ -97,7 +97,7 @@ class TestReActAgentInterrupt:  # ① 关键改动
         ]
 
     # 临时关闭
-    @unittest.skip("skip system test")
+    # @unittest.skip("skip system test")
     @pytest.mark.asyncio
     @patch("openjiuwen.single_agent.llm_agent.llm_controller.LLMController._generate_plan_from_llm")
     @patch(
@@ -321,7 +321,6 @@ class TestReActAgentInterrupt:  # ① 关键改动
             assert True
 
 
-    @pytest.mark.asyncio
     @patch(
         "openjiuwen.core.workflow.components.llm.questioner_comp."
         "QuestionerDirectReplyHandler._invoke_llm_for_extraction"
@@ -337,6 +336,17 @@ class TestReActAgentInterrupt:  # ① 关键改动
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
+                description="追问器工作流",
+                input_params=dict(
+                    type="object",
+                    properties={
+                        "query": {
+                            "type": "string",
+                            "description": "用户输入"
+                        }
+                    },
+                    required=['query']
+                )
         )
 
         flow = Workflow(card=questioner_workflow_card)
@@ -348,17 +358,6 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
         start_component = Start()
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
-
-
-        model_config = ModelConfig(model_provider="OpenAI",
-                                   model_info=BaseModelInfo(
-                                       model="gpt-4",
-                                       api_base="mock-url",
-                                       api_key="mock-key",
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30
-                                   ))
 
         questioner_config = QuestionerConfig(
             model_config=self._create_model_request_config(),
@@ -379,28 +378,11 @@ class TestReActAgentInterrupt:  # ① 关键改动
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
 
-        workflow_schema = WorkflowSchema(
-            id=flow.card.id,
-            name=flow.card.name,
-            version=flow.card.version,
-            description="追问器工作流",
-            inputs={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "用户输入",
-                        "required": True
-                    }
-                }
-            }
-        )
-
         config = WorkflowAgentConfig(
             id="write_agent",
             version="0.1.0",
             description="interrupt workflow single_agent",
-            workflows=[workflow_schema],
+            workflows=[flow.card],
             controller_type=ControllerType.WorkflowController,
         )
 
@@ -432,7 +414,17 @@ class TestReActAgentInterrupt:  # ① 关键改动
                 name="questioner",
                 id="questioner_workflow",
                 version="1.0",
-
+                description="追问器工作流",
+                input_params=dict(
+                    type="object",
+                    properties={
+                        "query": {
+                            "type": "string",
+                            "description": "用户输入"
+                        }
+                    },
+                    required=['query']
+                )
         )
 
         flow = Workflow(card=questioner_workflow_card)
@@ -444,17 +436,6 @@ class TestReActAgentInterrupt:  # ① 关键改动
 
         start_component = Start()
         end_component = End({"responseTemplate": "{{location}} | {{time}}"})
-
-
-        model_config = ModelConfig(model_provider="OpenAI",
-                                   model_info=BaseModelInfo(
-                                       model="gpt-4",
-                                       api_base="mock-url",
-                                       api_key="mock-key",
-                                       temperature=0.7,
-                                       top_p=0.9,
-                                       timeout=30
-                                   ))
 
         questioner_config = QuestionerConfig(
             model_config=self._create_model_request_config(),
@@ -475,28 +456,11 @@ class TestReActAgentInterrupt:  # ① 关键改动
         flow.add_connection("s", "questioner")
         flow.add_connection("questioner", "e")
 
-        workflow_schema = WorkflowSchema(
-            id=flow.card.id,
-            name=flow.card.name,
-            version=flow.card.version,
-            description="追问器工作流",
-            inputs={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "用户输入",
-                        "required": True
-                    }
-                }
-            }
-        )
-
         config = WorkflowAgentConfig(
             id="write_agent",
             version="0.1.0",
             description="interrupt workflow single_agent",
-            workflows=[workflow_schema],
+            workflows=[flow.card],
             controller_type=ControllerType.WorkflowController,
         )
 

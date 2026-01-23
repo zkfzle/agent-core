@@ -61,7 +61,8 @@ class FsOperation(BaseOperation):
             if not file_path.is_file():
                 return ReadFileResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"File not found: {file_path}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"File not found: {file_path}")
                 )
 
             if mode == "bytes":
@@ -127,7 +128,8 @@ class FsOperation(BaseOperation):
             if not file_path.is_file():
                 yield ReadFileStreamResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"File not found: {file_path}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"File not found: {file_path}")
                 )
                 return
 
@@ -143,7 +145,8 @@ class FsOperation(BaseOperation):
                             message=StatusCode.SUCCESS.errmsg,
                             data=ReadFileChunkData(
                                 path=str(file_path), chunk_content=content, mode=mode,
-                                chunk_size=len(content.encode(encoding)), chunk_index=i, is_last_chunk=(i == len(buf) - 1)
+                                chunk_size=len(content.encode(encoding)), chunk_index=i,
+                                is_last_chunk=(i == len(buf) - 1)
                             )
                         )
                     return
@@ -227,18 +230,23 @@ class FsOperation(BaseOperation):
             if file_path.is_dir():
                 return WriteFileResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Target path is a directory: {file_path}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Target path is a directory: {file_path}")
                 )
             if not create_if_not_exist and not file_path.exists():
                 return WriteFileResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"File does not exist: {file_path}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"File does not exist: {file_path}")
                 )
 
             if mode == "text":
                 txt = str(content)
-                if prepend_newline: txt = "\n" + txt
-                if append_newline: txt = txt + "\n"
+                if prepend_newline:
+                    txt = "\n" + txt
+                if append_newline:
+                    txt = txt + "\n"
+
                 data_bytes = txt.encode(encoding)
             else:
                 data_bytes = content if isinstance(content, (bytes, bytearray)) else bytes(content)
@@ -290,7 +298,8 @@ class FsOperation(BaseOperation):
             if not src.is_file():
                 return UploadFileResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Source not found: {src}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Source not found: {src}")
                 )
             if dst.exists() and not overwrite:
                 return UploadFileResult(
@@ -344,7 +353,8 @@ class FsOperation(BaseOperation):
             if not src.is_file():
                 yield UploadFileStreamResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Source not found: {src}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Source not found: {src}")
                 )
                 return
             if dst.exists() and not overwrite:
@@ -358,7 +368,9 @@ class FsOperation(BaseOperation):
                 index = 0
                 while True:
                     chunk_bytes = await src_f.read(chunk_size)
-                    if not chunk_bytes: break
+                    if not chunk_bytes:
+                        break
+
                     await dst_f.write(chunk_bytes)
                     yield UploadFileStreamResult(
                         code=StatusCode.SUCCESS.code,
@@ -410,12 +422,14 @@ class FsOperation(BaseOperation):
             if not src.is_file():
                 return DownloadFileResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Source not found: {src}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Source not found: {src}")
                 )
             if dst.exists() and not overwrite:
                 return DownloadFileResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Destination exists: {dst}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Destination exists: {dst}")
                 )
             if create_parent_dirs:
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -466,13 +480,15 @@ class FsOperation(BaseOperation):
             if not src.is_file():
                 yield DownloadFileStreamResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Source not found: {src}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Source not found: {src}")
                 )
                 return
             if dst.exists() and not overwrite:
                 yield DownloadFileStreamResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Destination exists: {dst}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Destination exists: {dst}")
                 )
                 return
             if create_parent_dirs:
@@ -482,7 +498,9 @@ class FsOperation(BaseOperation):
                 index = 0
                 while True:
                     chunk_bytes = await src_f.read(chunk_size)
-                    if not chunk_bytes: break
+                    if not chunk_bytes:
+                        break
+
                     await dst_f.write(chunk_bytes)
                     yield DownloadFileStreamResult(
                         code=StatusCode.SUCCESS.code,
@@ -614,7 +632,8 @@ class FsOperation(BaseOperation):
             if not base.is_dir():
                 return SearchFilesResult(
                     code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(error_msg=f"Path is not a directory: {base}")
+                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+                        error_msg=f"Path is not a directory: {base}")
                 )
 
             matched_paths = list(base.rglob(pattern))
@@ -624,7 +643,13 @@ class FsOperation(BaseOperation):
                     exclude_set.update(set(base.rglob(pat)))
                 matched_paths = [p for p in matched_paths if p not in exclude_set]
 
-            items = [item for p in matched_paths if p.is_file() and (item := self._create_fs_item(p))]
+            items = []
+            for p in matched_paths:
+                if p.is_file():
+                    item = self._create_fs_item(p)
+                    if item:
+                        items.append(item)
+
             return SearchFilesResult(
                 code=StatusCode.SUCCESS.code,
                 message=StatusCode.SUCCESS.errmsg,
@@ -639,21 +664,22 @@ class FsOperation(BaseOperation):
             )
 
     def _resolve_path(self, path: str, create_parent: bool = False) -> pathlib.Path:
-        """Resolve path, enforce work_dir sandbox, and sanitize filenames."""
-        if not self._run_config or not hasattr(self._run_config, 'work_dir'):
-            raise ValueError("Local work configuration missing or invalid")
+        """Resolve path, enforce work_dir sandbox (if configured), and sanitize filenames."""
+        work_dir_val = getattr(self._run_config, 'work_dir', None)
 
-        work_dir = pathlib.Path(self._run_config.work_dir).expanduser().resolve()
+        if work_dir_val is None:
+            # if work_dir is not configured
+            final_path = pathlib.Path(path).expanduser().resolve()
+        else:
+            work_dir = pathlib.Path(work_dir_val).expanduser().resolve()
+            try:
+                raw_resolved = (work_dir / path).resolve()
+                rel_path = raw_resolved.relative_to(work_dir)
+            except ValueError:
+                raise ValueError(f"Access denied: Path {path} traverses outside {work_dir}")
 
-        try:
-            raw_resolved = (work_dir / path).resolve()
-
-            rel_path = raw_resolved.relative_to(work_dir)
-        except ValueError:
-            raise ValueError(f"Access denied: Path {path} traverses outside {work_dir}")
-
-        sanitized_parts = [re.sub(r'[^\w.-]', '_', part) for part in rel_path.parts]
-        final_path = work_dir.joinpath(*sanitized_parts)
+            sanitized_parts = [re.sub(r'[^\w.-]', '_', part) for part in rel_path.parts]
+            final_path = work_dir.joinpath(*sanitized_parts)
 
         if create_parent:
             final_path.parent.mkdir(parents=True, exist_ok=True)
@@ -689,7 +715,9 @@ class FsOperation(BaseOperation):
         async with aiofiles.open(src, mode="rb") as src_f, aiofiles.open(dst, mode="wb") as dst_f:
             while True:
                 chunk = await src_f.read(chunk_size)
-                if not chunk: break
+                if not chunk:
+                    break
+
                 await dst_f.write(chunk)
                 total_size += len(chunk)
         return total_size
@@ -713,9 +741,12 @@ class FsOperation(BaseOperation):
             if current_depth > max_depth:
                 del dirs[:]
                 continue
-            for d in dirs: yield current_root / d
-            for f in files: yield current_root / f
-            if current_depth == max_depth: del dirs[:]
+            for d in dirs:
+                yield current_root / d
+            for f in files:
+                yield current_root / f
+            if current_depth == max_depth:
+                del dirs[:]
 
     @staticmethod
     def _create_fs_item(p: pathlib.Path) -> Optional[FileSystemItem]:
@@ -748,14 +779,21 @@ class FsOperation(BaseOperation):
     ) -> List[FileSystemItem]:
         """Core logic for listing files and directories."""
         base = self._resolve_path(path)
-        if not base.is_dir(): raise NotADirectoryError(f"Path is not a directory: {base}")
+        if not base.is_dir():
+            raise NotADirectoryError(f"Path is not a directory: {base}")
+
         items = []
         for p in self._walk_path(base, recursive, max_depth):
             is_dir = p.is_dir()
-            if not include_files and not is_dir: continue
-            if not include_dirs and is_dir: continue
-            if file_types and not is_dir and p.suffix not in file_types: continue
+            if not include_files and not is_dir:
+                continue
+            if not include_dirs and is_dir:
+                continue
+            if file_types and not is_dir and p.suffix not in file_types:
+                continue
             item = self._create_fs_item(p)
-            if item: items.append(item)
+            if item:
+                items.append(item)
+
         self._sort_items(items, sort_by, sort_descending)
         return items

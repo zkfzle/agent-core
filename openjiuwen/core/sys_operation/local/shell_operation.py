@@ -6,6 +6,8 @@ import asyncio
 import os
 from typing import Optional, Dict, Any, AsyncIterator
 
+from _pytest import pathlib
+
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
 from openjiuwen.core.sys_operation.registry import operation
@@ -44,15 +46,19 @@ class ShellOperation(BaseOperation):
             if not self._check_allowlist(command):
                 return ExecuteCmdResult(
                     code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(error_msg="Command not allowed by allowlist")
+                    message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(
+                        error_msg="Command not allowed by allowlist")
                 )
 
             exec_env = self._prepare_environment(environment)
             encoding = (options or {}).get("encoding", "utf-8")
 
+            # Resolve CWD
+            actual_cwd = self._resolve_cwd(cwd)
+
             proc = await asyncio.create_subprocess_shell(
                 command,
-                cwd=cwd,
+                cwd=str(actual_cwd),
                 env=exec_env,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
@@ -68,8 +74,12 @@ class ShellOperation(BaseOperation):
                         if not chunk:
                             break
                         chunks.append(chunk)
-                except Exception:
-                    pass
+                except Exception as e:
+                    return ExecuteCmdResult(
+                        code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
+                        message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(
+                            error_msg=f"Read stream error {e}")
+                    )
 
             stdout_task = asyncio.create_task(read_stream(proc.stdout, stdout_chunks))
             stderr_task = asyncio.create_task(read_stream(proc.stderr, stderr_chunks))
@@ -82,8 +92,12 @@ class ShellOperation(BaseOperation):
                 try:
                     proc.kill()
                     await proc.wait()
-                except (ProcessLookupError, Exception):
-                    pass
+                except (ProcessLookupError, Exception) as e:
+                    return ExecuteCmdResult(
+                        code=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.code,
+                        message=StatusCode.SYS_OPERATION_SHELL_EXECUTION_ERROR.errmsg.format(
+                            error_msg=f"Stop process error {e}")
+                    )
 
             # Wait for readers to finish capturing remaining output
             await asyncio.wait([stdout_task, stderr_task], timeout=5)
@@ -93,7 +107,7 @@ class ShellOperation(BaseOperation):
 
             res_data = ExecuteCmdData(
                 command=command,
-                cwd=str(cwd) if cwd else ".",
+                cwd=str(actual_cwd),
                 exit_code=proc.returncode if proc.returncode is not None else -1,
                 stdout=stdout_str,
                 stderr=stderr_str
@@ -157,3 +171,22 @@ class ShellOperation(BaseOperation):
         cmd_prefix = command.split()[0] if command.strip() else ""
         return any(cmd_prefix == allowed or cmd_prefix.endswith(os.sep + allowed)
                    for allowed in self._run_config.shell_allowlist)
+
+    def _resolve_cwd(self, cwd: Optional[str]) -> pathlib.Path:
+        """Resolve CWD against work_dir (if configured)."""
+        work_dir_val = getattr(self._run_config, 'work_dir', None)
+
+        if work_dir_val is None:
+            if not cwd:
+                return pathlib.Path.cwd()
+            return pathlib.Path(cwd).expanduser().resolve()
+
+        work_dir = pathlib.Path(work_dir_val).resolve()
+        if not cwd:
+            return work_dir
+
+        target = pathlib.Path(cwd).expanduser()
+        if not target.is_absolute():
+            target = work_dir / target
+
+        return target.resolve()

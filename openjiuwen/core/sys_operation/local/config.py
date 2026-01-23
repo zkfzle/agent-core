@@ -1,7 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import Field, BaseModel
 
 
 class LocalWorkConfig(BaseModel):

@@ -27,15 +27,13 @@ class CodeOperation(BaseOperation):
         Args:
             code: Non-empty string containing the source code to execute (required positional argument).
             language: Programming language of the code. Strict type constraint to 'python' or 'javascript'.
-                Defaults to "python".
-            time_out: Maximum execution time in seconds. Terminates the process if exceeded.
-                Must be a positive integer. Defaults to 300 seconds (5 minutes).
+            time_out: Maximum execution time in seconds. Defaults to 300 seconds (5 minutes).
             environment: Key-value dict of custom environment variables.
             options: Additional execution configuration options.
 
-       Returns:
-           ExecuteCodeResult: Execution result.
-       """
+        Returns:
+            ExecuteCodeResult: Execution result.
+        """
         pass
 
     async def execute_code_stream(
@@ -59,7 +57,7 @@ class CodeOperation(BaseOperation):
             environment: Key-value dict of custom environment variables.
             options: Additional execution configuration options.
 
-       Returns:
+        Returns:
             AsyncIterator[ExecuteCodeStreamResult]: Streaming structured results.
-       """
+        """
         pass

@@ -1,18 +1,18 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
+import pathlib
 import pytest
 import shutil
 import tempfile
 import os
 import platform
+import pytest_asyncio
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 from openjiuwen.core.common.exception.codes import StatusCode
-
-import pytest_asyncio
 
 
 @pytest.fixture
@@ -75,6 +75,7 @@ async def test_shell_environment_variables(sys_op):
 @pytest.mark.asyncio
 async def test_shell_cwd(sys_op, work_dir):
     """Test execution in a specific working directory."""
+    # absolute path
     subdir = os.path.join(work_dir, "subdir")
     os.makedirs(subdir, exist_ok=True)
 
@@ -83,6 +84,44 @@ async def test_shell_cwd(sys_op, work_dir):
 
     assert res.code == StatusCode.SUCCESS.code
     assert "subdir" in res.data.stdout.strip()
+
+    # relative path
+    res = await sys_op.shell().execute_cmd(command=cmd, cwd="subdir")
+    assert res.code == StatusCode.SUCCESS.code
+    assert subdir == res.data.stdout.strip()
+
+    # default workdir
+    res = await sys_op.shell().execute_cmd(command=cmd)
+    assert work_dir == res.data.stdout.strip()
+
+
+@pytest.mark.asyncio
+async def test_shell_default_cwd(sys_op, work_dir):
+    """Test that execution defaults to work_dir when no cwd is provided."""
+    cmd = "echo %CD%" if platform.system() == "Windows" else "pwd"
+    res = await sys_op.shell().execute_cmd(command=cmd)
+
+    assert res.code == StatusCode.SUCCESS.code
+    # Should resolve to work_dir (temp dir)
+    actual_out = res.data.stdout.strip().lower()
+    # Resolve work_dir to handle potential short paths on Windows
+    expected = str(pathlib.Path(work_dir).resolve()).lower()
+    # On Windows, one might be a shortened version of the other
+    assert expected in actual_out or actual_out in expected
+
+
+@pytest.mark.asyncio
+async def test_shell_relative_cwd(sys_op, work_dir):
+    """Test that relative cwd resolves against work_dir."""
+    subdir_name = "rel_subdir"
+    subdir_path = os.path.join(work_dir, subdir_name)
+    os.makedirs(subdir_path, exist_ok=True)
+
+    cmd = "echo %CD%" if platform.system() == "Windows" else "pwd"
+    res = await sys_op.shell().execute_cmd(command=cmd, cwd=subdir_name)
+
+    assert res.code == StatusCode.SUCCESS.code
+    assert subdir_name in res.data.stdout.strip().lower()
 
 
 @pytest.mark.asyncio
@@ -121,7 +160,7 @@ async def test_shell_allowlist(work_dir):
     try:
         card_id = "test_allowlist"
         # Only allow 'echo'
-        config = LocalWorkConfig(work_dir=work_dir, shell_allowlist=["echo"])
+        config = LocalWorkConfig(shell_allowlist=["echo"])
         card = SysOperationCard(id=card_id, mode=OperationMode.LOCAL, work_config=config)
 
         add_res = Runner.resource_mgr.add_sys_operation(card)
@@ -129,8 +168,9 @@ async def test_shell_allowlist(work_dir):
         op = Runner.resource_mgr.get_sys_operation(card_id)
 
         # Allowed
-        res_ok = await op.shell().execute_cmd("echo allowed")
-        assert res_ok.code == StatusCode.SUCCESS.code
+        cmd = "echo %CD%" if platform.system() == "Windows" else "pwd"
+        res = await op.shell().execute_cmd(command=cmd)
+        assert res.code == StatusCode.SUCCESS.code
 
         # Denied
         res_deny = await op.shell().execute_cmd("dir")  # 'dir' not in allowlist

@@ -41,15 +41,6 @@ class SysOperationCard(BaseCard):
         return v
 
     @classmethod
-    @field_validator("work_config")
-    def work_config_required_when_local(cls, v, values):
-        """work_config cannot be None when mode is set to local"""
-        mode = values.get("mode")
-        if mode == OperationMode.LOCAL and v is None:
-            raise ValueError("work_config is required when mode is local")
-        return v
-
-    @classmethod
     @field_validator("gateway_config")
     def gateway_config_required_when_sandbox(cls, v, values):
         """gateway_config cannot be None when mode is set to sandbox"""
@@ -72,7 +63,10 @@ class SysOperation:
 
     def __init__(self, card: SysOperationCard):
         self.mode = card.mode
-        self._run_config = card.work_config if self.mode == OperationMode.LOCAL else card.gateway_config
+        if self.mode == OperationMode.LOCAL:
+            self._run_config = card.work_config or LocalWorkConfig()
+        else:
+            self._run_config = card.gateway_config or SandboxGatewayConfig()
         self._instances = {}
 
     def __getattr__(self, name):

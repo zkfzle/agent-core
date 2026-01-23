@@ -2,11 +2,11 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
 import pathlib
-import pytest
 import shutil
 import tempfile
 import os
 import platform
+import pytest
 import pytest_asyncio
 from openjiuwen.core.runner.runner import Runner
 from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation

@@ -130,6 +130,10 @@ class StatusCode(Enum):
     CONTROLLER_RUNTIME_ERROR = (123003, "controller runtime error, reason: {error_msg}")
     CONTROLLER_STREAM_SEND_FAILED = (123004, "controller stream send failed, reason: {error_msg}")
     CONTROLLER_TOOL_CALL_PARSE_ERROR = (123005, "controller tool call parse error, reason: {error_msg}")
+    CONTROLLER_TASK_PARAM_ERROR = (123006, "controller task parameter error, reason: {error_msg}")
+    CONTROLLER_INTENT_PARAM_ERROR = (123007, "controller intention parameter error, reason: {error_msg}")
+    CONTROLLER_TASK_EXECUTION_ERROR = (123008, "controller task execution error, reason: {error_msg}")
+    CONTROLLER_EVENT_HANDLER_ERROR = (123009, "controller event handler error, reason: {error_msg}")
 
     # =========================
     # Runner / Distributed 134000–134999

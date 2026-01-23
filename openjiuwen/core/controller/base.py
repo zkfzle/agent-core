@@ -1,0 +1,517 @@
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+"""Controller Module
+
+Main classes included:
+- ControllerConfig: controller configuration
+- Controller: controller implementation
+
+The controller is responsible for handling events, managing task lifecycle,
+and performing intent recognition and processing.
+"""
+
+import asyncio
+from typing import AsyncIterator, Optional, List, Callable, TYPE_CHECKING
+
+from openjiuwen.core.context_engine import ContextEngine
+from openjiuwen.core.controller.schema import ControllerOutput, ControllerOutputChunk, EventType, InputEvent
+from openjiuwen.core.controller.modules import TaskManager, TaskScheduler, TaskExecutor, EventQueue, EventHandler
+from openjiuwen.core.controller.config import ControllerConfig
+from openjiuwen.core.session import Session
+from openjiuwen.core.session.stream.base import BaseStreamMode, StreamMode
+from openjiuwen.core.session.stream.manager import StreamWriterManager
+from openjiuwen.core.session.stream.emitter import StreamEmitter
+from openjiuwen.core.session.tracer.tracer import Tracer
+from openjiuwen.core.single_agent import AgentCard
+from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.exception.errors import build_error, BaseError
+from openjiuwen.core.common.exception.codes import StatusCode
+
+if TYPE_CHECKING:
+    from openjiuwen.core.single_agent.agent import AbilityManager
+
+
+class Controller:
+    """Controller
+
+    Responsible for handling events and managing the task lifecycle.
+    It is the core component of ControllerAgent.
+    """
+    
+    def __init__(self):
+        """Initialize controller"""
+        super().__init__()
+        self._card: Optional[str] = None
+        self._ability_manager: Optional['AbilityManager']  = None
+        self._config: Optional[ControllerConfig] = None
+        self._context_engine: Optional[ContextEngine] = None
+        self._task_manager: Optional[TaskManager] = None
+        self._event_queue: Optional[EventQueue] = None
+        self._task_scheduler: Optional[TaskScheduler] = None
+        self._event_handler: Optional[EventHandler] = None
+
+        # Event loop tracking
+        self._event_loop: Optional[asyncio.AbstractEventLoop] = None
+
+    def init(
+            self,
+            card: AgentCard,
+            config: ControllerConfig,
+            ability_manager: 'AbilityManager',
+            context_engine: ContextEngine
+    ):
+        """Initialize controller
+
+        Args:
+            card: Agent card
+            config: controller configuration
+            ability_manager: ability manager
+            context_engine: context engine
+        """
+        self._card = card
+        self._config = config
+        self._ability_manager = ability_manager
+        self._context_engine = context_engine
+        self._task_manager = TaskManager(config=self._config)
+        self._event_queue = EventQueue(config=self._config)
+        self._task_scheduler = TaskScheduler(
+            config=self._config,
+            task_manager=self._task_manager,
+            context_engine=self._context_engine,
+            ability_manager=self._ability_manager,
+            event_queue=self._event_queue,
+            card=card
+        )
+
+    @property
+    def event_queue(self) -> EventQueue:
+        """Get event queue"""
+        return self._event_queue
+
+    @property
+    def config(self) -> ControllerConfig:
+        """Get controller configuration"""
+        return self._config
+
+    @config.setter
+    def config(self, config: ControllerConfig):
+        """Set controller configuration"""
+        self._config = config
+        if self._task_manager is not None:
+            self._task_manager.config = config
+        if self._event_queue is not None:
+            self._event_queue.config = config
+        if self._task_scheduler is not None:
+            self._task_scheduler.config = config
+        if self._event_handler is not None:
+            self._event_handler.config = config
+
+    @property
+    def context_engine(self) -> ContextEngine:
+        """Get context engine"""
+        return self._context_engine
+
+    @property
+    def ability_manager(self) -> 'AbilityManager':
+        """Get ability manager"""
+        return self._ability_manager
+
+    @context_engine.setter
+    def context_engine(self, context_engine: ContextEngine):
+        """Set context engine"""
+        self._context_engine = context_engine
+
+    @ability_manager.setter
+    def ability_manager(self, ability_manager: 'AbilityManager'):
+        """Set ability manager"""
+        self._ability_manager = ability_manager
+
+    def set_event_handler(self, event_handler: EventHandler):
+        """Set event handler
+
+        Args:
+            event_handler: event handler instance
+        """
+        self._event_handler = event_handler
+        self._event_handler.config = self._config
+        self._event_handler.context_engine = self._context_engine
+        self._event_handler.task_scheduler = self._task_scheduler
+        self._event_handler.task_manager = self._task_manager
+        self._event_handler.ability_manager = self._ability_manager
+
+    def add_task_executor(
+            self,
+            task_type: str,
+            task_executor_builder: Callable[
+                [ControllerConfig, 'AbilityManager', ContextEngine, TaskManager, EventQueue], TaskExecutor
+            ]
+    ) -> "Controller":
+        """Add task executor
+
+        Args:
+            task_type: task type
+            task_executor_builder: task executor builder function
+
+        Returns:
+            self (supports chaining)
+        """
+        self._task_scheduler.task_executor_registry.add_task_executor(task_type, task_executor_builder)
+        return self
+
+    def remove_task_executor(self, task_type: str):
+        """Remove task executor
+
+        Args:
+            task_type: task type
+        """
+        self._task_scheduler.task_executor_registry.remove_task_executor(task_type)
+
+    def _restore_task_manager_state(self, session: Session) -> bool:
+        """Restore TaskManager state from session.
+
+        If restoration fails, clear the current task_manager state without
+        raising errors so that new tasks are not affected.
+
+        Args:
+            session: session object
+
+        Returns:
+            bool: whether restoration succeeded. True if restored successfully,
+            False if there was no state or restoration failed.
+        """
+        controller_state = session.get_state("controller")
+        
+        if not controller_state or "task_manager_state" not in controller_state:
+            # No saved state, clear all task manager state
+            logger.info(f"No saved state found for session {session.session_id()}, clearing task manager")
+            self._task_manager.clear_state()
+            return False
+        
+        try:
+            logger.info(f"Restoring TaskManager state for session {session.session_id()}")
+            from openjiuwen.core.controller.modules.task_manager import TaskManagerState
+            
+            # Deserialize TaskManagerState from dict
+            state_dict = controller_state["task_manager_state"]
+            task_manager_state = TaskManagerState.model_validate(state_dict)
+            
+            # Load state into task_manager
+            self._task_manager.load_state(task_manager_state)
+            logger.info(
+                f"Successfully restored TaskManager state: "
+                f"{len(task_manager_state.tasks)} tasks, "
+                f"{len(task_manager_state.root_tasks)} root tasks"
+            )
+            return True
+            
+        except Exception as e:
+            logger.error(
+                f"Failed to restore TaskManager state for session {session.session_id()}: {e}, "
+                f"clearing task manager state instead",
+                exc_info=True
+            )
+            # Fallback: clear all task manager state to allow user to continue
+            self._task_manager.clear_state()
+            return False
+
+    def _save_task_manager_state(self, session: Session) -> None:
+        """Save TaskManager state to session
+
+        Args:
+            session: session object
+        """
+        if not self._config.enable_task_persistence:
+            logger.info("Task persistence disabled, no need to save TaskManager state for session")
+            return
+        try:
+            task_manager_state = self._task_manager.get_state()
+            controller_state = {
+                "task_manager_state": task_manager_state.model_dump()
+            }
+            
+            # Clear old state first, then update with new state (ensures proper cleanup of nested dict keys)
+            session.update_state({"controller": None})
+            session.update_state({"controller": controller_state})
+            
+            logger.info(
+                f"Saved TaskManager state for session {session.session_id()}: "
+                f"{len(task_manager_state.tasks)} tasks, "
+                f"{len(task_manager_state.root_tasks)} root tasks"
+            )
+        except Exception as e:
+            logger.error(f"Failed to save TaskManager state for session {session.session_id()}: {e}")
+
+    def _init_session_stream_manager(self, session: Session, stream_modes: Optional[List[StreamMode]]) -> None:
+        """Initialize StreamWriterManager for session
+
+        Args:
+            session: session object
+            stream_modes: list of stream output modes
+
+        Note:
+            - If the session already has a stream_writer_manager, do nothing
+              (respect external configuration)
+            - If stream_modes is None, use default modes (OUTPUT, TRACE, CUSTOM)
+            - Ensure OUTPUT mode is always enabled so all_tasks_processed
+              messages can be delivered
+            - If TRACE mode is specified, initialize Tracer
+        """
+        # Check if session supports stream_writer_manager
+        if not hasattr(session, 'stream_writer_manager'):
+            logger.warning(f"Session {session.session_id()} does not support stream_writer_manager")
+            return
+        
+        # Check if already initialized
+        existing_manager = session.stream_writer_manager()
+        if existing_manager is not None:
+            logger.warning(
+                f"Session {session.session_id()} already has stream_writer_manager, "
+                f"skipping initialization"
+            )
+            return
+        
+        # Validate stream_modes: OUTPUT must be included for all_tasks_processed message
+        if stream_modes is not None:
+            if BaseStreamMode.OUTPUT not in stream_modes:
+                logger.warning(
+                    f"OUTPUT mode not in stream_modes {stream_modes}, adding it to ensure "
+                    f"all_tasks_processed message can be delivered"
+                )
+                stream_modes = [BaseStreamMode.OUTPUT] + list(stream_modes)
+        
+        # Initialize StreamWriterManager with specified modes
+        if hasattr(session, 'set_stream_writer_manager'):
+            manager = StreamWriterManager(stream_emitter=StreamEmitter(), modes=stream_modes)
+            session.set_stream_writer_manager(manager)
+            logger.info(
+                f"Initialized stream_writer_manager for session {session.session_id()} "
+                f"with modes: {stream_modes or 'default (OUTPUT, TRACE, CUSTOM)'}"
+            )
+            
+            # Initialize Tracer if TRACE mode is enabled
+            if hasattr(session, 'set_tracer') and hasattr(session, 'tracer'):
+                try:
+                    if session.tracer() is None and (stream_modes is None or BaseStreamMode.TRACE in stream_modes):
+                        tracer = Tracer()
+                        if hasattr(session, 'callback_manager'):
+                            tracer.init(manager, session.callback_manager())
+                            session.set_tracer(tracer)
+                            logger.info(f"Initialized tracer for session {session.session_id()}")
+                except Exception as e:
+                    logger.error(f"Failed to initialize tracer: {e}")
+
+    def get_task_executor(
+            self,
+            config: ControllerConfig,
+            ability_manager: 'AbilityManager',
+            context_engine: ContextEngine,
+            task_manager: TaskManager
+    ) -> TaskExecutor:
+        """Get task executor
+
+        Args:
+            config: controller configuration
+            ability_manager: ability manager
+            context_engine: context engine
+            task_manager: task manager
+
+        Returns:
+            TaskExecutor: task executor instance
+        """
+        return self._task_scheduler.task_executor_registry.get_task_executor(
+            config,
+            ability_manager,
+            context_engine,
+            task_manager
+        )
+
+    async def start(self):
+        """Start controller
+
+        Start the task scheduler to begin processing tasks, and start the
+        event queue.
+        """
+        self._event_queue.start()
+        await self._task_scheduler.start()
+
+    async def stop(self):
+        """Stop controller
+
+        Stop the task scheduler and event queue, and stop processing tasks.
+        """
+        await self._task_scheduler.stop()
+        await self._event_queue.stop()
+
+    async def invoke(
+            self,
+            inputs: 'InputEvent',
+            session: Session,
+            **kwargs
+    ) -> ControllerOutput:
+        """Batch execution using controller
+
+        Args:
+            inputs: input event
+            session: session object
+            **kwargs: additional parameters
+
+        Returns:
+            ControllerOutput: controller output result
+
+        Note:
+            1. Calls stream method
+            2. Converts streamed messages into a batch output
+        """
+        try:
+            # Collect all streamed output chunks, only get OUTPUT mode data
+            chunks: List[ControllerOutputChunk] = []
+            async for chunk in self.stream(
+                inputs=inputs,
+                session=session,
+                stream_modes=[BaseStreamMode.OUTPUT],
+                **kwargs
+            ):
+                chunks.append(chunk)
+
+            return ControllerOutput(
+                type=EventType.TASK_COMPLETION,
+                data=chunks
+            )
+
+        except BaseError:
+            raise
+
+        except Exception as e:
+            logger.error(f"Controller invoke error: {e}", exc_info=True)
+            raise build_error(
+                StatusCode.CONTROLLER_RUNTIME_ERROR,
+                error_msg=str(e),
+                cause=e
+            ) from e
+
+    async def stream(
+            self,
+            inputs: 'InputEvent',
+            session: Session,
+            stream_modes: Optional[List[StreamMode]] = None,
+            **kwargs
+    ) -> AsyncIterator[ControllerOutputChunk]:
+        """Stream execution using controller
+
+        Args:
+            inputs: input event
+            session: session object (created and managed by caller)
+            stream_modes: list of stream output modes (optional)
+            **kwargs: additional parameters
+
+        Yields:
+            ControllerOutputChunk: controller output chunk
+
+        Note:
+            1. Restore controller state (including task_manager state)
+            2. Put Session into task_scheduler.sessions
+            3. Subscribe via self._event_queue.subscribe
+            4. Publish input event to self._event_queue
+            5. Read event handling results and stream them out
+            6. Deactivate all subscriptions
+            7. Save controller state (including task_manager state)
+            8. Remove Session from task_scheduler.sessions
+        """
+        # Lazy start with event loop detection
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError as e:
+            logger.error("No running event loop")
+            raise build_error(
+                StatusCode.CONTROLLER_RUNTIME_ERROR,
+                error_msg="No running event loop",
+                cause=e
+            )
+        
+        if self._event_loop is not current_loop:
+            # Event loop changed or first start
+            if self._event_loop is not None:
+                logger.info(
+                    f"Event loop changed, restarting event_queue and task_scheduler "
+                    f"(old: {id(self._event_loop)}, new: {id(current_loop)})"
+                )
+                try:
+                    await self._task_scheduler.stop()
+                    await self._event_queue.stop()
+                except Exception as e:
+                    logger.warning(f"Failed to stop old components: {e}")
+                
+                # Recreate components (bound to new event loop)
+                self._event_queue = EventQueue(config=self._config)
+                self._task_scheduler = TaskScheduler(
+                    config=self._config,
+                    task_manager=self._task_manager,
+                    context_engine=self._context_engine,
+                    ability_manager=self._ability_manager,
+                    event_queue=self._event_queue,
+                    card=self._card
+                )
+
+            self._event_queue.start()
+            self._event_queue.set_event_handler(self._event_handler)
+            await self._task_scheduler.start()
+            self._event_loop = current_loop
+            logger.info(f"Controller started in event loop {id(current_loop)}")
+
+        agent_id = self._card.id
+        session_id = session.session_id()
+
+        # Restore controller state
+        state_restored = self._restore_task_manager_state(session)
+        if not state_restored:
+            logger.info(f"Starting with clean TaskManager state for session {session_id}")
+        
+        # Initialize stream_writer_manager based on stream_modes
+        self._init_session_stream_manager(session, stream_modes)
+        
+        # Register session
+        self._task_scheduler.sessions[session_id] = session
+
+        # Subscribe to 4 event types
+        await self._event_queue.subscribe(agent_id, session_id)
+
+        try:
+            # Publish input event to trigger event handling and task scheduling
+            await self._event_queue.publish_event(agent_id, session, inputs)
+
+            # Read from session stream and forward until all tasks are completed
+            async for chunk in session.stream_iterator():
+                if isinstance(chunk, ControllerOutputChunk):
+                    # 检查是否是完成消息
+                    if chunk.payload and chunk.payload.type == "all_tasks_processed":
+                        logger.info(f"All tasks handled for session {session_id}, stopping stream")
+                        break
+
+                yield chunk
+
+        except BaseError:
+            raise
+
+        except Exception as e:
+            logger.error(f"Controller runtime error: {e}")
+            raise build_error(
+                StatusCode.CONTROLLER_RUNTIME_ERROR,
+                error_msg=str(e),
+                cause=e
+            )
+        finally:
+            # Save controller state
+            self._save_task_manager_state(session)
+
+            # Unsubscribe events
+            await self._event_queue.unsubscribe(agent_id, session_id)
+
+            # Remove session
+            if session_id in self._task_scheduler.sessions:
+                del self._task_scheduler.sessions[session_id]
+
+            # Keep Controller running which allows multiple stream() calls without restart overhead
+            logger.info(
+                f"Session {session_id} completed, "
+                f"{len(self._task_scheduler.sessions)} active sessions remaining"
+            )

@@ -9,7 +9,7 @@ from openjiuwen.core.common.security.user_config import UserConfig
 from openjiuwen.core.foundation.llm.output_parsers.output_parser import BaseOutputParser
 from openjiuwen.core.foundation.llm.schema.message import AssistantMessage
 from openjiuwen.core.foundation.llm.schema.message_chunk import AssistantMessageChunk
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import llm_logger, LogEventType
 
 
 class MarkdownElementType:
@@ -73,9 +73,15 @@ class MarkdownOutputParser(BaseOutputParser):
             text = llm_output
         else:
             if UserConfig.is_sensitive():
-                logger.warning("Unsupported llm_output type for parse.")
+                llm_logger.warning(
+                    "Unsupported llm_output type for parse.",
+                    event_type=LogEventType.LLM_PARSE_ERROR
+                )
             else:
-                logger.warning(f"Unsupported llm_output type for parse: {type(llm_output)}")
+                llm_logger.warning(
+                    f"Unsupported llm_output type for parse: {type(llm_output)}",
+                    event_type=LogEventType.LLM_PARSE_ERROR
+                )
             return None
 
         if not text:
@@ -92,9 +98,15 @@ class MarkdownOutputParser(BaseOutputParser):
 
         except Exception as e:
             if UserConfig.is_sensitive():
-                logger.error(f"An unexpected error occurred during Markdown parsing")
+                llm_logger.error(
+                    "An unexpected error occurred during Markdown parsing",
+                    event_type=LogEventType.LLM_PARSE_ERROR
+                )
             else:
-                logger.error(f"An unexpected error occurred during Markdown parsing: {e}\nContent: {text}")
+                llm_logger.error(
+                    f"An unexpected error occurred during Markdown parsing: {e}\nContent: {text}",
+                    event_type=LogEventType.LLM_PARSE_ERROR
+                )
             return None
 
     async def stream_parse(self, streaming_inputs: Iterator[Union[str, AssistantMessageChunk]]) -> Iterator[
@@ -111,9 +123,15 @@ class MarkdownOutputParser(BaseOutputParser):
                 buffer += chunk
             else:
                 if UserConfig.is_sensitive():
-                    logger.warning("Unsupported chunk type for stream_parse.")
+                    llm_logger.warning(
+                        "Unsupported chunk type for stream_parse.",
+                        event_type=LogEventType.LLM_STREAM_PARSE_ERROR
+                    )
                 else:
-                    logger.warning(f"Unsupported chunk type for stream_parse: {type(chunk)}")
+                    llm_logger.warning(
+                        f"Unsupported chunk type for stream_parse: {type(chunk)}",
+                        event_type=LogEventType.LLM_STREAM_PARSE_ERROR
+                    )
                 continue
 
             if len(buffer) > last_parsed_length:
@@ -129,11 +147,15 @@ class MarkdownOutputParser(BaseOutputParser):
 
                 except Exception as e:
                     if UserConfig.is_sensitive():
-                        logger.error(
-                            f"An unexpected error occurred during streaming Markdown parsing")
+                        llm_logger.error(
+                            "An unexpected error occurred during streaming Markdown parsing",
+                            event_type=LogEventType.LLM_STREAM_PARSE_ERROR
+                        )
                     else:
-                        logger.error(
-                            f"An unexpected error occurred during streaming Markdown parsing: {e}\nContent: {buffer}")
+                        llm_logger.error(
+                            f"An unexpected error occurred during streaming Markdown parsing: {e}\nContent: {buffer}",
+                            event_type=LogEventType.LLM_STREAM_PARSE_ERROR
+                        )
                     continue
 
         if buffer.strip():
@@ -148,11 +170,15 @@ class MarkdownOutputParser(BaseOutputParser):
 
             except Exception as e:
                 if UserConfig.is_sensitive():
-                    logger.error(
-                        f"An unexpected error occurred during final streaming Markdown parsing")
+                    llm_logger.error(
+                        "An unexpected error occurred during final streaming Markdown parsing",
+                        event_type=LogEventType.LLM_STREAM_PARSE_ERROR
+                    )
                 else:
-                    logger.error(
-                        f"An unexpected error occurred during final streaming Markdown parsing: {e}\nContent: {buffer}")
+                    llm_logger.error(
+                        f"An unexpected error occurred during final streaming Markdown parsing: {e}\nContent: {buffer}",
+                        event_type=LogEventType.LLM_STREAM_PARSE_ERROR
+                    )
 
     def _extract_all_elements(self, text: str, markdown_content: MarkdownContent):
         elements = []

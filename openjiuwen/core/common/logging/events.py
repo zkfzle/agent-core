@@ -58,6 +58,8 @@ class LogEventType(Enum):
     LLM_CALL_END = "llm_call_end"  # LLM call ended
     LLM_CALL_ERROR = "llm_call_error"  # LLM call error
     LLM_STREAM_CHUNK = "llm_stream_chunk"  # LLM stream chunk
+    LLM_PARSE_ERROR = "llm_parse_error"  # LLM parse error
+    LLM_STREAM_PARSE_ERROR = "llm_stream_parse_error"  # LLM stream parse error
 
     # Tool related events
     TOOL_CALL_START = "tool_call_start"  # Tool call started
@@ -429,6 +431,8 @@ EVENT_CLASS_MAP: Dict[LogEventType, type] = {
     LogEventType.LLM_CALL_END: LLMEvent,
     LogEventType.LLM_CALL_ERROR: LLMEvent,
     LogEventType.LLM_STREAM_CHUNK: LLMEvent,
+    LogEventType.LLM_PARSE_ERROR: LLMEvent,
+    LogEventType.LLM_STREAM_PARSE_ERROR: LLMEvent,
     # Tool events
     LogEventType.TOOL_CALL_START: ToolEvent,
     LogEventType.TOOL_CALL_END: ToolEvent,

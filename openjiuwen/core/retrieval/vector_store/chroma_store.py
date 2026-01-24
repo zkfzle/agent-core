@@ -543,7 +543,7 @@ class ChromaVectorStore(VectorStore):
 
     def collection_exists(self, collection: str) -> bool:
         """Check if a collection exists in current database"""
-        return collection in {getattr(c, "name", None) for c in self._client.list_collections()}
+        return bool([True for c in self._client.list_collections() if getattr(c, "name", None) == collection])
 
     def delete_collection(self, collection: str) -> None:
         """Delete a collection from current database"""

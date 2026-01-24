@@ -459,7 +459,7 @@ class MilvusVectorStore(VectorStore):
 
     def collection_exists(self, collection: str) -> bool:
         """Check if a collection exists in current database"""
-        return collection in self._client.list_collections()
+        return self.client.has_collection(collection)
 
     def delete_collection(self, collection: str) -> None:
         """Delete a collection from current database"""

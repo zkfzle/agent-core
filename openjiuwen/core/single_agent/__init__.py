@@ -25,8 +25,6 @@ from openjiuwen.core.single_agent.agents.react_agent import (
 )
 from openjiuwen.core.session.agent import Session, create_agent_session
 
-BaseAgentAlias = Union[BaseAgent, LegacyBaseAgent]
-
 __all__ = [
     # New classes
     "AgentCard",
@@ -35,5 +33,6 @@ __all__ = [
     "Session",
     "create_agent_session",
     # For compatibility
-    "BaseAgentAlias",
+    "BaseAgent",
+    "LegacyBaseAgent"
 ]

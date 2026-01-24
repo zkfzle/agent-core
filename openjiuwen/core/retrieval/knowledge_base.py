@@ -69,7 +69,7 @@ class KnowledgeBase(ABC):
                     f'- Vector Store ({type(self.vector_store).__name__}) is using "{vector_store_val}"\n'
                     f'- Index manager ({type(self.index_manager).__name__}) is using "{index_manager_val}"',
                 )
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
 
     async def delete_collection(self, collection: str) -> None:

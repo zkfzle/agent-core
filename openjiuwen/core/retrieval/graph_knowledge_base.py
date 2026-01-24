@@ -119,7 +119,7 @@ class GraphKnowledgeBase(KnowledgeBase):
             raise build_error(
                 StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND, error_msg="index_manager is required for add_documents"
             )
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
 
         # Chunk documents
@@ -283,7 +283,7 @@ class GraphKnowledgeBase(KnowledgeBase):
                 StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND,
                 error_msg="index_manager is required for delete_documents",
             )
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
 
         chunk_index_name = f"kb_{self.config.kb_id}_chunks"
@@ -319,7 +319,7 @@ class GraphKnowledgeBase(KnowledgeBase):
         **kwargs: Any,
     ) -> List[str]:
         """Update documents (including chunk index and triple index)"""
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
         # First delete old documents
         doc_ids = [doc.id_ for doc in documents]

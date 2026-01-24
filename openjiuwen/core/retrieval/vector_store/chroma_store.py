@@ -425,7 +425,7 @@ class ChromaVectorStore(VectorStore):
                     ids=ids,
                 )
                 return True
-            elif filter_expr:
+            if filter_expr:
                 # ChromaDB doesn't support complex filter_expr, need to query first then delete
                 # Simplified handling here, only supports simple where conditions
                 logger.warning(
@@ -433,9 +433,8 @@ class ChromaVectorStore(VectorStore):
                     "Please use ids parameter instead."
                 )
                 return False
-            else:
-                logger.warning("Either ids or filter_expr must be provided")
-                return False
+            logger.warning("Either ids or filter_expr must be provided")
+            return False
         except Exception as e:
             logger.error(f"Failed to delete vectors: {e}")
             return False
@@ -538,8 +537,10 @@ class ChromaVectorStore(VectorStore):
             except Exception as e:
                 logger.warning(f"Failed to close ChromaDB client: {e}")
 
-    async def table_exists(self, table_name: str) -> bool:
-        pass
+    def collection_exists(self, collection: str) -> bool:
+        """Check if a collection exists in current database"""
+        return collection in {getattr(c, "name", None) for c in self._client.list_collections()}
 
-    async def delete_table(self, table_name: str) -> None:
-        pass
+    def delete_collection(self, collection: str) -> None:
+        """Delete a collection from current database"""
+        self._client.delete_collection(collection)

@@ -421,8 +421,10 @@ class MilvusVectorStore(VectorStore):
         except Exception as e:
             logger.warning(f"Failed to close Milvus client: {e}")
 
-    async def table_exists(self, table_name: str) -> bool:
-        pass
+    def collection_exists(self, collection: str) -> bool:
+        """Check if a collection exists in current database"""
+        return collection in self._client.list_collections()
 
-    async def delete_table(self, table_name: str) -> None:
-        pass
+    def delete_collection(self, collection: str) -> None:
+        """Delete a collection from current database"""
+        self._client.drop_collection(collection)

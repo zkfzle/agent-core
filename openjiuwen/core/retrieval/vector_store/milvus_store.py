@@ -112,7 +112,7 @@ class MilvusVectorStore(VectorStore):
 
     def check_vector_field(self) -> None:
         """Check if vector field configuration is consistent with actual database"""
-        if not self.collection_exists(self.collection_name):
+        if not self._client.has_collection(self.collection_name):
             return
         index_type = self.vector_field.index_type
         variant = str(getattr(self.vector_field, "variant", "") or "")

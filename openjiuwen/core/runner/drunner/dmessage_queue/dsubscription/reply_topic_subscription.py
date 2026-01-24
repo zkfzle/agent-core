@@ -47,14 +47,15 @@ class ReplyTopicSubscription():
         await self.unregister_collector()
         logger.info(f"[ReplyTopicSubscription] Stopped")
 
-    def _make_key(self, sender_id: str, message_id: str, request_id: Optional[str] = None) -> CollectorKey:
+    @staticmethod
+    def _make_key(sender_id: str, message_id: str, request_id: Optional[str] = None) -> CollectorKey:
         """Construct unique key for collector"""
         request_id = request_id or None
         return CollectorKey(sender_id, message_id, request_id)
 
     async def on_message(self, msg: DmqResponseMessage):
         """Distribute message to corresponding ResponseCollector"""
-        key = self._make_key(msg.sender_id, msg.message_id, msg.request_id)
+        key = ReplyTopicSubscription._make_key(msg.sender_id, msg.message_id, msg.request_id)
         logger.info(f"[ReplyTopicSubscription] receive message key={key}")
 
         collector = self.collectors.get(key)
@@ -73,7 +74,7 @@ class ReplyTopicSubscription():
                 f"[ReplyTopicSubscription] Too many collectors "
                 f"({get_runner_config().distributed_config.max_request_concurrency})")
 
-        key = self._make_key(remote_id, message_id, request_id)
+        key = ReplyTopicSubscription._make_key(remote_id, message_id, request_id)
         if key in self.collectors:
             raise RuntimeError(f"[ReplyTopicSubscription] Collector already exists for {key}")
 

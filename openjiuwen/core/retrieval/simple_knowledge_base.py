@@ -109,7 +109,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
             raise build_error(
                 StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND, error_msg="index_manager is required for add_documents"
             )
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
 
         # Chunk documents
@@ -209,7 +209,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
                 StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND,
                 error_msg="index_manager is required for delete_documents",
             )
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
 
         index_name = f"kb_{self.config.kb_id}_chunks"
@@ -240,7 +240,7 @@ class SimpleKnowledgeBase(KnowledgeBase):
                 StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND,
                 error_msg="index_manager is required for update_documents",
             )
-        if self.strict_validation:
+        if self.strict_validation and self.vector_store:
             self.vector_store.check_vector_field()
 
         # Chunk documents

@@ -119,6 +119,8 @@ class GraphKnowledgeBase(KnowledgeBase):
             raise build_error(
                 StatusCode.RETRIEVAL_KB_INDEX_MANAGER_NOT_FOUND, error_msg="index_manager is required for add_documents"
             )
+        if self.strict_validation:
+            self.vector_store.check_vector_field()
 
         # Chunk documents
         chunks = self.chunker.chunk_documents(documents)

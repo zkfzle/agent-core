@@ -19,6 +19,7 @@ from openjiuwen.core.retrieval.common.config import IndexConfig, VectorStoreConf
 from openjiuwen.core.retrieval.common.document import TextChunk
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
+from openjiuwen.core.retrieval.indexing.vector_fields.milvus_fields import MilvusAUTO, MilvusVectorField
 from openjiuwen.core.retrieval.vector_store.milvus_store import MilvusVectorStore
 
 
@@ -30,7 +31,7 @@ class MilvusIndexer(Indexer):
         milvus_uri: str,
         milvus_token: Optional[str] = None,
         text_field: str = "content",
-        vector_field: str = "embedding",
+        vector_field: str | MilvusVectorField = "embedding",
         sparse_vector_field: str = "sparse_vector",
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
@@ -46,7 +47,7 @@ class MilvusIndexer(Indexer):
             milvus_uri: Milvus URI
             milvus_token: Milvus Token (optional)
             text_field: Text field name
-            vector_field: Vector field name
+            vector_field: Vector field name (str) or definition (MilvusVectorField)
             sparse_vector_field: Sparse vector field name
             metadata_field: Metadata field name
             database_name: name of the database to use
@@ -56,7 +57,6 @@ class MilvusIndexer(Indexer):
         self.milvus_uri = milvus_uri
         self.milvus_token = milvus_token
         self.text_field = text_field
-        self.vector_field = vector_field
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
@@ -73,6 +73,17 @@ class MilvusIndexer(Indexer):
                     StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID,
                     error_msg=f'expecting one of ["cosine", "euclidean", "dot"], but got "{distance_metric}"',
                 )
+        if isinstance(vector_field, str):
+            self.vector_field = MilvusAUTO(vector_field=vector_field)
+        elif isinstance(vector_field, MilvusVectorField):
+            self.vector_field = vector_field
+        else:
+            raise build_error(
+                StatusCode.RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID,
+                error_msg="vector_field must be either a str or MilvusVectorField instance",
+            )
+        self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._search_config = self.vector_field.to_dict(stage="search")
         self.doc_index_callback = doc_index_callback
         if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
             raise build_error(

@@ -19,6 +19,7 @@ from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.common.config import VectorStoreConfig
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, SearchResult
+from openjiuwen.core.retrieval.indexing.vector_fields.chroma_fields import ChromaVectorField
 from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 
@@ -31,7 +32,7 @@ class ChromaVectorStore(VectorStore):
         config: VectorStoreConfig,
         chroma_path: str,
         text_field: str = "content",
-        vector_field: str = "embedding",
+        vector_field: str | ChromaVectorField = "embedding",
         sparse_vector_field: str = "sparse_vector",
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
@@ -44,7 +45,7 @@ class ChromaVectorStore(VectorStore):
             config: Vector store configuration
             chroma_path: ChromaDB persistent path (required)
             text_field: Text field name
-            vector_field: Vector field name
+            vector_field: Vector field name (str) or definition (ChromaVectorField)
             sparse_vector_field: Sparse vector field name (stored as metadata in ChromaDB)
             metadata_field: Metadata field name
             doc_id_field: Document ID field name
@@ -63,15 +64,26 @@ class ChromaVectorStore(VectorStore):
         self.collection_name = config.collection_name
         self.chroma_path = chroma_path
         self.text_field = text_field
-        self.vector_field = vector_field
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
         self.database_name = self.config.database_name
         self._distance_metric = config.distance_metric.replace("dot", "ip").replace("euclidean", "l2")
 
+        if isinstance(vector_field, str):
+            self.vector_field = ChromaVectorField(vector_field=vector_field)
+        elif isinstance(vector_field, ChromaVectorField):
+            self.vector_field = vector_field
+        else:
+            raise build_error(
+                StatusCode.RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID,
+                error_msg="vector_field must be either a str or ChromaVectorField instance",
+            )
+        self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._search_config = self.vector_field.to_dict(stage="search")
+
         # Initialize ChromaDB persistent client
-        self._client = self.create_client(
+        self._client: chromadb.PersistentClient = self.create_client(
             database_name=self.config.database_name,
             path_or_uri=self.chroma_path,
         )
@@ -82,7 +94,7 @@ class ChromaVectorStore(VectorStore):
         )
 
     @property
-    def client(self):
+    def client(self) -> chromadb.PersistentClient:
         """Get ChromaDB client"""
         return self._client
 

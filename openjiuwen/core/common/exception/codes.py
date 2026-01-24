@@ -229,6 +229,7 @@ class StatusCode(Enum):
         155108, "retrieval invalid distance metric selected, reason: {error_msg}"
     )
     RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR = (155109, "retrieval indexing_add_doc runtime error, reason: {error_msg}")
+    RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID = (155110, "retrieval invalid vector field, reason: {error_msg}")
 
     # KnowledgeBase Retrieval - Retriever 155200 - 155299
     RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT = (155200, "retrieval retriever_mode is not supported, reason: {error_msg}")

@@ -293,11 +293,7 @@ class StatusCode(Enum):
         155507,
         "retrieval kb_triple_extraction process error, reason: {error_msg}",
     )
-    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (
-        155508,
-        "retrieval kb_database_config is invalid, reason: Vector store and index manager have "
-        "incompatible {config_name} configs: {error_msg}",
-    )
+    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (155508, "retrieval kb_database_config is invalid, reason: {error_msg}")
 
     # =========================
     # Memory Engine 158000 – 159999

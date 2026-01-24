@@ -102,6 +102,34 @@ class MilvusVectorStore(VectorStore):
             client.use_database(database_name)
         return client
 
+    def check_vector_field(self) -> None:
+        """Check if vector field configuration is consistent with actual database"""
+        if not self.collection_exists(self.collection_name):
+            return
+        index_type = self.vector_field.index_type
+        variant = str(getattr(self.vector_field, "variant", ""))
+        field_name = self.vector_field.vector_field
+        actual = self._client.describe_index(self.collection_name, field_name) or {}
+        if not actual:
+            collection_fields = self._client.describe_collection(self.collection_name).get("fields", [])
+            v_fields = [v_field for v_field in collection_fields if v_field["type"] == DataType.FLOAT_VECTOR]
+            v_fields_list = "\n".join("- [{field_id}] {name}: {params}".format(**v_field) for v_field in v_fields)
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID,
+                error_msg=f"MilvusVectorStore has vector_field at {field_name} while actual database has "
+                f"vector field(s) at:\n{v_fields_list}\nYou may want to call delete_collection({self.collection_name})",
+            )
+
+        if index_type != "auto":
+            returned_type: str = actual.get("index_type", "unknown")
+            if not (returned_type.startswith(index_type.upper()) and returned_type.endswith(variant)):
+                raise build_error(
+                    StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID,
+                    error_msg=f"MilvusVectorStore has index_type of {index_type} while actual database has "
+                    f"index_type of {returned_type}, do not change index_type after Knowledge Base is constructed.",
+                )
+        self._check_configs_matching(self._construct_config, actual)
+
     async def add(
         self,
         data: dict | List[dict],

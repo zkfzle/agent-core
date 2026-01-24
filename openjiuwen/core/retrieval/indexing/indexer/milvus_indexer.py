@@ -82,7 +82,11 @@ class MilvusIndexer(Indexer):
                 StatusCode.RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID,
                 error_msg="vector_field must be either a str or MilvusVectorField instance",
             )
-        self._construct_config = self.vector_field.to_dict(stage="construct")
+        if self.vector_field.index_type == "auto":
+            self._construct_config = {}
+        else:
+            self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._construct_config["metric_type"] = self._distance_metric
         self._search_config = self.vector_field.to_dict(stage="search")
         self.doc_index_callback = doc_index_callback
         if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
@@ -175,7 +179,7 @@ class MilvusIndexer(Indexer):
                     self.metadata_field: meta,
                 }
                 if chunk.embedding is not None:
-                    item[self.vector_field] = chunk.embedding
+                    item[self.vector_field.vector_field] = chunk.embedding
                 data.append(item)
 
             await vector_store.add(data=data)
@@ -410,17 +414,24 @@ class MilvusIndexer(Indexer):
                 )
 
             schema.add_field(
-                field_name=self.vector_field,
+                field_name=self.vector_field.vector_field,
                 datatype=DataType.FLOAT_VECTOR,
                 dim=dimension,
             )
 
             # Add dense vector index
+            index_type = self.vector_field.index_type
+            if index_type == "auto":
+                index_type = "AUTOINDEX"
+            else:
+                index_type = self.vector_field.index_type.upper()
+                index_variant = getattr(self.vector_field, "variant", None)
+                if index_variant is not None:
+                    index_type = index_type + "_" + index_variant.upper()
             index_params.add_index(
-                field_name=self.vector_field,
-                index_type="IVF_FLAT",
-                metric_type=self._distance_metric,
-                params={"nlist": 1024},
+                field_name=self.vector_field.vector_field,
+                index_type=index_type,
+                **self._construct_config,
             )
 
         # Metadata field

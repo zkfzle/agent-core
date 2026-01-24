@@ -59,7 +59,7 @@ class TestChromaIndexer:
             doc_id_field="custom_doc_id",
         )
         assert indexer.text_field == "custom_text"
-        assert indexer.vector_field == "custom_vector"
+        assert indexer.vector_field.vector_field == "custom_vector"
         assert indexer.doc_id_field == "custom_doc_id"
 
     @pytest.mark.asyncio

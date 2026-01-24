@@ -80,6 +80,7 @@ class ChromaVectorStore(VectorStore):
                 error_msg="vector_field must be either a str or ChromaVectorField instance",
             )
         self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._construct_config["space"] = self._distance_metric
         self._search_config = self.vector_field.to_dict(stage="search")
 
         # Initialize ChromaDB persistent client
@@ -90,7 +91,8 @@ class ChromaVectorStore(VectorStore):
 
         # Get or create collection
         self._collection = self._client.get_or_create_collection(
-            name=self.collection_name, configuration={"hnsw": self._construct_config | self._search_config},
+            name=self.collection_name,
+            configuration={"hnsw": self._construct_config | self._search_config},
         )
 
     @property
@@ -172,7 +174,7 @@ class ChromaVectorStore(VectorStore):
 
         for node in nodes:
             # Extract vector
-            embedding = node.get(self.vector_field, [])
+            embedding = node.get(self.vector_field.vector_field, [])
             if not embedding:
                 # If no vector, generate a warning but continue processing (may be allowed in some cases)
                 logger.warning(f"Node has no embedding, skipping: {node.get('id', 'unknown')}")

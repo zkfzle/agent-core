@@ -68,7 +68,11 @@ class MilvusVectorStore(VectorStore):
                 StatusCode.RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID,
                 error_msg="vector_field must be either a str or MilvusVectorField instance",
             )
-        self._construct_config = self.vector_field.to_dict(stage="construct")
+        if self.vector_field.index_type == "auto":
+            self._construct_config = {}
+        else:
+            self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._construct_config["metric_type"] = self._distance_metric
         self._search_config = self.vector_field.to_dict(stage="search")
 
         # Initialize Milvus client & database
@@ -173,10 +177,10 @@ class MilvusVectorStore(VectorStore):
             self._client.search,
             collection_name=self.collection_name,
             data=[query_vector],
-            anns_field=self.vector_field,
+            anns_field=self.vector_field.vector_field,
             limit=top_k,
             output_fields=output_fields,
-            search_params={"metric_type": self._distance_metric, "params": {}},
+            search_params={"metric_type": self._distance_metric, "params": self._search_config},
             filter=filter_expr,
         )
 
@@ -258,8 +262,8 @@ class MilvusVectorStore(VectorStore):
             if query_vector is not None:
                 dense_req = AnnSearchRequest(
                     data=[query_vector],
-                    anns_field=self.vector_field,
-                    param={"metric_type": self._distance_metric, "params": {}},
+                    anns_field=self.vector_field.vector_field,
+                    param={"metric_type": self._distance_metric, "params": self._search_config},
                     limit=top_k,
                 )
                 search_requests.append(dense_req)

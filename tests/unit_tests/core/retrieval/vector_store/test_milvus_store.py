@@ -7,9 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from openjiuwen.core.retrieval import MilvusVectorStore
-from openjiuwen.core.retrieval import VectorStoreConfig
-from openjiuwen.core.retrieval import SearchResult
+from openjiuwen.core.retrieval import MilvusVectorStore, SearchResult, VectorStoreConfig
 
 
 @pytest.fixture
@@ -73,7 +71,7 @@ class TestMilvusVectorStore:
             doc_id_field="custom_doc_id",
         )
         assert store.text_field == "custom_text"
-        assert store.vector_field == "custom_vector"
+        assert store.vector_field.vector_field == "custom_vector"
         assert store.doc_id_field == "custom_doc_id"
 
     @pytest.mark.asyncio
@@ -189,7 +187,7 @@ class TestMilvusVectorStore:
         )
 
         filters = {"source": "test"}
-        results = await store.search([0.1] * 384, top_k=5, filters=filters)
+        _ = await store.search([0.1] * 384, top_k=5, filters=filters)
         # Verify filters were passed
         call_kwargs = mock_client.search.call_args[1]
         assert "filter" in call_kwargs
@@ -252,7 +250,7 @@ class TestMilvusVectorStore:
         )
 
         filters = {"source": "test"}
-        results = await store.sparse_search("test query", top_k=5, filters=filters)
+        _ = await store.sparse_search("test query", top_k=5, filters=filters)
         # Verify BM25 search was used
         call_kwargs = mock_client.search.call_args[1]
         assert call_kwargs["search_params"]["metric_type"] == "BM25"

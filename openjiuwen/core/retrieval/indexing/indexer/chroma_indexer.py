@@ -86,6 +86,7 @@ class ChromaIndexer(Indexer):
                 error_msg="vector_field must be either a str or ChromaVectorField instance",
             )
         self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._construct_config["space"] = self._distance_metric
         self._search_config = self.vector_field.to_dict(stage="search")
         self.doc_index_callback = doc_index_callback
         if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
@@ -129,7 +130,7 @@ class ChromaIndexer(Indexer):
                 config=vector_store_config,
                 chroma_path=self.chroma_path,
                 text_field=self.text_field,
-                vector_field=self.vector_field,
+                vector_field=self.vector_field.vector_field,
                 sparse_vector_field=self.sparse_vector_field,
                 metadata_field=self.metadata_field,
                 doc_id_field=self.doc_id_field,
@@ -174,7 +175,7 @@ class ChromaIndexer(Indexer):
                     self.metadata_field: meta,
                 }
                 if chunk.embedding is not None:
-                    item[self.vector_field] = chunk.embedding
+                    item[self.vector_field.vector_field] = chunk.embedding
                 data.append(item)
 
             await vector_store.add(data=data)

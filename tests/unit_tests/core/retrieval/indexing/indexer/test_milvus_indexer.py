@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from openjiuwen.core.common.exception.errors import BaseError
-from openjiuwen.core.retrieval import MilvusIndexer
-from openjiuwen.core.retrieval import IndexConfig
-from openjiuwen.core.retrieval import TextChunk
+from openjiuwen.core.retrieval import IndexConfig, MilvusIndexer, TextChunk
 
 
 @pytest.fixture
@@ -72,7 +70,7 @@ class TestMilvusIndexer:
             doc_id_field="custom_doc_id",
         )
         assert indexer.text_field == "custom_text"
-        assert indexer.vector_field == "custom_vector"
+        assert indexer.vector_field.vector_field == "custom_vector"
         assert indexer.doc_id_field == "custom_doc_id"
 
     @pytest.mark.asyncio

@@ -106,9 +106,9 @@ class VectorStore(ABC):
         """Delete vectors"""
 
     @abstractmethod
-    def collection_exists(self, collection: str) -> bool:
+    async def table_exists(self, table_name: str) -> bool:
         """Check if a collection exists in current database"""
 
     @abstractmethod
-    def delete_collection(self, collection: str) -> None:
+    async def delete_table(self, table_name: str) -> None:
         """Delete a collection from current database"""

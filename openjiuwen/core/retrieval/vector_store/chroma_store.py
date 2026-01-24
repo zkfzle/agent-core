@@ -537,10 +537,13 @@ class ChromaVectorStore(VectorStore):
             except Exception as e:
                 logger.warning(f"Failed to close ChromaDB client: {e}")
 
-    def collection_exists(self, collection: str) -> bool:
+    async def table_exists(self, table_name: str) -> bool:
         """Check if a collection exists in current database"""
-        return collection in {getattr(c, "name", None) for c in self._client.list_collections()}
+        return bool([True for c in self._client.list_collections() if getattr(c, "name", None) == table_name])
 
-    def delete_collection(self, collection: str) -> None:
+    async def delete_table(self, table_name: str) -> None:
         """Delete a collection from current database"""
-        self._client.delete_collection(collection)
+        await asyncio.to_thread(
+            self._client.delete_collection,
+            name=table_name,
+        )

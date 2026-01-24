@@ -3,7 +3,6 @@
 Vector store abstract base class test cases
 """
 
-
 import pytest
 
 from openjiuwen.core.retrieval import VectorStore
@@ -31,10 +30,10 @@ class ConcreteVectorStore(VectorStore):
     async def delete(self, ids=None, filter_expr=None, **kwargs):
         return True
 
-    def collection_exists(self, collection: str) -> bool:
+    async def table_exists(self, table_name: str) -> bool:
         pass
 
-    def delete_collection(self, collection: str) -> None:
+    async def delete_table(self, table_name: str) -> None:
         pass
 
 

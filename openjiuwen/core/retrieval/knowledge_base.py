@@ -68,15 +68,14 @@ class KnowledgeBase(ABC):
                     f'- Index manager ({type(self.index_manager).__name__}) is using "{index_manager_val}"',
                 )
 
-
-    def delete_collection(self, collection: str) -> None:
+    async def delete_collection(self, collection: str) -> None:
         """Delete a collection from current database"""
         if self.vector_store is None:
             raise build_error(
                 StatusCode.RETRIEVAL_KB_VECTOR_STORE_NOT_FOUND,
                 error_msg="vector_store is required for delete_collection",
             )
-        return self.vector_store.delete_collection(collection)
+        return await self.vector_store.delete_table(collection)
 
     @abstractmethod
     async def parse_files(

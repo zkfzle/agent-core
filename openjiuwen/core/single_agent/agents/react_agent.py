@@ -33,7 +33,7 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
-
+from openjiuwen.core.skills.skill_util import SkillUtil
 
 class ReActAgentConfig(BaseModel):
     """ReActAgent Configuration Class
@@ -69,6 +69,7 @@ class ReActAgentConfig(BaseModel):
         default=None,
         description="Model request configuration"
     )
+
 
     sys_operation_id: Optional[str] = None
 
@@ -245,8 +246,6 @@ class ReActAgent(BaseAgent):
         )
         self._llm = None
         self._init_memory_scope()
-        # 延迟导入以避免循环依赖：skills -> runner -> single_agent -> skills
-        from openjiuwen.core.skills.skill_util import SkillUtil
         self._skill_util = SkillUtil(self.config.sys_operation_id)
         super().__init__(card)
 
@@ -299,7 +298,6 @@ class ReActAgent(BaseAgent):
         # Reset sys operation id if changed
         if old_config.sys_operation_id != config.sys_operation_id:
             self._skill_util.skill_tool_kit.sys_operation_id = config.sys_operation_id
-
         return self
 
     def _get_llm(self) -> Model:
@@ -323,6 +321,10 @@ class ReActAgent(BaseAgent):
             )
         return self._llm
 
+    async def register_skill(self, skill_path: Union[str, List[str]]):
+        """Register a skill"""
+        await self._skill_util.register_skills(skill_path, self)
+
     async def _call_llm(
         self,
         messages: List,
@@ -343,10 +345,6 @@ class ReActAgent(BaseAgent):
             messages=messages,
             tools=tools
         )
-
-    def register_skill(self, skill_path: Union[str, List[str]]):
-        """Register a skill"""
-        self._skill_util.register_skills(skill_path, self)
 
     async def invoke(
             self,
@@ -390,7 +388,8 @@ class ReActAgent(BaseAgent):
 
         if len(system_messages) > 0 and self._skill_util.has_skill():
             skill_prompt = self._skill_util.get_skill_prompt()
-            system_messages[-1]["content"] = system_messages[-1]["content"] + "\n" + skill_prompt
+            last_msg = system_messages[-1]
+            last_msg.content = (last_msg.content or "") + "\n" + skill_prompt
 
         # Get tool info from _ability_kit
         tools = self.list_tool_info()
@@ -461,13 +460,20 @@ class ReActAgent(BaseAgent):
         """Stream execute ReAct process
 
         Args:
-            inputs: User input (required in new version)
-            session: Session object (required in new version)
+            inputs: User input, supports the following formats:
+                - dict (legacy): {"query": "...", "conversation_id": "..."}
+                - dict (new): {"user_input": "...", "session_id": "..."}
+                - str: Used directly as user_input
+            session: Session object (optional)
             stream_modes: Stream output modes (optional)
 
         Yields:
-            OutputSchema objects from stream_iterator
+            Legacy compatible format - OutputSchema objects or final result dict
         """
+        # Determine if we own the stream
+        own_stream = session is None
+
+        # Store final result for yielding
         final_result_holder = {"result": None}
 
         async def stream_process():
@@ -490,19 +496,20 @@ class ReActAgent(BaseAgent):
                     "output": str(e),
                     "result_type": "error"
                 }
-            finally:
-                # Close stream
-                if session is not None and hasattr(session, 'post_run'):
-                    await session.post_run()
 
         task = asyncio.create_task(stream_process())
 
-        # Read from stream_iterator and yield
-        if session is not None and hasattr(session, 'stream_iterator'):
-            async for result in session.stream_iterator():
-                yield result
+        # If we own the stream, read from session's stream iterator
+        if own_stream and session is not None:
+            if hasattr(session, 'stream_iterator'):
+                async for result in session.stream_iterator():
+                    yield result
 
         await task
+
+        # Yield final result
+        if final_result_holder["result"] is not None:
+            yield final_result_holder["result"]
 
 
 __all__ = [

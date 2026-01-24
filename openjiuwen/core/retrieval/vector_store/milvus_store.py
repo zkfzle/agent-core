@@ -9,7 +9,7 @@ Supports vector search, sparse search (BM25), and hybrid search.
 import asyncio
 from typing import Any, List, Optional
 
-from pymilvus import AnnSearchRequest, MilvusClient, RRFRanker
+from pymilvus import AnnSearchRequest, DataType, MilvusClient, RRFRanker
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
@@ -101,6 +101,14 @@ class MilvusVectorStore(VectorStore):
                 client.create_database(database_name)
             client.use_database(database_name)
         return client
+
+    def get_search_params(self, top_k: int) -> dict[str, Any]:
+        """Get correct parameters for searches"""
+        search_params = self._search_config
+        if "efSearchFactor" in self._search_config:
+            search_params = search_params.copy()
+            search_params["ef"] = round(top_k * search_params.pop("efSearchFactor"))
+        return search_params
 
     def check_vector_field(self) -> None:
         """Check if vector field configuration is consistent with actual database"""
@@ -208,7 +216,7 @@ class MilvusVectorStore(VectorStore):
             anns_field=self.vector_field.vector_field,
             limit=top_k,
             output_fields=output_fields,
-            search_params={"metric_type": self._distance_metric, "params": self._search_config},
+            search_params={"metric_type": self._distance_metric, "params": self.get_search_params(top_k)},
             filter=filter_expr,
         )
 
@@ -291,7 +299,7 @@ class MilvusVectorStore(VectorStore):
                 dense_req = AnnSearchRequest(
                     data=[query_vector],
                     anns_field=self.vector_field.vector_field,
-                    param={"metric_type": self._distance_metric, "params": self._search_config},
+                    param={"metric_type": self._distance_metric, "params": self.get_search_params(top_k)},
                     limit=top_k,
                 )
                 search_requests.append(dense_req)

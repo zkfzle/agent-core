@@ -62,10 +62,7 @@ class OpenAIEmbedding(APIEmbedding):
         if isinstance(dimension, int):
             self._dimension = dimension
             self.matryoshka_dimension = True
-        if config.base_url is None:
-            self.api_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-        elif isinstance(self.api_url, str):
-            self.api_url = self.api_url.removeprefix("/").removesuffix("/embeddings")
+        self.api_url = self.api_url.removesuffix("/").removesuffix("/embeddings")
 
         # Create OpenAI clients
         if verify is True and isinstance(self._verify_ssl, str):

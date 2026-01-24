@@ -115,7 +115,7 @@ class MilvusVectorStore(VectorStore):
         if not self.collection_exists(self.collection_name):
             return
         index_type = self.vector_field.index_type
-        variant = str(getattr(self.vector_field, "variant", ""))
+        variant = str(getattr(self.vector_field, "variant", "") or "")
         field_name = self.vector_field.vector_field
         actual = self._client.describe_index(self.collection_name, field_name) or {}
         if not actual:

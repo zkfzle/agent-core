@@ -9,6 +9,8 @@ Provides a unified interface for vector stores.
 from abc import ABC, abstractmethod
 from typing import Any, List, Optional
 
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
 
 
@@ -16,9 +18,33 @@ class VectorStore(ABC):
     """Vector store abstract base class"""
 
     @staticmethod
+    def _check_configs_matching(configured: dict, actual: dict) -> None:
+        """Check if a config dict is equivalent to actual (which may have more keys)"""
+        matches, mismatches = {}, {}
+        for attr, val in configured.items():
+            if attr in ["efSearchFactor"]:
+                continue
+            val_str = str(val)
+            actual_val_str = str(actual.get(attr))
+            if actual_val_str.startswith(val_str):
+                matches[attr] = val
+            else:
+                mismatches[attr] = dict(settings=val_str, actual=actual_val_str)
+
+        if mismatches:
+            raise build_error(
+                StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID,
+                error_msg=f"database actual config differs from current knowledge base, \n{matches=}\n{mismatches=}",
+            )
+
+    @staticmethod
     @abstractmethod
     def create_client(database_name: str, path_or_uri: str, token: str = "", **kwargs) -> Any:
         """Create vector database client and ensure database exists"""
+
+    @abstractmethod
+    def check_vector_field(self) -> None:
+        """Check if vector field configuration is consistent with actual database"""
 
     @abstractmethod
     async def add(

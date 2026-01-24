@@ -34,10 +34,10 @@ pip install -U openjiuwen
 ```python
 import os
 import asyncio
-from openjiuwen.core.workflow import Start, End, LLMComponent, LLMCompConfig
+from openjiuwen.core.workflow import Start, End, LLMComponent, LLMCompConfig, generate_workflow_key
 from openjiuwen.core.foundation.llm import ModelRequestConfig, ModelClientConfig
 from openjiuwen.core.runner.runner import Runner
-from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig, WorkflowSchema
+from openjiuwen.core.single_agent.legacy import WorkflowAgentConfig
 from openjiuwen.core.application.workflow_agent import WorkflowAgent
 from openjiuwen.core.workflow import Workflow, WorkflowCard
 
@@ -47,14 +47,16 @@ os.environ.setdefault("API_BASE", "your_api_base")
 os.environ.setdefault("API_KEY", "your_api_key")
 os.environ.setdefault("MODEL_PROVIDER", "your_provider")
 os.environ.setdefault("MODEL_NAME", "your_model_name")
-os.environ.setdefault("LLM_SSL_VERIFY", "false")
+os.environ.setdefault("VERIFY_SSL", "False")
+os.environ.setdefault("SSL_CERT", "")
 
 # 创建大模型配置对象
 model_client_config = ModelClientConfig(
     client_provider=os.getenv("MODEL_PROVIDER"),
     api_key=os.getenv("API_KEY"),
     api_base=os.getenv("API_BASE"),
-    verify_ssl=os.getenv("VERIFY_SSL").lower() == "true"
+    verify_ssl=os.getenv("VERIFY_SSL").lower() == "true",
+    ssl_cert=os.getenv("SSL_CERT")
 )
 model_config = ModelRequestConfig(
     model=os.getenv("MODEL_NAME")
@@ -75,6 +77,9 @@ workflow_card = WorkflowCard(
 
 # 初始化工作流
 flow = Workflow(card=workflow_card)
+Runner.resource_mgr.add_workflow(
+    WorkflowCard(id=generate_workflow_key(flow.card.id, flow.card.version)),
+    lambda: flow)
 
 # 创建组件
 start = Start()
@@ -108,18 +113,10 @@ flow.add_connection("start", "llm")
 flow.add_connection("llm", "end")
 
 # 创建并绑定Agent
-schema = WorkflowSchema(
-    id=flow.card.id,
-    name=flow.card.name,
-    version=flow.card.version,
-    description="第一个工作流",
-    inputs={"query": {"type": "string"}},
-)
 agent_config = WorkflowAgentConfig(
     id="hello_agent",
     version="0.1.1",
-    description="第一个Agent",
-    workflows=[schema],
+    description="第一个Agent"
 )
 workflow_agent = WorkflowAgent(agent_config)
 workflow_agent.bind_workflows([flow])

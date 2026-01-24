@@ -797,9 +797,7 @@ async def test_simple_interactive_workflow_raw_input():
         state=WorkflowExecutionState.COMPLETED)
 
 async def test_simple_interactive_workflow_both_raw_input_update():
-        """
-        graph : start->a->end
-        """
+        """ graph : start->a->end """
         start_node = MockStartNode4Cp("start")
         flow = Workflow(card=WorkflowCard(id="test_simple_interactive_workflow_both_raw_input_update"))
         flow.set_start_comp("start", start_node,
@@ -1022,7 +1020,8 @@ async def test_simple_interactive_workflow_checkpointer():
         state=WorkflowExecutionState.INPUT_REQUIRED)
     state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is not None
-    first_time_workflow_store = get_default_inmemory_checkpointer()._workflow_stores.get(session_id)
+    stores = getattr(get_default_inmemory_checkpointer(), "_workflow_stores", None)
+    first_time_workflow_store = stores.get(session_id)
     assert first_time_workflow_store is not None
 
     user_input = InteractiveInput()
@@ -1037,7 +1036,10 @@ async def test_simple_interactive_workflow_checkpointer():
     assert start_node.runtime == 1
     state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is not None
-    workflow_store = get_default_inmemory_checkpointer()._workflow_stores.get(session_id)
+
+    stores = getattr(get_default_inmemory_checkpointer(), "_workflow_stores", None)
+    workflow_store = stores.get(session_id)
+
     assert workflow_store is not None
     assert workflow_store is first_time_workflow_store
 
@@ -1048,7 +1050,8 @@ async def test_simple_interactive_workflow_checkpointer():
     # checkpoint will be deleted when completed
     state = await get_default_inmemory_checkpointer().graph_store().get(session_id, workflow_id)
     assert state is None
-    workflow_store = get_default_inmemory_checkpointer()._workflow_stores.get(session_id)
+    stores = getattr(get_default_inmemory_checkpointer(), "_workflow_stores", None)
+    workflow_store = stores.get(session_id)
     assert workflow_store is None
 
 

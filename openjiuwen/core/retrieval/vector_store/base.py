@@ -24,8 +24,8 @@ class VectorStore(ABC):
         for attr, val in configured.items():
             if attr in ["efSearchFactor"]:
                 continue
-            val_str = str(val)
-            actual_val_str = str(actual.get(attr))
+            val_str = str(val).casefold()
+            actual_val_str = str(actual.get(attr)).casefold()
             if actual_val_str.startswith(val_str):
                 matches[attr] = val
             else:

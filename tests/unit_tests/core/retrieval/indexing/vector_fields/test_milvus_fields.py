@@ -718,7 +718,7 @@ class TestMilvusHNSW:
         assert "vector_field" not in result
 
     @staticmethod
-    def test_to_dict_search_without_efSearchFactor():
+    def test_to_dict_search_without_ef_search_factor():
         """Test to_dict search stage when efSearchFactor is not set (None)"""
         field = MilvusHNSW(M=64, efConstruction=400)
         result = field.to_dict("search")

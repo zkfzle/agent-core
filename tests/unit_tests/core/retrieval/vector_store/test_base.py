@@ -31,10 +31,10 @@ class ConcreteVectorStore(VectorStore):
     async def delete(self, ids=None, filter_expr=None, **kwargs):
         return True
 
-    async def table_exists(self, table_name: str) -> bool:
+    def collection_exists(self, collection: str) -> bool:
         pass
 
-    async def delete_table(self, table_name: str) -> None:
+    def delete_collection(self, collection: str) -> None:
         pass
 
 

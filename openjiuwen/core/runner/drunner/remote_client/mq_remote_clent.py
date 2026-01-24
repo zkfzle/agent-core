@@ -50,8 +50,8 @@ class MqRemoteClient(RemoteClient):
         self._started = False
         logger.info(f"[MqRemoteClient] Stopped client for {self.remote_id}")
 
-    async def invoke(self, input: Dict, timeout: float = None) -> Dict:
-        session_id = input.get("conversation_id", "default_session")
+    async def invoke(self, inputs: Dict, timeout: float = None) -> Dict:
+        session_id = inputs.get("conversation_id", "default_session")
         message_id = "_".join((filter(None, [session_id, str(uuid.uuid4())])))
         if timeout is None:
             timeout = get_runner_config().distributed_config.request_timeout
@@ -72,7 +72,7 @@ class MqRemoteClient(RemoteClient):
             sender_id=self.reply_topic,
             receiver_id=self.remote_id,
             enable_stream=False,
-            payload=input,
+            payload=inputs,
             expire_at=time.time() + timeout if timeout else None,
         )
         # Send message
@@ -92,7 +92,7 @@ class MqRemoteClient(RemoteClient):
             raise
         except JiuWenBaseException:
             raise
-        except Exception as e:
+        except Exception:
             raise
         finally:
             await self.system_reply_sub.unregister_collector(message_id, self.remote_id)
@@ -132,7 +132,7 @@ class MqRemoteClient(RemoteClient):
             raise
         except JiuWenBaseException:
             raise
-        except Exception as e:
+        except Exception:
             raise
         finally:
             await self.system_reply_sub.unregister_collector(message_id, self.remote_id)

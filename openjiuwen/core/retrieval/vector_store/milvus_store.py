@@ -125,7 +125,8 @@ class MilvusVectorStore(VectorStore):
             raise build_error(
                 StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID,
                 error_msg=f"MilvusVectorStore has vector_field at {field_name} while actual database has "
-                f"vector field(s) at:\n{v_fields_list}\nYou may want to call delete_collection({self.collection_name})",
+                f"vector field(s) at:\n{v_fields_list}\nYou may want to call delete_collection method on "
+                f'collection "{self.collection_name}"',
             )
 
         if index_type != "auto":

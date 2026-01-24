@@ -90,7 +90,7 @@ class ChromaVectorStore(VectorStore):
 
         # Get or create collection
         self._collection = self._client.get_or_create_collection(
-            name=self.collection_name, metadata={"hnsw:space": self._distance_metric}
+            name=self.collection_name, configuration={"hnsw": self._construct_config | self._search_config},
         )
 
     @property

@@ -56,17 +56,17 @@ class SseClient(McpClient):
 
     async def disconnect(self, *, timeout: float = NO_TIMEOUT) -> bool:
         """Close SSE connection"""
+        if self._is_disconnected:
+            return True
+
         try:
-            if self._session:
-                await self._session.__aexit__(None, None, None)
-                self._session = None
-
-            if self._client:
-                await self._client.__aexit__(None, None, None)
-                self._client = None
-                self._read = None
-                self._write = None
-
+            await self._exit_stack.aclose()
+            self._session = None
+            self._client = None
+            self._read = None
+            self._write = None
+            self._is_disconnected = True
+            self._exit_stack = AsyncExitStack()  # Reset for potential reconnection
             logger.info("SSE client disconnected successfully")
             return True
         except Exception as e:
@@ -85,6 +85,7 @@ class SseClient(McpClient):
                     name=tool.name,
                     description=getattr(tool, "description", ""),
                     input_params=getattr(tool, "inputSchema", {}),
+                    server_name=self._name,
                 )
                 for tool in tools_response.tools
             ]

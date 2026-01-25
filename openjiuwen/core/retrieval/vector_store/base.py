@@ -7,6 +7,7 @@ Provides a unified interface for vector stores.
 """
 
 from abc import ABC, abstractmethod
+from math import isclose
 from typing import Any, List, Optional
 
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -26,7 +27,12 @@ class VectorStore(ABC):
                 continue
             val_str = str(val).casefold()
             actual_val_str = str(actual.get(attr)).casefold()
-            if actual_val_str.startswith(val_str):
+
+            # We want either an exact match, or a close enough match numerically
+            is_valid = actual_val_str == val_str
+            if not is_valid and isinstance(val, (int, float)) and actual_val_str.replace(".", "").isnumeric():
+                is_valid = isclose(float(actual_val_str), float(val), rel_tol=1e-2, abs_tol=1e-3)
+            if is_valid:
                 matches[attr] = val
             else:
                 mismatches[attr] = dict(settings=val_str, actual=actual_val_str)

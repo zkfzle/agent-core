@@ -55,7 +55,7 @@ class ReActAgentConfig(BaseModel):
         description="Prompt template list"
     )
     context_window_limit: int = Field(
-        default=20,
+        default=None,
         description="Context window limit"
     )
     max_iterations: int = Field(default=5, description="Maximum iterations")

@@ -851,7 +851,8 @@ class ResourceMgr:
                 self._tag_mgr.remove_resource(server_id)
                 tool_ids = await self._resource_registry.tool().remove_tool_server(server_id)
                 if tool_ids:
-                    self.remove_tool(tool_id=tool_ids)
+                    for tool_id in tool_ids:
+                        self.remove_tool(tool_id=tool_id)
                 logger.info(f"remove mcp server succeed, id={mcp_server_id}")
                 results.append(Ok(mcp_server_id))
             except Exception as e:
@@ -944,12 +945,21 @@ class ResourceMgr:
                 if not ignore_exception:
                     raise e
             for tool_name in tool_names:
+                tool_card, tool_cards = None, []
                 tool_id = self._resource_registry.tool().get_mcp_tool_id(mcp_server_id, tool_name)
-                tool_card = self._id_to_card.get(tool_id) if tool_id else None
+                if isinstance(tool_id, list):
+                    tool_cards = [self._id_to_card.get(_) for _ in tool_id]
+                else:
+                    tool_card = self._id_to_card.get(tool_id) if tool_id else None
                 if exact_match:
-                    results.append(tool_card.tool_info() if tool_card else None)
+                    if tool_card:
+                        results.append(tool_card.tool_info())
+                    elif tool_cards:
+                        results.extend([_.tool_info() for _ in tool_cards])
                 elif tool_card:
                     results.append(tool_card.tool_info())
+                elif tool_cards:
+                    results.extend([_.tool_info() for _ in tool_cards])
         return results
 
     def get_resource_by_tag(self,

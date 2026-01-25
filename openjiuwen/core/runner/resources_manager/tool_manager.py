@@ -3,7 +3,7 @@
 import time
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.codes import StatusCode
@@ -50,11 +50,14 @@ class ToolMgr:
             return self.get_tool(tool_id, session)
         return None
 
-    def get_mcp_tool_id(self, server_id: str, tool_name):
+    def get_mcp_tool_id(self, server_id: str, tool_name) -> Union[str, List[str], None]:
         resource = self._mcp_server_resources.get(server_id)
         if resource:
-            tool_id = self.generate_mcp_tool_id(server_id, resource.config.server_name, tool_name)
-            return tool_id
+            if tool_name is not None:
+                tool_id = self.generate_mcp_tool_id(server_id, resource.config.server_name, tool_name)
+                return tool_id
+            else:
+                return resource.tool_ids
         else:
             return None
 

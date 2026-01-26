@@ -17,7 +17,7 @@ from typing import Union
 # Legacy classes
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent
 # New classes (current API)
-from openjiuwen.core.single_agent.agent import BaseAgent
+from openjiuwen.core.single_agent.agent import BaseAgent, AbilityManager
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.single_agent.agents.react_agent import (
     ReActAgent,
@@ -36,4 +36,5 @@ __all__ = [
     "create_agent_session",
     # For compatibility
     "BaseAgentAlias",
+    "AbilityManager"
 ]

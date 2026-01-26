@@ -29,7 +29,7 @@ from openjiuwen.core.runner.resources_manager.resource_registry import ResourceR
 
 from openjiuwen.core.runner.resources_manager.tag_manager import TagMgr
 from openjiuwen.core.session import Session
-from openjiuwen.core.single_agent import AgentCard
+from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
 from openjiuwen.core.workflow.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowCard

@@ -30,11 +30,18 @@ class SkillToolKit:
         from openjiuwen.core.runner.runner import Runner
         return Runner.resource_mgr.get_sys_operation(self._sys_operation_id)
 
+    def set_runner(self, runner) -> None:
+        self._runner = runner
+
     def create_view_file_tool(self):
         view_file_tool_card = ToolCard(
             id="_internal_view_file",
             name="view_file",
-            description="Given a file_path, reads and returns the file content stored at file_path. Only reads text files (e.g. .md and .txt files), and does NOT read binary files (e.g. .pdf, .xlsx, .ppt etc.)",
+            description=(
+                "Given a file_path, reads and returns the file content stored at file_path. "
+                "Only reads text files (e.g. .md and .txt files), and does NOT read binary files "
+                "(e.g. .pdf, .xlsx, .ppt etc.)"
+            ),
             input_params={
                 "type": "object",
                 "properties": {

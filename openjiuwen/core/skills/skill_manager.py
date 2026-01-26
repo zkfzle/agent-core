@@ -45,6 +45,10 @@ class SkillManager:
         """
         self._registry: Dict[str, Skill] = {}
         self._sys_operation_id = sys_operation_id
+        self.description = ""
+
+    def set_sys_operation_id(self, sys_operation_id: str) -> None:
+        self._sys_operation_id = sys_operation_id
 
     async def _load_yaml(self, path: Path, session_id: str):
         from openjiuwen.core.runner.runner import Runner

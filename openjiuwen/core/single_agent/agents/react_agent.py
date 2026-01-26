@@ -33,7 +33,6 @@ from openjiuwen.core.session.stream import OutputSchema
 from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
-from openjiuwen.core.skills.skill_util import SkillUtil
 
 
 class ReActAgentConfig(BaseModel):
@@ -299,7 +298,7 @@ class ReActAgent(BaseAgent):
 
         # Reset sys operation id if changed
         if old_config.sys_operation_id != config.sys_operation_id:
-            self._skill_util.skill_tool_kit.sys_operation_id = config.sys_operation_id
+            self._skill_util.set_sys_operation_id(config.sys_operation_id)
 
         return self
 

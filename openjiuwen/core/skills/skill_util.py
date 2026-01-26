@@ -31,6 +31,10 @@ class SkillUtil:
         self._skill_manager = SkillManager(sys_operation_id)
         self._skill_tool_kit = SkillToolKit(sys_operation_id)
 
+    def set_sys_operation_id(self, sys_operation_id: str) -> None:
+        self.skill_manager.set_sys_operation_id(sys_operation_id)
+        self.skill_tool_kit.sys_operation_id = sys_operation_id
+
     @property
     def skill_manager(self):
         """Get the skill manager instance.
@@ -85,5 +89,8 @@ class SkillUtil:
         skills_info = []
         for index, skill in enumerate(skills):
             skills_info.append(
-                f"{index}.Skill name: {skill.name}; Skill description: {skill.description}; Skill file path: {skill.directory}")
+                f"{index}.Skill name: {skill.name}; "
+                f"Skill description: {skill.description}; "
+                f"Skill file path: {skill.directory}"
+            )
         return skill_prompt.format({"skills": "\n".join(skills_info)}).content

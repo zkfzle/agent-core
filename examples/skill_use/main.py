@@ -32,8 +32,8 @@ async def main():
     load_dotenv()
 
     query = (
-        "Analyze SuperStoreUS-2015.xlsx file. Write the analysis results in different worksheets of the same Excel file. "
-        "Do not create new Excel file,\n"
+        "Analyze SuperStoreUS-2015.xlsx file. Write the analysis results in different worksheets "
+        "of the same Excel file. Do not create new Excel file,\n"
         "and ensure all numbers are dynamically generated (no hard-coded values): "
         "What is the store's total revenue?\n"
         "Which product category contributes the most to sales?\n"
@@ -102,8 +102,8 @@ async def main():
 
     toolkit = SkillToolKit(sys_operation_id)
 
-    if hasattr(toolkit, "_runner"):
-        toolkit._runner = runner
+    if hasattr(toolkit, "set_runner"):
+        toolkit.set_runner(runner)
 
     toolkit.add_skill_tools(agent)
 

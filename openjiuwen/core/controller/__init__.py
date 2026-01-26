@@ -31,6 +31,11 @@ from openjiuwen.core.controller.legacy import (
     ReasonerConfig,
 )
 
+from openjiuwen.core.controller.schema import *
+from openjiuwen.core.controller.modules import *
+from openjiuwen.core.controller.config import ControllerConfig
+from openjiuwen.core.controller.base import Controller
+
 _CONTROLLER_CLASSES = [
     "BaseController",
 ]
@@ -72,11 +77,53 @@ _CONFIG_CLASSES = [
     "ReasonerConfig",
 ]
 
+_NEW_CLASS = [
+    # ========================= 数据模型定义 =============================
+    # 数据单元
+    "TextDataFrame",
+    "FileDataFrame",
+    "JsonDataFrame",
+    "DataFrame",
+    # 事件（控制器输入）
+    "EventType",
+    "Event",
+    "InputEvent",
+    "TaskInteractionEvent",
+    "TaskCompletionEvent",
+    "TaskFailedEvent",
+    # 控制器输出
+    "ControllerOutputPayload",
+    "ControllerOutputChunk",
+    "ControllerOutput",
+    # 意图
+    "IntentType",
+    "Intent",
+    # 任务
+    "TaskStatus",
+    "Task",
+    # ========================= 控制器内部模块 =============================
+    # 事件队列和事件处理
+    "EventHandlerInput",
+    "EventHandler",
+    "EventQueue",
+    # 任务管理
+    "TaskManagerState",
+    "TaskManager",
+    # 任务执行调度
+    "TaskExecutor",
+    "TaskExecutorRegistry",
+    "TaskScheduler",
+    # =========================     控制器   =============================
+    "ControllerConfig",
+    "Controller"
+]
+
 __all__ = (
         _CONTROLLER_CLASSES +
         _INTENT_CLASSES +
         _TASK_CLASSES +
         _REASONER_CLASSES +
         _EVENT_CLASSES +
-        _CONFIG_CLASSES
+        _CONFIG_CLASSES +
+        _NEW_CLASS
 )

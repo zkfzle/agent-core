@@ -2,15 +2,18 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 from typing import Optional, Tuple, Dict, Any, Literal, List, AsyncIterator
 
-from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
+from openjiuwen.core.sys_operation.abstractions import BaseFsOperation
+from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.registry import operation
-from openjiuwen.core.sys_operation.result.fs_operation_result import ReadFileResult, WriteFileResult, \
+from openjiuwen.core.sys_operation.result import (
+    ReadFileResult, WriteFileResult, \
     UploadFileResult, DownloadFileResult, ListFilesResult, ListDirsResult, SearchFilesResult, \
     ReadFileStreamResult, DownloadFileStreamResult, UploadFileStreamResult
+)
 
 
 @operation(name="fs", mode=OperationMode.SANDBOX, description="sandbox fs operation")
-class FsOperation(BaseOperation):
+class FsOperation(BaseFsOperation):
     """File system operation"""
 
     async def read_file(
@@ -41,7 +44,7 @@ class FsOperation(BaseOperation):
         Returns:
             ReadFileResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def read_file_stream(
             self,
@@ -71,7 +74,7 @@ class FsOperation(BaseOperation):
         Returns:
             AsyncIterator[ReadFileStreamResult]: Streaming structured results, line-by-line or chunk-by-chunk.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def write_file(
             self,
@@ -103,7 +106,7 @@ class FsOperation(BaseOperation):
         Returns:
             WriteFileResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def upload_file(
             self,
@@ -131,7 +134,7 @@ class FsOperation(BaseOperation):
         Returns:
             UploadFileResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def upload_file_stream(
             self,
@@ -159,7 +162,7 @@ class FsOperation(BaseOperation):
         Returns:
             AsyncIterator[UploadFileStreamResult]: Streaming structured results, chunk-by-chunk.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def download_file(
             self,
@@ -187,7 +190,7 @@ class FsOperation(BaseOperation):
         Returns:
             DownloadFileResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def download_file_stream(
             self,
@@ -215,7 +218,7 @@ class FsOperation(BaseOperation):
         Returns:
             AsyncIterator[DownloadFileStreamResult]: Streaming structured results, chunk-by-chunk.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def list_files(
             self,
@@ -246,7 +249,7 @@ class FsOperation(BaseOperation):
         Returns:
             ListFilesResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def list_directories(
             self,
@@ -275,7 +278,7 @@ class FsOperation(BaseOperation):
         Returns:
             ListDirsResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")
 
     async def search_files(
             self,
@@ -294,4 +297,4 @@ class FsOperation(BaseOperation):
         Returns:
             SearchFilesResult: Structured result.
         """
-        pass
+        raise NotImplementedError("Fs operation sandbox mode is not implemented yet.")

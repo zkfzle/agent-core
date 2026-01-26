@@ -82,6 +82,7 @@ def _code_range_by_scope(scope: str) -> str:
         "TOOL": "182000-182999",
         "COMMON": "188000-188999",
         "SESSION": "190000–199999",
+        "SYS_OPERATION": "200000–204999",
     }.get(scope, "custom")
 
 

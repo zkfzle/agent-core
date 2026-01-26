@@ -824,6 +824,7 @@ class TestTaskManager(unittest.IsolatedAsyncioTestCase):
 
         # Concurrently pop tasks
         popped_tasks = []
+
         async def pop_highest():
             result = await self.task_manager.pop_task(task_filter=TaskFilter(priority="highest"))
             if result:

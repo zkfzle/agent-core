@@ -9,32 +9,6 @@ from openjiuwen.core.controller.schema import *
 from openjiuwen.core.controller.modules import *
 from openjiuwen.core.controller.config import ControllerConfig
 
-def __getattr__(name):
-    """Lazy import to avoid circular dependencies
-    """
-    legacy_names = {
-        "BaseController", "IntentDetectionController", "IntentType", "Intent", 
-        "TaskQueue", "Task", "TaskInput", "TaskStatus", "TaskResult",
-        "IntentDetector", "Planner", "Event", "EventType", "EventPriority",
-        "EventSource", "EventContent", "EventContext", "SourceType",
-        "IntentDetectionConfig", "PlannerConfig", "ProactiveIdentifierConfig",
-        "ReflectorConfig", "ReasonerConfig"
-    }
-    
-    if name in legacy_names:
-        from openjiuwen.core.controller.legacy import (
-            BaseController, IntentDetectionController, IntentType, Intent, TaskQueue,
-            Task, TaskInput, TaskStatus, TaskResult, IntentDetector, Planner,
-            Event, EventType, EventPriority, EventSource, EventContent, EventContext,
-            SourceType, IntentDetectionConfig, PlannerConfig, ProactiveIdentifierConfig,
-            ReflectorConfig, ReasonerConfig
-        )
-        return locals()[name]
-    elif name == "Controller":
-        # Lazy import to break circular dependency
-        from openjiuwen.core.controller.base import Controller
-        return Controller
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 _CONTROLLER_CLASSES = [
     "BaseController",

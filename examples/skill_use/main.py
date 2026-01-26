@@ -1,3 +1,4 @@
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 # examples/skill_use/main.py
 # -*- coding: utf-8 -*-
 import os

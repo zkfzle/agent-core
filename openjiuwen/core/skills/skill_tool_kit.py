@@ -1,4 +1,4 @@
-# openjiuwen/core/skills/skill_tool_kit.py
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 from __future__ import annotations
 
 import asyncio

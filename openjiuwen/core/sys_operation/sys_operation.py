@@ -1,16 +1,15 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-from typing import Optional, List
-
+from typing import Optional
 from pydantic import Field, field_validator
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.schema import BaseCard
 from openjiuwen.core.sys_operation.base import OperationMode
-from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
+from openjiuwen.core.sys_operation.config import LocalWorkConfig
 from openjiuwen.core.sys_operation.registry import OperationRegistry
-from openjiuwen.core.sys_operation.sandbox.config import SandboxGatewayConfig
+from openjiuwen.core.sys_operation.config import SandboxGatewayConfig
 
 
 class SysOperationCard(BaseCard):
@@ -36,8 +35,8 @@ class SysOperationCard(BaseCard):
                 return OperationMode(v.lower())
             except ValueError as ex:
                 raise build_error(StatusCode.SYS_OPERATION_CARD_PARAM_ERROR,
-                    error_msg=f"mode must be one of {[e.value for e in OperationMode]}, current value: {v}",
-                    cause=ex) from ex
+                                  error_msg=f"mode must be one of {[e.value for e in OperationMode]}, current value: {v}",
+                                  cause=ex) from ex
         return v
 
 
@@ -69,16 +68,6 @@ class SysOperation:
         if name in self._instances:
             return self._instances[name]
         operation_info = OperationRegistry.get_operation_info(name, self.mode)
-        # Lazy loading: try to import the module if not registered
-        if not operation_info:
-            try:
-                import importlib
-                module_path = f"openjiuwen.core.sys_operation.{self.mode.value}.{name}_operation"
-                importlib.import_module(module_path)
-                # Check again after import
-                operation_info = OperationRegistry.get_operation_info(name, self.mode)
-            except (ImportError, AttributeError):
-                pass
         if operation_info is None:
             return None
         operation_cls = operation_info["cls"]

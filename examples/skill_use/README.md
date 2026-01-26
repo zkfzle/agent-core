@@ -7,14 +7,14 @@
 在 `main.py` 同级目录放一个 `.env`，至少包含这些：
 
 ```env
-API_BASE="https://api.openai.com/v1"
+API_BASE=""
 API_KEY="sk-..."
 MODEL_PROVIDER=""
 MODEL_NAME=""
 LLM_SSL_VERIFY="false"
 MAX_ITERATIONS=""
 SKILLS_DIR=                          ##示例"D:\agent-core\openjiuwen\skills-dir"
-FILES_DIR=                           ##示例"D:/agent-core/openjiuwen/"
+FILES_DIR=                           ##示例"D:\agent-core\openjiuwen\"
 ```
 
 字段说明：

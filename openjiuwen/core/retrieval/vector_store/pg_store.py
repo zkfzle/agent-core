@@ -56,8 +56,7 @@ class PgVectorStore(VectorStore):
             embedding_dim: Dimension of the embedding vector
         """
         if asyncpg is None:
-            raise ImportError("asyncpg and pgvector are required for PgVectorStore." \
-                              "Please install with `pip install asyncpg pgvector.")
+            raise ImportError("asyncpg and pgvector are required for PgVectorStore. Please install with `pip install asyncpg pgvector`")
 
         self.config = config
         self.dsn = dsn
@@ -112,13 +111,11 @@ class PgVectorStore(VectorStore):
                     """)
                     
                     # Create index for vector search (HNSW is recommended for performance)
-                    # Note: index creation might be slow for large tables, 
-                    # consider doing it manually or checking existence
+                    # Note: index creation might be slow for large tables, consider doing it manually or checking existence
                     # Here we assume basic setup. For production, index tuning is needed.
                     index_name = f"{self.table_name}_vec_idx"
                     # We skip automatic index creation to avoid blocking initialization on large tables
-                    # await conn.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON 
-                    # {self.table_name} USING hnsw ({self.vector_field} vector_cosine_ops)")
+                    # await conn.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON {self.table_name} USING hnsw ({self.vector_field} vector_cosine_ops)")
                     
                     # Enable full text search extension if needed (pg_trgm etc) or just use to_tsvector
             except Exception as e:

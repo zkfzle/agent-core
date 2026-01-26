@@ -6,18 +6,15 @@ from openjiuwen.core.retrieval.common.config import VectorStoreConfig
 from openjiuwen.core.retrieval.vector_store.pg_store import PgVectorStore
 from openjiuwen.core.retrieval.common.retrieval_result import SearchResult
 
-
 @pytest.fixture
 def mock_asyncpg():
     with patch("openjiuwen.core.retrieval.vector_store.pg_store.asyncpg") as mock:
         yield mock
 
-
 @pytest.fixture
 def mock_register_vector():
     with patch("openjiuwen.core.retrieval.vector_store.pg_store.register_vector") as mock:
         yield mock
-
 
 @pytest.fixture
 def store_config():
@@ -26,7 +23,6 @@ def store_config():
         database_name="test_db",
         distance_metric="cosine"
     )
-
 
 @pytest.fixture
 def pg_store(store_config):
@@ -40,7 +36,6 @@ def pg_store(store_config):
             embedding_dim=4
         )
         yield store
-
 
 @pytest.mark.asyncio
 async def test_init_pool(pg_store, mock_register_vector):
@@ -64,7 +59,6 @@ async def test_init_pool(pg_store, mock_register_vector):
         # Check if CREATE TABLE was called
         create_table_call = [call for call in mock_conn.execute.call_args_list if "CREATE TABLE IF NOT EXISTS" in str(call)]
         assert create_table_call
-
 
 @pytest.mark.asyncio
 async def test_add(pg_store):
@@ -94,7 +88,6 @@ async def test_add(pg_store):
     assert args[0][1][0][1] == "test content" # content
     assert args[0][1][0][2] == [0.1, 0.2, 0.3, 0.4] # embedding
     assert json.loads(args[0][1][0][3]) == {"key": "value"} # metadata
-
 
 @pytest.mark.asyncio
 async def test_search(pg_store):
@@ -131,7 +124,6 @@ async def test_search(pg_store):
     assert "ORDER BY embedding <=> $1" in sql
     assert "LIMIT 2" in sql
 
-
 @pytest.mark.asyncio
 async def test_search_with_filters(pg_store):
     # Setup mocks
@@ -150,7 +142,6 @@ async def test_search_with_filters(pg_store):
     sql = mock_conn.fetch.call_args[0][0]
     assert "metadata->>'category' = $2" in sql or "metadata->>'category' = $3" in sql
     assert "metadata->>'published' = $3" in sql or "metadata->>'published' = $2" in sql
-
 
 @pytest.mark.asyncio
 async def test_sparse_search(pg_store):
@@ -179,7 +170,6 @@ async def test_sparse_search(pg_store):
     assert "to_tsvector" in sql
     assert "plainto_tsquery" in sql
 
-
 @pytest.mark.asyncio
 async def test_delete(pg_store):
     # Setup mocks
@@ -202,7 +192,6 @@ async def test_delete(pg_store):
     assert result is False
     assert not mock_conn.execute.called
 
-
 @pytest.mark.asyncio
 async def test_table_exists(pg_store):
     # Setup mocks
@@ -218,7 +207,6 @@ async def test_table_exists(pg_store):
     assert mock_conn.fetchval.called
     assert "information_schema.tables" in mock_conn.fetchval.call_args[0][0]
 
-
 @pytest.mark.asyncio
 async def test_delete_table(pg_store):
     # Setup mocks
@@ -230,7 +218,6 @@ async def test_delete_table(pg_store):
     await pg_store.delete_table("test_embeddings")
     
     mock_conn.execute.assert_called_with("DROP TABLE IF EXISTS test_embeddings")
-
 
 @pytest.mark.asyncio
 async def test_hybrid_search(pg_store):

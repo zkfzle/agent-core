@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Self, overload
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_core import PydanticCustomError
 
 NOT_SET = None
@@ -82,6 +82,9 @@ class MultimodalDocument(Document):
 
             content = doc.content  # Returns list of dicts in embedding-ready format
     """
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
     text: Optional[str] = Field(default=None, max_length=0, init=False, repr=False)
     data: list[tuple[Literal["text", "image", "audio", "video"], str, str]] = Field(default_factory=list, init=False)
 

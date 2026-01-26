@@ -4,7 +4,7 @@ import sys
 import shutil
 import asyncio
 from pathlib import Path
-
+from openjiuwen.core.common.logging import logger
 from dotenv import load_dotenv
 
 
@@ -19,10 +19,11 @@ def _create_session(session_id: str):
         from openjiuwen.core.session.session import Session
         return Session(session_id=session_id)
 
+
 async def _invoke_agent(agent, session, query: str):
     await agent.context_engine.create_context(session=session)
     res = await agent.invoke(inputs={"query": query}, session=session)
-    print(res.get("output", res))
+    logger.info(res.get("output", res))
 
 
 async def main():
@@ -30,16 +31,22 @@ async def main():
 
     load_dotenv()
 
-    QUERY = ("Analyze SuperStoreUS-2015.xlsx file. Write the analysis results in different worksheets of the same Excel file. Do not create new Excel file,\n"
-             " and ensure all numbers are dynamically generated (no hard-coded values): What is the store's total revenue?\nWhich product category contributes the most to sales?\n"
-             "What is the sales trend over the past year?\nWhich region has the highest sales and which region has the lowest?\nWhat is the store's average profit margin?")
+    query = (
+        "Analyze SuperStoreUS-2015.xlsx file. Write the analysis results in different worksheets of the same Excel file. "
+        "Do not create new Excel file,\n"
+        "and ensure all numbers are dynamically generated (no hard-coded values): "
+        "What is the store's total revenue?\n"
+        "Which product category contributes the most to sales?\n"
+        "What is the sales trend over the past year?\n"
+        "Which region has the highest sales and which region has the lowest?\n"
+        "What is the store's average profit margin?"
+    )
+    skills_dir = Path(os.getenv("SKILLS_DIR")).expanduser().resolve()
+    files_base_dir = os.getenv("FILES_BASE_DIR")
 
-    SKILLS_DIR = Path(os.getenv("SKILLS_DIR")).expanduser().resolve()
-    FILES_BASE_DIR = os.getenv("FILES_BASE_DIR")
-
-    SESSION_ID = "skill_session"
-    SYS_OPERATION_ID = "default_sysop"
-    MAX_ITERATIONS = int(os.getenv("MAX_ITERATIONS", "40"))
+    session_id = "skill_session"
+    sys_operation_id = "default_sysop"
+    max_iterations = int(os.getenv("MAX_ITERATIONS", "40"))
 
     api_base = os.getenv("API_BASE", "https://api.openai.com/v1")
     api_key = os.getenv("API_KEY", "")
@@ -48,8 +55,9 @@ async def main():
 
     system_prompt = (
         "You are an agent equipped with various skills to solve problems.\n"
-        "Before attempting any task, read the relevant skill document (SKILL.md) using view_file and follow its workflow.\n"
-        f"All user-provided files are located at '{FILES_BASE_DIR}\n"
+        "Before attempting any task, read the relevant skill document (SKILL.md) "
+        "using view_file and follow its workflow.\n"
+        f"All user-provided files are located at '{files_base_dir}'\n"
     )
 
     from openjiuwen.core.runner.runner import Runner
@@ -60,7 +68,7 @@ async def main():
 
 
     sysop_card = SysOperationCard(
-        id=SYS_OPERATION_ID,
+        id=sys_operation_id,
         mode=OperationMode.LOCAL,
         work_config=LocalWorkConfig(work_dir=None),
     )
@@ -73,7 +81,7 @@ async def main():
     agent = ReActAgent(card=AgentCard(name="skill_agent", description="Skill Agent"))
 
     cfg = ReActAgentConfig()
-    cfg.sys_operation_id = SYS_OPERATION_ID
+    cfg.sys_operation_id = sys_operation_id
     cfg = (
         cfg.configure_model_client(
             provider=model_provider,
@@ -83,26 +91,26 @@ async def main():
             verify_ssl=(os.getenv("LLM_SSL_VERIFY", "true").lower() != "false"),
         )
         .configure_prompt_template([{"role": "system", "content": system_prompt}])
-        .configure_max_iterations(MAX_ITERATIONS)
+        .configure_max_iterations(max_iterations)
         .configure_context_limit(None)
     )
     agent.configure(cfg)
-    agent._skill_util.skill_manager._sys_operation_id = SYS_OPERATION_ID
-    agent._skill_util.skill_tool_kit.sys_operation_id = SYS_OPERATION_ID
+    agent._skill_util.skill_manager._sys_operation_id = sys_operation_id
+    agent._skill_util.skill_tool_kit.sys_operation_id = sys_operation_id
 
     from openjiuwen.core.skills.skill_tool_kit import SkillToolKit
 
-    toolkit = SkillToolKit(SYS_OPERATION_ID)
+    toolkit = SkillToolKit(sys_operation_id)
 
     if hasattr(toolkit, "_runner"):
         toolkit._runner = runner
 
     toolkit.add_skill_tools(agent)
 
-    session = _create_session(SESSION_ID)
+    session = _create_session(session_id)
 
-    await agent.register_skill(str(SKILLS_DIR))
-    await _invoke_agent(agent, session, QUERY)
+    await agent.register_skill(str(skills_dir))
+    await _invoke_agent(agent, session, query)
 
 
 if __name__ == "__main__":

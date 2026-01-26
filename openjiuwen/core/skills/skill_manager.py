@@ -1,8 +1,9 @@
 from typing import Dict, Optional, Union, List
 
+from pathlib import Path
 import yaml
 from pydantic import BaseModel
-from pathlib import Path
+
 
 
 class Skill(BaseModel):

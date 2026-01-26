@@ -35,6 +35,7 @@ from openjiuwen.core.single_agent.agent import BaseAgent
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.skills.skill_util import SkillUtil
 
+
 class ReActAgentConfig(BaseModel):
     """ReActAgent Configuration Class
 

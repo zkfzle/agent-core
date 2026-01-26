@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Literal, Optional, Tuple, Dict, Any, AsyncIterator, List
 
 from openjiuwen.core.sys_operation.base import BaseOperation
+from openjiuwen.core.foundation.tool import ToolCard
+from openjiuwen.core.foundation.tool.utils.callable_schema_extractor import CallableSchemaExtractor
 from openjiuwen.core.sys_operation.result import ReadFileResult, ReadFileStreamResult, WriteFileResult, \
     UploadFileResult, UploadFileStreamResult, DownloadFileResult, DownloadFileStreamResult, ListFilesResult, \
     ListDirsResult, SearchFilesResult
@@ -11,6 +13,60 @@ from openjiuwen.core.sys_operation.result import ReadFileResult, ReadFileStreamR
 
 class BaseFsOperation(BaseOperation, ABC):
     """Base file system operation"""
+
+    def list_tools(self) -> List[ToolCard]:
+        return [
+            ToolCard(
+                name="read_file",
+                description=CallableSchemaExtractor.extract_function_description(self.read_file),
+                input_params=CallableSchemaExtractor.generate_schema(self.read_file)
+            ),
+            ToolCard(
+                name="read_file_stream",
+                description=CallableSchemaExtractor.extract_function_description(self.read_file_stream),
+                input_params=CallableSchemaExtractor.generate_schema(self.read_file_stream)
+            ),
+            ToolCard(
+                name="write_file",
+                description=CallableSchemaExtractor.extract_function_description(self.write_file),
+                input_params=CallableSchemaExtractor.generate_schema(self.write_file)
+            ),
+            ToolCard(
+                name="upload_file",
+                description=CallableSchemaExtractor.extract_function_description(self.upload_file),
+                input_params=CallableSchemaExtractor.generate_schema(self.upload_file)
+            ),
+            ToolCard(
+                name="upload_file_stream",
+                description=CallableSchemaExtractor.extract_function_description(self.upload_file_stream),
+                input_params=CallableSchemaExtractor.generate_schema(self.upload_file_stream)
+            ),
+            ToolCard(
+                name="download_file",
+                description=CallableSchemaExtractor.extract_function_description(self.download_file),
+                input_params=CallableSchemaExtractor.generate_schema(self.download_file)
+            ),
+            ToolCard(
+                name="download_file_stream",
+                description=CallableSchemaExtractor.extract_function_description(self.download_file_stream),
+                input_params=CallableSchemaExtractor.generate_schema(self.download_file_stream)
+            ),
+            ToolCard(
+                name="list_files",
+                description=CallableSchemaExtractor.extract_function_description(self.list_files),
+                input_params=CallableSchemaExtractor.generate_schema(self.list_files)
+            ),
+            ToolCard(
+                name="list_directories",
+                description=CallableSchemaExtractor.extract_function_description(self.list_directories),
+                input_params=CallableSchemaExtractor.generate_schema(self.list_directories)
+            ),
+            ToolCard(
+                name="search_files",
+                description=CallableSchemaExtractor.extract_function_description(self.search_files),
+                input_params=CallableSchemaExtractor.generate_schema(self.search_files)
+            )
+        ]
 
     @abstractmethod
     async def read_file(

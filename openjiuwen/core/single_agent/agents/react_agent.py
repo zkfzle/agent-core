@@ -278,13 +278,11 @@ class ReActAgent(BaseAgent):
         old_config = self.config
         self.config = config
 
-        # Reset LLM if model config changed
         if (old_config.model_provider != config.model_provider or
                 old_config.api_key != config.api_key or
                 old_config.api_base != config.api_base):
             self._llm = None
 
-        # Update context_engine if context window limit changed
         if old_config.context_window_limit != config.context_window_limit:
             self.context_engine = ContextEngine(
                 ContextEngineConfig(
@@ -292,11 +290,9 @@ class ReActAgent(BaseAgent):
                 )
             )
 
-        # Update memory_scope if memory scope ID changed
         if old_config.mem_scope_id != config.mem_scope_id:
             self._init_memory_scope()
 
-        # Reset sys operation id if changed
         if old_config.sys_operation_id != config.sys_operation_id:
             self._skill_util.set_sys_operation_id(config.sys_operation_id)
 

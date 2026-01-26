@@ -1,3 +1,4 @@
+# openjiuwen/core/skills/skill_tool_kit.py
 from __future__ import annotations
 
 import asyncio
@@ -9,6 +10,7 @@ from openjiuwen.core.foundation.tool import ToolCard, LocalFunction
 class SkillToolKit:
     def __init__(self, sys_operation_id: str):
         self._sys_operation_id = sys_operation_id
+        self._runner = None
 
     @property
     def sys_operation_id(self) -> str:
@@ -129,7 +131,7 @@ class SkillToolKit:
         )
 
         async def run_command(bash_command: str, session: Optional[Any] = None):
-            sys_operation =  self._get_sys_operation()
+            sys_operation = self._get_sys_operation()
             if sys_operation is None:
                 return "sys_operation is not available"
 

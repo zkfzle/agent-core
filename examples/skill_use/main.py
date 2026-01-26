@@ -1,11 +1,13 @@
+# examples/skill_use/main.py
 # -*- coding: utf-8 -*-
 import os
 import sys
 import shutil
 import asyncio
 from pathlib import Path
-from openjiuwen.core.common.logging import logger
+
 from dotenv import load_dotenv
+from openjiuwen.core.common.logging import logger
 
 
 def _create_session(session_id: str):
@@ -66,7 +68,6 @@ async def main():
     from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, OperationMode
     from openjiuwen.core.sys_operation.local.config import LocalWorkConfig
 
-
     sysop_card = SysOperationCard(
         id=sys_operation_id,
         mode=OperationMode.LOCAL,
@@ -95,8 +96,6 @@ async def main():
         .configure_context_limit(None)
     )
     agent.configure(cfg)
-    agent._skill_util.skill_manager._sys_operation_id = sys_operation_id
-    agent._skill_util.skill_tool_kit.sys_operation_id = sys_operation_id
 
     from openjiuwen.core.skills.skill_tool_kit import SkillToolKit
 

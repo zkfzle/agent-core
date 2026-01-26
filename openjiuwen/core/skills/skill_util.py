@@ -6,13 +6,12 @@ from openjiuwen.core.single_agent import BaseAgent
 from openjiuwen.core.skills.skill_manager import SkillManager
 from openjiuwen.core.skills.skill_tool_kit import SkillToolKit
 
-skill_prompt = PromptTemplate(
-    content = '''
+skill_prompt_content = '''
     To help you better complete tasks, the following skill knowledge is provided:
     {{skills}}
     You can use the view_file tool to read the corresponding Skill.md file to obtain the relevant skill knowledge.
     '''
-)
+skill_prompt = PromptTemplate(content=skill_prompt_content)
 
 
 class SkillUtil:

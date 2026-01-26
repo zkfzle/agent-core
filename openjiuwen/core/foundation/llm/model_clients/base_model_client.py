@@ -237,14 +237,7 @@ class BaseModelClient(ABC):
         if UserConfig.is_sensitive():
             llm_logger.info(
                 "Before request chat model, LLM request params ready.",
-                event_type=LogEventType.LLM_CALL_START,
-                model_name=model if model else self.model_config.model_name,
-                model_provider=self.model_client_config.client_provider,
-                temperature=final_temperature,
-                top_p=final_top_p,
-                max_tokens=final_max_tokens,
-                is_stream=stream,
-                metadata={"client_name": client_name}
+                event_type=LogEventType.LLM_CALL_START
             )
         else:
             llm_logger.info(
@@ -258,7 +251,8 @@ class BaseModelClient(ABC):
                 top_p=final_top_p,
                 max_tokens=final_max_tokens,
                 is_stream=stream,
-                metadata={"client_name": client_name}
+                metadata={"client_name": client_name},
+                extra_params=self.model_config.extra_param or {}
             )
 
         return params

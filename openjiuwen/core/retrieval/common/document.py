@@ -47,9 +47,42 @@ class TextChunk(BaseModel):
 
 
 class MultimodalDocument(Document):
-    """Multimodal Document data model"""
+    """Multimodal Document data model for handling documents with multiple content types.
 
-    text: Optional[str] = Field(default=None, max_length=0, init=False)
+    A MultimodalDocument extends the base Document class to support multiple content
+    modalities (text, image, audio, video) within a single document. Unlike the base
+    Document class which only supports text, MultimodalDocument can contain a mix of
+    different content types that can be used together for multimodal embedding and
+    retrieval tasks.
+
+    Supported Modalities:
+        - text: Plain text content
+        - image: Image files (supports common formats like jpg, png, etc.)
+        - audio: Audio files (supports various audio formats)
+        - video: Video files (supports various video formats)
+
+    Examples:
+        Create a multimodal document with text and an image::
+
+            doc = MultimodalDocument()
+            doc.add_field("text", "This is a description")
+            doc.add_field("image", file_path=Path("image.jpg"))
+
+            # Or using method chaining:
+            doc = (MultimodalDocument()
+                   .add_field("text", "Hello world")
+                   .add_field("image", file_path=Path("photo.png")))
+
+        Add base64-encoded data directly::
+
+            doc = MultimodalDocument()
+            doc.add_field("audio", data="data:audio/mp3;base64,...")
+
+        Access structured content for embedding::
+
+            content = doc.content  # Returns list of dicts in embedding-ready format
+    """
+    text: Optional[str] = Field(default=None, max_length=0, init=False, repr=False)
     data: list[tuple[Literal["text", "image", "audio", "video"], str, str]] = Field(default_factory=list, init=False)
 
     @property

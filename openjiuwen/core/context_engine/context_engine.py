@@ -5,7 +5,7 @@ from typing import List, Dict, Optional
 import datetime
 from datetime import timezone
 
-from openjiuwen.core.common.logging import logger
+from openjiuwen.core.common.logging import context_engine_logger, LogEventType
 from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.session import Session
 from openjiuwen.core.context_engine.base import ModelContext
@@ -146,7 +146,11 @@ class ContextEngine:
             ]
 
             if not delete_context_list:
-                logger.warning(f"Delete context failed, session {session_id} does not exist")
+                context_engine_logger.warning(
+                    "Delete context failed, session does not exist",
+                    event_type=LogEventType.AGENT_ERROR,
+                    metadata={"session_id": session_id}
+                )
                 return
 
             for context_id in delete_context_list:
@@ -155,7 +159,11 @@ class ContextEngine:
 
         full_context_id = f"{session_id}_{context_id}"
         if full_context_id not in self._context_pool:
-            logger.warning(f"Delete context failed, context {session_id} does not exist")
+            context_engine_logger.warning(
+                "Delete context failed, context does not exist",
+                event_type=LogEventType.AGENT_ERROR,
+                metadata={"session_id": session_id}
+            )
 
         del self._context_pool[full_context_id]
 

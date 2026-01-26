@@ -1,5 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+from __future__ import annotations
+
 """Task Scheduler Module
 
 This module implements the core functionality for task scheduling and execution, including:
@@ -24,7 +26,6 @@ from openjiuwen.core.controller.config import ControllerConfig
 from openjiuwen.core.controller.modules.event_queue import EventQueue
 from openjiuwen.core.controller.modules.task_manager import TaskManager, TaskFilter
 from openjiuwen.core.session import Session
-from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.controller.schema import (EventType, TaskCompletionEvent, TaskInteractionEvent, TaskFailedEvent,
                                                TaskStatus, ControllerOutputChunk, ControllerOutputPayload,
                                                TextDataFrame, Task)
@@ -34,6 +35,7 @@ from openjiuwen.core.common.exception.codes import StatusCode
 
 if TYPE_CHECKING:
     from openjiuwen.core.single_agent.agent import AbilityManager
+    from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 
 class TaskExecutor(ABC):

@@ -1,5 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+from __future__ import annotations
+
 """Controller Module
 
 Main classes included:
@@ -20,13 +22,13 @@ from openjiuwen.core.controller.modules import (TaskManager, TaskManagerState, T
 from openjiuwen.core.controller.config import ControllerConfig
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream.base import BaseStreamMode, StreamMode
-from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.errors import build_error, BaseError
 from openjiuwen.core.common.exception.codes import StatusCode
 
 if TYPE_CHECKING:
     from openjiuwen.core.single_agent.agent import AbilityManager
+    from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
 
 class Controller:

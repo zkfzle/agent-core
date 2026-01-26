@@ -4,6 +4,9 @@ Main classes included:
  - Ability: Ability type definition
  - AbilityManager: Agent ability manager
  - BaseAgent: Single agent base class
+
+Created on: 2025-11-25
+Author: huenrui1@huawei.com
 """
 from __future__ import annotations
 
@@ -64,7 +67,7 @@ class AbilityManager:
         elif isinstance(ability, AgentCard):
             self._agents[ability.name] = ability
         elif isinstance(ability, McpServerConfig):
-            self._mcp_servers[ability.name] = ability
+            self._mcp_servers[ability.server_name] = ability
         else:
             logger.warning(f"Unknown ability type: {type(ability)}")
 
@@ -119,7 +122,7 @@ class AbilityManager:
         abilities.extend(self._mcp_servers.values())
         return abilities
 
-    def list_tool_info(
+    async def list_tool_info(
             self,
             names: Optional[List[str]] = None,
             mcp_server_name: Optional[str] = None
@@ -176,7 +179,18 @@ class AbilityManager:
                 )
                 tool_infos.append(tool_info)
 
-        # TODO: Handle MCP servers if needed
+        # Handle MCP servers if needed
+        for mcp_server_name, mcp_server in self._mcp_servers.items():
+            mcp_server_id = mcp_server.server_id
+            from openjiuwen.core.runner import Runner
+            if names is None:
+                mcp_tool_infos = await Runner.resource_mgr.get_mcp_tool_infos(server_id=mcp_server_id)
+                for mcp_tool in mcp_tool_infos:
+                    mcp_tool_name = mcp_tool.name
+                    mcp_tool_id = f'{mcp_server_id}.{mcp_server_name}.{mcp_tool_name}'
+                    self._tools[mcp_tool.name] = ToolCard(id=mcp_tool_id, name=mcp_tool_name,
+                                                          description=mcp_tool.description)
+                    tool_infos.append(mcp_tool)
 
         return tool_infos
 
@@ -196,7 +210,6 @@ class AbilityManager:
         Returns:
             (result, ToolMessage) tuple
         """
-        # Lazy import
         from openjiuwen.core.runner import Runner
 
         tool_name = tool_call.name
@@ -320,6 +333,9 @@ class BaseAgent(ABC):
         pass
 
     # ========== Ability Management Interface ==========
+    @property
+    def ability_manager(self) -> AbilityManager:
+        return self._ability_kit
 
     def add_ability(self, ability: Union[Ability, List[Ability]]) -> 'BaseAgent':
         """Add an ability
@@ -368,7 +384,7 @@ class BaseAgent(ABC):
         """
         return self._ability_manager.list()
 
-    def list_tool_info(
+    async def list_tool_info(
             self,
             names: Optional[List[str]] = None
     ) -> List[ToolInfo]:
@@ -380,7 +396,7 @@ class BaseAgent(ABC):
         Returns:
             List of ToolInfo objects
         """
-        return self._ability_manager.list_tool_info(names=names)
+        return await self._ability_manager.list_tool_info(names=names)
 
     # ========== Query Interface ==========
     def get_tool_info(self) -> ToolInfo:
@@ -678,10 +694,10 @@ class ControllerAgent(BaseAgent):
                 **kwargs
             ):
                 yield chunk
-        
+
         except BaseError:
             raise
-        
+
         except Exception as e:
             logger.error(f"ControllerAgent stream error: {e}", exc_info=True)
             raise build_error(

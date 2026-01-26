@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, List, Union
 from pydantic import BaseModel
 
 from openjiuwen.core.common import BaseCard
@@ -31,6 +31,7 @@ from openjiuwen.core.runner.resources_manager.tag_manager import TagMgr
 from openjiuwen.core.session import Session
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
+from openjiuwen.core.sys_operation import SysOperationCard, SysOperation
 from openjiuwen.core.workflow.workflow import Workflow
 from openjiuwen.core.workflow import WorkflowCard
 
@@ -633,6 +634,77 @@ class ResourceMgr:
         return self._inner_get_resources(resource_id=prompt_id, tag=tag, tag_match_strategy=tag_match_strategy,
                                          resource_type="prompt")
 
+    def add_sys_operation(self,
+                          card: SysOperationCard,
+                          *,
+                          tag: Optional[Tag | List[Tag]] = None
+                          ) -> Result[SysOperationCard, Exception]:
+        """Add sys operation via SysOperationCard (with optional tags).
+
+        Args:
+            card: SysOperationCard with valid `id` (required)
+            tag: Optional single/tag list for classification
+
+        Returns:
+            Result[SysOperationCard, Exception]: Success card or error
+        """
+        self._inner_validate_resource_card(card)
+        if tag is not None:
+            self._inner_validate_tag(tag)
+        return self._inner_add_resource(resource_id=card.id,
+                                        resource=SysOperation(card),
+                                        resource_card=card,
+                                        tag=tag,
+                                        resource_type="sys_operation")
+
+    def remove_sys_operation(self,
+                             *,
+                             sys_operation_id: Optional[str | List[str]] = None,
+                             tag: Optional[Tag | List[Tag]] = None,
+                             tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                             skip_if_tag_not_exists: bool = False,
+                             ) -> Union[Result[Optional[SysOperationCard], Exception],
+    List[Result[Optional[SysOperationCard], Exception]]]:
+        """Remove sys operation(s) by ID/tag (supports batch).
+
+        Args:
+            sys_operation_id: Optional single/ID list to remove
+            tag: Optional single/tag list filter (if no ID)
+            tag_match_strategy: ALL/ANY for tag matching (default: ALL)
+            skip_if_tag_not_exists: Ignore missing tags (default: False)
+
+        Returns:
+            Result/Result list: Removed card(s) or error
+        """
+        return self._inner_remove_resources(resource_id=sys_operation_id,
+                                            tag=tag,
+                                            tag_match_strategy=tag_match_strategy,
+                                            skip_if_tag_not_exists=skip_if_tag_not_exists,
+                                            resource_type="sys_operation")
+
+    def get_sys_operation(self,
+                          sys_operation_id: Optional[str] = None,
+                          *,
+                          tag: Optional[Tag | List[Tag]] = None,
+                          tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
+                          session: Optional[Session] = None
+                          ) -> Union[Optional[SysOperation], List[Optional[SysOperation]]]:
+        """Get sys operation(s) by ID/tag.
+
+        Args:
+            sys_operation_id: Optional specific operation ID
+            tag: Optional single/tag list filter (if no ID)
+            tag_match_strategy: ALL/ANY for tag matching (default: ALL)
+            session: Optional context session
+
+        Returns:
+            SysOperation/List[SysOperation]: Matching operation(s) or None
+        """
+        return self._inner_get_resources(resource_id=sys_operation_id,
+                                         tag=tag,
+                                         tag_match_strategy=tag_match_strategy,
+                                         resource_type="sys_operation")
+
     async def get_tool_infos(self,
                              tool_id: str | list[str] = None,
                              *,
@@ -819,13 +891,16 @@ class ResourceMgr:
                                                                     skip_if_tag_not_exists,
                                                                     StatusCode.RESOURCE_MCP_TOOL_GET_ERROR)
         results = []
-        tool_names = name if isinstance(name, list) else [name]
+        tool_names = [name] if isinstance(name, str) else name
         for mcp_server_id in server_ids_to_get:
             try:
                 await self._resource_registry.tool().refresh_tool_server(mcp_server_id, skip_not_exist=True)
             except Exception as e:
                 if not ignore_exception:
                     raise e
+            if tool_names is None:
+                results.extend(self._resource_registry.tool().get_mcp_tools(mcp_server_id, session))
+                continue
             for tool_name in tool_names:
                 tool = self._resource_registry.tool().get_mcp_tool(tool_name, mcp_server_id, session)
                 if exact_match:
@@ -863,7 +938,7 @@ class ResourceMgr:
         server_ids_to_get, exact_match = self._inner_get_server_ids(server_id, server_name, tag, tag_match_strategy,
                                                                     skip_if_tag_not_exists,
                                                                     StatusCode.RESOURCE_MCP_TOOL_GET_ERROR)
-        tool_names = name if isinstance(name, list) else [name]
+        tool_names = [name] if isinstance(name, str) else name
         results = []
         for mcp_server_id in server_ids_to_get:
             try:
@@ -871,8 +946,13 @@ class ResourceMgr:
             except Exception as e:
                 if not ignore_exception:
                     raise e
-            for tool_name in tool_names:
-                tool_id = self._resource_registry.tool().get_mcp_tool_id(mcp_server_id, tool_name)
+            tool_ids = []
+            if tool_names is None:
+                tool_ids = self._resource_registry.tool().get_mcp_tool_id(mcp_server_id)
+            else:
+                for tool_name in tool_names:
+                    tool_ids.append(self._resource_registry.tool().get_mcp_tool_id(mcp_server_id, tool_name))
+            for tool_id in tool_ids:
                 tool_card = self._id_to_card.get(tool_id) if tool_id else None
                 if exact_match:
                     results.append(tool_card.tool_info() if tool_card else None)
@@ -1087,6 +1167,8 @@ class ResourceMgr:
                 self._resource_registry.prompt().add_prompt(resource_id, resource)
             elif resource_type == "model":
                 self._resource_registry.model().add_model(resource_id, resource)
+            elif resource_type == "sys_operation":
+                self._resource_registry.sys_operation().add_sys_operation(resource_id, resource)
             else:
                 ...
             if resource_card:
@@ -1153,15 +1235,17 @@ class ResourceMgr:
                     self._resource_registry.tool().remove_tool(remove_id)
                 elif resource_type == "prompt":
                     self._resource_registry.prompt().remove_prompt(remove_id)
+                elif resource_type == "sys_operation":
+                    self._resource_registry.sys_operation().remove_sys_operation(remove_id)
                 else:
                     ...
             except Exception as e:
                 if not remove_by_tag:
                     error = e
-            removed_card = self._id_to_card.pop(resource_id, None)
+            removed_card = self._id_to_card.pop(remove_id, None)
             if error:
                 logger.error(
-                    f"remove resource error, id={resource_id}, type={resource_type}, card={removed_card},"
+                    f"remove resource error, id={remove_id}, type={resource_type}, card={removed_card},"
                     f" reason={str(error)}")
                 results.append(Error(error))
             elif resource_type in ["tool", "prompt"]:
@@ -1228,6 +1312,8 @@ class ResourceMgr:
                         resource = self._resource_registry.tool().get_tool(get_id, session=session)
                     elif resource_type == "prompt":
                         resource = self._resource_registry.prompt().get_prompt(get_id)
+                    elif resource_type == "sys_operation":
+                        resource = self._resource_registry.sys_operation().get_sys_operation(get_id)
                     else:
                         ...
             except Exception as e:

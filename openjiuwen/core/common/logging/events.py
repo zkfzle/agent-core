@@ -164,6 +164,7 @@ class BaseLogEvent:
     # Message and stack trace
     message: Optional[str] = None  # Log message content
     stacktrace: Optional[str] = None  # Stack trace information (for exceptions)
+    exception: Optional[str] = None  # Exception detail string
 
     # Extended fields
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -279,6 +280,7 @@ class LLMEvent(BaseLogEvent):
     latency_ms: Optional[float] = None  # Latency (milliseconds)
     is_stream: bool = False  # Whether it's a streaming call
     chunk_index: Optional[int] = None  # Chunk index (for streaming calls)
+    extra_params: Dict[str, Any] = None # extra LLM parameters
 
     def __post_init__(self):
         super().__post_init__()

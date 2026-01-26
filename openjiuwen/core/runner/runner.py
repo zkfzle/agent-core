@@ -5,6 +5,7 @@ from typing import Optional, Union, Any, TYPE_CHECKING
 
 from openjiuwen.core.multi_agent import BaseGroup
 from openjiuwen.core.runner.message_queue_base import LocalMessageQueue
+from openjiuwen.core.single_agent import BaseAgent, LegacyBaseAgent
 from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
@@ -20,14 +21,11 @@ from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMg
 from openjiuwen.core.session import Session
 from openjiuwen.core.workflow import Session as WorkflowSession
 from openjiuwen.core.workflow import create_workflow_session
+from openjiuwen.core.single_agent import Session as AgentSession, create_agent_session
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.workflow import Workflow
-
-if TYPE_CHECKING:
-    from openjiuwen.core.single_agent import BaseAgentAlias as BaseAgent
-    from openjiuwen.core.single_agent import Session as AgentSession, create_agent_session
 
 
 class Runner:
@@ -176,7 +174,7 @@ class Runner:
             yield chunk
 
     async def run_agent(self,
-                        agent: Union[str, 'BaseAgent'],
+                        agent: str | BaseAgent | LegacyBaseAgent,
                         inputs: Any,
                         *,
                         session: Optional[str | Session] = None,
@@ -194,10 +192,9 @@ class Runner:
             envs: Environment variables or configuration overrides
         """
         agent_instance, agent_session = await self._prepare_agent(agent, inputs)
-        from openjiuwen.core.single_agent.legacy import LegacyBaseAgent as BaseAgent
         if isinstance(agent_instance, RemoteAgent):
             res = await agent_instance.invoke(inputs)
-        elif isinstance(agent_instance, BaseAgent):
+        elif isinstance(agent_instance, LegacyBaseAgent):
             # ControllerAgent handles its own session lifecycle
             res = await agent_instance.invoke(inputs, session=None)
         else:
@@ -206,7 +203,7 @@ class Runner:
         return res
 
     async def run_agent_streaming(self,
-                                  agent: Union[str, 'BaseAgent'],
+                                  agent: str | BaseAgent | LegacyBaseAgent,
                                   inputs: Any,
                                   *,
                                   session: Optional[str | Session] = None,
@@ -228,10 +225,14 @@ class Runner:
         if isinstance(agent_instance, RemoteAgent):
             async for chunk in agent_instance.stream(inputs):
                 yield chunk
-        elif isinstance(agent_instance, BaseAgent):
+        elif isinstance(agent_instance, LegacyBaseAgent):
             # ControllerAgent handles its own session lifecycle
             async for chunk in agent_instance.stream(inputs, session=None):
                 yield chunk
+        else:
+            async for chunk in agent_instance.stream(inputs, session=agent_session):
+                yield chunk
+            await getattr(agent_session, "_inner").post_run()
 
     async def run_agent_group(self,
                               agent_group: Union[str, 'BaseGroup'],
@@ -289,12 +290,10 @@ class Runner:
 
     @classmethod
     def _is_called_by_agent(cls, session: Session) -> bool:
-        from openjiuwen.core.single_agent import Session as AgentSession
         return session and isinstance(session, AgentSession)
 
     @classmethod
     def _create_workflow_session(cls, session):
-        from openjiuwen.core.single_agent import Session as AgentSession
         # Convert workflow session
         if not session:
             workflow_session = create_workflow_session()
@@ -306,9 +305,7 @@ class Runner:
             workflow_session = session
         return workflow_session
 
-    async def _prepare_agent(self, agent: Union[str, 'BaseAgent'], inputs: Any,
-                             session: Optional[str | Session] = None):
-        from openjiuwen.core.single_agent import create_agent_session
+    async def _prepare_agent(self, agent: Union[str, BaseAgent], inputs: Any, session: Optional[str | Session] = None):
         session_id = inputs.get(self._AGENT_CONVERSATION_ID,
                                 session if isinstance(session, str) else self._DEFAULT_AGENT_SESSION_ID)
         if isinstance(agent, str):

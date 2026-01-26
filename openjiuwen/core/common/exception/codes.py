@@ -230,10 +230,11 @@ class StatusCode(Enum):
     RETRIEVAL_INDEXING_EMBED_MODEL_NOT_FOUND = (155105, "retrieval indexing_embed_model not found, reason: {error_msg}")
     RETRIEVAL_INDEXING_DIMENSION_NOT_FOUND = (155106, "retrieval indexing_dimension not found, reason: {error_msg}")
     RETRIEVAL_INDEXING_PATH_NOT_FOUND = (155107, "retrieval indexing_path not found, reason: {error_msg}")
-    RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID = (
-        155108, "retrieval invalid distance metric selected, reason: {error_msg}"
+    RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR = (155108, "retrieval indexing_add_doc runtime error, reason: {error_msg}")
+    RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID = (
+        155109,
+        "retrieval indexing_vector_field is invalid, reason: {error_msg}",
     )
-    RETRIEVAL_INDEXING_ADD_DOC_RUNTIME_ERROR = (155109, "retrieval indexing_add_doc runtime error, reason: {error_msg}")
 
     # KnowledgeBase Retrieval - Retriever 155200 - 155299
     RETRIEVAL_RETRIEVER_MODE_NOT_SUPPORT = (155200, "retrieval retriever_mode is not supported, reason: {error_msg}")
@@ -297,11 +298,7 @@ class StatusCode(Enum):
         155507,
         "retrieval kb_triple_extraction process error, reason: {error_msg}",
     )
-    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (
-        155508,
-        "retrieval kb_database_config is invalid, reason: Vector store and index manager have "
-        "incompatible {config_name} configs: {error_msg}",
-    )
+    RETRIEVAL_KB_DATABASE_CONFIG_INVALID = (155508, "retrieval kb_database_config is invalid, reason: {error_msg}")
 
     # =========================
     # Memory Engine 158000 – 159999
@@ -438,6 +435,22 @@ class StatusCode(Enum):
     # Foundation - Schema 189000 - 189999
     SCHEMA_VALIDATE_INVALID = (189001, "validate data with schema failed, reason={reason}, data={data}")
     SCHEMA_FORMAT_INVALID = (189002, "format data with schema failed, reason={reason}, data={data}")
+
+    # =========================
+    # SysOperation 199000–199999
+    # =========================
+
+    SYS_OPERATION_MANAGER_PROCESS_ERROR = (199001,
+       "sys operation manager process error, process: {process}, reason: {error_msg}")
+    SYS_OPERATION_CARD_PARAM_ERROR = (199002,
+        "sys operation card param error, reason: {error_msg}")
+    SYS_OPERATION_FS_EXECUTION_ERROR = (199003,
+        "file system operation execution error, execution: {execution}, reason: {error_msg}")
+    SYS_OPERATION_SHELL_EXECUTION_ERROR = (199004,
+        "shell operation execution error, execution: {execution}, reason: {error_msg}")
+    SYS_OPERATION_CODE_EXECUTION_ERROR = (199005,
+        "code operation execution error, execution: {execution}, reason: {error_msg}")
+
 
     def __init__(self, code: int, msg: str):
         """Validate and initialize enum member values.

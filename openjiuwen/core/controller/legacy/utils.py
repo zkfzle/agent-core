@@ -308,11 +308,14 @@ class ReasonerUtils:
                 model=model_config.model_info.model_name,
                 temperature=model_config.model_info.temperature,
                 top_p=model_config.model_info.top_p,
+                **(model_config.model_info.model_extra or {})
             )
 
             def create_model():
                 return Model(model_client_config=model_client_config, model_config=model_request_config)
 
             Runner.resource_mgr.add_model(model_id=model_id, model=create_model)
+
+            model = await Runner.resource_mgr.get_model(model_id=model_id)
 
         return model

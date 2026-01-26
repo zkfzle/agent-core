@@ -5,13 +5,13 @@
 This module re-exports from legacy submodule for backward compatibility.
 """
 
-
 from openjiuwen.core.controller.schema import *
 from openjiuwen.core.controller.modules import *
 from openjiuwen.core.controller.config import ControllerConfig
 
 def __getattr__(name):
-    """Lazy import"""
+    """Lazy import to avoid circular dependencies
+    """
     legacy_names = {
         "BaseController", "IntentDetectionController", "IntentType", "Intent", 
         "TaskQueue", "Task", "TaskInput", "TaskStatus", "TaskResult",
@@ -31,6 +31,7 @@ def __getattr__(name):
         )
         return locals()[name]
     elif name == "Controller":
+        # Lazy import to break circular dependency
         from openjiuwen.core.controller.base import Controller
         return Controller
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

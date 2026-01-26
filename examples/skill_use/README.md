@@ -29,16 +29,8 @@ FILES_DIR=                           ##示例"D:\agent-core\openjiuwen\"
 ---
 ## 2. 下载并准备 skills
 
-运行前先从 `anthropics/skills` 下载技能库，然后把你要用的技能目录放到 `.env` 里配置的 `SKILLS_DIR` 下。
-
-方式一（推荐，git）：
-
-```bash
-git clone https://github.com/anthropics/skills.git
-```
-
-方式二（不装 git）：
-- 打开仓库页面下载 ZIP，解压到本地
+运行前先从git下载技能库，然后把你要用的技能目录放到 `.env` 里配置的 `SKILLS_DIR` 下。
+![img.png](img.png)
 
 然后把仓库中的 `skills/`（或其中你需要的具体技能目录）复制到你的 `SKILLS_DIR` 目录里，结构示例：
 

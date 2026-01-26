@@ -103,7 +103,6 @@ class SkillManager:
         """
         description = await self._load_description(path, session_id)
         if description is not None:
-            # name 使用父目录名（xlsx/pdf/pptx...），directory 指向该目录
             skill_dir = path.parent
             return Skill(name=skill_dir.name, description=description, directory=skill_dir)
         return None

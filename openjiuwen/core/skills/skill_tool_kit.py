@@ -56,7 +56,7 @@ class SkillToolKit:
             }
         )
 
-        async def view_file(file_path: str, session: Optional[Any] = None):
+        async def view_file(file_path: str):
             sys_operation = self._get_sys_operation()
             if sys_operation is None:
                 return "sys_operation is not available"
@@ -93,7 +93,7 @@ class SkillToolKit:
             }
         )
 
-        async def execute_python_code(code_block: str, session: Optional[Any] = None):
+        async def execute_python_code(code_block: str):
             sys_operation = self._get_sys_operation()
             if sys_operation is None:
                 return "sys_operation is not available"
@@ -130,7 +130,7 @@ class SkillToolKit:
             }
         )
 
-        async def run_command(bash_command: str, session: Optional[Any] = None):
+        async def run_command(bash_command: str):
             sys_operation = self._get_sys_operation()
             if sys_operation is None:
                 return "sys_operation is not available"

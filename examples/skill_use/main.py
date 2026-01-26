@@ -1,6 +1,6 @@
-# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-# examples/skill_use/main.py
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import os
 import sys
 import shutil

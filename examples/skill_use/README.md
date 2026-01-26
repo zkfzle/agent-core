@@ -1,4 +1,4 @@
-# README（JiuWen Agent Skill 运行示例）
+# README（openJiuwen Agent Skill 运行示例）
 
 
 ---

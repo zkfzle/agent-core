@@ -50,9 +50,21 @@ class ToolMgr:
             return self.get_tool(tool_id, session)
         return None
 
-    def get_mcp_tool_id(self, server_id: str, tool_name):
+    def get_mcp_tools(self, server_id: str, session):
         resource = self._mcp_server_resources.get(server_id)
         if resource:
+            tool_ids = resource.tool_ids
+            results = []
+            for tool_id in tool_ids:
+                results.append(self.get_tool(tool_id, session))
+            return results
+        return None
+
+    def get_mcp_tool_id(self, server_id: str, tool_name = None):
+        resource = self._mcp_server_resources.get(server_id)
+        if resource:
+            if tool_name is None:
+                return resource.tool_ids
             tool_id = self.generate_mcp_tool_id(server_id, resource.config.server_name, tool_name)
             return tool_id
         else:

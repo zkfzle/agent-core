@@ -289,10 +289,12 @@ class Runner:
 
     @classmethod
     def _is_called_by_agent(cls, session: Session) -> bool:
+        from openjiuwen.core.single_agent import Session as AgentSession
         return session and isinstance(session, AgentSession)
 
     @classmethod
     def _create_workflow_session(cls, session):
+        from openjiuwen.core.single_agent import Session as AgentSession
         # Convert workflow session
         if not session:
             workflow_session = create_workflow_session()
@@ -306,6 +308,7 @@ class Runner:
 
     async def _prepare_agent(self, agent: Union[str, 'BaseAgent'], inputs: Any,
                              session: Optional[str | Session] = None):
+        from openjiuwen.core.single_agent import create_agent_session
         session_id = inputs.get(self._AGENT_CONVERSATION_ID,
                                 session if isinstance(session, str) else self._DEFAULT_AGENT_SESSION_ID)
         if isinstance(agent, str):

@@ -18,7 +18,6 @@ from openjiuwen.core.controller.modules.event_handler import EventHandlerInput, 
 from openjiuwen.core.controller.modules.event_queue import EventQueue
 from openjiuwen.core.controller.modules.task_manager import TaskManagerState, TaskManager
 from openjiuwen.core.controller.modules.task_scheduler import TaskExecutor, TaskExecutorRegistry, TaskScheduler
-from openjiuwen.core.controller.modules.intent_recognizer import IntentRecognizer, EventHandlerWithIntentRecognition
 
 
 __all__ = [
@@ -32,8 +31,5 @@ __all__ = [
     # Task execution and scheduling
     "TaskExecutor",
     "TaskExecutorRegistry",
-    "TaskScheduler",
-    # Event handling with intent recognition
-    "IntentRecognizer",
-    "EventHandlerWithIntentRecognition"
+    "TaskScheduler"
 ]

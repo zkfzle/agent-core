@@ -14,18 +14,30 @@ legacy classes like LegacyReActAgent, AgentConfig, etc.
 """
 from typing import Union
 
-# Legacy classes
-from openjiuwen.core.single_agent.legacy import LegacyBaseAgent
-# New classes (current API)
-from openjiuwen.core.single_agent.agent import BaseAgent, AbilityManager
-from openjiuwen.core.single_agent.schema.agent_card import AgentCard
-from openjiuwen.core.single_agent.agents.react_agent import (
-    ReActAgent,
-    ReActAgentConfig
-)
 from openjiuwen.core.session.agent import Session, create_agent_session
+from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 
-BaseAgentAlias = Union[BaseAgent, LegacyBaseAgent]
+def __getattr__(name):
+    if name == "BaseAgent":
+        from openjiuwen.core.single_agent.agent import BaseAgent
+        return BaseAgent
+    elif name == "AbilityManager":
+        from openjiuwen.core.single_agent.agent import AbilityManager
+        return AbilityManager
+    elif name == "LegacyBaseAgent":
+        from openjiuwen.core.single_agent.legacy import LegacyBaseAgent
+        return LegacyBaseAgent
+    elif name == "ReActAgent":
+        from openjiuwen.core.single_agent.agents.react_agent import ReActAgent
+        return ReActAgent
+    elif name == "ReActAgentConfig":
+        from openjiuwen.core.single_agent.agents.react_agent import ReActAgentConfig
+        return ReActAgentConfig
+    elif name == "BaseAgentAlias":
+        from openjiuwen.core.single_agent.agent import BaseAgent
+        from openjiuwen.core.single_agent.legacy import LegacyBaseAgent
+        return Union[BaseAgent, LegacyBaseAgent]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     # New classes
@@ -36,5 +48,6 @@ __all__ = [
     "create_agent_session",
     # For compatibility
     "BaseAgentAlias",
-    "AbilityManager"
+    "AbilityManager",
+    "BaseAgent"
 ]

@@ -5,36 +5,35 @@
 This module re-exports from legacy submodule for backward compatibility.
 """
 
-from openjiuwen.core.controller.legacy import (
-    BaseController,
-    IntentDetectionController,
-    IntentType,
-    Intent,
-    TaskQueue,
-    Task,
-    TaskInput,
-    TaskStatus,
-    TaskResult,
-    IntentDetector,
-    Planner,
-    Event,
-    EventType,
-    EventPriority,
-    EventSource,
-    EventContent,
-    EventContext,
-    SourceType,
-    IntentDetectionConfig,
-    PlannerConfig,
-    ProactiveIdentifierConfig,
-    ReflectorConfig,
-    ReasonerConfig,
-)
 
 from openjiuwen.core.controller.schema import *
 from openjiuwen.core.controller.modules import *
 from openjiuwen.core.controller.config import ControllerConfig
-from openjiuwen.core.controller.base import Controller
+
+def __getattr__(name):
+    """Lazy import"""
+    legacy_names = {
+        "BaseController", "IntentDetectionController", "IntentType", "Intent", 
+        "TaskQueue", "Task", "TaskInput", "TaskStatus", "TaskResult",
+        "IntentDetector", "Planner", "Event", "EventType", "EventPriority",
+        "EventSource", "EventContent", "EventContext", "SourceType",
+        "IntentDetectionConfig", "PlannerConfig", "ProactiveIdentifierConfig",
+        "ReflectorConfig", "ReasonerConfig"
+    }
+    
+    if name in legacy_names:
+        from openjiuwen.core.controller.legacy import (
+            BaseController, IntentDetectionController, IntentType, Intent, TaskQueue,
+            Task, TaskInput, TaskStatus, TaskResult, IntentDetector, Planner,
+            Event, EventType, EventPriority, EventSource, EventContent, EventContext,
+            SourceType, IntentDetectionConfig, PlannerConfig, ProactiveIdentifierConfig,
+            ReflectorConfig, ReasonerConfig
+        )
+        return locals()[name]
+    elif name == "Controller":
+        from openjiuwen.core.controller.base import Controller
+        return Controller
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 _CONTROLLER_CLASSES = [
     "BaseController",

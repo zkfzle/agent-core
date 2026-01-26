@@ -16,7 +16,7 @@ from typing import AsyncIterator, Optional, List, Callable, TYPE_CHECKING
 from openjiuwen.core.context_engine import ContextEngine
 from openjiuwen.core.controller.schema import ControllerOutput, ControllerOutputChunk, EventType, InputEvent
 from openjiuwen.core.controller.modules import (TaskManager, TaskManagerState, TaskScheduler, TaskExecutor, EventQueue,
-                                                EventHandler, EventHandlerWithIntentRecognition)
+                                                EventHandler)
 from openjiuwen.core.controller.config import ControllerConfig
 from openjiuwen.core.session import Session
 from openjiuwen.core.session.stream.base import BaseStreamMode, StreamMode

@@ -26,7 +26,6 @@ from openjiuwen.core.session.session import Session
 from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.workflow import WorkflowCard
-from openjiuwen.core.runner import Runner
 from openjiuwen.core.controller.schema.controller_output import ControllerOutputChunk, ControllerOutput
 from openjiuwen.core.controller.config import ControllerConfig
 from openjiuwen.core.common.exception.errors import build_error, BaseError
@@ -197,6 +196,9 @@ class AbilityManager:
         Returns:
             (result, ToolMessage) tuple
         """
+        # Lazy import
+        from openjiuwen.core.runner import Runner
+
         tool_name = tool_call.name
 
         # Parse arguments
@@ -565,6 +567,7 @@ class ControllerAgent(BaseAgent):
                 agent_id=self.card.id,
                 session_id=session_id
             )
+        from openjiuwen.core.runner import Runner
         await Runner().release(session_id=session_id)
 
     async def invoke(

@@ -37,12 +37,12 @@ from openjiuwen.core.controller.modules.task_manager import TaskManager, TaskFil
 from openjiuwen.core.controller.schema import Intent
 from openjiuwen.core.controller.schema.event import Event, EventType, TaskInteractionEvent
 from openjiuwen.core.session import Session
-from openjiuwen.core.runner import Runner
 from openjiuwen.core.foundation.llm import UserMessage, SystemMessage, ToolMessage, AssistantMessage
 from openjiuwen.core.controller.schema.task import TaskStatus, Task
 
 if TYPE_CHECKING:
     from openjiuwen.core.single_agent.agent import AbilityManager
+    from openjiuwen.core.runner import Runner
 
 
 class IntentRecognizer:
@@ -125,6 +125,7 @@ class IntentRecognizer:
         Returns:
             Intent: 识别出的意图对象
         """
+        from openjiuwen.core.runner import Runner
 
         context: ModelContext = await self._context_engine.create_context(session=session)
 

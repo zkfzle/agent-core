@@ -23,7 +23,7 @@ class VLLMEmbedding(OpenAIEmbedding):
     def parse_multimodal_input(doc: MultimodalDocument, kwargs: dict[str, Any]) -> dict[str, Any]:
         """Parse multimodal input, mutate kwargs in-place and return kwargs"""
         instruction = kwargs.pop("instruction", "Represent the user's input.")
-        messages = [{"role": "user", "content": doc.get_content()}]
+        messages = [{"role": "user", "content": doc.content}]
         if instruction is not None:
             messages.insert(0, {"role": "system", "content": [{"type": "text", "text": instruction}]})
         kwargs["extra_body"] = {"messages": messages}

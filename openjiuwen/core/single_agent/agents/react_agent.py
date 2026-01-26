@@ -54,8 +54,8 @@ class ReActAgentConfig(BaseModel):
         default_factory=list,
         description="Prompt template list"
     )
-    context_window_limit: int = Field(
-        default=None,
+    context_window_limit: Optional[int] = Field(
+        default=20,
         description="Context window limit"
     )
     max_iterations: int = Field(default=5, description="Maximum iterations")
@@ -134,7 +134,7 @@ class ReActAgentConfig(BaseModel):
         self.prompt_template = prompt_template
         return self
 
-    def configure_context_limit(self, limit: int) -> 'ReActAgentConfig':
+    def configure_context_limit(self, limit: Optional[int]) -> 'ReActAgentConfig':
         """Configure context window limit
 
         Args:

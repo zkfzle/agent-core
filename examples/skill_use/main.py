@@ -84,6 +84,7 @@ async def main():
         )
         .configure_prompt_template([{"role": "system", "content": system_prompt}])
         .configure_max_iterations(MAX_ITERATIONS)
+        .configure_context_limit(None)
     )
     agent.configure(cfg)
     agent._skill_util.skill_manager._sys_operation_id = SYS_OPERATION_ID

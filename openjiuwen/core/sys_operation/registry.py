@@ -8,6 +8,9 @@ from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
 
 class OperationRegistry:
     """Operation registry, managing the operation cls."""
+
+    SUPPORTED_OPERATIONS = ["fs", "shell", "code"]
+
     _repository: Dict[str, Dict[OperationMode, Dict[str, Any]]] = {}  # {name: {mode: {cls, description}}}
 
     @classmethod
@@ -52,6 +55,11 @@ class OperationRegistry:
             operation_info = cls._repository.get(name, {}).get(mode, {})
 
         return operation_info
+
+    @classmethod
+    def get_supported_operations(cls) -> list[str]:
+        """Get the names of all standard operations supported by the registry."""
+        return cls.SUPPORTED_OPERATIONS
 
     @classmethod
     def _lazy_load_operation(cls, name: str, mode: OperationMode):

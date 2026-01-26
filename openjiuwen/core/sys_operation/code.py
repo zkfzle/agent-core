@@ -3,12 +3,22 @@
 from abc import ABC, abstractmethod
 from typing import Literal, Optional, Dict, Any, AsyncIterator
 
+from openjiuwen.core.foundation.tool import ToolCard
 from openjiuwen.core.sys_operation.base import BaseOperation
 from openjiuwen.core.sys_operation.result import ExecuteCodeResult, ExecuteCodeStreamResult
 
 
+from typing import List
+
 class BaseCodeOperation(BaseOperation, ABC):
     """Base code operation"""
+
+    def list_tools(self) -> List[ToolCard]:
+        method_names = [
+            "execute_code",
+            "execute_code_stream"
+        ]
+        return self._generate_tool_cards(method_names)
 
     @abstractmethod
     async def execute_code(

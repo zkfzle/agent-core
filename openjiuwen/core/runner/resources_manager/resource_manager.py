@@ -10,7 +10,7 @@ from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.tool import McpServerConfig
 from openjiuwen.core.foundation.prompt import PromptTemplate
-from openjiuwen.core.foundation.tool import Tool, ToolInfo, ToolCard
+from openjiuwen.core.foundation.tool import Tool, ToolInfo, ToolCard, LocalFunction
 from openjiuwen.core.multi_agent import BaseGroup, GroupCard
 from openjiuwen.core.runner.drunner.remote_client.remote_agent import RemoteAgent
 from openjiuwen.core.runner.resources_manager.base import (
@@ -651,16 +651,21 @@ class ResourceMgr:
         self._inner_validate_resource_card(card)
         if tag is not None:
             self._inner_validate_tag(tag)
-        return self._inner_add_resource(resource_id=card.id,
-                                        resource=SysOperation(card),
-                                        resource_card=card,
-                                        tag=tag,
-                                        resource_type="sys_operation")
+        res = self._inner_add_resource(resource_id=card.id,
+                                       resource=SysOperation(card),
+                                       resource_card=card,
+                                       tag=tag,
+                                       resource_type="sys_operation")
+        if res.is_ok():
+            instance = self.get_sys_operation(card.id)
+            if instance:
+                self._register_sys_operation_tools(card, instance, tag=tag)
+        return res
 
     def remove_sys_operation(self,
                              *,
                              sys_operation_id: Optional[str | List[str]] = None,
-                             tag: Optional[Tag | List[Tag]] = None,
+                             tag: Optional[Tag | List[Tag]] = GLOBAL,
                              tag_match_strategy: TagMatchStrategy = TagMatchStrategy.ALL,
                              skip_if_tag_not_exists: bool = False,
                              ) -> Union[Result[Optional[SysOperationCard], Exception],
@@ -676,11 +681,57 @@ class ResourceMgr:
         Returns:
             Result/Result list: Removed card(s) or error
         """
-        return self._inner_remove_resources(resource_id=sys_operation_id,
-                                            tag=tag,
-                                            tag_match_strategy=tag_match_strategy,
-                                            skip_if_tag_not_exists=skip_if_tag_not_exists,
-                                            resource_type="sys_operation")
+        results = self._inner_remove_resources(resource_id=sys_operation_id,
+                                               tag=tag,
+                                               tag_match_strategy=tag_match_strategy,
+                                               skip_if_tag_not_exists=skip_if_tag_not_exists,
+                                               resource_type="sys_operation")
+        # Cleanup related tools
+        if results.is_ok():
+            prefix = f"{sys_operation_id}."
+            # Find tools whose IDs start with this operation ID
+            tool_ids_to_remove = [tid for tid in self._id_to_card.keys() if tid.startswith(prefix)]
+            if not tool_ids_to_remove:
+                return results
+            self._inner_remove_resources(resource_id=tool_ids_to_remove,
+                                         tag=tag,
+                                         resource_type="tool", skip_if_tag_not_exists=skip_if_tag_not_exists)
+        return results
+
+    def _register_sys_operation_tools(self, card: SysOperationCard, instance: SysOperation,
+                                      tag: Optional[Tag | List[Tag]] = None):
+        """Automatically register operation methods as tools."""
+        sys_op_id = card.id
+        for op_type in ["fs", "shell", "code"]:
+            sub_op = getattr(instance, op_type)()
+            if not sub_op:
+                continue
+
+            tools = sub_op.list_tools()
+            if not tools:
+                continue
+
+            for tool_card in tools:
+                # Format tool_id with operation id and type for isolation
+                tool_id = f"{sys_op_id}.{op_type}.{tool_card.name}"
+
+                # Create a copy of the card with the specific tool_id
+                new_card = tool_card.model_copy()
+                new_card.id = tool_id
+
+                # Get method reference via reflection
+                func = getattr(sub_op, tool_card.name, None)
+                if not func or not callable(func):
+                    logger.warning(f"Method {tool_card.name} not found or not callable in {op_type} operation")
+                    continue
+
+                # Register as LocalFunction using internal method to handle tags and mapping
+                local_func = LocalFunction(card=new_card, func=func)
+                self._inner_add_resource(resource_id=tool_id,
+                                         resource=local_func,
+                                         resource_card=new_card,
+                                         tag=tag,
+                                         resource_type="tool")
 
     def get_sys_operation(self,
                           sys_operation_id: Optional[str] = None,
@@ -703,6 +754,7 @@ class ResourceMgr:
         return self._inner_get_resources(resource_id=sys_operation_id,
                                          tag=tag,
                                          tag_match_strategy=tag_match_strategy,
+                                         session=session,
                                          resource_type="sys_operation")
 
     async def get_tool_infos(self,

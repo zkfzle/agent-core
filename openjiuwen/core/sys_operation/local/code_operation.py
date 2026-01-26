@@ -14,7 +14,7 @@ from openjiuwen.core.sys_operation.result.code_operation_result import (
 )
 
 _SUPPORT_LANGUAGE_CMD_MAP: Dict[str, Callable[[str], List[str]]] = {
-    "python": lambda code: ["python", "-c", code],
+    "python": lambda code: [sys.executable, "-c", code],
     "javascript": lambda code: ["node", "-e", code]
 }
 

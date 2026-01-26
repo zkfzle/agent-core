@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from typing import Literal, Optional, Tuple, Dict, Any, AsyncIterator, List
 
 from openjiuwen.core.sys_operation.base import BaseOperation
+from openjiuwen.core.foundation.tool import ToolCard
+from openjiuwen.core.foundation.tool.utils.callable_schema_extractor import CallableSchemaExtractor
 from openjiuwen.core.sys_operation.result import ReadFileResult, ReadFileStreamResult, WriteFileResult, \
     UploadFileResult, UploadFileStreamResult, DownloadFileResult, DownloadFileStreamResult, ListFilesResult, \
     ListDirsResult, SearchFilesResult
@@ -11,6 +13,21 @@ from openjiuwen.core.sys_operation.result import ReadFileResult, ReadFileStreamR
 
 class BaseFsOperation(BaseOperation, ABC):
     """Base file system operation"""
+
+    def list_tools(self) -> List[ToolCard]:
+        method_names = [
+            "read_file",
+            "read_file_stream",
+            "write_file",
+            "upload_file",
+            "upload_file_stream",
+            "download_file",
+            "download_file_stream",
+            "list_files",
+            "list_directories",
+            "search_files"
+        ]
+        return self._generate_tool_cards(method_names)
 
     @abstractmethod
     async def read_file(

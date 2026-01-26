@@ -39,6 +39,31 @@ class SysOperationCard(BaseCard):
                                   cause=ex) from ex
         return v
 
+    @property
+    def fs(self):
+        return ToolIdProxy(self.id, "fs")
+
+    @property
+    def shell(self):
+        return ToolIdProxy(self.id, "shell")
+
+    @property
+    def code(self):
+        return ToolIdProxy(self.id, "code")
+
+
+class ToolIdProxy:
+    """A helper for generating tool IDs via attribute access.
+    Matches the syntax: card.fs.read_file -> '{card_id}.fs.read_file'
+    """
+
+    def __init__(self, card_id: str, op_type: str):
+        self._card_id = card_id
+        self._op_type = op_type
+
+    def __getattr__(self, name: str) -> str:
+        return f"{self._card_id}.{self._op_type}.{name}"
+
 
 class SysOperation:
     """SysOperation"""

@@ -134,3 +134,24 @@ async def test_fs_security_and_streams(sys_op, work_dir):
         chunks.append(chunk.data.chunk_content)
 
     assert chunks == ["line1", "line2"]
+
+
+@pytest.mark.asyncio
+async def test_fs_list_tools(sys_op):
+    """Test list_tools for FS operation."""
+    tools = sys_op.fs().list_tools()
+    assert len(tools) == 10
+    tool_names = [t.name for t in tools]
+    expected_names = [
+        "read_file", "read_file_stream", "write_file", "upload_file",
+        "upload_file_stream", "download_file", "download_file_stream",
+        "list_files", "list_directories", "search_files"
+    ]
+    for name in expected_names:
+        assert name in tool_names
+
+    # Verify a specific tool's schema
+    read_file_tool = next(t for t in tools if t.name == "read_file")
+    assert read_file_tool.description is not None
+    assert "path" in read_file_tool.input_params["properties"]
+    assert read_file_tool.input_params["required"] == ["path"]

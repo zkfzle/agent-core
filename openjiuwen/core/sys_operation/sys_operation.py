@@ -12,6 +12,32 @@ from openjiuwen.core.sys_operation.registry import OperationRegistry
 
 
 class SysOperationCard(BaseCard):
+    """Configuration card for system operations
+
+    Attributes:
+        mode: Operation mode (local or sandbox)
+        work_config: Local work configuration (required for local mode)
+        gateway_config: Sandbox gateway configuration (required for sandbox mode)
+
+    Examples:
+        # 1. Create a sys operation card with local mode
+        card = SysOperationCard(
+            id="sys_op",
+            mode=OperationMode.LOCAL,
+            work_config=LocalWorkConfig(work_dir="/tmp/test")
+        )
+
+        # 2. Register the operation with resource manager
+        Runner.resource_mgr.add_sys_operation(card)
+
+        # 3. Direct call
+        op = Runner.resource_mgr.get_sys_operation(card.id)
+        await op.fs().write_file("test.txt", "content")
+
+        # 4. Call as LocalFunction Tool (Recommended for Agents)
+        tool = Runner.resource_mgr.get_tool(card.fs.read_file)
+        await tool.invoke({"path": "test.txt"})
+    """
     mode: OperationMode = Field(
         default=OperationMode.LOCAL,
         description="Running mode, available values: local / sandbox"
@@ -38,6 +64,34 @@ class SysOperationCard(BaseCard):
                                             f"current value: {v}",
                                   cause=ex) from ex
         return v
+
+    @property
+    def fs(self):
+        return ToolIdProxy(self.id, "fs")
+
+    @property
+    def shell(self):
+        return ToolIdProxy(self.id, "shell")
+
+    @property
+    def code(self):
+        return ToolIdProxy(self.id, "code")
+
+
+class ToolIdProxy:
+    """A helper for generating tool IDs via attribute access.
+
+    Tool ID format: "{card.id}.{op_type}.{method}"
+
+    Example: card.fs.read_file -> "sys_op.fs.read_file"
+    """
+
+    def __init__(self, card_id: str, op_type: str):
+        self._card_id = card_id
+        self._op_type = op_type
+
+    def __getattr__(self, name: str) -> str:
+        return f"{self._card_id}.{self._op_type}.{name}"
 
 
 class SysOperation:

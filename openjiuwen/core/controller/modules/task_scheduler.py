@@ -18,7 +18,7 @@ Core workflow:
 5. Update task status based on output type (completion / interaction / failed).
 """
 import asyncio
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel
 

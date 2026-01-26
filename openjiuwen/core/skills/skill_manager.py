@@ -120,7 +120,6 @@ class SkillManager:
         Raises:
             ValueError: If skill already exists and overwrite is False.
         """
-        print("[debug] register() skill_path:", skill_path, "type:", type(skill_path))
         from openjiuwen.core.runner.runner import Runner
         sys_operation = Runner.resource_mgr.get_sys_operation(self._sys_operation_id)
         fs = sys_operation.fs()

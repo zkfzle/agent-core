@@ -306,6 +306,10 @@ class BaseAgent(ABC):
         self.card = card
         self._ability_kit = AbilityKit()
 
+    @property
+    def ability_kit(self):
+        return self._ability_kit
+
     # ========== Configuration Interface ==========
     @abstractmethod
     def configure(self, config) -> 'BaseAgent':
@@ -313,9 +317,6 @@ class BaseAgent(ABC):
         pass
 
     # ========== Ability Management Interface ==========
-    @property
-    def ability_kit(self) -> AbilityKit:
-        return self._ability_kit
 
     def add_ability(self, ability: Union[Ability, List[Ability]]) -> 'BaseAgent':
         """Add an ability

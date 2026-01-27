@@ -101,6 +101,8 @@ class PGVectorStore(VectorStore):
         
         # Table reference (initialized lazily or on load)
         self._table: Optional[Table] = None
+        # Public property for test/inspection (read-only recommended but mutable for testing if needed)
+        self.table_ref = None 
         self._metadata = MetaData()
         
         # Initialize: check if table exists and load it
@@ -123,6 +125,11 @@ class PGVectorStore(VectorStore):
     async def _get_or_create_table(self, dim: int = 0) -> Table:
         """Get existing table or create new one if dim is provided"""
         if self._table is not None:
+            return self._table
+        
+        # Check if table was injected via test property
+        if self.table_ref is not None:
+            self._table = self.table_ref
             return self._table
 
         # Try to reflect
@@ -235,7 +242,7 @@ class PGVectorStore(VectorStore):
             if isinstance(meta, str):
                 try:
                     meta = json.loads(meta)
-                except:
+                except json.JSONDecodeError:
                     meta = {}
             
             # Add other fields to metadata
@@ -297,7 +304,7 @@ class PGVectorStore(VectorStore):
         
         # Filters
         if filters:
-            conds = self._build_filters(table, filters)
+            conds = self.build_filters(table, filters)
             if conds:
                 stmt = stmt.where(*conds)
         
@@ -345,7 +352,7 @@ class PGVectorStore(VectorStore):
         stmt = select(table).where(ts_vector.op("@@")(ts_query))
         
         if filters:
-            conds = self._build_filters(table, filters)
+            conds = self.build_filters(table, filters)
             if conds:
                 stmt = stmt.where(*conds)
                 
@@ -431,7 +438,7 @@ class PGVectorStore(VectorStore):
 
     async def table_exists(self, table_name: str) -> bool:
         async with self._engine.connect() as conn:
-             return await conn.run_sync(
+            return await conn.run_sync(
                 lambda sync_conn: inspect(sync_conn).has_table(table_name)
             )
 
@@ -439,7 +446,7 @@ class PGVectorStore(VectorStore):
         async with self._engine.begin() as conn:
             await conn.execute(text(f"DROP TABLE IF EXISTS {table_name}"))
 
-    def _build_filters(self, table: Table, filters: dict) -> List[Any]:
+    def build_filters(self, table: Table, filters: dict) -> List[Any]:
         conds = []
         for k, v in filters.items():
             # Check if it is a metadata field
@@ -470,7 +477,7 @@ class PGVectorStore(VectorStore):
             
             # Ensure special fields in metadata
             if self.doc_id_field not in meta and self.doc_id_field in row.metadata:
-                 meta[self.doc_id_field] = row.metadata[self.doc_id_field]
+                meta[self.doc_id_field] = row.metadata[self.doc_id_field]
 
             score = 0.0
             raw_score = 0.0

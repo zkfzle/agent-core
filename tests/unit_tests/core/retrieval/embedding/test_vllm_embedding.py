@@ -37,7 +37,7 @@ class TestVLLMEmbedding:
         assert result == kwargs
         assert "instruction" not in kwargs
         assert "extra_body" in kwargs
-        assert kwargs["extra_body"]["messages"] == [
+        assert kwargs.get("extra_body", {}).get("messages") == [
             {"role": "system", "content": [{"type": "text", "text": "Represent the user's input."}]},
             {"role": "user", "content": doc.content},
         ]
@@ -53,7 +53,8 @@ class TestVLLMEmbedding:
 
         assert result == kwargs
         assert "instruction" not in kwargs
-        assert kwargs["extra_body"]["messages"] == [
+        assert "extra_body" in kwargs
+        assert kwargs.get("extra_body", {}).get("messages") == [
             {"role": "system", "content": [{"type": "text", "text": "Custom instruction text"}]},
             {"role": "user", "content": doc.content},
         ]
@@ -69,7 +70,8 @@ class TestVLLMEmbedding:
 
         assert result == kwargs
         assert "instruction" not in kwargs
-        assert kwargs["extra_body"]["messages"] == [
+        assert "extra_body" in kwargs
+        assert kwargs.get("extra_body", {}).get("messages") == [
             {"role": "user", "content": doc.content},
         ]
 
@@ -98,8 +100,9 @@ class TestVLLMEmbedding:
         kwargs = {}
         _ = VLLMEmbedding.parse_multimodal_input(doc, kwargs)
 
-        assert len(kwargs["extra_body"]["messages"]) == 2
-        user_message = kwargs["extra_body"]["messages"][1]
+        assert "extra_body" in kwargs
+        assert len(kwargs.get("extra_body", {}).get("messages")) == 2
+        user_message = kwargs.get("extra_body", {}).get("messages")[1]
         assert user_message["role"] == "user"
         assert len(user_message["content"]) == 3
 
@@ -111,16 +114,17 @@ class TestVLLMEmbedding:
 
         model = VLLMEmbedding(timeout=1, config=embedding_config)
         mock_embedding = [0.1] * 384
-        model._get_embeddings = AsyncMock(return_value=[mock_embedding])
+        setattr(model, "_get_embeddings", AsyncMock(return_value=[mock_embedding]))
 
         embedding = await model.embed_multimodal(doc)
 
         assert len(embedding) == 384
         assert all(isinstance(x, float) for x in embedding)
-        model._get_embeddings.assert_called_once()
-        call_kwargs = model._get_embeddings.call_args[1]
+        getattr(model, "_get_embeddings").assert_called_once()
+        call_kwargs = getattr(model, "_get_embeddings").call_args[1]
         assert "extra_body" in call_kwargs
-        assert call_kwargs["extra_body"]["messages"][1]["content"] == doc.content
+        assert "messages" in call_kwargs["extra_body"]
+        assert call_kwargs["extra_body"]["messages"][1].get("content") == doc.content
 
     @pytest.mark.asyncio
     async def test_embed_multimodal_invalid_input(self, embedding_config):
@@ -138,48 +142,51 @@ class TestVLLMEmbedding:
 
         model = VLLMEmbedding(timeout=1, config=embedding_config)
         mock_embedding = [0.1] * 384
-        model._get_embeddings = AsyncMock(return_value=[mock_embedding])
+        setattr(model, "_get_embeddings", AsyncMock(return_value=[mock_embedding]))
 
         await model.embed_multimodal(doc, instruction="Custom instruction")
 
-        call_kwargs = model._get_embeddings.call_args[1]
+        call_kwargs = getattr(model, "_get_embeddings").call_args[1]
         assert call_kwargs["extra_body"]["messages"][0]["content"][0]["text"] == "Custom instruction"
 
-    def test_embed_multimodal_sync_success(self, embedding_config):
+    @staticmethod
+    def test_embed_multimodal_sync_success(embedding_config):
         """Test embed_multimodal_sync with valid MultimodalDocument"""
         doc = MultimodalDocument()
         doc.add_field("text", "Hello world")
 
         model = VLLMEmbedding(timeout=1, config=embedding_config)
         mock_embedding = [0.1] * 384
-        model._get_embeddings_sync = Mock(return_value=[mock_embedding])
+        setattr(model, "_get_embeddings_sync", Mock(return_value=[mock_embedding]))
 
         embedding = model.embed_multimodal_sync(doc)
 
         assert len(embedding) == 384
         assert all(isinstance(x, float) for x in embedding)
-        model._get_embeddings_sync.assert_called_once()
-        call_kwargs = model._get_embeddings_sync.call_args[1]
+        getattr(model, "_get_embeddings_sync").assert_called_once()
+        call_kwargs = getattr(model, "_get_embeddings_sync").call_args[1]
         assert "extra_body" in call_kwargs
         assert call_kwargs["extra_body"]["messages"][1]["content"] == doc.content
 
-    def test_embed_multimodal_sync_invalid_input(self, embedding_config):
+    @staticmethod
+    def test_embed_multimodal_sync_invalid_input(embedding_config):
         """Test embed_multimodal_sync with invalid input (not MultimodalDocument)"""
         model = VLLMEmbedding(timeout=1, config=embedding_config)
 
         with pytest.raises(BaseError, match="input provided for multimodal embedding is not a MultimodalDocument"):
             model.embed_multimodal_sync("not a document")
 
-    def test_embed_multimodal_sync_with_instruction(self, embedding_config):
+    @staticmethod
+    def test_embed_multimodal_sync_with_instruction(embedding_config):
         """Test embed_multimodal_sync with custom instruction"""
         doc = MultimodalDocument()
         doc.add_field("text", "Hello world")
 
         model = VLLMEmbedding(timeout=1, config=embedding_config)
         mock_embedding = [0.1] * 384
-        model._get_embeddings_sync = Mock(return_value=[mock_embedding])
+        setattr(model, "_get_embeddings_sync", Mock(return_value=[mock_embedding]))
 
         model.embed_multimodal_sync(doc, instruction="Custom instruction")
 
-        call_kwargs = model._get_embeddings_sync.call_args[1]
+        call_kwargs = getattr(model, "_get_embeddings_sync").call_args[1]
         assert call_kwargs["extra_body"]["messages"][0]["content"][0]["text"] == "Custom instruction"

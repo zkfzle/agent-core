@@ -7,6 +7,7 @@ from pydantic import Field, BaseModel
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.foundation.tool import ToolInfo
 from openjiuwen.core.foundation.tool.base import Tool, ToolCard, Input, Output
 
 NO_TIMEOUT = -1
@@ -22,9 +23,17 @@ class McpServerConfig(BaseModel):
     auth_query_params: Dict[str, str] = Field(default_factory=dict)
 
 
+class McpToolInfo(ToolInfo):
+    server_name: str
+
+
 class McpToolCard(ToolCard):
     server_name: str
     server_id: str = ''
+
+    def tool_info(self):
+        return McpToolInfo(name=self.name, description=self.description, parameters=self.input_params,
+                           server_name=self.server_name)
 
 
 class MCPTool(Tool):

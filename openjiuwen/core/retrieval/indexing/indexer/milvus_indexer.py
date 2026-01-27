@@ -7,7 +7,7 @@ Responsible for building, updating and deleting Milvus indices.
 """
 
 import asyncio
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
 from pymilvus import DataType, Function, FunctionType, MilvusClient, MilvusException
 
@@ -19,6 +19,7 @@ from openjiuwen.core.retrieval.common.config import IndexConfig, VectorStoreConf
 from openjiuwen.core.retrieval.common.document import TextChunk
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
+from openjiuwen.core.retrieval.indexing.vector_fields.milvus_fields import MilvusAUTO, MilvusVectorField
 from openjiuwen.core.retrieval.vector_store.milvus_store import MilvusVectorStore
 
 
@@ -27,15 +28,14 @@ class MilvusIndexer(Indexer):
 
     def __init__(
         self,
+        config: VectorStoreConfig,
         milvus_uri: str,
         milvus_token: Optional[str] = None,
         text_field: str = "content",
-        vector_field: str = "embedding",
+        vector_field: str | MilvusVectorField = "embedding",
         sparse_vector_field: str = "sparse_vector",
         metadata_field: str = "metadata",
         doc_id_field: str = "document_id",
-        database_name: str = "",
-        distance_metric: Literal["cosine", "euclidean", "dot"] = "cosine",
         doc_index_callback: type[BaseCallback] = TqdmCallback,
         **kwargs: Any,
     ):
@@ -43,36 +43,38 @@ class MilvusIndexer(Indexer):
         Initialize Milvus index manager
 
         Args:
+            config: Vector store configuration
             milvus_uri: Milvus URI
             milvus_token: Milvus Token (optional)
             text_field: Text field name
-            vector_field: Vector field name
+            vector_field: Vector field name (str) or definition (MilvusVectorField)
             sparse_vector_field: Sparse vector field name
             metadata_field: Metadata field name
-            database_name: name of the database to use
-            distance_metric: distance metric for vector search
             doc_index_callback: class of callback object to use, must be subclass of BaseCallback
         """
         self.milvus_uri = milvus_uri
         self.milvus_token = milvus_token
         self.text_field = text_field
-        self.vector_field = vector_field
         self.sparse_vector_field = sparse_vector_field
         self.metadata_field = metadata_field
         self.doc_id_field = doc_id_field
-        self.database_name = database_name
-        match distance_metric:
-            case "cosine":
-                self._distance_metric = "COSINE"
-            case "euclidean":
-                self._distance_metric = "L2"
-            case "dot":
-                self._distance_metric = "IP"
-            case _:
-                raise build_error(
-                    StatusCode.RETRIEVAL_INDEXING_DISTANCE_METRIC_INVALID,
-                    error_msg=f'expecting one of ["cosine", "euclidean", "dot"], but got "{distance_metric}"',
-                )
+        self.database_name = config.database_name
+        if isinstance(vector_field, str):
+            self.vector_field = MilvusAUTO(vector_field=vector_field)
+        elif isinstance(vector_field, MilvusVectorField):
+            self.vector_field = vector_field
+        else:
+            raise build_error(
+                StatusCode.RETRIEVAL_INDEXING_VECTOR_FIELD_INVALID,
+                error_msg="vector_field must be either a str or MilvusVectorField instance",
+            )
+        if self.vector_field.index_type == "auto":
+            self._construct_config = {}
+        else:
+            self._construct_config = self.vector_field.to_dict(stage="construct")
+        self._distance_metric = config.distance_metric.replace("dot", "ip").replace("euclidean", "l2").upper()
+        self._construct_config["metric_type"] = self._distance_metric
+        self._search_config = self.vector_field.to_dict(stage="search")
         self.doc_index_callback = doc_index_callback
         if not isinstance(doc_index_callback, type) or not issubclass(doc_index_callback, BaseCallback):
             raise build_error(
@@ -84,7 +86,7 @@ class MilvusIndexer(Indexer):
             )
 
         self._client = MilvusVectorStore.create_client(
-            database_name=database_name,
+            database_name=self.database_name,
             path_or_uri=self.milvus_uri,
             token=self.milvus_token,
         )
@@ -155,7 +157,7 @@ class MilvusIndexer(Indexer):
 
             # Convert TextChunk to Milvus required fields, avoiding writing id_ field not defined in schema
             data = []
-            for idx, chunk in enumerate(chunks):
+            for chunk in chunks:
                 meta = chunk.metadata or {}
                 item = {
                     "chunk_id": meta.get("chunk_id", chunk.id_),
@@ -164,7 +166,7 @@ class MilvusIndexer(Indexer):
                     self.metadata_field: meta,
                 }
                 if chunk.embedding is not None:
-                    item[self.vector_field] = chunk.embedding
+                    item[self.vector_field.vector_field] = chunk.embedding
                 data.append(item)
 
             await vector_store.add(data=data)
@@ -399,17 +401,24 @@ class MilvusIndexer(Indexer):
                 )
 
             schema.add_field(
-                field_name=self.vector_field,
+                field_name=self.vector_field.vector_field,
                 datatype=DataType.FLOAT_VECTOR,
                 dim=dimension,
             )
 
             # Add dense vector index
+            index_type = self.vector_field.index_type
+            if index_type == "auto":
+                index_type = "AUTOINDEX"
+            else:
+                index_type = self.vector_field.index_type.upper()
+                index_variant = getattr(self.vector_field, "variant", None)
+                if index_variant is not None:
+                    index_type = index_type + "_" + index_variant.upper()
             index_params.add_index(
-                field_name=self.vector_field,
-                index_type="IVF_FLAT",
-                metric_type=self._distance_metric,
-                params={"nlist": 1024},
+                field_name=self.vector_field.vector_field,
+                index_type=index_type,
+                **self._construct_config,
             )
 
         # Metadata field

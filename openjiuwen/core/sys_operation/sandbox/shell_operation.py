@@ -2,13 +2,16 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 from typing import Optional, Dict, Any, AsyncIterator
 
-from openjiuwen.core.sys_operation.base import BaseOperation, OperationMode
+from openjiuwen.core.sys_operation.shell import BaseShellOperation
+from openjiuwen.core.sys_operation.base import OperationMode
 from openjiuwen.core.sys_operation.registry import operation
-from openjiuwen.core.sys_operation.result.shell_operation_result import ExecuteCmdResult, ExecuteCmdStreamResult
+from openjiuwen.core.sys_operation.result import (
+    ExecuteCmdResult, ExecuteCmdStreamResult
+)
 
 
 @operation(name="shell", mode=OperationMode.SANDBOX, description="sandbox shell operation")
-class ShellOperation(BaseOperation):
+class ShellOperation(BaseShellOperation):
     """Shell operation"""
 
     async def execute_cmd(
@@ -33,7 +36,7 @@ class ShellOperation(BaseOperation):
         Returns:
             ExecuteCmdResult: Execution result.
         """
-        pass
+        raise NotImplementedError("Shell operation sandbox mode is not implemented yet.")
 
     async def execute_cmd_stream(
             self,
@@ -57,4 +60,4 @@ class ShellOperation(BaseOperation):
         Returns:
             AsyncIterator[ExecuteCmdStreamResult]: Streaming structured results.
         """
-        pass
+        raise NotImplementedError("Shell operation sandbox mode is not implemented yet.")

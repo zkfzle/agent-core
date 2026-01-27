@@ -8,9 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from openjiuwen.core.common.exception.errors import BaseError
-from openjiuwen.core.retrieval import MilvusIndexer
-from openjiuwen.core.retrieval import IndexConfig
-from openjiuwen.core.retrieval import TextChunk
+from openjiuwen.core.retrieval import IndexConfig, MilvusIndexer, TextChunk, VectorStoreConfig
 
 
 @pytest.fixture
@@ -31,7 +29,8 @@ class TestMilvusIndexer:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530", database_name="name")
+        config = VectorStoreConfig(collection_name="test_collection", database_name="name")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         assert indexer.milvus_uri == "http://localhost:19530"
         assert indexer.client == mock_client
         mock_client_class.assert_called_once_with(
@@ -46,10 +45,11 @@ class TestMilvusIndexer:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
+        config = VectorStoreConfig(collection_name="test_collection", database_name="name")
         indexer = MilvusIndexer(
+            config=config,
             milvus_uri="http://localhost:19530",
             milvus_token="test_token",
-            database_name="name",
         )
         assert indexer.milvus_token == "test_token"
 
@@ -65,15 +65,33 @@ class TestMilvusIndexer:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
+        config = VectorStoreConfig(collection_name="test_collection")
         indexer = MilvusIndexer(
+            config=config,
             milvus_uri="http://localhost:19530",
             text_field="custom_text",
             vector_field="custom_vector",
             doc_id_field="custom_doc_id",
         )
         assert indexer.text_field == "custom_text"
-        assert indexer.vector_field == "custom_vector"
+        assert indexer.vector_field.vector_field == "custom_vector"
         assert indexer.doc_id_field == "custom_doc_id"
+
+    @patch("openjiuwen.core.retrieval.indexing.indexer.milvus_indexer.MilvusVectorStore.create_client")
+    def test_init_with_invalid_vector_field(self, mock_client_class):
+        """Test initialization with custom fields"""
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+
+        with pytest.raises(BaseError, match="vector_field must be either a str or MilvusVectorField instance"):
+            config = VectorStoreConfig(collection_name="test_collection")
+            _ = MilvusIndexer(
+                config=config,
+                milvus_uri="http://localhost:19530",
+                text_field="custom_text",
+                vector_field=dict(vector_field="custom_vector"),
+                doc_id_field="custom_doc_id",
+            )
 
     @pytest.mark.asyncio
     @patch("openjiuwen.core.retrieval.indexing.indexer.milvus_indexer.MilvusVectorStore.create_client")
@@ -87,7 +105,8 @@ class TestMilvusIndexer:
         mock_store.add = AsyncMock()
         mock_store_class.return_value = mock_store
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         chunks = [
             TextChunk(id_="1", text="chunk 1", doc_id="doc_1"),
             TextChunk(id_="2", text="chunk 2", doc_id="doc_1"),
@@ -113,7 +132,8 @@ class TestMilvusIndexer:
         mock_store.add = AsyncMock()
         mock_store_class.return_value = mock_store
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         chunks = [TextChunk(id_="1", text="chunk 1", doc_id="doc_1")]
         config = IndexConfig(index_name="test_index", index_type="bm25")
 
@@ -130,7 +150,8 @@ class TestMilvusIndexer:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         chunks = [TextChunk(id_="1", text="chunk 1", doc_id="doc_1")]
         config = IndexConfig(index_name="test_index", index_type="vector")
 
@@ -146,7 +167,8 @@ class TestMilvusIndexer:
         mock_client = MagicMock(query=MagicMock(return_value=[dict(document_id="doc_1")]))
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         chunks = [TextChunk(id_="1", text="chunk 1", doc_id="doc_1")]
         config = IndexConfig(index_name="test_index", index_type="vector")
 
@@ -160,7 +182,8 @@ class TestMilvusIndexer:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         chunks = [TextChunk(id_="1", text="updated chunk", doc_id="doc_1")]
         config = IndexConfig(index_name="test_index", index_type="vector")
 
@@ -184,7 +207,8 @@ class TestMilvusIndexer:
         mock_client.delete.return_value = {"delete_count": 2}
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         result = await indexer.delete_index("doc_1", "test_index")
         assert result is True
 
@@ -196,7 +220,8 @@ class TestMilvusIndexer:
         mock_client.delete.return_value = {"delete_count": 0}
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         result = await indexer.delete_index("doc_1", "test_index")
         assert result is False
 
@@ -208,7 +233,8 @@ class TestMilvusIndexer:
         mock_client.has_collection.return_value = True
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         result = await indexer.index_exists("test_index")
         assert result is True
 
@@ -220,7 +246,8 @@ class TestMilvusIndexer:
         mock_client.has_collection.return_value = False
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         result = await indexer.index_exists("nonexistent_index")
         assert result is False
 
@@ -233,7 +260,8 @@ class TestMilvusIndexer:
         mock_client.get_collection_stats.return_value = {"row_count": 100}
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         info = await indexer.get_index_info("test_index")
         assert info["exists"] is True
         assert info["collection_name"] == "test_index"
@@ -247,7 +275,8 @@ class TestMilvusIndexer:
         mock_client.has_collection.return_value = False
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         info = await indexer.get_index_info("nonexistent_index")
         assert info["exists"] is False
 
@@ -257,6 +286,7 @@ class TestMilvusIndexer:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
 
-        indexer = MilvusIndexer(milvus_uri="http://localhost:19530")
+        config = VectorStoreConfig(collection_name="test_collection")
+        indexer = MilvusIndexer(config=config, milvus_uri="http://localhost:19530")
         # Should not raise exception
         indexer.close()

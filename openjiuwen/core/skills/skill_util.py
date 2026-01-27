@@ -85,7 +85,7 @@ class SkillUtil:
             str: A formatted prompt string with skill information that can be used
                 to inform agents about available skills.
         """
-        files_base_dir = os.getenv("FILES_BASE_DIR")
+        files_base_dir = os.getenv("FILES_BASE_DIR", str(Path(__file__).resolve().parent))
         system_prompt = (
             "You are an agent equipped with various skills to solve problems.\n"
             "Before attempting any task, read the relevant skill document (SKILL.md) "

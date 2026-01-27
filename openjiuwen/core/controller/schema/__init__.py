@@ -25,6 +25,8 @@ from openjiuwen.core.controller.schema.controller_output import (
 )
 
 
+Task.model_rebuild()
+
 __all__ = [
     # DataFrame
     "TextDataFrame",

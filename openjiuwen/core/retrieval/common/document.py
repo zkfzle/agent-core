@@ -107,7 +107,7 @@ class MultimodalDocument(Document):
                         }
                     )
                 case "audio":
-                    file_format = re.match(r"data:audio/([a-z0-9_\-]+);base64,", data).group(1)
+                    file_format = re.match(r"data:audio/(.+?);base64,", data).group(1)
                     content.append(
                         {
                             "type": "input_audio",
@@ -201,7 +201,7 @@ def _load_multimodal_data(
             dict(data=data, file_path=file_path),
         )
     if isinstance(data, str):
-        if kind == "text" or re.match(f"data:{kind}/([a-z0-9_]+);base64,", data):
+        if kind == "text" or re.match(f"data:{kind}/(.+?);base64,", data):
             return kind, data
         _raise_validation_error_with_info(
             f"invalid_{kind}_data_provided",

@@ -12,7 +12,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Self, overload
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, ValidationError
 from pydantic_core import PydanticCustomError
 
 NOT_SET = None
@@ -86,13 +86,15 @@ class MultimodalDocument(Document):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
     text: Optional[str] = Field(default=None, max_length=0, init=False, repr=False)
-    data: list[tuple[Literal["text", "image", "audio", "video"], str, str]] = Field(default_factory=list, init=False)
+    _data: list[tuple[Literal["text", "image", "audio", "video"], str, str]] = PrivateAttr(
+        default_factory=list, init=False
+    )
 
     @property
     def content(self) -> list[dict[str, Any]]:
         """Get the whole content field"""
         content = []
-        for kind, data, data_id in self.data:
+        for kind, data, data_id in self._data:
             match kind:
                 case "text":
                     content.append({"type": "text", "text": data})
@@ -101,7 +103,6 @@ class MultimodalDocument(Document):
                         {
                             "type": f"{kind}_url",
                             f"{kind}_url": {"url": data},
-                            "uuid": data_id,
                         }
                     )
                 case "audio":
@@ -110,9 +111,10 @@ class MultimodalDocument(Document):
                         {
                             "type": "input_audio",
                             "input_audio": {"data": data, "format": file_format},
-                            "uuid": data_id,
                         }
                     )
+            if data_id:
+                content[-1]["uuid"] = data_id
         return content
 
     @overload
@@ -160,15 +162,17 @@ class MultimodalDocument(Document):
         """
         kind, data = _load_multimodal_data(kind, data, file_path)
         if data_id:
-            if len(data_id) > 32:
-                raise PydanticCustomError(
+            if not (isinstance(data_id, str) and len(data_id) <= 32):
+                _raise_validation_error_with_info(
                     "invalid_uuid_provided",
                     'MultimodalDocument.add_field received invalid "data_id", uuid is a string of length 32',
                     {"data_id": data_id},
                 )
-        else:
+        elif kind != "text":
             data_id = uuid.uuid4().hex
-        self.data.append((kind, data, data_id))
+        else:
+            data_id = ""
+        self._data.append((kind, data, data_id))
         return self
 
 
@@ -177,44 +181,43 @@ def _load_multimodal_data(
     data: str = NOT_SET,
     file_path: Path = NOT_SET,
 ) -> tuple[Literal["text", "image", "audio", "video"], str]:
-    error_context = {"kind": kind, "file_path": file_path, "data": data}
     if kind not in ["text", "image", "audio", "video"]:
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             "unknown_kind",
             f'Unknown kind of multimodal file: {kind}, supported option: ["text", "image", "audio", "video"]',
-            error_context,
+            dict(kind=kind),
         )
     if file_path is None and data is None:
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             f"no_{kind}_source_provided",
             f"MultimodalDocument.add_field received no data of {kind} type",
-            error_context,
+            dict(data=data, file_path=file_path),
         )
     if file_path is not None and data is not None:
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             f"too_many_{kind}_source_provided",
             'MultimodalDocument.add_field cannot accept both "file_path" and "data", please only set one',
-            error_context,
+            dict(data=data, file_path=file_path),
         )
     if isinstance(data, str):
         if kind == "text" or re.match(f"data:{kind}/([a-z0-9_]+);base64,", data):
             return kind, data
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             f"invalid_{kind}_data_provided",
             f'MultimodalDocument.add_field received invalid "data", this value should start with "data:{kind}/"',
-            error_context,
+            dict(data=data),
         )
     if not isinstance(file_path, Path):
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             f"invalid_{kind}_file_path_provided",
             'MultimodalDocument.add_field received invalid "file_path", this value should be a Path',
-            error_context,
+            dict(file_path=file_path),
         )
     if not file_path.is_file():
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             f"{kind}_path_invalid",
             f"Unable to open {kind} file at {file_path}",
-            error_context,
+            dict(kind=kind, file_path=file_path),
         )
     file_ext = file_path.suffix.casefold().replace(".jpg", ".jpeg").removeprefix(".")
     b64_prefix = f"data:{kind}/{file_ext};base64,"
@@ -223,8 +226,14 @@ def _load_multimodal_data(
             return kind, file_path.read_text(encoding="utf-8")
         return kind, b64_prefix + base64.b64encode(file_path.read_bytes()).decode()
     except Exception as e:
-        raise PydanticCustomError(
+        _raise_validation_error_with_info(
             f"error_loading_{kind}",
             f"Unable to load {kind} file into base64: {e}",
-            error_context,
-        ) from e
+            dict(kind=kind, file_path=file_path),
+        )
+
+
+def _raise_validation_error_with_info(error_type: str, message: str, context: dict, title: str = "MultimodalDocument"):
+    """Raise pydantic validation error with sufficient information to user"""
+    err = PydanticCustomError(error_type, message, context)
+    raise ValidationError.from_exception_data(title, [dict(type=err, input=context)])

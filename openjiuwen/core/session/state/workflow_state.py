@@ -106,10 +106,10 @@ class CommitState(StateCollection):
         result = self._io_state.get_by_prefix(schema, self._parent_id)
         return result
 
-    def get_outputs(self, node_id) -> Optional[Any]:
+    def get_outputs(self, node_id = None) -> Optional[Any]:
         if self._io_state is None:
             return None
-        return self._io_state.get_by_prefix(node_id, self._parent_id)
+        return self._io_state.get_by_prefix(node_id if node_id else self._node_id, self._parent_id)
 
     def get_inputs_by_transformer(self, transformer: Callable) -> dict:
         if self._io_state is None:

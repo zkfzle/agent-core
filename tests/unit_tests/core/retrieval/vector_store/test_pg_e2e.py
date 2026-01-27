@@ -129,7 +129,7 @@ async def test_workflow_agent_kb_flow(mock_sessionmaker, mock_create_engine, moc
         pg_uri="postgresql+asyncpg://mock_user:mock_pass@localhost/mock_db"
     )
     # Inject real table object to avoid sqlalchemy coercion error with MagicMock
-    pg_store._table = Table(
+    pg_store.table_ref = Table(
         "pg_collection", MetaData(),
         Column("id", String, primary_key=True),
         Column("content", Text),
@@ -196,6 +196,7 @@ class MockRetrievalTool:
         results = await self.kb.retrieve(query)
         return "\n".join([r.text for r in results])
 
+
 class MockLLMAgent:
     def __init__(self, tools):
         self.tools = {t.name: t for t in tools}
@@ -229,7 +230,7 @@ async def test_llm_agent_retrieval(mock_sessionmaker, mock_create_engine, mock_p
         config=vs_config,
         pg_uri="postgresql+asyncpg://mock:mock@localhost/db"
     )
-    pg_store._table = Table(
+    pg_store.table_ref = Table(
         "agent_collection", MetaData(),
         Column("id", String, primary_key=True),
         Column("content", Text),
@@ -267,5 +268,3 @@ async def test_llm_agent_retrieval(mock_sessionmaker, mock_create_engine, mock_p
     # Verify
     assert "Found info: Secret Agent Info" in response
     assert mock_pg_session.execute.called
-    
-    print("LLM Agent E2E Test Passed")

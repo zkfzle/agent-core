@@ -106,7 +106,13 @@ class TestPGVectorStore:
     @pytest.mark.asyncio
     @patch("openjiuwen.core.retrieval.vector_store.pg_store.create_async_engine")
     @patch("openjiuwen.core.retrieval.vector_store.pg_store.async_sessionmaker")
-    async def test_search_metric_handling(self, mock_sessionmaker, mock_create_engine, vector_store_config, mock_session_factory):
+    async def test_search_metric_handling(
+        self,
+        mock_sessionmaker,
+        mock_create_engine,
+        vector_store_config,
+        mock_session_factory
+    ):
         """UT-003 & Functional C: Test search with different metrics"""
         mock_sessionmaker.return_value = MagicMock(return_value=mock_session_factory)
         mock_create_engine.return_value = AsyncMock()
@@ -165,7 +171,13 @@ class TestPGVectorStore:
     @pytest.mark.asyncio
     @patch("openjiuwen.core.retrieval.vector_store.pg_store.create_async_engine")
     @patch("openjiuwen.core.retrieval.vector_store.pg_store.async_sessionmaker")
-    async def test_sparse_search(self, mock_sessionmaker, mock_create_engine, vector_store_config, mock_session_factory):
+    async def test_sparse_search(
+        self,
+        mock_sessionmaker,
+        mock_create_engine,
+        vector_store_config,
+        mock_session_factory
+    ):
         """Functional C: Test sparse search generation"""
         mock_sessionmaker.return_value = MagicMock(return_value=mock_session_factory)
         

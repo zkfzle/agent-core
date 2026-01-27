@@ -5,6 +5,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from openjiuwen.core.common import Param
 from openjiuwen.core.memory import MemoryChromaVectorStore
 from openjiuwen.core.foundation.store import DbBasedKVStore
 from openjiuwen.core.retrieval import EmbeddingConfig
@@ -488,7 +489,10 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
         )
         llm_agent_config.memory_config = self._create_memory_scope_config()
         llm_agent_config.agent_memory_config = AgentMemoryConfig(
-            mem_variables=[],
+            mem_variables=[
+                Param.string(name="name",description="用户的姓名", required=False),
+                Param.string(name="career", description="用户的职业", required=False),
+            ],
             enable_long_term_mem=True
         )
         llm_agent: LLMAgent = create_llm_agent(
@@ -502,11 +506,14 @@ class LLMAgentTest(unittest.IsolatedAsyncioTestCase):
                                          "user_id": user_id,
                                          "scope_id": scope_id})
         print(f"LLMAgent 输出结果：{result}")
+        await asyncio.sleep(30)
         result = await llm_agent.invoke({"query": "我叫什么名字",
                                          "user_id": user_id,
                                          "scope_id": scope_id})
         print(f"LLMAgent 输出结果：{result}")
-        await asyncio.sleep(20)
+        result = await memory_engine.get_variables(user_id=user_id, scope_id=scope_id)
+        print(f"memory variables: {result}")
+        self.assertEqual(len(result), 2)
         result = await memory_engine.search_user_mem(user_id=user_id, scope_id=scope_id, query="我叫什么名字", num=1)
         self.assertEqual(len(result), 1)  # may be [] is llm_agent.invoke return too fast
         print("memory result:", result[0])

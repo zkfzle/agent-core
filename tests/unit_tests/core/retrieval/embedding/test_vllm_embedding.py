@@ -3,7 +3,7 @@
 VLLM embedding model implementation test cases
 """
 
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -80,7 +80,7 @@ class TestVLLMEmbedding:
         doc.add_field("text", "Hello world")
         kwargs = {"other_param": "value", "another": 123}
 
-        result = VLLMEmbedding.parse_multimodal_input(doc, kwargs)
+        _ = VLLMEmbedding.parse_multimodal_input(doc, kwargs)
 
         assert kwargs["other_param"] == "value"
         assert kwargs["another"] == 123
@@ -96,7 +96,7 @@ class TestVLLMEmbedding:
         doc.add_field("audio", data=media["audio"])
 
         kwargs = {}
-        result = VLLMEmbedding.parse_multimodal_input(doc, kwargs)
+        _ = VLLMEmbedding.parse_multimodal_input(doc, kwargs)
 
         assert len(kwargs["extra_body"]["messages"]) == 2
         user_message = kwargs["extra_body"]["messages"][1]

@@ -392,7 +392,7 @@ class ReActAgent(BaseAgent):
             skill_prompt = self._skill_util.get_skill_prompt()
             system_messages[-1]["content"] = system_messages[-1]["content"] + "\n" + skill_prompt
 
-        # Get tool info from _ability_kit
+        # Get tool info from _ability_manager
         tools = await self.list_tool_info()
 
         # ReAct loop

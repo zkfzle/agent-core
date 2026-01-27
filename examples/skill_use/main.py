@@ -45,7 +45,7 @@ async def main():
         "What is the store's average profit margin?"
     )
     skills_dir = Path(os.getenv("SKILLS_DIR")).expanduser().resolve()
-
+    files_base_dir = os.getenv("FILES_BASE_DIR", str(Path(__file__).resolve().parent))
     session_id = "skill_session"
     sys_operation_id = "default_sysop"
     max_iterations = int(os.getenv("MAX_ITERATIONS", "40"))
@@ -56,7 +56,8 @@ async def main():
     model_provider = (os.getenv("MODEL_PROVIDER", "OpenAI") or "OpenAI").strip()
 
     system_prompt = (
-        "You are an intelligent assistant."
+        "You are an intelligent assistant.\n"
+        f"All user-provided files are located at '{files_base_dir}'\n"
     )
 
     from openjiuwen.core.runner.runner import Runner

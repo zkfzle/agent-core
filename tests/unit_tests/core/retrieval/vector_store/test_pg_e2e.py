@@ -40,14 +40,17 @@ class MockEmbedding(Embedding):
     def dimension(self):
         return 2
 
+
 class MockParser(Parser):
     async def parse(self, file_path, **kwargs):
         return [Document(text="content from file", metadata={"source": file_path})]
+
 
 class MockChunker(Chunker):
     def chunk_documents(self, documents):
         # Return documents as chunks directly for simplicity
         return documents
+
 
 class MockIndexer(Indexer):
     def __init__(self, vector_store):
@@ -87,6 +90,7 @@ class MockIndexer(Indexer):
     async def get_index_info(self, *args, **kwargs):
         return {}
 
+
 @pytest.fixture
 def mock_pg_session():
     mock_session = MagicMock()
@@ -99,6 +103,7 @@ def mock_pg_session():
     mock_transaction.__aexit__ = AsyncMock(return_value=None)
     mock_session.begin.return_value = mock_transaction
     return mock_session
+
 
 @pytest.mark.asyncio
 @patch("openjiuwen.core.retrieval.vector_store.pg_store.create_async_engine")
@@ -124,7 +129,7 @@ async def test_workflow_agent_kb_flow(mock_sessionmaker, mock_create_engine, moc
         pg_uri="postgresql+asyncpg://mock_user:mock_pass@localhost/mock_db"
     )
     # Inject real table object to avoid sqlalchemy coercion error with MagicMock
-    pg_store.table_ref = Table(
+    pg_store._table = Table(
         "pg_collection", MetaData(),
         Column("id", String, primary_key=True),
         Column("content", Text),
@@ -177,6 +182,8 @@ async def test_workflow_agent_kb_flow(mock_sessionmaker, mock_create_engine, moc
     assert mock_pg_session.execute.called
     assert len(results) == 1
     assert results[0].text == "This is a workflow document"
+    
+    print("Workflow Agent E2E Test Passed")
 
 
 # Mock Agent classes for Scene 2
@@ -203,6 +210,7 @@ class MockLLMAgent:
             return f"Found info: {result}"
         return "I don't know."
 
+
 @pytest.mark.asyncio
 @patch("openjiuwen.core.retrieval.vector_store.pg_store.create_async_engine")
 @patch("openjiuwen.core.retrieval.vector_store.pg_store.async_sessionmaker")
@@ -221,7 +229,7 @@ async def test_llm_agent_retrieval(mock_sessionmaker, mock_create_engine, mock_p
         config=vs_config,
         pg_uri="postgresql+asyncpg://mock:mock@localhost/db"
     )
-    pg_store.table_ref = Table(
+    pg_store._table = Table(
         "agent_collection", MetaData(),
         Column("id", String, primary_key=True),
         Column("content", Text),
@@ -259,3 +267,5 @@ async def test_llm_agent_retrieval(mock_sessionmaker, mock_create_engine, mock_p
     # Verify
     assert "Found info: Secret Agent Info" in response
     assert mock_pg_session.execute.called
+    
+    print("LLM Agent E2E Test Passed")

@@ -182,8 +182,6 @@ async def test_workflow_agent_kb_flow(mock_sessionmaker, mock_create_engine, moc
     assert mock_pg_session.execute.called
     assert len(results) == 1
     assert results[0].text == "This is a workflow document"
-    
-    print("Workflow Agent E2E Test Passed")
 
 
 # Mock Agent classes for Scene 2

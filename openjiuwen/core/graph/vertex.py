@@ -173,6 +173,17 @@ class Vertex(AsyncAtomicNode, StreamConsumer):
                     results = {key: value for key, value in results.items() if value is not None}
         else:
             results = outputs_transformer(results)
+        is_mix_mode = self.is_end_node and self._has_call
+        if results and isinstance(results, dict) and is_mix_mode and self._has_stream_call:
+            # need refactor merge state
+            outputs = results.get("output")
+            if outputs and not isinstance(outputs, list):
+                results["output"] = [outputs]
+            old_outputs = self._session.state().get_outputs()
+            if isinstance(old_outputs, dict) and isinstance(old_outputs.get("output"), list) and isinstance(
+                    results.get("output"), list):
+                results["output"].extend(old_outputs.get("output"))
+
         if results is not None:
             self._session.state().set_outputs(results)
         await self.__trace_component_outputs__(results)

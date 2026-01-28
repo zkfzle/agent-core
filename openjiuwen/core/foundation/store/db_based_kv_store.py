@@ -66,7 +66,7 @@ class DbBasedKVStore(BaseKVStore):
                 if row is not None:
                     try:
                         data = json.loads(row.value)
-                        old_expire = data.get("expire")
+                        old_expire = data.get("expiry")
                         if old_expire is None or old_expire > now:
                             return False
                     except json.JSONDecodeError:

@@ -1,5 +1,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+
 import asyncio
 import datetime
 import os
@@ -42,6 +43,20 @@ class _ListItemsSpec:
     file_types: Optional[List[str]] = None
 
 
+@dataclass
+class _ReadParams:
+    """Read parameters for file operations."""
+
+    path: str
+    head: Optional[int] = None
+    tail: Optional[int] = None
+    line_range: Optional[Tuple[int, int]] = None
+    is_stream: bool = False
+    encoding: str = "utf-8"
+    mode: Literal['text', 'bytes'] = "text"
+    file_path: Optional[pathlib.Path] = None
+
+
 @operation(name="fs", mode=OperationMode.LOCAL, description="local fs operation")
 class FsOperation(BaseFsOperation):
     """File system operation"""
@@ -60,13 +75,17 @@ class FsOperation(BaseFsOperation):
     ) -> ReadFileResult:
         """
         Asynchronously read file with specified mode and parameters.
+        Mutually exclusive parameters: Only one of head, tail, or line_range can be specified.
 
         Args:
             path: Full or relative path to the file to read (required).
             mode: Reading mode - "text" (line-based, default) or "bytes" (raw bytes).
             head: Number of lines to read from the start (text mode only).
+                  0 is equivalent to None.
             tail: Number of lines to read from the end (text mode only).
+                  0 is equivalent to None.
             line_range: Specific line range to read (start, end) - 1-indexed, inclusive (text mode only).
+                  If start <= 0 or end <= 0 or start > end, returns empty content.
             encoding: Character encoding for text mode (default: utf-8).
             chunk_size: Buffer size for bytes mode reading (default: 8192 bytes).
             options: Extended configuration options (dict, optional).
@@ -75,18 +94,37 @@ class FsOperation(BaseFsOperation):
             ReadFileResult: Structured result.
         """
         try:
-            file_path = self._resolve_path(path)
-            if not file_path.is_file():
-                return ReadFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="read_file",
-                        error_msg=f"File not found: {file_path}")
-                )
+            # Validate parameters and resolve path
+            read_params = _ReadParams(
+                path=path,
+                head=head,
+                tail=tail,
+                line_range=line_range,
+                is_stream=False,
+                encoding=encoding,
+                mode=mode
+            )
+            validated_params, error_result = await self._validate_and_resolve_path(
+                read_params, "read_file"
+            )
+            if error_result:
+                return error_result
+
+            # Extract validated parameters
+            head = validated_params.head
+            tail = validated_params.tail
+            line_range = validated_params.line_range
+            file_path = validated_params.file_path
 
             if mode == "bytes":
-                async with aiofiles.open(file_path, mode="rb") as f:
-                    final_content = await f.read(chunk_size)
+                # Check for text mode only parameters in binary mode
+                if head is not None or tail is not None or line_range is not None:
+                    return self._create_error_result(
+                        "read_file",
+                        f"Parameters 'head', 'tail', and 'line_range' are only supported in text mode",
+                        False
+                    )
+                final_content = await self._read_bytes(file_path, chunk_size)
             elif head is None and tail is None and line_range is None:
                 # Fast path for full text reading
                 async with aiofiles.open(file_path, mode="r", encoding=encoding) as f:
@@ -109,12 +147,7 @@ class FsOperation(BaseFsOperation):
                 data=data
             )
         except Exception as e:
-            return ReadFileResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="read_file",
-                    error_msg=str(e))
-            )
+            return self._create_error_result("read_file", str(e), False)
 
     async def read_file_stream(
             self,
@@ -130,13 +163,17 @@ class FsOperation(BaseFsOperation):
     ) -> AsyncIterator[ReadFileStreamResult]:
         """
         Asynchronously read file streaming with specified mode and parameters.
+        Mutually exclusive parameters: Only one of head, tail, or line_range can be specified.
 
         Args:
             path: Full or relative path to the file to read (required).
             mode: Reading mode - "text" (line-based, default) or "bytes" (raw bytes).
             head: Number of lines to read from the start (text mode only).
+                  0 is equivalent to None.
             tail: Number of lines to read from the end (text mode only).
+                  0 is equivalent to None.
             line_range: Specific line range to read (start, end) - 1-indexed, inclusive (text mode only).
+                  If start <= 0 or end <= 0 or start > end, returns empty content.
             encoding: Character encoding for text mode (default: utf-8).
             chunk_size: Buffer size for bytes mode reading (default: 8192 bytes).
             options: Extended configuration options (dict, optional).
@@ -145,79 +182,49 @@ class FsOperation(BaseFsOperation):
             AsyncIterator[ReadFileStreamResult]: Streaming structured results, line-by-line or chunk-by-chunk.
         """
         try:
-            file_path = self._resolve_path(path)
-            if not file_path.is_file():
-                yield ReadFileStreamResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="read_file_stream",
-                        error_msg=f"File not found: {file_path}")
-                )
+            read_params = _ReadParams(
+                path=path,
+                head=head,
+                tail=tail,
+                line_range=line_range,
+                is_stream=True,
+                encoding=encoding,
+                mode=mode
+            )
+
+            validated_params, error_result = await self._validate_and_resolve_path(
+                read_params, "read_file_stream"
+            )
+            if error_result:
+                yield error_result
                 return
 
-            if mode == "text":
-                if tail is not None:
-                    buf = deque(maxlen=tail)
-                    async with aiofiles.open(file_path, mode="r", encoding=encoding) as f:
-                        async for line in f:
-                            buf.append(line.rstrip("\n"))
-                    for i, content in enumerate(buf):
-                        yield ReadFileStreamResult(
-                            code=StatusCode.SUCCESS.code,
-                            message=StatusCode.SUCCESS.errmsg,
-                            data=ReadFileChunkData(
-                                path=str(file_path), chunk_content=content, mode=mode,
-                                chunk_size=len(content.encode(encoding)), chunk_index=i,
-                                is_last_chunk=(i == len(buf) - 1)
-                            )
-                        )
+            # Extract validated parameters
+            head = validated_params.head
+            tail = validated_params.tail
+            line_range = validated_params.line_range
+            file_path = validated_params.file_path
+
+            # bytes mode
+            if mode != "text":
+                if head is not None or tail is not None or line_range is not None:
+                    yield self._create_error_result(
+                        "read_file_stream",
+                        "Parameters 'head', 'tail', and 'line_range' are only supported in text mode",
+                        True,
+                    )
                     return
 
-                async with aiofiles.open(file_path, mode="r", encoding=encoding) as f:
-                    index = 0
-                    async for line in f:
-                        content_str = line.rstrip("\n")
-                        line_no = index + 1
-                        if line_range:
-                            start, end = line_range
-                            if not (start <= line_no <= end):
-                                index += 1
-                                continue
-                        elif head is not None and index >= head:
-                            break
+                async for chunk in self._read_bytes_stream(file_path, chunk_size):
+                    yield chunk
+                return
 
-                        yield ReadFileStreamResult(
-                            code=StatusCode.SUCCESS.code,
-                            message=StatusCode.SUCCESS.errmsg,
-                            data=ReadFileChunkData(
-                                path=str(file_path), chunk_content=content_str, mode=mode,
-                                chunk_size=len(content_str.encode(encoding)), chunk_index=index, is_last_chunk=False
-                            )
-                        )
-                        index += 1
-            else:
-                async with aiofiles.open(file_path, mode="rb") as f:
-                    index = 0
-                    while True:
-                        chunk_bytes = await f.read(chunk_size)
-                        if not chunk_bytes:
-                            break
-                        yield ReadFileStreamResult(
-                            code=StatusCode.SUCCESS.code,
-                            message=StatusCode.SUCCESS.errmsg,
-                            data=ReadFileChunkData(
-                                path=str(file_path), chunk_content=chunk_bytes, mode=mode,
-                                chunk_size=len(chunk_bytes), chunk_index=index, is_last_chunk=False
-                            )
-                        )
-                        index += 1
+            # text mode
+            async for chunk in self._stream_text_file(validated_params):
+                yield chunk
+
         except Exception as e:
-            yield ReadFileStreamResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="read_file_stream",
-                    error_msg=str(e))
-            )
+            yield self._create_error_result("read_file_stream", str(e), True)
 
     async def write_file(
             self,
@@ -897,3 +904,261 @@ class FsOperation(BaseFsOperation):
 
         self._sort_items(items, spec.sort_by, spec.sort_descending)
         return items
+
+    def _validate_read_params(
+            self,
+            read_params: _ReadParams,
+    ):
+        """
+        Validate read parameters.
+
+        Returns:
+            (head, tail, line_range, error_msg)
+        """
+        head = read_params.head
+        tail = read_params.tail
+        line_range = read_params.line_range
+
+        # Handle zero values - treat as not passed (return full content)
+        if head == 0:
+            head = None
+        if tail == 0:
+            tail = None
+
+        # Mutually exclusive checks
+        if tail is not None:
+            if head is not None:
+                return None, None, None, f"tail and head cannot be specified simultaneously"
+            if line_range is not None:
+                return None, None, None, f"tail and line_range cannot be specified simultaneously"
+        elif head is not None and line_range is not None:
+            return None, None, None, f"head and line_range cannot be specified simultaneously"
+        return head, tail, line_range, None
+
+    @staticmethod
+    def _create_error_result(execution: str, error_msg: str, is_stream: bool = False):
+        """
+        Create error result for file operations.
+
+        Args:
+            execution: The operation being executed.
+            error_msg: The error message.
+            is_stream: Whether the result is for a stream operation.
+
+        Returns:
+            ReadFileResult or ReadFileStreamResult with error information.
+        """
+        error_code = StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+        error_message = StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
+            execution=execution,
+            error_msg=error_msg
+        )
+        if is_stream:
+            return ReadFileStreamResult(
+                code=error_code,
+                message=error_message
+            )
+        else:
+            return ReadFileResult(
+                code=error_code,
+                message=error_message
+            )
+
+    async def _validate_and_resolve_path(
+            self,
+            read_params: _ReadParams,
+            execution: str,
+    ):
+        """
+        Validate parameters and resolve path for file operations.
+        
+        Returns:
+            Tuple[Optional[_ReadParams], Optional[Union[ReadFileResult, ReadFileStreamResult]]]:
+                - Validated ReadParams object with resolved file_path
+                - Error result if validation failed
+        """
+        head, tail, line_range, error_msg = self._validate_read_params(read_params)
+        if error_msg:
+            error_result = self._create_error_result(
+                execution,
+                error_msg,
+                read_params.is_stream,
+            )
+            return None, error_result
+
+        file_path = self._resolve_path(read_params.path)
+        if not file_path.is_file():
+            error_result = self._create_error_result(
+                execution,
+                f"File not found: {file_path}",
+                read_params.is_stream,
+            )
+            return None, error_result
+
+        # Create a new ReadParams with validated values
+        validated_params = _ReadParams(
+            path=read_params.path,
+            head=head,
+            tail=tail,
+            line_range=line_range,
+            is_stream=read_params.is_stream,
+            encoding=getattr(read_params, 'encoding', 'utf-8'),
+            mode=getattr(read_params, 'mode', 'text'),
+            file_path=file_path
+        )
+
+        return validated_params, None
+
+    @staticmethod
+    async def _read_bytes(file_path: pathlib.Path, chunk_size: int):
+        """
+        Read file in binary mode.
+
+        Args:
+            file_path: The path to the file.
+            chunk_size: Buffer size for reading.
+
+        Returns:
+            The read bytes content.
+        """
+        async with aiofiles.open(file_path, mode="rb") as f:
+            return await f.read(chunk_size)
+
+    @staticmethod
+    async def _read_bytes_stream(file_path: pathlib.Path, chunk_size: int):
+        """
+        Read file in binary mode as a stream.
+
+        Args:
+            file_path: The path to the file.
+            chunk_size: Buffer size for reading.
+
+        Yields:
+            ReadFileStreamResult with chunk data.
+        """
+        async with aiofiles.open(file_path, mode="rb") as f:
+            index = 0
+            while True:
+                chunk_bytes = await f.read(chunk_size)
+                if not chunk_bytes:
+                    break
+                yield ReadFileStreamResult(
+                    code=StatusCode.SUCCESS.code,
+                    message=StatusCode.SUCCESS.errmsg,
+                    data=ReadFileChunkData(
+                        path=str(file_path), chunk_content=chunk_bytes, mode="bytes",
+                        chunk_size=len(chunk_bytes), chunk_index=index, is_last_chunk=False
+                    )
+                )
+                index += 1
+
+    @staticmethod
+    async def _stream_text_file(read_params: _ReadParams):
+        file_path = read_params.file_path
+        encoding = read_params.encoding
+        mode = read_params.mode
+        head = read_params.head
+        tail = read_params.tail
+        line_range = read_params.line_range
+
+        if tail is not None and tail < 0:
+            # Return empty content for negative tail
+            yield ReadFileStreamResult(
+                code=StatusCode.SUCCESS.code,
+                message=StatusCode.SUCCESS.errmsg,
+                data=ReadFileChunkData(
+                    path=str(file_path),
+                    chunk_content="",
+                    mode=mode,
+                    chunk_size=0,
+                    chunk_index=0,
+                    is_last_chunk=True,
+                ),
+            )
+            return
+
+        if head is not None and head < 0:
+            # Return empty content for negative head
+            yield ReadFileStreamResult(
+                code=StatusCode.SUCCESS.code,
+                message=StatusCode.SUCCESS.errmsg,
+                data=ReadFileChunkData(
+                    path=str(file_path),
+                    chunk_content="",
+                    mode=mode,
+                    chunk_size=0,
+                    chunk_index=0,
+                    is_last_chunk=True,
+                ),
+            )
+            return
+
+        if line_range is not None:
+            start, end = line_range
+            if start <= 0 or end <= 0 or start > end:
+                # Return empty content for invalid line_range
+                yield ReadFileStreamResult(
+                    code=StatusCode.SUCCESS.code,
+                    message=StatusCode.SUCCESS.errmsg,
+                    data=ReadFileChunkData(
+                        path=str(file_path),
+                        chunk_content="",
+                        mode=mode,
+                        chunk_size=0,
+                        chunk_index=0,
+                        is_last_chunk=True,
+                    ),
+                )
+                return
+
+        # tail
+        if tail is not None:
+            buf = deque(maxlen=tail)
+            async with aiofiles.open(file_path, mode="r", encoding=encoding) as f:
+                async for line in f:
+                    buf.append(line.rstrip("\n"))
+
+            for i, content in enumerate(buf):
+                yield ReadFileStreamResult(
+                    code=StatusCode.SUCCESS.code,
+                    message=StatusCode.SUCCESS.errmsg,
+                    data=ReadFileChunkData(
+                        path=str(file_path),
+                        chunk_content=content,
+                        mode=mode,
+                        chunk_size=len(content.encode(encoding)),
+                        chunk_index=i,
+                        is_last_chunk=(i == len(buf) - 1),
+                    ),
+                )
+            return
+
+        # head / line_range / full
+        async with aiofiles.open(file_path, mode="r", encoding=encoding) as f:
+            index = 0
+            async for line in f:
+                line_no = index + 1
+                content = line.rstrip("\n")
+
+                if line_range is not None:
+                    start, end = line_range
+                    if not (start <= line_no <= end):
+                        index += 1
+                        continue
+
+                elif head is not None and index >= head:
+                    break
+
+                yield ReadFileStreamResult(
+                    code=StatusCode.SUCCESS.code,
+                    message=StatusCode.SUCCESS.errmsg,
+                    data=ReadFileChunkData(
+                        path=str(file_path),
+                        chunk_content=content,
+                        mode=mode,
+                        chunk_size=len(content.encode(encoding)),
+                        chunk_index=index,
+                        is_last_chunk=False,
+                    ),
+                )
+                index += 1

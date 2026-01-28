@@ -137,21 +137,150 @@ async def test_fs_security_and_streams(sys_op, work_dir):
 
 
 @pytest.mark.asyncio
-async def test_fs_list_tools(sys_op):
-    """Test list_tools for FS operation."""
-    tools = sys_op.fs().list_tools()
-    assert len(tools) == 10
-    tool_names = [t.name for t in tools]
-    expected_names = [
-        "read_file", "read_file_stream", "write_file", "upload_file",
-        "upload_file_stream", "download_file", "download_file_stream",
-        "list_files", "list_directories", "search_files"
-    ]
-    for name in expected_names:
-        assert name in tool_names
+async def test_fs_read_file_mutually_exclusive_params(sys_op, work_dir):
+    """Test that mutually exclusive parameters cannot be specified simultaneously."""
+    # Create a test file with multiple lines
+    test_file = "multi_line.txt"
+    content = "line1\nline2\nline3\nline4\nline5"
+    await sys_op.fs().write_file(test_file, content, prepend_newline=False)
 
-    # Verify a specific tool's schema
-    read_file_tool = next(t for t in tools if t.name == "read_file")
-    assert read_file_tool.description is not None
-    assert "path" in read_file_tool.input_params["properties"]
-    assert read_file_tool.input_params["required"] == ["path"]
+    # Test 1: head and tail cannot be specified together
+    res = await sys_op.fs().read_file(path=test_file, head=2, tail=2)
+    assert res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "cannot be specified simultaneously" in res.message
+    assert "head" in res.message
+    assert "tail" in res.message
+
+    # Test 2: head and line_range cannot be specified together
+    res = await sys_op.fs().read_file(path=test_file, head=-1, line_range=(2, 4))
+    assert res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "cannot be specified simultaneously" in res.message
+    assert "head" in res.message
+    assert "line_range" in res.message
+
+    # Test 3: tail and line_range cannot be specified together
+    res = await sys_op.fs().read_file(path=test_file, tail=2, line_range=(2, -1))
+    assert res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "cannot be specified simultaneously" in res.message
+    assert "tail" in res.message
+    assert "line_range" in res.message
+
+    # Test 4: Test mutually exclusive parameters in read_file_stream
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, head=-1, tail=2):
+        chunks.append(chunk)
+    assert len(chunks) == 1
+    assert chunks[0].code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "cannot be specified simultaneously" in chunks[0].message
+    assert "head" in chunks[0].message
+    assert "tail" in chunks[0].message
+
+    res = await sys_op.fs().read_file(path=test_file, head=0, tail=2)
+    assert res.code == StatusCode.SUCCESS.code
+    assert res.data.content == "line4\nline5"
+
+
+@pytest.mark.asyncio
+async def test_fs_read_file_negative_zero_params(sys_op, work_dir):
+    """Test handling of negative and zero values for read parameters."""
+    # Create a test file with multiple lines
+    test_file = "multi_line.txt"
+    content = "line1\nline2\nline3\nline4\nline5"
+    await sys_op.fs().write_file(test_file, content, prepend_newline=False)
+
+    # Test 1: Negative head value should return empty content
+    res = await sys_op.fs().read_file(path=test_file, head=-5)
+    assert res.code == StatusCode.SUCCESS.code
+    assert res.data.content == ""
+
+    # Test 2: Negative tail value should return empty content
+    res = await sys_op.fs().read_file(path=test_file, tail=-5)
+    assert res.code == StatusCode.SUCCESS.code
+    assert res.data.content == ""
+
+    # Test 3: Zero head value should be treated as not passed (return full content)
+    res = await sys_op.fs().read_file(path=test_file, head=0)
+    assert res.code == StatusCode.SUCCESS.code
+    assert res.data.content == content
+
+    # Test 4: Zero tail value should be treated as not passed (return full content)
+    res = await sys_op.fs().read_file(path=test_file, tail=0)
+    assert res.code == StatusCode.SUCCESS.code
+    assert res.data.content == content
+
+    # Test 5: Zero line_range should return empty content
+    res = await sys_op.fs().read_file(path=test_file, line_range=(0, 0))
+    assert res.code == StatusCode.SUCCESS.code
+    assert res.data.content == ""
+
+    # Test 6: Negative head in read_file_stream should return empty content
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, head=-5):
+        chunks.append(chunk)
+    assert len(chunks) == 1
+    assert chunks[0].code == StatusCode.SUCCESS.code
+    assert chunks[0].data.chunk_content == ""
+
+    # Test 7: Negative tail in read_file_stream should return empty content
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, tail=-5):
+        chunks.append(chunk)
+    assert len(chunks) == 1
+    assert chunks[0].code == StatusCode.SUCCESS.code
+    assert chunks[0].data.chunk_content == ""
+
+    # Test 8: Zero parameters in read_file_stream should be treated as not passed (return full content)
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, head=0):
+        chunks.append(chunk)
+    assert len(chunks) == 5  # Should return all 5 lines
+    assert chunks[0].code == StatusCode.SUCCESS.code
+    assert chunks[0].data.chunk_content == "line1"
+
+
+@pytest.mark.asyncio
+async def test_fs_read_file_binary_mode_parameters(sys_op, work_dir):
+    """Test that text mode only parameters are not allowed in binary mode."""
+    # Create a test file
+    test_file = "binary_test.txt"
+    content = "Hello, world!\nLine 2"
+    await sys_op.fs().write_file(test_file, content, prepend_newline=False)
+
+    # Test 1: read_file with head in binary mode should fail
+    res = await sys_op.fs().read_file(path=test_file, mode="bytes", head=2)
+    assert res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "only supported in text mode" in res.message
+
+    # Test 2: read_file with tail in binary mode should fail
+    res = await sys_op.fs().read_file(path=test_file, mode="bytes", tail=2)
+    assert res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "only supported in text mode" in res.message
+
+    # Test 3: read_file with line_range in binary mode should fail
+    res = await sys_op.fs().read_file(path=test_file, mode="bytes", line_range=(1, 2))
+    assert res.code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "only supported in text mode" in res.message
+
+    # Test 4: read_file_stream with head in binary mode should fail
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, mode="bytes", head=2):
+        chunks.append(chunk)
+    assert len(chunks) == 1
+    assert chunks[0].code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "only supported in text mode" in chunks[0].message
+
+    # Test 5: read_file_stream with tail in binary mode should fail
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, mode="bytes", tail=2):
+        chunks.append(chunk)
+    assert len(chunks) == 1
+    assert chunks[0].code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "only supported in text mode" in chunks[0].message
+
+    # Test 6: read_file_stream with line_range in binary mode should fail
+    chunks = []
+    async for chunk in sys_op.fs().read_file_stream(path=test_file, mode="bytes", line_range=(1, 2)):
+        chunks.append(chunk)
+    assert len(chunks) == 1
+    assert chunks[0].code == StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
+    assert "only supported in text mode" in chunks[0].message

@@ -30,13 +30,17 @@ class FsOperation(BaseFsOperation):
     ) -> ReadFileResult:
         """
         Asynchronously read file with specified mode and parameters.
+        Mutually exclusive parameters: Only one of head, tail, or line_range can be specified.
 
         Args:
             path: Full or relative path to the file to read (required).
             mode: Reading mode - "text" (line-based, default) or "bytes" (raw bytes).
             head: Number of lines to read from the start (text mode only).
+                  0 is equivalent to None.
             tail: Number of lines to read from the end (text mode only).
+                  0 is equivalent to None.
             line_range: Specific line range to read (start, end) - 1-indexed, inclusive (text mode only).
+                  If start <= 0 or end <= 0 or start > end, returns empty content.
             encoding: Character encoding for text mode (default: utf-8).
             chunk_size: Buffer size for bytes mode reading (default: 8192 bytes).
             options: Extended configuration options (dict, optional).
@@ -60,13 +64,17 @@ class FsOperation(BaseFsOperation):
     ) -> AsyncIterator[ReadFileStreamResult]:
         """
         Asynchronously read file streaming with specified mode and parameters.
+        Mutually exclusive parameters: Only one of head, tail, or line_range can be specified.
 
         Args:
             path: Full or relative path to the file to read (required).
             mode: Reading mode - "text" (line-based, default) or "bytes" (raw bytes).
             head: Number of lines to read from the start (text mode only).
+                  0 is equivalent to None.
             tail: Number of lines to read from the end (text mode only).
+                  0 is equivalent to None.
             line_range: Specific line range to read (start, end) - 1-indexed, inclusive (text mode only).
+                  If start <= 0 or end <= 0 or start > end, returns empty content.
             encoding: Character encoding for text mode (default: utf-8).
             chunk_size: Buffer size for bytes mode reading (default: 8192 bytes).
             options: Extended configuration options (dict, optional).

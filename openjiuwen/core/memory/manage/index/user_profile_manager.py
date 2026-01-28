@@ -114,10 +114,17 @@ class UserProfileManager(BaseMemoryManager):
                     source_id=memory.message_mem_id
                 )
                 mem_id = await self._add_user_profile_memory(user_profile_search_param)
-                await self._add_vector_user_profile_memory(user_id=memory.user_id,
-                                                           scope_id=memory.scope_id,
-                                                           memory_id=mem_id,
-                                                           mem=conf_mem)
+                vector_success = await self._add_vector_user_profile_memory(user_id=memory.user_id,
+                                                                           scope_id=memory.scope_id,
+                                                                           memory_id=mem_id,
+                                                                           mem=conf_mem)
+                if not vector_success:
+                    await self.delete(user_id=memory.user_id, scope_id=memory.scope_id, mem_id=mem_id)
+                    raise build_error(
+                        StatusCode.MEMORY_ADD_MEMORY_EXECUTION_ERROR,
+                        memory_type="user profile",
+                        error_msg=f"user_profile_manager add vector store failed",
+                    )
             elif conf_event == ConflictType.NONE.value:
                 logger.debug(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
             elif conf_event == ConflictType.UPDATE.value:

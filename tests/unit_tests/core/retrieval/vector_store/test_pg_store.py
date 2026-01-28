@@ -323,6 +323,7 @@ class TestPGVectorStore:
         """Test pgvector dimension limit validation"""
         mock_engine = MagicMock()
         mock_create_engine.return_value = mock_engine
+        mock_sessionmaker.return_value = MagicMock(return_value=mock_session_factory)
         
         store = PGVectorStore(config=vector_store_config, pg_uri="uri")
         
@@ -334,20 +335,25 @@ class TestPGVectorStore:
         
         mock_engine.connect.return_value = mock_conn
         
-        # Mock _ensure_extension
-        store._ensure_extension = AsyncMock()
-        
         # 1. Test dim > 2000 should raise Exception (build_error)
+        # Use add() public API to avoid protected member access
+        long_vector = [0.1] * 2001
+        data_long = [{"id": "1", "content": "t", "embedding": long_vector}]
+        
         with pytest.raises(Exception, match="pgvector only supports vector dimensions up to 2000"):
-            await store._get_or_create_table(dim=2001)
+            await store.add(data_long)
             
         # 2. Test dim <= 2000 should NOT raise Exception
-        # It might fail later due to incomplete mocks, but that's fine as long as it's not the dimension error
+        good_vector = [0.1] * 2000
+        data_good = [{"id": "1", "content": "t", "embedding": good_vector}]
+        
         try:
-            await store._get_or_create_table(dim=2000)
+            await store.add(data_good)
         except Exception as e:
             if "pgvector only supports vector dimensions up to 2000" in str(e):
                 pytest.fail("Should not raise dimension error for dim=2000")
+            # Other errors are acceptable as we are primarily testing the validation logic
+            pass
 
     @staticmethod
     def test_init_invalid_config(vector_store_config):

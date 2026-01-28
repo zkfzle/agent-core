@@ -186,6 +186,11 @@ class Termination(BaseError):
 # Module domain exception definitions
 # =========================
 
+class RunnerTermination(Termination):
+    def __init__(self, reason, status, **kwargs):
+        super().__init__(status, **kwargs)
+        self.reason=reason
+
 class WorkflowError(ExecutionError):
     pass
 

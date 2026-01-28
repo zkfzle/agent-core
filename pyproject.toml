@@ -42,6 +42,9 @@ dependencies = [
     # MCP server
     "fastmcp>=2.14.2,<3.0",
 
+    # OBS
+    "esdk-obs-python==3.25.8",
+
     # Document processing
     "docx2txt>=0.8",
     "python-docx>=1.2.0",

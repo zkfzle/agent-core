@@ -1,6 +1,8 @@
 from pathlib import Path
 from abc import abstractmethod, ABC
 
+from obs.model import Content
+
 
 class BaseObjectStorageClient(ABC):
     """
@@ -62,7 +64,9 @@ class BaseObjectStorageClient(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def list_objects(self, bucket_name: str, object_prefix: str, max_objects: str = 100):
+    def list_objects(
+        self, bucket_name: str, object_prefix: str, max_objects: int = 100
+    ) -> list[Content] | None:
         """
         List objects in an object storage bucket with a given prefix.
 

@@ -42,14 +42,11 @@ class OBSClient(BaseObjectStorageClient):
         access_key_id = access_key_id or os.getenv("OBS_ACCESS_KEY_ID")
         secret_access_key = secret_access_key or os.getenv("OBS_SECRET_ACCESS_KEY")
         server = server or os.getenv("OBS_SERVER")
-        self.default_bucket = os.getenv("OBS_BUCKET")
         self.obs_client = ObsClient(
             access_key_id=access_key_id,
             secret_access_key=secret_access_key,
             server=server,
         )
-        self.default_location = "ap-southeast-1"
-        self.default_bucket = os.getenv("OBS_BUCKET")
 
     def create_bucket(self, bucket_name: str, location: str):
         header = CreateBucketHeader(
@@ -64,18 +61,17 @@ class OBSClient(BaseObjectStorageClient):
             )
         else:
             logger.error(
-                f"❌ Create Bucket {bucket_name} at {location} location failed:\n{resp.errorMessage}"
+                f'❌ Create Bucket "{bucket_name}" at "{location}" location failed: '
+                f'{resp.errorCode=} {resp.errorMessage=}'
             )
 
     def delete_bucket(self, bucket_name: str):
         resp = self.obs_client.deleteBucket(bucket_name)
         if resp.status < 300:
-            logger.info(
-                f'🎉 Bucket "{bucket_name}" deleted successfully: {resp.requestId}'
-            )
+            logger.info(f'🎉 Bucket "{bucket_name}" deleted successfully')
         else:
             logger.error(
-                f'❌ Delete Bucket "{bucket_name}" failed:\n{resp.errorMessage}'
+                f'❌ Delete Bucket "{bucket_name}" failed: {resp.errorCode=} {resp.errorMessage=}'
             )
 
     def upload_file(self, bucket_name: str, object_name: str, file_path: str | Path):
@@ -86,11 +82,12 @@ class OBSClient(BaseObjectStorageClient):
         # If status code 2xx is returned, the API call succeeds. Otherwise, the API call fails.
         if resp.status < 300:
             logger.info(
-                f'🎉 Uploading "{object_name}" file "{file_path}" to bucket "{bucket_name}" succeeded'
+                f'🎉 Upload "{object_name}" file "{file_path}" to bucket "{bucket_name}" succeeded'
             )
         else:
             logger.error(
-                f'❌ Uploading "{object_name}" file "{file_path}" to bucket "{bucket_name}" failed: {resp.errorMessage=}'
+                f'❌ Upload "{object_name}" file "{file_path}" to bucket "{bucket_name}" failed: '
+                f"{resp.errorCode=} {resp.errorMessage=}"
             )
 
     def download_file(self, bucket_name: str, object_name: str, file_path: str | Path):
@@ -120,10 +117,13 @@ class OBSClient(BaseObjectStorageClient):
 
                 resp.body.response.close()
 
-            f'🎉 Get Object "{object_name}" successfully saved to "{file_path}"'
+            logger.info(
+                f'🎉 Get object "{object_name}" successfully saved to "{file_path}"'
+            )
         else:
             logger.error(
-                f"❌ Get Object Failed: {resp.requestId=}, {resp.errorCode=}, {resp.errorMessage=}"
+                f'❌ Get object "{object_name}" in bucket "{bucket_name}" failed: '
+                f"{resp.errorCode=}, {resp.errorMessage=}"
             )
 
     def delete_object(self, bucket_name: str, object_name: str):
@@ -136,13 +136,16 @@ class OBSClient(BaseObjectStorageClient):
             )
         else:
             logger.error(
-                f"❌ Delete File Failed: {resp.requestId=}, {resp.errorCode=}, {resp.errorMessage=}"
+                f'❌ Delete file "{object_name}" in bucket "{bucket_name}" failed: '
+                f"{resp.errorCode=}, {resp.errorMessage=}"
             )
 
     def list_objects(
-        self, bucket_name: str, object_prefix: str, max_objects: int = 100,
+        self,
+        bucket_name: str,
+        object_prefix: str,
+        max_objects: int = 100,
     ) -> list[Content] | None:
-        # List objects in the bucket.
         resp = self.obs_client.listObjects(
             bucket_name, object_prefix, max_keys=max_objects, encoding_type="url"
         )
@@ -151,11 +154,14 @@ class OBSClient(BaseObjectStorageClient):
         if resp.status < 300:
             for content in resp.body.contents:
                 logger.info(json.dumps(repr(content), indent=2))
-            logger.info(f'🎉 Successfully listed {len(resp.body.contents)} objects in "{bucket_name}".')
+            logger.info(
+                f'🎉 Successfully listed {len(resp.body.contents)} objects in "{bucket_name}".'
+            )
 
             return resp.body.contents
-        else:
-            logger.error(
-                f"❌ List Objects Failed: {resp.requestId=}, {resp.errorCode=}, {resp.errorMessage=}"
-            )
-            return None
+
+        logger.error(
+            f'❌ List objects in "{bucket_name}" with prefix "{object_prefix}" failed: '
+            f"{resp.errorCode=}, {resp.errorMessage=}"
+        )
+        return None

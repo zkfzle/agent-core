@@ -145,7 +145,10 @@ class PGVectorStore(VectorStore):
             
             if dim > 0:
                 if dim > 2000:
-                    raise ValueError(f"pgvector only supports vector dimensions up to 2000. Got {dim}.")
+                    raise build_error(
+                        StatusCode.RETRIEVAL_KB_DATABASE_CONFIG_INVALID,
+                        error_msg=f"pgvector only supports vector dimensions up to 2000. Got {dim}."
+                    )
                 
                 await self._ensure_extension()
                 # Define table

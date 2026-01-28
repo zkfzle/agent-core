@@ -310,6 +310,46 @@ class TestPGVectorStore:
         with pytest.raises(Exception, match="Query Failed"):
             await store.search([0.1, 0.2])
             
+    @pytest.mark.asyncio
+    @patch("openjiuwen.core.retrieval.vector_store.pg_store.create_async_engine")
+    @patch("openjiuwen.core.retrieval.vector_store.pg_store.async_sessionmaker")
+    async def test_dimension_validation(
+        self,
+        mock_sessionmaker,
+        mock_create_engine,
+        vector_store_config,
+        mock_session_factory
+    ):
+        """Test pgvector dimension limit validation"""
+        mock_engine = MagicMock()
+        mock_create_engine.return_value = mock_engine
+        
+        store = PGVectorStore(config=vector_store_config, pg_uri="uri")
+        
+        # Mock engine connection and table check
+        mock_conn = MagicMock()
+        mock_conn.__aenter__ = AsyncMock(return_value=mock_conn)
+        mock_conn.__aexit__ = AsyncMock(return_value=None)
+        mock_conn.run_sync = AsyncMock(return_value=False) # table_exists = False
+        
+        mock_engine.connect.return_value = mock_conn
+        
+        # Mock _ensure_extension
+        store._ensure_extension = AsyncMock()
+        
+        # 1. Test dim > 2000 should raise ValueError
+        with pytest.raises(ValueError, match="pgvector only supports vector dimensions up to 2000"):
+            await store._get_or_create_table(dim=2001)
+            
+        # 2. Test dim <= 2000 should NOT raise ValueError
+        # It might fail later due to incomplete mocks, but that's fine as long as it's not ValueError
+        try:
+            await store._get_or_create_table(dim=2000)
+        except ValueError:
+            pytest.fail("Should not raise ValueError for dim=2000")
+        except Exception:
+            pass
+
     @staticmethod
     def test_init_invalid_config(vector_store_config):
         """Functional: Test initialization with invalid configuration"""

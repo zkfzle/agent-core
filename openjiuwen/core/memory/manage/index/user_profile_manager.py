@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from typing import Any, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
-from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import Model
 from openjiuwen.core.memory.common.base import generate_idx_name, parse_memory_hit_infos
 from openjiuwen.core.memory.manage.update.conflict_resolution import ConflictResolution
@@ -17,6 +16,8 @@ from openjiuwen.core.memory.manage.mem_model.semantic_store import SemanticStore
 from openjiuwen.core.memory.manage.mem_model.user_mem_store import UserMemStore
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.logging import memory_logger
+from openjiuwen.core.common.logging.events import LogEventType
 
 
 class UserProfileSearchParams(BaseModel):
@@ -105,7 +106,13 @@ class UserProfileManager(BaseMemoryManager):
             if not conf_mem or conf_mem == "":
                 continue
             if conf_id == "-1" and conf_event == ConflictType.ADD.value:
-                logger.debug(f"add conflict info: {conflict}")
+                memory_logger.debug(
+                    "add conflict info",
+                    memory_type="user_profile",
+                    metadata={"conflict": conflict},
+                    event_type=LogEventType.MEMORY_STORE,
+                    operation="add"
+                )
                 user_profile_search_param = UserProfileSearchParams(
                     user_id=memory.user_id,
                     scope_id=memory.scope_id,
@@ -119,15 +126,39 @@ class UserProfileManager(BaseMemoryManager):
                                                            memory_id=mem_id,
                                                            mem=conf_mem)
             elif conf_event == ConflictType.NONE.value:
-                logger.debug(f"none conflict info: {conflict}, new_profile: {memory.profile_mem}")
+                memory_logger.debug(
+                    "none conflict info",
+                    memory_type="user_profile",
+                    metadata={"conflict": conflict, "new_profile": memory.profile_mem},
+                    event_type=LogEventType.MEMORY_STORE,
+                    operation="add"
+                )
             elif conf_event == ConflictType.UPDATE.value:
-                logger.debug(f"update conflict info: {conflict}, update_profile: {memory.profile_mem}")
+                memory_logger.debug(
+                    "update conflict info",
+                    memory_type="user_profile",
+                    metadata={"conflict": conflict, "new_profile": memory.profile_mem},
+                    event_type=LogEventType.MEMORY_STORE,
+                    operation="add"
+                )
                 await self.update(memory.user_id, memory.scope_id, conf_id, memory.profile_mem)
             elif conf_event == ConflictType.DELETE.value:
-                logger.debug(f"delete conflict info: {conflict}, new_profile: {memory.profile_mem}")
+                memory_logger.debug(
+                    "delete conflict info",
+                    memory_type="user_profile",
+                    metadata={"conflict": conflict, "new_profile": memory.profile_mem},
+                    event_type=LogEventType.MEMORY_STORE,
+                    operation="add"
+                )
                 await self.delete(memory.user_id, memory.scope_id, conf_id)
             else:
-                logger.debug(f"unknown conflict event: {conflict}")
+                memory_logger.debug(
+                    "unknown conflict event",
+                    memory_type="user_profile",
+                    metadata={"conflict": conflict},
+                    event_type=LogEventType.MEMORY_STORE,
+                    operation="add"
+                )
 
     async def update(self, user_id: str, scope_id: str, mem_id: str, new_memory: str, **kwargs) -> bool:
         time = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
@@ -166,7 +197,14 @@ class UserProfileManager(BaseMemoryManager):
     async def delete(self, user_id: str, scope_id: str, mem_id: str, **kwargs):
         data = await self.mem_store.get(user_id=user_id, scope_id=scope_id, mem_id=mem_id)
         if data is None:
-            logger.error(f"Delete user_profile in store failed, the mem of mem_id({mem_id}) is not exist.")
+            memory_logger.error(
+                "Delete user_profile in store failed",
+                memory_type="user_profile",
+                memory_id=[mem_id],
+                metadata={"user_id": user_id, "scope_id": scope_id},
+                event_type=LogEventType.MEMORY_STORE,
+                operation="delete"
+            )
             return False
         mem_type = kwargs.get("mem_type", MemoryType.USER_PROFILE.value)
         await self.mem_store.delete(mem_id=mem_id, user_id=user_id, scope_id=scope_id)
@@ -177,7 +215,13 @@ class UserProfileManager(BaseMemoryManager):
     async def delete_by_user_id(self, user_id: str, scope_id: str):
         data = await self.mem_store.get_all(user_id=user_id, scope_id=scope_id, mem_type=MemoryType.USER_PROFILE.value)
         if data is None:
-            logger.error(f"Delete user_profile in store failed, the mem of user_id({user_id}) is not exist.")
+            memory_logger.error(
+                "Delete user_profile in store failed, the mem of user_id is not exist.",
+                memory_type="user_profile",
+                metadata={"user_id": user_id, "scope_id": scope_id},
+                event_type=LogEventType.MEMORY_STORE,
+                operation="delete by user id"
+            )
             return False
         mem_ids = [item['id'] for item in data]
         await self.mem_store.batch_delete(user_id=user_id, scope_id=scope_id, mem_ids=mem_ids)
@@ -189,8 +233,13 @@ class UserProfileManager(BaseMemoryManager):
                                 mem_type=MemoryType.USER_PROFILE) -> list[dict[str, Any]]:
         datas = await self.mem_store.get_all(user_id=user_id, scope_id=scope_id, mem_type=mem_type.value)
         if not datas:
-            logger.debug(f"End to get user profile, result is None, "
-                         f"params user_id:{user_id}, scope_id:{scope_id}, mem_type:{mem_type}")
+            memory_logger.debug(
+                "End to get user profile, result is None.",
+                memory_type=mem_type,
+                metadata={"user_id": user_id, "scope_id": scope_id},
+                event_type=LogEventType.MEMORY_STORE,
+                operation="list user profile"
+            )
             return []
         new_datas = []
         if profile_type is not None:

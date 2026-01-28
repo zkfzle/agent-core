@@ -34,6 +34,8 @@ from openjiuwen.core.controller.modules import (
     TaskExecutor,
     TaskExecutorRegistry,
     TaskScheduler,
+    IntentRecognizer,
+    EventHandlerWithIntentRecognition
 )
 from openjiuwen.core.controller.config import ControllerConfig
 from openjiuwen.core.controller.base import Controller
@@ -119,7 +121,9 @@ _NEW_CLASS = [
     "TaskScheduler",
     # =========================     控制器   =============================
     "ControllerConfig",
-    "Controller"
+    "Controller",
+    "IntentRecognizer",
+    "EventHandlerWithIntentRecognition"
 ]
 
 

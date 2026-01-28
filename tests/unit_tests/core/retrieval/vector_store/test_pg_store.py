@@ -337,18 +337,17 @@ class TestPGVectorStore:
         # Mock _ensure_extension
         store._ensure_extension = AsyncMock()
         
-        # 1. Test dim > 2000 should raise ValueError
-        with pytest.raises(ValueError, match="pgvector only supports vector dimensions up to 2000"):
+        # 1. Test dim > 2000 should raise Exception (build_error)
+        with pytest.raises(Exception, match="pgvector only supports vector dimensions up to 2000"):
             await store._get_or_create_table(dim=2001)
             
-        # 2. Test dim <= 2000 should NOT raise ValueError
-        # It might fail later due to incomplete mocks, but that's fine as long as it's not ValueError
+        # 2. Test dim <= 2000 should NOT raise Exception
+        # It might fail later due to incomplete mocks, but that's fine as long as it's not the dimension error
         try:
             await store._get_or_create_table(dim=2000)
-        except ValueError:
-            pytest.fail("Should not raise ValueError for dim=2000")
-        except Exception:
-            pass
+        except Exception as e:
+            if "pgvector only supports vector dimensions up to 2000" in str(e):
+                pytest.fail("Should not raise dimension error for dim=2000")
 
     @staticmethod
     def test_init_invalid_config(vector_store_config):

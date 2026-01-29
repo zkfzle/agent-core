@@ -7,7 +7,7 @@ from typing import Optional, Union, Any, Self
 from pydantic import BaseModel, Field
 from pydantic.config import ExtraValues
 
-from openjiuwen.core.common.exception.errors import BaseError, build_error
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.exception.codes import StatusCode
 
 
@@ -21,7 +21,7 @@ class ModelClientConfig(BaseModel):
     """ModelClient config"""
     client_id: str = Field(default_factory=lambda: str(uuid.uuid4()),
         description="The ModelClient client ID is a unique identifier used for registration in the Runner")
-    client_provider: ProviderType = Field(
+    client_provider: Union[ProviderType, str] = Field(
         ...,
         description="Service provider identification, Enumeration value: OpenAI or SiliconFlow"
     )
@@ -44,20 +44,23 @@ class ModelClientConfig(BaseModel):
         by_alias: bool | None = None,
         by_name: bool | None = None,
     ) -> Self:
-        try:
-            return super().model_validate(
-                obj,
-                strict=strict,
-                extra=extra,
-                from_attributes=from_attributes,
-                context=context,
-                by_alias=by_alias,
-                by_name=by_name,
-            )
-        except Exception as exc:
-            if isinstance(exc, BaseError):
-                raise
-            raise build_error(StatusCode.MODEL_CLIENT_CONFIG_INVALID, error_msg=str(exc))
+        cfg = super().model_validate(
+            obj,
+            strict=strict,
+            extra=extra,
+            from_attributes=from_attributes,
+            context=context,
+            by_alias=by_alias,
+            by_name=by_name,
+        )
+        if isinstance(cfg.client_provider, str):
+            from openjiuwen.core.foundation.llm.model import _CLIENT_TYPE_REGISTRY
+            if cfg.client_provider not in _CLIENT_TYPE_REGISTRY:
+                raise build_error(
+                    StatusCode.MODEL_CLIENT_CONFIG_INVALID,
+                    error_msg=f"client_provider '{cfg.client_provider}' is not registered",
+                )
+        return cfg
 
 
 class ModelRequestConfig(BaseModel):

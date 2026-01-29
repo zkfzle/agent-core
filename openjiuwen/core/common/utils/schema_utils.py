@@ -1,5 +1,6 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+import typing
 from typing import Any, Optional, Type, Union, Dict, List, get_type_hints
 from copy import deepcopy
 from jsonschema import validate as jsonschema_validate, ValidationError as JsonSchemaValidationError

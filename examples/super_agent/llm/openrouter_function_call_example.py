@@ -13,7 +13,7 @@ from openai import OpenAI
 
 
 # Initialize OpenAI client for OpenRouter
-openai_client = OpenAI(
+code = OpenAI(
     api_key=os.getenv("API_KEY", "your_api_key_here"),
     base_url=os.getenv("API_BASE", "https://openrouter.ai/api/v1")
 )

@@ -8,6 +8,7 @@ from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, get_origin, get_args, Union, TypeVar, ForwardRef, Literal
+from types import UnionType
 from uuid import UUID
 from pydantic import BaseModel
 
@@ -61,7 +62,7 @@ class OptionalSchemaExtractor(TypeSchemaExtractor):
 
     def can_extract(self, type_hint: Any) -> bool:
         origin = get_origin(type_hint)
-        if origin is Union:
+        if origin in (Union, UnionType):
             args = get_args(type_hint)
             return type(None) in args
         return False
@@ -81,7 +82,7 @@ class UnionSchemaExtractor(TypeSchemaExtractor):
 
     def can_extract(self, type_hint: Any) -> bool:
         origin = get_origin(type_hint)
-        if origin is Union:
+        if origin in (Union, UnionType):
             args = get_args(type_hint)
             return type(None) not in args  # Optional handled separately
         return False

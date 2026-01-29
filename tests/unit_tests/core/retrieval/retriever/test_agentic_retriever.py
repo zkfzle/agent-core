@@ -91,7 +91,7 @@ class TestAgenticRetriever:
                 RetrievalResult(text="Result 1", score=0.9),
             ]
         )
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         # Mock LLM response with JSON format indicating sufficient evidence
         mock_response = MagicMock()
@@ -119,7 +119,7 @@ class TestAgenticRetriever:
                 RetrievalResult(text="Result 1", score=0.9),
             ]
         )
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         # LLM is called twice per iteration (except last): _read and _rewrite
         # Max iter is 3, so: iter1 (_read+_rewrite), iter2 (_read+_rewrite), iter3 (_read only, no _rewrite)
@@ -153,7 +153,7 @@ class TestAgenticRetriever:
                 RetrievalResult(text="Result 1", score=0.9),
             ]
         )
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         # LLM is called twice per iteration: once for _read, once for _rewrite
         # Iteration 1: _read returns empty list, _rewrite says not sufficient
@@ -196,7 +196,7 @@ class TestAgenticRetriever:
                 RetrievalResult(text="Result 1", score=0.9),
             ]
         )
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         mock_response = MagicMock()
         mock_response.content = '{"sufficient": true, "next_question": null}'
@@ -223,7 +223,7 @@ class TestAgenticRetriever:
                 RetrievalResult(text="Result 1", score=0.9),
             ]
         )
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         mock_response = MagicMock()
         mock_response.content = '{"sufficient": true, "next_question": null}'
@@ -250,7 +250,7 @@ class TestAgenticRetriever:
             [RetrievalResult(text="Result 2", score=0.8)],
         ]
         mock_chunk_retriever.retrieve = AsyncMock(side_effect=mock_results)
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         mock_responses = [
             MagicMock(content='{"sufficient": false, "next_question": "rewritten query"}'),
@@ -278,7 +278,7 @@ class TestAgenticRetriever:
                 RetrievalResult(text="Result 1", score=0.9),
             ]
         )
-        mock_graph_retriever._get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
+        mock_graph_retriever.get_retriever_for_mode = MagicMock(return_value=mock_chunk_retriever)
 
         mock_response = MagicMock()
         mock_response.content = '{"sufficient": true, "next_question": null}'

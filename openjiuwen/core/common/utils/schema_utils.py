@@ -226,6 +226,9 @@ class SchemaUtils:
 
         for field_name, field_schema in properties.items():
             field_type = SchemaUtils._convert_schema_to_type(field_schema)
+            # For optional fields and don't have default values
+            if field_name not in required:
+                field_type = typing.Optional[field_type]
             field_config = SchemaUtils._convert_schema_to_field(field_schema, field_name in required)
             field_definitions[field_name] = (field_type, field_config)
 

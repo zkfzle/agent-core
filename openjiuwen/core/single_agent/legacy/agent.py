@@ -347,7 +347,8 @@ class BaseAgent(ABC):
                 )
             else:
                 # Workflow instance: use directly
-                provider = lambda: item
+                current_workflow = item
+                provider = lambda wf=current_workflow: wf
                 workflow_card = item.card
                 is_provider = False
 

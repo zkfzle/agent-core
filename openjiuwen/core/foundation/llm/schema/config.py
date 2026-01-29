@@ -1,7 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import uuid
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 
 from pydantic import BaseModel, Field
 
@@ -10,8 +10,10 @@ class ModelClientConfig(BaseModel):
     """ModelClient config"""
     client_id: str = Field(default_factory=lambda: str(uuid.uuid4()),
         description="The ModelClient client ID is a unique identifier used for registration in the Runner")
-    client_provider: str = Field(...,
-        description="Service provider identification，Enumeration value：OpenAI、SiliconFlow")
+    client_provider: Literal["OpenAI", "SiliconFlow"] = Field(
+        ...,
+        description="Service provider identification, Enumeration value: OpenAI or SiliconFlow"
+    )
     api_key: str = Field(..., description="API key")
     api_base: str = Field(..., description="API base URL")
     timeout: float = Field(default=60.0, description="Request timeout in seconds")

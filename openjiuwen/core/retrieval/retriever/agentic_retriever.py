@@ -142,16 +142,40 @@ class AgenticRetriever(Retriever):
     def _log(self, msg: str, *args) -> None:
         logger.debug(msg, *args)
 
-    async def _llm_call_async(self, prompt: str) -> str:
-        resp = await self.llm.invoke(
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
-        )
-        return resp.content if hasattr(resp, "content") else str(resp)
+    async def _llm_call_async(self, prompt: str) -> Optional[str]:
+        """
+        Invoke the LLM.
+
+        Args:
+            prompt: Prompt to send to the LLM.
+
+        Returns:
+            LLM response string, or None if invocation failed.
+        """
+        try:
+            resp = await self.llm.invoke(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.0,
+            )
+            return resp.content if hasattr(resp, "content") else str(resp)
+        except Exception as e:
+            logger.warning("[Agentic] LLM invocation failed: %s", e)
+            return None
 
     async def _rewrite(
         self, query: str, triples_str: str, question_history: Optional[List[str]] = None
     ) -> Optional[str]:
+        """
+        Analyze if the current facts are sufficient to answer the query, generating a follow-up question if not.
+
+        Args:
+            query: Original user question.
+            triples_str: String representation of knowledge triples in Triple memory.
+            question_history: Question history list.
+
+        Returns:
+            Next question to ask if more info is needed, or None if sufficient.
+        """
         # Format question rewriting history
         if question_history and len(question_history) > 1:
             history_lines = []
@@ -166,8 +190,10 @@ class AgenticRetriever(Retriever):
             triples=triples_str,
             question_rewriting_history=question_rewriting_history,
         )
-        response = (await self._llm_call_async(prompt)).strip()
-
+        response = await self._llm_call_async(prompt)
+        if response is None:
+            return None
+        
         # Parse JSON response
         try:
             response_json = repair_json(response, return_objects=True)
@@ -178,7 +204,7 @@ class AgenticRetriever(Retriever):
                 return None
             return next_question
         except Exception as e:
-            logger.warning("Failed to parse rewrite response as JSON: %s. Response: %s", e, response)
+            logger.warning("[Agentic] Failed to parse rewrite response as JSON: %s. Response: %s", e, response)
             return None
 
     async def _read(
@@ -187,6 +213,17 @@ class AgenticRetriever(Retriever):
         passages: List[RetrievalResult],
         existing_facts: Optional[List[Tuple[str, ...]]] = None,
     ) -> List[Tuple[str, ...]]:
+        """
+        Extract knowledge triples from retrieved passages using the LLM.
+
+        Args:
+            query: Search query.
+            passages: Retrieved passages.
+            existing_facts: Optional list of facts (triples).
+
+        Returns:
+            List of extracted triples.
+        """
         docs = "\n\n".join(p.text for p in passages[:5])
         facts_str = ", ".join(str(fact) for fact in existing_facts) if existing_facts else "None"
         prompt = _READ_PROMPT.format(
@@ -195,9 +232,16 @@ class AgenticRetriever(Retriever):
             facts=facts_str,
         )
         response = await self._llm_call_async(prompt)
-        response_json = repair_json(response, return_objects=True)
-        triples = [tuple(triple) for triple in response_json if isinstance(triple, list) and len(triple) == 3]
-        return triples
+        if response is None:
+            return []
+
+        try:
+            response_json = repair_json(response, return_objects=True)
+            triples = [tuple(triple) for triple in response_json if isinstance(triple, list) and len(triple) == 3]
+            return triples
+        except Exception as e:
+            logger.warning("[Agentic] Failed to parse read response as JSON: %s. Response: %s", e, response)
+            return []
 
     async def retrieve(
         self,
@@ -223,7 +267,7 @@ class AgenticRetriever(Retriever):
             q = queries[-1]
             logger.info("[Agentic] turn=%d query=%s", turn, q)
 
-            chunk_retriever = self.graph_retriever._get_retriever_for_mode(mode, is_chunk=True)
+            chunk_retriever = self.graph_retriever.get_retriever_for_mode(resolved_mode, is_chunk=True)
             chunk_results = await chunk_retriever.retrieve(
                 query=q,
                 top_k=top_k,
@@ -235,7 +279,7 @@ class AgenticRetriever(Retriever):
                 proximal_triples = await self._read(q, chunk_results, existing_facts=None)
                 linked_triples = await self._link_triples(proximal_triples, resolved_mode)
                 logger.debug(
-                    "After the first-read in turn=%r we get proximal_triples=%r\n and linked_triples=%r",
+                    "[Agentic] After the first-read in turn=%r we get proximal_triples=%r\n and linked_triples=%r",
                     turn,
                     proximal_triples,
                     [x.text for x in linked_triples],
@@ -254,7 +298,7 @@ class AgenticRetriever(Retriever):
             memory.batch_extend_memory(triples)
             history_results.append(chunk_results)
             logger.debug(
-                "After memory expansion, turn=%r memory=%r",
+                "[Agentic] After memory expansion, turn=%r memory=%r",
                 turn,
                 memory.memory,
             )
@@ -276,7 +320,7 @@ class AgenticRetriever(Retriever):
         ret = await self._link_passages(memory.memory, resolved_mode)
         combined = rrf_fusion(ret + history_results)[:topk]
         logger.info(
-            "Agent finished: reference chunks=%d, SearchAgent rounds=%d, chunks after rrf fusion=%d",
+            "[Agentic] Agent finished: reference chunks=%d, SearchAgent rounds=%d, chunks after rrf fusion=%d",
             sum(len(g) for g in ret),
             len(history_results),
             len(combined),
@@ -284,10 +328,21 @@ class AgenticRetriever(Retriever):
         return combined
 
     async def _link_triples(self, triples: List[Tuple[str, ...]], mode: str) -> List[RetrievalResult]:
+        """
+        Links proximal triples to triples in the knowledge base.
+
+        Args:
+            triples: List of triples.
+            mode: Retrieval mode (vector, sparse, hybrid).
+
+        Returns:
+            List of unique linked triples.
+        """
         tasks = []
-        triple_retriever = self.graph_retriever._get_retriever_for_mode(mode, is_chunk=False)
+        triple_retriever = self.graph_retriever.get_retriever_for_mode(mode, is_chunk=False)
         for triple in triples:
             triple_str = " ".join(triple)
+            # Fetch SearchResult instead of RetrievalResult since we need ids for deduplication
             task = triple_retriever.retrieve_search_results(
                 query=triple_str,
                 top_k=1,
@@ -295,7 +350,16 @@ class AgenticRetriever(Retriever):
             )
             tasks.append(task)
         search_results = await asyncio.gather(*tasks)
-        search_results = deduplicate([x[0] for x in search_results], key=lambda node: node.id)
+
+        # Flatten and extract the first result if available
+        raw_results = [
+            res_list[0] 
+            for res_list in search_results 
+            if res_list
+        ]
+        search_results = deduplicate(raw_results, key=lambda node: node.id)
+
+        # Map back to RetrievalResult as required by the Graph Expansion flow
         retrieval_results = []
         for result in search_results:
             retrieval_result = RetrievalResult(
@@ -309,7 +373,17 @@ class AgenticRetriever(Retriever):
         return retrieval_results
 
     async def _link_passages(self, triples: List[Tuple[str, ...]], mode: str) -> List[List[RetrievalResult]]:
-        chunk_retriever = self.graph_retriever._get_retriever_for_mode(mode, is_chunk=True)
+        """
+        Links triples to passages in the knowledge base.
+
+        Args:
+            triples: List of triples.
+            mode: Retrieval mode (vector, sparse, hybrid).
+
+        Returns:
+            List of lists of linked passages.
+        """
+        chunk_retriever = self.graph_retriever.get_retriever_for_mode(mode, is_chunk=True)
         tasks = []
         for triple in triples:
             triple_str = " ".join(triple)

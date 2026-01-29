@@ -54,6 +54,7 @@ dependencies = [
     "pycryptodome>=3.23.0",
     "charset-normalizer>=3.4.4",
     "pysbd>=0.3.4",
+    "json-repair>=0.55.0",
 ]
 
 [project.urls]

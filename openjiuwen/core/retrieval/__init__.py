@@ -15,6 +15,7 @@ from openjiuwen.core.retrieval.common.document import Document, TextChunk, Multi
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, SearchResult
 from openjiuwen.core.retrieval.common.triple import Triple
 from openjiuwen.core.retrieval.common.triple_beam import TripleBeam
+from openjiuwen.core.retrieval.common.triple_memory import TripleMemory
 from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 
 # Embedding related
@@ -92,6 +93,7 @@ from openjiuwen.core.retrieval.simple_knowledge_base import (
 )
 
 # Utilities
+from openjiuwen.core.retrieval.utils.common import deduplicate
 from openjiuwen.core.retrieval.utils.config_manager import ConfigManager
 from openjiuwen.core.retrieval.utils.exceptions import (
     DocumentProcessingError,
@@ -132,6 +134,7 @@ _COMMON_CLASSES = [
     "SearchResult",
     "Triple",
     "TripleBeam",
+    "TripleMemory",
     "BaseCallback",
     "TqdmCallback",
 ]
@@ -200,6 +203,7 @@ _UTILS = [
     "DocumentProcessingError",
     "VectorStoreError",
     "rrf_fusion",
+    "deduplicate",
     "parse_base64_embedding",
 ]
 

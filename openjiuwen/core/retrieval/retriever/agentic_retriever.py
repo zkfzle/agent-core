@@ -223,7 +223,7 @@ class AgenticRetriever(Retriever):
             q = queries[-1]
             logger.info("[Agentic] turn=%d query=%s", turn, q)
 
-            chunk_retriever = self.graph_retriever._get_retriever_for_mode(mode, is_chunk=True)
+            chunk_retriever = self.graph_retriever.get_retriever_for_mode(mode, is_chunk=True)
             chunk_results = await chunk_retriever.retrieve(
                 query=q,
                 top_k=top_k,
@@ -285,7 +285,7 @@ class AgenticRetriever(Retriever):
 
     async def _link_triples(self, triples: List[Tuple[str, ...]], mode: str) -> List[RetrievalResult]:
         tasks = []
-        triple_retriever = self.graph_retriever._get_retriever_for_mode(mode, is_chunk=False)
+        triple_retriever = self.graph_retriever.get_retriever_for_mode(mode, is_chunk=False)
         for triple in triples:
             triple_str = " ".join(triple)
             task = triple_retriever.retrieve_search_results(
@@ -309,7 +309,7 @@ class AgenticRetriever(Retriever):
         return retrieval_results
 
     async def _link_passages(self, triples: List[Tuple[str, ...]], mode: str) -> List[List[RetrievalResult]]:
-        chunk_retriever = self.graph_retriever._get_retriever_for_mode(mode, is_chunk=True)
+        chunk_retriever = self.graph_retriever.get_retriever_for_mode(mode, is_chunk=True)
         tasks = []
         for triple in triples:
             triple_str = " ".join(triple)

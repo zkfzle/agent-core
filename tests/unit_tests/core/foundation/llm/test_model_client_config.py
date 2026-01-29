@@ -1,5 +1,6 @@
 # coding: utf-8
 import pytest
+from pydantic import ValidationError
 
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import BaseError
@@ -51,3 +52,13 @@ def test_model_client_config_allows_registered_string_provider():
     )
     assert cfg.client_provider == provider
 
+
+def test_model_client_config_timeout_must_be_positive():
+    with pytest.raises(ValidationError) as error:
+        ModelClientConfig(
+            client_provider=ProviderType.OpenAI,
+            api_key="sk-test",
+            api_base="http://localhost",
+            timeout=0,
+        )
+    assert error.value.errors()[0]["type"] == "greater_than"

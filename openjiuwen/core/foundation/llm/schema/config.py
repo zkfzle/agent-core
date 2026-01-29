@@ -27,7 +27,7 @@ class ModelClientConfig(BaseModel):
     )
     api_key: str = Field(..., description="API key")
     api_base: str = Field(..., description="API base URL")
-    timeout: float = Field(default=60.0, description="Request timeout in seconds")
+    timeout: float = Field(default=60.0, gt=0, description="Request timeout in seconds (must be greater than 0)")
     max_retries: int = Field(default=3, description="Maximum number of retries")
     verify_ssl: bool = Field(default=True, description="Whether to verify SSL certificates")
     ssl_cert: Optional[str] = Field(default=None, description="Path to SSL certificate file")

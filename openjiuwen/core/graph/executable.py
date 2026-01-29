@@ -1,10 +1,9 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
-import json
 from typing import TypeVar, Generic, AsyncIterator, Any
 
-from openjiuwen.core.common.exception.exception import InterruptException, JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.session import BaseSession
 
 Input = TypeVar("Input", contravariant=True)
@@ -13,24 +12,16 @@ Output = TypeVar("Output", covariant=True)
 
 class Executable(Generic[Input, Output]):
     async def on_invoke(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
-        raise JiuWenBaseException(-1, "Invoke is not supported")
+        raise build_error(StatusCode.METHOD_NOT_IMPLEMENTED, method="on_invoke", class_name=type(self).__name__)
 
     async def on_stream(self, inputs: Input, session: BaseSession, **kwargs) -> AsyncIterator[Output]:
-        raise JiuWenBaseException(-1, "Stream is not supported")
+        raise build_error(StatusCode.METHOD_NOT_IMPLEMENTED, method="on_stream", class_name=type(self).__name__)
 
     async def on_collect(self, inputs: Input, session: BaseSession, **kwargs) -> Output:
-        raise JiuWenBaseException(-1, "Collect is not supported")
+        raise build_error(StatusCode.METHOD_NOT_IMPLEMENTED, method="on_collect", class_name=type(self).__name__)
 
     async def on_transform(self, inputs: Input, session: BaseSession, **kwargs) -> AsyncIterator[Output]:
-        raise JiuWenBaseException(-1, "Transform is not supported")
-
-    async def interrupt(self, message: dict):
-        raise InterruptException(
-            error_code=StatusCode.WORKFLOW_INTERRUPT_EXECUTION_ERROR.code,
-            message=StatusCode.WORKFLOW_INTERRUPT_EXECUTION_ERROR.errmsg.format(
-                error_msg=json.dumps(message, ensure_ascii=False)
-            )
-        )
+        raise build_error(StatusCode.METHOD_NOT_IMPLEMENTED, method="on_transform", class_name=type(self).__name__)
 
     def skip_trace(self) -> bool:
         return False

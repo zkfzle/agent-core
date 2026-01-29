@@ -6,8 +6,8 @@ Main classes included:
 Created on: 2025-11-25
 Author: huenrui1@huawei.com
 """
-from pydantic import BaseModel, Field
 from typing import Optional, Any, Type
+from pydantic import BaseModel, Field
 
 from openjiuwen.core.common.schema.card import BaseCard
 from openjiuwen.core.foundation.tool import ToolInfo

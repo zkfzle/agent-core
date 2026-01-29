@@ -59,7 +59,7 @@ class SchemaUtils:
             raise e
         except Exception as e:
             # Wrap the exception in a custom business exception
-            raise build_error(StatusCode.SCHEMA_FORMAT_INVALID, cause=e, reason=str(e), data={data})
+            raise build_error(StatusCode.SCHEMA_FORMAT_INVALID, cause=e, reason=str(e), data=data)
 
     @staticmethod
     def remove_none_values(data: Any) -> Any:
@@ -226,6 +226,10 @@ class SchemaUtils:
 
         for field_name, field_schema in properties.items():
             field_type = SchemaUtils._convert_schema_to_type(field_schema)
+            # If field is not required and no explicit default, allow None
+            if field_name not in required and "default" not in field_schema:
+                import typing
+                field_type = typing.Optional[field_type]
             field_config = SchemaUtils._convert_schema_to_field(field_schema, field_name in required)
             field_definitions[field_name] = (field_type, field_config)
 

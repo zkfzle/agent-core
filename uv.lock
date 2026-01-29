@@ -1968,7 +1968,7 @@ wheels = [
 
 [[package]]
 name = "openjiuwen"
-version = "0.1.4"
+version = "0.1.5"
 source = { virtual = "." }
 dependencies = [
     { name = "aiofiles" },
@@ -1980,6 +1980,7 @@ dependencies = [
     { name = "filelock" },
     { name = "mermaid-py" },
     { name = "numpy" },
+    { name = "oauthlib" },
     { name = "openai" },
     { name = "pdfplumber" },
     { name = "portalocker" },
@@ -2003,7 +2004,6 @@ dev = [
     { name = "codespell" },
     { name = "coverage" },
     { name = "mypy" },
-    { name = "openjiuwen" },
     { name = "pylint" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -2023,6 +2023,7 @@ requires-dist = [
     { name = "filelock", specifier = ">=3.20.1" },
     { name = "mermaid-py", specifier = ">=0.8.0" },
     { name = "numpy", specifier = "!=2.4.0" },
+    { name = "oauthlib", specifier = ">=3.3.1" },
     { name = "openai", specifier = ">=1.108.0" },
     { name = "pdfplumber", specifier = ">=0.11.8" },
     { name = "portalocker", specifier = ">=3.2.0" },
@@ -2044,7 +2045,6 @@ dev = [
     { name = "codespell", specifier = ">=2.2.4" },
     { name = "coverage", specifier = ">=7.7.1" },
     { name = "mypy", specifier = ">=1.12.0" },
-    { name = "openjiuwen", extras = ["chroma"] },
     { name = "pylint", specifier = ">=3.0.0" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-asyncio", specifier = ">=1.0.0" },

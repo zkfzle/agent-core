@@ -167,7 +167,17 @@ class TripleBeamSearch:
         if len(beam) < 1:
             raise RuntimeError("unexpected empty beam")
 
-        triple = json.loads(beam[-1].metadata.get("triple"))
+        triple_data = beam[-1].metadata.get("triple")
+        if not triple_data:
+            logger.warning("beam has no triple metadata")
+            return []
+
+        try:
+            triple = json.loads(triple_data)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning("[graph] Failed to parse triple metadata: %s", e)
+            return []
+
         if not triple or len(triple) < 2:
             return []
 

@@ -1,0 +1,21 @@
+[project]
+name = "finsight-openjiuwen"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "akshare>=1.18.8",
+    "browser-use>=0.3.3",
+    "crawl4ai>=0.7.8",
+    "dill>=0.4.0",
+    "docx2pdf>=0.1.8",
+    "dotenv>=0.9.9",
+    "efinance>=0.5.5.2",
+    "json-repair>=0.55.0",
+    "matplotlib>=3.10.8",
+    "openjiuwen>=0.1.3",
+    "pdfplumber>=0.11.9",
+    "python-docx>=1.2.0",
+    "seaborn>=0.13.2",
+]

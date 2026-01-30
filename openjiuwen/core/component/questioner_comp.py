@@ -9,6 +9,7 @@ from typing import Any, Optional, List, Dict, Union
 
 from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
+from openjiuwen.core.common.exception.exception import JiuWenBaseException
 from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.security.exception_utils import ExceptionUtils
@@ -598,12 +599,16 @@ class QuestionerExecutable(ComponentExecutable):
             self, inputs: Input, runtime: Runtime, context, current_state: QuestionerState
     ):
         """并发安全版本：使用传入的 state 而不是实例变量"""
-        handler = (QuestionerDirectReplyHandler()
-                   .config(self._config).model(self._llm).state(current_state).prompt(self._prompt))
-        result = await handler.handle(inputs, runtime, context)
-        # return updated state, let caller manage
-        result['_state'] = handler.get_state()
-        return result
+        try:
+            handler = (QuestionerDirectReplyHandler()
+                       .config(self._config).model(self._llm).state(current_state).prompt(self._prompt))
+            result = await handler.handle(inputs, runtime, context)
+            # return updated state, let caller manage
+            result['_state'] = handler.get_state()
+            return result
+        except JiuWenBaseException:
+            # 对于 JiuWenBaseException（如超过 max_response），直接抛出，让上层处理
+            raise
 
     def _validate_config(self, config: QuestionerConfig):
         self._validate_response_type_config(config.response_type)

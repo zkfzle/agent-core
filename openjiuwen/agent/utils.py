@@ -104,18 +104,48 @@ class MessageUtils:
 
     @staticmethod
     def get_chat_history(context_engine: ContextEngine, runtime: Runtime, config: AgentConfig) -> List[BaseMessage]:
-        """Get chat history
-        
+        """Get chat history with safe truncation
+
+        Ensures the first message after system is always 'user' (API requirement).
+
         Args:
             context_engine: Context engine
             runtime: Runtime instance
             config: Agent config
-        
+
         Returns:
             List[BaseMessage]: Chat history message list
         """
         agent_context = context_engine.get_agent_context(runtime.session_id())
         chat_history = agent_context.get_messages()
         max_rounds = config.constrain.reserved_max_chat_rounds
-        return chat_history[-2 * max_rounds:]
+
+        # 如果消息数量在限制内，直接返回
+        if len(chat_history) <= 2 * max_rounds:
+            return chat_history
+
+        # 需要截取时，找到安全的截取点
+        cut_start = len(chat_history) - 2 * max_rounds
+
+        # 向前搜索，找到一个 user 消息作为起点
+        # 这确保截取后的第一条消息是 user（API 要求）
+        while cut_start > 0:
+            msg = chat_history[cut_start]
+            # 支持 BaseMessage 对象和 dict 两种格式
+            if hasattr(msg, 'role') and msg.role == 'user':
+                break
+            elif isinstance(msg, dict) and msg.get('role') == 'user':
+                break
+            cut_start -= 1
+
+        # 如果找不到 user 消息，从头开始（保留所有消息）
+        if cut_start == 0:
+            # 检查第一条消息是否是 user
+            first_msg = chat_history[0]
+            is_user = (hasattr(first_msg, 'role') and first_msg.role == 'user') or \
+                      (isinstance(first_msg, dict) and first_msg.get('role') == 'user')
+            if not is_user:
+                logger.warning("First message is not 'user', keeping all messages to avoid API error")
+
+        return chat_history[cut_start:]
 

@@ -1,6 +1,8 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 import json
+import asyncio
+import time
 from typing import List, Dict, Any, Iterator, AsyncIterator, Optional
 
 import httpx
@@ -19,6 +21,76 @@ from openjiuwen.core.utils.llm.base import BaseModelClient
 from openjiuwen.core.utils.llm.messages import AIMessage, UsageMetadata
 from openjiuwen.core.utils.tool.schema import ToolCall
 from openjiuwen.core.utils.llm.messages_chunk import AIMessageChunk
+
+
+class RateLimiter:
+    """全局请求速率限制器，用于控制 API 请求频率，避免触发并发限制"""
+
+    _instance = None
+    _lock = asyncio.Lock() if asyncio.get_event_loop_policy() else None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
+        self._last_request_time = 0.0
+        self._min_interval = 1.0  # 最小请求间隔（秒）
+        self._sync_lock = None
+        self._async_lock = None
+
+    def _get_sync_lock(self):
+        """懒加载同步锁"""
+        if self._sync_lock is None:
+            import threading
+            self._sync_lock = threading.Lock()
+        return self._sync_lock
+
+    def _get_async_lock(self):
+        """懒加载异步锁"""
+        if self._async_lock is None:
+            self._async_lock = asyncio.Lock()
+        return self._async_lock
+
+    def wait_sync(self):
+        """同步等待，确保请求间隔"""
+        with self._get_sync_lock():
+            now = time.time()
+            elapsed = now - self._last_request_time
+            if elapsed < self._min_interval:
+                wait_time = self._min_interval - elapsed
+                logger.debug(f"RateLimiter: waiting {wait_time:.2f}s before next request")
+                time.sleep(wait_time)
+            self._last_request_time = time.time()
+
+    async def wait_async(self):
+        """异步等待，确保请求间隔"""
+        async with self._get_async_lock():
+            now = time.time()
+            elapsed = now - self._last_request_time
+            if elapsed < self._min_interval:
+                wait_time = self._min_interval - elapsed
+                logger.debug(f"RateLimiter: waiting {wait_time:.2f}s before next request")
+                await asyncio.sleep(wait_time)
+            self._last_request_time = time.time()
+
+    def set_min_interval(self, interval: float):
+        """设置最小请求间隔（秒）"""
+        self._min_interval = max(0.1, interval)
+
+
+# 全局速率限制器实例
+_rate_limiter = RateLimiter()
+
+
+def get_rate_limiter() -> RateLimiter:
+    """获取全局速率限制器"""
+    return _rate_limiter
 
 
 class RequestChatModel(BaseModelClient):
@@ -252,56 +324,127 @@ class RequestChatModel(BaseModelClient):
 
         ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
                                                        ["false"], url_is_https)
-        
-        if ssl_verify:
-            ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-        else:
-            connector = aiohttp.TCPConnector(ssl=False)
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
-        try:
-            async with aiohttp.ClientSession(connector=connector) as session:
-                async with session.post(
-                        url=self.api_base,
-                        proxy=UrlUtils.get_global_proxy_url(self.api_base),
-                        headers={
-                            "Content-Type": "application/json",
-                            "Authorization": f"Bearer {self.api_key}"
-                        },
-                        json=params,
-                        allow_redirects=False,
-                        timeout=timeout
-                ) as response:
-                    response.raise_for_status()
-                    async for line in response.content:
-                        if line:
-                            chunk = self._parse_stream_line(line)
-                            if chunk:
-                                yield chunk
-        except (aiohttp.ConnectionTimeoutError, TimeoutError) as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
-                    error_msg="Generic API async stream call timeout")
-            ) from e
-        except aiohttp.ClientConnectionError as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
-                    error_msg="Generic API async stream connection failed")
-            ) from e
-        except aiohttp.ClientResponseError as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
-                    error_msg=f"Generic API async stream error, status code is {e.status}")
-            ) from e
-        except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="Generic API async stream error")
-            ) from e
+
+        # 429 重试配置
+        max_429_retries = 3
+        base_429_delay = 2.0  # 基础 429 重试延迟（秒）
+
+        # 连接重试配置
+        max_conn_retries = 2
+        conn_retry_delay = 1.0
+
+        for retry_429 in range(max_429_retries + 1):
+            # 使用速率限制器控制请求频率
+            await get_rate_limiter().wait_async()
+
+            if ssl_verify:
+                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+                connector = aiohttp.TCPConnector(ssl=ssl_context)
+            else:
+                connector = aiohttp.TCPConnector(ssl=False)
+
+            for attempt in range(max_conn_retries + 1):
+                try:
+                    async with aiohttp.ClientSession(connector=connector) as session:
+                        async with session.post(
+                                url=self.api_base,
+                                proxy=UrlUtils.get_global_proxy_url(self.api_base),
+                                headers={
+                                    "Content-Type": "application/json",
+                                    "Authorization": f"Bearer {self.api_key}"
+                                },
+                                json=params,
+                                allow_redirects=False,
+                                timeout=timeout
+                        ) as response:
+                            # Check for HTTP errors before streaming
+                            if response.status >= 400:
+                                error_body = ""
+                                try:
+                                    error_body = await response.text()
+                                except Exception:
+                                    pass
+
+                                # 检查是否是 429 错误（并发限制）
+                                if response.status == 429 and retry_429 < max_429_retries:
+                                    retry_delay = base_429_delay * (2 ** retry_429)
+                                    logger.warning(f"=== 429 Rate Limit Hit (Generic API) ===")
+                                    logger.warning(f"Retry attempt {retry_429 + 1}/{max_429_retries}")
+                                    logger.warning(f"Error body: {error_body[:500] if error_body else 'N/A'}")
+                                    logger.warning(f"Waiting {retry_delay:.1f}s before retry...")
+                                    await asyncio.sleep(retry_delay)
+                                    break  # 跳出连接重试循环，进入 429 重试循环
+
+                                error_detail = f"status code is {response.status}"
+                                if error_body:
+                                    error_body_preview = error_body[:500] if len(error_body) > 500 else error_body
+                                    error_detail += f", response: {error_body_preview}"
+                                if not UserConfig.is_sensitive():
+                                    logger.error(f"API request failed. Messages count: {len(messages)}, "
+                                                f"Tools count: {len(tools) if tools else 0}, "
+                                                f"Error: {error_detail}")
+                                raise JiuWenBaseException(
+                                    error_code=StatusCode.MODEL_CALL_FAILED.code,
+                                    message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                                        error_msg=f"Generic API async stream error, {error_detail}")
+                                )
+                            # 使用正确的异步迭代方法读取流式响应
+                            async for line_bytes, _ in response.content.iter_chunks():
+                                if line_bytes:
+                                    chunk = self._parse_stream_line(line_bytes)
+                                    if chunk:
+                                        yield chunk
+                            # Successfully completed, exit all retry loops
+                            return
+                except (aiohttp.ClientConnectionError, aiohttp.ConnectionTimeoutError, TimeoutError) as e:
+                    if attempt < max_conn_retries:
+                        logger.warning(f"Connection failed (attempt {attempt + 1}/{max_conn_retries + 1}), "
+                                      f"retrying in {conn_retry_delay}s... Error: {str(e)}")
+                        await asyncio.sleep(conn_retry_delay)
+                        conn_retry_delay *= 2
+                        if ssl_verify:
+                            connector = aiohttp.TCPConnector(ssl=ssl_context)
+                        else:
+                            connector = aiohttp.TCPConnector(ssl=False)
+                        continue
+                    if isinstance(e, (aiohttp.ConnectionTimeoutError, TimeoutError)):
+                        raise JiuWenBaseException(
+                            error_code=StatusCode.MODEL_CALL_FAILED.code,
+                            message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                                error_msg="Generic API async stream call timeout")
+                        ) from e
+                    else:
+                        raise JiuWenBaseException(
+                            error_code=StatusCode.MODEL_CALL_FAILED.code,
+                            message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                                error_msg="Generic API async stream connection failed")
+                        ) from e
+                except aiohttp.ClientResponseError as e:
+                    error_detail = f"status code is {e.status}"
+                    if hasattr(e, 'message') and e.message:
+                        error_detail += f", message: {e.message}"
+                    if not UserConfig.is_sensitive():
+                        logger.error(f"API request failed. Messages count: {len(messages)}, "
+                                    f"Tools count: {len(tools) if tools else 0}, "
+                                    f"Error: {error_detail}")
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.MODEL_CALL_FAILED.code,
+                        message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                            error_msg=f"Generic API async stream error, {error_detail}")
+                    ) from e
+                except JiuWenBaseException:
+                    raise
+                except Exception as e:
+                    raise JiuWenBaseException(
+                        error_code=StatusCode.MODEL_CALL_FAILED.code,
+                        message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="Generic API async stream error")
+                    ) from e
+            else:
+                # 连接重试循环正常结束（没有 break），说明请求成功或抛出了异常
+                # 如果到这里说明是 429 重试，继续外层循环
+                continue
 
     def sanitize_tool_calls(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
@@ -322,19 +465,29 @@ class RequestChatModel(BaseModelClient):
                     continue
                 # Extract only valid fields
                 func = tc.get("function", {})
-                cleaned.append({
+                tool_call_dict = {
                     "id": tc.get("id", ""),
                     "type": "function",
-                    "index": tc.get("index"),
                     "function": {
                         "name": func.get("name", ""),
                         "arguments": func.get("arguments", "")
                     }
-                })
+                }
+                # Only add index if it has a value (avoid null/None in JSON)
+                if tc.get("index") is not None:
+                    tool_call_dict["index"] = tc.get("index")
+                cleaned.append(tool_call_dict)
             msg["tool_calls"] = cleaned
         return messages
 
     def _request_params(self, model_name: str, messages: List[Dict], tools: List[Dict] = None, **kwargs: Any) -> Dict:
+        # Truncate overly large tool results to prevent API errors
+        MAX_TOOL_RESULT_LENGTH = 50000  # 50KB limit per tool result
+        for msg in messages:
+            if msg.get("role") == "tool" and isinstance(msg.get("content"), str):
+                if len(msg["content"]) > MAX_TOOL_RESULT_LENGTH:
+                    msg["content"] = msg["content"][:MAX_TOOL_RESULT_LENGTH] + "\n...[内容已截断/Content truncated]"
+
         params = {
             "model": model_name,
             "messages": messages,
@@ -343,6 +496,15 @@ class RequestChatModel(BaseModelClient):
 
         if tools:
             params["tools"] = tools
+
+        # Log request body size for debugging large requests
+        try:
+            request_size = len(json.dumps(params, ensure_ascii=False))
+            if request_size > 50000:  # 50KB threshold
+                logger.warning(f"Large request body detected: {request_size} bytes, "
+                              f"messages: {len(messages)}, tools: {len(tools) if tools else 0}")
+        except Exception:
+            pass  # Ignore serialization errors in logging
 
         if UserConfig.is_sensitive():
             logger.info("Before request chat model, request params is ready.")
@@ -610,58 +772,140 @@ class OpenAIChatModel(BaseModelClient):
     async def _astream(self, model_name: str, messages: List[Dict], tools: List[Dict] = None,
                        temperature: Optional[float] = None, top_p: Optional[float] = None,
                        **kwargs: Any) -> AsyncIterator[AIMessageChunk]:
-        """Async stream call OpenAI API"""
+        """Async stream call OpenAI API with rate limiting and retry"""
         model_params = self._update_model_params(temperature=temperature, top_p=top_p, **kwargs)
         params = self._build_request_params(model_name=model_name, messages=messages, tools=tools, stream=True,
                                             **model_params)
-        async_client = None
-        try:
-            url_is_https = self.api_base.startswith("https://")
-            ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
-                                                           ["false"], url_is_https)
 
-            if ssl_verify:
-                ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
-                http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=ssl_context)
-            else:
-                http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=None)
-            async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, http_client=http_client,
-                                              timeout=self.timeout, max_retries=0)
-            stream = await async_client.chat.completions.create(**params)
-            async for chunk in stream:
-                parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
-                if parsed_chunk:
-                    yield parsed_chunk
-        except (httpx.TimeoutException, openai.APITimeoutError) as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
-                    error_msg="OpenAI API async stream call timeout")
-            ) from e
-        except (httpx.ConnectError, openai.APIConnectionError) as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
-                    error_msg="OpenAI API async stream connection failed")
-            ) from e
-        except (httpx.HTTPStatusError, openai.APIStatusError) as e:
-            if isinstance(e, httpx.HTTPStatusError):
-                status_code = e.response.status_code
-            else:
-                status_code = e.status_code
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
-                    error_msg=f"OpenAI API async stream error, status code is {status_code}")
-            ) from e
-        except Exception as e:
-            raise JiuWenBaseException(
-                error_code=StatusCode.MODEL_CALL_FAILED.code,
-                message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="OpenAI API async stream error")
-            ) from e
-        finally:
-            if async_client is not None:
-                await async_client.close()
+        # 重试配置
+        max_retries = 3
+        base_retry_delay = 2.0  # 基础重试延迟（秒）
+
+        for retry_attempt in range(max_retries + 1):
+            async_client = None
+            try:
+                # 使用速率限制器控制请求频率
+                await get_rate_limiter().wait_async()
+
+                url_is_https = self.api_base.startswith("https://")
+                ssl_verify, ssl_cert = SslUtils.get_ssl_config("LLM_SSL_VERIFY", "LLM_SSL_CERT",
+                                                               ["false"], url_is_https)
+
+                if ssl_verify:
+                    ssl_context = SslUtils.create_strict_ssl_context(ssl_cert)
+                    http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=ssl_context)
+                else:
+                    http_client = httpx.AsyncClient(proxy=UrlUtils.get_global_proxy_url(self.api_base), verify=None)
+                async_client = openai.AsyncOpenAI(api_key=self.api_key, base_url=self.api_base, http_client=http_client,
+                                                  timeout=self.timeout, max_retries=0)
+                stream = await async_client.chat.completions.create(**params)
+                async for chunk in stream:
+                    parsed_chunk = self._parse_openai_stream_chunk(model_name, chunk)
+                    if parsed_chunk:
+                        yield parsed_chunk
+                # 成功完成，退出重试循环
+                return
+            except (httpx.TimeoutException, openai.APITimeoutError) as e:
+                # 超时错误也重试
+                if retry_attempt < max_retries:
+                    retry_delay = base_retry_delay * (2 ** retry_attempt)
+                    logger.warning(f"=== API Timeout, retrying ===")
+                    logger.warning(f"Retry attempt {retry_attempt + 1}/{max_retries}")
+                    logger.warning(f"Waiting {retry_delay:.1f}s before retry...")
+                    if async_client is not None:
+                        await async_client.close()
+                        async_client = None
+                    await asyncio.sleep(retry_delay)
+                    continue
+                raise JiuWenBaseException(
+                    error_code=StatusCode.MODEL_CALL_FAILED.code,
+                    message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                        error_msg="OpenAI API async stream call timeout")
+                ) from e
+            except (httpx.ConnectError, openai.APIConnectionError) as e:
+                # 连接错误重试
+                if retry_attempt < max_retries:
+                    retry_delay = base_retry_delay * (2 ** retry_attempt)
+                    logger.warning(f"=== API Connection Failed, retrying ===")
+                    logger.warning(f"Retry attempt {retry_attempt + 1}/{max_retries}")
+                    logger.warning(f"Error: {str(e)[:200]}")
+                    logger.warning(f"Waiting {retry_delay:.1f}s before retry...")
+                    if async_client is not None:
+                        await async_client.close()
+                        async_client = None
+                    await asyncio.sleep(retry_delay)
+                    continue
+                raise JiuWenBaseException(
+                    error_code=StatusCode.MODEL_CALL_FAILED.code,
+                    message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                        error_msg="OpenAI API async stream connection failed")
+                ) from e
+            except (httpx.HTTPStatusError, openai.APIStatusError) as e:
+                if isinstance(e, httpx.HTTPStatusError):
+                    status_code = e.response.status_code
+                    error_body = ""
+                    try:
+                        error_body = e.response.text
+                    except Exception:
+                        pass
+                else:
+                    status_code = e.status_code
+                    error_body = str(e.body) if hasattr(e, 'body') else ""
+
+                # 检查是否是 429 错误（并发限制）或 5xx 服务器错误
+                if (status_code == 429 or status_code >= 500) and retry_attempt < max_retries:
+                    # 指数退避重试
+                    retry_delay = base_retry_delay * (2 ** retry_attempt)
+                    logger.warning(f"=== API Error {status_code}, retrying ===")
+                    logger.warning(f"Retry attempt {retry_attempt + 1}/{max_retries}")
+                    logger.warning(f"Error body: {error_body[:500] if error_body else 'N/A'}")
+                    logger.warning(f"Waiting {retry_delay:.1f}s before retry...")
+
+                    # 关闭当前客户端
+                    if async_client is not None:
+                        await async_client.close()
+                        async_client = None
+
+                    # 等待后重试
+                    await asyncio.sleep(retry_delay)
+                    continue
+
+                # 非可重试错误或重试次数用尽，记录错误并抛出异常
+                logger.error(f"=== API Error Debug ===")
+                logger.error(f"Status code: {status_code}")
+                logger.error(f"Error body: {error_body[:2000] if error_body else 'N/A'}")
+                logger.error(f"Request had {len(messages)} messages, {len(tools) if tools else 0} tools")
+
+                # 保存错误详情到文件
+                try:
+                    timestamp = int(time.time())
+                    error_file = f"/tmp/jiuwen_api_error_{timestamp}.json"
+                    error_data = {
+                        "status_code": status_code,
+                        "error_body": error_body,
+                        "messages_count": len(messages),
+                        "tools_count": len(tools) if tools else 0,
+                        "messages": messages,
+                    }
+                    with open(error_file, 'w', encoding='utf-8') as f:
+                        json.dump(error_data, f, ensure_ascii=False, indent=2)
+                    logger.error(f"Error details saved to: {error_file}")
+                except Exception as save_err:
+                    logger.error(f"Failed to save error details: {save_err}")
+
+                raise JiuWenBaseException(
+                    error_code=StatusCode.MODEL_CALL_FAILED.code,
+                    message=StatusCode.MODEL_CALL_FAILED.errmsg.format(
+                        error_msg=f"OpenAI API async stream error, status code is {status_code}")
+                ) from e
+            except Exception as e:
+                raise JiuWenBaseException(
+                    error_code=StatusCode.MODEL_CALL_FAILED.code,
+                    message=StatusCode.MODEL_CALL_FAILED.errmsg.format(error_msg="OpenAI API async stream error")
+                ) from e
+            finally:
+                if async_client is not None:
+                    await async_client.close()
 
 
     def _build_request_params(self, model_name: str, messages: List[Dict],
@@ -679,6 +923,46 @@ class OpenAIChatModel(BaseModelClient):
         if tools:
             params["tools"] = tools
             params["tool_choice"] = "auto"
+
+        # 添加详细调试日志
+        try:
+            import time
+            request_json = json.dumps(params, ensure_ascii=False)
+            request_size = len(request_json.encode('utf-8'))
+
+            # 打印每条消息的大小
+            msg_sizes = []
+            for i, msg in enumerate(messages):
+                msg_json = json.dumps(msg, ensure_ascii=False)
+                msg_size = len(msg_json.encode('utf-8'))
+                role = msg.get('role', 'unknown')
+                # 对于 tool 消息，显示 tool_call_id
+                if role == 'tool':
+                    tool_call_id = msg.get('tool_call_id', 'N/A')[:8]
+                    msg_sizes.append(f"msg[{i}]({role}, id={tool_call_id}): {msg_size} bytes")
+                # 对于 assistant 消息，显示是否有 tool_calls
+                elif role == 'assistant':
+                    has_tool_calls = 'tool_calls' in msg and msg['tool_calls']
+                    tc_count = len(msg.get('tool_calls', [])) if has_tool_calls else 0
+                    msg_sizes.append(f"msg[{i}]({role}, tc={tc_count}): {msg_size} bytes")
+                else:
+                    msg_sizes.append(f"msg[{i}]({role}): {msg_size} bytes")
+
+            logger.warning(f"=== API Request Debug ===")
+            logger.warning(f"Total request size: {request_size} bytes")
+            logger.warning(f"Messages count: {len(messages)}")
+            logger.warning(f"Tools count: {len(tools) if tools else 0}")
+            logger.warning(f"Message sizes: {msg_sizes}")
+
+            # 如果请求过大，保存完整内容到文件
+            if request_size > 50000:  # 50KB
+                timestamp = int(time.time())
+                debug_file = f"/tmp/jiuwen_api_request_{timestamp}.json"
+                with open(debug_file, 'w', encoding='utf-8') as f:
+                    f.write(request_json)
+                logger.warning(f"Large request ({request_size} bytes) saved to: {debug_file}")
+        except Exception as e:
+            logger.error(f"Debug logging failed: {e}")
 
         if UserConfig.is_sensitive():
             logger.info("Before request openai chat model, request params is ready.")

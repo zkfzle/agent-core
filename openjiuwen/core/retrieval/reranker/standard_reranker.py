@@ -26,6 +26,8 @@ class StandardReranker(Reranker):
     Standard reranker client, supports rerank API of vLLM-like services
     """
 
+    end_point = "/rerank"
+
     def __init__(
         self,
         config: RerankerConfig,
@@ -38,7 +40,7 @@ class StandardReranker(Reranker):
         self.config = config
         self.model_name = config.model_name
         self.api_key = config.api_key
-        self.api_url = (config.api_base or "").removesuffix("/").removesuffix("/rerank")
+        self.api_url = (config.api_base or "").removesuffix("/").removesuffix(self.end_point)
         self.timeout = config.timeout
         self.max_retries = max_retries
         self._headers = {"Content-Type": "application/json"}
@@ -55,14 +57,19 @@ class StandardReranker(Reranker):
     async def rerank(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
         headers, params = self._assemble_params(query, doc, kwargs)
         result = await async_request_with_retry(
-            self.client, max_retries=self.max_retries, task="Reranker", url="/rerank", json=params, headers=headers
+            self.client, max_retries=self.max_retries, task="Reranker", url=self.end_point, json=params, headers=headers
         )
         return self._parse_response(result, doc=doc)
 
     def rerank_sync(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
         headers, params = self._assemble_params(query, doc, kwargs)
         result = sync_request_with_retry(
-            self.sync_client, max_retries=self.max_retries, task="Reranker", url="/rerank", json=params, headers=headers
+            self.sync_client,
+            max_retries=self.max_retries,
+            task="Reranker",
+            url=self.end_point,
+            json=params,
+            headers=headers,
         )
         return self._parse_response(result, doc=doc)
 
@@ -70,10 +77,7 @@ class StandardReranker(Reranker):
         doc_ids = [d if isinstance(d, str) else d.id_ for d in doc]
         result_dict = dict.fromkeys(doc_ids, 0.0)
         results = response_data.get("output", response_data)["results"]
-        if 0 not in [rank_result.get("index") for rank_result in results]:
-            doc_ids.insert(0, None)
         for rank_result in results:
-            rank_result["document"].pop("multi_modal", None)
             doc = doc_ids[rank_result["index"]]
             result_dict[doc] = rank_result["relevance_score"]
         return result_dict

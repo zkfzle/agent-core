@@ -6,9 +6,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openjiuwen.core.retrieval.common.config import EmbeddingConfig
-from openjiuwen.core.retrieval.common.document import MultimodalDocument
-from openjiuwen.core.retrieval.embedding.vllm_embedding import VLLMEmbedding
+from openjiuwen.core.retrieval import EmbeddingConfig, MultimodalDocument, VLLMEmbedding
 
 # Text section of documents (feel free to edit)
 REFERENCE_TEXT = "A photograph of a person"

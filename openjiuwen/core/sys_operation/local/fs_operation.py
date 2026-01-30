@@ -122,7 +122,7 @@ class FsOperation(BaseFsOperation):
                     return self._create_error_result(
                         "read_file",
                         f"Parameters 'head', 'tail', and 'line_range' are only supported in text mode",
-                        False
+                        ReadFileResult
                     )
                 final_content = await self._read_bytes(file_path, chunk_size)
             elif head is None and tail is None and line_range is None:
@@ -147,7 +147,7 @@ class FsOperation(BaseFsOperation):
                 data=data
             )
         except Exception as e:
-            return self._create_error_result("read_file", str(e), False)
+            return self._create_error_result("read_file", str(e), ReadFileResult)
 
     async def read_file_stream(
             self,
@@ -211,7 +211,7 @@ class FsOperation(BaseFsOperation):
                     yield self._create_error_result(
                         "read_file_stream",
                         "Parameters 'head', 'tail', and 'line_range' are only supported in text mode",
-                        True,
+                        ReadFileStreamResult,
                     )
                     return
 
@@ -224,7 +224,7 @@ class FsOperation(BaseFsOperation):
                 yield chunk
 
         except Exception as e:
-            yield self._create_error_result("read_file_stream", str(e), True)
+            yield self._create_error_result("read_file_stream", str(e), ReadFileStreamResult)
 
     async def write_file(
             self,
@@ -259,19 +259,9 @@ class FsOperation(BaseFsOperation):
         try:
             file_path = self._resolve_path(path, create_parent=True)
             if file_path.is_dir():
-                return WriteFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="write_file",
-                        error_msg=f"Target path is a directory: {file_path}")
-                )
+                return self._create_error_result("write_file", f"Target path is a directory: {file_path}", WriteFileResult)
             if not create_if_not_exist and not file_path.exists():
-                return WriteFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="write_file",
-                        error_msg=f"File does not exist: {file_path}")
-                )
+                return self._create_error_result("write_file", f"File does not exist: {file_path}", WriteFileResult)
 
             if mode == "text":
                 txt = str(content)
@@ -294,12 +284,7 @@ class FsOperation(BaseFsOperation):
                 data=WriteFileData(path=str(file_path), size=len(data_bytes), mode=mode)
             )
         except Exception as e:
-            return WriteFileResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="write_file",
-                    error_msg=str(e))
-            )
+            return self._create_error_result("write_file", str(e), WriteFileResult)
 
     async def upload_file(
             self,
@@ -331,19 +316,9 @@ class FsOperation(BaseFsOperation):
             src = pathlib.Path(local_path).expanduser().resolve()
             dst = self._resolve_path(target_path, create_parent=create_parent_dirs)
             if not src.is_file():
-                return UploadFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="upload_file",
-                        error_msg=f"Source not found: {src}")
-                )
+                return self._create_error_result("upload_file", f"Source not found: {src}", UploadFileResult)
             if dst.exists() and not overwrite:
-                return UploadFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="upload_file",
-                        error_msg=f"Target exists: {dst}")
-                )
+                return self._create_error_result("upload_file", f"Target exists: {dst}", UploadFileResult)
 
             size = await self._transfer_file(src, dst, chunk_size)
             if preserve_permissions:
@@ -354,12 +329,7 @@ class FsOperation(BaseFsOperation):
                 data=UploadFileData(local_path=str(src), target_path=str(dst), size=size)
             )
         except Exception as e:
-            return UploadFileResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="upload_file",
-                    error_msg=str(e))
-            )
+            return self._create_error_result("upload_file", str(e), UploadFileResult)
 
     async def upload_file_stream(
             self,
@@ -391,20 +361,11 @@ class FsOperation(BaseFsOperation):
             src = pathlib.Path(local_path).expanduser().resolve()
             dst = self._resolve_path(target_path, create_parent=create_parent_dirs)
             if not src.is_file():
-                yield UploadFileStreamResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="upload_file_stream",
-                        error_msg=f"Source not found: {src}")
-                )
+                yield self._create_error_result("upload_file_stream", f"Source not found: {src}",
+                                                UploadFileStreamResult)
                 return
             if dst.exists() and not overwrite:
-                yield UploadFileStreamResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="upload_file_stream",
-                        error_msg=f"Target exists: {dst}")
-                )
+                yield self._create_error_result("upload_file_stream", f"Target exists: {dst}", UploadFileStreamResult)
                 return
 
             async with aiofiles.open(src, mode="rb") as src_f, aiofiles.open(dst, mode="wb") as dst_f:
@@ -428,12 +389,7 @@ class FsOperation(BaseFsOperation):
             if preserve_permissions:
                 self._copy_permissions(src, dst)
         except Exception as e:
-            yield UploadFileStreamResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="upload_file_stream",
-                    error_msg=str(e))
-            )
+            yield self._create_error_result("upload_file_stream", str(e), UploadFileStreamResult)
 
     async def download_file(
             self,
@@ -465,19 +421,9 @@ class FsOperation(BaseFsOperation):
             src = self._resolve_path(source_path)
             dst = pathlib.Path(local_path).expanduser().resolve()
             if not src.is_file():
-                return DownloadFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="download_file",
-                        error_msg=f"Source not found: {src}")
-                )
+                return self._create_error_result("download_file", f"Source not found: {src}", DownloadFileResult)
             if dst.exists() and not overwrite:
-                return DownloadFileResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="download_file",
-                        error_msg=f"Destination exists: {dst}")
-                )
+                return self._create_error_result("download_file", f"Destination exists: {dst}", DownloadFileResult)
             if create_parent_dirs:
                 dst.parent.mkdir(parents=True, exist_ok=True)
 
@@ -490,12 +436,7 @@ class FsOperation(BaseFsOperation):
                 data=DownloadFileData(source_path=str(src), local_path=str(dst), size=size)
             )
         except Exception as e:
-            return DownloadFileResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="download_file",
-                    error_msg=str(e))
-            )
+            return self._create_error_result("download_file", str(e), DownloadFileResult)
 
     async def download_file_stream(
             self,
@@ -527,20 +468,12 @@ class FsOperation(BaseFsOperation):
             src = self._resolve_path(source_path)
             dst = pathlib.Path(local_path).expanduser().resolve()
             if not src.is_file():
-                yield DownloadFileStreamResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="download_file_stream",
-                        error_msg=f"Source not found: {src}")
-                )
+                yield self._create_error_result("download_file_stream", f"Source not found: {src}",
+                                                DownloadFileStreamResult)
                 return
             if dst.exists() and not overwrite:
-                yield DownloadFileStreamResult(
-                    code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                    message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                        execution="download_file_stream",
-                        error_msg=f"Destination exists: {dst}")
-                )
+                yield self._create_error_result("download_file_stream", f"Destination exists: {dst}",
+                                                DownloadFileStreamResult)
                 return
             if create_parent_dirs:
                 dst.parent.mkdir(parents=True, exist_ok=True)
@@ -566,12 +499,7 @@ class FsOperation(BaseFsOperation):
             if preserve_permissions:
                 self._copy_permissions(src, dst)
         except Exception as e:
-            yield DownloadFileStreamResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="download_file_stream",
-                    error_msg=str(e))
-            )
+            yield self._create_error_result("download_file_stream", str(e), DownloadFileStreamResult)
 
     async def list_files(
             self,
@@ -625,12 +553,7 @@ class FsOperation(BaseFsOperation):
                                     max_depth=max_depth)
             )
         except Exception as e:
-            return ListFilesResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="list_files",
-                    error_msg=str(e))
-            )
+            return self._create_error_result("list_files", str(e), ListFilesResult)
 
     async def list_directories(
             self,
@@ -689,13 +612,7 @@ class FsOperation(BaseFsOperation):
             )
 
         except Exception as e:
-            return ListDirsResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="list_directories",
-                    error_msg=str(e)
-                ),
-            )
+            return self._create_error_result("list_directories", str(e), ListDirsResult)
 
     async def search_files(
             self,
@@ -734,12 +651,7 @@ class FsOperation(BaseFsOperation):
                 )
             )
         except Exception as e:
-            return SearchFilesResult(
-                code=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code,
-                message=StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
-                    execution="search_files",
-                    error_msg=str(e))
-            )
+            return self._create_error_result("search_files", str(e), SearchFilesResult)
 
     def _search_files_internal_sync(
             self,
@@ -936,33 +848,27 @@ class FsOperation(BaseFsOperation):
         return head, tail, line_range, None
 
     @staticmethod
-    def _create_error_result(execution: str, error_msg: str, is_stream: bool = False):
+    def _create_error_result(execution: str, error_msg: str, result_class: Any):
         """
         Create error result for file operations.
 
         Args:
             execution: The operation being executed.
             error_msg: The error message.
-            is_stream: Whether the result is for a stream operation.
+            result_class: The result class to instantiate.
 
         Returns:
-            ReadFileResult or ReadFileStreamResult with error information.
+            An instance of result_class with error information.
         """
         error_code = StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.code
         error_message = StatusCode.SYS_OPERATION_FS_EXECUTION_ERROR.errmsg.format(
             execution=execution,
             error_msg=error_msg
         )
-        if is_stream:
-            return ReadFileStreamResult(
-                code=error_code,
-                message=error_message
-            )
-        else:
-            return ReadFileResult(
-                code=error_code,
-                message=error_message
-            )
+        return result_class(
+            code=error_code,
+            message=error_message
+        )
 
     async def _validate_and_resolve_path(
             self,
@@ -978,11 +884,12 @@ class FsOperation(BaseFsOperation):
                 - Error result if validation failed
         """
         head, tail, line_range, error_msg = self._validate_read_params(read_params)
+        result_class = ReadFileStreamResult if read_params.is_stream else ReadFileResult
         if error_msg:
             error_result = self._create_error_result(
                 execution,
                 error_msg,
-                read_params.is_stream,
+                result_class,
             )
             return None, error_result
 
@@ -991,7 +898,7 @@ class FsOperation(BaseFsOperation):
             error_result = self._create_error_result(
                 execution,
                 f"File not found: {file_path}",
-                read_params.is_stream,
+                result_class,
             )
             return None, error_result
 

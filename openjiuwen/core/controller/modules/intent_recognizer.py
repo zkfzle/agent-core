@@ -291,12 +291,12 @@ class EventHandlerWithIntentRecognition(EventHandler):
             session: Session
         """
         task = Task(
-            session_id=session.get_session_id(),
+            session_id=session.session_id(),
             task_id=intent.target_task_id,
             task_type="default_task_type",
             description=intent.target_task_description,
             priority=1,
-            context_id=f"{session.get_session_id()}_{intent.target_task_id}",
+            context_id=f"{session.session_id()}_{intent.target_task_id}",
             inputs=[intent.event] if isinstance(intent.event, InputEvent) else None,
             status=TaskStatus.SUBMITTED,
             error_message=None,
@@ -359,12 +359,12 @@ class EventHandlerWithIntentRecognition(EventHandler):
         )
         previous_events.append(event)
         task = Task(
-            session_id=session.get_session_id(),
+            session_id=session.session_id(),
             task_id=intent.target_task_id,
             task_type="default_task_type",
             description=intent.target_task_description,
             priority=1,
-            context_id=f"{session.get_session_id()}_{intent.target_task_id}",
+            context_id=f"{session.session_id()}_{intent.target_task_id}",
             inputs=previous_events,
             status=TaskStatus.SUBMITTED,
             error_message=None,

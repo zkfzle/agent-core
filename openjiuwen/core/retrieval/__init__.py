@@ -30,6 +30,7 @@ from openjiuwen.core.retrieval.embedding.utils import parse_base64_embedding
 # Reranker related
 from openjiuwen.core.retrieval.reranker.base import Reranker
 from openjiuwen.core.retrieval.reranker.standard_reranker import StandardReranker
+from openjiuwen.core.retrieval.reranker.chat_reranker import ChatReranker
 
 # Indexer related
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
@@ -152,6 +153,7 @@ _EMBEDDING_CLASSES = [
 _RERANKER_CLASSES = [
     "Reranker",
     "StandardReranker",
+    "ChatReranker",
 ]
 
 _VECTOR_STORE_CLASSES = [

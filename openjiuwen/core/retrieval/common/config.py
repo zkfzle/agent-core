@@ -6,15 +6,11 @@ Configuration Classes
 All configuration classes are unified in this file.
 """
 
-import re
-import tempfile
-from pathlib import Path
 from typing import Any, Dict, Literal, Optional
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field
 
 from openjiuwen.core.foundation.llm.schema.mode_info import BaseModelInfo
-from openjiuwen.core.retrieval.common.document import _raise_validation_error_with_info
 
 
 class KnowledgeBaseConfig(BaseModel):
@@ -68,3 +64,5 @@ class RerankerConfig(BaseModelInfo):
 
     streaming: Literal[False] = Field(default=False, init=False, repr=False)
     timeout: float = Field(default=10, gt=0)
+    yes_no_ids: tuple[int, int] = Field(default=None, description='Token ids for "yes" and "no"')
+    extra_body: dict = Field(default_factory=dict, description="special keyword arguments to pass in")

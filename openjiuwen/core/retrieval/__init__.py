@@ -107,6 +107,7 @@ from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
 # Vector store related
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.vector_store.milvus_store import MilvusVectorStore
+from openjiuwen.core.retrieval.vector_store.opengauss_store import OpenGaussVectorStore
 from openjiuwen.core.retrieval.vector_store.pg_store import PGVectorStore
 
 _KNOWLEDGE_BASE_CLASSES = [
@@ -149,6 +150,7 @@ _VECTOR_STORE_CLASSES = [
     "VectorStore",
     "MilvusVectorStore",
     "PGVectorStore",
+    "OpenGaussVectorStore",
 ]
 
 _INDEXER_CLASSES = [

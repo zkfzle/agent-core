@@ -77,6 +77,14 @@ class SysOperationCard(BaseCard):
     def code(self):
         return ToolIdProxy(self.id, "code")
 
+    @staticmethod
+    def generate_tool_id(card_id: str, op_type: str, method_name: str) -> str:
+        """Centralized tool ID generation for SysOperation methods.
+
+        Format: "{card_id}.{op_type}.{method_name}"
+        """
+        return f"{card_id}.{op_type}.{method_name}"
+
 
 class ToolIdProxy:
     """A helper for generating tool IDs via attribute access.
@@ -91,7 +99,7 @@ class ToolIdProxy:
         self._op_type = op_type
 
     def __getattr__(self, name: str) -> str:
-        return f"{self._card_id}.{self._op_type}.{name}"
+        return SysOperationCard.generate_tool_id(self._card_id, self._op_type, name)
 
 
 class SysOperation:

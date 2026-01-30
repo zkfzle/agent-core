@@ -613,10 +613,11 @@ class ResourceMgr:
                                          resource_type="prompt")
 
     def add_sys_operation(self,
-                          card: SysOperationCard,
+                          card: SysOperationCard | List[SysOperationCard],
                           *,
                           tag: Optional[Tag | List[Tag]] = None
-                          ) -> Result[SysOperationCard, Exception]:
+                          ) -> Union[Result[SysOperationCard, Exception],
+    List[Result[SysOperationCard, Exception]]]:
         """Add sys operation via SysOperationCard (with optional tags).
 
         Args:
@@ -624,21 +625,27 @@ class ResourceMgr:
             tag: Optional single/tag list for classification
 
         Returns:
-            Result[SysOperationCard, Exception]: Success card or error
+            Result[SysOperationCard, Exception] or List[Result[SysOperationCard, Exception]]]:
+             Success card or error
         """
-        self._inner_validate_resource_card(card, "sys_operation", SysOperationCard)
-        if tag is not None:
-            self._inner_validate_tag(tag)
-        res = self._inner_add_resource(resource_id=card.id,
-                                       resource=SysOperation(card),
-                                       resource_card=card,
-                                       tag=tag,
-                                       resource_type="sys_operation")
-        if res.is_ok():
-            instance = self.get_sys_operation(card.id)
-            if instance:
-                self._register_sys_operation_tools(card, instance, tag=tag)
-        return res
+        cards = [card] if isinstance(card, SysOperationCard) else (card or [])
+
+        results = []
+        for single_card in cards:
+            self._inner_validate_resource_card(single_card, "sys_operation", SysOperationCard)
+            if tag is not None:
+                self._inner_validate_tag(tag)
+            instance = SysOperation(single_card)
+            res = self._inner_add_resource(resource_id=single_card.id,
+                                           resource=instance,
+                                           resource_card=single_card,
+                                           tag=tag,
+                                           resource_type="sys_operation")
+            if res.is_ok():
+                self._register_sys_operation_tools(single_card, instance, tag=tag)
+            results.append(res)
+
+        return results[0] if isinstance(card, SysOperationCard) else results
 
     def remove_sys_operation(self,
                              *,
@@ -664,13 +671,15 @@ class ResourceMgr:
                                                tag_match_strategy=tag_match_strategy,
                                                skip_if_tag_not_exists=skip_if_tag_not_exists,
                                                resource_type="sys_operation")
-        # Cleanup related tools
-        if results.is_ok():
-            prefix = SysOperationToolAdapter.get_tool_id_prefix(sys_operation_id)
-            # Find tools whose IDs start with this operation ID
-            tool_ids_to_remove = [tid for tid in self._id_to_card.keys() if tid.startswith(prefix)]
-            if not tool_ids_to_remove:
-                return results
+        sys_op_ids = [sys_operation_id] if isinstance(sys_operation_id, str) else (sys_operation_id or [])
+
+        tool_ids_to_remove = []
+        for op_id in sys_op_ids:
+            ids = self._resource_registry.tool().remove_sys_operation_tools(op_id)
+            if ids:
+                tool_ids_to_remove.extend(ids)
+
+        if tool_ids_to_remove:
             self._inner_remove_resources(resource_id=tool_ids_to_remove,
                                          tag=tag,
                                          resource_type="tool", skip_if_tag_not_exists=skip_if_tag_not_exists)
@@ -681,6 +690,7 @@ class ResourceMgr:
         """Automatically register operation methods as tools."""
         tools = SysOperationToolAdapter.extract_tools(card, instance)
 
+        tool_ids = []
         # Register each tool
         for tool_id, local_func in tools:
             self._inner_add_resource(resource_id=tool_id,
@@ -688,6 +698,9 @@ class ResourceMgr:
                                      resource_card=local_func.card,
                                      tag=tag,
                                      resource_type="tool")
+            tool_ids.append(tool_id)
+
+        self._resource_registry.tool().add_sys_operation_tools(card.id, tool_ids)
 
     def get_sys_operation(self,
                           sys_operation_id: Optional[str] = None,
@@ -1285,7 +1298,7 @@ class ResourceMgr:
         ids_to_get = None
         exact_match = False
         if resource_id is not None:
-            self._inner_validate_resource_id(resource_id)
+            self._inner_validate_resource_ids(resource_id)
             ids_to_get = resource_id if isinstance(resource_id, list) else [resource_id]
             exact_match = True
         if not ids_to_get:

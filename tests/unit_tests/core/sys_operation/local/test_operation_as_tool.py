@@ -242,3 +242,65 @@ async def test_code_resource_mgr_integration(card, sys_op):
     invoke_res = await tool.invoke({"code": code, "language": "python", "options": {"encoding": "utf-8"}})
     assert invoke_res.code == StatusCode.SUCCESS.code
     assert "hello_integration" in invoke_res.data.stdout
+
+
+@pytest.mark.asyncio
+async def test_batch_sys_operation_lifecycle(work_dir):
+    """Test batch add, get and remove lifecycle for multiple sys operations using lists."""
+    await Runner.start()
+    try:
+        rm = Runner.resource_mgr
+
+        # 1. Create multiple sys operation cards
+        card1 = SysOperationCard(id="batch_op_1", mode=OperationMode.LOCAL,
+                                 work_config=LocalWorkConfig(work_dir=work_dir))
+        card2 = SysOperationCard(id="batch_op_2", mode=OperationMode.LOCAL,
+                                 work_config=LocalWorkConfig(work_dir=work_dir))
+        card3 = SysOperationCard(id="batch_op_3", mode=OperationMode.LOCAL,
+                                 work_config=LocalWorkConfig(work_dir=work_dir))
+
+        # 2. Add multiple sys operations in ONE call
+        # Should return a list of Results
+        add_results = rm.add_sys_operation(card=[card1, card2, card3])
+        assert isinstance(add_results, list)
+        assert len(add_results) == 3
+        assert all(res.is_ok() for res in add_results)
+
+        # 3. Get multiple sys operations in ONE call
+        # Should return a list of SysOperations
+        ops = rm.get_sys_operation(sys_operation_id=["batch_op_1", "batch_op_2", "batch_op_3"])
+        assert isinstance(ops, list)
+        assert len(ops) == 3
+        assert all(op is not None for op in ops)
+
+        # Verify tools are registered for all
+        assert rm.get_tool(card1.fs.read_file) is not None
+        assert rm.get_tool(card2.shell.execute_cmd) is not None
+        assert rm.get_tool(card3.code.execute_code) is not None
+
+        # 4. Remove multiple sys operations in ONE call
+        # Should return a list of Results
+        remove_results = rm.remove_sys_operation(sys_operation_id=["batch_op_1", "batch_op_2"])
+        assert isinstance(remove_results, list)
+        assert len(remove_results) == 2
+        assert all(r.is_ok() for r in remove_results)
+
+        # 5. Final verification
+        # Operations 1 and 2 should be gone
+        assert rm.get_sys_operation("batch_op_1") is None
+        assert rm.get_sys_operation("batch_op_2") is None
+        # Tools associated with removed operations should be gone
+        assert rm.get_tool(card1.fs.read_file) is None
+        assert rm.get_tool(card2.shell.execute_cmd) is None
+
+        # Operation 3 and its tools should still be there
+        assert rm.get_sys_operation("batch_op_3") is not None
+        assert rm.get_tool(card3.code.execute_code) is not None
+
+        # Cleanup remaining via single ID call (works as before)
+        rm.remove_sys_operation(sys_operation_id="batch_op_3")
+        assert rm.get_sys_operation("batch_op_3") is None
+        assert rm.get_tool(card3.code.execute_code) is None
+
+    finally:
+        await Runner.stop()

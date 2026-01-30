@@ -1,7 +1,7 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.sys_operation.registry import OperationRegistry
 from openjiuwen.core.sys_operation.sys_operation import SysOperationCard, SysOperation
@@ -46,7 +46,7 @@ class SysOperationToolAdapter:
 
             for tool_card in tool_cards:
                 # Generate unique tool ID
-                tool_id = f"{card.id}.{op_type}.{tool_card.name}"
+                tool_id = SysOperationCard.generate_tool_id(card.id, op_type, tool_card.name)
 
                 # Create a copy of the card with the specific tool_id
                 new_card = tool_card.model_copy()
@@ -69,16 +69,9 @@ class SysOperationToolAdapter:
         return tools
 
     @staticmethod
-    def get_tool_id_prefix(sys_operation_id: str) -> str:
-        """Get the tool ID prefix for a given SysOperation ID.
-        
-        This is useful for finding all tools belonging to a specific SysOperation
-        when removing or querying tools in the resource manager.
-        
-        Args:
-            sys_operation_id: The SysOperation ID
-            
-        Returns:
-            The prefix string used for all tools from this operation
-        """
-        return f"{sys_operation_id}."
+    def get_tool_id_prefix(sys_operation_id: Union[str, List[str]]) -> Union[str, List[str]]:
+        """Deprecated: Use ToolMgr index for cleanup instead."""
+        if isinstance(sys_operation_id, list):
+            return [f"{op_id}." for op_id in sys_operation_id]
+        else:
+            return f"{sys_operation_id}."

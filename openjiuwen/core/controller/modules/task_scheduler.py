@@ -461,7 +461,7 @@ class TaskScheduler:
             session_tasks = await self._task_manager.get_task(task_filter=TaskFilter(session_id=session_id))
             if not session_tasks:
                 logger.warning(f"No tasks found for session {session_id}")
-                return False
+                return True
 
             # Check if any task is still actively working or submitted
             active_states = {TaskStatus.SUBMITTED, TaskStatus.WORKING}

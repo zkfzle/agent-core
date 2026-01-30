@@ -106,5 +106,5 @@ class StandardReranker(Reranker):
         params = self._request_params(query=query, documents=documents, top_n=len(documents))
         instruction = kwargs.pop("instruction", None)
         if instruction is not None:
-            params.get("input", params)["instruct"] = instruction
+            params.get("parameters", params)["instruct"] = instruction
         return headers, params

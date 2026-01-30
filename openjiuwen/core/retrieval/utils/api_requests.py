@@ -18,6 +18,9 @@ from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.common.logging import logger
 
+ERROR_TEMPLATE = "%s Service Error%s: %s"
+SUPPORTED_TASKS = ["Reranker", "Embedding"]
+
 
 def default_error_handling(resp: Optional[httpx.Response], attempt: int, should_retry: bool) -> tuple[int, bool, Any]:
     """Default error handling routine"""
@@ -25,7 +28,7 @@ def default_error_handling(resp: Optional[httpx.Response], attempt: int, should_
     return attempt, should_retry, None
 
 
-CallbackFunction = Callable[[Optional[httpx.Response], int, bool], tuple[int, bool, Optional[dict | list]]]
+CallbackFunction = Callable[[Optional[httpx.Response], int, bool], tuple[int, bool, Optional[dict]]]
 HANDLE_ERR_CODE: MappingProxyType[int, CallbackFunction] = MappingProxyType(
     {
         429: default_error_handling,
@@ -33,8 +36,6 @@ HANDLE_ERR_CODE: MappingProxyType[int, CallbackFunction] = MappingProxyType(
         503: default_error_handling,
     }
 )
-ERROR_TEMPLATE = "%s Service Error%s: %s"
-SUPPORTED_TASKS = ["Reranker", "Embedding"]
 
 
 def sync_request_with_retry(
@@ -44,7 +45,7 @@ def sync_request_with_retry(
     custom_callback: Mapping[int, CallbackFunction] = HANDLE_ERR_CODE,
     task: Literal["Reranker", "Embedding"] = "Reranker",
     **kwargs,
-) -> Optional[dict | list]:
+) -> Optional[dict]:
     """Send api requests with retries (sync)"""
     _validate_task(task)
     attempt, should_retry = 0, False
@@ -79,7 +80,7 @@ async def async_request_with_retry(
     custom_callback: Mapping[int, CallbackFunction] = HANDLE_ERR_CODE,
     task: Literal["Reranker", "Embedding"] = "Reranker",
     **kwargs,
-) -> Optional[dict | list]:
+) -> Optional[dict]:
     """Send api requests with retries (async)"""
     _validate_task(task)
     attempt, should_retry = 0, False
@@ -123,7 +124,7 @@ def _handle_response_by_status(
     resp_str: str,
     task: str,
     custom_callback: Mapping[int, CallbackFunction],
-) -> tuple[int, bool, Optional[dict | list]]:
+) -> tuple[int, bool, Optional[dict]]:
     match response.status_code:
         case 200:
             return attempt, should_retry, resp_json

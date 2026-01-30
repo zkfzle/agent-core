@@ -3,7 +3,7 @@
 """
 Standard Reranker Model Implementation
 
-Reranker client implementation for vLLM / Jina AI / Cohere
+Reranker client implementation for vLLM-like services
 """
 
 import ssl

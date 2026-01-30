@@ -202,6 +202,11 @@ class ControllerAgent(BaseAgent):
         """Create default configuration"""
         return ControllerConfig()
 
+    @property
+    def config(self):
+        """get config"""
+        return self._config
+
     def configure(self, config: Union[dict, BaseModel]) -> 'BaseAgent':
         """Set uconfiguration
 
@@ -279,10 +284,16 @@ class ControllerAgent(BaseAgent):
             # Convert inputs to InputEvent
             input_event = InputEvent.from_user_input(user_input=inputs)
 
+            from openjiuwen.core.session.agent import Session as AgentSession
+            if isinstance(session, AgentSession):
+                agent_session = getattr(session, "_inner")
+            else:
+                agent_session = session
+
             # Call controller.invoke
             return await self.controller.invoke(
                 inputs=input_event,
-                session=session,
+                session=agent_session,
                 **kwargs
             )
 
@@ -333,6 +344,11 @@ class ControllerAgent(BaseAgent):
                     StatusCode.AGENT_CONTROLLER_RUNTIME_ERROR,
                     error_msg="session is required",
                 )
+            from openjiuwen.core.session.agent import Session as AgentSession
+            if isinstance(session, AgentSession):
+                agent_session = getattr(session, "_inner")
+            else:
+                agent_session = session
 
             # Convert inputs to InputEvent
             input_event = InputEvent.from_user_input(user_input=inputs)
@@ -340,7 +356,7 @@ class ControllerAgent(BaseAgent):
             # Forward directly to Controller.stream()
             async for chunk in self.controller.stream(
                 inputs=input_event,
-                session=session,
+                session=agent_session,
                 stream_modes=stream_modes,
                 **kwargs
             ):

@@ -157,7 +157,7 @@ def _raise_errors(
     else:
         last_error = build_error(
             getattr(StatusCode, f"RETRIEVAL_{task.upper()}_UNREACHABLE_CALL_FAILED"),
-            error_msg="Unreachable code in retrieval_api_requests",
+            error_msg=f"Failed to get {task} after {max_retries} attempts",
         )
 
     raise build_error(

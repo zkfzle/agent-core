@@ -15,22 +15,26 @@ class Reranker(ABC):
     """Reranker model abstract base class"""
 
     @abstractmethod
-    async def rerank(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
+    async def rerank(
+        self, query: str, doc: list[str | Document], instruct: bool | str = True, **kwargs
+    ) -> dict[str, float]:
         """
         Rerank documents and return a mapping from document to relevance score
             query: query string
             doc: list of documents to rerank
-            instruct: optional instruction to reranker
+            instruct: whether to provide instruction to reranker, pass in a string for custom instruction
             **kwargs: extra arguments
         """
 
     @abstractmethod
-    def rerank_sync(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
+    def rerank_sync(
+        self, query: str, doc: list[str | Document], instruct: bool | str = True, **kwargs
+    ) -> dict[str, float]:
         """
         Rerank documents and return a mapping from document to relevance score
             query: query string
             doc: list of documents to rerank
-            instruct: optional instruction to reranker
+            instruct: whether to provide instruction to reranker, pass in a string for custom instruction
             **kwargs: extra arguments
         """
 

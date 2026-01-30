@@ -15,28 +15,27 @@ class Reranker(ABC):
     """Reranker model abstract base class"""
 
     @abstractmethod
-    async def rerank(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
+    async def rerank(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
         """
         Rerank documents and return a mapping from document to relevance score
             query: query string
             doc: list of documents to rerank
-            **kwargs: extra arguments, such as "instruction"
+            instruct: optional instruction to reranker
+            **kwargs: extra arguments
         """
 
     @abstractmethod
-    def rerank_sync(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
+    def rerank_sync(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
         """
         Rerank documents and return a mapping from document to relevance score
             query: query string
             doc: list of documents to rerank
-            **kwargs: extra arguments, such as "instruction"
+            instruct: optional instruction to reranker
+            **kwargs: extra arguments
         """
 
-    def _request_headers(self, **kwargs: dict) -> dict:
-        ...
+    def _request_headers(self, **kwargs: dict) -> dict: ...
 
-    def _request_params(self, **kwargs: dict) -> dict:
-        ...
+    def _request_params(self, **kwargs: dict) -> dict: ...
 
-    def _parse_response(self, response_data: dict, doc: list[str | Document]) -> dict[str, float]:
-        ...
+    def _parse_response(self, response_data: dict, doc: list[str | Document]) -> dict[str, float]: ...

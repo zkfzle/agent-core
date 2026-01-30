@@ -54,15 +54,19 @@ class StandardReranker(Reranker):
         self.client = httpx.AsyncClient(**client_kwargs)
         self.sync_client = httpx.Client(**client_kwargs)
 
-    async def rerank(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
+    async def rerank(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
         headers, params = self._assemble_params(query, doc, kwargs)
+        if instruct:
+            params.get("parameters", params)["instruct"] = instruct
         result = await async_request_with_retry(
             self.client, max_retries=self.max_retries, task="Reranker", url=self.end_point, json=params, headers=headers
         )
         return self._parse_response(result, doc=doc)
 
-    def rerank_sync(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
+    def rerank_sync(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
         headers, params = self._assemble_params(query, doc, kwargs)
+        if instruct:
+            params.get("parameters", params)["instruct"] = instruct
         result = sync_request_with_retry(
             self.sync_client,
             max_retries=self.max_retries,
@@ -104,7 +108,4 @@ class StandardReranker(Reranker):
             )
         headers = self._request_headers()
         params = self._request_params(query=query, documents=documents, top_n=len(documents))
-        instruction = kwargs.pop("instruction", None)
-        if instruction is not None:
-            params.get("parameters", params)["instruct"] = instruction
         return headers, params

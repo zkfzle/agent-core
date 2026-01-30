@@ -6,9 +6,9 @@ import functools
 
 from pydantic import BaseModel
 
-from openjiuwen.core.common.logging import logger
 from openjiuwen.core.common.exception.codes import StatusCode
 from openjiuwen.core.common.exception.errors import build_error
+from openjiuwen.core.common.logging import context_engine_logger, LogEventType
 from openjiuwen.core.foundation.llm import BaseMessage
 from openjiuwen.core.session import Session
 from openjiuwen.core.context_engine.base import ModelContext
@@ -73,6 +73,7 @@ class ContextEngine:
         Returns:
             ModelContext: The newly created or cached context instance.
         """
+        context_id = self._process_context_id(context_id)
         session_id = session.get_session_id() if session else "default_session_id"
         full_context_id = f"{session_id}_{context_id}"
         if full_context_id in self._context_pool:
@@ -112,6 +113,7 @@ class ContextEngine:
         Returns:
             ModelContext instance if found, otherwise None.
         """
+        context_id = self._process_context_id(context_id)
         full_context_id = f"{session_id}_{context_id}"
         return self._context_pool.get(full_context_id, None)
 
@@ -147,27 +149,37 @@ class ContextEngine:
 
         if context_id is None:
             delete_context_list = [
-                context_id for context_id, context in self._context_pool.items()
+                context.context_id() for _, context in self._context_pool.items()
                 if context.session_id() == session_id
             ]
 
             if not delete_context_list:
-                logger.warning(f"Delete context failed, session {session_id} does not exist")
+                context_engine_logger.warning(
+                    "Delete context failed, session does not exist",
+                    event_type=LogEventType.CONTEXT_CLEAR,
+                    metadata={"session_id": session_id}
+                )
                 return
 
             for context_id in delete_context_list:
-                del self._context_pool[context_id]
+                full_context_id = f"{session_id}_{context_id}"
+                del self._context_pool[full_context_id]
             return
 
+        context_id = self._process_context_id(context_id)
         full_context_id = f"{session_id}_{context_id}"
         if full_context_id not in self._context_pool:
-            logger.warning(f"Delete context failed, context {session_id} does not exist")
+            context_engine_logger.warning(
+                "Delete context failed, context does not exist",
+                event_type=LogEventType.CONTEXT_CLEAR,
+                metadata={"session_id": session_id}
+            )
 
         del self._context_pool[full_context_id]
 
     async def save_contexts(self,
-                            context_ids: List[str],
                             session: Session,
+                            context_ids: List[str] = None
                             ):
         """
         Batch-persist multiple contexts and their runtime states.
@@ -179,9 +191,22 @@ class ContextEngine:
             context_ids: List of target context identifiers to save.
             session: Session object;
         """
+        if not session:
+            context_engine_logger.warning(
+                "Save context failed, session cannot be None",
+                event_type=LogEventType.CONTEXT_SAVE,
+            )
+            return
         session_id = session.get_session_id()
         states = dict()
+        if context_ids is None:
+            context_ids = [
+                context.context_id() for context_id, context in self._context_pool.items()
+                if context.session_id() == session_id
+            ]
+
         for context_id in context_ids:
+            context_id = self._process_context_id(context_id)
             full_context_id = f"{session_id}_{context_id}"
             context = self._context_pool.get(full_context_id)
             if context is None or not hasattr(context, "save_state"):
@@ -253,13 +278,15 @@ class ContextEngine:
             *,
             is_load_messages: bool = True
     ):
+        if not session:
+            return
         states = None
         if hasattr(session, "get_state"):
-            states = session.get_state()
+            states = session.get_state("context")
         elif hasattr(session, "_inner"):
             states = getattr(session, "_inner").get_state("context") if session else None
 
-        if not session or states is None:
+        if states is None:
             return
 
         if not hasattr(context, "load_state"):
@@ -275,6 +302,8 @@ class ContextEngine:
             session,
             states: dict
     ):
+        if not session:
+            return
         if hasattr(session, "update_state"):
             session.update_state({"context": None})
             session.update_state({"context": states})
@@ -282,3 +311,6 @@ class ContextEngine:
             getattr(session, "_inner").update_state({"context": None})
             getattr(session, "_inner").update_state({"context": states})
 
+    @staticmethod
+    def _process_context_id(context_id: str) -> str:
+        return context_id.replace(".", "_")

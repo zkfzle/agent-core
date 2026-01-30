@@ -8,9 +8,9 @@ from openjiuwen.core.skills.skill_manager import SkillManager
 from openjiuwen.core.skills.skill_tool_kit import SkillToolKit
 
 SKILL_PROMPT_CONTENT = '''
-To help you better complete tasks, the following skill knowledge is provided:
+To help you better complete tasks, the following skill knowledge is equipped:
 {{skills}}
-You can use the view_file tool to read the corresponding Skill.md file to obtain the relevant skill knowledge.
+You can use the view_file tool to read the corresponding Skill.md file to obtain the relevant skill.
 '''
 skill_prompt = PromptTemplate(content=SKILL_PROMPT_CONTENT)
 
@@ -85,12 +85,10 @@ class SkillUtil:
             str: A formatted prompt string with skill information that can be used
                 to inform agents about available skills.
         """
-        files_base_dir = os.getenv("FILES_BASE_DIR", str(Path(__file__).resolve().parent))
         system_prompt = (
             "You are an agent equipped with various skills to solve problems.\n"
             "Before attempting any task, read the relevant skill document (SKILL.md) "
             "using view_file and follow its workflow.\n"
-            f"All user-provided files are located at '{files_base_dir}'\n"
         )
         skills = self._skill_manager.get_all()
         skills_info = []

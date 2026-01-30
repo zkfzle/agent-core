@@ -7,7 +7,7 @@ This module defines configuration-related classes for the controller:
 - ControllerConfig: controller configuration class.
 """
 
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel, Field
 
 
@@ -100,22 +100,35 @@ class ControllerConfig(BaseModel):
         description="Event queue size. Limits the number of events that can be stored in the queue. Default is 10000."
     )
     event_timeout: Optional[float] = Field(
-        default=120000.0,
-        ge=600,
+        default=300,
+        ge=100,
         description="Event processing timeout in seconds. "
                     "Events that are not processed within this time are discarded. "
-                    "Default timeout is 120000.0 ms."
-    )
-
-    intent_llm_id: str = Field(
-        default="",
+                    "Default timeout is 300 s."
     )
 
     # ==================== Intent recognition configuration ====================
+    enable_intent_recognition: bool = False
+    intent_llm_id: str = Field(
+        default="",
+    )
     intent_confidence_threshold: float = Field(
         default=0.7,
         ge=0.0,
         le=1.0,
         description="Confidence threshold for intent recognition. "
                     "Intents below this value are treated as UNKNOWN_TASK. Range 0.0–1.0."
+    )
+    intent_type_list: List[str] = Field(
+        default=[
+            "create_task",
+            "pause_task",
+            "resume_task",
+            "cancel_task",
+            "unknown_task",
+        ],
+        description="List of intent types supported by this controller. "
+                    "Supported types: "
+                    "create_task, pause_task, resume_task, cancel_task, unknown_task"
+                    "create_dependent_task, modify_task, supplement_task"
     )

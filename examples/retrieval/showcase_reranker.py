@@ -1,10 +1,13 @@
 """Example script demonstrating reranker usage with Standard reranker"""
 
+import asyncio
+
 from openjiuwen.core.retrieval import RerankerConfig, StandardReranker
 
 # Query and documents for reranking (feel free to edit)
 QUERY = "Hello"
 DOCUMENTS = ["Hi", "ALoha", "bonjour"]
+INSTRUCTION = "greeting in french"
 
 # Standard reranker config (provide your own)
 STANDARD_RERANKER_CONFIG = RerankerConfig(
@@ -12,14 +15,18 @@ STANDARD_RERANKER_CONFIG = RerankerConfig(
 )
 
 
-def main():
+async def main():
     """Main example demonstrating reranker usage"""
     standard_reranker = StandardReranker(STANDARD_RERANKER_CONFIG, verify=False)
-    standard_result = standard_reranker.rerank_sync(query=QUERY, doc=DOCUMENTS)
+    rerank_req = []
+    for instruction in [False, INSTRUCTION]:
+        rerank_req.append(standard_reranker.rerank(query=QUERY, doc=DOCUMENTS, instruct=instruction))
     print(f"Query: {QUERY}")
     print(f"Documents: {DOCUMENTS}")
-    print(f"Reranked result: {standard_result}")
+    no_instruct, instruct = await asyncio.gather(*rerank_req)
+    print(f"Reranked result without instruction: {no_instruct}")
+    print(f"Reranked result with {instruction=}: {instruct}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

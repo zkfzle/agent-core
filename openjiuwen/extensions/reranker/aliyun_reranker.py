@@ -18,8 +18,12 @@ class AliyunReranker(StandardReranker):
 
     def _request_params(self, **kwargs: dict) -> dict:
         documents = kwargs["documents"]
+        instruct = kwargs.pop("instruct", None)
+        parameters = dict(return_documents=False, top_n=kwargs.get("top_n", len(documents)))
+        if instruct and isinstance(instruct, str):
+            parameters["instruct"] = instruct
         return {
             "model": self.model_name,
             "input": dict(query=kwargs["query"], documents=documents),
-            "parameters": dict(return_documents=False, top_n=kwargs.get("top_n", len(documents))),
+            "parameters": parameters,
         }

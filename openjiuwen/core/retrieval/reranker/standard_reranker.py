@@ -27,6 +27,8 @@ class StandardReranker(Reranker):
     """
 
     end_point = "/rerank"
+    query_template = "<Instruct>: {instruct}\n<Query>: {query}\n"
+    default_instruct = "Given a search query, retrieve relevant candidates that answer the query."
 
     def __init__(
         self,
@@ -54,19 +56,19 @@ class StandardReranker(Reranker):
         self.client = httpx.AsyncClient(**client_kwargs)
         self.sync_client = httpx.Client(**client_kwargs)
 
-    async def rerank(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
-        headers, params = self._assemble_params(query, doc, kwargs)
-        if instruct:
-            params.get("parameters", params)["instruct"] = instruct
+    async def rerank(
+        self, query: str, doc: list[str | Document], instruct: bool | str = True, **kwargs
+    ) -> dict[str, float]:
+        headers, params = self._assemble_params(query, doc, instruct, kwargs)
         result = await async_request_with_retry(
             self.client, max_retries=self.max_retries, task="Reranker", url=self.end_point, json=params, headers=headers
         )
         return self._parse_response(result, doc=doc)
 
-    def rerank_sync(self, query: str, doc: list[str | Document], instruct: str = "", **kwargs) -> dict[str, float]:
-        headers, params = self._assemble_params(query, doc, kwargs)
-        if instruct:
-            params.get("parameters", params)["instruct"] = instruct
+    def rerank_sync(
+        self, query: str, doc: list[str | Document], instruct: bool | str = True, **kwargs
+    ) -> dict[str, float]:
+        headers, params = self._assemble_params(query, doc, instruct, kwargs)
         result = sync_request_with_retry(
             self.sync_client,
             max_retries=self.max_retries,
@@ -90,9 +92,18 @@ class StandardReranker(Reranker):
         return self._headers
 
     def _request_params(self, **kwargs: dict) -> dict:
-        return dict(model=self.model_name, return_documents=False) | kwargs
+        instruct = kwargs.pop("instruct", None)
+        if instruct is True:
+            query = self.query_template.format(query=kwargs.pop("query"), instruct=self.default_instruct)
+        elif instruct:
+            query = self.query_template.format(query=kwargs.pop("query"), instruct=instruct)
+        else:
+            query = kwargs.pop("query")
+        return dict(model=self.model_name, return_documents=False, query=query) | kwargs
 
-    def _assemble_params(self, query: str, doc: list[str | Document], kwargs: dict) -> tuple[dict, dict]:
+    def _assemble_params(
+        self, query: str, doc: list[str | Document], instruct: bool | str, kwargs: dict
+    ) -> tuple[dict, dict]:
         documents = None
         if isinstance(doc, list):
             if all(isinstance(d, (str, Document)) for d in doc):
@@ -107,5 +118,5 @@ class StandardReranker(Reranker):
                 error_msg="input to reranker must be either list[str | Document]",
             )
         headers = self._request_headers()
-        params = self._request_params(query=query, documents=documents, top_n=len(documents))
+        params = self._request_params(query=query, documents=documents, top_n=len(documents), instruct=instruct)
         return headers, params

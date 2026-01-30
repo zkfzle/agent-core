@@ -6,7 +6,7 @@ from openjiuwen.core.retrieval import RerankerConfig, StandardReranker
 
 # Query and documents for reranking (feel free to edit)
 QUERY = "Hello"
-DOCUMENTS = ["Hi", "ALoha", "bonjour"]
+DOCUMENTS = ["Hi", "Aloha", "bonjour"]
 INSTRUCTION = "greeting in french"
 
 # Standard reranker config (provide your own)
@@ -24,8 +24,12 @@ async def main():
     print(f"Query: {QUERY}")
     print(f"Documents: {DOCUMENTS}")
     no_instruct, instruct = await asyncio.gather(*rerank_req)
-    print(f"Reranked result without instruction: {no_instruct}")
-    print(f"Reranked result with {instruction=}: {instruct}")
+    print("Reranked result without instruction:")
+    for doc, prob in no_instruct.items():
+        print(f"  {doc:7s}: {prob}")
+    print(f"Reranked result with {instruction=}:")
+    for doc, prob in instruct.items():
+        print(f"  {doc:7s}: {prob}")
 
 
 if __name__ == "__main__":

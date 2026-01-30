@@ -81,7 +81,6 @@ from openjiuwen.core.retrieval.indexing.vector_fields.milvus_fields import (
     MilvusIVF,
     MilvusSCANN,
 )
-from openjiuwen.core.retrieval.indexing.vector_fields.pg_fields import PGVectorField
 
 # Retriever related
 from openjiuwen.core.retrieval.retriever.agentic_retriever import AgenticRetriever
@@ -113,7 +112,6 @@ from openjiuwen.core.retrieval.utils.fusion import rrf_fusion
 # Vector store related
 from openjiuwen.core.retrieval.vector_store.base import VectorStore
 from openjiuwen.core.retrieval.vector_store.milvus_store import MilvusVectorStore
-from openjiuwen.core.retrieval.vector_store.pg_store import PGVectorStore
 
 _KNOWLEDGE_BASE_CLASSES = [
     "KnowledgeBase",
@@ -161,7 +159,6 @@ _RERANKER_CLASSES = [
 _VECTOR_STORE_CLASSES = [
     "VectorStore",
     "MilvusVectorStore",
-    "PGVectorStore",
 ]
 
 _INDEXER_CLASSES = [
@@ -222,7 +219,6 @@ _VECTOR_FIELD_CLASSES = [
     "MilvusHNSW",
     "MilvusIVF",
     "MilvusSCANN",
-    "PGVectorField",
 ]
 
 try:
@@ -235,6 +231,16 @@ try:
     _VECTOR_FIELD_CLASSES.append("ChromaVectorField")
 except Exception as e:
     logger.warning("Chroma database is disabled, reason: %r", e)
+
+try:
+    from openjiuwen.core.retrieval.vector_store.pg_store import PGVectorStore
+    from openjiuwen.core.retrieval.indexing.vector_fields.pg_fields import PGVectorField
+
+    _VECTOR_STORE_CLASSES.append("PGVectorStore")
+    _VECTOR_FIELD_CLASSES.append("PGVectorField")
+except Exception as e:
+    logger.warning("PGVector database is disabled, reason: %r", e)
+
 
 __all__ = (
     _KNOWLEDGE_BASE_CLASSES

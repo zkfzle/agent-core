@@ -16,14 +16,27 @@ class Reranker(ABC):
 
     @abstractmethod
     async def rerank(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
-        """Rerank documents and return a mapping from document to relevance score"""
+        """
+        Rerank documents and return a mapping from document to relevance score
+            query: query string
+            doc: list of documents to rerank
+            **kwargs: extra arguments, such as "instruction"
+        """
 
     @abstractmethod
     def rerank_sync(self, query: str, doc: list[str | Document], **kwargs: dict) -> dict[str, float]:
-        """Rerank documents and return a mapping from document to relevance score"""
+        """
+        Rerank documents and return a mapping from document to relevance score
+            query: query string
+            doc: list of documents to rerank
+            **kwargs: extra arguments, such as "instruction"
+        """
 
-    def _request_headers(self, **kwargs: dict) -> dict: ...
+    def _request_headers(self, **kwargs: dict) -> dict:
+        ...
 
-    def _request_params(self, **kwargs: dict) -> dict: ...
+    def _request_params(self, **kwargs: dict) -> dict:
+        ...
 
-    def _parse_response(self, response_data: dict, doc: list[str | Document]) -> dict[str, float]: ...
+    def _parse_response(self, response_data: dict, doc: list[str | Document]) -> dict[str, float]:
+        ...

@@ -99,7 +99,7 @@ class StandardReranker(Reranker):
             query = self.query_template.format(query=kwargs.pop("query"), instruct=instruct)
         else:
             query = kwargs.pop("query")
-        return dict(model=self.model_name, return_documents=False, query=query) | kwargs
+        return dict(model=self.model_name, return_documents=False, query=query) | self.config.extra_body
 
     def _assemble_params(
         self, query: str, doc: list[str | Document], instruct: bool | str, kwargs: dict

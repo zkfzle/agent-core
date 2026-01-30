@@ -8,6 +8,7 @@ from openjiuwen.core.common.logging import logger
 from openjiuwen.core.retrieval.common.callbacks import BaseCallback, TqdmCallback
 from openjiuwen.core.retrieval.common.config import (
     EmbeddingConfig,
+    RerankerConfig,
     IndexConfig,
     KnowledgeBaseConfig,
     RetrievalConfig,
@@ -17,15 +18,18 @@ from openjiuwen.core.retrieval.common.document import Document, MultimodalDocume
 from openjiuwen.core.retrieval.common.retrieval_result import RetrievalResult, SearchResult
 from openjiuwen.core.retrieval.common.triple import Triple
 from openjiuwen.core.retrieval.common.triple_beam import TripleBeam
-from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 
 # Embedding related
+from openjiuwen.core.retrieval.embedding.api_embedding import APIEmbedding
 from openjiuwen.core.retrieval.embedding.base import Embedding
 from openjiuwen.core.retrieval.embedding.ollama_embedding import OllamaEmbedding
 from openjiuwen.core.retrieval.embedding.openai_embedding import OpenAIEmbedding
-from openjiuwen.core.retrieval.embedding.utils import parse_base64_embedding
 from openjiuwen.core.retrieval.embedding.vllm_embedding import VLLMEmbedding
-from openjiuwen.core.retrieval.graph_knowledge_base import GraphKnowledgeBase
+from openjiuwen.core.retrieval.embedding.utils import parse_base64_embedding
+
+# Reranker related
+from openjiuwen.core.retrieval.reranker.base import Reranker
+from openjiuwen.core.retrieval.reranker.standard_reranker import StandardReranker
 
 # Indexer related
 from openjiuwen.core.retrieval.indexing.indexer.base import Indexer
@@ -77,10 +81,9 @@ from openjiuwen.core.retrieval.indexing.vector_fields.milvus_fields import (
     MilvusSCANN,
 )
 from openjiuwen.core.retrieval.indexing.vector_fields.pg_fields import PGVectorField
-from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
-from openjiuwen.core.retrieval.retriever.agentic_retriever import AgenticRetriever
 
 # Retriever related
+from openjiuwen.core.retrieval.retriever.agentic_retriever import AgenticRetriever
 from openjiuwen.core.retrieval.retriever.base import Retriever
 from openjiuwen.core.retrieval.retriever.graph_retriever import GraphRetriever
 from openjiuwen.core.retrieval.retriever.hybrid_retriever import HybridRetriever
@@ -91,6 +94,8 @@ from openjiuwen.core.retrieval.simple_knowledge_base import (
     retrieve_multi_kb,
     retrieve_multi_kb_with_source,
 )
+from openjiuwen.core.retrieval.knowledge_base import KnowledgeBase
+from openjiuwen.core.retrieval.graph_knowledge_base import GraphKnowledgeBase
 
 # Utilities
 from openjiuwen.core.retrieval.utils.config_manager import ConfigManager
@@ -126,6 +131,7 @@ _COMMON_CLASSES = [
     "IndexConfig",
     "VectorStoreConfig",
     "EmbeddingConfig",
+    "RerankerConfig",
     "Document",
     "MultimodalDocument",
     "TextChunk",
@@ -143,6 +149,11 @@ _EMBEDDING_CLASSES = [
     "OllamaEmbedding",
     "OpenAIEmbedding",
     "VLLMEmbedding",
+]
+
+_RERANKER_CLASSES = [
+    "Reranker",
+    "StandardReranker",
 ]
 
 _VECTOR_STORE_CLASSES = [
@@ -228,6 +239,7 @@ __all__ = (
     + _KNOWLEDGE_BASE_FUNCTIONS
     + _COMMON_CLASSES
     + _EMBEDDING_CLASSES
+    + _RERANKER_CLASSES
     + _VECTOR_STORE_CLASSES
     + _INDEXER_CLASSES
     + _PROCESSOR_CLASSES

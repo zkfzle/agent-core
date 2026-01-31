@@ -1,8 +1,10 @@
+# coding: utf-8
+# Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 """Single Agent Base Class Definition
 
 Main classes included:
  - Ability: Ability type definition
- - AbilityKit: Agent ability manager
+ - AbilityManager: Agent ability manager
  - BaseAgent: Single agent base class
 
 Created on: 2025-11-25
@@ -13,8 +15,13 @@ from __future__ import annotations
 import asyncio
 import json
 from abc import abstractmethod, ABC
-from typing import List, Any, AsyncIterator, Union, Optional, Tuple, Dict
+from typing import List, Any, AsyncIterator, Union, Optional, Tuple, Dict, TYPE_CHECKING
+from pydantic import BaseModel
 
+from openjiuwen.core.context_engine import ContextEngine
+from openjiuwen.core.controller.schema.event import InputEvent
+from openjiuwen.core.context_engine.schema.config import ContextEngineConfig
+from openjiuwen.core.controller.base import Controller
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.foundation.llm import ToolMessage, ToolCall
 from openjiuwen.core.foundation.tool import ToolInfo
@@ -24,12 +31,16 @@ from openjiuwen.core.session.session import Session
 from openjiuwen.core.session.stream.base import StreamMode
 from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.workflow import WorkflowCard
+from openjiuwen.core.controller.schema.controller_output import ControllerOutputChunk, ControllerOutput
+from openjiuwen.core.controller.config import ControllerConfig
+from openjiuwen.core.common.exception.errors import build_error, BaseError
+from openjiuwen.core.common.exception.codes import StatusCode
 
 # Ability type definition
 Ability = Union[ToolCard, WorkflowCard, AgentCard, McpServerConfig]
 
 
-class AbilityKit:
+class AbilityManager:
     """Agent Ability Manager
 
     Responsibilities:
@@ -45,24 +56,33 @@ class AbilityKit:
         self._agents: Dict[str, AgentCard] = {}
         self._mcp_servers: Dict[str, McpServerConfig] = {}
 
-    def add(self, ability: Ability) -> None:
+    def add(self, ability: Union[Ability, List[Ability]]) -> None:
         """Add an ability
 
         Args:
             ability: Ability Card to add
         """
-        if isinstance(ability, ToolCard):
-            self._tools[ability.name] = ability
-        elif isinstance(ability, WorkflowCard):
-            self._workflows[ability.name] = ability
-        elif isinstance(ability, AgentCard):
-            self._agents[ability.name] = ability
-        elif isinstance(ability, McpServerConfig):
-            self._mcp_servers[ability.server_name] = ability
+        def add_single_ability(_ability: Ability):
+            if isinstance(_ability, ToolCard):
+                self._tools[_ability.name] = _ability
+            elif isinstance(_ability, WorkflowCard):
+                self._workflows[_ability.name] = _ability
+            elif isinstance(_ability, AgentCard):
+                self._agents[_ability.name] = _ability
+            elif isinstance(_ability, McpServerConfig):
+                self._mcp_servers[_ability.server_name] = _ability
+            else:
+                logger.warning(f"Unknown ability type: {type(_ability)}")
+
+        if isinstance(ability, Ability):
+            add_single_ability(ability)
+        elif isinstance(ability, List):
+            for item in ability:
+                add_single_ability(item)
         else:
             logger.warning(f"Unknown ability type: {type(ability)}")
 
-    def remove(self, name: str) -> Optional[Ability]:
+    def remove(self, name: Union[str, List[str]]) -> Union[None, Ability, List[Ability]]:
         """Remove an ability by name
 
         Args:
@@ -71,15 +91,30 @@ class AbilityKit:
         Returns:
             Removed ability Card, or None if not found
         """
-        if name in self._tools:
-            return self._tools.pop(name)
-        if name in self._workflows:
-            return self._workflows.pop(name)
-        if name in self._agents:
-            return self._agents.pop(name)
-        if name in self._mcp_servers:
-            return self._mcp_servers.pop(name)
-        return None
+        if isinstance(name, str):
+            if name in self._tools:
+                return self._tools.pop(name, None)
+            if name in self._workflows:
+                return self._workflows.pop(name, None)
+            if name in self._agents:
+                return self._agents.pop(name, None)
+            if name in self._mcp_servers:
+                return self._mcp_servers.pop(name, None)
+            return None
+        elif isinstance(name, list):
+            result = []
+            for item in name:
+                if name in self._tools:
+                    result.append(self._tools.pop(item, None))
+                if name in self._workflows:
+                    result.append(self._workflows.pop(item, None))
+                if name in self._agents:
+                    result.append(self._agents.pop(item, None))
+                if name in self._mcp_servers:
+                    result.append(self._mcp_servers.pop(item, None))
+                return result
+        else:
+            return None
 
     def get(self, name: str) -> Optional[Ability]:
         """Get an ability Card by name
@@ -187,255 +222,32 @@ class AbilityKit:
 
     async def execute(
             self,
-            tool_call: ToolCall,
+            tool_call: Union[ToolCall, List[ToolCall]],
             session: Session
-    ) -> Tuple[Any, ToolMessage]:
+    ) -> List[Tuple[Any, ToolMessage]]:
         """Execute an ability call
 
         Get instance from Runner.resource_mgr by card info, execute and return
 
         Args:
-            tool_call: Tool call from LLM
-            session: Session instance
-
-        Returns:
-            (result, ToolMessage) tuple
-        """
-        from openjiuwen.core.runner import Runner
-
-        tool_name = tool_call.name
-
-        # Parse arguments
-        try:
-            tool_args = (
-                json.loads(tool_call.arguments)
-                if isinstance(tool_call.arguments, str)
-                else tool_call.arguments
-            )
-        except (json.JSONDecodeError, AttributeError):
-            tool_args = {}
-
-        result = None
-        error_msg = None
-
-        # Check ability type and execute accordingly
-        if tool_name in self._tools:
-            # Execute Tool - get instance from Runner.resource_mgr
-            tool_card = self._tools[tool_name]
-            tool_id = tool_card.id or tool_card.name
-            tool = Runner.resource_mgr.get_tool(tool_id=tool_id)
-            if tool:
-                try:
-                    result = await tool.invoke(tool_args)
-                except Exception as e:
-                    error_msg = f"Tool execution error: {str(e)}"
-                    logger.error(error_msg)
-            else:
-                error_msg = f"Tool instance not found in resource_mgr: {tool_id}"
-
-        elif tool_name in self._workflows:
-            # Execute Workflow - get instance from Runner.resource_mgr
-            workflow_card = self._workflows[tool_name]
-            workflow_id = workflow_card.id or workflow_card.name
-            workflow = await Runner.resource_mgr.get_workflow(id=workflow_id)
-            if workflow:
-                try:
-                    result = await workflow.invoke(tool_args, session)
-                except Exception as e:
-                    error_msg = f"Workflow execution error: {str(e)}"
-                    logger.error(error_msg)
-            else:
-                error_msg = (
-                    f"Workflow instance not found in resource_mgr: {workflow_id}"
-                )
-
-        elif tool_name in self._agents:
-            # Execute sub-Agent - get instance from Runner.resource_mgr
-            agent_card = self._agents[tool_name]
-            agent_id = agent_card.id or agent_card.name
-            agent = await Runner.resource_mgr.get_agent(id=agent_id)
-            if agent:
-                try:
-                    result = await agent.invoke(tool_args)
-                except Exception as e:
-                    error_msg = f"Agent execution error: {str(e)}"
-                    logger.error(error_msg)
-            else:
-                error_msg = (
-                    f"Agent instance not found in resource_mgr: {agent_id}"
-                )
-
-        elif tool_name in self._mcp_servers:
-            # Execute MCP tool
-            # TODO: Get MCP tool from MCP server
-            error_msg = f"MCP tool execution not yet implemented: {tool_name}"
-
-        else:
-            # Fallback: try to get tool from Runner.resource_mgr by name
-            tool = Runner.resource_mgr.get_tool(id=tool_name)
-            if tool:
-                try:
-                    result = await tool.invoke(tool_args)
-                except Exception as e:
-                    error_msg = f"Tool execution error: {str(e)}"
-                    logger.error(error_msg)
-            else:
-                error_msg = f"Ability not found in resource_mgr: {tool_name}"
-
-        # Build ToolMessage
-        content = str(result) if result is not None else (error_msg or "")
-        tool_message = ToolMessage(
-            content=content,
-            tool_call_id=tool_call.id
-        )
-
-        return result, tool_message
-
-
-class BaseAgent(ABC):
-    """Single Agent Base Class
-
-    Design principles:
-    - Card is required (defines what the Agent is)
-    - Config is optional (defines how the Agent runs)
-    - All configuration methods support chaining
-
-    Attributes:
-        card: Agent card (required)
-        _ability_kit: Ability manager
-    """
-
-    def __init__(
-            self,
-            card: AgentCard,
-    ):
-        """Initialize Agent
-
-        Args:
-            card: Agent card (required)
-        """
-        self.card = card
-        self._ability_kit = AbilityKit()
-
-    # ========== Configuration Interface ==========
-    @abstractmethod
-    def configure(self, config) -> 'BaseAgent':
-        """Set configuration"""
-        pass
-
-    # ========== Ability Management Interface ==========
-    @property
-    def ability_kit(self) -> AbilityKit:
-        return self._ability_kit
-
-    def add_ability(self, ability: Union[Ability, List[Ability]]) -> 'BaseAgent':
-        """Add an ability
-
-        Args:
-            ability: Ability Card or list (ToolCard/WorkflowCard/AgentCard/McpServerConfig)
-
-        Returns:
-            self (supports chaining)
-        """
-        abilities = [ability] if not isinstance(ability, list) else ability
-        for ab in abilities:
-            self._ability_kit.add(ab)
-        return self
-
-    def remove_ability(self, name: Union[str, List[str]]) -> 'BaseAgent':
-        """Remove an ability
-
-        Args:
-            name: Ability name or list
-
-        Returns:
-            self (supports chaining)
-        """
-        names = [name] if isinstance(name, str) else name
-        for n in names:
-            self._ability_kit.remove(n)
-        return self
-
-    def get_ability(self, name: str) -> Optional[Ability]:
-        """Get an ability Card
-
-        Args:
-            name: Ability name
-
-        Returns:
-            Ability Card, or None if not found
-        """
-        return self._ability_kit.get(name)
-
-    def list_abilities(self) -> List[Ability]:
-        """List all ability Cards
-
-        Returns:
-            List of ability Cards
-        """
-        return self._ability_kit.list()
-
-    async def list_tool_info(
-            self,
-            names: Optional[List[str]] = None
-    ) -> List[ToolInfo]:
-        """Get ToolInfo list for LLM usage
-
-        Args:
-            names: Filter by ability names (optional)
-
-        Returns:
-            List of ToolInfo objects
-        """
-        return await self._ability_kit.list_tool_info(names=names)
-
-    # ========== Query Interface ==========
-    def get_tool_info(self) -> ToolInfo:
-        """Convert current Agent to ToolInfo (for use as sub-agent)
-
-        Returns:
-            ToolInfo representing this agent
-        """
-        # Build parameters from agent card's input_params
-        params = {"type": "object", "properties": {}, "required": []}
-        if hasattr(self.card, 'input_params'):
-            for param in self.card.input_params:
-                params["properties"][param.name] = {
-                    "type": param.type,
-                    "description": getattr(param, 'description', "") or ""
-                }
-                if getattr(param, 'required', False):
-                    params["required"].append(param.name)
-
-        return ToolInfo(
-            name=self.card.name,
-            description=self.card.description or "",
-            parameters=params
-        )
-
-    # ========== Execution Interface ==========
-
-    async def _execute_ability(
-            self,
-            tool_calls: Union[ToolCall, List[ToolCall]],
-            session: Session
-    ) -> List[Tuple[Any, ToolMessage]]:
-        """Execute ability calls (supports parallel execution)
-
-        Args:
-            tool_calls: Single tool call or list of tool calls
+            tool_call: Single tool call or list of tool calls
             session: Session instance
 
         Returns:
             List of (result, ToolMessage) tuples
         """
-        # Convert single tool_call to list
-        if not isinstance(tool_calls, list):
-            tool_calls = [tool_calls]
+
+        tool_calls = []
+        if isinstance(tool_call, list):
+            tool_calls.extend(tool_call)
+        elif isinstance(tool_call, ToolCall):
+            tool_calls.append(tool_call)
+        else:
+            logger.warning(f"execute ability input tool call is invalid, {type(tool_call)}!")
 
         # Execute all tool calls in parallel
         tasks = [
-            self._ability_kit.execute(tool_call, session)
+            self._execute_single_tool_call(tool_call, session)
             for tool_call in tool_calls
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -457,44 +269,88 @@ class BaseAgent(ABC):
 
         return final_results
 
-    @abstractmethod
-    async def invoke(
-            self,
-            inputs: Any,
-            session: Optional[Session] = None,
-    ) -> Any:
-        """Batch execution (can pass config at runtime to override)
+    async def _execute_single_tool_call(self, tool_call: ToolCall, session: Session) -> Tuple[Any, ToolMessage]:
+        result, error_msg = None, None
+        tool_name = tool_call.name
 
-        Args:
-            inputs: Agent input, supports the following formats:
-                - dict: Must contain "user_input" and "session_id"
-                   e.g.: {"user_input": "xxx", "session_id": "session_123"}
-                - str: Used directly as user_input, requires session or other way to get session_id
-            session: Session object (optional, will be created from session_id in inputs if not provided)
+        # Parse arguments
+        try:
+            tool_args = (
+                json.loads(tool_call.arguments)
+                if isinstance(tool_call.arguments, str)
+                else tool_call.arguments
+            )
+        except (json.JSONDecodeError, AttributeError):
+            tool_args = {}
 
-        Returns:
-            Agent output result
-        """
-        ...
+        # Check ability type and execute accordingly
+        if tool_name in self._tools:
+            # Execute Tool - get instance from Runner.resource_mgr
+            tool_card = self._tools[tool_name]
+            tool_id = tool_card.id or tool_card.name
+            from openjiuwen.core.runner import Runner
+            tool = Runner.resource_mgr.get_tool(tool_id=tool_id)
+            if tool:
+                try:
+                    result = await tool.invoke(tool_args)
+                except Exception as e:
+                    error_msg = f"Tool execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = f"Tool instance not found in resource_mgr: {tool_id}"
+        elif tool_name in self._workflows:
+            # Execute Workflow - get instance from Runner.resource_mgr
+            workflow_card = self._workflows[tool_name]
+            workflow_id = workflow_card.id or workflow_card.name
+            from openjiuwen.core.runner import Runner
+            workflow = await Runner.resource_mgr.get_workflow(workflow_id=workflow_id)
+            if workflow:
+                try:
+                    result = await workflow.invoke(tool_args, session)
+                except Exception as e:
+                    error_msg = f"Workflow execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = (
+                    f"Workflow instance not found in resource_mgr: {workflow_id}"
+                )
+        elif tool_name in self._agents:
+            # Execute sub-Agent - get instance from Runner.resource_mgr
+            agent_card = self._agents[tool_name]
+            agent_id = agent_card.id or agent_card.name
+            from openjiuwen.core.runner import Runner
+            agent = await Runner.resource_mgr.get_agent(agent_id=agent_id)
+            if agent:
+                try:
+                    result = await agent.invoke(tool_args)
+                except Exception as e:
+                    error_msg = f"Agent execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = (
+                    f"Agent instance not found in resource_mgr: {agent_id}"
+                )
+        elif tool_name in self._mcp_servers:
+            # Execute MCP tool
+            error_msg = f"MCP tool execution not yet implemented: {tool_name}"
+        else:
+            # Fallback: try to get tool from Runner.resource_mgr by name
+            from openjiuwen.core.runner import Runner
+            tool = Runner.resource_mgr.get_tool(tool_id=tool_name)
+            if tool:
+                try:
+                    result = await tool.invoke(tool_args)
+                except Exception as e:
+                    error_msg = f"Tool execution error: {str(e)}"
+                    logger.error(error_msg)
+            else:
+                error_msg = f"Ability not found in resource_mgr: {tool_name}"
 
-    @abstractmethod
-    async def stream(
-            self,
-            inputs: Any,
-            session: Optional[Session] = None,
-            stream_modes: Optional[List[StreamMode]] = None
-    ) -> AsyncIterator[Any]:
-        """Stream execution (can pass config at runtime to override)
+        # Build ToolMessage
+        content = str(result) if result is not None else (error_msg or "")
+        tool_message = ToolMessage(
+            content=content,
+            tool_call_id=tool_call.id
+        )
 
-        Args:
-            inputs: Agent input, supports the following formats:
-                - dict: Must contain "user_input" and "session_id"
-                   e.g.: {"user_input": "xxx", "session_id": "session_123"}
-                - str: Used directly as user_input, requires session or other way to get session_id
-            session: Session object (optional, will be created from session_id in inputs if not provided)
-            stream_modes: Stream output modes (optional)
-
-        Yields:
-            Agent stream output result
-        """
-        ...
+        return result, tool_message

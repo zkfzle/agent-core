@@ -1,13 +1,13 @@
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
-from typing import Optional, Union, Any
+from typing import Optional, Union, Any, TYPE_CHECKING
 
+from openjiuwen.core.common.exception.codes import StatusCode
+from openjiuwen.core.common.exception.errors import build_error
 from openjiuwen.core.multi_agent import BaseGroup
 from openjiuwen.core.runner.message_queue_base import LocalMessageQueue
 from openjiuwen.core.single_agent import BaseAgent, LegacyBaseAgent
-from openjiuwen.core.common.exception.exception import JiuWenBaseException
-from openjiuwen.core.common.exception.status_code import StatusCode
 from openjiuwen.core.common.logging import logger
 from openjiuwen.core.context_engine import ModelContext
 from openjiuwen.core.runner.drunner.dmessage_queue.dsubscription.reply_topic_subscription import ReplyTopicSubscription
@@ -21,8 +21,8 @@ from openjiuwen.core.runner.resources_manager.resource_manager import ResourceMg
 from openjiuwen.core.session import Session
 from openjiuwen.core.workflow import Session as WorkflowSession
 from openjiuwen.core.workflow import create_workflow_session
-from openjiuwen.core.single_agent import Session as AgentSession, AgentCard
-from openjiuwen.core.single_agent import create_agent_session
+from openjiuwen.core.single_agent import Session as AgentSession, create_agent_session
+from openjiuwen.core.single_agent.schema.agent_card import AgentCard
 from openjiuwen.core.session.stream import BaseStreamMode
 from openjiuwen.core.workflow import generate_workflow_key
 from openjiuwen.core.workflow import Workflow
@@ -78,6 +78,7 @@ class Runner:
         Args:
             config: The RunnerConfig object containing configuration settings
         """
+        logger.info(f"set runner {self._runner_id} config {config}")
         set_runner_config(config)
 
     def get_config(self):
@@ -235,7 +236,7 @@ class Runner:
             await getattr(agent_session, "_inner").post_run()
 
     async def run_agent_group(self,
-                              agent_group: str | BaseGroup,
+                              agent_group: Union[str, 'BaseGroup'],
                               inputs: Any,
                               *,
                               session: Optional[str | Session] = None,
@@ -256,7 +257,7 @@ class Runner:
         return await agent_group_instance.invoke(inputs)
 
     async def run_agent_group_streaming(self,
-                                        agent_group: str | BaseGroup,
+                                        agent_group: Union[str, 'BaseGroup'],
                                         inputs: Any,
                                         *,
                                         session: Optional[str | Session] = None,
@@ -311,8 +312,7 @@ class Runner:
         if isinstance(agent, str):
             agent_instance = await self._resource_manager.get_agent(agent_id=agent)
             if agent_instance is None:
-                raise JiuWenBaseException(StatusCode.AGENT_NOT_FOUND.code,
-                                          StatusCode.AGENT_NOT_FOUND.errmsg.format(agent))
+                raise build_error(StatusCode.RUNNER_RUN_AGENT_ERROR, agent_id=agent, reason="agent not exist")
             if isinstance(agent_instance, RemoteAgent):
                 # Remote single_agent does not add session, keep sessionId in input
                 if self._AGENT_CONVERSATION_ID not in inputs:

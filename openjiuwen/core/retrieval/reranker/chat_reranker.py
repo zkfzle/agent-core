@@ -40,7 +40,7 @@ class ChatReranker(StandardReranker):
         **kwargs,
     ):
         logger.warning("ChatReranker support is experimental in openJiuwen %s, you have been warned.", __version__)
-        if isinstance(config.yes_no_ids, Sequence) and sum(isinstance(token_id, int) for token_id in config.yes_no_ids):
+        if isinstance(config.yes_no_ids, Sequence) and sum(isinstance(tid, int) for tid in config.yes_no_ids) == 2:
             self.yes_no_ids = tuple(config.yes_no_ids)
         else:
             raise build_error(
@@ -52,7 +52,7 @@ class ChatReranker(StandardReranker):
     def test_compatibility(self) -> bool:
         """Test to see if selected service is compatible for chat-completion-based reranking"""
         try:
-            self.rerank_sync("test", doc="test", instruct=False)
+            self.rerank_sync("test", doc=["test"], instruct=False)
         except Exception as e:
             logger.error("The selected service does not support chat-completion-based reranking: %r", e)
             return False

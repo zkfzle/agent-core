@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # coding: utf-8
 # Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
 
@@ -21,6 +20,14 @@ class QueueMessage(BaseModel):
     model_config = {
         "arbitrary_types_allowed": True
     }
+
+
+class LocalMessageQueue:
+    async def start(self):
+        pass
+
+    async def stop(self):
+        pass
 
 
 class InvokeQueueMessage(QueueMessage):
